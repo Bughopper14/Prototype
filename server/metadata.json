@@ -1,0 +1,1088 @@
+{
+  "Customer": {
+    "table": "customers",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "companyName": {
+        "column": "company_name",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "companyType": {
+        "column": "company_type",
+        "type": "CustomerCategory",
+        "optional": false,
+        "generated": false
+      },
+      "nib": {
+        "column": "nib",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "npwp": {
+        "column": "npwp",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "sktNo": {
+        "column": "skt_no",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "sppkpNo": {
+        "column": "sppkp_no",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "establishmentActNo": {
+        "column": "establishment_act_no",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "establishmentDate": {
+        "column": "establishment_date",
+        "type": "DateTime",
+        "optional": true,
+        "generated": false
+      },
+      "createdAt": {
+        "column": "created_at",
+        "type": "DateTime",
+        "optional": false,
+        "generated": true
+      },
+      "updatedAt": {
+        "column": "updated_at",
+        "type": "DateTime",
+        "optional": false,
+        "generated": true
+      }
+    }
+  },
+  "Application": {
+    "table": "applications",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "customerId": {
+        "column": "customer_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "fapNumber": {
+        "column": "fap_number",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "applicationDate": {
+        "column": "application_date",
+        "type": "DateTime",
+        "optional": false,
+        "generated": false
+      },
+      "branchCode": {
+        "column": "branch_code",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "customerStatus": {
+        "column": "customer_status",
+        "type": "CustomerStatus",
+        "optional": false,
+        "generated": false
+      },
+      "status": {
+        "column": "status",
+        "type": "ApplicationStatus",
+        "optional": false,
+        "generated": false
+      },
+      "companyAddress": {
+        "column": "company_address",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "city": {
+        "column": "city",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "province": {
+        "column": "province",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "postalCode": {
+        "column": "postal_code",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "phoneFax": {
+        "column": "phone_fax",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "email": {
+        "column": "email",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "website": {
+        "column": "website",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "mainBusiness": {
+        "column": "main_business",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "experienceYears": {
+        "column": "experience_years",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "experienceMonths": {
+        "column": "experience_months",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "locationStatus": {
+        "column": "location_status",
+        "type": "LocationStatus",
+        "optional": false,
+        "generated": false
+      },
+      "repaymentSource": {
+        "column": "repayment_source",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "latestDeedNo": {
+        "column": "latest_deed_no",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "latestDeedDate": {
+        "column": "latest_deed_date",
+        "type": "DateTime",
+        "optional": true,
+        "generated": false
+      },
+      "industrySegment": {
+        "column": "industry_segment",
+        "type": "IndustrySegment",
+        "optional": false,
+        "generated": false
+      },
+      "businessRole": {
+        "column": "business_role",
+        "type": "BusinessRole",
+        "optional": false,
+        "generated": false
+      },
+      "assetSummaryHeLiuGong": {
+        "column": "asset_summary_he_liugong",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "assetSummaryTruckLiuGong": {
+        "column": "asset_summary_truck_liugong",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "assetSummaryHeNonLiuGong": {
+        "column": "asset_summary_he_non_liugong",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "assetSummaryTruckNonLiuGong": {
+        "column": "asset_summary_truck_non_liugong",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "createdAt": {
+        "column": "created_at",
+        "type": "DateTime",
+        "optional": false,
+        "generated": true
+      },
+      "updatedAt": {
+        "column": "updated_at",
+        "type": "DateTime",
+        "optional": false,
+        "generated": true
+      }
+    }
+  },
+  "ApplicationPic": {
+    "table": "application_pics",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "picName": {
+        "column": "pic_name",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "position": {
+        "column": "position",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "phone": {
+        "column": "phone",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "email": {
+        "column": "email",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "currentAddress": {
+        "column": "current_address",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "city": {
+        "column": "city",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "province": {
+        "column": "province",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "postalCode": {
+        "column": "postal_code",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "Stakeholder": {
+    "table": "stakeholders",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "name": {
+        "column": "name",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "position": {
+        "column": "position",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "stakeholderType": {
+        "column": "stakeholder_type",
+        "type": "StakeholderType",
+        "optional": false,
+        "generated": false
+      },
+      "nationalityType": {
+        "column": "nationality_type",
+        "type": "NationalityType",
+        "optional": false,
+        "generated": false
+      },
+      "idNumber": {
+        "column": "id_number",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "taxNumber": {
+        "column": "tax_number",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "shareAmount": {
+        "column": "share_amount",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "sharePercentage": {
+        "column": "share_percentage",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "representativeType": {
+        "column": "representative_type",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "signatory": {
+        "column": "signatory",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "idType": {
+        "column": "id_type",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "title": {
+        "column": "title",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "firstName": {
+        "column": "first_name",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "middleName": {
+        "column": "middle_name",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "lastName": {
+        "column": "last_name",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "dateOfBirth": {
+        "column": "date_of_birth",
+        "type": "DateTime",
+        "optional": true,
+        "generated": false
+      },
+      "ageYears": {
+        "column": "age_years",
+        "type": "Int",
+        "optional": true,
+        "generated": false
+      },
+      "ageMonths": {
+        "column": "age_months",
+        "type": "Int",
+        "optional": true,
+        "generated": false
+      },
+      "maritalStatus": {
+        "column": "marital_status",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "email": {
+        "column": "email",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "mobilePhone": {
+        "column": "mobile_phone",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "gender": {
+        "column": "gender",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "primaryCapital": {
+        "column": "primary_capital",
+        "type": "Decimal",
+        "optional": true,
+        "generated": false
+      },
+      "citizenship": {
+        "column": "citizenship",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "country": {
+        "column": "country",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "province": {
+        "column": "province",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "cityRegency": {
+        "column": "city_regency",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "district": {
+        "column": "district",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "village": {
+        "column": "village",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "rw": {
+        "column": "rw",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "rt": {
+        "column": "rt",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "address": {
+        "column": "address",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "postalCode": {
+        "column": "postal_code",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      }
+    }
+  },
+  "ProjectContract": {
+    "table": "project_contracts",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "projectOwner": {
+        "column": "project_owner",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "projectLocation": {
+        "column": "project_location",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "projectRole": {
+        "column": "project_role",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "contractStatus": {
+        "column": "contract_status",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "BankReference": {
+    "table": "bank_references",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "bankOrFinInstitution": {
+        "column": "bank_or_fin_institution",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "currency": {
+        "column": "currency",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "creditFacility": {
+        "column": "credit_facility",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "monthlyInstallment": {
+        "column": "monthly_installment",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "yearStarted": {
+        "column": "year_started",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "interestRate": {
+        "column": "interest_rate",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "paymentRecord": {
+        "column": "payment_record",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "facilityStatus": {
+        "column": "facility_status",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "FinancingProposal": {
+    "table": "financing_proposals",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "facilityPurpose": {
+        "column": "facility_purpose",
+        "type": "FacilityPurpose",
+        "optional": false,
+        "generated": false
+      },
+      "purposeDetail": {
+        "column": "purpose_detail",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "financingMethod": {
+        "column": "financing_method",
+        "type": "FinancingMethod",
+        "optional": false,
+        "generated": false
+      },
+      "currency": {
+        "column": "currency",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "financingValue": {
+        "column": "financing_value",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "downPaymentValue": {
+        "column": "down_payment_value",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "securityDeposit": {
+        "column": "security_deposit",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "interestRate": {
+        "column": "interest_rate",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "tenorMonths": {
+        "column": "tenor_months",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "paymentMethod": {
+        "column": "payment_method",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "applicationSource": {
+        "column": "application_source",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "termsNotes": {
+        "column": "terms_notes",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      }
+    }
+  },
+  "FinancingUnitItem": {
+    "table": "financing_unit_items",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "proposalId": {
+        "column": "proposal_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "brand": {
+        "column": "brand",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "unitCategory": {
+        "column": "unit_category",
+        "type": "UnitCategory",
+        "optional": false,
+        "generated": false
+      },
+      "modelName": {
+        "column": "model_name",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "quantity": {
+        "column": "quantity",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "unitPrice": {
+        "column": "unit_price",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "totalPrice": {
+        "column": "total_price",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "FinancialStatement": {
+    "table": "financial_statements",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "fiscalYear": {
+        "column": "fiscal_year",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "isAudited": {
+        "column": "is_audited",
+        "type": "Boolean",
+        "optional": false,
+        "generated": false
+      },
+      "currentAssets": {
+        "column": "current_assets",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "nonCurrentAssets": {
+        "column": "non_current_assets",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "totalAssets": {
+        "column": "total_assets",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "currentLiabilities": {
+        "column": "current_liabilities",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "nonCurrentLiabilities": {
+        "column": "non_current_liabilities",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "totalLiabilities": {
+        "column": "total_liabilities",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "equity": {
+        "column": "equity",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "totalLiabAndEquity": {
+        "column": "total_liab_and_equity",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "revenue": {
+        "column": "revenue",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "grossMargin": {
+        "column": "gross_margin",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "operatingMargin": {
+        "column": "operating_margin",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "tax": {
+        "column": "tax",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      },
+      "netIncome": {
+        "column": "net_income",
+        "type": "Decimal",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "DocumentChecklist": {
+    "table": "document_checklists",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "documentCode": {
+        "column": "document_code",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "documentName": {
+        "column": "document_name",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "isMandatory": {
+        "column": "is_mandatory",
+        "type": "Boolean",
+        "optional": false,
+        "generated": false
+      },
+      "assignedRole": {
+        "column": "assigned_role",
+        "type": "VerifierRole",
+        "optional": false,
+        "generated": false
+      },
+      "checkedByMkt": {
+        "column": "checked_by_mkt",
+        "type": "Boolean",
+        "optional": false,
+        "generated": false
+      },
+      "checkedByBs": {
+        "column": "checked_by_bs",
+        "type": "Boolean",
+        "optional": false,
+        "generated": false
+      },
+      "checkedByCa": {
+        "column": "checked_by_ca",
+        "type": "Boolean",
+        "optional": false,
+        "generated": false
+      },
+      "checkedByLegal": {
+        "column": "checked_by_legal",
+        "type": "Boolean",
+        "optional": false,
+        "generated": false
+      },
+      "registrationDate": {
+        "column": "registration_date",
+        "type": "DateTime",
+        "optional": true,
+        "generated": false
+      },
+      "expiredDate": {
+        "column": "expired_date",
+        "type": "DateTime",
+        "optional": true,
+        "generated": false
+      },
+      "dataSummary": {
+        "column": "data_summary",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "notes": {
+        "column": "notes",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "status": {
+        "column": "status",
+        "type": "DocStatus",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "DocumentFile": {
+    "table": "document_files",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "checklistId": {
+        "column": "checklist_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "fileName": {
+        "column": "file_name",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "fileKey": {
+        "column": "file_key",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "fileSize": {
+        "column": "file_size",
+        "type": "Int",
+        "optional": false,
+        "generated": false
+      },
+      "mimeType": {
+        "column": "mime_type",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "uploadedBy": {
+        "column": "uploaded_by",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "uploadedAt": {
+        "column": "uploaded_at",
+        "type": "DateTime",
+        "optional": false,
+        "generated": false
+      }
+    }
+  },
+  "ApprovalLog": {
+    "table": "approval_logs",
+    "fields": {
+      "id": {
+        "column": "id",
+        "type": "String",
+        "optional": false,
+        "generated": true
+      },
+      "applicationId": {
+        "column": "application_id",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "actionBy": {
+        "column": "action_by",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "userRole": {
+        "column": "user_role",
+        "type": "String",
+        "optional": false,
+        "generated": false
+      },
+      "previousStatus": {
+        "column": "previous_status",
+        "type": "ApplicationStatus",
+        "optional": false,
+        "generated": false
+      },
+      "newStatus": {
+        "column": "new_status",
+        "type": "ApplicationStatus",
+        "optional": false,
+        "generated": false
+      },
+      "comments": {
+        "column": "comments",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "actionTimestamp": {
+        "column": "action_timestamp",
+        "type": "DateTime",
+        "optional": false,
+        "generated": false
+      }
+    }
+  }
+}

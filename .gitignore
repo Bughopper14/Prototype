@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+.env.*.local
+.data/
+.npm-cache/
+.sites-checkout/
+.sites-runtime/
+output/
+test-results/
+*.log
