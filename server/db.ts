@@ -137,6 +137,7 @@ export async function initialize(){
    await q('INSERT INTO schema_migrations VALUES(7)');
   });
   await seedIndonesiaRegions();
+  await initializeLocationMapping();
 }
 async function initializeMysql(){
  if(!process.env.DB_NAME)throw new Error('DB_NAME is required when DB_CLIENT=mysql');
@@ -190,6 +191,51 @@ async function initializeMysql(){
   await query('INSERT INTO schema_migrations VALUES(5)');
  }
  await seedIndonesiaRegions();
+ await initializeLocationMapping();
+}
+async function initializeLocationMapping(){
+ const version=mysqlPool?6:8;
+ const migrated=(await query('SELECT version FROM schema_migrations WHERE version=$1',[version])).rows.length>0;
+ if(!migrated){
+  await query(`CREATE TABLE IF NOT EXISTS master_mapping_wilayah (
+   provinsi VARCHAR(150) NOT NULL,
+   kabupaten_kota VARCHAR(150) NOT NULL,
+   kecamatan VARCHAR(150) NOT NULL,
+   kelurahan_desa VARCHAR(150) NOT NULL,
+   kode_pos VARCHAR(5) NOT NULL CHECK(CHAR_LENGTH(kode_pos)=5),
+   kode_provinsi VARCHAR(20) NOT NULL,
+   kode_kabupaten_kota VARCHAR(20) NOT NULL,
+   kode_kecamatan VARCHAR(20) NOT NULL,
+   kode_kelurahan_desa VARCHAR(20) NOT NULL,
+   sumber_url VARCHAR(255) NOT NULL,
+   sumber_snapshot CHAR(64) NOT NULL,
+   PRIMARY KEY(kode_kelurahan_desa,kode_pos),
+   FOREIGN KEY(kode_provinsi) REFERENCES master_provinsi(code),
+   FOREIGN KEY(kode_kabupaten_kota) REFERENCES master_kabupaten_kota(code),
+   FOREIGN KEY(kode_kecamatan) REFERENCES master_kecamatan(code),
+   FOREIGN KEY(kode_kelurahan_desa) REFERENCES master_kelurahan_desa(code)
+  )`);
+  await createLocationIndex(query,'mapping_provinsi_idx','master_mapping_wilayah','kode_provinsi');
+  await createLocationIndex(query,'mapping_kabupaten_kota_idx','master_mapping_wilayah','kode_kabupaten_kota');
+  await createLocationIndex(query,'mapping_kecamatan_idx','master_mapping_wilayah','kode_kecamatan');
+ }
+ const file=new URL('./data/mapping-wilayah.json.gz',import.meta.url);
+ const snapshot=JSON.parse(gunzipSync(fs.readFileSync(file)).toString('utf8')) as {mappingSha256:string,rowCount:number,rows:Record<string,string>[]};
+ if(snapshot.rows.length!==snapshot.rowCount||crypto.createHash('sha256').update(JSON.stringify(snapshot.rows)).digest('hex')!==snapshot.mappingSha256)throw new Error('Location mapping snapshot is invalid');
+ const count=Number((await query('SELECT COUNT(*) AS count FROM master_mapping_wilayah WHERE sumber_snapshot=$1',[snapshot.mappingSha256])).rows[0]?.count||0);
+ if(migrated&&count===snapshot.rowCount)return;
+ const columns=['provinsi','kabupaten_kota','kecamatan','kelurahan_desa','kode_pos','kode_provinsi','kode_kabupaten_kota','kode_kecamatan','kode_kelurahan_desa','sumber_url','sumber_snapshot'];
+ const updated=columns.filter(column=>!['kode_kelurahan_desa','kode_pos'].includes(column));
+ await transaction(async q=>{
+  for(let offset=0;offset<snapshot.rows.length;offset+=250){
+   const batch=snapshot.rows.slice(offset,offset+250);
+   const placeholders=batch.map((_row,i)=>`(${columns.map((_column,j)=>`$${i*columns.length+j+1}`).join(',')})`).join(',');
+   const values=batch.flatMap(row=>columns.map(column=>column==='sumber_snapshot'?snapshot.mappingSha256:row[column]));
+   const conflict=mysqlPool?` ON DUPLICATE KEY UPDATE ${updated.map(column=>`${column}=VALUES(${column})`).join(',')}`:` ON CONFLICT(kode_kelurahan_desa,kode_pos) DO UPDATE SET ${updated.map(column=>`${column}=EXCLUDED.${column}`).join(',')}`;
+   await q(`INSERT INTO master_mapping_wilayah(${columns.join(',')}) VALUES ${placeholders}${conflict}`,values);
+  }
+  if(!migrated)await q('INSERT INTO schema_migrations VALUES($1)',[version]);
+ });
 }
 async function createNormalizedLocationMasters(q:Query){
  await q('CREATE TABLE IF NOT EXISTS master_provinces (code VARCHAR(20) PRIMARY KEY,name VARCHAR(150) NOT NULL)');
