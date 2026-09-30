@@ -479,6 +479,30 @@
         "optional": true,
         "generated": false
       },
+      "provinceCode": {
+        "column": "province_code",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "regencyCode": {
+        "column": "regency_code",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "districtCode": {
+        "column": "district_code",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "villageCode": {
+        "column": "village_code",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
       "province": {
         "column": "province",
         "type": "String",
