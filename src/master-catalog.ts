@@ -1,4 +1,4 @@
-export type MasterItem={value:string,name:string,active:boolean,parentValue?:string,required?:boolean,role?:string,timing?:string};
+export type MasterItem={value:string,name:string,active:boolean,parentValue?:string,required?:boolean,role?:string,timing?:string,areaCode?:string,region?:string,zipCode?:string};
 export type MasterCatalog=Record<string,MasterItem[]>;
 export type MasterGroup={key:string,name:string,section:string,parent?:string,parentField?:string};
 export const masterGroups:MasterGroup[]=[
@@ -65,7 +65,8 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
    if(seen.has(value.toLowerCase()))throw Error(`Kode duplikat pada ${group.name}.`);seen.add(value.toLowerCase());
    if(group.key==='documents'&&(!['BS','CA','LEGAL'].includes(row.role||'')||typeof row.required!=='boolean'))throw Error('Pilih departemen dokumen dan status wajib.');
    if(group.key==='paymentMethod'&&!['advance','arrear'].includes(row.timing||''))throw Error('Pilih aturan waktu pembayaran.');
-   return {value,name,active:row.active,...(row.parentValue?{parentValue:String(row.parentValue)}:{}),...(group.key==='documents'?{role:row.role,required:row.required}:{}),...(group.key==='paymentMethod'?{timing:row.timing}:{})};
+   for(const [key,limit] of [['areaCode',20],['region',100],['zipCode',20]] as const)if(row[key]!==undefined&&(typeof row[key]!=='string'||row[key]!.trim().length>limit))throw Error(`Field ${key} maksimal ${limit} karakter.`);
+   return {value,name,active:row.active,...(row.areaCode?{areaCode:row.areaCode.trim()}:{}),...(row.region?{region:row.region.trim()}:{}),...(row.zipCode?{zipCode:row.zipCode.trim()}:{}),...(row.parentValue?{parentValue:String(row.parentValue)}:{}),...(group.key==='documents'?{role:row.role,required:row.required}:{}),...(group.key==='paymentMethod'?{timing:row.timing}:{})};
   });
  }
  for(const group of masterGroups){
@@ -73,6 +74,8 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
   for(const row of result[group.key]){
    const nameKey=(row.parentValue||'')+'|'+row.name.toLocaleLowerCase();
    if(seenNames.has(nameKey))throw Error(`Nama duplikat pada ${group.name}.`);seenNames.add(nameKey);
+   if(group.key==='village'&&row.zipCode){const zip=result.postalCode.find(x=>x.value===row.zipCode),district=result.district.find(x=>x.value===row.parentValue);if(zip?.parentValue&&district?.parentValue&&zip.parentValue!==district.parentValue)throw Error('ZIP code harus berasal dari kota/kabupaten yang sama dengan kelurahan.');}
+   if(group.key==='village'&&row.zipCode&&!result.postalCode.some(x=>x.value===row.zipCode))throw Error('ZIP code tidak tersedia di master data.');
    if(group.parent&&row.parentValue&&!result[group.parent].some(p=>p.value===row.parentValue))throw Error(`Data induk tidak tersedia untuk ${group.name}.`);
   }
  }
