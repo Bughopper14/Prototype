@@ -15,7 +15,7 @@ import {defaultMasterCatalog,validateMasterCatalog,type MasterCatalog} from '../
 import {ensure,Problem,modelInput,validateStakeholders,validateFinancials,validateProposal,checklistTemplate,fapNumber,ratios,installment} from './domain';
 await initialize();await seed();
 await query('INSERT INTO master_data(id,catalog) VALUES(1,$1) ON CONFLICT(id) DO NOTHING',[JSON.stringify(defaultMasterCatalog())]);
-async function masterData(q:Query=query){const row=(await q('SELECT catalog,revision FROM master_data WHERE id=1')).rows[0];return {catalog:row.catalog as MasterCatalog,revision:row.revision};}
+async function masterData(q:Query=query){const row=(await q('SELECT catalog,revision FROM master_data WHERE id=1')).rows[0];return {catalog:{...defaultMasterCatalog(),...row.catalog} as MasterCatalog,revision:row.revision};}
 let secret=process.env.JWT_SECRET;
 if(!secret){if(process.env.NODE_ENV==='production')throw new Error('JWT_SECRET is required in production');const file=path.join(dataDir,'session-secret');try{secret=await fs.readFile(file,'utf8');}catch{secret=crypto.randomBytes(48).toString('hex');await fs.writeFile(file,secret);}}
 const jwtSecret=secret;

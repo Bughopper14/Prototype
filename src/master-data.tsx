@@ -4,7 +4,7 @@ import {Plus,Pencil,Search,Settings2,X,Save} from 'lucide-react';
 import {api} from './api';
 import {defaultMasterCatalog,masterGroups,masterKey,validateMasterCatalog,type MasterCatalog,type MasterItem} from './master-catalog';
 let catalog=defaultMasterCatalog(),revision=0;
-export function setMasterData(data:{catalog:MasterCatalog,revision:number}){catalog=data.catalog;revision=data.revision;window.dispatchEvent(new Event('master-data-updated'));}
+export function setMasterData(data:{catalog:MasterCatalog,revision:number}){catalog={...defaultMasterCatalog(),...data.catalog};revision=data.revision;window.dispatchEvent(new Event('master-data-updated'));}
 export function useMasterData(){const [data,setData]=useState(catalog);useEffect(()=>{const update=()=>setData(catalog);window.addEventListener('master-data-updated',update);return()=>window.removeEventListener('master-data-updated',update);},[]);return data;}
 export function masterEntries(data:MasterCatalog,key:string,value:any){const group=masterGroups.find(g=>g.key===masterKey(key));if(!group)return null;const parentValue=group.parentField?value[group.parentField]||value[masterKey(group.parentField)]:undefined;return (data[group.key]||[]).filter(x=>x.active&&(!parentValue||!x.parentValue||x.parentValue===parentValue));}
 export function resetMasterChildren(key:string,next:any,fieldKeys:string[]){const changed=new Set([masterKey(key)]);for(let pass=0;pass<masterGroups.length;pass++)for(const group of masterGroups)if(group.parent&&changed.has(group.parent)&&!changed.has(group.key)){changed.add(group.key);for(const child of fieldKeys)if(masterKey(child)===group.key)next[child]='';}return next;}

@@ -15,6 +15,7 @@ export const masterGroups:MasterGroup[]=[
  {key:'city',name:'Kota / Kabupaten',section:'Alamat',parent:'province',parentField:'province'},
  {key:'district',name:'Kecamatan',section:'Alamat',parent:'city',parentField:'cityRegency'},
  {key:'village',name:'Kelurahan / Desa',section:'Alamat',parent:'district',parentField:'district'},
+ {key:'postalCode',name:'ZIP code',section:'Alamat',parent:'city',parentField:'cityRegency'},
  {key:'bankOrFinInstitution',name:'Bank / financial institution',section:'Business & banks'},
  {key:'projectRole',name:'Role in project',section:'Business & banks'},
  {key:'applicationSource',name:'Application source',section:'Business & banks'},
@@ -36,7 +37,7 @@ export function defaultMasterCatalog():MasterCatalog{
  branchCode:options(['JKT01','BPN01','PLB01','MDN01','SBY01']),companyType:options(['CORPORATE','COMMERCIAL','MICRO','LIUGONG_USER']),
  industrySegment:options(['MINING','AGRICULTURE','FORESTRY','CONSTRUCTION','OIL_AND_GAS','OTHER']),businessRole:options(['CONS_OWNER','CONTRACTORS','SUB_CONT','RENTAL','OTHER']),
  position:options(['Finance Director','Director','Manager','Staff']),representativeType:options(['NONE','DIRECTOR','SHAREHOLDER','AUTHORIZED_SIGNATORY','OTHER']),designation:options(['NONE','DIRECTOR','COMMISSIONER','PRESIDENT_DIRECTOR','OWNER','MANAGER','OTHER']),
- country:options(['Indonesia']),province:options(['DKI Jakarta','Kalimantan Timur','Sumatera Selatan','Sumatera Utara','Jawa Timur']),city:options(['Jakarta Selatan','Jakarta','Balikpapan','Samarinda','Palembang','Medan','Surabaya']),district:options(['Pasar Minggu']),village:options(['Ragunan']),
+ country:options(['Indonesia']),province:options(['DKI Jakarta','Kalimantan Timur','Sumatera Selatan','Sumatera Utara','Jawa Timur']),city:options(['Jakarta Selatan','Jakarta','Balikpapan','Samarinda','Palembang','Medan','Surabaya']),district:options(['Pasar Minggu']),village:options(['Ragunan']),postalCode:[],
  bankOrFinInstitution:options(['Bank Mandiri','Bank BCA','Bank BRI','Bank BNI']),projectRole:options(['Main contractor','Subcontractor','Project owner']),applicationSource:options(['Direct','Dealer','Referral']),
  unitCategory:options(['HE','TRUCK']),brand:options(['LiuGong']),unitType:options(['Hydraulic excavator']),modelName:options(['936E']),assetName:options(['Excavator']),
  facilityPurpose:options(['INVESTMENT','WORKING_CAPITAL']),financingMethod:options(['FINANCIAL_LEASE','SALE_AND_LEASE_BACK','INSTALLMENT_FINANCING']),currency:options(['IDR']),paymentMethod:[{value:'In Arrear',name:'In Arrear',active:true,timing:'arrear'},{value:'In Advance',name:'In Advance',active:true,timing:'advance'}],
@@ -58,7 +59,7 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
   result[group.key]=rows.map(row=>{
    if(!row||typeof row.value!=='string'||typeof row.name!=='string'||typeof row.active!=='boolean')throw Error(`Data ${group.name} tidak valid.`);
    const value=row.value.trim(),name=row.name.trim();
-   const valueLimit=({currency:5,branchCode:20,brand:50,paymentMethod:50,position:100,projectRole:100,applicationSource:100,province:100,city:100,district:100,village:100,modelName:100} as Record<string,number>)[group.key]||150;
+   const valueLimit=({postalCode:20,currency:5,branchCode:20,brand:50,paymentMethod:50,position:100,projectRole:100,applicationSource:100,province:100,city:100,district:100,village:100,modelName:100} as Record<string,number>)[group.key]||150;
    if(value.length>valueLimit)throw Error(`Kode ${group.name} maksimal ${valueLimit} karakter.`);
    if(!value||value.length>150||!name||name.length>150)throw Error('Kode dan nama wajib diisi, maksimal 150 karakter.');
    if(seen.has(value.toLowerCase()))throw Error(`Kode duplikat pada ${group.name}.`);seen.add(value.toLowerCase());
