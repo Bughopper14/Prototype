@@ -311,6 +311,36 @@
         "type": "String",
         "optional": false,
         "generated": false
+      },
+      "country": {
+        "column": "country",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "district": {
+        "column": "district",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "village": {
+        "column": "village",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "rt": {
+        "column": "rt",
+        "type": "String",
+        "optional": true,
+        "generated": false
+      },
+      "rw": {
+        "column": "rw",
+        "type": "String",
+        "optional": true,
+        "generated": false
       }
     }
   },

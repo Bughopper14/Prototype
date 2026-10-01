@@ -76,5 +76,9 @@ export async function initialize(){
   await q('INSERT INTO schema_migrations VALUES(4)');
  });
 
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=5')).rows.length)await transaction(async q=>{
+  await q('ALTER TABLE application_pics ADD COLUMN IF NOT EXISTS country TEXT, ADD COLUMN IF NOT EXISTS district TEXT, ADD COLUMN IF NOT EXISTS village TEXT, ADD COLUMN IF NOT EXISTS rt TEXT, ADD COLUMN IF NOT EXISTS rw TEXT');
+  await q('INSERT INTO schema_migrations VALUES(5)');
+ });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}
