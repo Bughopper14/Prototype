@@ -1,3 +1,4 @@
+import {validateWrite} from './input-validation';
 import {defaultMasterCatalog,validateMasterCatalog} from './master-catalog';
 import {nextFapNumber} from './fap-number';
 const key='liugong-los-public-demo-v1';
@@ -14,7 +15,7 @@ function initial(){
 const read=()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):initial();}catch{return initial();}};
 const save=(s:any)=>localStorage.setItem(key,JSON.stringify(s));
 const safeFile=(f:any)=>{const {demoBlob,demoPreview,...publicFile}=f;return publicFile;};
-export async function demoApi(path:string,method='GET',body?:any):Promise<any>{
+export async function demoApi(path:string,method='GET',body?:any):Promise<any>{validateWrite(path,method,body);
  const s=read(),parts=path.split('/').filter(Boolean);
  if(path==='/auth/login'&&method==='POST'){const role=roles.find((x:any)=>body?.email===x[0].toLowerCase()+'@liugong.local');if(!role||body?.password!=='LiuGong2026!')throw Error('Choose a sample department and use the demo password shown below.');s.user={id:'demo-user-'+role[0],name:role[1]+' Demo',email:body.email,role:role[0]};save(s);return copy(s.user);}
  if(path==='/auth/me'){if(!s.user)throw Error('Please sign in');return copy(s.user);}if(path==='/auth/logout'){s.user=null;save(s);return {ok:true};}if(!s.user)throw Error('Please sign in');
