@@ -13,8 +13,21 @@ test('full workflow: authentication, atomic updates, documents, dual review, aud
  const ok=async(role:string,url:string,method='GET',body?:any)=>{const r=await request(role,url,method,body);assert(r.status<300,JSON.stringify(r.data));return r.data;};
  try{await start();assert.equal((await request('none','/applications')).status,401);
   for(const role of ['MKT','BS','CA','LEGAL','COMMITTEE']){const r=await request(role,'/auth/login','POST',{email:role.toLowerCase()+'@liugong.local',password:'LiuGong2026!'});assert.equal(r.status,200);cookies[role]=r.response.headers.get('set-cookie')!.split(';')[0];}
-  const rows=await ok('MKT','/applications');const original=await ok('MKT','/applications/'+rows.find((r:any)=>r.status==='DRAFT').id);const profile={...original,customerId:original.customerId};assert.equal((await request('CA','/applications','POST',profile)).status,403);
+  assert.equal((await request('none','/master-data')).status,401);
+  const masterBefore=await ok('MKT','/master-data');
+  const masterCatalog=structuredClone(masterBefore.catalog);
+  masterCatalog.branchCode.push({value:'TEST01',name:'Test branch',active:true});
+  masterCatalog.industrySegment.push({value:'CUSTOM_INDUSTRY',name:'Custom industry',active:true});
+  masterCatalog.companyType.push({value:'CUSTOM_COMPANY',name:'Custom company category',active:true});
+  masterCatalog.documents.push({value:'CUSTOM_DOC',name:'Additional optional document',active:true,role:'BS',required:false});
+  const masterSaved=await ok('MKT','/master-data','PUT',{catalog:masterCatalog,revision:masterBefore.revision});
+  assert.equal(masterSaved.revision,masterBefore.revision+1);
+  assert.equal((await request('MKT','/master-data','PUT',{catalog:masterCatalog,revision:masterBefore.revision})).status,409);
+  const duplicateCatalog=structuredClone(masterCatalog);duplicateCatalog.branchCode.push({...duplicateCatalog.branchCode[0]});
+  assert.equal((await request('MKT','/master-data','PUT',{catalog:duplicateCatalog,revision:masterSaved.revision})).status,422);
+  const rows=await ok('MKT','/applications');const original=await ok('MKT','/applications/'+rows.find((r:any)=>r.status==='DRAFT').id);const profile={...original,customerId:original.customerId,branchCode:'TEST01',industrySegment:'CUSTOM_INDUSTRY'};assert.equal((await request('CA','/applications','POST',profile)).status,403);
   const created=await Promise.all([ok('MKT','/applications','POST',profile),ok('MKT','/applications','POST',profile)]);assert.notEqual(created[0].fapNumber,created[1].fapNumber);const id=created[0].id;const url='/applications/'+id;
+  const customApp=await ok('MKT',url);assert.equal(customApp.industrySegment,'CUSTOM_INDUSTRY');assert(customApp.documentChecks.some((d:any)=>d.documentCode==='CUSTOM_DOC'&&!d.isMandatory));assert(!original.documentChecks.some((d:any)=>d.documentCode==='CUSTOM_DOC'));
   assert.equal((await request('MKT',url+'/transition','POST',{action:'APPROVE_COMMITTEE'})).status,403);
   assert.equal((await request('MKT',url+'/page-1','PUT',{stakeholders:[{...original.stakeholders[0],sharePercentage:50}]})).status,422);assert.equal((await request('MKT',url+'/page-1','PUT',{stakeholders:[{...original.stakeholders[0],email:''}]})).status,422);assert.equal((await ok('MKT',url)).stakeholders.length,0);
   const saved=await ok('MKT',url+'/page-1','PUT',{pic:original.pic,stakeholders:original.stakeholders,projects:original.projects,bankReferences:original.bankReferences});assert.equal(saved.stakeholders[0].email,'budi@example.com');assert.equal(saved.stakeholders[0].mobilePhone,'081234567890');assert.equal(saved.stakeholders[0].primaryCapital,'5000000000.00');
@@ -35,7 +48,7 @@ test('full workflow: authentication, atomic updates, documents, dual review, aud
   assert.equal((await ok('CA',url+'/transition','POST',{action:'RECOMMEND_CA'})).status,'IN_CA_LEGAL_REVIEW');assert.equal((await ok('LEGAL',url+'/transition','POST',{action:'RECOMMEND_LEGAL'})).status,'CREDIT_COMMITTEE_REVIEW');
   detail=await ok('COMMITTEE',url+'/transition','POST',{action:'APPROVE_COMMITTEE',comments:'Synthetic test approval'});assert.equal(detail.status,'APPROVED');assert(detail.approvalLogs.length>=8);assert.equal((await request('CA',url+'/page-2','PUT',{financialStatements:original.financialStatements})).status,409);assert.equal((await upload(detail.documentChecks[0])).status,409);
   assert((await ok('MKT',url+'/document-events')).length>=14);
-  await stop();const db=new PGlite(path.join(dir,'db'));await assert.rejects(db.query('UPDATE approval_logs SET comments=$1 WHERE application_id=$2',['tamper',id]),/append-only/);await assert.rejects(db.query('DELETE FROM approval_logs WHERE application_id=$1',[id]),/append-only/);await db.close();await start();assert.equal((await ok('MKT',url)).status,'APPROVED');await stop();
+  await stop();const db=new PGlite(path.join(dir,'db'));await assert.rejects(db.query('UPDATE approval_logs SET comments=$1 WHERE application_id=$2',['tamper',id]),/append-only/);await assert.rejects(db.query('DELETE FROM approval_logs WHERE application_id=$1',[id]),/append-only/);await db.close();await start();assert.equal((await ok('MKT',url)).status,'APPROVED');assert.equal((await ok('MKT','/master-data')).revision,masterSaved.revision);await stop();
  }finally{await stop();}
 });
 

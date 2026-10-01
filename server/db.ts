@@ -70,5 +70,11 @@ export async function initialize(){
   await q("ALTER TABLE applications ADD COLUMN IF NOT EXISTS legal JSONB NOT NULL DEFAULT '{}'::jsonb");
   await q('INSERT INTO schema_migrations VALUES(3)');
  });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=4')).rows.length)await transaction(async q=>{
+  await q("CREATE TABLE master_data (id INTEGER PRIMARY KEY CHECK(id=1), catalog JSONB NOT NULL, revision INTEGER NOT NULL DEFAULT 0)");
+  for(const [table,column] of [['customers','company_type'],['applications','industry_segment'],['applications','business_role'],['financing_proposals','facility_purpose'],['financing_proposals','financing_method'],['financing_unit_items','unit_category']])await q(`ALTER TABLE "${table}" DROP CONSTRAINT IF EXISTS "${table}_${column}_check"`);
+  await q('INSERT INTO schema_migrations VALUES(4)');
+ });
+
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}
