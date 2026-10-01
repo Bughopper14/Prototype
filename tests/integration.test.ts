@@ -13,6 +13,7 @@ test('full workflow: authentication, atomic updates, documents, dual review, aud
  const ok=async(role:string,url:string,method='GET',body?:any)=>{const r=await request(role,url,method,body);assert(r.status<300,JSON.stringify(r.data));return r.data;};
  try{await start();assert.equal((await request('none','/applications')).status,401);
   for(const role of ['MKT','BS','CA','LEGAL','COMMITTEE']){const r=await request(role,'/auth/login','POST',{email:role.toLowerCase()+'@liugong.local',password:'LiuGong2026!'});assert.equal(r.status,200);cookies[role]=r.response.headers.get('set-cookie')!.split(';')[0];}
+  for(const [key,email] of [['ARIANTI','arianti@liugong.local'],['DELLATRA','dellatra@liugong.local']]){const r=await request(key,'/auth/login','POST',{email,password:'LiuGong2026!'});assert.equal(r.status,200);cookies[key]=r.response.headers.get('set-cookie')!.split(';')[0];}
   assert.equal((await request('none','/master-data')).status,401);
   const masterBefore=await ok('MKT','/master-data');
   const masterCatalog=structuredClone(masterBefore.catalog);
@@ -38,6 +39,23 @@ test('full workflow: authentication, atomic updates, documents, dual review, aud
   let detail=await ok('MKT',url);const upload=async(d:any,blob=new Blob(['%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF'],{type:'application/pdf'}))=>{const form=new FormData();form.set('checklistId',d.id);form.set('file',blob,'test.pdf');return request('MKT',url+'/documents/upload','POST',form);};
   assert.equal((await upload(detail.documentChecks[0],new Blob(['not a pdf'],{type:'application/pdf'}))).status,422);
   for(const d of detail.documentChecks.filter((d:any)=>d.isMandatory)){const r=await upload(d);assert.equal(r.status,201,JSON.stringify(r.data));}
+
+  const reviewDeed={id:'review-test',type:'establishment',deedNumber:'REVIEW-001',deedDate:'2020-01-01',ministerialDecreeNumber:'SK-REVIEW',ministerialDecreeDate:'2020-01-02',stakeholders:original.stakeholders};
+  let legalApp=await ok('MKT',url+'/page-legal','PUT',{legal:{deeds:[{...reviewDeed,review:{status:'APPROVED'}}]}});assert.equal(legalApp.legal.deeds[0].review.status,'DRAFT');
+  const reviewUrl=url+'/deeds/review-test/review',reviewDocument=(await ok('MKT',url)).documentChecks.find((d:any)=>d.documentCode==='DEED').files[0];
+  assert.equal((await request('MKT',reviewUrl,'POST',{action:'SUBMIT',revision:1,documentId:'wrong-file'})).status,422);
+  legalApp=await ok('MKT',reviewUrl,'POST',{action:'SUBMIT',revision:1,documentId:reviewDocument.id});
+  assert.equal((await request('DELLATRA',reviewUrl,'POST',{action:'APPROVE',revision:2})).status,409);
+  assert.equal((await request('CA',reviewUrl,'POST',{action:'CHECK',revision:2})).status,403);
+  assert.equal((await request('MKT',url+'/page-legal','PUT',{legal:{deeds:[{...legalApp.legal.deeds[0],remarks:'tamper'}]}})).status,409);
+  assert.equal((await request('ARIANTI',reviewUrl,'POST',{action:'REJECT',revision:2})).status,422);
+  legalApp=await ok('ARIANTI',reviewUrl,'POST',{action:'REJECT',revision:2,comments:'Nomor akta perlu diperbaiki'});
+  const rejectedNotifications=await ok('MKT','/notifications');assert(rejectedNotifications.some((n:any)=>n.message.includes('Nomor akta perlu diperbaiki')));assert.equal((await ok('CA','/notifications')).length,0);assert.equal((await request('CA','/notifications/'+rejectedNotifications[0].id+'/read','PATCH',{})).status,404);await ok('MKT','/notifications/'+rejectedNotifications[0].id+'/read','PATCH',{});assert((await ok('MKT','/notifications'))[0].readAt);
+  legalApp=await ok('MKT',url+'/page-legal','PUT',{legal:{...legalApp.legal,deeds:[{...legalApp.legal.deeds[0],deedNumber:'REVIEW-002'}]}});assert.equal(legalApp.legal.deeds[0].review.status,'DRAFT');
+  legalApp=await ok('MKT',reviewUrl,'POST',{action:'SUBMIT',revision:4,documentId:reviewDocument.id});legalApp=await ok('ARIANTI',reviewUrl,'POST',{action:'CHECK',revision:5});
+  assert.equal((await request('DELLATRA',reviewUrl,'POST',{action:'APPROVE',revision:5})).status,409);
+  legalApp=await ok('DELLATRA',reviewUrl,'POST',{action:'APPROVE',revision:6});assert.equal(legalApp.legal.deeds[0].approvedSnapshot.deedNumber,'REVIEW-002');assert.equal(legalApp.legal.deeds[0].approvedSnapshot.stakeholders.length,original.stakeholders.length);assert((await ok('MKT','/notifications')).some((n:any)=>n.title==='Akta disetujui'));
+  const revised=await ok('MKT',url+'/page-legal','PUT',{legal:{...legalApp.legal,deeds:[{...legalApp.legal.deeds[0],remarks:'Revisi baru'}]}});assert.equal(revised.legal.deeds[0].review.status,'DRAFT');assert.equal(revised.legal.deeds[0].approvedSnapshot.deedNumber,'REVIEW-002');
   detail=await ok('MKT',url);const file=detail.documentChecks[0].files[0];const signed=await ok('MKT','/files/'+file.id+'/url');assert.equal(signed.expiresIn,900);const fileResponse=await fetch(`http://127.0.0.1:${port}`+signed.url,{headers:{Cookie:cookies.MKT}});assert.equal(fileResponse.status,200);assert((await fileResponse.text()).startsWith('%PDF-'));assert.equal((await fetch(`http://127.0.0.1:${port}`+signed.url,{headers:{Cookie:cookies.BS}})).status,403);assert.equal((await fetch(`http://127.0.0.1:${port}`+signed.url)).status,401);
   await ok('MKT',url+'/transition','POST',{action:'SUBMIT_TO_BS'});assert.equal((await request('MKT',url+'/page-1','PUT',{profile})).status,409);
   assert.equal((await request('BS',url+'/transition','POST',{action:'VERIFY_BS'})).status,422);

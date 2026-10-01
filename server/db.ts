@@ -80,5 +80,11 @@ export async function initialize(){
   await q('ALTER TABLE application_pics ADD COLUMN IF NOT EXISTS country TEXT, ADD COLUMN IF NOT EXISTS district TEXT, ADD COLUMN IF NOT EXISTS village TEXT, ADD COLUMN IF NOT EXISTS rt TEXT, ADD COLUMN IF NOT EXISTS rw TEXT');
   await q('INSERT INTO schema_migrations VALUES(5)');
  });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=6')).rows.length)await transaction(async q=>{
+  await q("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check; ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
+  await q('CREATE TABLE notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), recipient_user_id UUID NOT NULL REFERENCES users(id), application_id TEXT NOT NULL REFERENCES applications(id), deed_id TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now())');
+  await q('CREATE INDEX notifications_recipient_idx ON notifications(recipient_user_id, created_at DESC)');
+  await q('INSERT INTO schema_migrations VALUES(6)');
+ });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}
