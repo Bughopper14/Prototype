@@ -28,7 +28,7 @@ export function deedTransition(deed:any,action:string,actor:{id:string,name:stri
   for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])assert(String(deed[key]||'').trim(),`${key} wajib diisi sebelum mengajukan akta.`);
   assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId,'Kategori akta perubahan wajib dipilih.');
   assert(Array.isArray(deed.stakeholders)&&deed.stakeholders.length,'Tambahkan stakeholder/shareholder sebelum mengajukan akta.');
-  validateInput(deedData(deed),now);
+  validateInput(deedData(deed),now,true);
   for(const r of deed.stakeholders){validateInput({...r,nationalityType:r.citizenship==='FOREIGN'?'WNA':r.nationalityType||'WNI'},now);assert([r.firstName,r.lastName,r.name].some(x=>String(x||'').trim()),'Nama stakeholder wajib diisi.');for(const key of ['email','mobilePhone','primaryCapital','idNumber'])assert(String(r[key]??'').trim(),`${key} stakeholder wajib diisi.`);}
   next='PENDING_CHECK';
  }else if(action==='CHECK'){

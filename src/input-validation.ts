@@ -29,7 +29,7 @@ export function fieldInputError(key:string,value:any,now=new Date()):string{
  if(key==='npwp'&&!/^\d{15,16}$/.test(text.replace(/[.\-\s]/g,'')))return 'NPWP harus berisi 15 atau 16 digit.';
  return '';
 }
-export function validateInput(value:any,now=new Date()):void{
+export function validateInput(value:any,now=new Date(),requireCompleteOwnership=false):void{
  function walk(node:any,path:string){
   if(!node||typeof node!=='object')return;
   if(Array.isArray(node)){node.forEach((x,i)=>walk(x,`${path}[${i+1}]`));return;}
@@ -42,12 +42,12 @@ export function validateInput(value:any,now=new Date()):void{
   if(Array.isArray(node.projects))node.projects.forEach((r:any)=>required(r,['projectOwner','projectLocation','projectRole','contractStatus'],'Project contract'));
   if(Array.isArray(node.bankReferences))node.bankReferences.forEach((r:any)=>required(r,['bankOrFinInstitution','currency','creditFacility','monthlyInstallment','yearStarted','interestRate','paymentRecord','facilityStatus'],'Bank facility'));
   if(Array.isArray(node.units))node.units.forEach((r:any)=>required(r,['quantity','unitCategory','brand','modelName'],'Equipment unit'));
-  if(node.idNumber){const id=String(node.idNumber);if(node.stakeholderType==='CORPORATE'||node.idType==='NPWP'){if(!/^\d{15,16}$/.test(id.replace(/[.\-\s]/g,'')))throw Error('NPWP stakeholder harus berisi 15 atau 16 digit.');}else if(node.idType==='PASSPORT'||node.nationalityType==='WNA'||node.citizenship==='FOREIGN'){if(!/^[A-Za-z0-9]{5,20}$/.test(id))throw Error('Nomor passport harus berisi 5–20 huruf/angka.');}else if(node.idType==='KTP'||node.nationalityType==='WNI'){if(!/^\d{16}$/.test(id))throw Error('KTP stakeholder harus berisi 16 digit.');}}
+  if(node.idNumber){const id=String(node.idNumber);const idType=String(node.idType||(node.stakeholderType==='CORPORATE'?'NPWP':node.nationalityType==='WNA'||node.citizenship==='FOREIGN'?'PASSPORT':'KTP')).toUpperCase();if(idType==='NPWP'){if(!/^\d{15,16}$/.test(id.replace(/[.\-\s]/g,'')))throw Error('NPWP stakeholder harus berisi 15 atau 16 digit.');}else if(idType==='PASSPORT'){if(!/^[A-Za-z0-9]{5,20}$/.test(id))throw Error('Nomor passport harus berisi 5–20 huruf/angka.');}else if(idType==='KTP'){if(!/^\d{16}$/.test(id))throw Error('KTP stakeholder harus berisi 16 digit.');}}
   if(node.deedDate&&node.ministerialDecreeDate&&String(node.ministerialDecreeDate).slice(0,10)<String(node.deedDate).slice(0,10))throw Error('Tanggal SK Menteri tidak boleh lebih awal dari tanggal akta.');
   if(node.registrationDate&&node.expiredDate&&String(node.expiredDate).slice(0,10)<String(node.registrationDate).slice(0,10))throw Error('Tanggal kedaluwarsa tidak boleh lebih awal dari tanggal registrasi.');
   if(node.financingValue!==undefined&&node.downPaymentValue!==undefined&&Number(node.financingValue)>0&&Number(node.downPaymentValue)>=Number(node.financingValue))throw Error('Down payment harus lebih kecil dari nilai pembiayaan.');
   if(Array.isArray(node.financialStatements)){const years=node.financialStatements.map((r:any)=>Number(r.fiscalYear));if(new Set(years).size!==years.length)throw Error('Tahun laporan keuangan tidak boleh duplikat.');if(years.length>3)throw Error('Maksimal 3 tahun laporan keuangan.');const cents=(v:any)=>{const text=String(v??0),negative=text.startsWith('-'),[whole,part='']=text.replace(/^-/, '').split('.');return (negative?-1n:1n)*(BigInt(whole||'0')*100n+BigInt(part.padEnd(2,'0')));};for(const r of node.financialStatements){const assets=cents(r.currentAssets)+cents(r.nonCurrentAssets),liabilities=cents(r.currentLiabilities)+cents(r.nonCurrentLiabilities);if(assets!==cents(r.totalAssets)||liabilities!==cents(r.totalLiabilities)||assets!==liabilities+cents(r.equity)||assets!==cents(r.totalLiabAndEquity))throw Error(`Laporan keuangan ${r.fiscalYear}: neraca belum seimbang.`);}}
-  if(Array.isArray(node.stakeholders)&&node.stakeholders.length){const total=node.stakeholders.reduce((sum:number,r:any)=>sum+Number(r.sharePercentage||0),0);if(Math.abs(total-100)>.01)throw Error(`Total kepemilikan saham wajib 100%. Saat ini ${total.toFixed(2)}%.`);}
+  if(Array.isArray(node.stakeholders)&&node.stakeholders.length){const total=node.stakeholders.reduce((sum:number,r:any)=>sum+Number(r.sharePercentage||0),0);if(total>100.01||requireCompleteOwnership&&Math.abs(total-100)>.01)throw Error(`Total kepemilikan saham wajib 100%. Saat ini ${total.toFixed(2)}%.`);}
  }
  walk(value,'');
 }

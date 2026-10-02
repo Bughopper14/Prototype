@@ -24,3 +24,6 @@ test('identity, contact and financial checks preserve legitimate negative profit
  assert.throws(()=>validateInput({primaryCapital:'NaN'},now));
  assert.throws(()=>validateInput({primaryCapital:'1.234'},now));
 });
+
+test('draft ownership can be saved incrementally; submission requires 100 percent',()=>{assert.doesNotThrow(()=>validateInput({stakeholders:[{sharePercentage:50}]},now));assert.throws(()=>validateInput({stakeholders:[{sharePercentage:50}]},now,true));assert.throws(()=>validateInput({stakeholders:[{sharePercentage:90},{sharePercentage:30}]},now));});
+test('explicit ID type overrides corporate and citizenship defaults',()=>{assert.throws(()=>validateInput({stakeholderType:'CORPORATE',idType:'KTP',idNumber:'123456789012345'},now),/KTP/);assert.doesNotThrow(()=>validateInput({stakeholderType:'CORPORATE',idType:'KTP',idNumber:'1234567890123456'},now));assert.throws(()=>validateInput({nationalityType:'WNA',idType:'KTP',idNumber:'AB12345'},now),/KTP/);assert.doesNotThrow(()=>validateInput({stakeholderType:'CORPORATE',idType:'PASSPORT',idNumber:'AB12345'},now));});
