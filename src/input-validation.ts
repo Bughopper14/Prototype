@@ -32,8 +32,10 @@ export function fieldInputError(key:string,value:any,now=new Date()):string{
 export function validateInput(value:any,now=new Date(),requireCompleteOwnership=false):void{
  function walk(node:any,path:string){
   if(!node||typeof node!=='object')return;
-  if(Array.isArray(node)){node.forEach((x,i)=>walk(x,`${path}[${i+1}]`));return;}
+  if(Array.isArray(node)){node.forEach((x,i)=>walk(x,x?.deedNumber?`Akta ${x.deedNumber}`:`${path}[${i+1}]`));return;}
   for(const [key,item] of Object.entries(node)){
+   if(Array.isArray(node.deeds)&&['establishment','amendment'].includes(key))continue;
+
    const error=fieldInputError(key,item,now);if(error)throw Error(`${path?path+': ':''}${error}`);
    if(item&&typeof item==='object')walk(item,path?`${path} / ${key}`:key);
   }

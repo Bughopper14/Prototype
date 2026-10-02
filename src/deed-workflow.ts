@@ -16,7 +16,7 @@ export function mergeLegal(previous:any,incoming:any){
   return {...data,review:changed?{status:'DRAFT',revision:(old.review?.revision||0)+1}:old.review||{status:'DRAFT',revision:1},reviewHistory:old.reviewHistory||[],...(old.approvedSnapshot?{approvedSnapshot:old.approvedSnapshot,approvedAt:old.approvedAt}:{})};
  });
  for(const old of prior)assert(ids.has(old.id)||!deedPending(old)&&!old.approvedSnapshot,'Akta dalam proses approval atau sudah disetujui tidak boleh dihapus. Buat perubahan dan ajukan ulang.',409);
- return {...incoming,deeds};
+ const {establishment,amendment,...current}=incoming;return {...current,deeds};
 }
 export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string},options:{revision:number,documentId?:string,comments?:string},now=new Date()){
  assert(deed,'Akta tidak ditemukan.',404);assert(options.revision===(deed.review?.revision||1),'Akta telah berubah. Buka ulang sebelum melanjutkan.',409);
