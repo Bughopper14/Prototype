@@ -2,7 +2,7 @@ import {initializeUsers,initializeAudit,findUser,publicUser,userCount,createUser
 import {mysqlActor} from './mysql-audit-context';
 import {initializeLocation,locationCatalog,saveLocations} from './mysql-location';
 import {initializeBusiness,saveBusiness} from './mysql-business';
-import {mergeLegal,deedTransition,reviewStatus,canEditLegal} from '../src/deed-workflow';
+import {mergeLegal,deedTransition,reviewStatus,deedBaseline,canEditLegal,saveSingleDeed} from '../src/deed-workflow';
 import {validateWrite} from '../src/input-validation';
 import 'dotenv/config';
 import express,{type Request,type Response,type NextFunction} from 'express';
@@ -91,7 +91,9 @@ app.post('/api/v1/applications/:id/deeds/:deedId/review',async(req,res)=>{
  const id=String(req.params.id),deedId=String(req.params.deedId),body=z.object({action:z.enum(['SUBMIT','CHECK','APPROVE','REJECT']),revision:z.number().int().positive(),documentId:z.string().max(100).optional(),comments:z.string().trim().max(10000).default('')}).parse(req.body);
  await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q),legal=(await q('SELECT legal FROM applications WHERE id=$1',[id])).rows[0]?.legal||{},deed=(legal.deeds||[]).find((d:any)=>d.id===deedId);ensure(deed,'Simpan akta terlebih dahulu sebelum mengajukan.',404);ensure(!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(a.status),'Approval akta terkunci pada tahap aplikasi ini.',409);
   if(body.action==='SUBMIT')ensure(canEditLegal(req.actor,{...a,legal}),'Pengajuan akta tidak tersedia pada tahap ini.',403);
-  const updated=deedTransition(deed,body.action,req.actor,body);legal.deeds=legal.deeds.map((d:any)=>d.id===deedId?updated:d);await q('UPDATE applications SET legal=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2',[JSON.stringify(legal),id]);
+  const updated=deedTransition(deed,body.action,req.actor,{...body,...(body.action==='SUBMIT'?{beforeSnapshot:deedBaseline(legal,deed)}:{})});legal.deeds=legal.deeds.map((d:any)=>d.id===deedId?updated:d);await q('UPDATE applications SET legal=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2',[JSON.stringify(legal),id]);
+  if(body.action==='SUBMIT'){ensure(canEditLegal(req.actor,{...a,legal}),'Pengajuan akta tidak tersedia pada tahap ini.',403);if(body.documentId){const checklist=(await all('DocumentChecklist',{applicationId:id,documentCode:'DEED'},q))[0];ensure(checklist,'Checklist dokumen akta belum tersedia.');const file=(await all('DocumentFile',{id:body.documentId||'',checklistId:checklist.id},q))[0];ensure(file,'Pilih dokumen akta yang diupload pada aplikasi ini.');}}
+  const updated=deedTransition(deed,body.action,req.actor,{...body,...(body.action==='SUBMIT'?{beforeSnapshot:deedBaseline(legal,deed)}:{})});legal.deeds=legal.deeds.map((d:any)=>d.id===deedId?updated:d);await q('UPDATE applications SET legal=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2',[JSON.stringify(legal),id]);
   if(body.action==='REJECT')await q('INSERT INTO notifications(recipient_user_id,application_id,deed_id,title,message) VALUES($1,$2,$3,$4,$5)',[deed.review.submittedById,id,deedId,'Akta ditolak — perlu diperbaiki',`${a.fapNumber} · Akta ${deed.deedNumber} ditolak oleh ${req.actor.name}. Alasan: ${body.comments}`]);
   if(body.action==='APPROVE')await q('INSERT INTO notifications(recipient_user_id,application_id,deed_id,title,message) VALUES($1,$2,$3,$4,$5)',[deed.review.submittedById,id,deedId,'Akta disetujui',`${a.fapNumber} · Akta ${deed.deedNumber} disetujui oleh ${req.actor.name}. Data shareholder sudah ditampilkan di Stakeholders.`]);
   await insert('ApprovalLog',{applicationId:id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:a.status,newStatus:a.status,comments:`Akta ${deed.deedNumber} — ${body.action}${body.comments?': '+body.comments:''}`},q);

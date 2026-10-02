@@ -1,5 +1,5 @@
 import {profileFields} from './fields';
-import {mergeLegal,deedTransition,canEditLegal,reviewStatus,saveSingleDeed} from './deed-workflow';
+import {mergeLegal,deedTransition,deedBaseline,canEditLegal,reviewStatus,saveSingleDeed} from './deed-workflow';
 import {validateWrite} from './input-validation';
 import {defaultMasterCatalog,validateMasterCatalog} from './master-catalog';
 import {nextFapNumber} from './fap-number';
@@ -43,7 +43,7 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
    if(['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(a.status))throw Error('Approval akta terkunci pada tahap ini.');
    const deed=a.legal?.deeds?.find((d:any)=>d.id===parts[3]);if(!deed)throw Error('Simpan akta terlebih dahulu.');
    if(body.action==='SUBMIT'){if(!canEditLegal(s.user,a))throw Error('Akun/tahap ini tidak dapat mengajukan akta.');if(body.documentId&&!a.documentChecks.find((d:any)=>d.documentCode==='DEED')?.files.some((f:any)=>f.id===body.documentId))throw Error('Pilih dokumen akta dari aplikasi ini.');}
-   const updated=deedTransition(deed,body.action,s.user,body);a.legal.deeds=a.legal.deeds.map((d:any)=>d.id===deed.id?updated:d);
+   const updated=deedTransition(deed,body.action,s.user,{...body,...(body.action==='SUBMIT'?{beforeSnapshot:deedBaseline(a.legal,deed)}:{})});a.legal.deeds=a.legal.deeds.map((d:any)=>d.id===deed.id?updated:d);
    if(['REJECT','APPROVE'].includes(body.action)){s.notifications=s.notifications||[];s.notifications.unshift({id:crypto.randomUUID(),recipientUserId:deed.review.submittedById,applicationId:a.id,deedId:deed.id,title:body.action==='REJECT'?'Akta ditolak — perlu diperbaiki':'Akta disetujui',message:`${a.fapNumber} · Akta ${deed.deedNumber} ${body.action==='REJECT'?'ditolak':'disetujui'} oleh ${s.user.name}.${body.comments?' Alasan: '+body.comments: ' Data sudah tampil di Stakeholders.'}`,createdAt:new Date().toISOString(),readAt:null});}
    a.approvalLogs.unshift({id:crypto.randomUUID(),applicationId:a.id,actionBy:s.user.name,userRole:s.user.role,previousStatus:a.status,newStatus:a.status,comments:`Akta ${deed.deedNumber} — ${body.action}${body.comments?': '+body.comments:''}`,actionTimestamp:new Date().toISOString()});save(s);return copy(a);
   }
