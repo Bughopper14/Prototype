@@ -1,5 +1,5 @@
 import {profileFields} from './fields';
-import {mergeLegal,deedTransition,canEditLegal,reviewStatus} from './deed-workflow';
+import {mergeLegal,deedTransition,canEditLegal,reviewStatus,saveSingleDeed} from './deed-workflow';
 import {validateWrite} from './input-validation';
 import {defaultMasterCatalog,validateMasterCatalog} from './master-catalog';
 import {nextFapNumber} from './fap-number';
@@ -38,6 +38,7 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
   if(parts.length===2&&method==='GET'){const out=copy(a);out.documentChecks=out.documentChecks.map((d:any)=>({...d,files:d.files.map(safeFile)}));return out;}
   if(['page-1','page-legal'].includes(parts[2])&&method==='PUT'&&body.stakeholders){const total=body.stakeholders.reduce((n:any,x:any)=>n+Number(x.sharePercentage||0),0);if(body.stakeholders.length&&total>100.01)throw Error('Total percentage share cannot exceed 100%.');for(const x of body.stakeholders){if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(x.email||'')))throw Error('Enter a valid email for each stakeholder.');if(!String(x.mobilePhone||'').trim())throw Error('Enter a mobile phone for each stakeholder.');if(x.primaryCapital===undefined||x.primaryCapital===null||x.primaryCapital==='')throw Error('Enter primary capital for each stakeholder.');if(Number(x.primaryCapital)<0)throw Error('Primary capital cannot be negative.');const idType=String(x.idType||(x.stakeholderType==='CORPORATE'?'NPWP':x.nationalityType==='WNA'?'PASSPORT':'KTP')).toUpperCase();if(idType==='NPWP'){if(!/^\d{15,16}$/.test(String(x.idNumber||'').replace(/\D/g,'')))throw Error('Corporate stakeholders require a 15 or 16 digit NPWP.');}else if(idType==='PASSPORT'){if(!/^[A-Za-z0-9]{5,20}$/.test(String(x.idNumber||'')))throw Error('Foreign stakeholders require a passport number.');}else if(!/^\d{16}$/.test(String(x.idNumber||'')))throw Error('Indonesian stakeholders require a 16 digit KTP.');}}
 
+  if(parts[2]==='deeds'&&parts[4]==='draft'&&method==='PUT'){if(!canEditLegal(s.user,a))throw Error('Akun/tahap ini tidak dapat mengubah akta.');if(!['DRAFT','RETURNED'].includes(a.status)&&reviewStatus(a.legal?.deeds?.find((d:any)=>d.id===parts[3]))!=='REJECTED')throw Error('MKT hanya boleh memperbaiki akta yang ditolak.');a.legal=saveSingleDeed(a.legal||{},parts[3],body.deed);save(s);return copy(a);}
   if(parts[2]==='deeds'&&parts[4]==='review'&&method==='POST'){
    if(['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(a.status))throw Error('Approval akta terkunci pada tahap ini.');
    const deed=a.legal?.deeds?.find((d:any)=>d.id===parts[3]);if(!deed)throw Error('Simpan akta terlebih dahulu.');
