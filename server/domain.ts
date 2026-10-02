@@ -15,13 +15,13 @@ export function modelInput(model:string,body:any,required:string[]=[]){
  }
  return z.object(fields).parse(body);
 }
-export function validateStakeholders(rows:any[]){
+export function validateStakeholders(rows:any[],requireCompleteOwnership=true){
  ensure(rows.length>0,'At least one shareholder is required',422,'stakeholders');
- const total=rows.reduce((s,x)=>s.plus(x.sharePercentage),money(0));ensure(total.minus(100).abs().lte('.01'),`Sum of shareholder percentage must be exactly 100%. Current sum: ${total.toFixed(2)}%`,422,'stakeholders');
+ const total=rows.reduce((s,x)=>s.plus(x.sharePercentage),money(0));ensure(total.lte('100.01')&&(!requireCompleteOwnership||total.minus(100).abs().lte('.01')),`Sum of shareholder percentage must be exactly 100%. Current sum: ${total.toFixed(2)}%`,422,'stakeholders');
  for(const s of rows){ensure(money(s.sharePercentage).gte(0)&&money(s.sharePercentage).lte(100),'Share percentage must be between 0 and 100');ensure(money(s.shareAmount).gte(0),'Share amount cannot be negative');
   ensure(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s.email||'')),'A valid email is required for each stakeholder');ensure(String(s.mobilePhone||'').trim().length>0,'Mobile phone is required for each stakeholder');ensure(s.primaryCapital!==undefined&&s.primaryCapital!==null&&s.primaryCapital!=='','Primary capital is required for each stakeholder');ensure(money(s.primaryCapital).gte(0),'Primary capital cannot be negative');
-  if(s.stakeholderType==='CORPORATE'||s.idType==='NPWP'){ensure(/^\d{15,16}$/.test(s.idNumber.replace(/\D/g,'')),'Corporate stakeholders require a 15 or 16 digit NPWP');}
-  else if(s.idType==='PASSPORT'||s.nationalityType==='WNA')ensure(/^[A-Za-z0-9]{5,20}$/.test(s.idNumber),'Foreign stakeholders require a passport number');
+  const idType=String(s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP')).toUpperCase();if(idType==='NPWP'){ensure(/^\d{15,16}$/.test(s.idNumber.replace(/\D/g,'')),'Corporate stakeholders require a 15 or 16 digit NPWP');}
+  else if(idType==='PASSPORT')ensure(/^[A-Za-z0-9]{5,20}$/.test(s.idNumber),'Foreign stakeholders require a passport number');
   else ensure(/^\d{16}$/.test(s.idNumber),'Indonesian stakeholders require a 16 digit KTP');
  }
 }
