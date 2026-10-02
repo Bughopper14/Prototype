@@ -27,7 +27,6 @@ export function deedTransition(deed:any,action:string,actor:{id:string,name:stri
   assert(actor.role==='MKT','Hanya MKT yang dapat mengajukan akta.',403);assert(['DRAFT','REJECTED'].includes(status),'Akta sudah diajukan atau disetujui.',409);
   for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])assert(String(deed[key]||'').trim(),`${key} wajib diisi sebelum mengajukan akta.`);
   assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId,'Kategori akta perubahan wajib dipilih.');
-  assert(options.documentId,'Upload dan pilih dokumen akta sebelum mengajukan.');
   assert(Array.isArray(deed.stakeholders)&&deed.stakeholders.length,'Tambahkan stakeholder/shareholder sebelum mengajukan akta.');
   validateInput(deedData(deed),now);
   for(const r of deed.stakeholders){validateInput({...r,nationalityType:r.citizenship==='FOREIGN'?'WNA':r.nationalityType||'WNI'},now);assert([r.firstName,r.lastName,r.name].some(x=>String(x||'').trim()),'Nama stakeholder wajib diisi.');for(const key of ['email','mobilePhone','primaryCapital','idNumber'])assert(String(r[key]??'').trim(),`${key} stakeholder wajib diisi.`);}
@@ -40,7 +39,7 @@ export function deedTransition(deed:any,action:string,actor:{id:string,name:stri
   assert(actor.role==='BS'&&status==='PENDING_CHECK'||actor.role==='HEAD_BS'&&status==='PENDING_APPROVAL','Penolakan tidak tersedia untuk akun/status ini.',403);assert(comments,'Alasan penolakan wajib diisi.');next='REJECTED';
  }else throw new DeedWorkflowError('Aksi approval tidak valid.');
  const review:any={...deed.review,status:next,revision};
- if(action==='SUBMIT')Object.assign(review,{documentId:options.documentId,submittedById:actor.id,submittedBy:actor.name,submittedAt:date,checkedById:null,checkedBy:null,checkedAt:null,approvedBy:null,rejectedBy:null,rejectionReason:null});
+ if(action==='SUBMIT')Object.assign(review,{...(options.documentId?{documentId:options.documentId}:{}),submittedById:actor.id,submittedBy:actor.name,submittedAt:date,checkedById:null,checkedBy:null,checkedAt:null,approvedBy:null,rejectedBy:null,rejectionReason:null});
  if(action==='CHECK')Object.assign(review,{checkedById:actor.id,checkedBy:actor.name,checkedAt:date});
  if(action==='APPROVE')Object.assign(review,{approvedBy:actor.name,approvedAt:date});
  if(action==='REJECT')Object.assign(review,{rejectedBy:actor.name,rejectedAt:date,rejectionReason:comments});

@@ -54,7 +54,7 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
  const result:MasterCatalog={};
  for(const group of masterGroups){
   const rows=(input as MasterCatalog)[group.key];
-  if(!Array.isArray(rows)||rows.length>1000)throw Error(`Daftar ${group.name} tidak valid.`);
+  if(!Array.isArray(rows)||rows.length>(['province','city','district','village','postalCode'].includes(group.key)?150000:1000))throw Error(`Daftar ${group.name} tidak valid.`);
   const seen=new Set<string>();
   result[group.key]=rows.map(row=>{
    if(!row||typeof row.value!=='string'||typeof row.name!=='string'||typeof row.active!=='boolean')throw Error(`Data ${group.name} tidak valid.`);
@@ -70,13 +70,14 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
   });
  }
  for(const group of masterGroups){
+  const lookup=Object.fromEntries(Object.entries(result).map(([key,rows])=>[key,new Map(rows.map(x=>[x.value,x]))]));
   const seenNames=new Set<string>();
   for(const row of result[group.key]){
    const nameKey=(row.parentValue||'')+'|'+row.name.toLocaleLowerCase();
-   if(seenNames.has(nameKey))throw Error(`Nama duplikat pada ${group.name}.`);seenNames.add(nameKey);
-   if(group.key==='village'&&row.zipCode){const zip=result.postalCode.find(x=>x.value===row.zipCode),district=result.district.find(x=>x.value===row.parentValue);if(zip?.parentValue&&district?.parentValue&&zip.parentValue!==district.parentValue)throw Error('ZIP code harus berasal dari kota/kabupaten yang sama dengan kelurahan.');}
-   if(group.key==='village'&&row.zipCode&&!result.postalCode.some(x=>x.value===row.zipCode))throw Error('ZIP code tidak tersedia di master data.');
-   if(group.parent&&row.parentValue&&!result[group.parent].some(p=>p.value===row.parentValue))throw Error(`Data induk tidak tersedia untuk ${group.name}.`);
+   if(seenNames.has(nameKey)&&!['province','city','district','village'].includes(group.key))throw Error(`Nama duplikat pada ${group.name}.`);seenNames.add(nameKey);
+   if(group.key==='village'&&row.zipCode){const zip=lookup.postalCode.get(row.zipCode),district=lookup.district.get(row.parentValue||'');if(zip?.parentValue&&district?.parentValue&&zip.parentValue!==district.parentValue)throw Error('ZIP code harus berasal dari kota/kabupaten yang sama dengan kelurahan.');}
+   if(group.key==='village'&&row.zipCode&&!lookup.postalCode.has(row.zipCode))throw Error('ZIP code tidak tersedia di master data.');
+   if(group.parent&&row.parentValue&&!lookup[group.parent].has(row.parentValue))throw Error(`Data induk tidak tersedia untuk ${group.name}.`);
   }
  }
  if(!result.documents.some(x=>x.value==='EKITAS'&&x.active)||!result.documents.some(x=>x.value==='LEGAL_OPINION'&&x.active&&x.required))throw Error('Dokumen E-KITAS dan Legal opinion wajib dipertahankan untuk alur review.');
