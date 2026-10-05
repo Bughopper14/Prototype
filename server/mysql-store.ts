@@ -18,7 +18,7 @@ export const pool = enabled ? mysql.createPool({
 // Each checkout receives the request's actor, including NULL for non-request work.
 if(pool){
  const checkout=pool.getConnection.bind(pool);
- pool.getConnection=async()=>{const c=await checkout();try{await c.query('SET @app_username=?',[mysqlActor.getStore()||null]);return c;}catch(e){c.release();throw e;}};
+ pool.getConnection=async()=>{const c=await checkout();try{await c.query('SET @app_user_id=?',[mysqlActor.getStore()||null]);return c;}catch(e){c.release();throw e;}};
  for(const method of ['query','execute'] as const){(pool as any)[method]=async(...args:any[])=>{const c=await pool.getConnection();try{return await (c[method] as any)(...args);}finally{c.release();}};}
 }
 
