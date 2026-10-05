@@ -30,15 +30,32 @@ export async function createUser(body:any,bootstrap=false){
  return mysqlActor.run(bootstrap?null:mysqlActor.getStore()||null,async()=>{const c=await pool!.getConnection();try{await c.query("SELECT GET_LOCK('internaltest1-user-create',10) acquired");await c.beginTransaction();if(bootstrap){const [rows]=await c.query<any[]>('SELECT COUNT(*) n FROM users WHERE is_placeholder=0');if(rows[0].n)throw Object.assign(new Error('Akun awal sudah dibuat. Login sebagai administrator untuk menambah user.'),{status:409});}await c.execute('INSERT INTO users (id,username,email,password_hash,name,role,department,phone,is_admin,is_placeholder) VALUES (?,?,?,?,?,?,?,?,?,0)',[id,v.username,v.email.toLowerCase(),hash,v.name,v.role,v.department||null,v.phone||null,bootstrap||v.isAdmin?1:0]);await c.commit();return publicUser(await findUser(id,true));}catch(e){await c.rollback();throw e;}finally{await c.query("SELECT RELEASE_LOCK('internaltest1-user-create')");c.release();}});
 }
 export async function auditTable(table:string){
- if(!pool||!/^\w+$/.test(table))return;
- const [cols]=await pool.query<any[]>('SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? ORDER BY ORDINAL_POSITION',[table]);
- for(const field of ['created_by','updated_by'])if(!cols.some(c=>c.COLUMN_NAME===field))await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${field} CHAR(36) NULL,ADD CONSTRAINT fk_${table}_${field} FOREIGN KEY (${field}) REFERENCES users(id)`);
- // Existing records keep unknown authors as NULL; no placeholder account is imported.
- const [triggers]=await pool.query<any[]>('SELECT TRIGGER_NAME FROM information_schema.triggers WHERE trigger_schema=DATABASE() AND event_object_table=?',[table]);
- if(!triggers.some(t=>t.TRIGGER_NAME===`audit_${table}_insert`))await pool.query(`CREATE TRIGGER audit_${table}_insert BEFORE INSERT ON \`${table}\` FOR EACH ROW SET NEW.created_by=@app_user_id,NEW.updated_by=NULL`);
- if(!triggers.some(t=>t.TRIGGER_NAME===`audit_${table}_update`)){
- const changed=cols.filter(c=>!['id','created_by','updated_by','created_at','updated_at','last_login_at'].includes(c.COLUMN_NAME)).map(c=>`NOT(OLD.\`${c.COLUMN_NAME}\` <=> NEW.\`${c.COLUMN_NAME}\`)`).join(' OR ')||'FALSE';
- await pool.query(`CREATE TRIGGER audit_${table}_update BEFORE UPDATE ON \`${table}\` FOR EACH ROW BEGIN SET NEW.created_by=OLD.created_by;IF (${changed}) THEN SET NEW.updated_by=COALESCE(@app_user_id,OLD.updated_by);ELSE SET NEW.updated_by=OLD.updated_by;END IF;END`);
+ if(!pool||!/^[\w$]+$/.test(table))return;
+ let [cols]=await pool.query<any[]>('SELECT COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? ORDER BY ORDINAL_POSITION',[table]);
+ const [keys]=await pool.query<any[]>("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME IN ('created_by','updated_by') AND REFERENCED_TABLE_NAME IS NOT NULL",[table]);
+ const [triggers]=await pool.query<any[]>('SELECT TRIGGER_NAME,ACTION_STATEMENT FROM information_schema.triggers WHERE trigger_schema=DATABASE() AND event_object_table=?',[table]);
+ const auditTriggers=triggers.filter(t=>[`audit_${table}_insert`,`audit_${table}_update`].includes(t.TRIGGER_NAME));
+ // Migrate old ID-based triggers and audit columns once; subsequent startups leave them intact.
+ const needsMigration=keys.length||['created_by','updated_by'].some(field=>{const col=cols.find(c=>c.COLUMN_NAME===field);return col&&(col.DATA_TYPE!=='varchar'||Number(col.CHARACTER_MAXIMUM_LENGTH)<150);})||auditTriggers.some(t=>!String(t.ACTION_STATEMENT).toLowerCase().includes('@app_username'));
+ if(needsMigration){
+  for(const trigger of auditTriggers)await pool.query(`DROP TRIGGER IF EXISTS \`${trigger.TRIGGER_NAME}\``);
+  for(const key of keys)await pool.query(`ALTER TABLE \`${table}\` DROP FOREIGN KEY \`${key.CONSTRAINT_NAME}\``);
+ }
+ for(const field of ['created_by','updated_by']){
+  if(!cols.some(c=>c.COLUMN_NAME===field))await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN ${field} VARCHAR(150) NULL`);
+  else if(needsMigration||cols.find(c=>c.COLUMN_NAME===field)?.DATA_TYPE!=='varchar'||Number(cols.find(c=>c.COLUMN_NAME===field)?.CHARACTER_MAXIMUM_LENGTH)<150)await pool.query(`ALTER TABLE \`${table}\` MODIFY COLUMN ${field} VARCHAR(150) NULL`);
+ }
+ // Convert prior UUID, display-name and email audit values into login usernames.
+ for(const field of ['created_by','updated_by']){
+  await pool.query(`UPDATE \`${table}\` t JOIN users u ON BINARY t.\`${field}\`=BINARY u.id SET t.\`${field}\`=u.username WHERE t.\`${field}\` IS NOT NULL`);
+  await pool.query(`UPDATE \`${table}\` t JOIN users u ON BINARY t.\`${field}\`=BINARY u.name SET t.\`${field}\`=u.username WHERE t.\`${field}\` IS NOT NULL`);
+  await pool.query(`UPDATE \`${table}\` t JOIN users u ON BINARY t.\`${field}\`=BINARY u.email SET t.\`${field}\`=u.username WHERE t.\`${field}\` IS NOT NULL`);
+ }
+ const [currentTriggers]=await pool.query<any[]>('SELECT TRIGGER_NAME FROM information_schema.triggers WHERE trigger_schema=DATABASE() AND event_object_table=?',[table]);
+ if(!currentTriggers.some(t=>t.TRIGGER_NAME===`audit_${table}_insert`))await pool.query(`CREATE TRIGGER audit_${table}_insert BEFORE INSERT ON \`${table}\` FOR EACH ROW SET NEW.created_by=@app_username,NEW.updated_by=NULL`);
+ if(!currentTriggers.some(t=>t.TRIGGER_NAME===`audit_${table}_update`)){
+  const changed=cols.filter(c=>!['id','created_by','updated_by','created_at','updated_at','last_login_at'].includes(c.COLUMN_NAME)).map(c=>`NOT(OLD.\`${c.COLUMN_NAME}\` <=> NEW.\`${c.COLUMN_NAME}\`)`).join(' OR ')||'FALSE';
+  await pool.query(`CREATE TRIGGER audit_${table}_update BEFORE UPDATE ON \`${table}\` FOR EACH ROW BEGIN SET NEW.created_by=OLD.created_by;IF (${changed}) THEN SET NEW.updated_by=COALESCE(@app_username,OLD.updated_by);ELSE SET NEW.updated_by=OLD.updated_by;END IF;END`);
  }
 }
 export async function initializeAudit(){if(!pool)return;const [tables]=await pool.query<any[]>('SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type=\'BASE TABLE\'');for(const t of tables)await auditTable(t.TABLE_NAME);}
