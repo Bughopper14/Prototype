@@ -1,4 +1,6 @@
+import {readApplicationDocuments,seedApplicationDocuments} from './mysql-documents';
 import {readBusiness} from './mysql-business';
+import {readFinancialStatements} from './mysql-financial-statements';
 import {readLegal} from './mysql-legal';
 import {pool} from './mysql-store';
 import {customerFields,profileFields,picFields} from '../src/fields';
@@ -101,7 +103,7 @@ export async function migrateCustomerPicLocations(){
 }
 
 function listSelect(){
- return `SELECT a.application_id AS id,f.customer_id,f.customer_category,f.application_date,f.fap_registration_number AS fap_number,f.company_name,f.company_type,f.nib,f.npwp,f.establishment_act_no,f.establishment_date,f.branch_code,f.company_address,f.city,f.province,f.postal_code,f.experience_years,f.experience_months,p.application_status AS status,p.skt_no,p.sppkp_no,p.phone_fax,p.email,p.website,p.main_business,p.location_status,p.repayment_source,p.latest_deed_no,p.latest_deed_date,p.industry_segment,p.business_role,p.asset_summary_he_liu_gong,p.asset_summary_truck_liu_gong,p.asset_summary_he_non_liu_gong,p.asset_summary_truck_non_liu_gong,fd.financing_value,fd.tenor_months,fd.financing_method,0 AS verified_docs,0 AS total_docs,a.created_at FROM all_applications a JOIN new_application_fap_stage f ON f.id_fap_stage=a.id_fap_stage JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis LEFT JOIN financing_detail fd ON fd.application_id=a.application_id AND fd.deleted_at IS NULL ORDER BY a.created_at DESC,a.application_id`;
+ return `SELECT a.application_id AS id,f.customer_id,f.customer_category,f.application_date,f.fap_registration_number AS fap_number,f.company_name,f.company_type,f.nib,f.npwp,f.establishment_act_no,f.establishment_date,f.branch_code,f.company_address,f.city,f.province,f.postal_code,f.experience_years,f.experience_months,p.application_status AS status,p.skt_no,p.sppkp_no,p.phone_fax,p.email,p.website,p.main_business,p.location_status,p.repayment_source,p.latest_deed_no,p.latest_deed_date,p.industry_segment,p.business_role,p.asset_summary_he_liu_gong,p.asset_summary_truck_liu_gong,p.asset_summary_he_non_liu_gong,p.asset_summary_truck_non_liu_gong,fd.financing_value,fd.tenor_months,fd.financing_method,(SELECT COUNT(*) FROM application_document_checklist d WHERE d.application_id=a.application_id AND d.status='VERIFIED') AS verified_docs,(SELECT COUNT(*) FROM application_document_checklist d WHERE d.application_id=a.application_id) AS total_docs,a.created_at FROM all_applications a JOIN new_application_fap_stage f ON f.id_fap_stage=a.id_fap_stage JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis LEFT JOIN financing_detail fd ON fd.application_id=a.application_id AND fd.deleted_at IS NULL ORDER BY a.created_at DESC,a.application_id`;
 }
 export async function listIntake(){if(!pool)return [];const [rows]=await pool.query<any[]>(listSelect());return rows;}
 
@@ -115,7 +117,7 @@ export async function intakeDetail(id:string){
  const [pics]=await pool.execute<any[]>(`SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id FROM customer_pic cp LEFT JOIN master_provinsi pr ON pr.name=cp.province LEFT JOIN master_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,[id]);
  const legal=await readLegal(id);
  const pic=pics[0]?{...Object.fromEntries(picFields.map(f=>[f.key,databaseValue(pics[0][picColumn(f.key)],f.type)])),district:pics[0].district_master_id||pics[0].kecamatan,village:pics[0].village_master_id||pics[0].kelurahan,id:pics[0].id,createdAt:pics[0].created_at,updatedAt:pics[0].updated_at}:null;
- return {...profile,id:row.application_id,customerId:row.customer_id,customer,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),financialStatements:[],documentChecks:[],approvalLogs:[],signoffs:[],ratios:[]};
+ return {...profile,id:row.application_id,customerId:row.customer_id,customer,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),approvalLogs:[],signoffs:[]};
 }
 
 export async function intakeCustomers(){
@@ -153,6 +155,7 @@ export async function createIntake(body:any,identity?:{id:string,fapNumber?:stri
   await insertRow('new_application_fap_stage',{id_fap_stage:fapId,...fapData});
   await insertRow('new_application_pre_analisis',{id_pre_analysis:preId,...preData});
   await insertRow('all_applications',{application_id:appId,id_fap_stage:fapId,id_pre_analysis:preId});
+  await seedApplicationDocuments(c,appId);
   await c.commit();return {id:appId};
  }catch(e){await c.rollback();throw e;}finally{if(lock)try{await c.query("SELECT RELEASE_LOCK(CONCAT('lfi-fap-',YEAR(CURRENT_DATE)))");}catch{}c.release();}
 }

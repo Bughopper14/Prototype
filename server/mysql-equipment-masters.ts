@@ -1,6 +1,7 @@
 import {pool} from './mysql-store';
 import type {MasterCatalog,MasterItem} from '../src/master-catalog';
 import crypto from 'node:crypto';
+import {auditTable} from './mysql-users';
 
 const groups=[
  ['unitCategory','master_equipment_unit_category',null],
@@ -26,7 +27,16 @@ export async function initializeEquipmentMasters(seed:MasterCatalog){
    else throw new Error(`Both parent_value and ${parentColumn} exist in ${table}; resolve the duplicate columns before startup.`);
   }else if(parentColumn&&!names.has(parentColumn))await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${parentColumn}\` VARCHAR(150) NULL`);
   const [count]=await pool.query<any[]>(`SELECT COUNT(*) AS total FROM \`${table}\``);
+  await auditTable(table);
   if(Number(count[0].total)===0)for(const item of seed[key])await pool.execute(`INSERT INTO \`${table}\` (id,code,name,is_active${parentColumn?`,\`${parentColumn}\``:''}) VALUES (?,?,?,?${parentColumn?',?':''})`,[crypto.randomUUID(),item.value,item.name,item.active?1:0,...(parentColumn?[item.parentValue||null]:[])]);
+ }
+ for(let i=1;i<groups.length;i++){
+  const [,table,column]=groups[i],parentTable=groups[i-1][1];
+  const [orphans]=await pool.query<any[]>(`SELECT c.code FROM \`${table}\` c LEFT JOIN \`${parentTable}\` p ON p.code=c.\`${column}\` WHERE c.\`${column}\` IS NOT NULL AND p.id IS NULL`);
+  if(orphans.length)throw new Error(`Relasi induk tidak valid di ${table}: ${orphans.map(x=>x.code).join(', ')}`);
+  const constraint=`fk_${table}_parent`;
+  const [existing]=await pool.query<any[]>('SELECT CONSTRAINT_NAME FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name=? AND constraint_name=?',[table,constraint]);
+  if(!existing.length)await pool.query(`ALTER TABLE \`${table}\` ADD CONSTRAINT \`${constraint}\` FOREIGN KEY (\`${column}\`) REFERENCES \`${parentTable}\` (code) ON UPDATE CASCADE ON DELETE RESTRICT`);
  }
 }
 
@@ -48,6 +58,11 @@ export async function saveEquipmentMasters(catalog:MasterCatalog){
   for(const [key,table,parentColumn] of groups)for(const item of catalog[key]){
    const parent=parentColumn?item.parentValue||null:null;
    const [rows]=await c.execute<any[]>(`SELECT name,is_active,${parentColumn?`\`${parentColumn}\``:'NULL'} AS parent_value FROM \`${table}\` WHERE code=? FOR UPDATE`,[item.value]);
+   if(parentColumn){
+    const unchanged=rows.length&&rows[0].name===item.name&&!!rows[0].is_active===item.active&&(rows[0].parent_value||null)===parent;
+    if(!parent&&!unchanged)throw Object.assign(new Error(`Pilih induk untuk ${item.name}.`),{status:422});
+    if(parent){const parentGroup=groups[groups.findIndex(g=>g[0]===key)-1][0];if(!catalog[parentGroup].some(x=>x.value===parent))throw Object.assign(new Error(`Induk ${item.name} tidak tersedia.`),{status:422});}
+   }
    if(rows.length){if(rows[0].name!==item.name||(rows[0].parent_value||null)!==parent||!!rows[0].is_active!==item.active)await c.execute(`UPDATE \`${table}\` SET name=?,is_active=?,updated_at=CURRENT_TIMESTAMP(3)${parentColumn?`,\`${parentColumn}\`=?`:''} WHERE code=?`,[item.name,item.active?1:0,...(parentColumn?[parent]:[]),item.value]);}
    else await c.execute(`INSERT INTO \`${table}\` (id,code,name,is_active${parentColumn?`,\`${parentColumn}\``:''}) VALUES (?,?,?,?${parentColumn?',?':''})`,[crypto.randomUUID(),item.value,item.name,item.active?1:0,...(parentColumn?[parent]:[])]);
   }

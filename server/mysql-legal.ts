@@ -1,3 +1,6 @@
+import fs from 'node:fs/promises';
+import {auditTable} from './mysql-users';
+import {ageFromDateOfBirth} from '../src/age';
 import {pool} from './mysql-store';
 import {stakeholderFields} from '../src/fields';
 import {validateInput} from '../src/input-validation';
@@ -9,7 +12,7 @@ const asDate=(v:any)=>v instanceof Date?v.toISOString().slice(0,10):v?String(v).
 const numberFields=new Set(stakeholderFields.filter(f=>f.type==='number').map(f=>col(f.key)));
 const dateFields=new Set([...stakeholderFields.filter(f=>f.type==='date').map(f=>col(f.key)),'tanggal','tanggal_akta','tanggal_sk_menteri','berlaku_sampai']);
 const comparable=(key:string,value:any)=>value===null||value===undefined?'':numberFields.has(key)?Number(value):dateFields.has(key)?asDate(value):String(value);
-const mapStakeholder=(row:any)=>({...Object.fromEntries(stakeholderFields.map(f=>[f.key,f.type==='date'?asDate(row[col(f.key)]):row[col(f.key)]])),id:row.id,name:[row.first_name,row.middle_name,row.last_name].filter(Boolean).join(' '),createdAt:row.created_at,updatedAt:row.updated_at});
+const mapStakeholder=(row:any)=>({...Object.fromEntries(stakeholderFields.map(f=>[f.key,f.type==='date'?asDate(row[col(f.key)]):row[col(f.key)]])),...ageFromDateOfBirth(asDate(row.date_of_birth)),district:row.district_master_id||row.district,village:row.village_master_id||row.village,id:row.id,name:[row.first_name,row.middle_name,row.last_name].filter(Boolean).join(' '),createdAt:row.created_at,updatedAt:row.updated_at});
 export async function initializeLegal(){
  if(!pool)return;
  await pool.query(`CREATE TABLE IF NOT EXISTS daftar_akta (
@@ -21,10 +24,19 @@ export async function initializeLegal(){
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  for(const table of ['akta_pendirian','akta_perubahan'])await pool.query(`CREATE TABLE IF NOT EXISTS ${table} (
   id CHAR(36) PRIMARY KEY,akta_id VARCHAR(100) NOT NULL UNIQUE,application_id CHAR(36) NOT NULL,nomor_akta VARCHAR(1000),tanggal_akta DATE,
-  nomor_sk_menteri VARCHAR(1000),tanggal_sk_menteri DATE,representative TEXT,pemegang_saham_perusahaan TEXT,kategori_remarks VARCHAR(150),remarks TEXT,
+  nomor_sk_menteri VARCHAR(1000),tanggal_sk_menteri DATE,representative TEXT,pemegang_saham_perusahaan TEXT,${table==='akta_perubahan'?'kategori_remarks VARCHAR(150),remarks TEXT,':''}
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,deleted_at TIMESTAMP(3) NULL,
   CONSTRAINT fk_${table}_akta FOREIGN KEY(akta_id) REFERENCES daftar_akta(id),CONSTRAINT fk_${table}_application FOREIGN KEY(application_id) REFERENCES all_applications(application_id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+ const [remarkColumns]=await pool.query<any[]>("SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='akta_pendirian' AND COLUMN_NAME IN ('kategori_remarks','remarks')");
+ if(remarkColumns.length){
+  const columns=remarkColumns.map(x=>x.COLUMN_NAME);
+  const [backup]=await pool.query<any[]>('SELECT id,akta_id,'+columns.join(',')+' FROM akta_pendirian');
+  await fs.mkdir('.data',{recursive:true});await fs.writeFile('.data/akta-pendirian-remarks-backup-'+Date.now()+'.json',JSON.stringify(backup,null,2));
+  await pool.query('DROP TRIGGER IF EXISTS audit_akta_pendirian_insert');await pool.query('DROP TRIGGER IF EXISTS audit_akta_pendirian_update');
+  await pool.query('ALTER TABLE akta_pendirian '+columns.map(x=>'DROP COLUMN '+x).join(','));
+  await auditTable('akta_pendirian');
+ }
  await pool.query(`CREATE TABLE IF NOT EXISTS legal_stakeholder (
   id CHAR(36) PRIMARY KEY,akta_id VARCHAR(100) NOT NULL,application_id CHAR(36) NOT NULL,
   ${stakeholderFields.map(f=>'`'+col(f.key)+'` '+(f.type==='number'?'DECIMAL(20,2)':f.type==='date'?'DATE':'TEXT')+' NULL').join(',')},
@@ -38,8 +50,8 @@ export async function readLegal(applicationId:string){
  const deeds=await Promise.all(rows.map(async row=>{
   const table=row.akta==='Akta pendirian'?'akta_pendirian':'akta_perubahan';
   const [typed]=await pool!.execute<any[]>(`SELECT * FROM ${table} WHERE akta_id=? AND deleted_at IS NULL`,[row.id]);
-  const [stakeholders]=await pool!.execute<any[]>('SELECT * FROM legal_stakeholder WHERE akta_id=? AND deleted_at IS NULL ORDER BY created_at,id',[row.id]);
-  return {id:row.id,type:table==='akta_pendirian'?'establishment':'amendment',deedNumber:row.nomor_akta,deedDate:asDate(row.tanggal),ministerialDecreeNumber:row.sk_menteri,ministerialDecreeDate:asDate(row.tanggal_sk_menteri),remarkCategoryId:row.kategori_remarks||null,remarks:typed[0]?.remarks||row.remarks||'',parties:{representative:typed[0]?.representative||'',companyShareholder:typed[0]?.pemegang_saham_perusahaan||''},status:row.status,expiryDate:asDate(row.berlaku_sampai),shareholders:Number(row.jumlah_shareholder),stakeholders:stakeholders.map(mapStakeholder),createdAt:row.created_at,updatedAt:row.updated_at,infoAdded:stakeholders.length>0};
+  const [stakeholders]=await pool!.execute<any[]>(`SELECT s.*,d.id AS district_master_id,v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN master_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id`,[row.id]);
+  return {id:row.id,type:table==='akta_pendirian'?'establishment':'amendment',deedNumber:row.nomor_akta,deedDate:asDate(row.tanggal),ministerialDecreeNumber:row.sk_menteri,ministerialDecreeDate:asDate(row.tanggal_sk_menteri),remarkCategoryId:table==='akta_perubahan'?(typed[0]?.kategori_remarks||row.kategori_remarks||null):null,remarks:table==='akta_perubahan'?(typed[0]?.remarks||row.remarks||''):'',parties:{representative:typed[0]?.representative||'',companyShareholder:typed[0]?.pemegang_saham_perusahaan||''},status:row.status,expiryDate:asDate(row.berlaku_sampai),shareholders:Number(row.jumlah_shareholder),stakeholders:stakeholders.map(mapStakeholder),createdAt:row.created_at,updatedAt:row.updated_at,infoAdded:stakeholders.length>0};
  }));
  const [hidden]=await pool.execute<any[]>('SELECT id FROM daftar_akta WHERE application_id=? AND deleted_at IS NOT NULL',[applicationId]);
  return {deeds,hiddenDeedIds:hidden.map(r=>r.id),selectedDeedId:rows.find(r=>r.is_selected)?.id||deeds[0]?.id};
@@ -61,7 +73,7 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
  for(const d of deeds){
   d.id=d.id||crypto.randomUUID();if(ids.has(d.id)||!['establishment','amendment'].includes(d.type))throw Object.assign(Error('ID atau jenis akta tidak valid'),{status:422});ids.add(d.id);
   for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])if(!d[key])throw Object.assign(Error(key+' wajib diisi'),{status:422});
-  validateInput({...d,stakeholders:undefined});if(d.type==='amendment'&&!d.remarkCategoryId)throw Object.assign(Error('Kategori Remarks wajib diisi'),{status:422});
+  if(d.type==='establishment'){d.remarkCategoryId=null;d.remarks='';}validateInput({...d,stakeholders:undefined});if(d.type==='amendment'&&!d.remarkCategoryId)throw Object.assign(Error('Kategori Remarks wajib diisi'),{status:422});
   d.stakeholders=d.stakeholders||[];if(d.stakeholders.length>100)throw Object.assign(Error('Maksimal 100 stakeholder per akta'),{status:422});
   let total=new Decimal(0);const stakeholderIds=new Set<string>();
   for(const s of d.stakeholders){s.id=s.id||crypto.randomUUID();if(stakeholderIds.has(s.id))throw Object.assign(Error('ID stakeholder duplikat'),{status:422});stakeholderIds.add(s.id);validateInput(s);if(!s.email||!s.mobilePhone||s.primaryCapital===undefined||s.primaryCapital===null||s.primaryCapital==='')throw Object.assign(Error('Email, Mobile phone dan Primary capital wajib diisi'),{status:422});if(![s.firstName,s.lastName,s.name].some((x:any)=>String(x||'').trim()))throw Object.assign(Error('Nama stakeholder wajib diisi'),{status:422});const pct=new Decimal(s.sharePercentage||0);if(pct.lt(0)||pct.gt(100))throw Object.assign(Error('Percentage share harus antara 0 dan 100'),{status:422});total=total.plus(pct);}
@@ -74,13 +86,36 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
    const expiry=new Date(d.deedDate+'T00:00:00Z');expiry.setUTCFullYear(expiry.getUTCFullYear()+5);const until=expiry.toISOString().slice(0,10),active=until>=new Date().toISOString().slice(0,10);
    await upsert(c,'daftar_akta',d.id,{application_id:applicationId,akta:d.type==='establishment'?'Akta pendirian':'Akta perubahan',nomor_akta:d.deedNumber||'',tanggal:d.deedDate,status:active?'Aktif':'Tidak aktif',berlaku_sampai:until,sk_menteri:d.ministerialDecreeNumber||null,tanggal_sk_menteri:d.ministerialDecreeDate||null,kategori_remarks:d.remarkCategoryId||null,remarks:d.remarks||null,stakeholders:d.stakeholders.length,jumlah_shareholder:d.stakeholders.filter((s:any)=>Number(s.sharePercentage)>0).length,total_kepemilikan:d.stakeholders.reduce((v:Decimal,s:any)=>v.plus(s.sharePercentage||0),new Decimal(0)).toFixed(2),is_selected:d.id===incoming.selectedDeedId});
    const table=d.type==='establishment'?'akta_pendirian':'akta_perubahan',other=d.type==='establishment'?'akta_perubahan':'akta_pendirian';const [typed]=await c.execute<any[]>(`SELECT id FROM ${table} WHERE akta_id=?`,[d.id]);
-   await upsert(c,table,typed[0]?.id||crypto.randomUUID(),{akta_id:d.id,application_id:applicationId,nomor_akta:d.deedNumber||null,tanggal_akta:d.deedDate||null,nomor_sk_menteri:d.ministerialDecreeNumber||null,tanggal_sk_menteri:d.ministerialDecreeDate||null,representative:d.parties?.representative||null,pemegang_saham_perusahaan:d.parties?.companyShareholder||null,kategori_remarks:d.remarkCategoryId||null,remarks:d.remarks||null});
+   await upsert(c,table,typed[0]?.id||crypto.randomUUID(),{akta_id:d.id,application_id:applicationId,nomor_akta:d.deedNumber||null,tanggal_akta:d.deedDate||null,nomor_sk_menteri:d.ministerialDecreeNumber||null,tanggal_sk_menteri:d.ministerialDecreeDate||null,representative:d.parties?.representative||null,pemegang_saham_perusahaan:d.parties?.companyShareholder||null,...(d.type==='amendment'?{kategori_remarks:d.remarkCategoryId||null,remarks:d.remarks||null}:{})});
    await c.execute(`UPDATE ${other} SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL`,[d.id]);
-   for(const s of d.stakeholders){const value=Object.fromEntries(stakeholderFields.map(f=>[col(f.key),s[f.key]===''||s[f.key]===undefined?null:s[f.key]]));const [old]=await c.execute<any[]>('SELECT id FROM legal_stakeholder WHERE id=?',[s.id]);await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});}
+   for(const s of d.stakeholders){Object.assign(s,ageFromDateOfBirth(s.dateOfBirth));const stored=await stakeholderLocationNames(c,s);const value=Object.fromEntries(stakeholderFields.map(f=>[col(f.key),stored[f.key]===''||stored[f.key]===undefined?null:stored[f.key]]));const [old]=await c.execute<any[]>('SELECT id FROM legal_stakeholder WHERE id=?',[s.id]);await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});}
    const stakeholderIds=d.stakeholders.map((s:any)=>s.id);await c.execute(`UPDATE legal_stakeholder SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL ${stakeholderIds.length?'AND id NOT IN ('+stakeholderIds.map(()=>'?').join(',')+')':''}`,[d.id,...stakeholderIds]);
   }
   const savedIds=deeds.map((d:any)=>d.id);for(const table of ['legal_stakeholder','akta_pendirian','akta_perubahan','daftar_akta'])await c.execute(`UPDATE ${table} SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=? AND deleted_at IS NULL ${savedIds.length?'AND '+(table==='daftar_akta'?'id':'akta_id')+' NOT IN ('+savedIds.map(()=>'?').join(',')+')':''}`,[applicationId,...savedIds]);
   await c.commit();
  }catch(e){await c.rollback();throw e;}finally{c.release();}
  return readLegal(applicationId);
+}
+
+async function stakeholderLocationNames(c:any,input:any){
+ const stored={...input};let parentId:string|undefined;
+ for(const [key,table,parent] of [['province','master_provinsi',null],['cityRegency','master_kabupaten_kota','provinsi_id'],['district','master_kecamatan','kabupaten_kota_id'],['village','master_kelurahan_desa','kecamatan_id']] as const){
+  if(!input[key]){parentId=undefined;continue;}
+  const [rows]=await c.execute('SELECT id,name FROM '+table+' WHERE (id=? OR name=?)'+(parent&&parentId?' AND '+parent+'=?':''),[input[key],input[key],...(parent&&parentId?[parentId]:[])]);
+  if(rows.length!==1)throw Object.assign(Error('Pilih wilayah stakeholder yang sesuai: '+key),{status:422});
+  stored[key]=rows[0].name;parentId=rows[0].id;
+ }
+ return stored;
+}
+export async function migrateStakeholderLocationNames(){
+ if(!pool)return;
+ const fields=[['province','master_provinsi'],['city_regency','master_kabupaten_kota'],['district','master_kecamatan'],['village','master_kelurahan_desa']] as const;
+ const c=await pool.getConnection();
+ try{
+  await c.beginTransaction();
+  const [backup]=await c.query<any[]>('SELECT id,province,city_regency,district,village FROM legal_stakeholder WHERE '+fields.map(([key,table])=>'EXISTS (SELECT 1 FROM '+table+' m WHERE m.id=legal_stakeholder.'+key+')').join(' OR ')+' FOR UPDATE');
+  if(backup.length){await fs.mkdir('.data',{recursive:true});await fs.writeFile('.data/stakeholder-location-backup-'+Date.now()+'.json',JSON.stringify(backup,null,2));}
+  for(const [key,table] of fields)await c.query('UPDATE legal_stakeholder s JOIN '+table+' m ON m.id=s.'+key+' SET s.'+key+'=m.name');
+  await c.commit();
+ }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
