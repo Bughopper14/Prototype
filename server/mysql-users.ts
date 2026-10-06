@@ -64,7 +64,7 @@ export async function auditTable(table:string){
   for(const value of auditValues[field]||[]){if(userIds.has(value))continue;await pool.query(`UPDATE \`${table}\` SET \`${field}\`=? WHERE BINARY \`${field}\`=BINARY ?`,[aliases.get(value)||null,value]);}
  }
  const [mktRows]=await pool.query<any[]>("SELECT user_id FROM users WHERE role='MKT' ORDER BY (username='mkt') DESC,is_placeholder ASC,created_at ASC LIMIT 1");const mktUserId=mktRows[0]?.user_id||null;
- if(cols.some(c=>c.COLUMN_NAME==='created_by')&&mktUserId)await pool.query(`UPDATE \`${table}\` SET created_by=? WHERE created_by IS NULL OR created_by=''`,[mktUserId]);
+ if(mktUserId)await pool.query(`UPDATE \`${table}\` SET created_by=? WHERE created_by IS NULL OR created_by=''`,[mktUserId]);
  // Refresh both hooks after repairs; inserts without an application actor belong to MKT.
  await pool.query(`CREATE TRIGGER audit_${table}_insert BEFORE INSERT ON \`${table}\` FOR EACH ROW SET NEW.created_by=COALESCE(@app_user_id,${mktUserId?`'${String(mktUserId).replaceAll("'","''")}'`:'NULL'}),NEW.updated_by=NULL`);
  const changed=cols.filter(c=>!['id','created_by','updated_by','created_at','updated_at','last_login_at'].includes(c.COLUMN_NAME)).map(c=>`NOT(OLD.\`${c.COLUMN_NAME}\` <=> NEW.\`${c.COLUMN_NAME}\`)`).join(' OR ')||'FALSE';
