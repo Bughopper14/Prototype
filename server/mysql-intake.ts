@@ -13,6 +13,7 @@ const preFields=[...customerFields.filter(f=>!fapCustomer.includes(f.key)),...pr
 const directoryFields=[...customerFields,...profileFields.filter(f=>f.key!=='customerStatus')];
 const appTables=['legal_stakeholder','akta_pendirian','akta_perubahan','daftar_akta','equipment_units','financing_detail','bank_facilities','project_contract','customer_pic','new_application_fap_stage','new_application_pre_analisis','all_applications'];
 const column=(s:string)=>s.replace(/[A-Z]/g,c=>'_'+c.toLowerCase());
+const picColumn=(s:string)=>s==='district'?'kecamatan':s==='village'?'kelurahan':s==='currentAddress'?'alamat_pic':column(s);
 const same=(a:any,b:any)=>String(a??'')===String(b??'');
 const databaseValue=(value:any,type?:string)=>value instanceof Date&&type==='date'?value.toISOString().slice(0,10):value;
 const fieldType=(f:any)=>f.key==='experienceYears'||f.key==='experienceMonths'?'INT':f.type==='date'?'DATE':f.type==='number'?'INT':'TEXT';
@@ -77,10 +78,26 @@ export async function initializeIntake(){
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  await pool.query(`CREATE TABLE IF NOT EXISTS customer_pic (
   id CHAR(36) PRIMARY KEY,application_id CHAR(36) NOT NULL UNIQUE,customer_id CHAR(36) NOT NULL,
-  ${picFields.map(f=>`\`${column(f.key)}\` ${fieldType(f)} NULL`).join(',')},
+  ${picFields.map(f=>`\`${picColumn(f.key)}\` ${fieldType(f)} NULL`).join(',')},
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,
   CONSTRAINT fk_customer_pic_application FOREIGN KEY(application_id) REFERENCES all_applications(application_id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+ await migrateCustomerPicLocations();
+}
+
+/** Store customer PIC location labels as plaintext while keeping the UI's
+ * dropdown values linked to the location masters. Safe to rerun on startup. */
+export async function migrateCustomerPicLocations(){
+ if(!pool)return;
+ const [exists]=await pool.query<any[]>(`SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='customer_pic'`);
+ if(!exists.length)return;
+ let columns=new Set(exists.map(r=>String(r.COLUMN_NAME)));
+ const migrations=[['district','kecamatan','master_kecamatan'],['village','kelurahan','master_kelurahan_desa']] as const;
+ for(const [oldName,newName,table] of migrations){const current=columns.has(newName)?newName:columns.has(oldName)?oldName:null;if(!current)continue;const [unmapped]=await pool.query<any[]>(`SELECT COUNT(*) AS n FROM customer_pic p WHERE p.\`${current}\` REGEXP '^[0-9a-fA-F-]{32,36}$' AND NOT EXISTS (SELECT 1 FROM ${table} m WHERE m.id=p.\`${current}\`)`);if(Number(unmapped[0]?.n||0)>0)throw new Error(`Tidak dapat memetakan ${unmapped[0].n} nilai ${current} ke master lokasi.`);}
+ const [updateTrigger]=await pool.query<any[]>(`SELECT TRIGGER_NAME FROM information_schema.triggers WHERE trigger_schema=DATABASE() AND event_object_table='customer_pic' AND trigger_name='audit_customer_pic_update'`);
+ if(updateTrigger.length)await pool.query('DROP TRIGGER audit_customer_pic_update');
+ for(const [oldName,newName,table] of migrations){const current=columns.has(newName)?newName:columns.has(oldName)?oldName:null;if(!current)continue;await pool.query(`UPDATE customer_pic p JOIN ${table} m ON m.id=p.\`${current}\` SET p.\`${current}\`=m.name`);if(current===oldName){await pool.query(`ALTER TABLE customer_pic CHANGE COLUMN \`${oldName}\` \`${newName}\` TEXT NULL`);columns.delete(oldName);columns.add(newName);}}
+ if(updateTrigger.length){const {auditTable}=await import('./mysql-users');await auditTable('customer_pic');}
 }
 
 function listSelect(){
@@ -95,9 +112,10 @@ export async function intakeDetail(id:string){
  const row=rows[0];
  const customer={...readFields(row,fapFields.filter(f=>customerFields.some(x=>x.key===f.key))),...readFields(row,preFields.filter(f=>customerFields.some(x=>x.key===f.key))),id:row.customer_id};
  const profile={...readFields(row,fapFields.filter(f=>profileFields.some(x=>x.key===f.key))),...readFields(row,preFields.filter(f=>profileFields.some(x=>x.key===f.key))),customerStatus:row.customer_category};
- const [pics]=await pool.execute<any[]>(`SELECT * FROM customer_pic WHERE application_id=?`,[id]);
+ const [pics]=await pool.execute<any[]>(`SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id FROM customer_pic cp LEFT JOIN master_provinsi pr ON pr.name=cp.province LEFT JOIN master_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,[id]);
  const legal=await readLegal(id);
- return {...profile,id:row.application_id,customerId:row.customer_id,customer,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic:pics[0]?{...readFields(pics[0],picFields),id:pics[0].id,createdAt:pics[0].created_at,updatedAt:pics[0].updated_at}:null,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),financialStatements:[],documentChecks:[],approvalLogs:[],signoffs:[],ratios:[]};
+ const pic=pics[0]?{...Object.fromEntries(picFields.map(f=>[f.key,databaseValue(pics[0][picColumn(f.key)],f.type)])),district:pics[0].district_master_id||pics[0].kecamatan,village:pics[0].village_master_id||pics[0].kelurahan,id:pics[0].id,createdAt:pics[0].created_at,updatedAt:pics[0].updated_at}:null;
+ return {...profile,id:row.application_id,customerId:row.customer_id,customer,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),financialStatements:[],documentChecks:[],approvalLogs:[],signoffs:[],ratios:[]};
 }
 
 export async function intakeCustomers(){
@@ -153,6 +171,13 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
  const c=await pool.getConnection();let changed=false;
  try{
   await c.beginTransaction();const [app]=await c.execute<any[]>('SELECT id_fap_stage,id_pre_analysis FROM all_applications WHERE application_id=? FOR UPDATE',[id]);if(!app.length)throw mysqlError('Application not found',404);
+  const storedPic={...pic};
+  if(pic.district){
+   const [districts]=await c.execute<any[]>(`SELECT d.id,d.name,c.name AS city_name,p.name AS province_name FROM master_kecamatan d JOIN master_kabupaten_kota c ON c.id=d.kabupaten_kota_id JOIN master_provinsi p ON p.id=c.provinsi_id WHERE (d.id=? OR d.name=?) AND (?='' OR c.name=?) AND (?='' OR p.name=?)`,[pic.district,pic.district,pic.city||'',pic.city||'',pic.province||'',pic.province||'']);
+   if(districts.length!==1)throw mysqlError('Pilih kecamatan yang sesuai dengan kota/kabupaten dan provinsi.');
+   const district=districts[0];storedPic.district=district.name;
+   if(pic.village){const [villages]=await c.execute<any[]>('SELECT id,name FROM master_kelurahan_desa WHERE (id=? OR name=?) AND kecamatan_id=?',[pic.village,pic.village,district.id]);if(villages.length!==1)throw mysqlError('Pilih kelurahan/desa yang sesuai dengan kecamatan.');storedPic.village=villages[0].name;}
+  }else if(pic.village)throw mysqlError('Pilih kecamatan sebelum memilih kelurahan/desa.');
   const updateTable=async(table:string,idColumn:string,rowId:string,values:Record<string,any>)=>{const [old]=await c.execute<any[]>(`SELECT * FROM ${table} WHERE ${idColumn}=? FOR UPDATE`,[rowId]);if(!old.length)throw mysqlError('Application stage was not found',404);const keys=Object.keys(values),isChanged=keys.some(k=>!same(databaseValue(old[0][k],String(old[0][k] instanceof Date?'date':'')),databaseValue(values[k],String(values[k] instanceof Date?'date':''))));if(isChanged){await c.execute(`UPDATE ${table} SET ${keys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE ${idColumn}=?`,[...Object.values(values),rowId]);changed=true;}};
   await updateTable('new_application_fap_stage','id_fap_stage',app[0].id_fap_stage,fapData);
   await updateTable('new_application_pre_analisis','id_pre_analysis',app[0].id_pre_analysis,preData);
@@ -166,9 +191,9 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
   }
   const [existing]=await c.execute<any[]>('SELECT * FROM customer_pic WHERE application_id=? FOR UPDATE',[id]);
   const picNonempty=Object.values(pic).some(v=>v!==null&&v!=='');
-  const picChanged=!existing.length||picFields.some(f=>!same(databaseValue(existing[0][column(f.key)],f.type),pic[f.key]));
+  const picChanged=!existing.length||picFields.some(f=>!same(databaseValue(existing[0][picColumn(f.key)],f.type),storedPic[f.key]));
   if((existing.length||picNonempty)&&picChanged){
-   const keys=picFields.map(f=>column(f.key)),values=fieldValues(pic,picFields);
+   const keys=picFields.map(f=>picColumn(f.key)),values=fieldValues(storedPic,picFields);
    if(existing.length)await c.execute(`UPDATE customer_pic SET ${keys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?`,[...values,id]);
    else {const [stage]=await c.execute<any[]>('SELECT customer_id FROM new_application_fap_stage WHERE id_fap_stage=?',[app[0].id_fap_stage]);await c.execute(`INSERT INTO customer_pic (id,application_id,customer_id,${keys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(keys.length+3).fill('?').join(',')})`,[crypto.randomUUID(),id,stage[0].customer_id,...values]);}
    changed=true;

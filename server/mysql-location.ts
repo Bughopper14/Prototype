@@ -14,7 +14,10 @@ export async function locationCatalog(base:MasterCatalog):Promise<MasterCatalog>
  const saved:MasterItem[]=rows.map(r=>({value:r.id,name:r.name,active:!!r.is_active,parentValue:parent?r.parent_id:r.country,...(r.region?{region:r.region}:{}),...(r.postal_code?{zipCode:r.postal_code}:{})}));
  result[key]=saved;
  }
- const zips=new Set(result.village.map(r=>r.zipCode).filter((x):x is string=>!!x));const zipValues=new Set(base.postalCode.map(x=>x.value));result.postalCode=[...base.postalCode,...[...zips].filter(z=>!zipValues.has(z)).sort().map(value=>({value,name:value,active:true}))];
+ const [zipRows]=await pool.query<any[]>(`SELECT v.postal_code,c.id AS city_id,MAX(v.is_active AND d.is_active AND c.is_active AND p.is_active) AS is_active FROM master_kelurahan_desa v JOIN master_kecamatan d ON d.id=v.kecamatan_id JOIN master_kabupaten_kota c ON c.id=d.kabupaten_kota_id JOIN master_provinsi p ON p.id=c.provinsi_id WHERE v.postal_code IS NOT NULL AND v.postal_code<>'' GROUP BY c.id,v.postal_code ORDER BY c.id,v.postal_code`);
+ const postalItems:MasterItem[]=zipRows.map(r=>({value:String(r.postal_code),name:String(r.postal_code),active:!!r.is_active,parentValue:String(r.city_id)}));
+ const cityIds=new Set(result.city.map(x=>x.value));for(const item of base.postalCode)if(item.parentValue&&cityIds.has(item.parentValue)&&!postalItems.some(x=>x.value===item.value&&x.parentValue===item.parentValue))postalItems.push(item);
+ result.postalCode=postalItems;
  return result;
 }
 const equal=(a:any,b:any)=>JSON.stringify([a?.value,a?.name,a?.active,a?.parentValue||'',a?.region||'',a?.zipCode||''])===JSON.stringify([b?.value,b?.name,b?.active,b?.parentValue||'',b?.region||'',b?.zipCode||'']);
