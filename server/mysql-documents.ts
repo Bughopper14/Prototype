@@ -5,10 +5,24 @@ import {auditTable} from './mysql-users';
 import {ensure} from './domain';
 
 export async function seedApplicationDocuments(c:PoolConnection,id:string){
- const [existing]=await c.execute<any[]>('SELECT id FROM application_document_checklist WHERE application_id=? LIMIT 1',[id]);
- if(existing.length)return;
  const [masters]=await c.query<any[]>('SELECT * FROM master_document_jenis_dokumen_wajib WHERE is_active=1 ORDER BY created_at,id');
- for(const m of masters)await c.execute('INSERT INTO application_document_checklist (id,application_id,document_code,document_name,assigned_role,is_mandatory) VALUES (?,?,?,?,?,?)',[crypto.randomUUID(),id,m.code,m.name,m.department,m.is_required]);
+ for(const m of masters)await c.execute('INSERT IGNORE INTO application_document_checklist (id,application_id,document_code,document_name,assigned_role,is_mandatory) VALUES (?,?,?,?,?,?)',[crypto.randomUUID(),id,m.code,m.name,m.department,m.is_required]);
+}
+
+export async function syncApplicationDocuments(){
+ if(!pool)return;
+ const c=await pool.getConnection();
+ try{
+  await c.beginTransaction();
+  const [apps]=await c.query<any[]>('SELECT application_id FROM all_applications ORDER BY application_id FOR UPDATE');
+  for(const app of apps)await seedApplicationDocuments(c,app.application_id);
+  await c.execute(`DELETE d FROM application_document_checklist d
+   LEFT JOIN master_document_jenis_dokumen_wajib m ON m.code=d.document_code
+   LEFT JOIN application_document_file f ON f.checklist_id=d.id
+   WHERE m.id IS NULL AND f.id IS NULL AND d.status='PENDING'
+   AND d.checked_by_mkt=0 AND d.checked_by_bs=0 AND d.checked_by_ca=0 AND d.checked_by_legal=0`);
+  await c.commit();
+ }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 
 export async function initializeApplicationDocuments(){
@@ -30,13 +44,7 @@ export async function initializeApplicationDocuments(){
   FOREIGN KEY(checklist_id) REFERENCES application_document_checklist(id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  await auditTable('application_document_checklist');await auditTable('application_document_file');
- const c=await pool.getConnection();
- try{
-  await c.beginTransaction();
-  const [apps]=await c.query<any[]>('SELECT application_id FROM all_applications ORDER BY application_id FOR UPDATE');
-  for(const a of apps)await seedApplicationDocuments(c,a.application_id);
-  await c.commit();
- }catch(e){await c.rollback();throw e;}finally{c.release();}
+ await syncApplicationDocuments();
 }
 const fileModel=(f:any)=>({id:f.id,checklistId:f.checklist_id,fileName:f.file_name,fileKey:f.file_key,fileSize:Number(f.file_size),mimeType:f.mime_type,uploadedBy:f.uploaded_by,createdAt:f.created_at});
 export async function readDocumentFile(id:string){
@@ -61,6 +69,27 @@ export async function uploadApplicationDocument(id:string,checklistId:string,fil
   await c.execute('INSERT INTO application_document_file (id,checklist_id,file_name,file_key,file_size,mime_type,uploaded_by) VALUES (?,?,?,?,?,?,?)',[fileId,checklistId,file.originalname,key,file.size,file.mimetype,actorId]);
   await c.execute("UPDATE application_document_checklist SET status='UPLOADED',checked_by_mkt=1,checked_by_bs=0,checked_by_ca=0,checked_by_legal=0,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?",[checklistId]);
   await c.commit();return {id:fileId,checklistId,fileName:file.originalname,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
+ }catch(e){await c.rollback();throw e;}finally{c.release();}
+}
+export async function deleteApplicationDocumentFile(id:string,fileId:string,removeStoredFile:(key:string)=>Promise<void>){
+ const c=await pool!.getConnection();
+ try{
+  await c.beginTransaction();
+  const [apps]=await c.execute<any[]>('SELECT p.application_status FROM all_applications a JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis WHERE a.application_id=? FOR UPDATE',[id]);
+  ensure(apps.length,'Application not found',404);
+  ensure(!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(apps[0].application_status),'Documents are locked at this stage',409);
+  const [files]=await c.execute<any[]>(`SELECT f.id,f.file_key,f.checklist_id FROM application_document_file f
+   JOIN application_document_checklist d ON d.id=f.checklist_id
+   WHERE f.id=? AND d.application_id=? FOR UPDATE`,[fileId,id]);
+  ensure(files.length,'File not found in this application',404);
+  const file=files[0];
+  await c.execute('DELETE FROM application_document_file WHERE id=?',[fileId]);
+  const [remaining]=await c.execute<any[]>('SELECT id FROM application_document_file WHERE checklist_id=? LIMIT 1',[file.checklist_id]);
+  await c.execute(`UPDATE application_document_checklist SET status=?,checked_by_mkt=?,checked_by_bs=0,
+   checked_by_ca=0,checked_by_legal=0,registration_date=NULL,expired_date=NULL,data_summary=NULL,notes=NULL,
+   updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[remaining.length?'UPLOADED':'PENDING',remaining.length?1:0,file.checklist_id]);
+  await removeStoredFile(file.file_key);
+  await c.commit();
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 export async function verifyApplicationDocument(id:string,checklistId:string,body:any){

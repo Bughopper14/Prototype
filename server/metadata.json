@@ -1,6 +1,6 @@
 {
   "Customer": {
-    "table": "customers",
+    "table": "business_partner",
     "fields": {
       "id": {
         "column": "id",
@@ -19,6 +19,12 @@
         "type": "CustomerCategory",
         "optional": false,
         "generated": false
+      },
+      "businessPartnerType": {
+        "column": "business_partner_type",
+        "type": "String",
+        "optional": false,
+        "generated": true
       },
       "nib": {
         "column": "nib",

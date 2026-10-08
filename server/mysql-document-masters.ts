@@ -2,6 +2,7 @@ import {pool} from './mysql-store';
 import {auditTable} from './mysql-users';
 import type {MasterCatalog,MasterItem} from '../src/master-catalog';
 import crypto from 'node:crypto';
+import {syncApplicationDocuments} from './mysql-documents';
 
 const table='master_document_jenis_dokumen_wajib';
 export async function initializeDocumentMasters(seed:MasterCatalog){
@@ -31,5 +32,6 @@ export async function saveDocumentMasters(catalog:MasterCatalog){
    else await c.execute(`INSERT INTO ${table} (id,code,name,department,is_required,is_active) VALUES (?,?,?,?,?,?)`,[crypto.randomUUID(),item.value,item.name,item.role||'BS',item.required?1:0,item.active?1:0]);
   }
   await c.commit();
+  await syncApplicationDocuments();
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }

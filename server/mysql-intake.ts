@@ -49,9 +49,15 @@ async function resetOldApplicationSchema(){
 export async function initializeIntake(){
  if(!pool)return;
  await resetOldApplicationSchema();
- await pool.query(`CREATE TABLE IF NOT EXISTS customers (
+ const [partnerTables]=await pool.query<any[]>(`SELECT TABLE_NAME FROM information_schema.tables
+  WHERE table_schema=DATABASE() AND table_name IN ('customers','business_partner')`);
+ const tableNames=new Set(partnerTables.map(row=>row.TABLE_NAME));
+ if(tableNames.has('customers')&&tableNames.has('business_partner'))throw new Error('Both customers and business_partner exist; resolve the duplicate tables before starting the API.');
+ if(tableNames.has('customers'))await pool.query('RENAME TABLE customers TO business_partner');
+ await pool.query(`CREATE TABLE IF NOT EXISTS business_partner (
   id CHAR(36) PRIMARY KEY,
   company_name VARCHAR(255) NOT NULL,company_type VARCHAR(50) NULL,nib VARCHAR(32) NULL,npwp VARCHAR(32) NULL,
+  business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer',
   skt_no VARCHAR(100) NULL,sppkp_no VARCHAR(100) NULL,establishment_act_no VARCHAR(100) NULL,establishment_date DATE NULL,
   branch_code VARCHAR(30) NULL,customer_relationship VARCHAR(30) NULL,company_address TEXT NULL,city VARCHAR(150) NULL,province VARCHAR(150) NULL,postal_code VARCHAR(20) NULL,
   phone_fax VARCHAR(50) NULL,email VARCHAR(255) NULL,website VARCHAR(255) NULL,main_business TEXT NULL,experience_years INT NULL,experience_months INT NULL,
@@ -61,6 +67,14 @@ export async function initializeIntake(){
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,
   created_by VARCHAR(150) NULL,updated_by VARCHAR(150) NULL
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+ const [partnerTypeColumns]=await pool.query<any[]>(`SELECT COLUMN_NAME FROM information_schema.columns
+  WHERE table_schema=DATABASE() AND table_name='business_partner' AND column_name='business_partner_type'`);
+ if(!partnerTypeColumns.length)await pool.query("ALTER TABLE business_partner ADD COLUMN business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer' AFTER company_type");
+ else{
+  const [columnOrder]=await pool.query<any[]>(`SELECT ORDINAL_POSITION FROM information_schema.columns
+   WHERE table_schema=DATABASE() AND table_name='business_partner' AND column_name='business_partner_type'`);
+  if(Number(columnOrder[0]?.ORDINAL_POSITION)!==4)await pool.query("ALTER TABLE business_partner MODIFY COLUMN business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer' AFTER company_type");
+ }
  await pool.query(`CREATE TABLE IF NOT EXISTS new_application_fap_stage (
   id_fap_stage CHAR(36) PRIMARY KEY,customer_category VARCHAR(30) NOT NULL,customer_id CHAR(36) NOT NULL,
   application_date DATE NOT NULL,fap_registration_number VARCHAR(80) NOT NULL UNIQUE,
@@ -151,7 +165,7 @@ export async function createIntake(body:any,identity?:{id:string,fapNumber?:stri
   const insertRow=async(table:string,values:Record<string,any>)=>{const keys=Object.keys(values);await c.execute(`INSERT INTO ${table} (${keys.map(k=>`\`${k}\``).join(',')}) VALUES (${keys.map(()=>'?').join(',')})`,Object.values(values));};
   const directoryData:Record<string,any>=customerDirectoryValues(customer,normalizedProfile,normalizedProfile.customerStatus||category);
   const directoryKeys=Object.keys(directoryData);
-  await c.execute(`INSERT IGNORE INTO customers (id,${directoryKeys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(directoryKeys.length+1).fill('?').join(',')})`,[companyId,...Object.values(directoryData)]);
+  await c.execute(`INSERT IGNORE INTO business_partner (id,${directoryKeys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(directoryKeys.length+1).fill('?').join(',')})`,[companyId,...Object.values(directoryData)]);
   await insertRow('new_application_fap_stage',{id_fap_stage:fapId,...fapData});
   await insertRow('new_application_pre_analisis',{id_pre_analysis:preId,...preData});
   await insertRow('all_applications',{application_id:appId,id_fap_stage:fapId,id_pre_analysis:preId});
@@ -186,11 +200,11 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
   await updateTable('new_application_pre_analisis','id_pre_analysis',app[0].id_pre_analysis,preData);
   const directoryData:Record<string,any>=customerDirectoryValues({...current?.customer,...experience},profile,profile.customerStatus||current?.customerStatus||'EXISTING');
   const directoryKeys=Object.keys(directoryData);
-  const [directoryRows]=await c.execute<any[]>('SELECT * FROM customers WHERE id=? FOR UPDATE',[current?.customerId]);
-  if(!directoryRows.length){await c.execute(`INSERT INTO customers (id,${directoryKeys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(directoryKeys.length+1).fill('?').join(',')})`,[current?.customerId,...Object.values(directoryData)]);changed=true;}
+  const [directoryRows]=await c.execute<any[]>('SELECT * FROM business_partner WHERE id=? FOR UPDATE',[current?.customerId]);
+  if(!directoryRows.length){await c.execute(`INSERT INTO business_partner (id,${directoryKeys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(directoryKeys.length+1).fill('?').join(',')})`,[current?.customerId,...Object.values(directoryData)]);changed=true;}
   else{
    const directoryChanged=directoryFields.some(f=>!same(databaseValue(directoryRows[0][column(f.key)],f.type),databaseValue(directoryData[column(f.key)],f.type)))||!same(directoryRows[0].customer_relationship,directoryData.customer_relationship);
-   if(directoryChanged){await c.execute(`UPDATE customers SET ${directoryKeys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[...Object.values(directoryData),current?.customerId]);changed=true;}
+   if(directoryChanged){await c.execute(`UPDATE business_partner SET ${directoryKeys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[...Object.values(directoryData),current?.customerId]);changed=true;}
   }
   const [existing]=await c.execute<any[]>('SELECT * FROM customer_pic WHERE application_id=? FOR UPDATE',[id]);
   const picNonempty=Object.values(pic).some(v=>v!==null&&v!=='');

@@ -72,7 +72,8 @@ export async function initialize(){
  });
  if(!(await query('SELECT * FROM schema_migrations WHERE version=4')).rows.length)await transaction(async q=>{
   await q("CREATE TABLE master_data (id INTEGER PRIMARY KEY CHECK(id=1), catalog JSONB NOT NULL, revision INTEGER NOT NULL DEFAULT 0)");
-  for(const [table,column] of [['customers','company_type'],['applications','industry_segment'],['applications','business_role'],['financing_proposals','facility_purpose'],['financing_proposals','financing_method'],['financing_unit_items','unit_category']])await q(`ALTER TABLE "${table}" DROP CONSTRAINT IF EXISTS "${table}_${column}_check"`);
+  const customerTable=(await q("SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='customers'")).rows.length?'customers':'business_partner';
+  for(const [table,column] of [[customerTable,'company_type'],['applications','industry_segment'],['applications','business_role'],['financing_proposals','facility_purpose'],['financing_proposals','financing_method'],['financing_unit_items','unit_category']])await q(`ALTER TABLE "${table}" DROP CONSTRAINT IF EXISTS "${table}_${column}_check"`);
   await q('INSERT INTO schema_migrations VALUES(4)');
  });
 
@@ -85,6 +86,14 @@ export async function initialize(){
   await q('CREATE TABLE notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), recipient_user_id UUID NOT NULL REFERENCES users(id), application_id TEXT NOT NULL REFERENCES applications(id), deed_id TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now())');
   await q('CREATE INDEX notifications_recipient_idx ON notifications(recipient_user_id, created_at DESC)');
   await q('INSERT INTO schema_migrations VALUES(6)');
+ });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=7')).rows.length)await transaction(async q=>{
+  const old=(await q("SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='customers'")).rows.length>0;
+  const renamed=(await q("SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='business_partner'")).rows.length>0;
+  if(old&&renamed)throw new Error('Both customers and business_partner exist in the legacy database.');
+  if(old)await q('ALTER TABLE customers RENAME TO business_partner');
+  await q("ALTER TABLE business_partner ADD COLUMN IF NOT EXISTS business_partner_type TEXT NOT NULL DEFAULT 'Prorpect Customer'");
+  await q('INSERT INTO schema_migrations VALUES(7)');
  });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}

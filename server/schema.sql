@@ -1,7 +1,8 @@
-CREATE TABLE IF NOT EXISTS "customers" (
+CREATE TABLE IF NOT EXISTS "business_partner" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
   "company_name" VARCHAR(255) NOT NULL,
   "company_type" TEXT NOT NULL DEFAULT 'CORPORATE' CHECK ("company_type" IN ('CORPORATE','COMMERCIAL','MICRO','LIUGONG_USER')),
+  "business_partner_type" TEXT NOT NULL DEFAULT 'Prorpect Customer',
   "nib" VARCHAR(13) NOT NULL UNIQUE,
   "npwp" VARCHAR(20) NOT NULL UNIQUE,
   "skt_no" VARCHAR(100),
@@ -194,7 +195,7 @@ CREATE TABLE IF NOT EXISTS "approval_logs" (
   "comments" TEXT,
   "action_timestamp" TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-ALTER TABLE "applications" ADD CONSTRAINT "fk_applications_customerId" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id");
+ALTER TABLE "applications" ADD CONSTRAINT "fk_applications_customerId" FOREIGN KEY ("customer_id") REFERENCES "business_partner" ("id");
 ALTER TABLE "application_pics" ADD CONSTRAINT "fk_application_pics_applicationId" FOREIGN KEY ("application_id") REFERENCES "applications" ("id") ON DELETE CASCADE;
 ALTER TABLE "stakeholders" ADD CONSTRAINT "fk_stakeholders_applicationId" FOREIGN KEY ("application_id") REFERENCES "applications" ("id") ON DELETE CASCADE;
 ALTER TABLE "project_contracts" ADD CONSTRAINT "fk_project_contracts_applicationId" FOREIGN KEY ("application_id") REFERENCES "applications" ("id") ON DELETE CASCADE;
