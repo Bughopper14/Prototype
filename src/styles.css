@@ -125,3 +125,56 @@ nav button{min-height:46px;font-size:13px;font-weight:600}
 .legal-deed-table .legal-deed-number{white-space:normal;overflow-wrap:anywhere;max-width:100%;font-size:11px}.legal-deed-table td{white-space:normal}.legal-deed-table .legal-category-label{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;overflow-wrap:anywhere}
 
 .deed-comparison{margin:20px 0;padding:16px;border:1px solid #dce8df;border-radius:10px;background:#fbfdfb}.deed-comparison>.muted{font-size:11px;line-height:1.6;margin:8px 0 12px}.deed-comparison-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.deed-comparison-columns>div{padding:12px;border:1px solid #e0e8e2;border-radius:7px;background:#fff;min-width:0;overflow-wrap:anywhere}.deed-comparison-columns>div:last-child{background:#eaf4ed}.deed-comparison-columns small,.deed-comparison-columns span{display:block;font-size:10px;color:#748477;margin-bottom:5px}.deed-comparison-columns b{display:block;font-size:12px;margin-bottom:5px}.deed-compare-scroll{overflow-x:auto}.deed-compare-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px;line-height:1.5}.deed-compare-table th,.deed-compare-table td{padding:9px 10px;border-bottom:1px solid #e2eae4;text-align:left;vertical-align:top;overflow-wrap:anywhere;white-space:normal}.deed-compare-table thead th{background:#eff4f0;font-size:10px;color:#67816c}.deed-compare-table tbody th{font-weight:600}.deed-compare-table tr.changed{background:#fff6dc}.deed-compare-table small{display:block;font-size:9px;color:#97702e;margin-top:3px}.deed-comparison h4{margin:18px 0 9px;font-size:12px}.deed-person-comparison{margin-top:10px;background:#fff;border:1px solid #e1e9e3;border-radius:6px;padding:9px}.deed-person-comparison summary{cursor:pointer;font-size:11px;font-weight:600}.deed-person-comparison table{margin-top:8px}@media(max-width:520px){.deed-comparison{padding:10px}.deed-comparison-columns{grid-template-columns:1fr}.deed-compare-table{min-width:420px}}
+
+/* Chevron Stepper Progress Bar */
+.chevron-stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  margin-top: 18px;
+  margin-bottom: 22px;
+  padding: 0;
+}
+
+.chevron-step {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 24px;
+  border: 0;
+  outline: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
+}
+
+.chevron-step.first {
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%);
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+
+.chevron-step.active {
+  background: #001f42 !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  filter: drop-shadow(2px 2px 4px rgba(0, 31, 66, 0.25));
+  z-index: 2;
+}
+
+.chevron-step.inactive {
+  background: #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+.chevron-step.inactive:hover {
+  background: #cbd5e1 !important;
+  color: #1e293b !important;
+}
