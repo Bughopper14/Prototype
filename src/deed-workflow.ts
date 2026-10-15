@@ -16,9 +16,11 @@ export function mergeLegal(previous:any,incoming:any){
   return {...data,review:changed?{status:'DRAFT',revision:(old.review?.revision||0)+1}:old.review||{status:'DRAFT',revision:1},reviewHistory:old.reviewHistory||[],...(old.approvedSnapshot?{approvedSnapshot:old.approvedSnapshot,approvedAt:old.approvedAt}:{})};
  });
  for(const old of prior)assert(ids.has(old.id)||!deedPending(old)&&!old.approvedSnapshot,'Akta dalam proses approval atau sudah disetujui tidak boleh dihapus. Buat perubahan dan ajukan ulang.',409);
+ const est=deeds.find((d:any)=>d.type==='establishment');
+ if(est?.deedDate){for(const d of deeds){if(d.type==='amendment'&&d.deedDate)assert(String(d.deedDate).slice(0,10)>=String(est.deedDate).slice(0,10),`Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`);}}
  const {establishment,amendment,...current}=incoming;return {...current,deeds};
-}
-export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string},options:{revision:number,documentId?:string,comments?:string,beforeSnapshot?:any},now=new Date()){
+ }
+ export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string},options:{revision:number,documentId?:string,comments?:string,beforeSnapshot?:any},now=new Date()){
  assert(deed,'Akta tidak ditemukan.',404);assert(options.revision===(deed.review?.revision||1),'Akta telah berubah. Buka ulang sebelum melanjutkan.',409);
  const status=reviewStatus(deed),comments=String(options.comments||'').trim(),date=now.toISOString(),revision=(deed.review?.revision||1)+1;
  assert(comments.length<=10000,'Catatan maksimal 10.000 karakter.');
