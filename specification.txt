@@ -1,0 +1,666 @@
+Functional Specification Document (FSD)
+System: Heavy Equipment Loan Origination & Document Management System (LOS-DMS)
+Document Version: 1.0.0
+Target Audience: Frontend Engineers, Backend Engineers, QA Engineers, Database Architects
+Domain Reference: PT LiuGong Finance Indonesia (Application Form & Document Check List)
+
+1. Technical Architecture & Tech Stack Overview
+1.1 Architecture Pattern
+Pattern: Modular Monolith / Decoupled Client-Server (RESTful API Architecture).
+Backend: Node.js (NestJS / TypeScript) atau Go / Python FastAPI.
+Frontend: React / Next.js (TypeScript, Tailwind CSS, Shadcn UI / Ant Design).
+Database: PostgreSQL 15+ (Relational with JSONB support for dynamic audit trails).
+ORM / Query Builder: Prisma ORM / TypeORM / Drizzle.
+Object Storage: S3-compatible storage (MinIO / AWS S3) for document binaries with pre-signed URL upload.
+Authentication & AuthZ: JWT with Role-Based Access Control (RBAC).
+2. Comprehensive Database Schema (Prisma / PostgreSQL DDL)
+Berikut adalah definisi skema database relasional lengkap yang merefleksikan seluruh elemen formulir dan matriks dokumen.
+
+prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+generator client {
+  provider = "prisma-client-js"
+}
+// ==========================================
+// 1. MASTER CUSTOMER (1 : N ke Aplikasi)
+// ==========================================
+model Customer {
+  id              String            @id @default(uuid())
+  companyName     String            @map("company_name") @db.VarChar(255)
+  companyType     CustomerCategory  @default(CORPORATE) @map("company_type")
+  nib             String            @unique @db.VarChar(13)
+  npwp            String            @unique @db.VarChar(20)
+  sktNo           String?           @map("skt_no") @db.VarChar(100)
+  sppkpNo         String?           @map("sppkp_no") @db.VarChar(100)
+  establishmentActNo String?        @map("establishment_act_no") @db.VarChar(100)
+  establishmentDate  DateTime?      @map("establishment_date") @db.Date
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  applications    Application[]
+  @@map("customers")
+}
+enum CustomerCategory {
+  CORPORATE
+  COMMERCIAL
+  MICRO
+  LIUGONG_USER
+}
+// ==========================================
+// 2. FINANCING APPLICATION (FAP)
+// ==========================================
+model Application {
+  id              String            @id @default(uuid())
+  customerId      String            @map("customer_id")
+  fapNumber       String            @unique @map("fap_number") @db.VarChar(50) // e.g. 001/AF/IX/2026
+  applicationDate DateTime          @default(now()) @map("application_date") @db.Date
+  branchCode      String            @map("branch_code") @db.VarChar(20)
+  customerStatus  CustomerStatus    @map("customer_status") // NEW or EXISTING
+  status          ApplicationStatus @default(DRAFT)
+  // Profile Snapshot at Application Time
+  companyAddress  String            @map("company_address") @db.Text
+  city            String            @db.VarChar(100)
+  province        String            @db.VarChar(100)
+  postalCode      String            @map("postal_code") @db.VarChar(10)
+  phoneFax        String            @map("phone_fax") @db.VarChar(50)
+  email           String            @db.VarChar(100)
+  website         String?           @db.VarChar(150)
+  mainBusiness    String            @map("main_business") @db.VarChar(150)
+  experienceYears Int               @default(0) @map("experience_years")
+  experienceMonths Int              @default(0) @map("experience_months")
+  locationStatus  LocationStatus    @map("location_status") // OWNED or RENTED
+  repaymentSource String            @map("repayment_source") @db.Text
+  // Deed Snapshot
+  latestDeedNo    String?           @map("latest_deed_no") @db.VarChar(100)
+  latestDeedDate  DateTime?         @map("latest_deed_date") @db.Date
+  // Business Background Categorization
+  industrySegment IndustrySegment   @map("industry_segment")
+  businessRole    BusinessRole      @map("business_role")
+  // Fixed Asset Summary Unit Snapshot
+  assetSummaryHeLiuGong     Int     @default(0) @map("asset_summary_he_liugong")
+  assetSummaryTruckLiuGong  Int     @default(0) @map("asset_summary_truck_liugong")
+  assetSummaryHeNonLiuGong  Int     @default(0) @map("asset_summary_he_non_liugong")
+  assetSummaryTruckNonLiuGong Int   @default(0) @map("asset_summary_truck_non_liugong")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  // Relations
+  customer        Customer          @relation(fields: [customerId], references: [id])
+  pic             ApplicationPic?
+  stakeholders    Stakeholder[]
+  projects        ProjectContract[]
+  bankReferences  BankReference[]
+  proposal        FinancingProposal?
+  financials      FinancialStatement[]
+  documentChecks  DocumentChecklist[]
+  approvalLogs    ApprovalLog[]
+  @@map("applications")
+}
+enum CustomerStatus {
+  NEW
+  EXISTING
+}
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED_TO_BS
+  BS_VERIFIED
+  IN_CA_LEGAL_REVIEW
+  CREDIT_COMMITTEE_REVIEW
+  APPROVED
+  REJECTED
+  RETURNED
+}
+enum LocationStatus {
+  OWNED
+  RENTED
+}
+enum IndustrySegment {
+  MINING
+  AGRICULTURE
+  FORESTRY
+  CONSTRUCTION
+  OIL_AND_GAS
+  OTHER
+}
+enum BusinessRole {
+  CONS_OWNER
+  CONTRACTORS
+  SUB_CONT
+  RENTAL
+  OTHER
+}
+// ==========================================
+// 3. APPLICATION PIC (1 : 1)
+// ==========================================
+model ApplicationPic {
+  id              String      @id @default(uuid())
+  applicationId   String      @unique @map("application_id")
+  picName         String      @map("pic_name") @db.VarChar(150)
+  position        String      @db.VarChar(100)
+  phone           String      @db.VarChar(50)
+  email           String      @db.VarChar(100)
+  currentAddress  String      @map("current_address") @db.Text
+  city            String      @db.VarChar(100)
+  province        String      @db.VarChar(100)
+  postalCode      String      @map("postal_code") @db.VarChar(10)
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@map("application_pics")
+}
+// ==========================================
+// 4. STAKEHOLDERS: BOD & SHAREHOLDERS (1 : 1..M)
+// ==========================================
+model Stakeholder {
+  id              String          @id @default(uuid())
+  applicationId   String          @map("application_id")
+  name            String          @db.VarChar(150)
+  position        String          @db.VarChar(100)
+  stakeholderType StakeholderType @map("stakeholder_type") // INDIVIDUAL or CORPORATE
+  nationalityType NationalityType @default(WNI) @map("nationality_type") // WNI or WNA
+  idNumber        String          @map("id_number") @db.VarChar(50) // KTP / Passport / NPWP
+  taxNumber       String?         @map("tax_number") @db.VarChar(50)
+  shareAmount     Decimal         @default(0) @map("share_amount") @db.Decimal(18, 2)
+  sharePercentage Decimal         @map("share_percentage") @db.Decimal(5, 2) // e.g. 51.50%
+  application     Application     @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@map("stakeholders")
+}
+enum StakeholderType {
+  INDIVIDUAL
+  CORPORATE
+}
+enum NationalityType {
+  WNI
+  WNA
+}
+// ==========================================
+// 5. PROJECT CONTRACTS (1 : 0..M)
+// ==========================================
+model ProjectContract {
+  id              String      @id @default(uuid())
+  applicationId   String      @map("application_id")
+  projectOwner    String      @map("project_owner") @db.VarChar(200)
+  projectLocation String      @map("project_location") @db.VarChar(255)
+  projectRole     String      @map("project_role") @db.VarChar(100)
+  contractStatus  String      @map("contract_status") @db.VarChar(20) // EXISTING or NEW
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@map("project_contracts")
+}
+// ==========================================
+// 6. BANK REFERENCES / OTHER FACILITIES (1 : 0..M)
+// ==========================================
+model BankReference {
+  id                String      @id @default(uuid())
+  applicationId     String      @map("application_id")
+  bankOrFinInstitution String  @map("bank_or_fin_institution") @db.VarChar(150)
+  currency          String      @default("IDR") @db.VarChar(5)
+  creditFacility    Decimal     @map("credit_facility") @db.Decimal(18, 2)
+  monthlyInstallment Decimal    @map("monthly_installment") @db.Decimal(18, 2)
+  yearStarted       Int         @map("year_started")
+  interestRate      Decimal     @map("interest_rate") @db.Decimal(5, 2)
+  paymentRecord     String      @map("payment_record") @db.VarChar(50) // Kol 1 / Lancar, etc.
+  facilityStatus    String      @map("facility_status") @db.VarChar(50) // Active, Lunas, etc.
+  application       Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@map("bank_references")
+}
+// ==========================================
+// 7. FINANCING PROPOSAL & TERMS (1 : 1)
+// ==========================================
+model FinancingProposal {
+  id                String            @id @default(uuid())
+  applicationId     String            @unique @map("application_id")
+  facilityPurpose   FacilityPurpose   @map("facility_purpose") // INVESTMENT or WORKING_CAPITAL
+  purposeDetail     String?           @map("purpose_detail") @db.VarChar(100) // Rehabilitation, Expansion, etc.
+  financingMethod   FinancingMethod   @map("financing_method") // FINANCIAL_LEASE, SALE_AND_LEASE_BACK, INSTALLMENT_FINANCING
+  currency          String            @default("IDR") @db.VarChar(5)
+  financingValue    Decimal           @map("financing_value") @db.Decimal(18, 2)
+  downPaymentValue  Decimal           @default(0) @map("down_payment_value") @db.Decimal(18, 2)
+  securityDeposit   Decimal           @default(0) @map("security_deposit") @db.Decimal(18, 2)
+  interestRate      Decimal           @map("interest_rate") @db.Decimal(5, 2)
+  tenorMonths       Int               @map("tenor_months")
+  paymentMethod     String            @map("payment_method") @db.VarChar(50) // In Arrear / In Advance
+  applicationSource String?           @map("application_source") @db.VarChar(100)
+  termsNotes        String?           @map("terms_notes") @db.Text
+  application       Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  units             FinancingUnitItem[]
+  @@map("financing_proposals")
+}
+enum FacilityPurpose {
+  INVESTMENT
+  WORKING_CAPITAL
+}
+enum FinancingMethod {
+  FINANCIAL_LEASE
+  SALE_AND_LEASE_BACK
+  INSTALLMENT_FINANCING
+}
+// ==========================================
+// 8. FINANCING UNIT ITEMS (1 : 1..M)
+// ==========================================
+model FinancingUnitItem {
+  id              String            @id @default(uuid())
+  proposalId      String            @map("proposal_id")
+  brand           String            @db.VarChar(50) // LiuGong / Non-LiuGong
+  unitCategory    UnitCategory      @map("unit_category") // HE or TRUCK
+  modelName       String            @map("model_name") @db.VarChar(100)
+  quantity        Int               @default(1)
+  unitPrice       Decimal           @map("unit_price") @db.Decimal(18, 2)
+  totalPrice      Decimal           @map("total_price") @db.Decimal(18, 2)
+  proposal        FinancingProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  @@map("financing_unit_items")
+}
+enum UnitCategory {
+  HE
+  TRUCK
+}
+// ==========================================
+// 9. FINANCIAL STATEMENTS SPREADING (1 : 3)
+// ==========================================
+model FinancialStatement {
+  id                  String      @id @default(uuid())
+  applicationId       String      @map("application_id")
+  fiscalYear          Int         @map("fiscal_year") // e.g. 2023, 2024, 2025
+  isAudited           Boolean     @default(false) @map("is_audited")
+  
+  // Balance Sheet
+  currentAssets       Decimal     @map("current_assets") @db.Decimal(18, 2)
+  nonCurrentAssets    Decimal     @map("non_current_assets") @db.Decimal(18, 2)
+  totalAssets         Decimal     @map("total_assets") @db.Decimal(18, 2)
+  currentLiabilities  Decimal     @map("current_liabilities") @db.Decimal(18, 2)
+  nonCurrentLiabilities Decimal   @map("non_current_liabilities") @db.Decimal(18, 2)
+  totalLiabilities    Decimal     @map("total_liabilities") @db.Decimal(18, 2)
+  equity              Decimal     @db.Decimal(18, 2)
+  totalLiabAndEquity  Decimal     @map("total_liab_and_equity") @db.Decimal(18, 2)
+  // Profit & Loss
+  revenue             Decimal     @db.Decimal(18, 2)
+  grossMargin         Decimal     @map("gross_margin") @db.Decimal(18, 2)
+  operatingMargin     Decimal     @map("operating_margin") @db.Decimal(18, 2)
+  tax                 Decimal     @db.Decimal(18, 2)
+  netIncome           Decimal     @map("net_income") @db.Decimal(18, 2)
+  application         Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@unique([applicationId, fiscalYear])
+  @@map("financial_statements")
+}
+// ==========================================
+// 10. DOCUMENT CHECKLIST MATRIX (1 : M)
+// ==========================================
+model DocumentChecklist {
+  id              String            @id @default(uuid())
+  applicationId   String            @map("application_id")
+  documentCode    String            @map("document_code") @db.VarChar(50)
+  documentName    String            @map("document_name") @db.VarChar(150)
+  isMandatory     Boolean           @default(false) @map("is_mandatory")
+  assignedRole    VerifierRole      @map("assigned_role") // BS, CA, LEGAL, MKT
+  
+  // Verification by Departments
+  checkedByMkt    Boolean           @default(false) @map("checked_by_mkt")
+  checkedByBs     Boolean           @default(false) @map("checked_by_bs")
+  checkedByCa     Boolean           @default(false) @map("checked_by_ca")
+  checkedByLegal  Boolean           @default(false) @map("checked_by_legal")
+  
+  registrationDate DateTime?        @map("registration_date") @db.Date
+  expiredDate     DateTime?         @map("expired_date") @db.Date
+  dataSummary     String?           @map("data_summary") @db.Text
+  notes           String?           @db.Text
+  status          DocStatus         @default(PENDING)
+  application     Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  files           DocumentFile[]
+  @@map("document_checklists")
+}
+enum VerifierRole {
+  MKT
+  BS
+  CA
+  LEGAL
+}
+enum DocStatus {
+  PENDING
+  UPLOADED
+  VERIFIED
+  REJECTED
+  WAIVED
+}
+model DocumentFile {
+  id              String            @id @default(uuid())
+  checklistId     String            @map("checklist_id")
+  fileName        String            @map("file_name") @db.VarChar(255)
+  fileKey         String            @map("file_key") @db.VarChar(500) // S3 / MinIO Path
+  fileSize        Int               @map("file_size") // in bytes
+  mimeType        String            @map("mime_type") @db.VarChar(100)
+  uploadedBy      String            @map("uploaded_by") @db.VarChar(100)
+  uploadedAt      DateTime          @default(now()) @map("uploaded_at")
+  checklist       DocumentChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  @@map("document_files")
+}
+// ==========================================
+// 11. APPROVAL WORKFLOW & AUDIT TRAIL
+// ==========================================
+model ApprovalLog {
+  id              String            @id @default(uuid())
+  applicationId   String            @map("application_id")
+  actionBy        String            @map("action_by") @db.VarChar(100)
+  userRole        String            @map("user_role") @db.VarChar(50)
+  previousStatus  ApplicationStatus @map("previous_status")
+  newStatus       ApplicationStatus @map("new_status")
+  comments        String?           @db.Text
+  actionTimestamp DateTime          @default(now()) @map("action_timestamp")
+  application     Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  @@map("approval_logs")
+}
+3. Business Logic, Calculations & Validasi Data
+3.1 Algoritma Penomoran FAP Otomatis
+Format: {Sequential 3-digit}/AF/{Romawi Bulan}/{Tahun}.
+Logika:
+typescript
+
+function generateFapNumber(nextSequence: number, date: Date = new Date()): string {
+  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  const month = romanMonths[date.getMonth()];
+  const year = date.getFullYear();
+  const seqStr = String(nextSequence).padStart(3, '0');
+  return `${seqStr}/AF/${month}/${year}`;
+}
+3.2 Aturan Validasi Struktur Saham (Stakeholders)
+Total Saham: 
+∑
+(
+sharePercentage
+)
+=
+=
+100.00
+%
+∑(sharePercentage)==100.00%. Backend wajib me-reject jika total persentase saham 
+≠
+100
+%
+
+=100% (toleransi pembulatan 
+±
+0.01
+%
+±0.01%).
+Kewarganegaraan vs Identitas:
+Jika nationalityType == WNI: idNumber wajib KTP (16 digit numerik) & taxNumber wajib NPWP.
+Jika nationalityType == WNA: idNumber wajib Passport & lampiran E-Kitas.
+3.3 Validasi Laporan Keuangan (Balance Sheet Invariant)
+Untuk setiap record FinancialStatement:
+
+totalAssets
+=
+currentAssets
++
+nonCurrentAssets
+totalAssets=currentAssets+nonCurrentAssets
+totalLiabilities
+=
+currentLiabilities
++
+nonCurrentLiabilities
+totalLiabilities=currentLiabilities+nonCurrentLiabilities
+Persamaan Akuntansi Wajib Seimbang: 
+totalAssets
+=
+=
+totalLiabAndEquity
+=
+=
+(
+totalLiabilities
++
+equity
+)
+totalAssets==totalLiabAndEquity==(totalLiabilities+equity) Jika selisih 
+>
+0
+>0, API mengembalikan HTTP 422 Unprocessable Entity dengan error: "Balance sheet is not balanced".
+3.4 Financial Ratio Auto-Calculator (Engine Analysis CA)
+Current Ratio (CR): 
+Current Assets
+Current Liabilities
+Current Liabilities
+Current Assets
+​
+ 
+Debt to Equity Ratio (DER): 
+Total Liabilities
+Equity
+Equity
+Total Liabilities
+​
+ 
+Net Profit Margin (NPM): 
+Net Income
+Revenue
+×
+100
+%
+Revenue
+Net Income
+​
+ ×100%
+Debt Service Coverage Ratio (DSCR): 
+DSCR
+=
+Operating Margin (EBIT)
++
+Depresiasi
+Total Annual Installment (Eksisting + Diajukan)
+DSCR= 
+Total Annual Installment (Eksisting + Diajukan)
+Operating Margin (EBIT)+Depresiasi
+​
+ 
+4. State Machine Workflow
+
+[DRAFT] 
+   │  (MKT completes Application Form & initial docs)
+   ▼
+[SUBMITTED_TO_BS]
+   │  (BS verifies NIB, NPWP, Akta, Legalitas)
+   ├──► [RETURNED] (Dokumen tidak lengkap -> MKT merevisi)
+   ▼
+[BS_VERIFIED]
+   │  (Trigger parallel tasks: CA & Legal)
+   ▼
+[IN_CA_LEGAL_REVIEW]
+   │  (CA completes Spreading & Legal issues Legal Opinion)
+   ▼
+[CREDIT_COMMITTEE_REVIEW]
+   │
+   ├──► [APPROVED]  ──► (Siap cetak Offering Letter / PK)
+   └──► [REJECTED]  ──► (Aplikasi ditolak)
+5. API Endpoints Specification (RESTful)
+5.1 Application Form APIs
+POST /api/v1/applications
+Role: MKT
+Deskripsi: Membuat draft aplikasi baru dan meng-generate nomor FAP.
+Request Body:
+json
+
+{
+  "customerId": "uuid-customer",
+  "branchCode": "JKT01",
+  "customerStatus": "NEW",
+  "companyAddress": "Jl. Industri Raya No. 88, Kawasan MM2100",
+  "city": "Bekasi",
+  "province": "Jawa Barat",
+  "postalCode": "17530",
+  "phoneFax": "021-8989898",
+  "email": "finance@corp.co.id",
+  "mainBusiness": "Kontraktor Pertambangan Batubara",
+  "experienceYears": 8,
+  "experienceMonths": 4,
+  "locationStatus": "OWNED",
+  "repaymentSource": "Hasil kontrak operasional tambang PT ABC",
+  "industrySegment": "MINING",
+  "businessRole": "CONTRACTORS"
+}
+Response: 201 Created dengan payload application termasuk fapNumber: "001/AF/IX/2026".
+PUT /api/v1/applications/:id/page-1
+Role: MKT
+Deskripsi: Menyimpan data PIC, Stakeholder, Proyek, dan Fasilitas Bank Eksisting (Halaman 1).
+Request Body:
+json
+
+{
+  "pic": {
+    "picName": "Budi Santoso",
+    "position": "Direktur Operasional",
+    "phone": "08123456789",
+    "email": "budi@corp.co.id",
+    "currentAddress": "Jl. Kemang Raya No. 10",
+    "city": "Jakarta Selatan",
+    "province": "DKI Jakarta",
+    "postalCode": "12560"
+  },
+  "stakeholders": [
+    {
+      "name": "PT Induk Investama",
+      "position": "Pemegang Saham Mayoritas",
+      "stakeholderType": "CORPORATE",
+      "nationalityType": "WNI",
+      "idNumber": "01.234.567.8-012.000",
+      "shareAmount": 5100000000,
+      "sharePercentage": 51.00
+    },
+    {
+      "name": "Budi Santoso",
+      "position": "Direktur",
+      "stakeholderType": "INDIVIDUAL",
+      "nationalityType": "WNI",
+      "idNumber": "3171010101900001",
+      "shareAmount": 4900000000,
+      "sharePercentage": 49.00
+    }
+  ],
+  "projects": [
+    {
+      "projectOwner": "PT Bukit Energi",
+      "projectLocation": "Muara Enim, Sumsel",
+      "projectRole": "Main Contractor Overburden",
+      "contractStatus": "EXISTING"
+    }
+  ],
+  "bankReferences": [
+    {
+      "bankOrFinInstitution": "Bank Mandiri",
+      "currency": "IDR",
+      "creditFacility": 15000000000,
+      "monthlyInstallment": 320000000,
+      "yearStarted": 2022,
+      "interestRate": 9.50,
+      "paymentRecord": "Kolektibilitas 1 (Lancar)",
+      "facilityStatus": "Active"
+    }
+  ]
+}
+PUT /api/v1/applications/:id/page-2
+Role: MKT, CA
+Deskripsi: Menyimpan Proposal Pembiayaan, Rincian Unit, dan Laporan Keuangan 3 Tahun.
+Request Body:
+json
+
+{
+  "proposal": {
+    "facilityPurpose": "INVESTMENT",
+    "purposeDetail": "Ekspansi armada hauling",
+    "financingMethod": "FINANCIAL_LEASE",
+    "currency": "IDR",
+    "financingValue": 12000000000,
+    "downPaymentValue": 2400000000,
+    "interestRate": 10.50,
+    "tenorMonths": 36,
+    "paymentMethod": "In Arrear",
+    "units": [
+      {
+        "brand": "LiuGong",
+        "unitCategory": "HE",
+        "modelName": "Excavator 936E",
+        "quantity": 3,
+        "unitPrice": 4000000000,
+        "totalPrice": 12000000000
+      }
+    ]
+  },
+  "financialStatements": [
+    {
+      "fiscalYear": 2023,
+      "isAudited": true,
+      "currentAssets": 25000000000,
+      "nonCurrentAssets": 45000000000,
+      "totalAssets": 70000000000,
+      "currentLiabilities": 15000000000,
+      "nonCurrentLiabilities": 20000000000,
+      "totalLiabilities": 35000000000,
+      "equity": 35000000000,
+      "totalLiabAndEquity": 70000000000,
+      "revenue": 85000000000,
+      "grossMargin": 22000000000,
+      "operatingMargin": 14000000000,
+      "tax": 2500000000,
+      "netIncome": 11500000000
+    }
+  ]
+}
+5.2 Document Management & Checklist Verification APIs
+GET /api/v1/applications/:id/checklist
+Role: All Authenticated Users
+Deskripsi: Mendapatkan daftar seluruh dokumen checklist beserta status checklist per departemen (MKT, BS, CA, Legal).
+POST /api/v1/applications/:id/documents/upload
+Role: MKT, BS
+Request: multipart/form-data dengan field checklistId, file.
+Logic: Upload file ke S3/MinIO, simpan metadata di document_files, update checklist status ke UPLOADED.
+PATCH /api/v1/applications/:id/checklist/:checklistId/verify
+Role: BS, CA, LEGAL
+Request Body:
+json
+
+{
+  "department": "BS", // atau "CA", "LEGAL", "MKT"
+  "isVerified": true,
+  "registrationDate": "2026-09-24",
+  "expiredDate": "2027-09-24",
+  "dataSummary": "NIB 13 digit aktif, izin OSS RBA sesuai KBLI tambang 09900",
+  "notes": "Dokumen valid dan sesuai fisik asli"
+}
+5.3 Workflow Approval APIs
+POST /api/v1/applications/:id/transition
+Role: Dynamic based on target status
+Request Body:
+json
+
+{
+  "action": "SUBMIT_TO_BS" | "VERIFY_BS" | "RECOMMEND_CA" | "APPROVE_COMMITTEE" | "RETURN",
+  "comments": "Semua dokumen legalitas dan kapasitas finansial memenuhi kriteria risk LFI."
+}
+6. Frontend UI Component Breakdown
+Dashboard Overview (/applications):
+Data Table dengan filter Cabang, Status FAP, Rentang Tanggal.
+Badge status workflow dengan indikator kelengkapan dokumen.
+Form Stepper / Wizard (/applications/:id/edit):
+Step 1: Info Customer & PIC (Form profil, alamat, nomor kontak, izin usaha).
+Step 2: Struktur Saham & Pengurus (Tabel interaktif baris dinamis dengan progress bar total % saham).
+Step 3: Background Bisnis & Fasilitas Bank (Daftar proyek & grid fasilitas bank lain).
+Step 4: Rencana Pembiayaan & Unit (Pilihan skema, kalkulator simulasi angsuran, input unit alat berat).
+Step 5: Spreading Finansial 3 Tahun (Tabel spreadsheet 3 kolom dengan highlight otomatis jika neraca tidak balance).
+Document Verification Matrix Desk (/applications/:id/documents):
+Tampilan split screen: Kiri: List dokumen & checklist 4 pilar (MKT, BS, CA, Legal). Kanan: PDF / Image Viewer terintegrasi dengan zoom, rotate, dan status toggle.
+7. Security, Auditing & Error Handling Standards
+Error Response Format (RFC 7807 Standard):
+json
+
+{
+  "statusCode": 422,
+  "error": "Unprocessable Entity",
+  "message": "Validation failed",
+  "errors": [
+    {
+      "field": "stakeholders",
+      "detail": "Sum of shareholder percentage must be exactly 100%. Current sum: 95.50%"
+    }
+  ],
+  "timestamp": "2026-09-24T08:52:00.000Z"
+}
+Object Storage Security: Dokumen tidak boleh diakses lewat URL publik. Seluruh akses berkas wajib menggunakan Time-limited Pre-signed URL (maksimum validitas 15 menit).
+Audit Trail Immutability: Tabel approval_logs bersifat append-only (tidak diizinkan operasi UPDATE atau DELETE).
