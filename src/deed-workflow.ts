@@ -2,7 +2,7 @@ import {validateInput} from './input-validation';
 export const deedReviewLabels:Record<string,string>={DRAFT:'Draft',PENDING_CHECK:'Menunggu Arianti',PENDING_APPROVAL:'Menunggu Dellatra',APPROVED:'Disetujui',REJECTED:'Ditolak'};
 export class DeedWorkflowError extends Error{constructor(message:string,public status=422){super(message);}}
 const assert=(ok:unknown,message:string,status=422)=>{if(!ok)throw new DeedWorkflowError(message,status);};
-const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','infoAdded','parties','stakeholders'];
+const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','remarkCategoryIds','infoAdded','parties','stakeholders'];
 export function deedData(deed:any){return Object.fromEntries(fields.filter(key=>deed[key]!==undefined).map(key=>[key,structuredClone(deed[key])]));}
 export function reviewStatus(deed:any){return deed?.review?.status||'DRAFT';}
 export const deedPending=(deed:any)=>['PENDING_CHECK','PENDING_APPROVAL'].includes(reviewStatus(deed));
@@ -28,7 +28,7 @@ export function mergeLegal(previous:any,incoming:any){
  if(action==='SUBMIT'){
   assert(actor.role==='MKT','Hanya MKT yang dapat mengajukan akta.',403);assert(['DRAFT','REJECTED'].includes(status),'Akta sudah diajukan atau disetujui.',409);
   for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])assert(String(deed[key]||'').trim(),`${key} wajib diisi sebelum mengajukan akta.`);
-  assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId,'Kategori akta perubahan wajib dipilih.');
+  assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId||(Array.isArray(deed.remarkCategoryIds)&&deed.remarkCategoryIds.length),'Kategori akta perubahan wajib dipilih.');
 
   assert(Array.isArray(deed.stakeholders)&&deed.stakeholders.length,'Tambahkan stakeholder/shareholder sebelum mengajukan akta.');
   validateInput(deedData(deed),now,true);
