@@ -2,7 +2,7 @@ import {validateInput} from './input-validation';
 export const deedReviewLabels:Record<string,string>={DRAFT:'Draft',PENDING_CHECK:'Menunggu Arianti',PENDING_APPROVAL:'Menunggu Dellatra',APPROVED:'Disetujui',REJECTED:'Ditolak'};
 export class DeedWorkflowError extends Error{constructor(message:string,public status=422){super(message);}}
 const assert=(ok:unknown,message:string,status=422)=>{if(!ok)throw new DeedWorkflowError(message,status);};
-const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','remarkCategoryIds','infoAdded','parties','stakeholders'];
+const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','remarkCategoryIds','categoryRemarks','infoAdded','parties','stakeholders'];
 export function deedData(deed:any){return Object.fromEntries(fields.filter(key=>deed[key]!==undefined).map(key=>[key,structuredClone(deed[key])]));}
 export function reviewStatus(deed:any){return deed?.review?.status||'DRAFT';}
 export const deedPending=(deed:any)=>['PENDING_CHECK','PENDING_APPROVAL'].includes(reviewStatus(deed));
