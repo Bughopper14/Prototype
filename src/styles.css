@@ -150,7 +150,9 @@ nav button{min-height:46px;font-size:13px;font-weight:600}
   font-family: inherit;
   font-size: 13.5px;
   font-weight: 600;
-  cursor: pointer;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
   transition: all 0.2s ease;
   clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%, 16px 50%);
 }
@@ -174,7 +176,4 @@ nav button{min-height:46px;font-size:13px;font-weight:600}
   color: #475569 !important;
 }
 
-.chevron-step.inactive:hover {
-  background: #cbd5e1 !important;
-  color: #1e293b !important;
-}
+
