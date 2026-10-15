@@ -37,89 +37,76 @@ export default function App(){
 function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-green"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Periksa dokumen akta':user.role==='HEAD_BS'?'Approve dokumen akta':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Perbaiki akta yang ditolak':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
 function NewApplication({customers,onClose,onCreated}:{customers:any[],onClose:()=>void,onCreated:(id:string)=>void}){
- const [intakeStage,setIntakeStage]=useState(0);
- const [customerCategory,setCustomerCategory]=useState(customers.length?'EXISTING':'NEW');
- const [customerId,setCustomerId]=useState('');
+ const [customerCategory,setCustomerCategory]=useState(customers.length?"EXISTING":"NEW");
+ const [customerId,setCustomerId]=useState("");
  const [customer,setCustomer]=useState(blank(customerFields));
- const [profile,setProfile]=useState({...blank(profileFields),customerStatus:customers.length?'EXISTING':'NEW'});
- const [error,setError]=useState(''),[busy,setBusy]=useState(false);
+ const [profile,setProfile]=useState({...blank(profileFields),customerStatus:customers.length?"EXISTING":"NEW"});
+ const [error,setError]=useState(""),[busy,setBusy]=useState(false);
  const selectedCustomer=customers.find(c=>c.id===customerId);
- const fapCustomerKeys=['companyName','companyType','nib','npwp','establishmentActNo','establishmentDate'];
- const fapProfileKeys=['branchCode','companyAddress','city','province','postalCode','experienceYears','experienceMonths'];
- const preAnalysisCustomerFields=customerFields.filter(f=>!fapCustomerKeys.includes(f.key));
+ const fapCustomerKeys=["companyName","companyType","nib","npwp","establishmentActNo","establishmentDate"];
+ const fapProfileKeys=["branchCode","companyAddress","city","province","postalCode","experienceYears","experienceMonths"];
  const fapCustomerFields=customerFields.filter(f=>fapCustomerKeys.includes(f.key));
  const fapProfileFields=profileFields.filter(f=>fapProfileKeys.includes(f.key));
- const preAnalysisProfileFields=profileFields.filter(f=>f.key!=='customerStatus'&&!fapProfileKeys.includes(f.key));
- function changeCategory(value:string){setCustomerCategory(value);setCustomerId('');setError('');setProfile({...profile,customerStatus:value});}
- function continueToPreAnalysis(){
-  setError('');
-  if(customerCategory==='EXISTING'&&!selectedCustomer){setError('Select an existing customer to continue.');return;}
-  if(customerCategory==='NEW'){
-   const nib=String(customer.nib||'').replace(/\D/g,'');
-   const npwp=String(customer.npwp||'').replace(/\D/g,'');
-   if(!String(customer.companyName||'').trim()){setError('Enter the company name to complete FAP Stage.');return;}
-   if(nib.length!==13){setError('NIB must contain 13 digits to complete FAP Stage.');return;}
-   if(npwp.length<15||npwp.length>16){setError('NPWP must contain 15 or 16 digits to complete FAP Stage.');return;}
-  }
-  try{validateInput(customerCategory==='NEW'?customer:{});}catch(e:any){setError(e.message);return;}
-  setIntakeStage(1);
- }
+ function changeCategory(value:string){setCustomerCategory(value);setCustomerId("");setError("");setProfile({...profile,customerStatus:value});}
  async function create(){
-  setBusy(true);setError('');
+  setBusy(true);setError("");
   try{
-   validateInput(profile);
    let id=customerId;
-   if(customerCategory==='EXISTING'&&!selectedCustomer)throw new Error('Select an existing customer to continue.');
-   if(customerCategory==='NEW'){
-    const nib=String(customer.nib||'').replace(/\D/g,'');
-    const npwp=String(customer.npwp||'').replace(/\D/g,'');
-    if(!String(customer.companyName||'').trim())throw new Error('Enter the company name.');
-    if(nib.length!==13)throw new Error('NIB must contain 13 digits.');
-    if(npwp.length<15||npwp.length>16)throw new Error('NPWP must contain 15 or 16 digits.');
-    const created=await api('/customers','POST',customer);id=created.id;setCustomerId(id);setCustomerCategory('EXISTING');setProfile({...profile,customerStatus:'EXISTING'});
+   if(customerCategory==="EXISTING"&&!selectedCustomer)throw new Error("Select an existing customer to continue.");
+   if(customerCategory==="NEW"){
+    const nib=String(customer.nib||"").replace(/\D/g,"");
+    const npwp=String(customer.npwp||"").replace(/\D/g,"");
+    if(!String(customer.companyName||"").trim())throw new Error("Enter the company name.");
+    if(nib.length!==13)throw new Error("NIB must contain 13 digits.");
+    if(npwp.length<15||npwp.length>16)throw new Error("NPWP must contain 15 or 16 digits.");
+    validateInput(customer);
+    const created=await api("/customers","POST",customer);id=created.id;setCustomerId(id);setCustomerCategory("EXISTING");setProfile({...profile,customerStatus:"EXISTING"});
    }
-   const application=await api('/applications','POST',{...profile,customerId:id,customerStatus:customerCategory});
+   validateInput(profile);
+   const application=await api("/applications","POST",{...profile,customerId:id,customerStatus:customerCategory,stage:"FAP Stage"});
    onCreated(application.id);
-  }catch(e:any){setError(e.message||'Could not create the application. Please try again.');}
+  }catch(e:any){setError(e.message||"Could not create the application. Please try again.");}
   finally{setBusy(false);}
  }
  return <Modal title="New financing application" onClose={onClose}>
   <div className="modal-body">
-   <div className="intake-progress" aria-label="Application intake stages">
-    <div className={intakeStage===0?'active':''}><span>1</span><div><b>FAP Stage</b><small>Core application details</small></div></div>
-    <i className={intakeStage===1?'complete':''}/>
-    <div className={intakeStage===1?'active':''}><span>2</span><div><b>Pre-analysis</b><small>Business information</small></div></div>
+   <div className="intake-stage-heading">
+    <div>
+     <span className="eyebrow">FAP INTAKE</span>
+     <h3>FAP Stage</h3>
+     <p>Enter the core application and customer details. You can complete the remaining business profile directly in the application workspace after saving.</p>
+    </div>
    </div>
-   {intakeStage===0?<>
-    <div className="intake-stage-heading"><div><span className="eyebrow">STAGE 1 OF 2</span><h3>FAP Stage</h3><p>Enter the fields marked green in the FAP form. Your application date and FAP number are generated by the system.</p></div></div>
-    <div className="intake-system-fields"><div><span>Application date</span><b>{new Date().toLocaleDateString('en-GB')}</b></div><div><span>FAP registration number</span><b>Generated when the draft is created</b></div></div>
-    <label className="customer-category-select">Customer category
-     <select value={customerCategory} onChange={e=>changeCategory(e.target.value)}>
-      <option value="EXISTING">Existing customer</option><option value="NEW">New customer</option>
+   <div className="intake-system-fields">
+    <div><span>Application date</span><b>{new Date().toLocaleDateString("en-GB")}</b></div>
+    <div><span>FAP registration number</span><b>Generated automatically upon saving</b></div>
+   </div>
+   <label className="customer-category-select">Customer category
+    <select value={customerCategory} onChange={e=>changeCategory(e.target.value)}>
+     <option value="EXISTING">Existing customer</option><option value="NEW">New customer</option>
+    </select>
+   </label>
+   {customerCategory==="EXISTING"?<>
+    <label>Existing customer
+     <select value={customerId} onChange={e=>{setCustomerId(e.target.value);setError("");}}>
+      <option value="">Select an existing customer</option>{customers.map(c=><option value={c.id} key={c.id}>{c.companyName}</option>)}
      </select>
     </label>
-    {customerCategory==='EXISTING'?<>
-     <label>Existing customer
-      <select value={customerId} onChange={e=>{setCustomerId(e.target.value);setError('');}}>
-       <option value="">Select an existing customer</option>{customers.map(c=><option value={c.id} key={c.id}>{c.companyName}</option>)}
-      </select>
-     </label>
-     {selectedCustomer&&<section className="existing-customer-summary" aria-label="FAP customer details">
-      <div><h3>{selectedCustomer.companyName}</h3><span>{label(selectedCustomer.companyType)} customer</span></div>
-      <dl><div><dt>NIB</dt><dd>{selectedCustomer.nib||'—'}</dd></div><div><dt>NPWP</dt><dd>{selectedCustomer.npwp||'—'}</dd></div><div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo||'—'}</dd></div></dl>
-     </section>}
-    </>:<><h3 className="form-heading">Company details</h3><Fields fields={fapCustomerFields} value={customer} onChange={setCustomer}/></>}
-    <h3 className="form-heading">Branch, address and experience</h3>
-    <Fields fields={fapProfileFields} value={profile} onChange={setProfile}/>
-   </>:<>
-    <div className="intake-stage-heading"><div><span className="eyebrow">STAGE 2 OF 2</span><h3>Pre-analysis</h3><p>Complete the remaining business information. The internal review and department approval flow starts after you create the draft.</p></div></div>
-    {customerCategory==='NEW'&&<><h3 className="form-heading">Additional company details</h3><Fields fields={preAnalysisCustomerFields} value={customer} onChange={setCustomer}/></>}
-    <h3 className="form-heading">Business profile</h3>
-    <Fields fields={preAnalysisProfileFields} value={profile} onChange={setProfile}/>
-   </>}
+    {selectedCustomer&&<section className="existing-customer-summary" aria-label="FAP customer details">
+     <div><h3>{selectedCustomer.companyName}</h3><span>{label(selectedCustomer.companyType)} customer</span></div>
+     <dl><div><dt>NIB</dt><dd>{selectedCustomer.nib||"—"}</dd></div><div><dt>NPWP</dt><dd>{selectedCustomer.npwp||"—"}</dd></div><div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo||"—"}</dd></div></dl>
+    </section>}
+   </>:<><h3 className="form-heading">Company details</h3><Fields fields={fapCustomerFields} value={customer} onChange={setCustomer}/></>}
+   <h3 className="form-heading">Branch, address and experience</h3>
+   <Fields fields={fapProfileFields} value={profile} onChange={setProfile}/>
    {error&&<div className="error" role="alert">{error}</div>}
   </div>
-  <div className="modal-actions intake-modal-actions">{intakeStage===0?<><button className="button" onClick={onClose}>Cancel</button><button className="button primary" disabled={busy||(customerCategory==='EXISTING'&&!selectedCustomer)} onClick={continueToPreAnalysis}>Continue to Pre-analysis <ArrowRight size={15}/></button></>:<><button className="button" disabled={busy} onClick={()=>{setError('');setIntakeStage(0);}}><ArrowLeft size={15}/>Back to FAP Stage</button><button className="button primary" disabled={busy} onClick={create}>{busy?<Loader2 size={16} className="spin"/>:<Plus size={16}/>}Create application draft</button></>}</div>
+  <div className="modal-actions intake-modal-actions">
+   <button className="button" onClick={onClose} disabled={busy}>Cancel</button>
+   <button className="button primary" disabled={busy||(customerCategory==="EXISTING"&&!selectedCustomer)} onClick={create}>
+    {busy?"Saving...":"Save"}
+   </button>
+  </div>
  </Modal>;
 }
 function stakeholderEditorValues(s:any){const parts=String(s.name||'').trim().split(/\s+/);return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP'),title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};}
