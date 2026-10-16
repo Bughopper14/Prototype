@@ -585,7 +585,6 @@ function StakeholderModalDialog({
   onChangeValue: (val: any) => void;
   fields: Field[];
 }) {
-  const [ocrActiveTab, setOcrActiveTab] = useState<'structured' | 'raw'>('structured');
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -830,118 +829,78 @@ function StakeholderModalDialog({
               )}
             </div>
 
-            {/* TAB SWITCHER */}
-            <div className="ktp-ocr-tabs">
-              <button
-                type="button"
-                className={`ktp-ocr-tab ${ocrActiveTab === 'structured' ? 'active' : ''}`}
-                onClick={() => setOcrActiveTab('structured')}
-              >
-                Data Terstruktur ({parsed.nik ? '7 Field' : '0'})
-              </button>
-              <button
-                type="button"
-                className={`ktp-ocr-tab ${ocrActiveTab === 'raw' ? 'active' : ''}`}
-                onClick={() => setOcrActiveTab('raw')}
-              >
-                Teks Mentah Scan (Raw Text)
-              </button>
-            </div>
-
-            {/* TAB 1: STRUCTURED DATA TILES */}
-            {ocrActiveTab === 'structured' ? (
-              <div className="ktp-structured-grid">
-                <div className="ktp-field-tile highlight">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">NOMOR INDUK KEPENDUDUKAN (NIK)</span>
-                    {parsed.nik && (
-                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nik', parsed.nik!)}>
-                        {copiedKey==='nik' ? <Check size={11}/> : <Copy size={11}/>}
-                        {copiedKey==='nik' ? 'Tersalin' : 'Salin'}
-                      </button>
-                    )}
-                  </div>
-                  <b className="ktp-field-val nik-val">{parsed.nik || '—'}</b>
-                </div>
-
-                <div className="ktp-field-tile">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">NAMA LENGKAP</span>
-                    {parsed.nama && (
-                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nama', parsed.nama!)}>
-                        {copiedKey==='nama' ? <Check size={11}/> : <Copy size={11}/>}
-                        {copiedKey==='nama' ? 'Tersalin' : 'Salin'}
-                      </button>
-                    )}
-                  </div>
-                  <b className="ktp-field-val">{parsed.nama || '—'}</b>
-                </div>
-
-                <div className="ktp-field-tile">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">TEMPAT / TGL LAHIR</span>
-                  </div>
-                  <span className="ktp-field-val">{parsed.tempatTglLahir || '—'}</span>
-                  {parsed.dateOfBirth && <small className="ktp-field-sub">Format ISO: {parsed.dateOfBirth}</small>}
-                </div>
-
-                <div className="ktp-field-tile">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">JENIS KELAMIN</span>
-                  </div>
-                  <span className="ktp-field-val">{parsed.gender === 'MALE' ? 'LAKI-LAKI (MALE)' : parsed.gender === 'FEMALE' ? 'PEREMPUAN (FEMALE)' : '—'}</span>
-                </div>
-
-                <div className="ktp-field-tile">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">STATUS PERKAWINAN</span>
-                  </div>
-                  <span className="ktp-field-val">{parsed.maritalStatus || parsed.status || '—'}</span>
-                </div>
-
-                <div className="ktp-field-tile">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">KEWARGANEGARAAN</span>
-                  </div>
-                  <span className="ktp-field-val">{parsed.kewarganegaraan || parsed.citizenship || '—'}</span>
-                </div>
-
-                <div className="ktp-field-tile full-width">
-                  <div className="ktp-field-meta">
-                    <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
-                    {parsed.alamat && (
-                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('alamat', `${parsed.alamat}, RT ${parsed.rt||'000'}/RW ${parsed.rw||'000'}, ${parsed.kelDesa||''}, ${parsed.kecamatan||''}`)}>
-                        {copiedKey==='alamat' ? <Check size={11}/> : <Copy size={11}/>}
-                        {copiedKey==='alamat' ? 'Tersalin' : 'Salin'}
-                      </button>
-                    )}
-                  </div>
-                  <span className="ktp-field-val address-val">
-                    {[parsed.alamat, parsed.rtRw ? `RT/RW ${parsed.rtRw}` : '', parsed.kelDesa ? `Kel. ${parsed.kelDesa}` : '', parsed.kecamatan ? `Kec. ${parsed.kecamatan}` : '', parsed.cityRegency, parsed.province].filter(Boolean).join(', ') || '—'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="ktp-raw-view">
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
-                  <span style={{fontSize:'11px',color:'#64748b'}}>Teks hasil scan line-by-line (bisa disalin & diedit):</span>
-                  {ocrText && (
-                    <button type="button" className="button small button-secondary" style={{padding:'2px 8px',fontSize:'10.5px'}} onClick={()=>copyToClipboard('all_raw', ocrText)}>
-                      {copiedKey==='all_raw' ? <Check size={11}/> : <Copy size={11}/>}
-                      {copiedKey==='all_raw' ? 'Semua Tersalin' : 'Salin Semua Teks'}
+            {/* STRUCTURED KTP DATA TILES */}
+            <div className="ktp-structured-grid">
+              <div className="ktp-field-tile highlight">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">NOMOR INDUK KEPENDUDUKAN (NIK)</span>
+                  {parsed.nik && (
+                    <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nik', parsed.nik!)}>
+                      {copiedKey==='nik' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey==='nik' ? 'Tersalin' : 'Salin'}
                     </button>
                   )}
                 </div>
-                <textarea
-                  className="ktp-ocr-textarea"
-                  rows={6}
-                  disabled={editorLocked}
-                  value={ocrText}
-                  onChange={e => onChangeValue({ ...curVal, ktpOcrText: e.target.value })}
-                  placeholder="Hasil teks yang terbaca pada gambar KTP akan otomatis muncul di sini..."
-                />
+                <b className="ktp-field-val nik-val">{parsed.nik || '—'}</b>
               </div>
-            )}
+
+              <div className="ktp-field-tile">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">NAMA LENGKAP</span>
+                  {parsed.nama && (
+                    <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nama', parsed.nama!)}>
+                      {copiedKey==='nama' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey==='nama' ? 'Tersalin' : 'Salin'}
+                    </button>
+                  )}
+                </div>
+                <b className="ktp-field-val">{parsed.nama || '—'}</b>
+              </div>
+
+              <div className="ktp-field-tile">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">TEMPAT / TGL LAHIR</span>
+                </div>
+                <span className="ktp-field-val">{parsed.tempatTglLahir || '—'}</span>
+                {parsed.dateOfBirth && <small className="ktp-field-sub">Format ISO: {parsed.dateOfBirth}</small>}
+              </div>
+
+              <div className="ktp-field-tile">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">JENIS KELAMIN</span>
+                </div>
+                <span className="ktp-field-val">{parsed.gender === 'MALE' ? 'LAKI-LAKI (MALE)' : parsed.gender === 'FEMALE' ? 'PEREMPUAN (FEMALE)' : '—'}</span>
+              </div>
+
+              <div className="ktp-field-tile">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">STATUS PERKAWINAN</span>
+                </div>
+                <span className="ktp-field-val">{parsed.maritalStatus || parsed.status || '—'}</span>
+              </div>
+
+              <div className="ktp-field-tile">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">KEWARGANEGARAAN</span>
+                </div>
+                <span className="ktp-field-val">{parsed.kewarganegaraan || parsed.citizenship || '—'}</span>
+              </div>
+
+              <div className="ktp-field-tile full-width">
+                <div className="ktp-field-meta">
+                  <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
+                  {parsed.alamat && (
+                    <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('alamat', `${parsed.alamat}, RT ${parsed.rt||'000'}/RW ${parsed.rw||'000'}, ${parsed.kelDesa||''}, ${parsed.kecamatan||''}`)}>
+                      {copiedKey==='alamat' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey==='alamat' ? 'Tersalin' : 'Salin'}
+                    </button>
+                  )}
+                </div>
+                <span className="ktp-field-val address-val">
+                  {[parsed.alamat, parsed.rtRw ? `RT/RW ${parsed.rtRw}` : '', parsed.kelDesa ? `Kel. ${parsed.kelDesa}` : '', parsed.kecamatan ? `Kec. ${parsed.kecamatan}` : '', parsed.cityRegency, parsed.province].filter(Boolean).join(', ') || '—'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
