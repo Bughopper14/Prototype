@@ -1739,3 +1739,43 @@ button:focus-visible, a:focus-visible {
   flex-direction: column;
   gap: 6px;
 }
+
+/* Wide Modal for Legal Deed (Edit / Tambah Akta) */
+.modal-legal-deed-wide {
+  width: 92vw !important;
+  max-width: 980px !important;
+  max-height: 90vh !important;
+}
+
+.modal-legal-deed-wide .modal-body {
+  max-height: calc(90vh - 140px) !important;
+  overflow-y: auto !important;
+  padding: 20px 24px !important;
+}
+
+.modal-legal-deed-wide .formgrid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px 18px !important;
+}
+
+.legal-unified-remarks-box {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-top: 16px !important;
+  padding: 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0, 32, 96, 0.04) !important;
+}
+
+.legal-tinymce-wrapper {
+  margin-top: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.legal-tinymce-wrapper .tox-tinymce {
+  border: none !important;
+}
