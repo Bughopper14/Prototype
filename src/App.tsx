@@ -35,148 +35,92 @@ export default function App(){
  if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
  if(!user)return <Login onLogin={setUser}/>;
  const navigate=(p:string)=>{setPage(p);setSelected(null);setMobile(false);};
- return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Tutup navigasi"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Tutup menu"><X size={20}/></button></div><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name==='Notifications'?'Notifikasi':name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}</button>)}</nav><div className="sidebar-bottom"><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.role==='MKT'?'Marketing':label(user.role)} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : user.role}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Hasil pemeriksaan dan approval akta yang perlu ditindaklanjuti.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{page==='Overview'&&<button className="button primary" onClick={()=>user.role==='MKT'?setNewOpen(true):notify('Pembuatan aplikasi tersedia untuk akun Marketing (MKT). Silakan masuk dengan akun MKT.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<section className="panel"><div className="panel-head"><h2>Customer directory <span>{customers.length}</span></h2><Users size={19}/></div><div className="customer-grid">{customers.map(c=><button className="customer-card" key={c.id} onClick={()=>{const a=rows.find(r=>r.customer_id===c.id);if(a)open(a.id);else notify('This customer has no applications yet. Use New application to create one.');}}><IconBox><Building2 size={21}/></IconBox><h3>{c.companyName}</h3><span className="muted">{label(c.companyType)}</span><dl><dt>NIB</dt><dd>{c.nib}</dd><dt>NPWP</dt><dd>{c.npwp}</dd></dl><span className="text-link">{rows.filter(r=>r.customer_id===c.id).length} applications <ArrowUpRight size={15}/></span></button>)}</div></section>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{newOpen&&<NewApplication customers={customers} onClose={()=>setNewOpen(false)} onCreated={id=>{setNewOpen(false);load();open(id);notify('Application created successfully');}}/>}{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
+  function startNewApplication(preselectedCustomerId?: string) {
+    if (user?.role !== 'MKT') {
+      notify('Pembuatan aplikasi tersedia untuk akun Marketing (MKT). Silakan masuk dengan akun MKT.');
+      return;
+    }
+    const defaultCategory = preselectedCustomerId ? 'EXISTING' : (customers.length ? 'EXISTING' : 'NEW');
+    const targetCust = preselectedCustomerId ? customers.find((c: any) => c.id === preselectedCustomerId) : (customers[0] || null);
+    const newAppDraft = {
+      ...blank(profileFields),
+      id: 'new',
+      isNew: true,
+      fapNumber: 'Auto (Generated on save)',
+      applicationDate: new Date().toISOString().slice(0, 10),
+      status: 'DRAFT',
+      stage: 'FAP Stage',
+      customerStatus: defaultCategory,
+      customerCategory: defaultCategory,
+      customerId: targetCust?.id || '',
+      customer: targetCust || blank(customerFields),
+      branchCode: 'JKT01',
+      locationStatus: 'OWNED',
+      industrySegment: 'MINING',
+      businessRole: 'CONTRACTOR',
+      pic: blank(picFields),
+      stakeholders: [],
+      projects: [],
+      bankReferences: [],
+      proposal: { ...blank(proposalFields), units: [] },
+      financialStatements: [],
+      documentChecks: [],
+      legal: { deeds: [] },
+      signoffs: [],
+      approvalLogs: [],
+    };
+    setDetailTab(0);
+    setSelected(newAppDraft);
+  }
+
+ return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Tutup navigasi"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Tutup menu"><X size={20}/></button></div><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name==='Notifications'?'Notifikasi':name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}</button>)}</nav><div className="sidebar-bottom"><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.role==='MKT'?'Marketing':label(user.role)} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : user.role}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Hasil pemeriksaan dan approval akta yang perlu ditindaklanjuti.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>user.role==='MKT'?startNewApplication():notify('Pembuatan aplikasi tersedia untuk akun Marketing (MKT). Silakan masuk dengan akun MKT.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<section className="panel"><div className="panel-head"><h2>Customer directory <span>{customers.length}</span></h2><Users size={19}/></div><div className="customer-grid">{customers.map(c=><button className="customer-card" key={c.id} onClick={()=>{const a=rows.find(r=>r.customer_id===c.id);if(a)open(a.id);else if(user.role==='MKT')startNewApplication(c.id);else notify('This customer has no applications yet. Use New application to create one.');}}><IconBox><Building2 size={21}/></IconBox><h3>{c.companyName}</h3><span className="muted">{label(c.companyType)}</span><dl><dt>NIB</dt><dd>{c.nib}</dd><dt>NPWP</dt><dd>{c.npwp}</dd></dl><span className="text-link">{rows.filter(r=>r.customer_id===c.id).length} applications <ArrowUpRight size={15}/></span></button>)}</div></section>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
 }
 function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-green"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Periksa dokumen akta':user.role==='HEAD_BS'?'Approve dokumen akta':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Perbaiki akta yang ditolak':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
-function NewApplication({customers,onClose,onCreated}:{customers:any[],onClose:()=>void,onCreated:(id:string)=>void}){
- const [customerCategory,setCustomerCategory]=useState(customers.length?"EXISTING":"NEW");
- const [customerId,setCustomerId]=useState("");
- const [customer,setCustomer]=useState(blank(customerFields));
- const [profile,setProfile]=useState<any>({...blank(profileFields),customerStatus:customers.length?"EXISTING":"NEW"});
- const [error,setError]=useState(""),[busy,setBusy]=useState(false);
- const selectedCustomer=customers.find(c=>c.id===customerId);
- const fapCustomerKeys=["companyName","companyType","nib","npwp","establishmentActNo","establishmentDate"];
- const fapProfileKeys=["branchCode","companyAddress","province","city","postalCode","experienceYears","experienceMonths"];
- const fapCustomerFields=customerFields.filter(f=>fapCustomerKeys.includes(f.key));
- const fapProfileFields=profileFields.filter(f=>fapProfileKeys.includes(f.key));
- function changeCategory(value:string){setCustomerCategory(value);setCustomerId("");setError("");setProfile({...profile,customerStatus:value});}
- async function create(){
-  setBusy(true);setError("");
-  try{
-   let id=customerId;
-   if(customerCategory==="EXISTING"&&!selectedCustomer)throw new Error("Select an existing customer to continue.");
-   if(customerCategory==="NEW"){
-    const nib=String(customer.nib||"").replace(/\D/g,"");
-    const npwp=String(customer.npwp||"").replace(/\D/g,"");
-    if(!String(customer.companyName||"").trim())throw new Error("Enter the company name.");
-    if(nib.length!==13)throw new Error("NIB must contain 13 digits.");
-    if(npwp.length<15||npwp.length>16)throw new Error("NPWP must contain 15 or 16 digits.");
-    validateInput(customer);
-    const created=await api("/customers","POST",customer);id=created.id;setCustomerId(id);setCustomerCategory("EXISTING");setProfile({...profile,customerStatus:"EXISTING"});
-   }
-   validateInput(profile);
-   const application=await api("/applications","POST",{...profile,customerId:id,customerStatus:customerCategory,stage:"FAP Stage"});
-   onCreated(application.id);
-  }catch(e:any){setError(e.message||"Could not create the application. Please try again.");}
-  finally{setBusy(false);}
- }
- const liveFapData: FapSheetData = {
-  fapNumber: 'Auto (Generated on save)',
-  applicationDate: new Date().toISOString(),
-  branchCode: profile.branchCode || '',
-  customerStatus: customerCategory,
-  companyName: customerCategory === 'EXISTING' ? (selectedCustomer?.companyName || '') : (customer.companyName || ''),
-  companyType: customerCategory === 'EXISTING' ? (selectedCustomer?.companyType || '') : (customer.companyType || ''),
-  nib: customerCategory === 'EXISTING' ? (selectedCustomer?.nib || '') : (customer.nib || ''),
-  npwp: customerCategory === 'EXISTING' ? (selectedCustomer?.npwp || '') : (customer.npwp || ''),
-  establishmentActNo: customerCategory === 'EXISTING' ? (selectedCustomer?.establishmentActNo || '') : (customer.establishmentActNo || ''),
-  establishmentDate: customerCategory === 'EXISTING' ? (selectedCustomer?.establishmentDate || '') : (customer.establishmentDate || ''),
-  companyAddress: profile.companyAddress || '',
-  city: profile.city || '',
-  province: profile.province || '',
-  postalCode: profile.postalCode || '',
-  experienceYears: profile.experienceYears || '',
-  experienceMonths: profile.experienceMonths || '',
-  mainBusiness: profile.mainBusiness || '',
-  latestDeedNo: '',
-  latestDeedDate: '',
-  phoneFax: '',
-  website: '',
-  email: '',
-  repaymentSource: '',
-  locationStatus: profile.locationStatus || '',
-  picName: '',
-  position: '',
-  phone: '',
-  picEmail: '',
-  currentAddress: '',
-  picCity: '',
-  picProvince: '',
-  picPostalCode: '',
-  selectedDeedNo: '',
-  stakeholders: [],
-  facilityPurpose: '',
-  financingMethod: '',
-  financingValue: '',
-  downPaymentValue: '',
-  interestRate: '',
-  tenorMonths: '',
-  paymentMethod: '',
-  industrySegment: '',
-  businessRole: '',
-  proposal: null,
-  projects: [],
-  bankReferences: [],
-  financialStatements: [],
-  units: [],
-  assetSummaryHeLiuGong: '',
-  assetSummaryTruckLiuGong: '',
-  assetSummaryHeNonLiuGong: '',
-  assetSummaryTruckNonLiuGong: '',
- };
-
- return <Modal title="New financing application" onClose={onClose} className="modal-side-by-side">
-  <div className="modal-side-by-side-body">
-   <div className="modal-side-form-pane">
-    <div className="intake-stage-heading">
-     <div>
-      <span className="eyebrow">FAP INTAKE</span>
-      <h3>FAP Stage</h3>
-      <p>Enter the core application and customer details. You can complete the remaining business profile directly in the application workspace after saving.</p>
-     </div>
-    </div>
-    <div className="intake-system-fields">
-     <div><span>Application date</span><b>{new Date().toLocaleDateString("en-GB")}</b></div>
-     <div><span>FAP registration number</span><b>Generated automatically upon saving</b></div>
-    </div>
-    <label className="customer-category-select">Customer category
-     <select value={customerCategory} onChange={e=>changeCategory(e.target.value)}>
-      <option value="EXISTING">Existing customer</option><option value="NEW">New customer</option>
-     </select>
-    </label>
-    {customerCategory==="EXISTING"?<>
-     <label>Existing customer
-      <select value={customerId} onChange={e=>{setCustomerId(e.target.value);setError("");}}>
-       <option value="">Select an existing customer</option>{customers.map(c=><option value={c.id} key={c.id}>{c.companyName}</option>)}
-      </select>
-     </label>
-     {selectedCustomer&&<section className="existing-customer-summary" aria-label="FAP customer details">
-      <div><h3>{selectedCustomer.companyName}</h3><span>{label(selectedCustomer.companyType)} customer</span></div>
-      <dl><div><dt>NIB</dt><dd>{selectedCustomer.nib||"—"}</dd></div><div><dt>NPWP</dt><dd>{selectedCustomer.npwp||"—"}</dd></div><div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo||"—"}</dd></div></dl>
-     </section>}
-    </>:<><h3 className="form-heading">Company details</h3><Fields fields={fapCustomerFields} value={customer} onChange={setCustomer}/></>}
-    <h3 className="form-heading">Branch, address and experience</h3>
-    <Fields fields={fapProfileFields} value={profile} onChange={setProfile}/>
-    {error&&<div className="error" role="alert">{error}</div>}
-   </div>
-
-   <div className="modal-side-preview-pane">
-    <FapSheetPreview data={liveFapData} compact={true} />
-   </div>
-  </div>
-
-  <div className="modal-actions intake-modal-actions">
-   <button className="button" onClick={onClose} disabled={busy}>Cancel</button>
-   <button className="button primary" disabled={busy||(customerCategory==="EXISTING"&&!selectedCustomer)} onClick={create}>
-    {busy?"Saving...":"Save"}
-   </button>
-  </div>
- </Modal>;
-}
+// Note: New application process has been merged directly into Detail view (Tab 0 FAP Intake).
 function stakeholderEditorValues(s:any){const parts=String(s.name||'').trim().split(/\s+/);return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP'),title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};}
 function stakeholderForSave(s:any){const first=s.firstName||'',last=s.lastName||'',name=[first,s.middleName,last].map((x:string)=>String(x||'').trim()).filter(Boolean).join(' ')||s.name||'';return {...s,name,position:s.designation&&s.designation!=='NONE'?s.designation:s.position||'Shareholder',nationalityType:s.citizenship==='INDONESIAN'?'WNI':'WNA',shareAmount:s.depositedCapital??0,sharePercentage:s.sharePercentage??0,taxNumber:null};}
-function Detail({value:a,user,initialTab=0,onBack,onChange,notify}:{value:any,user:any,initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,notify:(s:string)=>void}){const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));const [submitFapConfirm,setSubmitFapConfirm]=useState(false);useEffect(()=>{if(a.stage)setActiveStage(a.stage);else if(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status))setActiveStage('Pre-analysis');else setActiveStage('FAP Stage');},[a.id,a.stage,a.status]);const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);const [tab,setTab]=useState(initialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
+function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustomerCreated,notify}:{value:any,user:any,customers?:any[],initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,onCustomerCreated?:(c:any)=>void,notify:(s:string)=>void}){
+ const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(customers.length?'EXISTING':'NEW'));
+ const [customerId,setCustomerId]=useState<string>(()=>a.customerId||a.customer_id||a.customer?.id||(customers[0]?.id||''));
+ const [customerDraft,setCustomerDraft]=useState<any>(()=>a.customer?structuredClone(a.customer):blank(customerFields));
+ const selectedCustomer=customers.find((c:any)=>c.id===customerId);
+ const fapCustomerKeys=['companyName','companyType','nib','npwp','establishmentActNo','establishmentDate'];
+ const fapCustomerFields=customerFields.filter(f=>fapCustomerKeys.includes(f.key));
+ function changeCategory(value:string){
+  setCustomerCategory(value);setError('');
+  setDraft((prev:any)=>({...prev,customerStatus:value,customerCategory:value}));
+ }
+ async function saveNewApplication(){
+  setBusy(true);setError('');
+  try{
+   let id=customerId;
+   if(customerCategory==='EXISTING'){
+    if(!selectedCustomer)throw new Error('Pilih existing customer terlebih dahulu.');
+    id=selectedCustomer.id;
+   }else{
+    const nib=String(customerDraft.nib||'').replace(/\D/g,'');
+    const npwp=String(customerDraft.npwp||'').replace(/\D/g,'');
+    if(!String(customerDraft.companyName||'').trim())throw new Error('Nama perusahaan calon debitur wajib diisi.');
+    if(nib.length!==13)throw new Error('NIB wajib terdiri dari 13 digit angka.');
+    if(npwp.length<15||npwp.length>16)throw new Error('NPWP wajib terdiri dari 15 atau 16 digit angka.');
+    validateInput(customerDraft);
+    const createdCust=await api('/customers','POST',customerDraft);
+    id=createdCust.id;
+    setCustomerId(id);
+    if(onCustomerCreated)onCustomerCreated(createdCust);
+   }
+   validateInput(draft);
+   const {isNew,customer,id:_draftId,...profileData}=draft;
+   const application=await api('/applications','POST',{...profileData,customerId:id,customerStatus:customerCategory,stage:'FAP Stage'});
+   notify(`Aplikasi berhasil dibuat dengan nomor ${application.fapNumber}`);
+   const fullApp=await api(`/applications/${application.id}`);
+   setDraft(structuredClone(fullApp));
+   onChange(fullApp);
+  }catch(e:any){setError(e.message||'Gagal membuat aplikasi baru. Silakan coba lagi.');}
+  finally{setBusy(false);}
+ }
+const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));const [submitFapConfirm,setSubmitFapConfirm]=useState(false);useEffect(()=>{if(a.stage)setActiveStage(a.stage);else if(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status))setActiveStage('Pre-analysis');else setActiveStage('FAP Stage');},[a.id,a.stage,a.status]);const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);const [tab,setTab]=useState(initialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
  const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
  async function submitCustomerDetail(){
   setError('');
@@ -221,17 +165,24 @@ function Detail({value:a,user,initialTab=0,onBack,onChange,notify}:{value:any,us
   } finally {
     setBusy(false);
   }
- } const liveDetailFapData: FapSheetData = {
-  fapNumber: a.fapNumber,
-  applicationDate: a.applicationDate,
-  branchCode: draft.branchCode || a.branchCode,
-  customerStatus: draft.customerStatus || a.customerStatus,
-  companyName: a.customer?.companyName,
-  companyType: a.customer?.companyType,
-  nib: a.customer?.nib,
-  npwp: a.customer?.npwp,
-  establishmentActNo: a.customer?.establishmentActNo,
-  establishmentDate: a.customer?.establishmentDate,
+ }const liveCompanyName=customerCategory==='EXISTING'?(selectedCustomer?.companyName||a.customer?.companyName||''):(customerDraft.companyName||draft.customer?.companyName||a.customer?.companyName||'');
+ const liveCompanyType=customerCategory==='EXISTING'?(selectedCustomer?.companyType||a.customer?.companyType||''):(customerDraft.companyType||draft.customer?.companyType||a.customer?.companyType||'');
+ const liveNib=customerCategory==='EXISTING'?(selectedCustomer?.nib||a.customer?.nib||''):(customerDraft.nib||draft.customer?.nib||a.customer?.nib||'');
+ const liveNpwp=customerCategory==='EXISTING'?(selectedCustomer?.npwp||a.customer?.npwp||''):(customerDraft.npwp||draft.customer?.npwp||a.customer?.npwp||'');
+ const liveEstablishmentActNo=customerCategory==='EXISTING'?(selectedCustomer?.establishmentActNo||a.customer?.establishmentActNo||''):(customerDraft.establishmentActNo||draft.customer?.establishmentActNo||a.customer?.establishmentActNo||'');
+ const liveEstablishmentDate=customerCategory==='EXISTING'?(selectedCustomer?.establishmentDate||a.customer?.establishmentDate||''):(customerDraft.establishmentDate||draft.customer?.establishmentDate||a.customer?.establishmentDate||'');
+
+ const liveDetailFapData: FapSheetData = {
+  fapNumber: draft.isNew ? 'Auto (Generated on save)' : (draft.fapNumber || a.fapNumber || '—'),
+  applicationDate: draft.applicationDate || a.applicationDate || new Date().toISOString(),
+  branchCode: draft.branchCode || a.branchCode || '',
+  customerStatus: customerCategory || draft.customerStatus || a.customerStatus || 'EXISTING',
+  companyName: liveCompanyName,
+  companyType: liveCompanyType,
+  nib: liveNib,
+  npwp: liveNpwp,
+  establishmentActNo: liveEstablishmentActNo,
+  establishmentDate: liveEstablishmentDate,
   companyAddress: draft.companyAddress,
   city: draft.city,
   province: draft.province,
@@ -268,13 +219,197 @@ function Detail({value:a,user,initialTab=0,onBack,onChange,notify}:{value:any,us
   assetSummaryTruckLiuGong: a.assetSummaryTruckLiuGong,
   assetSummaryHeNonLiuGong: a.assetSummaryHeNonLiuGong,
   assetSummaryTruckNonLiuGong: a.assetSummaryTruckNonLiuGong,
-};useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
+};useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&(Boolean(draft.isNew)||['DRAFT','RETURNED'].includes(a.status)),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
  async function save(){setBusy(true);setError('');try{const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);const body=tab===0?{profile:draft,pic:draft.pic||blank(picFields)}:tab===2?{projects:draft.projects,bankReferences:draft.bankReferences,proposal:draft.proposal}:tab===3?{proposal:draft.proposal}:tab===4?{financialStatements:draft.financialStatements}:{legal:draft.legal||{},...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})};const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:'Pre-analysis'});const nextApp={...a,...v,stage:'Pre-analysis'};setDraft((prev:any)=>({...prev,...nextApp}));onChange(nextApp);notify('Changes saved');}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  const master=useMasterData();const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
  async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Akta tidak ditemukan.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  useEffect(()=>{if(tab!==1)return;const timer=setInterval(()=>api('/applications/'+a.id).then(onChange).catch(()=>{}),15000);return()=>clearInterval(timer);},[tab,a.id]);
- return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><h1>{a.customer.companyName}</h1><p>{label(a.industrySegment)} <span>·</span> {a.city} <span>·</span> Created {date(a.applicationDate)}</p></div><Badge status={a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${(activeStage||draft.stage||a.stage||'FAP Stage')===st?'active':'inactive'}`} style={{cursor:(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')?'pointer':'default'}} onClick={()=>{if(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')setActiveStage(st);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{a.proposal?.tenorMonths||'—'} months</b></div><div><span>Customer category</span><b>{label(a.customer.companyType)}</b></div><div><span>Documents verified</span><b>{a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / {a.documentChecks.length}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{setTab(id);setError('');}}>{tabNumbers[id]!==undefined&&<span>{tabNumbers[id]}</span>}{tabs[id]}{id===6&&<em>{a.documentChecks.length}</em>}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<><div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}><div style={{display:'flex',alignItems:'center',gap:'8px'}}><Building2 size={18}/><span><b>{a.customer.companyName}</b> · NIB {a.customer.nib} · NPWP {a.customer.npwp}</span></div><div style={{display:'flex',alignItems:'center',gap:'8px'}}><button type="button" className="button small" onClick={()=>window.print()} title="Buka halaman cetak print dokumen Excel FAP (A4)" style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'#ffffff',color:'#0f172a',border:'1px solid #cbd5e1'}}><Printer size={14}/> Print</button><div className="fap-tab-layout-toggle" style={{margin:0}}><button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Tutup Side-by-side":"Buka Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Aktif)":"Buka Side-by-side FAP"}</button></div></div></div>{!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData}/></div>}{sideBySide?<div className="fap-detail-split-container"><div className="fap-detail-form-col"><div className="business-sections"><div className="business-section"><div className="business-section-heading"><div><h3>Kantor Pendaftaran & Status Tempat Usaha</h3><p>Cabang registrasi aplikasi, status relasi debitur, dan kepemilikan domisili usaha.</p></div></div><Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Alamat Kantor & Kontak Resmi Perusahaan</h3><p>Domisili operasional, kota, provinsi, kelurahan, kode pos, email resmi, telepon, dan website.</p></div></div><Fields fields={profileFields.filter(f=>['companyAddress','province','city','village','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Profil Usaha & Pengalaman Operasional</h3><p>Bidang usaha utama, sektor industri, peran bisnis, lama beroperasi, dan sumber angsuran.</p></div></div><Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Ringkasan Legalitas Akta Perusahaan</h3><p>Nomor dan tanggal akta perubahan anggaran dasar terakhir.</p></div></div><Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Kontak Utama / Penanggung Jawab (PIC)</h3><p>Identitas, jabatan, nomor kontak langsung, dan alamat domisili PIC untuk verifikasi lapangan.</p></div></div><Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/></div></div></div><div className="fap-detail-preview-col"><FapSheetPreview data={liveDetailFapData}/></div></div>:<div className="business-sections"><div className="business-section"><div className="business-section-heading"><div><h3>Kantor Pendaftaran & Status Tempat Usaha</h3><p>Cabang registrasi aplikasi, status relasi debitur, dan kepemilikan domisili usaha.</p></div></div><Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Alamat Kantor & Kontak Resmi Perusahaan</h3><p>Domisili operasional, kota, provinsi, kelurahan, kode pos, email resmi, telepon, dan website.</p></div></div><Fields fields={profileFields.filter(f=>['companyAddress','province','city','village','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Profil Usaha & Pengalaman Operasional</h3><p>Bidang usaha utama, sektor industri, peran bisnis, lama beroperasi, dan sumber angsuran.</p></div></div><Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Ringkasan Legalitas Akta Perusahaan</h3><p>Nomor dan tanggal akta perubahan anggaran dasar terakhir.</p></div></div><Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Kontak Utama / Penanggung Jawab (PIC)</h3><p>Identitas, jabatan, nomor kontak langsung, dan alamat domisili PIC untuk verifikasi lapangan.</p></div></div><Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/></div></div>}</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><div className="business-contract-bank-grid"><section className="business-section"><Repeater title="Project contracts" description="Kontrak proyek dan aktivitas bisnis yang sedang berjalan." fields={projectFields} rows={draft.projects} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/></section><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section></div><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>setDraft({...draft,legal})} onStakeholdersChange={(legal,stakeholders)=>setDraft({...draft,legal,stakeholders})}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=><button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{setComments('');setTransition(action);setError('');}}>{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>)}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}</>;
+ return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><h1>{draft.isNew ? (customerCategory === "EXISTING" ? (selectedCustomer?.companyName || "Pilih Debitur / Buat Aplikasi Baru") : (customerDraft.companyName || "Aplikasi Pembiayaan Baru")) : (a.customer?.companyName || "Aplikasi Pembiayaan")}</h1><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(a.industrySegment)} <span>·</span> {a.city} <span>·</span> Created {date(a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${(activeStage||draft.stage||a.stage||'FAP Stage')===st?'active':'inactive'}`} style={{cursor:(st==='FAP Stage'||(!draft.isNew&&(activeStage==='Pre-analysis'||a.stage==='Pre-analysis')))?'pointer':'default'}} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu untuk melanjutkan ke tahap berikutnya.');return;}if(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')setActiveStage(st);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu sebelum membuka tab lain.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Simpan aplikasi terlebih dahulu':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabNumbers[id]!==undefined&&<span>{tabNumbers[id]}</span>}{tabs[id]}{id===6&&a.documentChecks&&<em>{a.documentChecks.length}</em>}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<><div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}><div style={{display:'flex',alignItems:'center',gap:'8px'}}><Building2 size={18}/><span><b>{customerCategory==='EXISTING'?(selectedCustomer?.companyName||'Belum memilih debitur'):(customerDraft.companyName||'Calon Debitur Baru')}</b> · NIB {customerCategory==='EXISTING'?(selectedCustomer?.nib||'—'):(customerDraft.nib||'—')} · NPWP {customerCategory==='EXISTING'?(selectedCustomer?.npwp||'—'):(customerDraft.npwp||'—')}</span></div><div style={{display:'flex',alignItems:'center',gap:'8px'}}><button type="button" className="button small" onClick={()=>window.print()} title="Buka halaman cetak print dokumen Excel FAP (A4)" style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'#ffffff',color:'#0f172a',border:'1px solid #cbd5e1'}}><Printer size={14}/> Print</button><div className="fap-tab-layout-toggle" style={{margin:0}}><button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Tutup Side-by-side":"Buka Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Aktif)":"Buka Side-by-side FAP"}</button></div></div></div>{!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData}/></div>}{sideBySide?<div className="fap-detail-split-container"><div className="fap-detail-form-col"><div className="business-sections"><div className="business-section intake-section-merged">
+  <div className="business-section-heading">
+    <div>
+      <span className="eyebrow" style={{display:'block',color:'#d97706',fontWeight:700,fontSize:'0.75rem',letterSpacing:'0.05em',marginBottom:4}}>FAP INTAKE</span>
+      <h3>FAP Stage · Core Application & Customer Details</h3>
+      <p>Enter the core application and customer details. You can complete the remaining business profile directly in this workspace.</p>
+    </div>
+  </div>
+  <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
+    <div>
+      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
+      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
+    </div>
+    <div>
+      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP registration number</span>
+      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
+    </div>
+  </div>
+  <div className="customer-category-selector-box" style={{marginBottom:16}}>
+    <label className="customer-category-select">
+      Customer category
+      <select 
+        value={customerCategory} 
+        disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
+        onChange={e => changeCategory(e.target.value)}
+      >
+        <option value="EXISTING">Existing customer</option>
+        <option value="NEW">New customer</option>
+      </select>
+    </label>
+  </div>
+  {customerCategory === 'EXISTING' ? (
+    <>
+      <div className="existing-customer-picker" style={{marginBottom:16}}>
+        <label>
+          Existing customer
+          <select 
+            value={customerId} 
+            disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+            onChange={e => {
+              const cid = e.target.value;
+              setCustomerId(cid);
+              setError('');
+              const cust = customers.find((c: any) => c.id === cid);
+              if (cust) {
+                setDraft((prev: any) => ({
+                  ...prev,
+                  customerId: cid,
+                  customer: cust,
+                }));
+              }
+            }}
+          >
+            <option value="">Select an existing customer</option>
+            {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
+          </select>
+        </label>
+      </div>
+      {selectedCustomer && (
+        <section className="existing-customer-summary" aria-label="FAP customer details">
+          <div>
+            <h3>{selectedCustomer.companyName}</h3>
+            <span>{label(selectedCustomer.companyType)} customer</span>
+          </div>
+          <dl>
+            <div><dt>NIB</dt><dd>{selectedCustomer.nib || '—'}</dd></div>
+            <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
+            <div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
+          </dl>
+        </section>
+      )}
+    </>
+  ) : (
+    <div className="new-customer-fields-block" style={{marginTop:12}}>
+      <div style={{marginBottom:12}}>
+        <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company details</h4>
+        <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Identitas badan usaha baru (Nama PT/CV, tipe usaha, NIB 13 digit, NPWP 15-16 digit, dan akta pendirian).</p>
+      </div>
+      <Fields 
+        fields={fapCustomerFields} 
+        value={customerDraft} 
+        disabled={!canEdit} 
+        onChange={c => {
+          setCustomerDraft(c);
+          setDraft((prev: any) => ({
+            ...prev,
+            customer: c,
+          }));
+        }} 
+      />
+    </div>
+  )}
+</div><div className="business-section"><div className="business-section-heading"><div><h3>Kantor Pendaftaran & Status Tempat Usaha</h3><p>Cabang registrasi aplikasi, status relasi debitur, dan kepemilikan domisili usaha.</p></div></div><Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Alamat Kantor & Kontak Resmi Perusahaan</h3><p>Domisili operasional, kota, provinsi, kelurahan, kode pos, email resmi, telepon, dan website.</p></div></div><Fields fields={profileFields.filter(f=>['companyAddress','province','city','village','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Profil Usaha & Pengalaman Operasional</h3><p>Bidang usaha utama, sektor industri, peran bisnis, lama beroperasi, dan sumber angsuran.</p></div></div><Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Ringkasan Legalitas Akta Perusahaan</h3><p>Nomor dan tanggal akta perubahan anggaran dasar terakhir.</p></div></div><Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Kontak Utama / Penanggung Jawab (PIC)</h3><p>Identitas, jabatan, nomor kontak langsung, dan alamat domisili PIC untuk verifikasi lapangan.</p></div></div><Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/></div></div></div><div className="fap-detail-preview-col"><FapSheetPreview data={liveDetailFapData}/></div></div>:<div className="business-sections"><div className="business-section intake-section-merged">
+  <div className="business-section-heading">
+    <div>
+      <span className="eyebrow" style={{display:'block',color:'#d97706',fontWeight:700,fontSize:'0.75rem',letterSpacing:'0.05em',marginBottom:4}}>FAP INTAKE</span>
+      <h3>FAP Stage · Core Application & Customer Details</h3>
+      <p>Enter the core application and customer details. You can complete the remaining business profile directly in this workspace.</p>
+    </div>
+  </div>
+  <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
+    <div>
+      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
+      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
+    </div>
+    <div>
+      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP registration number</span>
+      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
+    </div>
+  </div>
+  <div className="customer-category-selector-box" style={{marginBottom:16}}>
+    <label className="customer-category-select">
+      Customer category
+      <select 
+        value={customerCategory} 
+        disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
+        onChange={e => changeCategory(e.target.value)}
+      >
+        <option value="EXISTING">Existing customer</option>
+        <option value="NEW">New customer</option>
+      </select>
+    </label>
+  </div>
+  {customerCategory === 'EXISTING' ? (
+    <>
+      <div className="existing-customer-picker" style={{marginBottom:16}}>
+        <label>
+          Existing customer
+          <select 
+            value={customerId} 
+            disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+            onChange={e => {
+              const cid = e.target.value;
+              setCustomerId(cid);
+              setError('');
+              const cust = customers.find((c: any) => c.id === cid);
+              if (cust) {
+                setDraft((prev: any) => ({
+                  ...prev,
+                  customerId: cid,
+                  customer: cust,
+                }));
+              }
+            }}
+          >
+            <option value="">Select an existing customer</option>
+            {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
+          </select>
+        </label>
+      </div>
+      {selectedCustomer && (
+        <section className="existing-customer-summary" aria-label="FAP customer details">
+          <div>
+            <h3>{selectedCustomer.companyName}</h3>
+            <span>{label(selectedCustomer.companyType)} customer</span>
+          </div>
+          <dl>
+            <div><dt>NIB</dt><dd>{selectedCustomer.nib || '—'}</dd></div>
+            <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
+            <div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
+          </dl>
+        </section>
+      )}
+    </>
+  ) : (
+    <div className="new-customer-fields-block" style={{marginTop:12}}>
+      <div style={{marginBottom:12}}>
+        <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company details</h4>
+        <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Identitas badan usaha baru (Nama PT/CV, tipe usaha, NIB 13 digit, NPWP 15-16 digit, dan akta pendirian).</p>
+      </div>
+      <Fields 
+        fields={fapCustomerFields} 
+        value={customerDraft} 
+        disabled={!canEdit} 
+        onChange={c => {
+          setCustomerDraft(c);
+          setDraft((prev: any) => ({
+            ...prev,
+            customer: c,
+          }));
+        }} 
+      />
+    </div>
+  )}
+</div><div className="business-section"><div className="business-section-heading"><div><h3>Kantor Pendaftaran & Status Tempat Usaha</h3><p>Cabang registrasi aplikasi, status relasi debitur, dan kepemilikan domisili usaha.</p></div></div><Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Alamat Kantor & Kontak Resmi Perusahaan</h3><p>Domisili operasional, kota, provinsi, kelurahan, kode pos, email resmi, telepon, dan website.</p></div></div><Fields fields={profileFields.filter(f=>['companyAddress','province','city','village','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Profil Usaha & Pengalaman Operasional</h3><p>Bidang usaha utama, sektor industri, peran bisnis, lama beroperasi, dan sumber angsuran.</p></div></div><Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Ringkasan Legalitas Akta Perusahaan</h3><p>Nomor dan tanggal akta perubahan anggaran dasar terakhir.</p></div></div><Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Kontak Utama / Penanggung Jawab (PIC)</h3><p>Identitas, jabatan, nomor kontak langsung, dan alamat domisili PIC untuk verifikasi lapangan.</p></div></div><Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/></div></div>}</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><div className="business-contract-bank-grid"><section className="business-section"><Repeater title="Project contracts" description="Kontrak proyek dan aktivitas bisnis yang sedang berjalan." fields={projectFields} rows={draft.projects} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/></section><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section></div><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>setDraft({...draft,legal})} onStakeholdersChange={(legal,stakeholders)=>setDraft({...draft,legal,stakeholders})}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Batal / Kembali ke Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Simpan & Buat Aplikasi</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=><button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{setComments('');setTransition(action);setError('');}}>{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>)}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}</>;
 }
 function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:any[])=>void,disabled:boolean}){const total=rows.reduce((sum,x)=>sum+Number(x.sharePercentage||0),0),isExceeded=total>100.01;return <><div className={'ownership '+(isExceeded?'unbalanced':'balanced')}><div><strong>{total.toFixed(2)}%</strong><span>Total ownership · maks 100% (tidak wajib 100%)</span></div><div className="ownership-bar"><i style={{width:Math.min(100,total)+'%',background:isExceeded?'#dc2626':'#002c5f'}}/></div></div>{isExceeded&&<p style={{color:'#dc2626',fontSize:'12px',marginTop:'6px',fontWeight:600}}>⚠ Total kepemilikan saham melebihi 100%. Mohon sesuaikan kembali porsi saham masing-masing pihak.</p>}<Repeater title="Stakeholders" fields={stakeholderFields} rows={rows.map(stakeholderEditorValues)} disabled={disabled} onChange={onChange}/></>;}
 function FinancialEditor({rows,onChange,disabled}:{rows:any[],onChange:(r:any[])=>void,disabled:boolean}){const change=(i:number,k:string,v:any)=>onChange(rows.map((r,j)=>j===i?{...r,[k]:v}:r));return <><div className="section-title"><span className="muted">Enter exact values; totals are checked when saved.</span>{!disabled&&rows.length<3&&<button className="button small" onClick={()=>onChange([...rows,{...blank(financialFields),fiscalYear:new Date().getFullYear()-3+rows.length,isAudited:false}])}><Plus size={15}/>Add fiscal year</button>}</div><div className="table-scroll"><table className="financial-table"><thead><tr><th>FINANCIAL METRIC</th>{rows.map((r,i)=><th key={i}><div className="year-input"><input aria-label="Fiscal year" type="number" {...inputLimits('fiscalYear')} disabled={disabled} value={r.fiscalYear} onChange={e=>change(i,'fiscalYear',e.target.value)}/>{!disabled&&<button className="icon-button" onClick={()=>onChange(rows.filter((_,j)=>j!==i))}><X size={14}/></button>}</div><label className="checkbox"><input type="checkbox" disabled={disabled} checked={r.isAudited} onChange={e=>change(i,'isAudited',e.target.checked)}/>Audited</label></th>)}</tr></thead><tbody>{financialFields.map(f=><tr key={f.key} className={f.key.startsWith('total')||f.key==='netIncome'?'total-row':''}><td>{f.label}</td>{rows.map((r,i)=><td key={i}><input aria-label={`${r.fiscalYear} ${f.label}`} type="number" step="0.01" disabled={disabled} value={r[f.key]} onChange={e=>change(i,f.key,e.target.value)}/></td>)}</tr>)}<tr className="balance-row"><td>Balance check</td>{rows.map((r,i)=>{const ok=Number(r.currentAssets)+Number(r.nonCurrentAssets)===Number(r.totalAssets)&&Number(r.currentLiabilities)+Number(r.nonCurrentLiabilities)===Number(r.totalLiabilities)&&Number(r.totalAssets)===Number(r.totalLiabilities)+Number(r.equity)&&Number(r.totalAssets)===Number(r.totalLiabAndEquity);return <td key={i}><span className={ok?'text-green':'text-red'}>{ok?'✓ Balanced':'! Unbalanced'}</span></td>;})}</tr>{[['Current ratio','currentAssets','currentLiabilities'],['Debt / equity','totalLiabilities','equity'],['Net profit margin','netIncome','revenue']].map(([name,n,d])=><tr key={name}><td>{name}</td>{rows.map((r,i)=><td key={i} className="ratio">{Number(r[d])?((Number(r[n])/Number(r[d]))*(name==='Net profit margin'?100:1)).toFixed(2)+(name==='Net profit margin'?'%':'×'):'N/A'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<div className="empty-small">Add three fiscal years to begin financial spreading.</div>}<p className="field-note">DSCR is unavailable because the specification does not capture depreciation. Zero-denominator ratios are shown as N/A.</p></>;}
