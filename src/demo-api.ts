@@ -1,3 +1,4 @@
+import { SCENARIO_CUSTOMERS, SCENARIO_APPLICATIONS } from './demo-scenarios-data';
 import {profileFields} from './fields';
 import {mergeLegal,deedTransition,deedBaseline,canEditLegal,reviewStatus,saveSingleDeed} from './deed-workflow';
 import {validateWrite} from './input-validation';
@@ -20,34 +21,39 @@ const sampleDeedsForApp=(i:number)=>[
  {id:`seed-deed-${i}-3`,type:"amendment",deedNumber:`AHU-009182${i}.AH.01.02.Tahun 2025`,deedDate:"2025-06-20",ministerialDecreeNumber:`SK-AHU-009182${i}.2025`,ministerialDecreeDate:"2025-06-22",remarkCategoryIds:["amendment-share-change","amendment-business-activity-change","amendment-articles-change"],remarkCategoryId:"amendment-share-change",remarks:"1. Penambahan pemegang saham baru PT Investama Mandiri dengan kepemilikan 20%.\n2. Perluasan kegiatan usaha jasa pertambangan batubara dan mineral (KBLI 09900).\n3. Perubahan Pasal 3 Anggaran Dasar mengenai maksud dan tujuan perseroan.",source:"Input Legal",parties:{representative:"Budi Santoso",notaryName:"H. Ahmad Fauzi, S.H., M.Kn.",notaryLocation:"Jakarta Selatan"}}
 ];
 function initial(){
-
- const customers=names.map((companyName,i)=>({id:`demo-customer-${i}`,companyName,companyType:i===2?'COMMERCIAL':'CORPORATE',nib:`12092600000${String(i+1).padStart(2,'0')}`,npwp:`01234567890${String(i+1).padStart(4,'0')}`,sktNo:'',sppkpNo:'',establishmentActNo:'',establishmentDate:null}));
- const amounts=[12000000000,8500000000,6400000000,18000000000,4200000000,9600000000];
- const applications=names.map((_,i)=>{const id=`demo-app-${i}`,value=amounts[i];return {id,customerId:customers[i].id,customer:customers[i],fapNumber:`${String(i+1).padStart(3,'0')}/AF/IX/2026`,applicationDate:`2026-09-${String(24-i*2).padStart(2,'0')}`,branchCode:['BPN01','JKT01','BPN01','PLB01','MDN01','SBY01'][i],customerStatus:i%2?'EXISTING':'NEW',status:stages[i],companyAddress:'Jl. Industri Raya No. 88',city:['Balikpapan','Jakarta','Samarinda','Palembang','Medan','Surabaya'][i],province:'Indonesia',postalCode:'17530',phoneFax:'021-8989898',email:`finance${i+1}@example.com`,website:'',mainBusiness:'Heavy equipment operations',experienceYears:8,experienceMonths:4,locationStatus:'OWNED',repaymentSource:'Operating project contracts',latestDeedNo:'AHU-0012345.AH.01.01.2020',latestDeedDate:'2020-01-01',industrySegment:['MINING','CONSTRUCTION','FORESTRY','MINING','AGRICULTURE','CONSTRUCTION'][i],businessRole:'CONTRACTORS',assetSummaryHeLiuGong:2,assetSummaryTruckLiuGong:1,assetSummaryHeNonLiuGong:3,assetSummaryTruckNonLiuGong:2,pic:{id:`demo-pic-${i}`,picName:'Budi Santoso',position:'Finance Director',phone:'081234567890',email:'budi@example.com',currentAddress:'Jl. Kemang Raya No. 10',city:'Jakarta Selatan',province:'DKI Jakarta',postalCode:'12560'},stakeholders:[{id:`demo-stake-${i}`,name:'Budi Santoso',firstName:'Budi',lastName:'Santoso',representativeType:'DIRECTOR',stakeholderType:'INDIVIDUAL',signatory:'YES',idType:'KTP',idNumber:'3171010101900001',title:'MR',dateOfBirth:'1990-01-01',ageYears:36,ageMonths:8,maritalStatus:'MARRIED',position:'Director',designation:'DIRECTOR',email:'budi@example.com',mobilePhone:'081234567890',gender:'MALE',sharePercentage:'100.00',depositedCapital:'5000000000.00',primaryCapital:'5000000000.00',shareAmount:'5000000000.00',nationalityType:'WNI',citizenship:'INDONESIAN',country:'Indonesia',province:'DKI Jakarta',cityRegency:'Jakarta Selatan',district:'Pasar Minggu',village:'Ragunan',rw:'001',rt:'002',address:'Jl. Kemang Raya No. 10',postalCode:'12560'}],projects:[{id:`demo-project-${i}`,projectOwner:'PT Bukit Energi',projectLocation:'Project site, Indonesia',projectRole:'Main contractor',contractStatus:'EXISTING'}],bankReferences:[{id:`demo-bank-${i}`,bankOrFinInstitution:'Bank Mandiri',currency:'IDR',creditFacility:'15000000000.00',monthlyInstallment:'320000000.00',yearStarted:2022,interestRate:'9.50',paymentRecord:'Kol 1 / Lancar',facilityStatus:'Active'}],proposal:{id:`demo-proposal-${i}`,facilityPurpose:'INVESTMENT',purposeDetail:'Fleet expansion',financingMethod:'FINANCIAL_LEASE',currency:'IDR',financingValue:String(value),downPaymentValue:String(value*.2),securityDeposit:'0.00',interestRate:'10.50',tenorMonths:36,paymentMethod:'In Arrear',applicationSource:'Direct',termsNotes:'Illustrative financing estimate.',units:[{id:`demo-unit-${i}`,assetName:'Excavator',unitCategory:'HE',brand:'LiuGong',unitType:'Hydraulic excavator',modelName:'936E',classTon:'36',quantity:1,years:'2026',specifications:'Tracked excavator for heavy-duty earthmoving.'}]},financialStatements:[2023,2024,2025].map((f,j)=>({id:`demo-fin-${i}-${j}`,fiscalYear:f,isAudited:true,currentAssets:'25000000000.00',nonCurrentAssets:'45000000000.00',totalAssets:'70000000000.00',currentLiabilities:'15000000000.00',nonCurrentLiabilities:'20000000000.00',totalLiabilities:'35000000000.00',equity:'35000000000.00',totalLiabAndEquity:'70000000000.00',revenue:'85000000000.00',grossMargin:'22000000000.00',operatingMargin:'14000000000.00',tax:'2500000000.00',netIncome:'11500000000.00'})),documentChecks:docTypes.map((item:any,j:number)=>({id:`demo-doc-${i}-${j}`,documentCode:item[0],documentName:item[1],assignedRole:item[2],isMandatory:item[3],status:'PENDING',checkedByMkt:false,checkedByBs:false,checkedByCa:false,checkedByLegal:false,registrationDate:null,expiredDate:null,dataSummary:'',notes:'',files:[]})),approvalLogs:[{id:`demo-log-${i}`,applicationId:id,actionBy:'Demo workflow',userRole:'MKT',previousStatus:'DRAFT',newStatus:stages[i],comments:'Synthetic example; no real customer or document data.',actionTimestamp:new Date(Date.UTC(2026,8,24-i)).toISOString()}],signoffs:[],ratios:[],verified_docs:0,total_docs:10,financing_value:value,tenor_months:36,financing_method:'FINANCIAL_LEASE'};});return {customers,applications,user:null as any,events:[] as any[]};
+  return {
+    customers: JSON.parse(JSON.stringify(SCENARIO_CUSTOMERS)),
+    applications: JSON.parse(JSON.stringify(SCENARIO_APPLICATIONS)),
+    user: null as any,
+    events: [] as any[]
+  };
 }
-const read=()=>{try{const s=localStorage.getItem(key);if(!s)return initial();const data=JSON.parse(s);let updated=false;
- const evidenceCodes=['FAP','PREANALYSIS','ICLF'];
- for(const app of (data.applications||[])){
-  const existing=app.documentChecks||[];
-  const hasLegacy=existing.some((d:any)=>!evidenceCodes.includes(String(d.documentCode||'').toUpperCase()));
-  const hasAllThree=evidenceCodes.every(code=>existing.some((d:any)=>String(d.documentCode||'').toUpperCase()===code));
-  if(hasLegacy||!hasAllThree){
-   app.documentChecks=docTypes.map((item:any)=>{
-    const found=existing.find((d:any)=>String(d.documentCode||'').toUpperCase()===item[0]||String(d.documentName||'').toLowerCase()===item[1].toLowerCase());
-    return {
-      id:found?.id||`demo-doc-${app.id}-${item[0]}`,
-      documentCode:item[0],
-      documentName:item[1],
-      assignedRole:item[2],
-      isMandatory:item[3],
-      status:found?.files?.length?'UPLOADED':'PENDING',
-      files:found?.files||[]
-    };
-   });
-   updated=true;
+
+const SEED_VERSION = 'v12_all_6_scenarios_comprehensive';
+const read = () => {
+  try {
+    const s = localStorage.getItem(key);
+    const ver = localStorage.getItem('liugong-los-seed-ver');
+    if (!s || ver !== SEED_VERSION) {
+      const fresh = initial();
+      try {
+        localStorage.setItem(key, JSON.stringify(fresh));
+        localStorage.setItem('liugong-los-seed-ver', SEED_VERSION);
+      } catch {}
+      return fresh;
+    }
+    const data = JSON.parse(s);
+    return data;
+  } catch {
+    const fresh = initial();
+    try {
+      localStorage.setItem(key, JSON.stringify(fresh));
+      localStorage.setItem('liugong-los-seed-ver', SEED_VERSION);
+    } catch {}
+    return fresh;
   }
- }
- if(updated){try{localStorage.setItem(key,JSON.stringify(data));}catch{}}for(let i=0;i<(data.applications||[]).length;i++){const a=data.applications[i];if(!a.legal||!Array.isArray(a.legal.deeds)||a.legal.deeds.length===0){a.legal={...(a.legal||{}),deeds:sampleDeedsForApp(i),selectedDeedId:`seed-deed-${i}-1`};updated=true;}else{const samples=sampleDeedsForApp(i);for(const d of a.legal.deeds){delete d.categoryRemarks;if(d.id&&String(d.id).startsWith("seed-deed-")){const sample=samples.find(x=>x.id===d.id);if(sample){d.remarks=sample.remarks;d.remarkCategoryIds=sample.remarkCategoryIds;updated=true;}}}}}if(updated)save(data);return data;}catch{return initial();}};
+};
+
 const save=(s:any)=>{try{localStorage.setItem(key,JSON.stringify(s));}catch(e:any){if(e.name==='QuotaExceededError')throw Error('Penyimpanan browser demo penuh. Gunakan dokumen yang lebih kecil atau jalankan versi backend untuk file besar.');throw e;}};
 const safeFile=(f:any)=>{const {demoBlob,demoPreview,demoData,...publicFile}=f;return publicFile;};
 export async function demoApi(path:string,method='GET',body?:any):Promise<any>{validateWrite(path,method,body);
@@ -60,7 +66,16 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
 
  if(path==='/notifications'&&method==='GET')return copy((s.notifications||[]).filter((n:any)=>n.recipientUserId===s.user.id));
  if(parts[0]==='notifications'&&parts[2]==='read'&&method==='PATCH'){const n=(s.notifications||[]).find((n:any)=>n.id===parts[1]&&n.recipientUserId===s.user.id);if(!n)throw Error('Notifikasi tidak ditemukan.');n.readAt=n.readAt||new Date().toISOString();save(s);return {ok:true};}
- if(path==='/master-data'&&method==='GET'){
+ 
+  if(path==='/demo/reset-scenarios'&&method==='POST'){
+    const fresh = initial();
+    try {
+      localStorage.setItem(key, JSON.stringify(fresh));
+      localStorage.setItem('liugong-los-seed-ver', SEED_VERSION);
+    } catch {}
+    return { ok: true, message: 'Seluruh 6 skenario dummy berhasil dimuat ulang dengan data lengkap!' };
+  }
+if(path==='/master-data'&&method==='GET'){
   const def=defaultMasterCatalog();
   if(!s.masterData){
     s.masterData=def;s.masterRevision=0;
