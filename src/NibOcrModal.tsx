@@ -172,7 +172,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         }}>
           <div style={{display:'flex', alignItems:'center', gap: 10}}>
             <div style={{
-              width: 36, height: 36, borderRadius: 8, background: '#0f766e', 
+              width: 36, height: 36, borderRadius: 8, background: '#2563eb', 
               color: '#ffffff', display:'flex', alignItems:'center', justifyContent:'center'
             }}>
               <ScanLine size={20} />
@@ -228,7 +228,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 8}}>
                 <div style={{
                   width: 44, height: 44, borderRadius: '50%', background: '#e0f2fe',
-                  color: '#0284c7', display:'flex', alignItems:'center', justifyContent:'center'
+                  color: '#2563eb', display:'flex', alignItems:'center', justifyContent:'center'
                 }}>
                   <Upload size={22} />
                 </div>
@@ -242,9 +242,9 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 </div>
                 {fileName && (
                   <div style={{
-                    marginTop: 6, padding: '4px 10px', background: '#ecfdf5',
-                    border: '1px solid #a7f3d0', borderRadius: 6, fontSize: '0.78rem',
-                    color: '#065f46', display:'inline-flex', alignItems:'center', gap: 6
+                    marginTop: 6, padding: '4px 10px', background: '#eff6ff',
+                    border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.78rem',
+                    color: '#1e40af', display:'inline-flex', alignItems:'center', gap: 6
                   }}>
                     <FileText size={14} /> {fileName}
                   </div>
@@ -259,7 +259,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 className="button small"
                 style={{
                   fontSize: '0.75rem', display:'inline-flex', alignItems:'center', gap: 5,
-                  background: '#ffffff', color: '#0f766e', borderColor: '#0f766e'
+                  background: '#ffffff', color: '#2563eb', borderColor: '#2563eb'
                 }}
               >
                 <Sparkles size={13} /> Gunakan Contoh Dokumen NIB OSS
@@ -281,9 +281,9 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             <div style={{
               padding: '10px 14px', borderRadius: 8, fontSize: '0.8rem',
               display: 'flex', alignItems: 'center', gap: 8,
-              background: ocrLoading ? '#fffbeb' : hasData ? '#ecfdf5' : '#f1f5f9',
-              border: `1px solid ${ocrLoading ? '#fde68a' : hasData ? '#a7f3d0' : '#e2e8f0'}`,
-              color: ocrLoading ? '#b45309' : hasData ? '#065f46' : '#64748b'
+              background: ocrLoading ? '#f8fafc' : hasData ? '#eff6ff' : '#f1f5f9',
+              border: `1px solid ${ocrLoading ? '#cbd5e1' : hasData ? '#bfdbfe' : '#e2e8f0'}`,
+              color: ocrLoading ? '#2563eb' : hasData ? '#1e40af' : '#64748b'
             }}>
               {ocrLoading ? (
                 <>
@@ -321,7 +321,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 8}}>
               <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', display:'flex', alignItems:'center', gap: 6}}>
-                <Sparkles size={16} color="#0f766e" /> Data Hasil Ekstraksi OCR
+                <Sparkles size={16} color="#2563eb" /> Data Hasil Ekstraksi OCR
               </h4>
               <span style={{fontSize: '0.72rem', color: '#64748b'}}>Dapat ditinjau & diedit langsung</span>
             </div>
@@ -330,13 +330,13 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Hash size={13} color="#0f766e" /> Nomor NIB (13 Digit)
+                  <Hash size={13} color="#2563eb" /> Nomor NIB (13 Digit)
                 </label>
                 {formData.nib && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('nib', formData.nib)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#0f766e', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
                     {copiedKey === 'nib' ? <Check size={12}/> : <Copy size={12}/>}
                     {copiedKey === 'nib' ? 'Tersalin' : 'Salin'}
@@ -361,13 +361,13 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <MapPin size={13} color="#0f766e" /> Alamat Perusahaan / Domisili
+                  <MapPin size={13} color="#2563eb" /> Alamat Perusahaan / Domisili
                 </label>
                 {formData.alamat && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('alamat', formData.alamat)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#0f766e', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
                     {copiedKey === 'alamat' ? <Check size={12}/> : <Copy size={12}/>}
                     {copiedKey === 'alamat' ? 'Tersalin' : 'Salin'}
@@ -391,7 +391,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10}}>
               <div>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
-                  <Mail size={13} color="#0f766e" /> Email Perusahaan
+                  <Mail size={13} color="#2563eb" /> Email Perusahaan
                 </label>
                 <input 
                   type="email" 
@@ -408,7 +408,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
               <div>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
-                  <Phone size={13} color="#0f766e" /> No. Telepon
+                  <Phone size={13} color="#2563eb" /> No. Telepon
                 </label>
                 <input 
                   type="text" 
@@ -428,13 +428,13 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Calendar size={13} color="#0f766e" /> Tanggal Terbit NIB
+                  <Calendar size={13} color="#2563eb" /> Tanggal Terbit NIB
                 </label>
                 {formData.tanggalTerbit && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('tgl', formData.tanggalTerbit)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#0f766e', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
                     {copiedKey === 'tgl' ? <Check size={12}/> : <Copy size={12}/>}
                     {copiedKey === 'tgl' ? 'Tersalin' : 'Salin'}
@@ -479,7 +479,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             onClick={handleApply}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: '#0f766e', borderColor: '#0f766e'
+              background: '#2563eb', borderColor: '#2563eb'
             }}
           >
             <Check size={16} />
