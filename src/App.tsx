@@ -261,7 +261,6 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       <h3>FAP Stage · Core Application & Customer Details</h3>
       <p>Enter the core application and customer details. You can complete the remaining business profile directly in this workspace.</p>
     </div>
-    <button type="button" className="button" onClick={()=>setNibOcrOpen(true)} title="Upload & scan berkas NIB OSS untuk auto-fill Nomor NIB, Alamat, Email, No. Telp, dan Tanggal Terbit" style={{display:'inline-flex',alignItems:'center',gap:6,background:'#0f766e',borderColor:'#0f766e',color:'#ffffff',fontSize:'0.82rem',padding:'7px 14px',borderRadius:6,fontWeight:600,cursor:'pointer'}}><ScanLine size={15}/> Upload Dokumen NIB · Auto-Fill OCR</button>
   </div>
   <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
     <div>
@@ -355,7 +354,6 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       <h3>FAP Stage · Core Application & Customer Details</h3>
       <p>Enter the core application and customer details. You can complete the remaining business profile directly in this workspace.</p>
     </div>
-    <button type="button" className="button" onClick={()=>setNibOcrOpen(true)} title="Upload & scan berkas NIB OSS untuk auto-fill Nomor NIB, Alamat, Email, No. Telp, dan Tanggal Terbit" style={{display:'inline-flex',alignItems:'center',gap:6,background:'#0f766e',borderColor:'#0f766e',color:'#ffffff',fontSize:'0.82rem',padding:'7px 14px',borderRadius:6,fontWeight:600,cursor:'pointer'}}><ScanLine size={15}/> Upload Dokumen NIB · Auto-Fill OCR</button>
   </div>
   <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
     <div>
