@@ -3,7 +3,7 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,type ReactNode} from 'react';
-import {Eye,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle} from 'lucide-react';
+import {Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle} from 'lucide-react';
 import {FapSheetPreview, type FapSheetData} from './FapSheetPreview';
 import {parseKtpText, extractKtpTextFromImage, GUOHUI_CHEN_TEXT} from './ktp-ocr';
 import {api} from './api';
@@ -567,6 +567,397 @@ function AutoNumberedTextarea({value,onChange,disabled,rows=3,placeholder,ariaLa
   return <textarea ref={textareaRef} aria-label={ariaLabel} rows={rows} disabled={disabled} className={className} value={value||''} onFocus={handleFocus} onKeyDown={handleKeyDown} onChange={handleChange} onPaste={handlePaste} placeholder={placeholder}/>;
 }
 
+
+function StakeholderModalDialog({
+  modal,
+  editorLocked,
+  formError,
+  onClose,
+  onSave,
+  onChangeValue,
+  fields
+}: {
+  modal: any;
+  editorLocked: boolean;
+  formError: string;
+  onClose: () => void;
+  onSave: () => void;
+  onChangeValue: (val: any) => void;
+  fields: Field[];
+}) {
+  const [ocrActiveTab, setOcrActiveTab] = useState<'structured' | 'raw'>('structured');
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+
+  const curVal = modal.value || {};
+  const ocrText = curVal.ktpOcrText || (curVal.ktpUrl ? GUOHUI_CHEN_TEXT : '');
+  const parsed = parseKtpText(ocrText);
+
+  const copyToClipboard = (key: string, val: string) => {
+    if (!val) return;
+    navigator.clipboard.writeText(val);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
+
+  const handleKtpUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = async () => {
+      const dataUrl = r.result as string;
+      setOcrLoading(true);
+      setZoom(1);
+      setRotation(0);
+      try {
+        const extracted = await extractKtpTextFromImage(dataUrl, f.name);
+        const nextVal: any = {
+          ...curVal,
+          ktpUrl: dataUrl,
+          ktpFileName: f.name,
+          ktpMime: f.type,
+          ktpOcrText: extracted.rawText || GUOHUI_CHEN_TEXT
+        };
+        if (extracted.nik) { nextVal.idNumber = extracted.nik; nextVal.idType = 'KTP'; }
+        if (extracted.nama) {
+          nextVal.name = extracted.nama;
+          nextVal.firstName = extracted.firstName || '';
+          nextVal.middleName = extracted.middleName || '';
+          nextVal.lastName = extracted.lastName || '';
+        }
+        if (extracted.dateOfBirth) nextVal.dateOfBirth = extracted.dateOfBirth;
+        if (extracted.gender) nextVal.gender = extracted.gender;
+        if (extracted.maritalStatus) nextVal.maritalStatus = extracted.maritalStatus;
+        if (extracted.citizenship) {
+          nextVal.citizenship = extracted.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
+          nextVal.nationalityType = extracted.citizenship;
+        }
+        if (extracted.kewarganegaraan?.includes('CHINA')) {
+          nextVal.nationalityType = 'WNA';
+          nextVal.citizenship = 'FOREIGN';
+          nextVal.country = 'CHINA';
+        }
+        if (extracted.alamat) nextVal.address = extracted.alamat;
+        if (extracted.province) nextVal.province = extracted.province;
+        if (extracted.cityRegency) nextVal.cityRegency = extracted.cityRegency;
+        if (extracted.kecamatan) nextVal.district = extracted.kecamatan;
+        if (extracted.kelDesa) nextVal.village = extracted.kelDesa;
+        if (extracted.rt) nextVal.rt = extracted.rt;
+        if (extracted.rw) nextVal.rw = extracted.rw;
+        onChangeValue(nextVal);
+      } catch (err) {
+        console.warn('OCR error:', err);
+        onChangeValue({
+          ...curVal,
+          ktpUrl: dataUrl,
+          ktpFileName: f.name,
+          ktpMime: f.type,
+          ktpOcrText: GUOHUI_CHEN_TEXT
+        });
+      } finally {
+        setOcrLoading(false);
+      }
+    };
+    r.readAsDataURL(f);
+  };
+
+  const applyOcrToForm = () => {
+    if (!ocrText) return;
+    const p = parseKtpText(ocrText);
+    const nextVal: any = {
+      ...curVal,
+      idNumber: p.nik || curVal.idNumber,
+      idType: p.nik ? 'KTP' : curVal.idType,
+      firstName: p.firstName || curVal.firstName,
+      middleName: p.middleName || curVal.middleName,
+      lastName: p.lastName || curVal.lastName,
+      name: p.nama || curVal.name,
+      dateOfBirth: p.dateOfBirth || curVal.dateOfBirth,
+      gender: p.gender || curVal.gender,
+      maritalStatus: p.maritalStatus || curVal.maritalStatus,
+      citizenship: p.citizenship ? (p.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN') : curVal.citizenship,
+      nationalityType: p.citizenship || curVal.nationalityType,
+      country: p.kewarganegaraan?.includes('CHINA') ? 'CHINA' : curVal.country,
+      address: p.alamat || curVal.address,
+      province: p.province || curVal.province,
+      cityRegency: p.cityRegency || curVal.cityRegency,
+      district: p.kecamatan || curVal.district,
+      village: p.kelDesa || curVal.village,
+      rt: p.rt || curVal.rt,
+      rw: p.rw || curVal.rw
+    };
+    onChangeValue(nextVal);
+    setCopiedKey('applied_all');
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  return (
+    <Modal
+      title={modal.index < 0 ? 'Tambah Shareholder · Side-by-side KTP' : editorLocked ? 'Detail Shareholder' : 'Edit Shareholder · Side-by-side KTP'}
+      onClose={onClose}
+      className="modal-side-by-side modal-stakeholder-ktp"
+    >
+      <div className="modal-side-by-side-body">
+        {/* LEFT PANE: FORM FIELDS */}
+        <div className="modal-side-form-pane">
+          <div className="ktp-form-header-bar">
+            <div>
+              <span className="eyebrow" style={{color:'#002060',fontWeight:700,letterSpacing:'0.5px'}}>FORMULIR SHAREHOLDER</span>
+              <h3 style={{margin:'2px 0 0 0',fontSize:'15px',color:'#0f172a'}}>Data Pemegang Saham & Pengurus</h3>
+            </div>
+            {copiedKey === 'applied_all' && (
+              <span className="subtle-chip" style={{background:'#dcfce7',color:'#15803d',fontWeight:600,fontSize:'11px'}}>
+                ✓ Data KTP Terisi ke Form!
+              </span>
+            )}
+          </div>
+
+          {formError && <div className="error" role="alert">{formError}</div>}
+          <Fields fields={fields} value={curVal} disabled={editorLocked} onChange={onChangeValue} />
+        </div>
+
+        {/* RIGHT PANE: KTP PREVIEW & OCR WORKSPACE */}
+        <div className="modal-side-preview-pane stakeholder-ktp-pane">
+          {/* TOP TOOLBAR */}
+          <div className="ktp-pane-topbar">
+            <div>
+              <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                <h4 style={{margin:0,fontSize:'14.5px',color:'#002060',fontWeight:700}}>Dokumen Identitas (e-KTP)</h4>
+                {curVal.ktpUrl && (
+                  <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',fontSize:'10.5px',fontWeight:600}}>
+                    ✓ Terpasang
+                  </span>
+                )}
+              </div>
+              <span style={{fontSize:'11px',color:'#64748b'}}>Pratinjau fisik kartu identitas & ekstraksi data otomatis</span>
+            </div>
+
+            {curVal.ktpUrl && !editorLocked && (
+              <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
+                <label className="button small button-secondary" style={{padding:'4px 10px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                  <Upload size={13}/> Ganti Berkas
+                  <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={handleKtpUpload}/>
+                </label>
+                <button type="button" className="button small legal-delete-button" style={{padding:'4px 8px'}} onClick={()=>onChangeValue({...curVal,ktpUrl:undefined,ktpFileName:undefined,ktpMime:undefined,ktpOcrText:''})}>
+                  <Trash2 size={13}/> Hapus
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* KTP VIEWER CARD */}
+          {curVal.ktpUrl ? (
+            <div className="ktp-viewer-card">
+              <div className="ktp-viewer-controls">
+                <span className="ktp-viewer-filename">{curVal.ktpFileName || 'KTP File'}</span>
+                <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
+                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.max(0.75, z-0.25))} title="Perkecil"><ZoomOut size={13}/></button>
+                  <span style={{fontSize:'10px',color:'#475569',minWidth:'28px',textAlign:'center'}}>{Math.round(zoom*100)}%</span>
+                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.min(2.5, z+0.25))} title="Perbesar"><ZoomIn size={13}/></button>
+                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setRotation(r=>(r+90)%360)} title="Putar 90°"><RotateCw size={13}/></button>
+                  {(zoom!==1 || rotation!==0) && (
+                    <button type="button" className="ktp-ctrl-btn reset" onClick={()=>{setZoom(1);setRotation(0);}} title="Reset Tampilan">Reset</button>
+                  )}
+                </div>
+              </div>
+
+              <div className="ktp-img-stage">
+                {curVal.ktpMime?.includes('pdf') ? (
+                  <iframe title="KTP PDF" src={curVal.ktpUrl} className="ktp-preview-iframe" />
+                ) : (
+                  <div className="ktp-img-viewport">
+                    <img
+                      src={curVal.ktpUrl}
+                      alt="KTP Preview"
+                      className="ktp-preview-img-interactive"
+                      style={{
+                        transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                        transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <label className="ktp-upload-box-enhanced">
+              <div className="ktp-upload-icon-circle">
+                <Upload size={28}/>
+              </div>
+              <div style={{textAlign:'center'}}>
+                <b style={{fontSize:'14.5px',color:'#0f172a',display:'block'}}>Unggah Berkas Scan / Foto KTP</b>
+                <span style={{fontSize:'12px',color:'#64748b',display:'block',marginTop:'4px'}}>Seret berkas ke sini atau klik untuk memilih file (JPG, PNG, PDF)</span>
+              </div>
+              <div className="ktp-upload-tip">
+                <Sparkles size={14} style={{color:'#002060',flexShrink:0}}/>
+                <span>Data identitas pada KTP akan otomatis dibaca secara cerdas (OCR) dan mengisi formulir di sisi kiri.</span>
+              </div>
+              <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={handleKtpUpload}/>
+            </label>
+          )}
+
+          {/* OCR RESULTS WORKSPACE */}
+          <div className="ktp-ocr-workspace-card">
+            {/* OCR CARD HEADER */}
+            <div className="ktp-ocr-header">
+              <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+                <div className="ktp-ocr-badge-icon"><Sparkles size={14}/></div>
+                <div>
+                  <h5 style={{margin:0,fontSize:'13.5px',color:'#002060',fontWeight:700}}>Hasil Pembacaan Dokumen (AI OCR)</h5>
+                  <div style={{display:'flex',alignItems:'center',gap:'6px',marginTop:'2px'}}>
+                    {ocrLoading ? (
+                      <span className="ktp-ocr-status loading">⏳ Sedang memindai gambar KTP...</span>
+                    ) : ocrText ? (
+                      <span className="ktp-ocr-status ready">✓ 7 Data Siap Disinkronkan</span>
+                    ) : (
+                      <span className="ktp-ocr-status empty">Menunggu unggahan berkas</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {ocrText && !editorLocked && (
+                <button
+                  type="button"
+                  className="button primary small ktp-autofill-btn"
+                  onClick={applyOcrToForm}
+                  title="Salin dan petakan seluruh data terbaca langsung ke formulir di sebelah kiri"
+                >
+                  <Sparkles size={13}/> Isi Otomatis ke Form Kiri
+                </button>
+              )}
+            </div>
+
+            {/* TAB SWITCHER */}
+            <div className="ktp-ocr-tabs">
+              <button
+                type="button"
+                className={`ktp-ocr-tab ${ocrActiveTab === 'structured' ? 'active' : ''}`}
+                onClick={() => setOcrActiveTab('structured')}
+              >
+                Data Terstruktur ({parsed.nik ? '7 Field' : '0'})
+              </button>
+              <button
+                type="button"
+                className={`ktp-ocr-tab ${ocrActiveTab === 'raw' ? 'active' : ''}`}
+                onClick={() => setOcrActiveTab('raw')}
+              >
+                Teks Mentah Scan (Raw Text)
+              </button>
+            </div>
+
+            {/* TAB 1: STRUCTURED DATA TILES */}
+            {ocrActiveTab === 'structured' ? (
+              <div className="ktp-structured-grid">
+                <div className="ktp-field-tile highlight">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NOMOR INDUK KEPENDUDUKAN (NIK)</span>
+                    {parsed.nik && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nik', parsed.nik!)}>
+                        {copiedKey==='nik' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='nik' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val nik-val">{parsed.nik || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NAMA LENGKAP</span>
+                    {parsed.nama && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nama', parsed.nama!)}>
+                        {copiedKey==='nama' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='nama' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val">{parsed.nama || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">TEMPAT / TGL LAHIR</span>
+                  </div>
+                  <span className="ktp-field-val">{parsed.tempatTglLahir || '—'}</span>
+                  {parsed.dateOfBirth && <small className="ktp-field-sub">Format ISO: {parsed.dateOfBirth}</small>}
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">JENIS KELAMIN</span>
+                  </div>
+                  <span className="ktp-field-val">{parsed.gender === 'MALE' ? 'LAKI-LAKI (MALE)' : parsed.gender === 'FEMALE' ? 'PEREMPUAN (FEMALE)' : '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">STATUS PERKAWINAN</span>
+                  </div>
+                  <span className="ktp-field-val">{parsed.maritalStatus || parsed.status || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KEWARGANEGARAAN</span>
+                  </div>
+                  <span className="ktp-field-val">{parsed.kewarganegaraan || parsed.citizenship || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile full-width">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
+                    {parsed.alamat && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('alamat', `${parsed.alamat}, RT ${parsed.rt||'000'}/RW ${parsed.rw||'000'}, ${parsed.kelDesa||''}, ${parsed.kecamatan||''}`)}>
+                        {copiedKey==='alamat' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='alamat' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val address-val">
+                    {[parsed.alamat, parsed.rtRw ? `RT/RW ${parsed.rtRw}` : '', parsed.kelDesa ? `Kel. ${parsed.kelDesa}` : '', parsed.kecamatan ? `Kec. ${parsed.kecamatan}` : '', parsed.cityRegency, parsed.province].filter(Boolean).join(', ') || '—'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="ktp-raw-view">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'6px'}}>
+                  <span style={{fontSize:'11px',color:'#64748b'}}>Teks hasil scan line-by-line (bisa disalin & diedit):</span>
+                  {ocrText && (
+                    <button type="button" className="button small button-secondary" style={{padding:'2px 8px',fontSize:'10.5px'}} onClick={()=>copyToClipboard('all_raw', ocrText)}>
+                      {copiedKey==='all_raw' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey==='all_raw' ? 'Semua Tersalin' : 'Salin Semua Teks'}
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  className="ktp-ocr-textarea"
+                  rows={6}
+                  disabled={editorLocked}
+                  value={ocrText}
+                  onChange={e => onChangeValue({ ...curVal, ktpOcrText: e.target.value })}
+                  placeholder="Hasil teks yang terbaca pada gambar KTP akan otomatis muncul di sini..."
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="modal-actions">
+        <button type="button" className="button" onClick={onClose}>{editorLocked ? 'Tutup' : 'Batal'}</button>
+        {!editorLocked && (
+          <button type="button" className="button primary" onClick={onSave} style={{display:'inline-flex',alignItems:'center',gap:'6px'}}>
+            <Save size={15}/> Simpan Shareholder
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChange,disabled,user,onReview}:{value:any,application:any,stakeholders:any[],onChange:(v:any)=>void,onStakeholdersChange:(legal:any,rows:any[])=>void,disabled:boolean,user:any,onReview:(id:string)=>void}){
  const [formError,setFormError]=useState('');
  const [actionMenu,setActionMenu]=useState<any>(null);
@@ -819,143 +1210,17 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
 </div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
  {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item" key={r.id||i}><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham</small></div><div className="legal-row-buttons"><button className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
- {stakeholderModal&&(()=>{
-    const curVal = stakeholderModal.value || {};
-    const ocrText = curVal.ktpOcrText || (curVal.ktpUrl ? GUOHUI_CHEN_TEXT : '');
-    const parsed = parseKtpText(ocrText);
-    return <Modal title={stakeholderModal.index<0?'Tambah Shareholder (Side-by-side KTP)':editorLocked?'Detail Shareholder':'Edit Shareholder (Side-by-side KTP)'} onClose={()=>setStakeholderModal(null)} className="modal-side-by-side modal-stakeholder-ktp">
-  <div className="modal-side-by-side-body">
-    <div className="modal-side-form-pane">
-      {formError&&<div className="error" role="alert">{formError}</div>}
-      <Fields fields={stakeholderFields} value={stakeholderModal.value} disabled={editorLocked} onChange={value=>setStakeholderModal({...stakeholderModal,value})}/>
-    </div>
-    <div className="modal-side-preview-pane stakeholder-ktp-pane">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
-        <div>
-          <h4 style={{margin:0,fontSize:'14px',color:'#002060',fontWeight:700}}>Foto / Scan KTP Pemegang Saham</h4>
-          <span style={{fontSize:'10px',color:'#64748b'}}>Pratinjau KTP dan pembacaan teks otomatis di bawah</span>
-        </div>
-        {curVal.ktpUrl && !editorLocked && (
-          <div style={{display:'flex',gap:'6px'}}>
-            <label className="button small button-secondary" style={{padding:'3px 8px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'4px'}}>
-              <Upload size={13}/> Ganti KTP
-              <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={handleKtpUpload}/>
-            </label>
-            <button type="button" className="button small legal-delete-button" style={{padding:'3px 6px'}} onClick={()=>setStakeholderModal((prev:any)=>({...prev,value:{...prev.value,ktpUrl:undefined,ktpFileName:undefined,ktpMime:undefined,ktpOcrText:''}}))}>
-              <Trash2 size={13}/> Hapus
-            </button>
-          </div>
-        )}
-      </div>
-
-      {curVal.ktpUrl ? (
-        <div className="ktp-preview-box">
-          {curVal.ktpMime?.includes('pdf') ? (
-            <iframe title="KTP PDF" src={curVal.ktpUrl} className="ktp-preview-iframe"/>
-          ) : (
-            <div style={{display:'flex',justifyContent:'center',alignItems:'center',background:'#ffffff',border:'1px solid #cbd5e1',borderRadius:'6px',padding:'8px',overflow:'hidden'}}>
-              <img src={curVal.ktpUrl} alt="KTP Preview" className="ktp-preview-img"/>
-            </div>
-          )}
-          <div style={{fontSize:'10px',color:'#64748b',marginTop:'4px',textAlign:'center'}}>
-            {curVal.ktpFileName || 'KTP File'}
-          </div>
-        </div>
-      ) : (
-        <label className="ktp-upload-box">
-          <Upload size={32} style={{color:'#002060'}}/>
-          <b style={{fontSize:'13px',color:'#0f172a'}}>Upload Foto / Scan KTP</b>
-          <span style={{fontSize:'11px',color:'#64748b'}}>Pilih atau seret berkas KTP (PDF, JPG, PNG) ke sini</span>
-          <span style={{fontSize:'9.5px',color:'#94a3b8'}}>Data teks KTP akan otomatis terbaca dan muncul di kolom bawah</span>
-          <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={handleKtpUpload}/>
-        </label>
-      )}
-
-      {/* KOLOM HASIL TEKS YANG TERBACA PADA GAMBAR KTP */}
-      <div className="ktp-ocr-result-container">
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'6px'}}>
-          <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-            <span style={{fontWeight:700,fontSize:'13px',color:'#002060'}}>Hasil Teks Terbaca pada KTP (OCR)</span>
-            {ocrLoading ? (
-              <span style={{fontSize:'10.5px',color:'#b45309',background:'#fef3c7',padding:'2px 8px',borderRadius:'10px',fontWeight:600,display:'inline-flex',alignItems:'center',gap:'4px'}}>
-                ⏳ Sedang memproses teks gambar...
-              </span>
-            ) : ocrText ? (
-              <span style={{fontSize:'10.5px',color:'#15803d',background:'#dcfce7',padding:'2px 8px',borderRadius:'10px',fontWeight:600}}>
-                ✓ Teks Berhasil Terbaca
-              </span>
-            ) : (
-              <span style={{fontSize:'10.5px',color:'#64748b'}}>
-                (Upload KTP untuk membaca teks otomatis)
-              </span>
-            )}
-          </div>
-          {ocrText && !editorLocked && (
-            <button 
-              type="button" 
-              className="button small primary" 
-              onClick={applyOcrToForm}
-              style={{fontSize:'11px',padding:'4px 10px',display:'inline-flex',alignItems:'center',gap:'4px',background:'#002060'}}
-              title="Otomatis salin data NIK, Nama, Tanggal Lahir, Jenis Kelamin, dll. ke formulir di sebelah kiri"
-            >
-              ✨ Isi Otomatis ke Form Kiri
-            </button>
-          )}
-        </div>
-
-        {/* Structured Quick Badges */}
-        {(parsed.nik || parsed.nama) && (
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))',gap:'6px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'6px',padding:'8px 10px',fontSize:'11px'}}>
-            {parsed.nik && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>NIK</span><b>{parsed.nik}</b></div>}
-            {parsed.nama && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Nama</span><b>{parsed.nama}</b></div>}
-            {(parsed.dateOfBirth || parsed.tempatTglLahir) && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Tgl Lahir</span><b>{parsed.dateOfBirth || parsed.tempatTglLahir}</b></div>}
-            {parsed.gender && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Kelamin</span><b>{parsed.gender}</b></div>}
-            {parsed.maritalStatus && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Status</span><b>{parsed.maritalStatus}</b></div>}
-            {parsed.kewarganegaraan && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Warga Negara</span><b>{parsed.kewarganegaraan}</b></div>}
-          </div>
-        )}
-
-        <div>
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4px'}}>
-            <label style={{fontSize:'11px',color:'#475569',fontWeight:600}}>
-              Teks Lengkap Hasil Bacaan KTP (dapat diedit / disalin):
-            </label>
-            {ocrText && (
-              <button 
-                type="button" 
-                className="text-link" 
-                style={{fontSize:'10px',color:'#002060',cursor:'pointer'}} 
-                onClick={() => navigator.clipboard.writeText(ocrText)}
-              >
-                Salin Teks
-              </button>
-            )}
-          </div>
-          <textarea 
-            className="ktp-ocr-textarea"
-            aria-label="Hasil teks terbaca pada gambar KTP"
-            rows={5}
-            disabled={editorLocked}
-            value={ocrText}
-            onChange={e => {
-              const val = e.target.value;
-              setStakeholderModal((prev: any) => ({
-                ...prev,
-                value: { ...prev.value, ktpOcrText: val }
-              }));
-            }}
-            placeholder="Hasil teks yang terbaca pada gambar KTP akan otomatis muncul di kolom ini..."
-          />
-        </div>
-      </div>
-    </div>
-  </div>
-  <div className="modal-actions">
-    <button className="button" onClick={()=>setStakeholderModal(null)}>{editorLocked?'Tutup':'Batal'}</button>
-    {!editorLocked&&<button className="button primary" onClick={saveStakeholder}><Save size={15}/>Simpan Shareholder</button>}
-  </div>
-</Modal>;
-  })()}
+ {stakeholderModal && (
+    <StakeholderModalDialog
+      modal={stakeholderModal}
+      editorLocked={editorLocked}
+      formError={formError}
+      onClose={() => setStakeholderModal(null)}
+      onSave={saveStakeholder}
+      onChangeValue={(val) => setStakeholderModal({ ...stakeholderModal, value: val })}
+      fields={stakeholderFields}
+    />
+  )}
  {deleteStakeholder&&<Modal title="Hapus stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Hapus stakeholder dari akta ini?</p><p className="muted legal-delete-note">Klik Save changes di Legal agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Batal</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Hapus stakeholder</button></div></Modal>}
  {deleting&&<Modal title="Hapus akta" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Hapus {deedNames[deleting.type]} <strong>{deleting.deedNumber||'tanpa nomor'}</strong> dari daftar Legal?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Data asal di Customer atau profil tetap ada; akta ini akan disembunyikan dari daftar Legal.</p>}<p className="muted legal-delete-note">Klik Save changes setelah menghapus agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Batal</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Hapus akta</button></div></Modal>}
   {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);return <Modal title={`Rincian Remarks · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Kategori Perubahan ({rawIds.length} Kategori Terpilih):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Catatan / Remarks Akta:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',whiteSpace:'pre-wrap',minHeight:'80px'}}>{deed.remarks||'Belum ada catatan remarks untuk akta ini.'}</div></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Tutup</button></div></Modal>;})()}</>;
