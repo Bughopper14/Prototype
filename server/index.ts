@@ -22,8 +22,13 @@ async function masterData(q:Query=query){
   const def=defaultMasterCatalog();
   const merged:any={...def,...(row?.catalog||{})};
   for(const k of ['district','village','postalCode'] as const){
-    if(!merged[k]||merged[k].length===0){
-      merged[k]=def[k];
+    merged[k] = merged[k] || [];
+    const seen = new Set(merged[k].map((x:any)=>x.value));
+    for(const item of def[k]){
+      if(!seen.has(item.value)){
+        merged[k].push(item);
+        seen.add(item.value);
+      }
     }
   }
   return {catalog:merged as MasterCatalog,revision:row?.revision||0};
