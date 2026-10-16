@@ -122,7 +122,27 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
   const hasData = Boolean(formData.nib || formData.alamat || formData.email || formData.phone || formData.tanggalTerbit);
 
   return (
-    <div className="modal-backdrop" onClick={onClose} style={{zIndex: 9999, display:'flex', alignItems:'center', justifyContent:'center'}}>
+    <div 
+      className="modal-scrim nib-ocr-modal-overlay" 
+      onClick={onClose} 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(15, 23, 42, 0.75)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        boxSizing: 'border-box'
+      }}
+    >
       <div 
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
@@ -135,8 +155,10 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           padding: 0,
           background: '#ffffff',
           borderRadius: '12px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-          overflow: 'hidden'
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          overflow: 'hidden',
+          position: 'relative',
+          zIndex: 100000
         }}
       >
         {/* MODAL HEADER */}

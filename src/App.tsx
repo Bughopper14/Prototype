@@ -41,8 +41,8 @@ export default function App(){
       notify('Pembuatan aplikasi tersedia untuk akun Marketing (MKT). Silakan masuk dengan akun MKT.');
       return;
     }
-    const defaultCategory = preselectedCustomerId ? 'EXISTING' : (customers.length ? 'EXISTING' : 'NEW');
-    const targetCust = preselectedCustomerId ? customers.find((c: any) => c.id === preselectedCustomerId) : (customers[0] || null);
+    const defaultCategory = preselectedCustomerId ? 'EXISTING' : 'NEW';
+    const targetCust = preselectedCustomerId ? customers.find((c: any) => c.id === preselectedCustomerId) : null;
     const newAppDraft = {
       ...blank(profileFields),
       id: 'new',
@@ -54,11 +54,21 @@ export default function App(){
       customerStatus: defaultCategory,
       customerCategory: defaultCategory,
       customerId: targetCust?.id || '',
-      customer: targetCust || blank(customerFields),
-      branchCode: 'JKT01',
-      locationStatus: 'OWNED',
-      industrySegment: 'MINING',
-      businessRole: 'CONTRACTOR',
+      customer: targetCust ? structuredClone(targetCust) : blank(customerFields),
+      branchCode: '',
+      locationStatus: '',
+      industrySegment: '',
+      businessRole: '',
+      mainBusiness: '',
+      repaymentSource: '',
+      companyAddress: '',
+      province: '',
+      city: '',
+      village: '',
+      postalCode: '',
+      phoneFax: '',
+      email: '',
+      website: '',
       pic: blank(picFields),
       stakeholders: [],
       projects: [],
@@ -82,8 +92,8 @@ function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}
 function stakeholderEditorValues(s:any){const parts=String(s.name||'').trim().split(/\s+/);return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP'),title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};}
 function stakeholderForSave(s:any){const first=s.firstName||'',last=s.lastName||'',name=[first,s.middleName,last].map((x:string)=>String(x||'').trim()).filter(Boolean).join(' ')||s.name||'';return {...s,name,position:s.designation&&s.designation!=='NONE'?s.designation:s.position||'Shareholder',nationalityType:s.citizenship==='INDONESIAN'?'WNI':'WNA',shareAmount:s.depositedCapital??0,sharePercentage:s.sharePercentage??0,taxNumber:null};}
 function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustomerCreated,notify}:{value:any,user:any,customers?:any[],initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,onCustomerCreated?:(c:any)=>void,notify:(s:string)=>void}){
- const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(customers.length?'EXISTING':'NEW'));
- const [customerId,setCustomerId]=useState<string>(()=>a.customerId||a.customer_id||a.customer?.id||(customers[0]?.id||''));
+ const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(a.isNew?'NEW':(a.customerId?'EXISTING':'NEW')));
+ const [customerId,setCustomerId]=useState<string>(()=>a.isNew?(a.customerId||''):(a.customerId||a.customer_id||a.customer?.id||''));
  const [customerDraft,setCustomerDraft]=useState<any>(()=>a.customer?structuredClone(a.customer):blank(customerFields));
  const [nibOcrOpen,setNibOcrOpen]=useState(false);
  const handleApplyNibOcr=(extracted:{nib?:string,companyName?:string,alamat?:string,email?:string,phone?:string,tanggalTerbit?:string})=>{
@@ -113,7 +123,7 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
    setCustomerCategory('NEW');
   }
  };
- const selectedCustomer=customers.find((c:any)=>c.id===customerId);
+ const selectedCustomer=customerId?customers.find((c:any)=>c.id===customerId):null;
  const fapCustomerKeys=['companyName','companyType','nib','npwp','establishmentActNo','establishmentDate'];
  const fapCustomerFields=customerFields.filter(f=>fapCustomerKeys.includes(f.key));
  function changeCategory(value:string){
