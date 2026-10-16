@@ -1,6 +1,17 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2, FileSpreadsheet, Eye, Grid } from 'lucide-react';
-import { FAP_EXCEL_ROWS, EXCEL_COL_WIDTHS, EXCEL_COL_NAMES, ExcelCellDef } from './fap-excel-data';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  FileText,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Printer,
+  Download,
+  RotateCcw,
+  CheckCircle2,
+  Minimize2,
+  Eye,
+  Sliders,
+} from 'lucide-react';
 
 export interface FapSheetData {
   fapNumber?: string;
@@ -56,61 +67,50 @@ export function FapSheetPreview({
   data: FapSheetData;
   compact?: boolean;
 }) {
-  const [zoom, setZoom] = useState<number>(compact ? 80 : 90);
-  const [viewScope, setViewScope] = useState<'profile' | 'all'>('profile');
-  const [showHeaders, setShowHeaders] = useState<boolean>(true);
-  const [selectedCoord, setSelectedCoord] = useState<string>('E12');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [zoomMode, setZoomMode] = useState<'fit' | '100' | 'manual'>('fit');
+  const [manualZoom, setManualZoom] = useState<number>(compact ? 75 : 85);
+  const [viewScope, setViewScope] = useState<'profile' | 'full'>('profile');
 
-  const dynamicValues = useMemo(() => {
-    const values: Record<string, any> = {};
+  // Monitor container width for responsive Auto-Fit scaling
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerWidth(containerRef.current.clientWidth);
+      }
+    };
+    updateSize();
+    const ro = new ResizeObserver(updateSize);
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
 
-    values.fapNumber = data.fapNumber || '0006/AF/03/2026';
-    values.applicationDate = data.applicationDate
-      ? new Date(data.applicationDate).toLocaleDateString('en-GB')
-      : new Date().toLocaleDateString('en-GB');
-    values.branchCode = data.branchCode || 'JKT01';
+  // Standard A4 width in px at 96 DPI
+  const BASE_A4_WIDTH = 794;
 
+  // Compute scale based on zoomMode
+  const effectiveScale = useMemo(() => {
+    if (zoomMode === 'fit') {
+      if (!containerWidth) return 0.75;
+      const available = containerWidth - 36; // leave room for padding
+      return Math.min(1.15, Math.max(0.35, available / BASE_A4_WIDTH));
+    }
+    if (zoomMode === '100') return 1;
+    return manualZoom / 100;
+  }, [zoomMode, manualZoom, containerWidth]);
+
+  // Derived formatted values
+  const fap = useMemo(() => {
     const isNew = data.customerStatus === 'NEW';
-    values.checkCustomerNew = isNew ? '[ ✓ ] Customer Baru/New Customer' : '[   ] Customer Baru/New Customer';
-    values.checkCustomerExisting = !isNew ? '[ ✓ ] Customer Lama /Existing Customer' : '[   ] Customer Lama /Existing Customer';
-
     const type = data.companyType || '';
-    values.checkCorporate = type === 'CORPORATE' ? '[ ✓ ] Corporate' : '[   ] Corporate';
-    values.checkCommercial = type === 'COMMERCIAL' ? '[ ✓ ] Commercial' : '[   ] Commercial';
-    values.checkMicro = type === 'MICRO' ? '[ ✓ ] Micro' : '[   ] Micro';
-    values.checkLiuGongUser = type === 'LIUGONG_USER' ? '[ ✓ ] LiuGong User' : '[   ] LiuGong User';
-
-    values.companyName = data.companyName || '';
-    values.companyAddress = data.companyAddress || '';
-    values.city = data.city || '';
-    values.province = data.province || '';
-    values.postalCode = data.postalCode || '';
-    values.mainBusiness = data.mainBusiness || '';
-    values.establishmentActNo = data.establishmentActNo || '';
-    values.establishmentDate = data.establishmentDate || '';
-    values.experienceYears =
-      data.experienceYears !== undefined && data.experienceYears !== '' ? String(data.experienceYears) : '';
-    values.experienceMonths =
-      data.experienceMonths !== undefined && data.experienceMonths !== '' ? String(data.experienceMonths) : '';
-    values.latestDeedNo = data.latestDeedNo || '';
-    values.latestDeedDate = data.latestDeedDate || '';
-    values.nib = data.nib || '';
-    values.npwp = data.npwp || '';
-    values.phoneFax = data.phoneFax || '';
-    values.website = data.website || '';
-    values.email = data.email || '';
-    values.repaymentSource = data.repaymentSource || '';
-
-    const isOwned = data.locationStatus === 'OWNED';
-    const isRented = data.locationStatus === 'RENTED';
-    values.locationStatus = `${isOwned ? '(●)' : '(○)'} Milik Sendiri   /   ${isRented ? '(●)' : '(○)'} Sewa`;
+    const isCorporate = type === 'CORPORATE';
+    const isCommercial = type === 'COMMERCIAL';
+    const isMicro = type === 'MICRO';
+    const isLiuGongUser = type === 'LIUGONG_USER';
 
     const pic = data.pic || {};
-    values.picName = pic.picName || '';
-    values.picPhone = pic.phone || '';
-    values.picPosition = pic.position || '';
-    values.picEmail = pic.email || '';
-
     const addrParts = [
       pic.currentAddress,
       pic.rt ? `RT ${pic.rt}` : null,
@@ -118,216 +118,611 @@ export function FapSheetPreview({
       pic.village,
       pic.district,
     ].filter(Boolean);
-    values.picAddress = addrParts.join(', ') || pic.currentAddress || '';
-    values.picCity = pic.city || '';
-    values.picProvince = pic.province || '';
-    values.picPostalCode = pic.postalCode || '';
 
-    values.selectedDeedNo = data.selectedDeedNo || data.latestDeedNo || data.establishmentActNo || '';
-
+    // Stakeholders up to 8 rows
     const shList = data.stakeholders || [];
-    for (let i = 0; i < 8; i++) {
+    const shRows = Array.from({ length: 8 }, (_, i) => {
       const sh = shList[i];
-      const prefix = `sh${i + 1}`;
-      if (sh) {
-        const name = sh.name || [sh.firstName, sh.lastName].filter(Boolean).join(' ') || '';
-        values[`${prefix}_name`] = name;
-        values[`${prefix}_pos`] = sh.position || sh.designation || '';
-        const amount = sh.depositedCapital || sh.shareAmount || 0;
-        values[`${prefix}_amount`] = amount
-          ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(amount))
-          : '';
-        const pct = sh.sharePercentage || sh.percentage || 0;
-        values[`${prefix}_pct`] = pct ? `${Number(pct).toFixed(2)}%` : '';
-      } else {
-        values[`${prefix}_name`] = '';
-        values[`${prefix}_pos`] = '';
-        values[`${prefix}_amount`] = '';
-        values[`${prefix}_pct`] = '';
-      }
-    }
+      if (!sh) return { no: i + 1, name: '', pos: '', amount: '', pct: '' };
+      const name = sh.name || [sh.firstName, sh.lastName].filter(Boolean).join(' ') || '';
+      const amount = sh.depositedCapital || sh.shareAmount || 0;
+      const pct = sh.sharePercentage || sh.percentage || 0;
+      return {
+        no: i + 1,
+        name,
+        pos: sh.position || sh.designation || '',
+        amount: amount ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(amount)) : '',
+        pct: pct ? `${Number(pct).toFixed(2)}%` : '',
+      };
+    });
 
-    return values;
+    const isOwned = data.locationStatus === 'OWNED';
+    const isRented = data.locationStatus === 'RENTED';
+
+    return {
+      fapNumber: data.fapNumber || '0006/AF/03/2026 (Auto)',
+      date: data.applicationDate
+        ? new Date(data.applicationDate).toLocaleDateString('en-GB')
+        : new Date().toLocaleDateString('en-GB'),
+      branch: data.branchCode || 'JKT01',
+      isNew,
+      isCorporate,
+      isCommercial,
+      isMicro,
+      isLiuGongUser,
+      companyName: data.companyName || '',
+      companyAddress: data.companyAddress || '',
+      city: data.city || '',
+      province: data.province || '',
+      postalCode: data.postalCode || '',
+      mainBusiness: data.mainBusiness || '',
+      estActNo: data.establishmentActNo || '',
+      estDate: data.establishmentDate || '',
+      expYears: data.experienceYears !== undefined && data.experienceYears !== '' ? String(data.experienceYears) : '',
+      expMonths: data.experienceMonths !== undefined && data.experienceMonths !== '' ? String(data.experienceMonths) : '',
+      latestDeedNo: data.latestDeedNo || '',
+      latestDeedDate: data.latestDeedDate || '',
+      nib: data.nib || '',
+      npwp: data.npwp || '',
+      phoneFax: data.phoneFax || '',
+      website: data.website || '',
+      email: data.email || '',
+      repaymentSource: data.repaymentSource || '',
+      isOwned,
+      isRented,
+      picName: pic.picName || '',
+      picPhone: pic.phone || '',
+      picPos: pic.position || '',
+      picEmail: pic.email || '',
+      picAddr: addrParts.join(', ') || pic.currentAddress || '',
+      picCity: pic.city || '',
+      picProvince: pic.province || '',
+      picPostal: pic.postalCode || '',
+      deedRef: data.selectedDeedNo || data.latestDeedNo || data.establishmentActNo || '—',
+      shRows,
+    };
   }, [data]);
 
-  // Filter rows based on viewScope: profile (rows 1-45) or all (rows 1-118)
-  const displayRows = useMemo(() => {
-    return viewScope === 'profile' ? FAP_EXCEL_ROWS.slice(0, 45) : FAP_EXCEL_ROWS;
-  }, [viewScope]);
+  // Handle PDF Export / Print
+  const handleDownloadPdf = () => {
+    const printDoc = document.getElementById('fap-pdf-printable-area');
+    if (!printDoc) return;
 
-  const activeCellValue = dynamicValues[selectedCoord] || '';
+    const printWin = window.open('', '_blank');
+    if (!printWin) {
+      window.print();
+      return;
+    }
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>FAP-Document_${fap.fapNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 10mm;
+            }
+            body {
+              font-family: Calibri, 'Segoe UI', Arial, sans-serif;
+              margin: 0;
+              padding: 0;
+              color: #0f172a;
+              background: #ffffff;
+            }
+            .fap-pdf-page {
+              width: 100% !important;
+              max-width: 100% !important;
+              box-shadow: none !important;
+              border: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+            }
+            .fap-pdf-table {
+              width: 100%;
+              border-collapse: collapse;
+            }
+            .fap-pdf-table td, .fap-pdf-table th {
+              border: 1px solid #1e293b;
+              padding: 3px 5px;
+              font-size: 10.5px;
+            }
+            .fap-header-title {
+              font-size: 20px;
+              font-weight: bold;
+              text-align: center;
+              color: #002c5f;
+            }
+            .fap-reg-pill {
+              font-family: monospace;
+              font-weight: bold;
+            }
+            .fap-filled-cell {
+              color: #002c5f !important;
+              font-weight: bold;
+            }
+          </style>
+        </head>
+        <body>
+          ${printDoc.innerHTML}
+          <script>
+            setTimeout(() => {
+              window.print();
+              window.close();
+            }, 350);
+          </script>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
 
   return (
-    <div className="excel-viewer-wrapper">
-      {/* Excel Ribbon & Control Bar */}
-      <div className="excel-ribbon">
-        <div className="excel-title-group">
-          <FileSpreadsheet size={16} className="excel-brand-icon" />
-          <div className="excel-doc-info">
-            <span className="excel-filename">APPROVED v01.2025.xlsx</span>
-            <span className="excel-sheetname">Sheet: APPROVED v01.2025</span>
+    <div className="pdf-viewer-shell" ref={containerRef}>
+      {/* PDF Viewer Header Toolbar */}
+      <div className="pdf-viewer-toolbar">
+        <div className="pdf-toolbar-left">
+          <div className="pdf-file-badge">
+            <FileText size={15} className="pdf-file-icon" />
+            <span className="pdf-filename">FAP-Document.pdf</span>
+            <span className="pdf-version-tag">APPROVED v01.2025</span>
           </div>
-          <span className="excel-sync-pill">
-            <span className="excel-sync-dot" />
-            Live Mirror
+          <span className="pdf-live-indicator">
+            <span className="pdf-live-ping" />
+            Live Sync
           </span>
         </div>
 
-        <div className="excel-controls-group">
+        <div className="pdf-toolbar-right">
           {/* Scope Toggle */}
-          <div className="excel-scope-toggle">
+          <div className="pdf-scope-switch">
             <button
               type="button"
               className={viewScope === 'profile' ? 'active' : ''}
               onClick={() => setViewScope('profile')}
-              title="Tampilkan Bagian Intake & Profile (Baris 1 - 45)"
+              title="Fokus FAP Stage (Profil, PIC & Legal)"
             >
-              FAP Stage (Baris 1-45)
+              FAP Stage
             </button>
             <button
               type="button"
-              className={viewScope === 'all' ? 'active' : ''}
-              onClick={() => setViewScope('all')}
-              title="Tampilkan Seluruh Lembar Kerja (Baris 1 - 118)"
+              className={viewScope === 'full' ? 'active' : ''}
+              onClick={() => setViewScope('full')}
+              title="Tampilkan Dokumen Lengkap"
             >
-              Full Sheet (118 Baris)
+              Full Form
             </button>
           </div>
 
-          {/* Header Toggle */}
+          {/* Auto-Fit / Zoom controls */}
+          <div className="pdf-zoom-group">
+            <button
+              type="button"
+              className={`pdf-tool-btn ${zoomMode === 'fit' ? 'active' : ''}`}
+              onClick={() => setZoomMode('fit')}
+              title="Pas Lebar (Fit-to-Width) - Bebas Scroll Horizontal"
+            >
+              <Maximize2 size={13} />
+              <span>Fit Width</span>
+            </button>
+            <button
+              type="button"
+              className={`pdf-tool-btn ${zoomMode === '100' ? 'active' : ''}`}
+              onClick={() => setZoomMode('100')}
+              title="Ukuran Asli 100%"
+            >
+              <span>100%</span>
+            </button>
+            <div className="pdf-zoom-stepper">
+              <button
+                type="button"
+                onClick={() => {
+                  setZoomMode('manual');
+                  setManualZoom((z) => Math.max(40, z - 10));
+                }}
+                title="Perkecil"
+              >
+                <ZoomOut size={13} />
+              </button>
+              <span className="pdf-zoom-val">{Math.round(effectiveScale * 100)}%</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setZoomMode('manual');
+                  setManualZoom((z) => Math.min(140, z + 10));
+                }}
+                title="Perbesar"
+              >
+                <ZoomIn size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* Download / Print PDF Button */}
           <button
             type="button"
-            className={`excel-btn-icon ${showHeaders ? 'active' : ''}`}
-            onClick={() => setShowHeaders((s) => !s)}
-            title="Tampilkan / Sembunyikan Header Baris & Kolom Excel"
+            className="pdf-download-btn"
+            onClick={handleDownloadPdf}
+            title="Unduh / Cetak sebagai File PDF Resmi"
           >
-            <Grid size={13} />
+            <Download size={14} />
+            <span>Unduh PDF</span>
           </button>
-
-          {/* Zoom controls */}
-          <div className="excel-zoom-bar">
-            <button type="button" onClick={() => setZoom((z) => Math.max(50, z - 10))} title="Zoom Out">
-              <ZoomOut size={13} />
-            </button>
-            <span className="excel-zoom-indicator">{zoom}%</span>
-            <button type="button" onClick={() => setZoom((z) => Math.min(150, z + 10))} title="Zoom In">
-              <ZoomIn size={13} />
-            </button>
-            <button type="button" onClick={() => setZoom(compact ? 80 : 90)} title="Reset Zoom">
-              <RotateCcw size={12} />
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Formula Bar */}
-      <div className="excel-formula-bar">
-        <div className="excel-name-box">{selectedCoord}</div>
-        <div className="excel-fx-icon">fx</div>
-        <div className="excel-fx-input" title="Isi Cell Aktif">
-          {activeCellValue || `Cell ${selectedCoord}`}
-        </div>
-      </div>
-
-      {/* Excel Sheet Scrollable Canvas */}
-      <div className="excel-viewport">
+      {/* PDF Viewport (Charcoal background) */}
+      <div className="pdf-viewport">
         <div
-          className="excel-zoom-container"
+          className="pdf-scalable-wrapper"
           style={{
-            transform: `scale(${zoom / 100})`,
-            transformOrigin: 'top left',
+            transform: `scale(${effectiveScale})`,
+            transformOrigin: 'top center',
+            marginBottom: `${(1 - effectiveScale) * -1100}px`,
           }}
         >
-          <table className="excel-sheet-table">
-            <colgroup>
-              {showHeaders && <col style={{ width: '38px', minWidth: '38px' }} />}
-              {EXCEL_COL_WIDTHS.map((pct, idx) => (
-                <col key={idx} style={{ width: `${pct * 14}px`, minWidth: `${pct * 14}px` }} />
-              ))}
-            </colgroup>
+          {/* A4 Paper Canvas */}
+          <div className="fap-pdf-page" id="fap-pdf-printable-area">
+            {/* Header Document Block */}
+            <div className="pdf-doc-header">
+              <div className="pdf-brand-col">
+                <div className="pdf-logo-mark">
+                  <span className="pdf-logo-red">LIUGONG</span>
+                  <span className="pdf-logo-sub">FINANCE INDONESIA</span>
+                </div>
+                <div className="pdf-company-full">PT LIUGONG FINANCE INDONESIA</div>
+              </div>
+              <div className="pdf-title-col">
+                <h1 className="pdf-doc-title">APPLICATION FORM</h1>
+                <span className="pdf-doc-type">FINANCING APPLICATION PROFILE (FAP)</span>
+              </div>
+              <div className="pdf-reg-col">
+                <div className="pdf-reg-box">
+                  <span className="pdf-reg-label">No. Register :</span>
+                  <span className="pdf-reg-no">{fap.fapNumber}</span>
+                </div>
+              </div>
+            </div>
 
-            {/* Column Headers (A, B, C...) */}
-            {showHeaders && (
-              <thead>
-                <tr className="excel-header-row">
-                  <th className="excel-corner-cell"></th>
-                  {EXCEL_COL_NAMES.map((colName) => (
-                    <th key={colName} className="excel-col-header">
-                      {colName}
-                    </th>
-                  ))}
+            {/* Meta Strip: Date, Branch, Category, Segmentation */}
+            <table className="fap-meta-table">
+              <tbody>
+                <tr>
+                  <td className="meta-lbl" style={{ width: '13%' }}>Tanggal / Date</td>
+                  <td className="meta-val" style={{ width: '18%' }}>
+                    <span className="fap-dyn-value">{fap.date}</span>
+                  </td>
+                  <td className="meta-chk" style={{ width: '34%' }}>
+                    <span className={`chk-box ${fap.isNew ? 'chk-active' : ''}`}>
+                      {fap.isNew ? '☑' : '☐'} Customer Baru / New Customer
+                    </span>
+                  </td>
+                  <td className="meta-chk" style={{ width: '18%' }}>
+                    <span className={`chk-box ${fap.isCorporate ? 'chk-active' : ''}`}>
+                      {fap.isCorporate ? '☑' : '☐'} Corporate
+                    </span>
+                  </td>
+                  <td className="meta-chk" style={{ width: '17%' }}>
+                    <span className={`chk-box ${fap.isMicro ? 'chk-active' : ''}`}>
+                      {fap.isMicro ? '☑' : '☐'} Micro
+                    </span>
+                  </td>
                 </tr>
-              </thead>
+                <tr>
+                  <td className="meta-lbl">Cabang / Branch</td>
+                  <td className="meta-val">
+                    <span className="fap-dyn-value">{fap.branch}</span>
+                  </td>
+                  <td className="meta-chk">
+                    <span className={`chk-box ${!fap.isNew ? 'chk-active' : ''}`}>
+                      {!fap.isNew ? '☑' : '☐'} Customer Lama / Existing Customer
+                    </span>
+                  </td>
+                  <td className="meta-chk">
+                    <span className={`chk-box ${fap.isCommercial ? 'chk-active' : ''}`}>
+                      {fap.isCommercial ? '☑' : '☐'} Commercial
+                    </span>
+                  </td>
+                  <td className="meta-chk">
+                    <span className={`chk-box ${fap.isLiuGongUser ? 'chk-active' : ''}`}>
+                      {fap.isLiuGongUser ? '☑' : '☐'} LiuGong User
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* Main Section: Two-Column Split (Company Profile on Left, PIC & Stakeholders on Right) */}
+            <div className="pdf-main-split">
+              {/* Left Column: Company Profile */}
+              <div className="pdf-col-company">
+                <div className="pdf-section-ribbon">COMPANY PROFILE</div>
+                <table className="fap-fields-table">
+                  <tbody>
+                    <tr>
+                      <td className="field-lbl" style={{ width: '38%' }}>Nama Perusahaan / Company's Name</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className={`dyn-text bold ${fap.companyName ? 'highlight' : 'empty'}`}>
+                          {fap.companyName || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Alamat Perusahaan / Company Address</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className={`dyn-text ${fap.companyAddress ? 'highlight' : 'empty'}`}>
+                          {fap.companyAddress || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Kota / City</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.city || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Provinsi / Province</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.province || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Kode Pos / Postal Code</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text font-mono">{fap.postalCode || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Bisnis Utama / Main Business</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.mainBusiness || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">No. Akta Pendirian</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <div className="sub-split">
+                          <span>{fap.estActNo || '—'}</span>
+                          <span className="sub-lbl">Tgl: {fap.estDate || '—'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Pengalaman / Experience</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">
+                          <b>{fap.expYears || '0'}</b> thn &nbsp; <b>{fap.expMonths || '0'}</b> bln
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">No. Akta Perubahan Terakhir</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <div className="sub-split">
+                          <span>{fap.latestDeedNo || '—'}</span>
+                          <span className="sub-lbl">Tgl: {fap.latestDeedDate || '—'}</span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">NIB (No Induk Berusaha)</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text font-mono bold">{fap.nib || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">NPWP / No. Tax</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text font-mono bold">{fap.npwp || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Phone / Fax</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.phoneFax || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Website</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.website || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Email Resmi</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.email || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Sumber Pembayaran / Repayment</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.repaymentSource || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Status Tempat Usaha</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-radio">
+                          <b className={fap.isOwned ? 'active' : ''}>{fap.isOwned ? '●' : '○'} Milik Sendiri</b>
+                          &nbsp;&nbsp;/&nbsp;&nbsp;
+                          <b className={fap.isRented ? 'active' : ''}>{fap.isRented ? '●' : '○'} Sewa</b>
+                        </span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Right Column: PIC & Stakeholders */}
+              <div className="pdf-col-pic-stakeholder">
+                {/* PIC Block */}
+                <div className="pdf-section-ribbon">PENANGGUNG JAWAB (PIC)</div>
+                <table className="fap-fields-table">
+                  <tbody>
+                    <tr>
+                      <td className="field-lbl" style={{ width: '38%' }}>Nama PIC / Contact Name</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className={`dyn-text bold ${fap.picName ? 'highlight' : 'empty'}`}>
+                          {fap.picName || '—'}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Telepon / Phone</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text font-mono bold">{fap.picPhone || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Jabatan / Position</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.picPos || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Email PIC</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.picEmail || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Alamat Tempat Tinggal</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">{fap.picAddr || '—'}</span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Kota & Provinsi</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text">
+                          {fap.picCity ? `${fap.picCity}, ${fap.picProvince}` : '—'}
+                        </span>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td className="field-lbl">Kode Pos</td>
+                      <td className="field-sep">:</td>
+                      <td className="field-val">
+                        <span className="dyn-text font-mono">{fap.picPostal || '—'}</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Stakeholder Block */}
+                <div className="pdf-section-ribbon" style={{ marginTop: '10px' }}>
+                  STRUKTUR ORGANISASI & PEMEGANG SAHAM
+                </div>
+                <div className="pdf-deed-ref">
+                  <span>Berdasarkan Akta / Based on Act No.: </span>
+                  <b>{fap.deedRef}</b>
+                </div>
+
+                <table className="fap-stakeholders-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '7%' }}>No</th>
+                      <th style={{ width: '42%' }}>Name</th>
+                      <th style={{ width: '23%' }}>Position</th>
+                      <th style={{ width: '18%' }}>Amount of Share</th>
+                      <th style={{ width: '10%' }}>% Share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {fap.shRows.map((row) => (
+                      <tr key={row.no} className={row.name ? 'sh-row-active' : 'sh-row-empty'}>
+                        <td className="center">{row.no}</td>
+                        <td className="bold">{row.name || ''}</td>
+                        <td>{row.pos || ''}</td>
+                        <td className="right font-mono">{row.amount || ''}</td>
+                        <td className="right font-mono">{row.pct || ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Lower Sections (Visible in Full Form Scope) */}
+            {viewScope === 'full' && (
+              <div className="pdf-full-extensions">
+                {/* Financing Purpose & Fixed Assets */}
+                <div className="pdf-section-ribbon" style={{ marginTop: '12px' }}>
+                  TUJUAN PEMBIAYAAN & RENCANA REALISASI UNIT
+                </div>
+                <div className="pdf-ext-grid">
+                  <div className="ext-box">
+                    <span className="ext-title">Tujuan Pembiayaan:</span>
+                    <p className="ext-desc">
+                      Investasi (Modernisasi/Ekspansi, Relokasi, Rehabilitasi) &amp; Modal Kerja.
+                    </p>
+                  </div>
+                  <div className="ext-box">
+                    <span className="ext-title">Skema Fasilitas Usulan:</span>
+                    <p className="ext-desc">
+                      Sewa Pembiayaan / Financial Lease · Sale and Lease Back · Installment Financing
+                    </p>
+                  </div>
+                </div>
+
+                {/* Signatures */}
+                <div className="pdf-signature-area">
+                  <div className="sig-column">
+                    <span className="sig-caption">Di tanda tangani debitur / Signed by Debtor :</span>
+                    <span className="sig-company-name">{fap.companyName || '[ Nama Perusahaan ]'}</span>
+                    <div className="sig-space" />
+                    <div className="sig-underline">
+                      <span>( Tanda Tangan &amp; Cap Perusahaan )</span>
+                      <small>Nama Direktur / Kuasa Direksi</small>
+                    </div>
+                  </div>
+
+                  <div className="sig-column">
+                    <span className="sig-caption">Diverifikasi oleh pihak LFI / Verified by LFI :</span>
+                    <span className="sig-company-name">PT. LIUGONG FINANCE INDONESIA</span>
+                    <div className="sig-space" />
+                    <div className="sig-underline">
+                      <span>Marketing Officer / BM</span>
+                      <small>Branch Operations</small>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
-            <tbody>
-              {displayRows.map((rowCells, rIdx) => {
-                const rowNum = rIdx + 1;
-                return (
-                  <tr key={rowNum} className="excel-data-row">
-                    {/* Row Header (1, 2, 3...) */}
-                    {showHeaders && <td className="excel-row-header">{rowNum}</td>}
-
-                    {/* Cells */}
-                    {rowCells.map((cell) => {
-                      const isDynamic = Boolean(cell.k);
-                      const dynamicVal = cell.k ? dynamicValues[cell.k] : undefined;
-                      const displayVal = dynamicVal !== undefined ? dynamicVal : (cell.v || '');
-                      const isSelected = selectedCoord === cell.c;
-                      const hasValue = Boolean(displayVal && String(displayVal).trim() !== '');
-
-                      // Compute exact border style
-                      const borderStyles: React.CSSProperties = {};
-                      if (cell.b) {
-                        const [bt, bb, bl, br, isDouble] = cell.b;
-                        if (bt) borderStyles.borderTop = '1px solid #1e293b';
-                        if (bb) borderStyles.borderBottom = isDouble ? '3px double #1e293b' : '1px solid #1e293b';
-                        if (bl) borderStyles.borderLeft = '1px solid #1e293b';
-                        if (br) borderStyles.borderRight = '1px solid #1e293b';
-                      }
-
-                      if (cell.bg) {
-                        borderStyles.backgroundColor = cell.bg;
-                      }
-
-                      const cellStyle: React.CSSProperties = {
-                        ...borderStyles,
-                        fontWeight: cell.bld ? 'bold' : 'normal',
-                        fontStyle: cell.it ? 'italic' : 'normal',
-                        fontSize: cell.sz ? `${Math.max(9, Math.round(cell.sz * 1.05))}px` : '11px',
-                        textAlign: (cell.ha as any) || (cell.bld ? 'left' : 'left'),
-                        verticalAlign: (cell.va as any) || 'middle',
-                      };
-
-                      return (
-                        <td
-                          key={cell.c}
-                          id={`excel_cell_${cell.c}`}
-                          rowSpan={cell.rs}
-                          colSpan={cell.cs}
-                          style={cellStyle}
-                          className={`excel-cell ${isDynamic ? 'excel-cell-dynamic' : ''} ${
-                            isSelected ? 'excel-cell-selected' : ''
-                          } ${isDynamic && hasValue ? 'excel-cell-filled' : ''}`}
-                          onClick={() => setSelectedCoord(cell.c)}
-                        >
-                          {displayVal}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+            {/* Document Footer */}
+            <div className="pdf-doc-footer">
+              <span>PT LiuGong Finance Indonesia • Origination Workspace</span>
+              <span>Dokumen Aplikasi Pembiayaan Resmi • APPROVED v01.2025</span>
+              <span>Halaman 1 dari 1</span>
+            </div>
+          </div>
         </div>
-      </div>
-
-      {/* Excel Status Bar */}
-      <div className="excel-status-bar">
-        <span>READY</span>
-        <span>Sheet 1 of 1 · APPROVED v01.2025</span>
-        <span>Total Columns: 22 (A-V) · Zoom: {zoom}%</span>
       </div>
     </div>
   );
