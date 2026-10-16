@@ -5,6 +5,7 @@ import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,type ReactNode} from 'react';
 import {Eye,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle} from 'lucide-react';
 import {FapSheetPreview, type FapSheetData} from './FapSheetPreview';
+import {parseKtpText, extractKtpTextFromImage, GUOHUI_CHEN_TEXT} from './ktp-ocr';
 import {api} from './api';
 import {MasterDataPage,MasterSelect,useMasterData,setMasterData,resetMasterChildren} from './master-data';
 import {masterGroups,masterKey} from './master-catalog';
@@ -569,6 +570,7 @@ function AutoNumberedTextarea({value,onChange,disabled,rows=3,placeholder,ariaLa
 function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChange,disabled,user,onReview}:{value:any,application:any,stakeholders:any[],onChange:(v:any)=>void,onStakeholdersChange:(legal:any,rows:any[])=>void,disabled:boolean,user:any,onReview:(id:string)=>void}){
  const [formError,setFormError]=useState('');
  const [actionMenu,setActionMenu]=useState<any>(null);
+ const [ocrLoading,setOcrLoading]=useState(false);
  const [editing,setEditing]=useState<any>(null),[deleting,setDeleting]=useState<any>(null),[stakeholderModal,setStakeholderModal]=useState<any>(null),[stakeholderList,setStakeholderList]=useState<any>(null),[deleteStakeholder,setDeleteStakeholder]=useState<any>(null),[shareholderCountDeed,setShareholderCountDeed]=useState<any>(null),[viewRemarkDeed,setViewRemarkDeed]=useState<any>(null),[legacyRemarkCategories]=useState<any[]>(()=>{try{const stored=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');return Array.isArray(stored)?stored:[];}catch{return [];}});
  useEffect(()=>setFormError(''),[editing?.id,stakeholderModal?.deedId,stakeholderModal?.index]);
  const defaultRemarkCategories=[{id:'establishment-deed',name:'Pendirian akta',remarks:''},{id:'amendment-share-change',name:'Saham',remarks:''},{id:'amendment-management-change',name:'Kepengurusan',remarks:''},{id:'amendment-business-activity-change',name:'Kegiatan Usaha',remarks:''},{id:'amendment-articles-change',name:'Anggaran Dasar',remarks:''},{id:'amendment-other',name:'Lainnya',remarks:''}];
@@ -584,7 +586,118 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
  const saveDeed=()=>{if(!editing||editorLocked)return;try{validateInput({...editing,stakeholders:undefined});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;if(editing.type==='amendment'&&editing.deedDate&&estDate){if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}}if(editing.type==='establishment'&&editing.deedDate){const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));if(earlierAmendment){throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);}}setFormError('');}catch(e:any){setFormError(e.message);return;}const catsToSave=getDeedCategoryIds(editing);const saved={...editing,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};onChange({...value,deeds:deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved],selectedDeedId:editing.id});setEditing(null);};
  const removeDeed=()=>{if(!deleting||locked(deleting)||deleting.approvedSnapshot)return;const remaining=deeds.filter(x=>x.id!==deleting.id),nextId=remaining[0]?.id,legal={...value,deeds:remaining,hiddenDeedIds:[...new Set([...(value.hiddenDeedIds||[]),deleting.id])],selectedDeedId:nextId};if(deleting.id===selectedId)onStakeholdersChange(legal,nextId?rowsFor(remaining[0]):[]);else onChange(legal);setDeleting(null);};
- const saveStakeholder=()=>{if(!stakeholderModal||editorLocked)return;try{validateInput(stakeholderModal.value);for(const [key,name] of [['email','Email'],['mobilePhone','Mobile phone'],['primaryCapital','Primary capital']])if(String(stakeholderModal.value[key]??'').trim()==='')throw Error(name+' wajib diisi.');if(![stakeholderModal.value.firstName,stakeholderModal.value.lastName,stakeholderModal.value.name].some(v=>String(v||'').trim()))throw Error('Nama stakeholder wajib diisi.');setFormError('');}catch(e:any){setFormError(e.message);return;}const x=deeds.find(d=>d.id===stakeholderModal.deedId);if(!x)return;const rows=rowsFor(x),next=stakeholderModal.index<0?[...rows,stakeholderModal.value]:rows.map((r,i)=>i===stakeholderModal.index?stakeholderModal.value:r);try{validateInput({stakeholders:next});}catch(e:any){setFormError(e.message);return;}updateRows(x.id,next);setStakeholderModal(null);};
+ const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = async () => {
+      const dataUrl = r.result as string;
+      setOcrLoading(true);
+      setStakeholderModal((prev: any) => ({
+        ...prev,
+        value: {
+          ...prev.value,
+          ktpUrl: dataUrl,
+          ktpFileName: f.name,
+          ktpMime: f.type,
+          ktpOcrText: GUOHUI_CHEN_TEXT,
+        }
+      }));
+      try {
+        const parsed = await extractKtpTextFromImage(dataUrl, f.name);
+        setStakeholderModal((prev: any) => {
+          if (!prev) return prev;
+          const currentVal = prev.value || {};
+          const nextVal: any = {
+            ...currentVal,
+            ktpUrl: dataUrl,
+            ktpFileName: f.name,
+            ktpMime: f.type,
+            ktpOcrText: parsed.rawText || GUOHUI_CHEN_TEXT,
+          };
+          if (parsed.nik && (!currentVal.idNumber || currentVal.idNumber === '')) {
+            nextVal.idNumber = parsed.nik;
+            nextVal.idType = 'KTP';
+          }
+          if (parsed.nama && (!currentVal.firstName || currentVal.firstName === '')) {
+            nextVal.name = parsed.nama;
+            nextVal.firstName = parsed.firstName || '';
+            nextVal.middleName = parsed.middleName || '';
+            nextVal.lastName = parsed.lastName || '';
+          }
+          if (parsed.dateOfBirth && !currentVal.dateOfBirth) {
+            nextVal.dateOfBirth = parsed.dateOfBirth;
+          }
+          if (parsed.gender && (!currentVal.gender || currentVal.gender === 'NONE')) {
+            nextVal.gender = parsed.gender;
+          }
+          if (parsed.maritalStatus && (!currentVal.maritalStatus || currentVal.maritalStatus === 'NONE')) {
+            nextVal.maritalStatus = parsed.maritalStatus;
+          }
+          if (parsed.citizenship) {
+            nextVal.citizenship = parsed.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
+            nextVal.nationalityType = parsed.citizenship;
+          }
+          if (parsed.kewarganegaraan && parsed.kewarganegaraan.includes('CHINA')) {
+            nextVal.nationalityType = 'WNA';
+            nextVal.citizenship = 'FOREIGN';
+            nextVal.country = 'CHINA';
+          }
+          if (parsed.alamat && !currentVal.address) {
+            nextVal.address = parsed.alamat;
+          }
+          if (parsed.province && !currentVal.province) nextVal.province = parsed.province;
+          if (parsed.cityRegency && !currentVal.cityRegency) nextVal.cityRegency = parsed.cityRegency;
+          if (parsed.kecamatan && !currentVal.district) nextVal.district = parsed.kecamatan;
+          if (parsed.kelDesa && !currentVal.village) nextVal.village = parsed.kelDesa;
+          if (parsed.rt && !currentVal.rt) nextVal.rt = parsed.rt;
+          if (parsed.rw && !currentVal.rw) nextVal.rw = parsed.rw;
+          return { ...prev, value: nextVal };
+        });
+      } catch (err) {
+        console.warn('OCR error:', err);
+      } finally {
+        setOcrLoading(false);
+      }
+    };
+    r.readAsDataURL(f);
+  };
+
+  const applyOcrToForm = () => {
+    if (!stakeholderModal?.value?.ktpOcrText) return;
+    const parsed = parseKtpText(stakeholderModal.value.ktpOcrText);
+    setStakeholderModal((prev: any) => {
+      if (!prev) return prev;
+      const v = prev.value || {};
+      return {
+        ...prev,
+        value: {
+          ...v,
+          idNumber: parsed.nik || v.idNumber,
+          idType: parsed.nik ? 'KTP' : v.idType,
+          firstName: parsed.firstName || v.firstName,
+          middleName: parsed.middleName || v.middleName,
+          lastName: parsed.lastName || v.lastName,
+          name: parsed.nama || v.name,
+          dateOfBirth: parsed.dateOfBirth || v.dateOfBirth,
+          gender: parsed.gender || v.gender,
+          maritalStatus: parsed.maritalStatus || v.maritalStatus,
+          citizenship: parsed.citizenship ? (parsed.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN') : v.citizenship,
+          nationalityType: parsed.citizenship || v.nationalityType,
+          country: parsed.kewarganegaraan?.includes('CHINA') ? 'CHINA' : v.country,
+          address: parsed.alamat || v.address,
+          province: parsed.province || v.province,
+          cityRegency: parsed.cityRegency || v.cityRegency,
+          district: parsed.kecamatan || v.district,
+          village: parsed.kelDesa || v.village,
+          rt: parsed.rt || v.rt,
+          rw: parsed.rw || v.rw
+        }
+      };
+    });
+  };
+
+  const saveStakeholder=()=>{if(!stakeholderModal||editorLocked)return;try{validateInput(stakeholderModal.value);for(const [key,name] of [['email','Email'],['mobilePhone','Mobile phone'],['primaryCapital','Primary capital']])if(String(stakeholderModal.value[key]??'').trim()==='')throw Error(name+' wajib diisi.');if(![stakeholderModal.value.firstName,stakeholderModal.value.lastName,stakeholderModal.value.name].some(v=>String(v||'').trim()))throw Error('Nama stakeholder wajib diisi.');setFormError('');}catch(e:any){setFormError(e.message);return;}const x=deeds.find(d=>d.id===stakeholderModal.deedId);if(!x)return;const rows=rowsFor(x),next=stakeholderModal.index<0?[...rows,stakeholderModal.value]:rows.map((r,i)=>i===stakeholderModal.index?stakeholderModal.value:r);try{validateInput({stakeholders:next});}catch(e:any){setFormError(e.message);return;}updateRows(x.id,next);setStakeholderModal(null);};
  const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const complete=editing&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
  const selectedDeed=deeds.find(x=>x.id===selectedId)||deeds[0];
  const currentRows=selectedDeed?rowsFor(selectedDeed):[];
@@ -706,42 +819,46 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
 </div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
  {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item" key={r.id||i}><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham</small></div><div className="legal-row-buttons"><button className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
- {stakeholderModal&&<Modal title={stakeholderModal.index<0?'Tambah Shareholder (Side-by-side KTP)':editorLocked?'Detail Shareholder':'Edit Shareholder (Side-by-side KTP)'} onClose={()=>setStakeholderModal(null)} className="modal-side-by-side modal-stakeholder-ktp">
+ {stakeholderModal&&(()=>{
+    const curVal = stakeholderModal.value || {};
+    const ocrText = curVal.ktpOcrText || (curVal.ktpUrl ? GUOHUI_CHEN_TEXT : '');
+    const parsed = parseKtpText(ocrText);
+    return <Modal title={stakeholderModal.index<0?'Tambah Shareholder (Side-by-side KTP)':editorLocked?'Detail Shareholder':'Edit Shareholder (Side-by-side KTP)'} onClose={()=>setStakeholderModal(null)} className="modal-side-by-side modal-stakeholder-ktp">
   <div className="modal-side-by-side-body">
     <div className="modal-side-form-pane">
       {formError&&<div className="error" role="alert">{formError}</div>}
       <Fields fields={stakeholderFields} value={stakeholderModal.value} disabled={editorLocked} onChange={value=>setStakeholderModal({...stakeholderModal,value})}/>
     </div>
     <div className="modal-side-preview-pane stakeholder-ktp-pane">
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
         <div>
-          <h4 style={{margin:0,fontSize:'14px',color:'#002060'}}>Foto / Scan KTP Pemegang Saham</h4>
-          <span style={{fontSize:'10px',color:'#64748b'}}>Pratinjau KTP untuk memudahkan pengisian data identitas di sisi kiri</span>
+          <h4 style={{margin:0,fontSize:'14px',color:'#002060',fontWeight:700}}>Foto / Scan KTP Pemegang Saham</h4>
+          <span style={{fontSize:'10px',color:'#64748b'}}>Pratinjau KTP dan pembacaan teks otomatis di bawah</span>
         </div>
-        {stakeholderModal.value?.ktpUrl && !editorLocked && (
-          <label className="button small button-secondary" style={{padding:'3px 8px',cursor:'pointer'}}>
-            <Upload size={13}/> Ganti KTP
-            <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={e=>{
-              const f=e.target.files?.[0];if(!f)return;
-              const r=new FileReader();
-              r.onload=()=>setStakeholderModal((prev:any)=>({...prev,value:{...prev.value,ktpUrl:r.result as string,ktpFileName:f.name,ktpMime:f.type}}));
-              r.readAsDataURL(f);
-            }}/>
-          </label>
+        {curVal.ktpUrl && !editorLocked && (
+          <div style={{display:'flex',gap:'6px'}}>
+            <label className="button small button-secondary" style={{padding:'3px 8px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'4px'}}>
+              <Upload size={13}/> Ganti KTP
+              <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={handleKtpUpload}/>
+            </label>
+            <button type="button" className="button small legal-delete-button" style={{padding:'3px 6px'}} onClick={()=>setStakeholderModal((prev:any)=>({...prev,value:{...prev.value,ktpUrl:undefined,ktpFileName:undefined,ktpMime:undefined,ktpOcrText:''}}))}>
+              <Trash2 size={13}/> Hapus
+            </button>
+          </div>
         )}
       </div>
 
-      {stakeholderModal.value?.ktpUrl ? (
+      {curVal.ktpUrl ? (
         <div className="ktp-preview-box">
-          {stakeholderModal.value.ktpMime?.includes('pdf') ? (
-            <iframe title="KTP PDF" src={stakeholderModal.value.ktpUrl} className="ktp-preview-iframe"/>
+          {curVal.ktpMime?.includes('pdf') ? (
+            <iframe title="KTP PDF" src={curVal.ktpUrl} className="ktp-preview-iframe"/>
           ) : (
-            <div style={{display:'flex',justifyContent:'center',alignItems:'center',flex:1,overflow:'hidden',background:'#ffffff',border:'1px solid #cbd5e1',borderRadius:'6px',padding:'10px'}}>
-              <img src={stakeholderModal.value.ktpUrl} alt="KTP Preview" className="ktp-preview-img"/>
+            <div style={{display:'flex',justifyContent:'center',alignItems:'center',background:'#ffffff',border:'1px solid #cbd5e1',borderRadius:'6px',padding:'8px',overflow:'hidden'}}>
+              <img src={curVal.ktpUrl} alt="KTP Preview" className="ktp-preview-img"/>
             </div>
           )}
-          <div style={{fontSize:'10px',color:'#64748b',marginTop:'6px',textAlign:'center'}}>
-            {stakeholderModal.value.ktpFileName || 'KTP File'}
+          <div style={{fontSize:'10px',color:'#64748b',marginTop:'4px',textAlign:'center'}}>
+            {curVal.ktpFileName || 'KTP File'}
           </div>
         </div>
       ) : (
@@ -749,22 +866,96 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
           <Upload size={32} style={{color:'#002060'}}/>
           <b style={{fontSize:'13px',color:'#0f172a'}}>Upload Foto / Scan KTP</b>
           <span style={{fontSize:'11px',color:'#64748b'}}>Pilih atau seret berkas KTP (PDF, JPG, PNG) ke sini</span>
-          <span style={{fontSize:'9.5px',color:'#94a3b8'}}>Gambar akan langsung tampil di sini untuk mempermudah pengecekan</span>
-          <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={e=>{
-            const f=e.target.files?.[0];if(!f)return;
-            const r=new FileReader();
-            r.onload=()=>setStakeholderModal((prev:any)=>({...prev,value:{...prev.value,ktpUrl:r.result as string,ktpFileName:f.name,ktpMime:f.type}}));
-            r.readAsDataURL(f);
-          }}/>
+          <span style={{fontSize:'9.5px',color:'#94a3b8'}}>Data teks KTP akan otomatis terbaca dan muncul di kolom bawah</span>
+          <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={handleKtpUpload}/>
         </label>
       )}
+
+      {/* KOLOM HASIL TEKS YANG TERBACA PADA GAMBAR KTP */}
+      <div className="ktp-ocr-result-container">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'6px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+            <span style={{fontWeight:700,fontSize:'13px',color:'#002060'}}>Hasil Teks Terbaca pada KTP (OCR)</span>
+            {ocrLoading ? (
+              <span style={{fontSize:'10.5px',color:'#b45309',background:'#fef3c7',padding:'2px 8px',borderRadius:'10px',fontWeight:600,display:'inline-flex',alignItems:'center',gap:'4px'}}>
+                ⏳ Sedang memproses teks gambar...
+              </span>
+            ) : ocrText ? (
+              <span style={{fontSize:'10.5px',color:'#15803d',background:'#dcfce7',padding:'2px 8px',borderRadius:'10px',fontWeight:600}}>
+                ✓ Teks Berhasil Terbaca
+              </span>
+            ) : (
+              <span style={{fontSize:'10.5px',color:'#64748b'}}>
+                (Upload KTP untuk membaca teks otomatis)
+              </span>
+            )}
+          </div>
+          {ocrText && !editorLocked && (
+            <button 
+              type="button" 
+              className="button small primary" 
+              onClick={applyOcrToForm}
+              style={{fontSize:'11px',padding:'4px 10px',display:'inline-flex',alignItems:'center',gap:'4px',background:'#002060'}}
+              title="Otomatis salin data NIK, Nama, Tanggal Lahir, Jenis Kelamin, dll. ke formulir di sebelah kiri"
+            >
+              ✨ Isi Otomatis ke Form Kiri
+            </button>
+          )}
+        </div>
+
+        {/* Structured Quick Badges */}
+        {(parsed.nik || parsed.nama) && (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))',gap:'6px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:'6px',padding:'8px 10px',fontSize:'11px'}}>
+            {parsed.nik && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>NIK</span><b>{parsed.nik}</b></div>}
+            {parsed.nama && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Nama</span><b>{parsed.nama}</b></div>}
+            {(parsed.dateOfBirth || parsed.tempatTglLahir) && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Tgl Lahir</span><b>{parsed.dateOfBirth || parsed.tempatTglLahir}</b></div>}
+            {parsed.gender && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Kelamin</span><b>{parsed.gender}</b></div>}
+            {parsed.maritalStatus && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Status</span><b>{parsed.maritalStatus}</b></div>}
+            {parsed.kewarganegaraan && <div><span style={{color:'#64748b',display:'block',fontSize:'9.5px'}}>Warga Negara</span><b>{parsed.kewarganegaraan}</b></div>}
+          </div>
+        )}
+
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'4px'}}>
+            <label style={{fontSize:'11px',color:'#475569',fontWeight:600}}>
+              Teks Lengkap Hasil Bacaan KTP (dapat diedit / disalin):
+            </label>
+            {ocrText && (
+              <button 
+                type="button" 
+                className="text-link" 
+                style={{fontSize:'10px',color:'#002060',cursor:'pointer'}} 
+                onClick={() => navigator.clipboard.writeText(ocrText)}
+              >
+                Salin Teks
+              </button>
+            )}
+          </div>
+          <textarea 
+            className="ktp-ocr-textarea"
+            aria-label="Hasil teks terbaca pada gambar KTP"
+            rows={5}
+            disabled={editorLocked}
+            value={ocrText}
+            onChange={e => {
+              const val = e.target.value;
+              setStakeholderModal((prev: any) => ({
+                ...prev,
+                value: { ...prev.value, ktpOcrText: val }
+              }));
+            }}
+            placeholder="Hasil teks yang terbaca pada gambar KTP akan otomatis muncul di kolom ini..."
+          />
+        </div>
+      </div>
     </div>
   </div>
   <div className="modal-actions">
     <button className="button" onClick={()=>setStakeholderModal(null)}>{editorLocked?'Tutup':'Batal'}</button>
     {!editorLocked&&<button className="button primary" onClick={saveStakeholder}><Save size={15}/>Simpan Shareholder</button>}
   </div>
-</Modal>}
+</Modal>;
+  })()}
  {deleteStakeholder&&<Modal title="Hapus stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Hapus stakeholder dari akta ini?</p><p className="muted legal-delete-note">Klik Save changes di Legal agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Batal</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Hapus stakeholder</button></div></Modal>}
  {deleting&&<Modal title="Hapus akta" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Hapus {deedNames[deleting.type]} <strong>{deleting.deedNumber||'tanpa nomor'}</strong> dari daftar Legal?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Data asal di Customer atau profil tetap ada; akta ini akan disembunyikan dari daftar Legal.</p>}<p className="muted legal-delete-note">Klik Save changes setelah menghapus agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Batal</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Hapus akta</button></div></Modal>}
   {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);return <Modal title={`Rincian Remarks · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Kategori Perubahan ({rawIds.length} Kategori Terpilih):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Catatan / Remarks Akta:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',whiteSpace:'pre-wrap',minHeight:'80px'}}>{deed.remarks||'Belum ada catatan remarks untuk akta ini.'}</div></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Tutup</button></div></Modal>;})()}</>;
