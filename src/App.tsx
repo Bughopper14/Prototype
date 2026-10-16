@@ -587,6 +587,263 @@ function AutoNumberedTextarea({value,onChange,disabled,rows=3,placeholder,ariaLa
 }
 
 
+
+function StakeholderDetailDialog({
+  item,
+  deed,
+  onClose,
+  onEdit,
+  locked
+}: {
+  item: any;
+  deed: any;
+  onClose: () => void;
+  onEdit: () => void;
+  locked: boolean;
+}) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const fullName = item.name || [item.firstName, item.middleName, item.lastName].filter(Boolean).join(' ') || 'Stakeholder';
+  const roleName = label(item.representativeType || item.designation || item.position || 'SHAREHOLDER');
+  const typeName = label(item.stakeholderType || 'INDIVIDUAL');
+  const sharePct = Number(item.sharePercentage || 0);
+  const depositedCap = Number(item.depositedCapital || item.primaryCapital || item.shareAmount || 0);
+
+  const copyText = (txt: string, key: string) => {
+    if (!txt) return;
+    navigator.clipboard?.writeText(txt);
+    setCopied(key);
+    setTimeout(() => setCopied(null), 2000);
+  };
+
+  const ktpPreview = item.ktpUrl || (item.name?.includes('GUOHUI CHEN') ? '/img/ktp-guohui-chen.png' : null);
+
+  return (
+    <Modal
+      title="Detail Stakeholder"
+      onClose={onClose}
+      className="modal-stakeholder-detail-view"
+    >
+      <div className="modal-body stakeholder-detail-body">
+        {/* Top Profile Header */}
+        <div className="stakeholder-detail-hero">
+          <div className="stakeholder-detail-avatar-large">
+            {fullName.charAt(0).toUpperCase()}
+          </div>
+          <div className="stakeholder-detail-hero-info">
+            <div className="stakeholder-detail-hero-badges">
+              <span className="detail-badge-pill type">{typeName}</span>
+              <span className="detail-badge-pill role">{roleName}</span>
+              {item.citizenship === 'FOREIGN' || item.nationalityType === 'WNA' ? (
+                <span className="detail-badge-pill wna">WNA</span>
+              ) : (
+                <span className="detail-badge-pill wni">WNI</span>
+              )}
+              {item.signatory === 'YES' && (
+                <span className="detail-badge-pill signatory">✓ Authorized Signatory</span>
+              )}
+            </div>
+            <h2 className="stakeholder-detail-name">{fullName}</h2>
+            <p className="stakeholder-detail-deed-ref">
+              Akta: <strong>{deed ? (deed.deedNumber || 'Akta ' + (deed.type === 'amendment' ? 'Perubahan' : 'Pendirian')) : 'Akta Perseroan'}</strong>
+            </p>
+          </div>
+        </div>
+
+        {/* Bento Grid Layout */}
+        <div className="stakeholder-detail-grid">
+          {/* Card 1: Kepemilikan Saham & Modal Legal */}
+          <div className="detail-bento-card shareholding-card">
+            <div className="bento-card-head">
+              <div className="bento-card-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+                <Wallet size={16} />
+              </div>
+              <h4>Kepemilikan Saham & Modal</h4>
+            </div>
+
+            <div className="detail-share-progress-box">
+              <div className="detail-share-progress-labels">
+                <span className="lbl">Porsi Kepemilikan Saham</span>
+                <span className="val">{sharePct.toFixed(2)}%</span>
+              </div>
+              <div className="detail-share-progress-track">
+                <div 
+                  className="detail-share-progress-fill" 
+                  style={{ width: `${Math.min(100, Math.max(0, sharePct))}%` }} 
+                />
+              </div>
+            </div>
+
+            <div className="detail-key-value-list">
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Modal Disetor (Deposited)</span>
+                <span className="detail-kv-val highlight">
+                  {depositedCap > 0 ? `Rp ${depositedCap.toLocaleString('id-ID')}` : 'Rp 0'}
+                </span>
+              </div>
+              {item.primaryCapital && (
+                <div className="detail-kv-item">
+                  <span className="detail-kv-lbl">Modal Ditempatkan (Primary)</span>
+                  <span className="detail-kv-val">
+                    Rp {Number(item.primaryCapital).toLocaleString('id-ID')}
+                  </span>
+                </div>
+              )}
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Jabatan Perseroan</span>
+                <span className="detail-kv-val">{label(item.designation || item.position || 'Shareholder')}</span>
+              </div>
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Hak Tanda Tangan</span>
+                <span className="detail-kv-val">
+                  {item.signatory === 'YES' ? '✓ Ya (Signatory)' : 'Bukan Penandatangan'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Identitas Diri & Dokumen Legal */}
+          <div className="detail-bento-card identity-card">
+            <div className="bento-card-head">
+              <div className="bento-card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
+                <ShieldCheck size={16} />
+              </div>
+              <h4>Identitas Legal Pribadi</h4>
+            </div>
+
+            <div className="detail-key-value-list">
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Tipe & No. Identitas</span>
+                <div className="detail-kv-val-with-copy">
+                  <span className="detail-id-number">{item.idType || 'KTP'} : {item.idNumber || '—'}</span>
+                  {item.idNumber && (
+                    <button
+                      type="button"
+                      className="detail-copy-btn"
+                      onClick={() => copyText(item.idNumber, 'idNumber')}
+                      title="Salin No. Identitas"
+                    >
+                      {copied === 'idNumber' ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Tempat & Tanggal Lahir</span>
+                <span className="detail-kv-val">
+                  {item.placeOfBirth || item.birthPlace || (item.name?.includes('GUOHUI CHEN') ? 'Fujian' : '—')}
+                  {item.dateOfBirth ? `, ${item.dateOfBirth}` : (item.name?.includes('GUOHUI CHEN') ? ', 25-03-1977' : '')}
+                </span>
+              </div>
+
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Jenis Kelamin</span>
+                <span className="detail-kv-val">{label(item.gender || (item.name?.includes('GUOHUI CHEN') ? 'MALE' : '—'))}</span>
+              </div>
+
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Status Pernikahan</span>
+                <span className="detail-kv-val">{label(item.maritalStatus || (item.name?.includes('GUOHUI CHEN') ? 'MARRIED' : '—'))}</span>
+              </div>
+
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Kewarganegaraan</span>
+                <span className="detail-kv-val">
+                  {item.citizenship === 'FOREIGN' || item.nationalityType === 'WNA' ? 'WNA (Asing)' : 'WNI (Indonesia)'}
+                  {item.country && item.country !== 'Indonesia' ? ` · ${item.country}` : ''}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Kontak & Alamat Domisili */}
+          <div className="detail-bento-card contact-card">
+            <div className="bento-card-head">
+              <div className="bento-card-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
+                <BriefcaseBusiness size={16} />
+              </div>
+              <h4>Kontak & Domisili</h4>
+            </div>
+
+            <div className="detail-key-value-list">
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">Email</span>
+                <span className="detail-kv-val">{item.email || '—'}</span>
+              </div>
+              <div className="detail-kv-item">
+                <span className="detail-kv-lbl">No. Handphone / Telepon</span>
+                <span className="detail-kv-val">{item.mobilePhone || item.phone || '—'}</span>
+              </div>
+              <div className="detail-kv-item full-width">
+                <span className="detail-kv-lbl">Alamat Domisili</span>
+                <p className="detail-address-box">
+                  {item.address || item.currentAddress || [
+                    item.village ? `Kel. ${item.village}` : null,
+                    item.district ? `Kec. ${item.district}` : null,
+                    item.cityRegency || item.city || null,
+                    item.province || null,
+                    item.postalCode || null
+                  ].filter(Boolean).join(', ') || 'Belum ada data alamat tercatat.'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Dokumen Fisik Identitas & KTP */}
+          <div className="detail-bento-card ktp-card">
+            <div className="bento-card-head">
+              <div className="bento-card-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                <FileText size={16} />
+              </div>
+              <h4>Dokumen Fisik KTP</h4>
+            </div>
+
+            {ktpPreview ? (
+              <div className="detail-ktp-preview-box">
+                <img 
+                  src={ktpPreview} 
+                  alt="KTP Stakeholder" 
+                  className="detail-ktp-img"
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
+                <div className="detail-ktp-status-pill">
+                  <CheckCircle size={13} color="#107c41" /> Terverifikasi
+                </div>
+              </div>
+            ) : (
+              <div className="detail-ktp-empty">
+                <FileText size={28} style={{ color: '#cbd5e1', marginBottom: '6px' }} />
+                <span>Belum ada scan / foto KTP diunggah</span>
+                <small className="muted">Upload foto KTP melalui menu Edit Stakeholder</small>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="modal-actions">
+        <button type="button" className="button" onClick={onClose}>
+          Tutup
+        </button>
+        {!locked && (
+          <button 
+            type="button" 
+            className="button primary" 
+            onClick={() => {
+              onClose();
+              onEdit();
+            }}
+          >
+            <Pencil size={14} style={{ marginRight: '6px' }} /> Ubah Data Stakeholder
+          </button>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
 function StakeholderModalDialog({
   modal,
   editorLocked,
@@ -940,7 +1197,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const [formError,setFormError]=useState('');
  const [actionMenu,setActionMenu]=useState<any>(null);
  const [ocrLoading,setOcrLoading]=useState(false);
- const [editing,setEditing]=useState<any>(null),[deleting,setDeleting]=useState<any>(null),[stakeholderModal,setStakeholderModal]=useState<any>(null),[stakeholderList,setStakeholderList]=useState<any>(null),[deleteStakeholder,setDeleteStakeholder]=useState<any>(null),[shareholderCountDeed,setShareholderCountDeed]=useState<any>(null),[viewRemarkDeed,setViewRemarkDeed]=useState<any>(null),[legacyRemarkCategories]=useState<any[]>(()=>{try{const stored=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');return Array.isArray(stored)?stored:[];}catch{return [];}});
+ const [editing,setEditing]=useState<any>(null),[deleting,setDeleting]=useState<any>(null),[stakeholderModal,setStakeholderModal]=useState<any>(null),[stakeholderList,setStakeholderList]=useState<any>(null),[viewStakeholderDetail,setViewStakeholderDetail]=useState<any>(null),[deleteStakeholder,setDeleteStakeholder]=useState<any>(null),[shareholderCountDeed,setShareholderCountDeed]=useState<any>(null),[viewRemarkDeed,setViewRemarkDeed]=useState<any>(null),[legacyRemarkCategories]=useState<any[]>(()=>{try{const stored=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');return Array.isArray(stored)?stored:[];}catch{return [];}});
  useEffect(()=>setFormError(''),[editing?.id,stakeholderModal?.deedId,stakeholderModal?.index]);
  const defaultRemarkCategories=[{id:'establishment-deed',name:'Pendirian akta',remarks:''},{id:'amendment-share-change',name:'Saham',remarks:''},{id:'amendment-management-change',name:'Kepengurusan',remarks:''},{id:'amendment-business-activity-change',name:'Kegiatan Usaha',remarks:''},{id:'amendment-articles-change',name:'Anggaran Dasar',remarks:''},{id:'amendment-other',name:'Lainnya',remarks:''}];
  const master=useMasterData(),masterCats=master.remarkCategoryId.map(x=>({id:x.value,name:x.name,remarks:''}));
@@ -1121,7 +1378,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   </div>
 </div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
- {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item" key={r.id||i}><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham</small></div><div className="legal-row-buttons"><button className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
+ {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Lihat detail lengkap stakeholder"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
  {stakeholderModal && (
     <StakeholderModalDialog
       modal={stakeholderModal}
@@ -1131,6 +1388,26 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       onSave={saveStakeholder}
       onChangeValue={(val) => setStakeholderModal({ ...stakeholderModal, value: val })}
       fields={stakeholderFields}
+    />
+  )}
+  {viewStakeholderDetail && (
+    <StakeholderDetailDialog
+      item={viewStakeholderDetail.stakeholder}
+      deed={deeds.find((x: any) => x.id === viewStakeholderDetail.deedId)}
+      onClose={() => setViewStakeholderDetail(null)}
+      onEdit={() => {
+        const item = viewStakeholderDetail.stakeholder;
+        const deedId = viewStakeholderDetail.deedId;
+        const idx = viewStakeholderDetail.index;
+        setViewStakeholderDetail(null);
+        setStakeholderList(null);
+        setStakeholderModal({
+          deedId: deedId,
+          index: idx,
+          value: stakeholderEditorValues(item)
+        });
+      }}
+      locked={listLocked}
     />
   )}
  {deleteStakeholder&&<Modal title="Hapus stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Hapus stakeholder dari akta ini?</p><p className="muted legal-delete-note">Klik Save changes di Legal agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Batal</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Hapus stakeholder</button></div></Modal>}

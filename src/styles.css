@@ -1861,3 +1861,344 @@ button:focus-visible, a:focus-visible {
     max-width: 100% !important;
   }
 }
+
+
+/* ==========================================================================
+   Stakeholder Detail View Modal & Interactive Cards
+   ========================================================================== */
+.legal-stakeholder-item.interactive-stakeholder-card {
+  cursor: pointer !important;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border-radius: 8px !important;
+  margin-bottom: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  padding: 12px 14px !important;
+}
+
+.legal-stakeholder-item.interactive-stakeholder-card:hover {
+  background: #f8fafc !important;
+  border-color: #002060 !important;
+  box-shadow: 0 2px 8px rgba(0, 32, 96, 0.08) !important;
+  transform: translateY(-1px);
+}
+
+.legal-stakeholder-item-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.legal-stakeholder-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #002060, #1e3a8a) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 5px rgba(0, 32, 96, 0.2) !important;
+}
+
+/* Modal Wide Container */
+.modal-stakeholder-detail-view {
+  width: 92vw !important;
+  max-width: 860px !important;
+  max-height: 90vh !important;
+}
+
+.stakeholder-detail-body {
+  padding: 20px 24px !important;
+  max-height: calc(90vh - 140px) !important;
+  overflow-y: auto !important;
+}
+
+/* Hero Section */
+.stakeholder-detail-hero {
+  display: flex !important;
+  align-items: center !important;
+  gap: 18px !important;
+  padding: 16px 20px !important;
+  background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%) !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 12px !important;
+  margin-bottom: 18px !important;
+}
+
+.stakeholder-detail-avatar-large {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #002060, #2563eb) !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 22px !important;
+  font-weight: 750 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 4px 10px rgba(0, 32, 96, 0.25) !important;
+}
+
+.stakeholder-detail-hero-info {
+  flex: 1 !important;
+}
+
+.stakeholder-detail-hero-badges {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  flex-wrap: wrap !important;
+  margin-bottom: 6px !important;
+}
+
+.detail-badge-pill {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.03em !important;
+}
+
+.detail-badge-pill.type { background: #e0f2fe; color: #0369a1; }
+.detail-badge-pill.role { background: #fef3c7; color: #b45309; }
+.detail-badge-pill.wni { background: #dcfce7; color: #15803d; }
+.detail-badge-pill.wna { background: #fae8ff; color: #86198f; }
+.detail-badge-pill.signatory { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+
+.stakeholder-detail-name {
+  margin: 0 !important;
+  font-size: 20px !important;
+  font-weight: 750 !important;
+  color: #0f172a !important;
+}
+
+.stakeholder-detail-deed-ref {
+  margin: 4px 0 0 0 !important;
+  font-size: 12px !important;
+  color: #64748b !important;
+}
+
+/* Bento Grid */
+.stakeholder-detail-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 16px !important;
+}
+
+.detail-bento-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 10px !important;
+  padding: 16px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.bento-card-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+  padding-bottom: 8px !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.bento-card-icon {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.bento-card-head h4 {
+  margin: 0 !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  color: #002060 !important;
+}
+
+/* Share Progress */
+.detail-share-progress-box {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 10px 12px !important;
+  margin-bottom: 12px !important;
+}
+
+.detail-share-progress-labels {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 6px !important;
+}
+
+.detail-share-progress-labels .lbl {
+  font-size: 11.5px !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+.detail-share-progress-labels .val {
+  font-size: 16px !important;
+  font-weight: 750 !important;
+  color: #059669 !important;
+}
+
+.detail-share-progress-track {
+  width: 100% !important;
+  height: 8px !important;
+  background: #e2e8f0 !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+}
+
+.detail-share-progress-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #10b981, #059669) !important;
+  border-radius: 999px !important;
+  transition: width 0.3s ease !important;
+}
+
+/* Key Value Lists */
+.detail-key-value-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 9px !important;
+}
+
+.detail-kv-item {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: baseline !important;
+  font-size: 12.5px !important;
+  padding: 4px 0 !important;
+  border-bottom: 1px dashed #f1f5f9 !important;
+}
+
+.detail-kv-item:last-child {
+  border-bottom: none !important;
+}
+
+.detail-kv-item.full-width {
+  flex-direction: column !important;
+  gap: 4px !important;
+  border-bottom: none !important;
+}
+
+.detail-kv-lbl {
+  color: #64748b !important;
+  font-weight: 500 !important;
+}
+
+.detail-kv-val {
+  color: #0f172a !important;
+  font-weight: 650 !important;
+  text-align: right !important;
+}
+
+.detail-kv-val.highlight {
+  color: #002060 !important;
+  font-size: 13.5px !important;
+  font-weight: 750 !important;
+}
+
+.detail-kv-val-with-copy {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.detail-id-number {
+  font-family: ui-monospace, monospace !important;
+  font-weight: 700 !important;
+  color: #002060 !important;
+  letter-spacing: 0.02em !important;
+}
+
+.detail-copy-btn {
+  background: transparent !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 3px 5px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  color: #64748b !important;
+  transition: all 0.15s ease !important;
+}
+
+.detail-copy-btn:hover {
+  background: #f1f5f9 !important;
+  color: #002060 !important;
+}
+
+.detail-address-box {
+  margin: 0 !important;
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 6px !important;
+  padding: 8px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  color: #334155 !important;
+}
+
+/* KTP Card */
+.detail-ktp-preview-box {
+  position: relative !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #000000 !important;
+  max-height: 190px !important;
+}
+
+.detail-ktp-img {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 190px !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+.detail-ktp-status-pill {
+  position: absolute !important;
+  bottom: 8px !important;
+  right: 8px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid #86efac !important;
+  border-radius: 999px !important;
+  padding: 3px 8px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  color: #166534 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.detail-ktp-empty {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px 16px !important;
+  background: #f8fafc !important;
+  border: 1px dashed #cbd5e1 !important;
+  border-radius: 8px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  text-align: center !important;
+  min-height: 150px !important;
+}
