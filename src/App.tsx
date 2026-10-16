@@ -69,39 +69,65 @@ function NewApplication({customers,onClose,onCreated}:{customers:any[],onClose:(
   }catch(e:any){setError(e.message||"Could not create the application. Please try again.");}
   finally{setBusy(false);}
  }
- return <Modal title="New financing application" onClose={onClose}>
-  <div className="modal-body">
-   <div className="intake-stage-heading">
-    <div>
-     <span className="eyebrow">FAP INTAKE</span>
-     <h3>FAP Stage</h3>
-     <p>Enter the core application and customer details. You can complete the remaining business profile directly in the application workspace after saving.</p>
+ const liveFapData: FapSheetData = {
+  fapNumber: 'Generated upon save',
+  applicationDate: new Date().toISOString(),
+  branchCode: profile.branchCode,
+  customerStatus: customerCategory,
+  companyName: customerCategory === 'EXISTING' ? selectedCustomer?.companyName : customer.companyName,
+  companyType: customerCategory === 'EXISTING' ? selectedCustomer?.companyType : customer.companyType,
+  nib: customerCategory === 'EXISTING' ? selectedCustomer?.nib : customer.nib,
+  npwp: customerCategory === 'EXISTING' ? selectedCustomer?.npwp : customer.npwp,
+  establishmentActNo: customerCategory === 'EXISTING' ? selectedCustomer?.establishmentActNo : customer.establishmentActNo,
+  establishmentDate: customerCategory === 'EXISTING' ? selectedCustomer?.establishmentDate : customer.establishmentDate,
+  companyAddress: profile.companyAddress,
+  city: profile.city,
+  province: profile.province,
+  postalCode: profile.postalCode,
+  experienceYears: profile.experienceYears,
+  experienceMonths: profile.experienceMonths,
+ };
+
+ return <Modal title="New financing application" onClose={onClose} className="modal-side-by-side">
+  <div className="modal-side-by-side-body">
+   <div className="modal-side-form-pane">
+    <div className="intake-stage-heading">
+     <div>
+      <span className="eyebrow">FAP INTAKE</span>
+      <h3>FAP Stage</h3>
+      <p>Enter the core application and customer details. You can complete the remaining business profile directly in the application workspace after saving.</p>
+     </div>
     </div>
-   </div>
-   <div className="intake-system-fields">
-    <div><span>Application date</span><b>{new Date().toLocaleDateString("en-GB")}</b></div>
-    <div><span>FAP registration number</span><b>Generated automatically upon saving</b></div>
-   </div>
-   <label className="customer-category-select">Customer category
-    <select value={customerCategory} onChange={e=>changeCategory(e.target.value)}>
-     <option value="EXISTING">Existing customer</option><option value="NEW">New customer</option>
-    </select>
-   </label>
-   {customerCategory==="EXISTING"?<>
-    <label>Existing customer
-     <select value={customerId} onChange={e=>{setCustomerId(e.target.value);setError("");}}>
-      <option value="">Select an existing customer</option>{customers.map(c=><option value={c.id} key={c.id}>{c.companyName}</option>)}
+    <div className="intake-system-fields">
+     <div><span>Application date</span><b>{new Date().toLocaleDateString("en-GB")}</b></div>
+     <div><span>FAP registration number</span><b>Generated automatically upon saving</b></div>
+    </div>
+    <label className="customer-category-select">Customer category
+     <select value={customerCategory} onChange={e=>changeCategory(e.target.value)}>
+      <option value="EXISTING">Existing customer</option><option value="NEW">New customer</option>
      </select>
     </label>
-    {selectedCustomer&&<section className="existing-customer-summary" aria-label="FAP customer details">
-     <div><h3>{selectedCustomer.companyName}</h3><span>{label(selectedCustomer.companyType)} customer</span></div>
-     <dl><div><dt>NIB</dt><dd>{selectedCustomer.nib||"—"}</dd></div><div><dt>NPWP</dt><dd>{selectedCustomer.npwp||"—"}</dd></div><div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo||"—"}</dd></div></dl>
-    </section>}
-   </>:<><h3 className="form-heading">Company details</h3><Fields fields={fapCustomerFields} value={customer} onChange={setCustomer}/></>}
-   <h3 className="form-heading">Branch, address and experience</h3>
-   <Fields fields={fapProfileFields} value={profile} onChange={setProfile}/>
-   {error&&<div className="error" role="alert">{error}</div>}
+    {customerCategory==="EXISTING"?<>
+     <label>Existing customer
+      <select value={customerId} onChange={e=>{setCustomerId(e.target.value);setError("");}}>
+       <option value="">Select an existing customer</option>{customers.map(c=><option value={c.id} key={c.id}>{c.companyName}</option>)}
+      </select>
+     </label>
+     {selectedCustomer&&<section className="existing-customer-summary" aria-label="FAP customer details">
+      <div><h3>{selectedCustomer.companyName}</h3><span>{label(selectedCustomer.companyType)} customer</span></div>
+      <dl><div><dt>NIB</dt><dd>{selectedCustomer.nib||"—"}</dd></div><div><dt>NPWP</dt><dd>{selectedCustomer.npwp||"—"}</dd></div><div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo||"—"}</dd></div></dl>
+     </section>}
+    </>:<><h3 className="form-heading">Company details</h3><Fields fields={fapCustomerFields} value={customer} onChange={setCustomer}/></>}
+    <h3 className="form-heading">Branch, address and experience</h3>
+    <Fields fields={fapProfileFields} value={profile} onChange={setProfile}/>
+    {error&&<div className="error" role="alert">{error}</div>}
+   </div>
+
+   <div className="modal-side-preview-pane">
+    <FapSheetPreview data={liveFapData} compact={true} />
+   </div>
   </div>
+
   <div className="modal-actions intake-modal-actions">
    <button className="button" onClick={onClose} disabled={busy}>Cancel</button>
    <button className="button primary" disabled={busy||(customerCategory==="EXISTING"&&!selectedCustomer)} onClick={create}>
