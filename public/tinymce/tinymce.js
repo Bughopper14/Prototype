@@ -26307,6 +26307,7 @@
             ...getPlugins(editor),
             ...keys(getExternalPlugins$1(editor)),
         ]).has(PLUGIN_CODE$1);
+        return { type: 'use_gpl', onlineStatus: 'offline', licenseKeyType: 'gpl', forcePlugin: false };
         if (licenseKeyType !== 'gpl' || onlineStatus === 'online' || forcePlugin) {
             return {
                 type: 'use_plugin',

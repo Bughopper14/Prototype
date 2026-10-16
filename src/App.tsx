@@ -1072,9 +1072,11 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     <Editor
       licenseKey="gpl"
       tinymceScriptSrc="/crm/tinymce/tinymce.min.js"
-      value={editing.remarks || ''}
+      initialValue={editing.remarks || ''}
       disabled={editorLocked}
-      onEditorChange={(newContent) => setEditing({ ...editing, remarks: newContent })}
+      onEditorChange={(newContent) => {
+        setEditing((prev: any) => prev ? { ...prev, remarks: newContent } : prev);
+      }}
       init={{
         height: 260,
         menubar: false,
@@ -1088,7 +1090,14 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
         branding: false,
         promotion: false,
         statusbar: true,
-        placeholder: 'Tuliskan rincian catatan perubahan akta di sini...'
+        placeholder: 'Tuliskan rincian catatan perubahan akta di sini...',
+        setup: (ed: any) => {
+          ed.on('init', () => {
+            if (!editorLocked) {
+              ed.mode.set('design');
+            }
+          });
+        }
       }}
     />
   </div>
