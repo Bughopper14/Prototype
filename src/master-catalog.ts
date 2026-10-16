@@ -193,7 +193,7 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
    if(value.length>valueLimit)throw Error(`Kode ${group.name} maksimal ${valueLimit} karakter.`);
    if(!value||value.length>150||!name||name.length>150)throw Error('Kode dan nama wajib diisi, maksimal 150 karakter.');
    if(seen.has(value.toLowerCase()))throw Error(`Kode duplikat pada ${group.name}.`);seen.add(value.toLowerCase());
-   if(group.key==='documents'&&(!['BS','CA','LEGAL'].includes(row.role||'')||typeof row.required!=='boolean'))throw Error('Pilih departemen dokumen dan status wajib.');
+   if(group.key==='documents'&&(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(row.role||'')||typeof row.required!=='boolean'))throw Error('Pilih departemen dokumen dan status wajib.');
    if(group.key==='paymentMethod'&&!['advance','arrear'].includes(row.timing||''))throw Error('Pilih aturan waktu pembayaran.');
    for(const [key,limit] of [['areaCode',20],['region',100],['zipCode',20]] as const)if(row[key]!==undefined&&(typeof row[key]!=='string'||row[key]!.trim().length>limit))throw Error(`Field ${key} maksimal ${limit} karakter.`);
    return {value,name,active:row.active,...(row.areaCode?{areaCode:row.areaCode.trim()}:{}),...(row.region?{region:row.region.trim()}:{}),...(row.zipCode?{zipCode:row.zipCode.trim()}:{}),...(row.parentValue?{parentValue:String(row.parentValue)}:{}),...(group.key==='documents'?{role:row.role,required:row.required}:{}),...(group.key==='paymentMethod'?{timing:row.timing}:{})};

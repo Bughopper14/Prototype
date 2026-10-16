@@ -11,3 +11,4 @@ dist-dashboard/
 output/
 test-results/
 *.log
+database/
