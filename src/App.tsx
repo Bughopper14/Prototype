@@ -3,7 +3,7 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,type ReactNode} from 'react';
-import {ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle} from 'lucide-react';
+import {Eye,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle} from 'lucide-react';
 import {FapSheetPreview, type FapSheetData} from './FapSheetPreview';
 import {api} from './api';
 import {MasterDataPage,MasterSelect,useMasterData,setMasterData,resetMasterChildren} from './master-data';
@@ -183,7 +183,54 @@ function Detail({value:a,user,initialTab=0,onBack,onChange,notify}:{value:any,us
   } finally {
     setBusy(false);
   }
- } const liveDetailFapData: FapSheetData = { fapNumber: a.fapNumber, applicationDate: a.applicationDate, branchCode: draft.branchCode || a.branchCode, customerStatus: draft.customerStatus || a.customerStatus, companyName: a.customer?.companyName, companyType: a.customer?.companyType, nib: a.customer?.nib, npwp: a.customer?.npwp, establishmentActNo: a.customer?.establishmentActNo, establishmentDate: a.customer?.establishmentDate, companyAddress: draft.companyAddress, city: draft.city, province: draft.province, postalCode: draft.postalCode, village: draft.village, mainBusiness: draft.mainBusiness, experienceYears: draft.experienceYears, experienceMonths: draft.experienceMonths, latestDeedNo: draft.latestDeedNo, latestDeedDate: draft.latestDeedDate, phoneFax: draft.phoneFax, website: draft.website, email: draft.email, repaymentSource: draft.repaymentSource, locationStatus: draft.locationStatus, industrySegment: draft.industrySegment || a.industrySegment, businessRole: draft.businessRole || a.businessRole, pic: draft.pic, stakeholders: draft.stakeholders || a.stakeholders, selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo, proposal: draft.proposal || a.proposal };useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
+ } const liveDetailFapData: FapSheetData = {
+  fapNumber: a.fapNumber,
+  applicationDate: a.applicationDate,
+  branchCode: draft.branchCode || a.branchCode,
+  customerStatus: draft.customerStatus || a.customerStatus,
+  companyName: a.customer?.companyName,
+  companyType: a.customer?.companyType,
+  nib: a.customer?.nib,
+  npwp: a.customer?.npwp,
+  establishmentActNo: a.customer?.establishmentActNo,
+  establishmentDate: a.customer?.establishmentDate,
+  companyAddress: draft.companyAddress,
+  city: draft.city,
+  province: draft.province,
+  postalCode: draft.postalCode,
+  village: draft.village,
+  mainBusiness: draft.mainBusiness,
+  experienceYears: draft.experienceYears,
+  experienceMonths: draft.experienceMonths,
+  latestDeedNo: draft.latestDeedNo,
+  latestDeedDate: draft.latestDeedDate,
+  phoneFax: draft.phoneFax,
+  website: draft.website,
+  email: draft.email,
+  repaymentSource: draft.repaymentSource,
+  locationStatus: draft.locationStatus,
+  industrySegment: draft.industrySegment || a.industrySegment,
+  businessRole: draft.businessRole || a.businessRole,
+  pic: draft.pic,
+  stakeholders: draft.stakeholders || a.stakeholders,
+  selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo,
+  proposal: draft.proposal || a.proposal,
+  projects: draft.projects || a.projects,
+  bankReferences: draft.bankReferences || a.bankReferences,
+  financialStatements: draft.financialStatements || a.financialStatements,
+  facilityPurpose: (draft.proposal || a.proposal)?.facilityPurpose,
+  financingMethod: (draft.proposal || a.proposal)?.financingMethod,
+  financingValue: (draft.proposal || a.proposal)?.financingValue,
+  downPaymentValue: (draft.proposal || a.proposal)?.downPaymentValue,
+  interestRate: (draft.proposal || a.proposal)?.interestRate,
+  tenorMonths: (draft.proposal || a.proposal)?.tenorMonths,
+  paymentMethod: (draft.proposal || a.proposal)?.paymentMethod,
+  units: (draft.proposal || a.proposal)?.units,
+  assetSummaryHeLiuGong: a.assetSummaryHeLiuGong,
+  assetSummaryTruckLiuGong: a.assetSummaryTruckLiuGong,
+  assetSummaryHeNonLiuGong: a.assetSummaryHeNonLiuGong,
+  assetSummaryTruckNonLiuGong: a.assetSummaryTruckNonLiuGong,
+};useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
  async function save(){setBusy(true);setError('');try{const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);const body=tab===0?{profile:draft,pic:draft.pic||blank(picFields)}:tab===2?{projects:draft.projects,bankReferences:draft.bankReferences,proposal:draft.proposal}:tab===3?{proposal:draft.proposal}:tab===4?{financialStatements:draft.financialStatements}:{legal:draft.legal||{},...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})};const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:'Pre-analysis'});const nextApp={...a,...v,stage:'Pre-analysis'};setDraft((prev:any)=>({...prev,...nextApp}));onChange(nextApp);notify('Changes saved');}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  const master=useMasterData();const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
@@ -194,92 +241,246 @@ function Detail({value:a,user,initialTab=0,onBack,onChange,notify}:{value:any,us
 function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:any[])=>void,disabled:boolean}){const total=rows.reduce((sum,x)=>sum+Number(x.sharePercentage||0),0),isExceeded=total>100.01;return <><div className={'ownership '+(isExceeded?'unbalanced':'balanced')}><div><strong>{total.toFixed(2)}%</strong><span>Total ownership · maks 100% (tidak wajib 100%)</span></div><div className="ownership-bar"><i style={{width:Math.min(100,total)+'%',background:isExceeded?'#dc2626':'#002c5f'}}/></div></div>{isExceeded&&<p style={{color:'#dc2626',fontSize:'12px',marginTop:'6px',fontWeight:600}}>⚠ Total kepemilikan saham melebihi 100%. Mohon sesuaikan kembali porsi saham masing-masing pihak.</p>}<Repeater title="Stakeholders" fields={stakeholderFields} rows={rows.map(stakeholderEditorValues)} disabled={disabled} onChange={onChange}/></>;}
 function FinancialEditor({rows,onChange,disabled}:{rows:any[],onChange:(r:any[])=>void,disabled:boolean}){const change=(i:number,k:string,v:any)=>onChange(rows.map((r,j)=>j===i?{...r,[k]:v}:r));return <><div className="section-title"><span className="muted">Enter exact values; totals are checked when saved.</span>{!disabled&&rows.length<3&&<button className="button small" onClick={()=>onChange([...rows,{...blank(financialFields),fiscalYear:new Date().getFullYear()-3+rows.length,isAudited:false}])}><Plus size={15}/>Add fiscal year</button>}</div><div className="table-scroll"><table className="financial-table"><thead><tr><th>FINANCIAL METRIC</th>{rows.map((r,i)=><th key={i}><div className="year-input"><input aria-label="Fiscal year" type="number" {...inputLimits('fiscalYear')} disabled={disabled} value={r.fiscalYear} onChange={e=>change(i,'fiscalYear',e.target.value)}/>{!disabled&&<button className="icon-button" onClick={()=>onChange(rows.filter((_,j)=>j!==i))}><X size={14}/></button>}</div><label className="checkbox"><input type="checkbox" disabled={disabled} checked={r.isAudited} onChange={e=>change(i,'isAudited',e.target.checked)}/>Audited</label></th>)}</tr></thead><tbody>{financialFields.map(f=><tr key={f.key} className={f.key.startsWith('total')||f.key==='netIncome'?'total-row':''}><td>{f.label}</td>{rows.map((r,i)=><td key={i}><input aria-label={`${r.fiscalYear} ${f.label}`} type="number" step="0.01" disabled={disabled} value={r[f.key]} onChange={e=>change(i,f.key,e.target.value)}/></td>)}</tr>)}<tr className="balance-row"><td>Balance check</td>{rows.map((r,i)=>{const ok=Number(r.currentAssets)+Number(r.nonCurrentAssets)===Number(r.totalAssets)&&Number(r.currentLiabilities)+Number(r.nonCurrentLiabilities)===Number(r.totalLiabilities)&&Number(r.totalAssets)===Number(r.totalLiabilities)+Number(r.equity)&&Number(r.totalAssets)===Number(r.totalLiabAndEquity);return <td key={i}><span className={ok?'text-green':'text-red'}>{ok?'✓ Balanced':'! Unbalanced'}</span></td>;})}</tr>{[['Current ratio','currentAssets','currentLiabilities'],['Debt / equity','totalLiabilities','equity'],['Net profit margin','netIncome','revenue']].map(([name,n,d])=><tr key={name}><td>{name}</td>{rows.map((r,i)=><td key={i} className="ratio">{Number(r[d])?((Number(r[n])/Number(r[d]))*(name==='Net profit margin'?100:1)).toFixed(2)+(name==='Net profit margin'?'%':'×'):'N/A'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<div className="empty-small">Add three fiscal years to begin financial spreading.</div>}<p className="field-note">DSCR is unavailable because the specification does not capture depreciation. Zero-denominator ratios are shown as N/A.</p></>;}
 function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void}){
- const evidenceList = (a.documentChecks||[]).filter((d:any) => ['FAP','PREANALYSIS','ICLF'].includes(String(d.documentCode).toUpperCase()) || ['fap','preanalysis','iclf'].includes(String(d.documentName).toLowerCase()));
- const docsToDisplay = evidenceList.length > 0 ? evidenceList : a.documentChecks;
- const [selected,setSelected]=useState(docsToDisplay[0]?.id || a.documentChecks[0]?.id);
- const [url,setUrl]=useState(''),[file,setFile]=useState<any>(null),[zoom,setZoom]=useState(1),[rotation,setRotation]=useState(0),[error,setError]=useState(''),[busy,setBusy]=useState(false),[notes,setNotes]=useState(''),[summary,setSummary]=useState(''),[reg,setReg]=useState(''),[expiry,setExpiry]=useState('');
- const d=a.documentChecks.find((d:any)=>d.id===selected) || docsToDisplay[0];
- useEffect(()=>{setUrl('');setFile(null);setNotes(d?.notes||'');setSummary(d?.dataSummary||'');setReg(String(d?.registrationDate||'').slice(0,10));setExpiry(String(d?.expiredDate||'').slice(0,10));setError('');},[selected,a]);
- const canUpload=['MKT','BS','CA','LEGAL','COMMITTEE'].includes(user.role)&&!['APPROVED','REJECTED'].includes(a.status);
- const canVerify=['BS','CA','LEGAL','COMMITTEE'].includes(user.role);
- async function preview(f:any){try{const v=await api(`/files/${f.id}/url`);setUrl(v.url);setFile(f);setRotation(0);setZoom(1);}catch(e:any){setError(e.message);}}
- return <div className="document-layout">
-  <section className="panel checklist-panel">
-   <div className="panel-head">
-    <div>
-     <h2>Evidence documents</h2>
-     <p>Upload bukti dokumen untuk tahapan FAP, Preanalysis, dan Iclf</p>
+  const evidenceDefs = [
+    { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT' },
+    { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA' },
+    { code: 'ICLF', name: 'Iclf', title: 'ICLF (Credit Committee Review)', stage: 'Credit Committee', badgeClass: 'stage-badge-iclf', role: 'COMMITTEE' },
+  ];
+
+  const [selectedCode, setSelectedCode] = useState<string>('FAP');
+  const [activeFileUrl, setActiveFileUrl] = useState<string>('');
+  const [activeFile, setActiveFile] = useState<any>(null);
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const items = evidenceDefs.map(def => {
+    const chk = (a.documentChecks || []).find((d: any) => 
+      String(d.documentCode).toUpperCase() === def.code || 
+      String(d.documentName).toLowerCase() === def.name.toLowerCase()
+    ) || {
+      id: `demo-doc-${a.id}-${def.code}`,
+      documentCode: def.code,
+      documentName: def.name,
+      assignedRole: def.role,
+      status: 'PENDING',
+      files: []
+    };
+    return { ...def, chk };
+  });
+
+  const activeItem = items.find(x => x.code === selectedCode) || items[0];
+  const canUpload = ['MKT','BS','CA','LEGAL','COMMITTEE'].includes(user.role) && !['APPROVED','REJECTED'].includes(a.status);
+
+  async function previewFile(f: any) {
+    try {
+      const v = await api(`/files/${f.id}/url`);
+      setActiveFileUrl(v.url);
+      setActiveFile(f);
+      setZoom(1);
+      setRotation(0);
+    } catch (e: any) {
+      setError(e.message || 'Gagal memuat preview dokumen.');
+    }
+  }
+
+  async function handleFileUpload(item: any, file: File) {
+    setBusy(true);
+    setError('');
+    try {
+      const body = new FormData();
+      body.append('checklistId', item.chk.id);
+      body.append('file', file);
+      await api(`/applications/${a.id}/documents/upload`, 'POST', body);
+      const updated = await api(`/applications/${a.id}`);
+      onChange(updated);
+      notify(`Evidence ${item.title} berhasil diunggah.`);
+      const updatedChk = (updated.documentChecks || []).find((d: any) => d.id === item.chk.id || String(d.documentCode).toUpperCase() === item.code);
+      if (updatedChk?.files?.length) {
+        previewFile(updatedChk.files[updatedChk.files.length - 1]);
+      }
+    } catch (e: any) {
+      setError(e.message || 'Gagal mengunggah evidence.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDeleteFile(item: any, fileId: string) {
+    if (!confirm('Hapus file evidence ini?')) return;
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/applications/${a.id}/documents/${fileId}`, 'DELETE');
+      const updated = await api(`/applications/${a.id}`);
+      onChange(updated);
+      if (activeFile?.id === fileId) {
+        setActiveFileUrl('');
+        setActiveFile(null);
+      }
+      notify('File evidence berhasil dihapus.');
+    } catch (e: any) {
+      setError(e.message || 'Gagal menghapus file evidence.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="evidence-workspace-layout">
+      {/* Left Column: 3 Clean Evidence Stage Cards */}
+      <div className="evidence-cards-pane">
+        <div className="panel-head" style={{ marginBottom: 0 }}>
+          <div>
+            <h2>Upload Evidence Dokumen</h2>
+            <p className="muted">Upload bukti berkas resmi untuk tahapan FAP, Pre-analysis, dan ICLF</p>
+          </div>
+        </div>
+
+        {error && <div className="error" role="alert">{error}</div>}
+
+        {items.map(item => {
+          const isSelected = item.code === selectedCode;
+          const files = item.chk.files || [];
+          const hasFile = files.length > 0;
+          return (
+            <div 
+              key={item.code} 
+              className={`evidence-card ${isSelected ? 'active' : ''}`}
+              onClick={() => setSelectedCode(item.code)}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="evidence-card-header">
+                <div>
+                  <span className={`evidence-stage-badge ${item.badgeClass}`}>{item.stage}</span>
+                  <h3 style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#002060' }}>{item.title}</h3>
+                </div>
+                <Badge status={item.chk.status || (hasFile ? 'UPLOADED' : 'PENDING')} />
+              </div>
+
+              {/* Upload Dropzone */}
+              {canUpload && (
+                <label className="evidence-dropzone" onClick={e => e.stopPropagation()}>
+                  <Upload size={20} style={{ color: '#002060' }} />
+                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#0f172a' }}>
+                    {busy ? 'Mengupload berkas...' : `Upload Evidence ${item.name}`}
+                  </span>
+                  <span style={{ fontSize: '9.5px', color: '#64748b' }}>
+                    Format PDF, JPG, atau PNG (Maks 20 MB)
+                  </span>
+                  <input
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg"
+                    disabled={busy}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload(item, f);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+
+              {/* File List */}
+              {files.map((f: any) => (
+                <div key={f.id} className="evidence-file-item" onClick={e => e.stopPropagation()}>
+                  <div className="evidence-file-info" onClick={() => previewFile(f)} style={{ cursor: 'pointer' }}>
+                    <FileText size={16} style={{ color: '#002060', flexShrink: 0 }} />
+                    <div>
+                      <div className="evidence-file-name">{f.fileName}</div>
+                      <div className="evidence-file-meta">
+                        {(f.fileSize / 1024).toFixed(0)} KB · Diunggah oleh {f.uploadedBy || 'User'}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      className="button small button-secondary"
+                      onClick={() => previewFile(f)}
+                      title="Preview dokumen"
+                      style={{ padding: '3px 7px' }}
+                    >
+                      <Eye size={13} />
+                    </button>
+                    {canUpload && (
+                      <button
+                        type="button"
+                        className="button small"
+                        onClick={() => handleDeleteFile(item, f.id)}
+                        title="Hapus file"
+                        style={{ padding: '3px 7px', color: '#dc2626' }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Right Column: Live Document Previewer */}
+      <section className="panel document-viewer" style={{ margin: 0, display: 'flex', flexDirection: 'column' }}>
+        <div className="panel-head">
+          <div>
+            <h2>Preview: {activeItem.title}</h2>
+            <p className="muted">Penanggung Jawab / Role: <b>{activeItem.role}</b></p>
+          </div>
+          <Badge status={activeItem.chk.status || (activeItem.chk.files?.length ? 'UPLOADED' : 'PENDING')} />
+        </div>
+
+        <div className="viewer-toolbar">
+          <span>{activeFile?.fileName || `${activeItem.name} Evidence View`}</span>
+          <div>
+            {activeFile?.mimeType?.startsWith('image/') && (
+              <>
+                <button className="icon-button" aria-label="Zoom out" onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}>
+                  <ZoomOut size={16} />
+                </button>
+                <small>{Math.round(zoom * 100)}%</small>
+                <button className="icon-button" aria-label="Zoom in" onClick={() => setZoom(Math.min(3, zoom + 0.25))}>
+                  <ZoomIn size={16} />
+                </button>
+                <button className="icon-button" aria-label="Rotate" onClick={() => setRotation(rotation + 90)}>
+                  <RotateCw size={16} />
+                </button>
+              </>
+            )}
+            {activeFileUrl && (
+              <a className="icon-button" href={activeFileUrl} target="_blank" rel="noreferrer" aria-label="Buka di tab baru">
+                <ExternalLink size={16} />
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="preview" style={{ flex: 1, minHeight: '480px' }}>
+          {activeFileUrl ? (
+            activeFile?.mimeType === 'application/pdf' ? (
+              <iframe title={activeFile.fileName} src={activeFileUrl} style={{ width: '100%', height: '100%', border: 'none' }} />
+            ) : (
+              <img
+                alt={activeFile?.fileName}
+                src={activeFileUrl}
+                style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+              />
+            )
+          ) : (
+            <div className="preview-empty">
+              <div><FileText size={38} style={{ color: '#002060' }} /></div>
+              <h3>Pilih atau Upload Berkas Evidence</h3>
+              <p>Pilih file yang sudah diunggah pada kartu tahapan di sisi kiri, atau upload file baru untuk melihat pratinjau di sini.</p>
+              <small>Mendukung format PDF, PNG, JPEG hingga 20 MB</small>
+            </div>
+          )}
+        </div>
+      </section>
     </div>
-   </div>
-   <label className="document-type-picker">Pilih jenis evidence
-    <select value={selected||''} onChange={e=>setSelected(e.target.value)}>
-     {docsToDisplay.map((doc:any)=><option key={doc.id} value={doc.id}>{doc.documentName}{doc.isMandatory?' · Wajib':''}</option>)}
-    </select>
-   </label>
-   <div className="matrix-header">
-    <span>EVIDENCE TAHAPAN</span>
-    {['MKT','BS','CA','LEGAL'].map(r=><small key={r}>{r}</small>)}
-   </div>
-   {docsToDisplay.map((x:any)=><button key={x.id} className={'matrix-row '+(selected===x.id?'active':'')} onClick={()=>setSelected(x.id)}>
-    <div>
-     <b>{x.documentName}</b>
-     <small>{x.isMandatory?'Required Evidence':'Optional Evidence'} · {x.files.length} file{x.files.length!==1?'s':''}</small>
-    </div>
-    {['checkedByMkt','checkedByBs','checkedByCa','checkedByLegal'].map(k=><span key={k} className={x[k]?'verified-check':'empty-check'}>{x[k]?<Check size={13}/>:<i/>}</span>)}
-   </button>)}
-   <div className="matrix-legend">
-    <span className="verified-check"><Check size={12}/></span> Checked <span className="empty-check"><i/></span> Pending
-   </div>
-  </section>
-  <section className="panel document-viewer">
-   <div className="panel-head">
-    <div>
-     <h2>Evidence {d?.documentName}</h2>
-     <p>Assigned verifier: {d?.assignedRole}</p>
-    </div>
-    <Badge status={d?.status}/>
-   </div>
-   {error&&<div className="error">{error}</div>}
-   <div className="file-list">
-    {d?.files.map((f:any)=><button key={f.id} className={'file-chip '+(f.id===file?.id?'selected':'')} onClick={()=>preview(f)}><FileText size={14}/>{f.fileName}<small>{(f.fileSize/1024).toFixed(0)} KB</small></button>)}
-    {canUpload&&<label className={'button small upload-label '+(busy?'disabled':'')}>
-     <Upload size={15}/>{busy?'Uploading…':'Upload evidence file'}
-     <input type="file" accept="application/pdf,image/png,image/jpeg" disabled={busy} onChange={async e=>{
-      const f=e.target.files?.[0];if(!f)return;setBusy(true);setError('');
-      try{
-       const body=new FormData();body.append('checklistId',d.id);body.append('file',f);
-       await api(`/applications/${a.id}/documents/upload`,'POST',body);
-       onChange(await api(`/applications/${a.id}`));
-       notify('Evidence document uploaded successfully.');
-      }catch(e:any){setError(e.message);}
-      finally{setBusy(false);e.target.value='';}
-     }}/>
-    </label>}
-   </div>
-   <div className="viewer-toolbar">
-    <span>{file?.fileName||'Evidence preview'}</span>
-    <div>
-     {file?.mimeType.startsWith('image/')&&<><button className="icon-button" aria-label="Zoom out" onClick={()=>setZoom(Math.max(.25,zoom-.25))}><ZoomOut size={16}/></button><small>{Math.round(zoom*100)}%</small><button className="icon-button" aria-label="Zoom in" onClick={()=>setZoom(Math.min(3,zoom+.25))}><ZoomIn size={16}/></button><button className="icon-button" aria-label="Rotate" onClick={()=>setRotation(rotation+90)}><RotateCw size={16}/></button></>}
-     {url&&<a className="icon-button" href={url} target="_blank" rel="noreferrer" aria-label="Open document"><ExternalLink size={16}/></a>}
-    </div>
-   </div>
-   <div className="preview">
-    {url?(file?.mimeType==='application/pdf'?<iframe title={file.fileName} src={url}/>:<img alt={file?.fileName} src={url} style={{transform:`scale(${zoom}) rotate(${rotation}deg)`}}/>):<div className="preview-empty"><div><FileText size={34}/></div><h3>{d?.files.length?'Select a file to preview':'Evidence upload placeholder'}</h3><p>{d?.files.length?'Choose an uploaded file above.':'Upload evidence PDF, PNG, or JPEG for this stage.'}</p><small>Private access · Links expire after 15 minutes · Up to 20 MB</small></div>}
-   </div>
-   {canVerify&&<div className="verification-form">
-    <h3>Department verification · {user.role}</h3>
-    <div className="formgrid">
-     <label>Registration date<input type="date" {...inputLimits('registrationDate')} value={reg} onChange={e=>setReg(e.target.value)}/></label>
-     <label>Expiry date<input type="date" min={reg||'1900-01-01'} value={expiry} onChange={e=>setExpiry(e.target.value)}/></label>
-     <label>Data summary<input value={summary} onChange={e=>setSummary(e.target.value)}/></label>
-     <label>Review notes<input value={notes} onChange={e=>setNotes(e.target.value)}/></label>
-    </div>
-    <div className="verification-actions">
-     {[false,true].map(v=><button key={String(v)} className={'button small '+(v?'primary':'')} disabled={busy||!d?.files.length} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/checklist/${d.id}/verify`,'PATCH',{department:user.role,isVerified:v,registrationDate:reg||null,expiredDate:expiry||null,dataSummary:summary,notes}));notify(v?'Evidence verification recorded':'Evidence rejection recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>{v?<Check size={15}/>:<X size={15}/>}{v?'Verify evidence':'Reject evidence'}</button>)}
-    </div>
-   </div>}
-  </section>
- </div>;
+  );
 }
 function Audit({logs}:{logs:any[]}){return <div className="audit-list">{logs.map(l=><div className="audit-item" key={l.id}><span className="audit-icon"><Activity size={16}/></span><div><b>{l.actionBy}</b><span className="audit-role">{l.userRole}</span><p>{l.comments}</p><small>{statusLabel[l.previousStatus]} <ArrowRight size={12}/> {statusLabel[l.newStatus]} <span>·</span> {new Date(l.actionTimestamp).toLocaleString('en-GB')}</small></div></div>)}{!logs.length&&<div className="empty-small">No activity yet.</div>}</div>;}
 function ActivityPage({rows,open}:{rows:any[],open:(id:string)=>void}){const [logs,setLogs]=useState<any[]>([]),[error,setError]=useState('');useEffect(()=>{Promise.all(rows.map(r=>api('/applications/'+r.id))).then(details=>setLogs(details.flatMap(a=>a.approvalLogs.map((l:any)=>({...l,companyName:a.customer.companyName}))).sort((a,b)=>new Date(b.actionTimestamp).getTime()-new Date(a.actionTimestamp).getTime()))).catch(e=>setError(e.message));},[rows]);return <section className="panel"><div className="panel-head"><h2>Recent activity</h2><span className="subtle-chip">All applications</span></div>{error&&<div className="error">{error}</div>}{logs.map(l=><div key={l.id} className="activity-entry"><button className="text-link" onClick={()=>open(l.applicationId)}>{l.companyName}<ArrowUpRight size={14}/></button><Audit logs={[l]}/></div>)}</section>;}
@@ -389,10 +590,79 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  <div className="table-scroll legal-table-wrap"><table className="data-table legal-deed-table"><thead><tr><th>AKTA</th><th>TANGGAL</th><th>STATUS</th><th>BERLAKU SAMPAI</th><th>SK MENTERI</th><th>KATEGORI REMARKS</th><th>STAKEHOLDERS</th><th>AKSI</th></tr></thead><tbody>{deeds.map(x=>{const rowLocked=locked(x),total=rowsFor(x).reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),isExceeded=total>100.01,isComplete=Math.abs(total-100)<.01,ownershipClass=isExceeded?'exceeded':isComplete?'complete':total>0?'partial':'incomplete',ownershipLabel=isExceeded?`⚠ ${total.toFixed(2)}% · Melebihi 100%`:isComplete?'✓ 100%':total>0?`✓ ${total.toFixed(2)}%`:'0.00% · Belum ada data';return <tr key={x.id} className={selectedId===x.id?'selected':''} aria-selected={selectedId===x.id}><td data-label="Akta"><div className="legal-deed-primary"><span className="legal-type-badge">{deedNames[x.type]}</span>{selectedId===x.id&&<span className="legal-current">Dipilih</span>}</div><b className="legal-deed-number">{x.deedNumber||'Nomor belum diisi'}</b><span className={'deed-review-status compact '+reviewStatus(x).toLowerCase()}>{deedReviewLabels[reviewStatus(x)]}</span>{x.review?.rejectionReason&&<small className="text-red">{x.review.rejectionReason}</small>}<small>{x.source==='Sistem'?'Data awal sistem':'Input Legal'}</small></td><td data-label="Tanggal"><span className="legal-cell-main">{date(x.deedDate)}</span></td><td data-label="Status"><span className={'deed-validity '+(deedValidity(x.deedDate).active===null?'unknown':deedValidity(x.deedDate).active?'active':'inactive')}>{deedValidity(x.deedDate).status}</span></td><td data-label="Berlaku sampai"><span className="legal-cell-main">{date(deedValidity(x.deedDate).expiry)}</span></td><td data-label="SK Menteri"><span className="legal-cell-main">{x.ministerialDecreeNumber||'—'}</span><small>{date(x.ministerialDecreeDate)}</small></td><td data-label="Kategori Remarks">{(()=>{const rawIds=getDeedCategoryIds(x);if(!rawIds.length)return <span className="legal-category-label">—</span>;return <div className="legal-categories-wrap">{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <button key={id} type="button" className="legal-category-badge clickable" onClick={()=>setViewRemarkDeed({deed:x,activeCatId:id})} title={`Klik untuk melihat rincian remarks ${name}`}>{name}</button>;})}</div>;})()}</td><td data-label="Stakeholders"><button className="legal-count-link" onClick={()=>setStakeholderList(x.id)}>{rowsFor(x).length} stakeholder · Kelola</button><button className={'legal-ownership-summary '+ownershipClass} onClick={()=>setShareholderCountDeed(x.id)} title="Lihat rincian kepemilikan saham">{ownershipLabel}</button></td><td className="legal-row-action"><div className="legal-row-buttons"><button className="button primary small deed-review-action" onClick={()=>onReview(x.id)}>{user.role==='MKT'&&['DRAFT','REJECTED'].includes(reviewStatus(x))?'Ajukan akta':user.role==='BS'&&reviewStatus(x)==='PENDING_CHECK'?'Periksa akta':user.role==='HEAD_BS'&&reviewStatus(x)==='PENDING_APPROVAL'?'Approval akta':'Lihat approval'}</button><button className="button small legal-kebab" aria-label={`Aksi akta ${x.deedNumber||'tanpa nomor'}`} aria-haspopup="menu" aria-expanded={actionMenu?.id===x.id} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();setActionMenu({id:x.id,left:Math.max(8,Math.min(rect.right-180,window.innerWidth-188)),top:Math.min(rect.bottom+5,window.innerHeight-110)});}}><MoreHorizontal size={17}/></button></div></td></tr>;})}</tbody></table>{!deeds.length&&<div className="empty-small">Belum ada akta. Klik Tambah akta untuk membuatnya.</div>}</div>
 
  {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Aksi akta" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing(structuredClone(target));setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'Lihat detail':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Akta yang sudah disetujui tidak boleh dihapus':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
- {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Pendirian akta',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Detail akta':'Edit akta':'Tambah akta'} onClose={()=>setEditing(null)}><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}<label className="legal-deed-select">Jenis akta<select aria-label="Jenis akta" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment">Akta pendirian</option><option value="amendment">Akta perubahan</option></select></label><Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Tanggal akta perubahan (${date(dDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}else if(formError&&formError.includes('tidak boleh sebelum tanggal akta pendirian')){setFormError('');}}}/><><h3 className="form-heading">Pihak terkait · {deedNames[editing.type]}</h3><Fields className="legal-amendment-party-fields" fields={legalPartyFields} value={parties} disabled={editorLocked} onChange={partyValues=>setEditing({...editing,parties:partyValues})}/><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-category-remarks-list"><span className="field-label">Catatan / Remarks per Kategori</span><p className="legal-remarks-hint">Isi rincian keterangan untuk masing-masing kategori yang dipilih:</p>{currentSelectedCategoryIds.map((catId:string)=>{const cat=availableChips.find(c=>c.id===catId),catName=cat?.name||catId,catVal=editing.categoryRemarks?.[catId]??(currentSelectedCategoryIds.length===1?(editing.remarks||''):'');return <div key={catId} className="legal-category-remark-box"><label className="legal-category-remark-label"><span className="legal-category-remark-badge">{catName}</span><AutoNumberedTextarea ariaLabel={`Remarks ${catName}`} rows={2} disabled={editorLocked} value={catVal} onChange={val=>{const nextCatRemarks={...(editing.categoryRemarks||{}),[catId]:val},unified=Object.entries(nextCatRemarks).filter(([_,v])=>String(v).trim()).map(([id,v],idx)=>{const cName=availableChips.find(c=>c.id===id)?.name||id;return `${idx+1}. [${cName}]: ${String(v).trim().replace(/^\d+\.\s*/,'')}`;}).join('\n');setEditing({...editing,categoryRemarks:nextCatRemarks,remarks:unified||val});}} placeholder={`Masukkan keterangan khusus untuk kategori ${catName}...`}/></label></div>;})}{currentSelectedCategoryIds.length===0&&<div className="legal-category-remark-box"><label className="legal-category-remark-label"><span className="legal-category-remark-badge">Catatan Umum</span><AutoNumberedTextarea ariaLabel="Remarks" rows={3} disabled={editorLocked} value={editing.remarks||''} onChange={val=>setEditing({...editing,remarks:val})} placeholder="Pilih kategori di atas atau isi catatan akta di sini..."/></label></div>}</div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
+ {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Pendirian akta',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Detail akta':'Edit akta':'Tambah akta'} onClose={()=>setEditing(null)}><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}<label className="legal-deed-select">Jenis akta<select aria-label="Jenis akta" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment">Akta pendirian</option><option value="amendment">Akta perubahan</option></select></label><Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Tanggal akta perubahan (${date(dDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}else if(formError&&formError.includes('tidak boleh sebelum tanggal akta pendirian')){setFormError('');}}}/><><h3 className="form-heading">Pihak terkait · {deedNames[editing.type]}</h3><Fields className="legal-amendment-party-fields" fields={legalPartyFields} value={parties} disabled={editorLocked} onChange={partyValues=>setEditing({...editing,parties:partyValues})}/><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-single-remark-group" style={{marginTop:'14px'}}>
+  <span className="field-label">Catatan / Remarks Akta {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span>
+  <p className="legal-remarks-hint" style={{fontSize:'10px',color:'#64748b',margin:'2px 0 6px 0'}}>Tuliskan catatan dan rincian perubahan akta di bawah ini (kategori yang dipilih di atas otomatis terhubung):</p>
+  <AutoNumberedTextarea
+    ariaLabel="Catatan / Remarks Akta"
+    rows={4}
+    disabled={editorLocked}
+    value={editing.remarks || ''}
+    onChange={val => setEditing({ ...editing, remarks: val })}
+    placeholder="1. Tuliskan rincian catatan perubahan akta..."
+  />
+</div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
  {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item" key={r.id||i}><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham</small></div><div className="legal-row-buttons"><button className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
- {stakeholderModal&&<Modal title={stakeholderModal.index<0?'Tambah stakeholder':editorLocked?'Detail stakeholder':'Edit stakeholder'} onClose={()=>setStakeholderModal(null)}><div className="modal-body legal-stakeholder-modal">{formError&&<div className="error" role="alert">{formError}</div>}<Fields fields={stakeholderFields} value={stakeholderModal.value} disabled={editorLocked} onChange={value=>setStakeholderModal({...stakeholderModal,value})}/></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderModal(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveStakeholder}><Save size={15}/>Simpan stakeholder</button>}</div></Modal>}
+ {stakeholderModal&&<Modal title={stakeholderModal.index<0?'Tambah stakeholder':editorLocked?'Detail stakeholder':'Edit stakeholder'} onClose={()=>setStakeholderModal(null)} className="modal-side-by-side modal-stakeholder-ktp">
+  <div className="modal-side-by-side-body">
+    <div className="modal-side-form-pane">
+      {formError&&<div className="error" role="alert">{formError}</div>}
+      <Fields fields={stakeholderFields} value={stakeholderModal.value} disabled={editorLocked} onChange={value=>setStakeholderModal({...stakeholderModal,value})}/>
+    </div>
+    <div className="modal-side-preview-pane stakeholder-ktp-pane">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'12px'}}>
+        <div>
+          <h4 style={{margin:0,fontSize:'14px',color:'#002060'}}>Foto / Scan KTP Pemegang Saham</h4>
+          <span style={{fontSize:'10px',color:'#64748b'}}>Pratinjau KTP untuk memudahkan pengisian data identitas di sisi kiri</span>
+        </div>
+        {stakeholderModal.value?.ktpUrl && !editorLocked && (
+          <label className="button small button-secondary" style={{padding:'3px 8px',cursor:'pointer'}}>
+            <Upload size={13}/> Ganti KTP
+            <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={e=>{
+              const f=e.target.files?.[0];if(!f)return;
+              const r=new FileReader();
+              r.onload=()=>setStakeholderModal((prev:any)=>({...prev,value:{...prev.value,ktpUrl:r.result as string,ktpFileName:f.name,ktpMime:f.type}}));
+              r.readAsDataURL(f);
+            }}/>
+          </label>
+        )}
+      </div>
+
+      {stakeholderModal.value?.ktpUrl ? (
+        <div className="ktp-preview-box">
+          {stakeholderModal.value.ktpMime?.includes('pdf') ? (
+            <iframe title="KTP PDF" src={stakeholderModal.value.ktpUrl} className="ktp-preview-iframe"/>
+          ) : (
+            <div style={{display:'flex',justifyContent:'center',alignItems:'center',flex:1,overflow:'hidden',background:'#ffffff',border:'1px solid #cbd5e1',borderRadius:'6px',padding:'10px'}}>
+              <img src={stakeholderModal.value.ktpUrl} alt="KTP Preview" className="ktp-preview-img"/>
+            </div>
+          )}
+          <div style={{fontSize:'10px',color:'#64748b',marginTop:'6px',textAlign:'center'}}>
+            {stakeholderModal.value.ktpFileName || 'KTP File'}
+          </div>
+        </div>
+      ) : (
+        <label className="ktp-upload-box">
+          <Upload size={32} style={{color:'#002060'}}/>
+          <b style={{fontSize:'13px',color:'#0f172a'}}>Upload Foto / Scan KTP</b>
+          <span style={{fontSize:'11px',color:'#64748b'}}>Pilih atau seret berkas KTP (PDF, JPG, PNG) ke sini</span>
+          <span style={{fontSize:'9.5px',color:'#94a3b8'}}>Gambar akan langsung tampil di sini untuk mempermudah pengecekan</span>
+          <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={e=>{
+            const f=e.target.files?.[0];if(!f)return;
+            const r=new FileReader();
+            r.onload=()=>setStakeholderModal((prev:any)=>({...prev,value:{...prev.value,ktpUrl:r.result as string,ktpFileName:f.name,ktpMime:f.type}}));
+            r.readAsDataURL(f);
+          }}/>
+        </label>
+      )}
+    </div>
+  </div>
+  <div className="modal-actions">
+    <button className="button" onClick={()=>setStakeholderModal(null)}>{editorLocked?'Tutup':'Batal'}</button>
+    {!editorLocked&&<button className="button primary" onClick={saveStakeholder}><Save size={15}/>Simpan stakeholder</button>}
+  </div>
+</Modal>}
  {deleteStakeholder&&<Modal title="Hapus stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Hapus stakeholder dari akta ini?</p><p className="muted legal-delete-note">Klik Save changes di Legal agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Batal</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Hapus stakeholder</button></div></Modal>}
  {deleting&&<Modal title="Hapus akta" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Hapus {deedNames[deleting.type]} <strong>{deleting.deedNumber||'tanpa nomor'}</strong> dari daftar Legal?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Data asal di Customer atau profil tetap ada; akta ini akan disembunyikan dari daftar Legal.</p>}<p className="muted legal-delete-note">Klik Save changes setelah menghapus agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Batal</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Hapus akta</button></div></Modal>}
   {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed),activeId=viewRemarkDeed.activeCatId||rawIds[0];return <Modal title={`Rincian Remarks · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div>{rawIds.length>1&&<div className="legal-popup-tabs" role="tablist">{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id,isSelected=activeId===id;return <button key={id} type="button" role="tab" aria-selected={isSelected} className={`legal-popup-tab ${isSelected?'active':''}`} onClick={()=>setViewRemarkDeed({deed,activeCatId:id})}>{name}</button>;})}</div>}<div className="legal-popup-content">{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id,note=deed.categoryRemarks?.[id]||(rawIds.length===1?deed.remarks:'');if(rawIds.length>1&&activeId!==id)return null;return <div key={id} className="legal-popup-card"><div className="legal-popup-card-header"><span className="legal-popup-cat-badge">{name}</span><span className="legal-popup-cat-status">{note?'Catatan Tersimpan':'Tidak ada rincian'}</span></div><div className="legal-popup-card-body"><p className="legal-popup-text">{note||deed.remarks||'Belum ada catatan khusus untuk kategori ini.'}</p></div></div>;})}</div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Tutup</button></div></Modal>;})()}</>;
