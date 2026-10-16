@@ -1070,6 +1070,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   </div>
   <div className="legal-tinymce-wrapper">
     <Editor
+      licenseKey="gpl"
       tinymceScriptSrc="/crm/tinymce/tinymce.min.js"
       value={editing.remarks || ''}
       disabled={editorLocked}

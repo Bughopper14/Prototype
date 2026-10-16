@@ -1779,3 +1779,10 @@ button:focus-visible, a:focus-visible {
 .legal-tinymce-wrapper .tox-tinymce {
   border: none !important;
 }
+
+/* TinyMCE GPL / Clean UI */
+.tox-notifications-container,
+.tox-statusbar__branding,
+.tox-promotion {
+  display: none !important;
+}
