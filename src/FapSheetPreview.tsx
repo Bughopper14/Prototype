@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2, CheckCircle2, FileSpreadsheet, Eye } from 'lucide-react';
+import React, { useState, useMemo, useRef } from 'react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, FileSpreadsheet, Eye, Grid } from 'lucide-react';
+import { FAP_EXCEL_ROWS, EXCEL_COL_WIDTHS, EXCEL_COL_NAMES, ExcelCellDef } from './fap-excel-data';
 
 export interface FapSheetData {
   fapNumber?: string;
@@ -46,525 +47,287 @@ export interface FapSheetData {
   stakeholders?: any[];
   selectedDeedNo?: string;
   proposal?: any;
-  projects?: any[];
-  bankReferences?: any[];
-  financialStatements?: any[];
 }
 
-interface FapSheetPreviewProps {
+export function FapSheetPreview({
+  data,
+  compact = false,
+}: {
   data: FapSheetData;
-  className?: string;
   compact?: boolean;
-}
-
-const fmtDate = (d?: string) => {
-  if (!d) return '—';
-  try {
-    const dt = new Date(d);
-    return Number.isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB');
-  } catch {
-    return d;
-  }
-};
-
-const fmtMoney = (n?: any) => {
-  if (n === undefined || n === null || n === '') return '—';
-  const num = Number(n);
-  if (Number.isNaN(num)) return String(n);
-  return 'Rp ' + num.toLocaleString('id-ID');
-};
-
-export function FapSheetPreview({ data, className = '', compact = false }: FapSheetPreviewProps) {
+}) {
   const [zoom, setZoom] = useState<number>(compact ? 80 : 90);
-  const [activeSection, setActiveSection] = useState<'profile' | 'full'>('profile');
+  const [viewScope, setViewScope] = useState<'profile' | 'all'>('profile');
+  const [showHeaders, setShowHeaders] = useState<boolean>(true);
+  const [selectedCoord, setSelectedCoord] = useState<string>('E12');
 
-  // Format PIC full address
-  const fullPicAddress = useMemo(() => {
-    if (!data.pic) return '—';
-    const parts = [
-      data.pic.currentAddress,
-      data.pic.rt ? `RT ${data.pic.rt}` : null,
-      data.pic.rw ? `RW ${data.pic.rw}` : null,
-      data.pic.village ? `Kel. ${data.pic.village}` : null,
-      data.pic.district ? `Kec. ${data.pic.district}` : null,
+  const dynamicValues = useMemo(() => {
+    const values: Record<string, any> = {};
+
+    values.fapNumber = data.fapNumber || '0006/AF/03/2026';
+    values.applicationDate = data.applicationDate
+      ? new Date(data.applicationDate).toLocaleDateString('en-GB')
+      : new Date().toLocaleDateString('en-GB');
+    values.branchCode = data.branchCode || 'JKT01';
+
+    const isNew = data.customerStatus === 'NEW';
+    values.checkCustomerNew = isNew ? '[ ✓ ] Customer Baru/New Customer' : '[   ] Customer Baru/New Customer';
+    values.checkCustomerExisting = !isNew ? '[ ✓ ] Customer Lama /Existing Customer' : '[   ] Customer Lama /Existing Customer';
+
+    const type = data.companyType || '';
+    values.checkCorporate = type === 'CORPORATE' ? '[ ✓ ] Corporate' : '[   ] Corporate';
+    values.checkCommercial = type === 'COMMERCIAL' ? '[ ✓ ] Commercial' : '[   ] Commercial';
+    values.checkMicro = type === 'MICRO' ? '[ ✓ ] Micro' : '[   ] Micro';
+    values.checkLiuGongUser = type === 'LIUGONG_USER' ? '[ ✓ ] LiuGong User' : '[   ] LiuGong User';
+
+    values.companyName = data.companyName || '';
+    values.companyAddress = data.companyAddress || '';
+    values.city = data.city || '';
+    values.province = data.province || '';
+    values.postalCode = data.postalCode || '';
+    values.mainBusiness = data.mainBusiness || '';
+    values.establishmentActNo = data.establishmentActNo || '';
+    values.establishmentDate = data.establishmentDate || '';
+    values.experienceYears =
+      data.experienceYears !== undefined && data.experienceYears !== '' ? String(data.experienceYears) : '';
+    values.experienceMonths =
+      data.experienceMonths !== undefined && data.experienceMonths !== '' ? String(data.experienceMonths) : '';
+    values.latestDeedNo = data.latestDeedNo || '';
+    values.latestDeedDate = data.latestDeedDate || '';
+    values.nib = data.nib || '';
+    values.npwp = data.npwp || '';
+    values.phoneFax = data.phoneFax || '';
+    values.website = data.website || '';
+    values.email = data.email || '';
+    values.repaymentSource = data.repaymentSource || '';
+
+    const isOwned = data.locationStatus === 'OWNED';
+    const isRented = data.locationStatus === 'RENTED';
+    values.locationStatus = `${isOwned ? '(●)' : '(○)'} Milik Sendiri   /   ${isRented ? '(●)' : '(○)'} Sewa`;
+
+    const pic = data.pic || {};
+    values.picName = pic.picName || '';
+    values.picPhone = pic.phone || '';
+    values.picPosition = pic.position || '';
+    values.picEmail = pic.email || '';
+
+    const addrParts = [
+      pic.currentAddress,
+      pic.rt ? `RT ${pic.rt}` : null,
+      pic.rw ? `RW ${pic.rw}` : null,
+      pic.village,
+      pic.district,
     ].filter(Boolean);
-    return parts.length ? parts.join(', ') : '—';
-  }, [data.pic]);
+    values.picAddress = addrParts.join(', ') || pic.currentAddress || '';
+    values.picCity = pic.city || '';
+    values.picProvince = pic.province || '';
+    values.picPostalCode = pic.postalCode || '';
 
-  // Compute stakeholder rows (padded to 8 rows like Excel template)
-  const stakeholderRows = useMemo(() => {
-    const list = Array.isArray(data.stakeholders) ? data.stakeholders : [];
-    const rows = [];
+    values.selectedDeedNo = data.selectedDeedNo || data.latestDeedNo || data.establishmentActNo || '';
+
+    const shList = data.stakeholders || [];
     for (let i = 0; i < 8; i++) {
-      if (i < list.length) {
-        const s = list[i];
-        const name = s.name || [s.firstName, s.lastName].filter(Boolean).join(' ') || '—';
-        const position = s.designation || s.position || 'Shareholder';
-        const shareAmount = s.depositedCapital ?? s.shareAmount ?? 0;
-        const sharePct = s.sharePercentage ?? 0;
-        rows.push({ no: i + 1, name, position, shareAmount, sharePct, empty: false });
+      const sh = shList[i];
+      const prefix = `sh${i + 1}`;
+      if (sh) {
+        const name = sh.name || [sh.firstName, sh.lastName].filter(Boolean).join(' ') || '';
+        values[`${prefix}_name`] = name;
+        values[`${prefix}_pos`] = sh.position || sh.designation || '';
+        const amount = sh.depositedCapital || sh.shareAmount || 0;
+        values[`${prefix}_amount`] = amount
+          ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(amount))
+          : '';
+        const pct = sh.sharePercentage || sh.percentage || 0;
+        values[`${prefix}_pct`] = pct ? `${Number(pct).toFixed(2)}%` : '';
       } else {
-        rows.push({ no: i + 1, name: '', position: '', shareAmount: null, sharePct: null, empty: true });
+        values[`${prefix}_name`] = '';
+        values[`${prefix}_pos`] = '';
+        values[`${prefix}_amount`] = '';
+        values[`${prefix}_pct`] = '';
       }
     }
-    return rows;
-  }, [data.stakeholders]);
 
-  const totalSharePct = useMemo(() => {
-    if (!Array.isArray(data.stakeholders)) return 0;
-    return data.stakeholders.reduce((sum, s) => sum + (Number(s.sharePercentage) || 0), 0);
-  }, [data.stakeholders]);
+    return values;
+  }, [data]);
 
-  const isExisting = data.customerStatus === 'EXISTING';
-  const isCorporate = data.companyType === 'CORPORATE';
-  const isCommercial = data.companyType === 'COMMERCIAL';
-  const isMicro = data.companyType === 'MICRO';
-  const isLiuGongUser = data.companyType === 'LIUGONG_USER';
+  // Filter rows based on viewScope: profile (rows 1-45) or all (rows 1-118)
+  const displayRows = useMemo(() => {
+    return viewScope === 'profile' ? FAP_EXCEL_ROWS.slice(0, 45) : FAP_EXCEL_ROWS;
+  }, [viewScope]);
+
+  const activeCellValue = dynamicValues[selectedCoord] || '';
 
   return (
-    <div className={`fap-preview-wrapper ${className}`}>
-      {/* Top Toolbar */}
-      <div className="fap-preview-toolbar">
-        <div className="fap-preview-toolbar-title">
-          <FileSpreadsheet size={16} className="fap-toolbar-icon" />
-          <span>FAP Template Live Mirror</span>
-          <span className="fap-live-badge">
-            <span className="fap-live-dot" />
-            Realtime
+    <div className="excel-viewer-wrapper">
+      {/* Excel Ribbon & Control Bar */}
+      <div className="excel-ribbon">
+        <div className="excel-title-group">
+          <FileSpreadsheet size={16} className="excel-brand-icon" />
+          <div className="excel-doc-info">
+            <span className="excel-filename">APPROVED v01.2025.xlsx</span>
+            <span className="excel-sheetname">Sheet: APPROVED v01.2025</span>
+          </div>
+          <span className="excel-sync-pill">
+            <span className="excel-sync-dot" />
+            Live Mirror
           </span>
         </div>
 
-        <div className="fap-preview-toolbar-actions">
-          <div className="fap-section-toggle">
+        <div className="excel-controls-group">
+          {/* Scope Toggle */}
+          <div className="excel-scope-toggle">
             <button
               type="button"
-              className={activeSection === 'profile' ? 'active' : ''}
-              onClick={() => setActiveSection('profile')}
-              title="Bagian 1: Company Profile, PIC & Legal"
+              className={viewScope === 'profile' ? 'active' : ''}
+              onClick={() => setViewScope('profile')}
+              title="Tampilkan Bagian Intake & Profile (Baris 1 - 45)"
             >
-              Halaman 1 (Profil & Legal)
+              FAP Stage (Baris 1-45)
             </button>
             <button
               type="button"
-              className={activeSection === 'full' ? 'active' : ''}
-              onClick={() => setActiveSection('full')}
-              title="Lembar Lengkap FAP"
+              className={viewScope === 'all' ? 'active' : ''}
+              onClick={() => setViewScope('all')}
+              title="Tampilkan Seluruh Lembar Kerja (Baris 1 - 118)"
             >
-              Lembar Lengkap
+              Full Sheet (118 Baris)
             </button>
           </div>
 
-          <div className="fap-zoom-controls">
-            <button
-              type="button"
-              onClick={() => setZoom(z => Math.max(50, z - 10))}
-              aria-label="Zoom out"
-              title="Zoom out"
-            >
-              <ZoomOut size={14} />
+          {/* Header Toggle */}
+          <button
+            type="button"
+            className={`excel-btn-icon ${showHeaders ? 'active' : ''}`}
+            onClick={() => setShowHeaders((s) => !s)}
+            title="Tampilkan / Sembunyikan Header Baris & Kolom Excel"
+          >
+            <Grid size={13} />
+          </button>
+
+          {/* Zoom controls */}
+          <div className="excel-zoom-bar">
+            <button type="button" onClick={() => setZoom((z) => Math.max(50, z - 10))} title="Zoom Out">
+              <ZoomOut size={13} />
             </button>
-            <span className="fap-zoom-val">{zoom}%</span>
-            <button
-              type="button"
-              onClick={() => setZoom(z => Math.min(130, z + 10))}
-              aria-label="Zoom in"
-              title="Zoom in"
-            >
-              <ZoomIn size={14} />
+            <span className="excel-zoom-indicator">{zoom}%</span>
+            <button type="button" onClick={() => setZoom((z) => Math.min(150, z + 10))} title="Zoom In">
+              <ZoomIn size={13} />
             </button>
-            <button
-              type="button"
-              onClick={() => setZoom(compact ? 80 : 90)}
-              aria-label="Reset zoom"
-              title="Reset Zoom"
-            >
-              <RotateCcw size={14} />
+            <button type="button" onClick={() => setZoom(compact ? 80 : 90)} title="Reset Zoom">
+              <RotateCcw size={12} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Viewport Container with Scrolling */}
-      <div className="fap-sheet-viewport">
+      {/* Formula Bar */}
+      <div className="excel-formula-bar">
+        <div className="excel-name-box">{selectedCoord}</div>
+        <div className="excel-fx-icon">fx</div>
+        <div className="excel-fx-input" title="Isi Cell Aktif">
+          {activeCellValue || `Cell ${selectedCoord}`}
+        </div>
+      </div>
+
+      {/* Excel Sheet Scrollable Canvas */}
+      <div className="excel-viewport">
         <div
-          className="fap-sheet-zoom-container"
-          style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
+          className="excel-zoom-container"
+          style={{
+            transform: `scale(${zoom / 100})`,
+            transformOrigin: 'top left',
+          }}
         >
-          <div className="fap-sheet-paper">
-            {/* Header: Brand & Register Number */}
-            <div className="fap-header-row">
-              <div className="fap-brand-col">
-                <div className="fap-brand-title">APPLICATION FORM</div>
-                <div className="fap-brand-subtitle">PT LIUGONG FINANCE INDONESIA · ORIGINATION</div>
-              </div>
-              <div className="fap-register-box">
-                <span className="fap-reg-label">No. Register :</span>
-                <span className="fap-reg-value">{data.fapNumber || '0006/AF/03/2026 (Auto)'}</span>
-              </div>
-            </div>
+          <table className="excel-sheet-table">
+            <colgroup>
+              {showHeaders && <col style={{ width: '38px', minWidth: '38px' }} />}
+              {EXCEL_COL_WIDTHS.map((pct, idx) => (
+                <col key={idx} style={{ width: `${pct * 14}px`, minWidth: `${pct * 14}px` }} />
+              ))}
+            </colgroup>
 
-            {/* Meta Strip: Date, Branch, Customer Status & Classification */}
-            <div className="fap-meta-strip">
-              <div className="fap-meta-left">
-                <div className="fap-meta-item">
-                  <span className="fap-cell-label">Tanggal/Date :</span>
-                  <span className="fap-cell-fill">{fmtDate(data.applicationDate || new Date().toISOString())}</span>
-                </div>
-                <div className="fap-meta-item">
-                  <span className="fap-cell-label">Cabang/Branch :</span>
-                  <span className="fap-cell-fill">{data.branchCode || '—'}</span>
-                </div>
-              </div>
-
-              <div className="fap-meta-center">
-                <label className="fap-checkbox-item">
-                  <span className={`fap-chk ${!isExisting ? 'checked' : ''}`}>
-                    {!isExisting ? '✓' : ''}
-                  </span>
-                  <span>Customer Baru / New Customer</span>
-                </label>
-                <label className="fap-checkbox-item">
-                  <span className={`fap-chk ${isExisting ? 'checked' : ''}`}>
-                    {isExisting ? '✓' : ''}
-                  </span>
-                  <span>Customer Lama / Existing Customer</span>
-                </label>
-              </div>
-
-              <div className="fap-meta-right">
-                <label className="fap-checkbox-item">
-                  <span className={`fap-chk ${isCorporate ? 'checked' : ''}`}>
-                    {isCorporate ? '✓' : ''}
-                  </span>
-                  <span>Corporate</span>
-                </label>
-                <label className="fap-checkbox-item">
-                  <span className={`fap-chk ${isCommercial ? 'checked' : ''}`}>
-                    {isCommercial ? '✓' : ''}
-                  </span>
-                  <span>Commercial</span>
-                </label>
-                <label className="fap-checkbox-item">
-                  <span className={`fap-chk ${isMicro ? 'checked' : ''}`}>
-                    {isMicro ? '✓' : ''}
-                  </span>
-                  <span>Micro</span>
-                </label>
-                <label className="fap-checkbox-item">
-                  <span className={`fap-chk ${isLiuGongUser ? 'checked' : ''}`}>
-                    {isLiuGongUser ? '✓' : ''}
-                  </span>
-                  <span>LiuGong User</span>
-                </label>
-              </div>
-            </div>
-
-            {/* MAIN SPLIT GRID: COMPANY PROFILE (LEFT) & PIC + STAKEHOLDERS (RIGHT) */}
-            <div className="fap-main-grid">
-              {/* LEFT COLUMN: COMPANY PROFILE */}
-              <div className="fap-col-left">
-                <div className="fap-section-header">PROFIL PERUSAHAAN / COMPANY PROFILE</div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Nama Perusahaan / Company's Name :</div>
-                  <div className="fap-row-value fap-highlight-text">{data.companyName || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Alamat Perusahaan / Company Address :</div>
-                  <div className="fap-row-value">{data.companyAddress || '—'}</div>
-                </div>
-
-                <div className="fap-split-row">
-                  <div className="fap-split-half">
-                    <span className="fap-sub-label">Kota / City :</span>
-                    <span className="fap-sub-value">{data.city || '—'}</span>
-                  </div>
-                  <div className="fap-split-half">
-                    <span className="fap-sub-label">Provinsi / Province :</span>
-                    <span className="fap-sub-value">{data.province || '—'}</span>
-                  </div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Postal Code :</div>
-                  <div className="fap-row-value">{data.postalCode || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Bisnis Utama / Main Business :</div>
-                  <div className="fap-row-value">{data.mainBusiness || '—'}</div>
-                </div>
-
-                <div className="fap-split-row">
-                  <div className="fap-split-half">
-                    <span className="fap-sub-label">No. Akta Pendirian :</span>
-                    <span className="fap-sub-value">{data.establishmentActNo || '—'}</span>
-                  </div>
-                  <div className="fap-split-half">
-                    <span className="fap-sub-label">Tgl Pendirian :</span>
-                    <span className="fap-sub-value">{fmtDate(data.establishmentDate)}</span>
-                  </div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Pengalaman / Experience :</div>
-                  <div className="fap-row-value">
-                    <b>{data.experienceYears ?? '—'}</b> years &nbsp;&nbsp;
-                    <b>{data.experienceMonths ?? '—'}</b> months
-                  </div>
-                </div>
-
-                <div className="fap-split-row">
-                  <div className="fap-split-half">
-                    <span className="fap-sub-label">No. Akta Perubahan Terakhir :</span>
-                    <span className="fap-sub-value">{data.latestDeedNo || '—'}</span>
-                  </div>
-                  <div className="fap-split-half">
-                    <span className="fap-sub-label">Tgl Perubahan Terakhir :</span>
-                    <span className="fap-sub-value">{fmtDate(data.latestDeedDate)}</span>
-                  </div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">NIB (Nomor Induk Berusaha) :</div>
-                  <div className="fap-row-value fap-code-font">{data.nib || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">NPWP / No. Tax :</div>
-                  <div className="fap-row-value fap-code-font">{data.npwp || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Phone / Fax :</div>
-                  <div className="fap-row-value">{data.phoneFax || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Website :</div>
-                  <div className="fap-row-value">{data.website || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Email :</div>
-                  <div className="fap-row-value">{data.email || '—'}</div>
-                </div>
-
-                <div className="fap-field-row">
-                  <div className="fap-row-label">Sumber Pembayaran / Repayment source :</div>
-                  <div className="fap-row-value">{data.repaymentSource || '—'}</div>
-                </div>
-
-                <div className="fap-field-row fap-premise-status">
-                  <div className="fap-row-label">Status Tempat Usaha :</div>
-                  <div className="fap-row-value">
-                    <label className="fap-radio-item">
-                      <span className={`fap-radio ${data.locationStatus === 'OWNED' ? 'checked' : ''}`}>
-                        {data.locationStatus === 'OWNED' ? '●' : '○'}
-                      </span>
-                      <span>Milik Sendiri</span>
-                    </label>
-                    <label className="fap-radio-item">
-                      <span className={`fap-radio ${data.locationStatus === 'RENTED' ? 'checked' : ''}`}>
-                        {data.locationStatus === 'RENTED' ? '●' : '○'}
-                      </span>
-                      <span>Sewa</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN: PIC (TOP) & STAKEHOLDERS (BOTTOM) */}
-              <div className="fap-col-right">
-                {/* PIC Block */}
-                <div className="fap-pic-box">
-                  <div className="fap-section-header">PENANGGUNG JAWAB / PIC</div>
-
-                  <div className="fap-split-row">
-                    <div className="fap-split-half">
-                      <span className="fap-sub-label">PIC / Kontak :</span>
-                      <span className="fap-sub-value fap-bold-text">{data.pic?.picName || '—'}</span>
-                    </div>
-                    <div className="fap-split-half">
-                      <span className="fap-sub-label">Telepon / Phone :</span>
-                      <span className="fap-sub-value">{data.pic?.phone || '—'}</span>
-                    </div>
-                  </div>
-
-                  <div className="fap-split-row">
-                    <div className="fap-split-half">
-                      <span className="fap-sub-label">Jabatan / Position :</span>
-                      <span className="fap-sub-value">{data.pic?.position || '—'}</span>
-                    </div>
-                    <div className="fap-split-half">
-                      <span className="fap-sub-label">Email :</span>
-                      <span className="fap-sub-value">{data.pic?.email || '—'}</span>
-                    </div>
-                  </div>
-
-                  <div className="fap-field-row">
-                    <div className="fap-row-label">Alamat Tempat Tinggal / Current Address :</div>
-                    <div className="fap-row-value">{fullPicAddress}</div>
-                  </div>
-
-                  <div className="fap-split-row">
-                    <div className="fap-split-half">
-                      <span className="fap-sub-label">Kota / City :</span>
-                      <span className="fap-sub-value">{data.pic?.city || '—'}</span>
-                    </div>
-                    <div className="fap-split-half">
-                      <span className="fap-sub-label">Provinsi / Province :</span>
-                      <span className="fap-sub-value">{data.pic?.province || '—'}</span>
-                    </div>
-                  </div>
-
-                  <div className="fap-field-row">
-                    <div className="fap-row-label">Kode Pos / Postal code :</div>
-                    <div className="fap-row-value">{data.pic?.postalCode || '—'}</div>
-                  </div>
-                </div>
-
-                {/* Stakeholders Block */}
-                <div className="fap-stakeholder-box">
-                  <div className="fap-section-header">
-                    STRUKTUR ORGANISASI & PEMEGANG SAHAM
-                  </div>
-                  <div className="fap-deed-reference">
-                    <span>Berdasarkan Akta / Based on Act No. :</span>
-                    <b>{data.selectedDeedNo || data.establishmentActNo || '—'}</b>
-                  </div>
-
-                  <table className="fap-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: '32px' }}>No</th>
-                        <th>Name</th>
-                        <th>Position</th>
-                        <th style={{ width: '110px', textAlign: 'right' }}>Amount of Share</th>
-                        <th style={{ width: '65px', textAlign: 'right' }}>% Share</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stakeholderRows.map(row => (
-                        <tr key={row.no} className={row.empty ? 'fap-row-empty' : ''}>
-                          <td style={{ textAlign: 'center' }}>{row.no}</td>
-                          <td>{row.name}</td>
-                          <td>{row.position}</td>
-                          <td style={{ textAlign: 'right' }}>
-                            {row.empty ? '' : fmtMoney(row.shareAmount)}
-                          </td>
-                          <td style={{ textAlign: 'right' }}>
-                            {row.empty ? '' : `${Number(row.sharePct).toFixed(2)}%`}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={4} style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                          Total Kepemilikan Saham :
-                        </td>
-                        <td style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                          {totalSharePct ? `${totalSharePct.toFixed(2)}%` : '0.00%'}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            {/* LOWER SECTIONS (Visible when activeSection === 'full') */}
-            {activeSection === 'full' && (
-              <div className="fap-lower-sections">
-                {/* Financing Purpose & Fixed Assets */}
-                <div className="fap-section-container">
-                  <div className="fap-section-header">TUJUAN PEMBIAYAAN / FINANCING PURPOSE</div>
-                  <div className="fap-purpose-grid">
-                    <div>
-                      <div className="fap-purpose-title">Investasi / Investment</div>
-                      <p className="fap-purpose-desc">Aktivitas usaha / modernisasi / ekspansi / relokasi tempat usaha</p>
-                    </div>
-                    <div>
-                      <div className="fap-purpose-title">Modal Kerja / Working Capital</div>
-                      <p className="fap-purpose-desc">Memenuhi kebutuhan pengeluaran dalam siklus usaha</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Segmentation & Business Role */}
-                <div className="fap-section-container">
-                  <div className="fap-section-header">SEGMENTASI & BISNIS UTAMA</div>
-                  <div className="fap-meta-strip">
-                    <div className="fap-meta-left">
-                      <span className="fap-cell-label">Segmentasi :</span>
-                      <span className="fap-cell-fill">{data.industrySegment || '—'}</span>
-                    </div>
-                    <div className="fap-meta-center">
-                      <span className="fap-cell-label">Peran Bisnis :</span>
-                      <span className="fap-cell-fill">{data.businessRole || '—'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Proposed Facility Summary */}
-                {data.proposal && (
-                  <div className="fap-section-container">
-                    <div className="fap-section-header">USULAN FASILITAS / FACILITY PROPOSED</div>
-                    <div className="fap-proposal-strip">
-                      <div>
-                        <span>Metode Pembiayaan</span>
-                        <b>{data.proposal.financingMethod || 'FINANCIAL LEASE'}</b>
-                      </div>
-                      <div>
-                        <span>Nilai Pembiayaan</span>
-                        <b>{fmtMoney(data.proposal.financingValue)}</b>
-                      </div>
-                      <div>
-                        <span>Tenor</span>
-                        <b>{data.proposal.tenorMonths ? `${data.proposal.tenorMonths} Bulan` : '—'}</b>
-                      </div>
-                      <div>
-                        <span>Suku Bunga</span>
-                        <b>{data.proposal.interestRate ? `${data.proposal.interestRate}% / thn` : '—'}</b>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Signature Block */}
-                <div className="fap-signature-grid">
-                  <div className="fap-sig-box">
-                    <div className="fap-sig-title">Pemohon Pembiayaan (Debitur)</div>
-                    <div className="fap-sig-company">{data.companyName || '—'}</div>
-                    <div className="fap-sig-space" />
-                    <div className="fap-sig-line">
-                      <span>Nama : {data.pic?.picName || '—'}</span>
-                      <span>Jabatan : {data.pic?.position || 'Direktur'}</span>
-                    </div>
-                  </div>
-
-                  <div className="fap-sig-box">
-                    <div className="fap-sig-title">PT LIUGONG FINANCE INDONESIA</div>
-                    <div className="fap-sig-company">Origination Department</div>
-                    <div className="fap-sig-space" />
-                    <div className="fap-sig-line">
-                      <span>Marketing / Branch Representative</span>
-                      <span>Tanggal : {fmtDate(data.applicationDate || new Date().toISOString())}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Column Headers (A, B, C...) */}
+            {showHeaders && (
+              <thead>
+                <tr className="excel-header-row">
+                  <th className="excel-corner-cell"></th>
+                  {EXCEL_COL_NAMES.map((colName) => (
+                    <th key={colName} className="excel-col-header">
+                      {colName}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
             )}
 
-            {/* Document Footer */}
-            <div className="fap-sheet-footer">
-              <span>FAP v01.2025 · PT LIUGONG FINANCE INDONESIA</span>
-              <span>Dokumen Aplikasi Pembiayaan Internal · Confidential</span>
-            </div>
-          </div>
+            <tbody>
+              {displayRows.map((rowCells, rIdx) => {
+                const rowNum = rIdx + 1;
+                return (
+                  <tr key={rowNum} className="excel-data-row">
+                    {/* Row Header (1, 2, 3...) */}
+                    {showHeaders && <td className="excel-row-header">{rowNum}</td>}
+
+                    {/* Cells */}
+                    {rowCells.map((cell) => {
+                      const isDynamic = Boolean(cell.k);
+                      const dynamicVal = cell.k ? dynamicValues[cell.k] : undefined;
+                      const displayVal = dynamicVal !== undefined ? dynamicVal : (cell.v || '');
+                      const isSelected = selectedCoord === cell.c;
+                      const hasValue = Boolean(displayVal && String(displayVal).trim() !== '');
+
+                      // Compute exact border style
+                      const borderStyles: React.CSSProperties = {};
+                      if (cell.b) {
+                        const [bt, bb, bl, br, isDouble] = cell.b;
+                        if (bt) borderStyles.borderTop = '1px solid #1e293b';
+                        if (bb) borderStyles.borderBottom = isDouble ? '3px double #1e293b' : '1px solid #1e293b';
+                        if (bl) borderStyles.borderLeft = '1px solid #1e293b';
+                        if (br) borderStyles.borderRight = '1px solid #1e293b';
+                      }
+
+                      if (cell.bg) {
+                        borderStyles.backgroundColor = cell.bg;
+                      }
+
+                      const cellStyle: React.CSSProperties = {
+                        ...borderStyles,
+                        fontWeight: cell.bld ? 'bold' : 'normal',
+                        fontStyle: cell.it ? 'italic' : 'normal',
+                        fontSize: cell.sz ? `${Math.max(9, Math.round(cell.sz * 1.05))}px` : '11px',
+                        textAlign: (cell.ha as any) || (cell.bld ? 'left' : 'left'),
+                        verticalAlign: (cell.va as any) || 'middle',
+                      };
+
+                      return (
+                        <td
+                          key={cell.c}
+                          id={`excel_cell_${cell.c}`}
+                          rowSpan={cell.rs}
+                          colSpan={cell.cs}
+                          style={cellStyle}
+                          className={`excel-cell ${isDynamic ? 'excel-cell-dynamic' : ''} ${
+                            isSelected ? 'excel-cell-selected' : ''
+                          } ${isDynamic && hasValue ? 'excel-cell-filled' : ''}`}
+                          onClick={() => setSelectedCoord(cell.c)}
+                        >
+                          {displayVal}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
+      </div>
+
+      {/* Excel Status Bar */}
+      <div className="excel-status-bar">
+        <span>READY</span>
+        <span>Sheet 1 of 1 · APPROVED v01.2025</span>
+        <span>Total Columns: 22 (A-V) · Zoom: {zoom}%</span>
       </div>
     </div>
   );
