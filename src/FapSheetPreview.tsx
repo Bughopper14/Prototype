@@ -3,17 +3,9 @@ import {
   FileSpreadsheet,
   ZoomIn,
   ZoomOut,
-  RotateCcw,
   Printer,
-  Download,
   Eye,
 } from 'lucide-react';
-import {
-  EXCEL_COL_WIDTHS_PCT,
-  FAP_EXCEL_ROWS,
-  type ExcelRowData,
-  type ExcelCellData,
-} from './fap-excel-data';
 import { LIUGONG_LOGO_B64 } from './liugong-logo-b64';
 
 export interface FapSheetData {
@@ -66,136 +58,118 @@ export interface FapSheetPreviewProps {
 
 export function FapSheetPreview({
   data,
-  application = {},
-  customer = {},
-  profile = {},
-  pic = {},
+  application,
+  customer,
+  profile,
+  pic,
   stakeholders = [],
   compact = false,
 }: FapSheetPreviewProps) {
   const [zoom, setZoom] = useState<number>(100);
-  const [activeCell, setActiveCell] = useState<{ coord: string; val: string }>({
-    coord: 'A3',
-    val: 'APPLICATION FORM',
-  });
-  const [scope, setScope] = useState<'fap' | 'full'>('fap');
   const printRef = useRef<HTMLDivElement>(null);
 
-  // Map dynamic inputs to Excel coordinates
+  // Dynamic values binding
   const dynamicValues = useMemo(() => {
     const d = data || {};
-    const p = profile || {};
-    const c = customer || {};
-    const a = application || {};
-    const pc = pic || {};
-    const shList = stakeholders.length ? stakeholders : (d.stakeholders || []);
+    const p = profile || d || {};
+    const c = customer || d || {};
+    const a = application || d || {};
+    const pc = pic || d || {};
+    const shList = (stakeholders && stakeholders.length) ? stakeholders : (d.stakeholders || a.stakeholders || []);
 
-    const custStatus = d.customerStatus || p.customerStatus || c.customerStatus || a.customerStatus || '';
-    const isNew = custStatus !== 'EXISTING';
-    const compType = (d.companyType || c.companyType || p.companyType || a.companyType || '').toUpperCase();
-    const isCorporate = compType.includes('CORPORATE');
-    const isCommercial = compType.includes('COMMERCIAL');
-    const isMicro = compType.includes('MICRO');
-    const isLiuGongUser = compType.includes('LIUGONG') || compType.includes('USER');
+    const rawDate = a.applicationDate || d.applicationDate || new Date().toISOString();
+    let formattedDate = '';
+    try {
+      const dt = new Date(rawDate);
+      if (!isNaN(dt.getTime())) {
+        formattedDate = `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+      }
+    } catch {
+      formattedDate = String(rawDate).slice(0, 10);
+    }
 
-    const appDateRaw = d.applicationDate || a.applicationDate;
-    const estDateRaw = d.establishmentDate || p.establishmentDate;
-    const deedDateRaw = d.latestDeedDate || p.latestDeedDate;
-
-    const result: Record<string, string> = {
-      fapNumber: d.fapNumber || a.fapNumber || '0006/AF/03/2026',
-      applicationDate: appDateRaw
-        ? new Date(appDateRaw).toLocaleDateString('id-ID')
-        : '16/10/2026',
-      branchCode: d.branchCode || p.branchCode || a.branchCode || 'JKT01',
-      checkCustomerNew: isNew ? '☑' : '☐',
-      checkCustomerExisting: !isNew ? '☑' : '☐',
-      checkCorporate: isCorporate ? '☑' : '☐',
-      checkCommercial: isCommercial ? '☑' : '☐',
-      checkMicro: isMicro ? '☑' : '☐',
-      checkLiuGongUser: isLiuGongUser ? '☑' : '☐',
-      companyName: d.companyName || c.companyName || p.companyName || a.companyName || '',
-      companyAddress: d.companyAddress || p.companyAddress || c.address || '',
-      city: d.city || p.city || c.city || '',
-      province: d.province || p.province || c.province || '',
-      postalCode: d.postalCode || p.postalCode || c.postalCode || '',
-      mainBusiness: d.mainBusiness || p.mainBusiness || '',
-      establishmentActNo: d.establishmentActNo || p.establishmentActNo || '',
-      establishmentDate: estDateRaw
-        ? new Date(estDateRaw).toLocaleDateString('id-ID')
-        : '',
-      experienceYears: d.experienceYears
-        ? `${d.experienceYears} Tahun`
-        : (p.experienceYears ? `${p.experienceYears} Tahun` : ''),
-      experienceMonths: d.experienceMonths
-        ? `${d.experienceMonths} Bulan`
-        : (p.experienceMonths ? `${p.experienceMonths} Bulan` : ''),
-      latestDeedNo: d.latestDeedNo || p.latestDeedNo || '',
-      latestDeedDate: deedDateRaw
-        ? new Date(deedDateRaw).toLocaleDateString('id-ID')
-        : '',
-      nib: d.nib || c.nib || p.nib || '',
-      npwp: d.npwp || c.npwp || p.npwp || '',
-      phoneFax: d.phoneFax || p.phoneFax || '',
-      website: d.website || p.website || '',
-      email: d.email || p.email || c.email || '',
-      repaymentSource: d.repaymentSource || p.repaymentSource || '',
-      locationStatus: d.locationStatus || p.locationStatus || '',
-      picName: d.picName || pc.picName || '',
-      picPhone: d.phone || pc.phone || '',
-      picPosition: d.position || pc.position || '',
-      picEmail: d.email || pc.email || '',
-      picAddress: d.currentAddress || pc.currentAddress || '',
-      picCity: d.picCity || pc.city || '',
-      picProvince: d.picProvince || pc.province || '',
-      picPostalCode: d.picPostalCode || pc.postalCode || '',
-      selectedDeedNo: d.selectedDeedNo || p.selectedDeedNo || p.latestDeedNo || '',
+    const fmtEstDate = (dtStr?: string) => {
+      if (!dtStr) return '';
+      try {
+        const dt = new Date(dtStr);
+        if (!isNaN(dt.getTime())) {
+          return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`;
+        }
+      } catch {}
+      return String(dtStr).slice(0, 10);
     };
 
-    // Populate up to 8 stakeholders
-    shList.slice(0, 8).forEach((sh: any, idx: number) => {
-      const num = idx + 1;
-      result[`sh${num}_name`] = sh.name || '';
-      result[`sh${num}_pos`] = sh.position || '';
-      result[`sh${num}_amount`] = sh.shareAmount
-        ? Number(sh.shareAmount).toLocaleString('id-ID')
-        : '';
-      result[`sh${num}_pct`] = sh.sharePercentage ? `${sh.sharePercentage}%` : '';
-    });
-
-    return result;
+    return {
+      fapNumber: a.fapNumber || d.fapNumber || '0006/AF/03/2026',
+      applicationDate: formattedDate || '16/10/2026',
+      branchCode: a.branchCode || p.branchCode || d.branchCode || 'JKT01',
+      customerStatus: (c.customerStatus || p.customerStatus || d.customerStatus || 'NEW').toUpperCase(),
+      companyType: (c.companyType || d.companyType || 'CORPORATE').toUpperCase(),
+      companyName: c.companyName || d.companyName || '',
+      companyAddress: p.companyAddress || d.companyAddress || '',
+      city: p.city || d.city || '',
+      province: p.province || d.province || '',
+      postalCode: p.postalCode || d.postalCode || '',
+      mainBusiness: p.mainBusiness || d.mainBusiness || '',
+      establishmentActNo: c.establishmentActNo || d.establishmentActNo || '',
+      establishmentDate: fmtEstDate(c.establishmentDate || d.establishmentDate),
+      experienceYears: p.experienceYears ?? d.experienceYears ?? '',
+      experienceMonths: p.experienceMonths ?? d.experienceMonths ?? '',
+      latestDeedNo: p.latestDeedNo || d.latestDeedNo || '',
+      latestDeedDate: fmtEstDate(p.latestDeedDate || d.latestDeedDate),
+      nib: c.nib || d.nib || '',
+      npwp: c.npwp || d.npwp || '',
+      phoneFax: p.phoneFax || d.phoneFax || '',
+      website: p.website || d.website || '',
+      email: p.email || c.email || d.email || '',
+      repaymentSource: p.repaymentSource || d.repaymentSource || '',
+      locationStatus: p.locationStatus || d.locationStatus || '',
+      picName: pc.picName || d.picName || '',
+      position: pc.position || d.position || '',
+      phone: pc.phone || d.phone || '',
+      picEmail: pc.email || d.picEmail || '',
+      currentAddress: pc.currentAddress || d.currentAddress || '',
+      picCity: pc.city || d.picCity || '',
+      picProvince: pc.province || d.picProvince || '',
+      picPostalCode: pc.postalCode || d.picPostalCode || '',
+      selectedDeedNo: p.selectedDeedNo || d.selectedDeedNo || c.establishmentActNo || d.establishmentActNo || '',
+      stakeholders: Array.isArray(shList) ? shList : [],
+    };
   }, [data, application, customer, profile, pic, stakeholders]);
 
-  // Rows to display based on scope: Rows 1 to 45 (FAP) or 1 to 118 (Full Sheet)
-  const displayRows = useMemo(() => {
-    return scope === 'fap'
-      ? FAP_EXCEL_ROWS.filter(r => r.r <= 45)
-      : FAP_EXCEL_ROWS;
-  }, [scope]);
+  const isNew = dynamicValues.customerStatus !== 'EXISTING';
+  const isCorporate = dynamicValues.companyType === 'CORPORATE';
+  const isCommercial = dynamicValues.companyType === 'COMMERCIAL';
+  const isMicro = dynamicValues.companyType === 'MICRO';
+  const isLiuGongUser = dynamicValues.companyType === 'LIUGONG_USER';
 
   const handlePrint = () => {
     window.print();
   };
 
-  const getRowHeight = (rowNum: number): string | undefined => {
-    if (rowNum === 6) return '5px';
-    if (rowNum === 10) return '3px';
-    if (rowNum === 1 || rowNum === 5 || rowNum === 7 || rowNum === 11) return '10px';
-    if (rowNum === 3) return '36px';
-    if (rowNum === 4) return '24px';
-    if (rowNum === 8 || rowNum === 9) return '26px';
-    return undefined;
+  const formatNumber = (num?: number | string) => {
+    if (num === undefined || num === null || num === '') return '';
+    const n = Number(num);
+    if (isNaN(n)) return String(num);
+    return n.toLocaleString('id-ID');
+  };
+
+  const formatPct = (num?: number | string) => {
+    if (num === undefined || num === null || num === '') return '';
+    const n = Number(num);
+    if (isNaN(n)) return String(num);
+    return `${n.toFixed(2)}%`;
   };
 
   return (
     <div className="excel-fap-viewer">
-      {/* Excel Green Ribbon Toolbar */}
+      {/* Excel Ribbon Toolbar */}
       <div className="excel-fap-ribbon">
         <div className="excel-ribbon-left">
           <FileSpreadsheet size={16} className="excel-green-icon" />
           <div className="excel-file-badge">
             <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
-            <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (100% Exact Grid)</span>
+            <span className="excel-tab-badge">Sheet: APPROVED v01.2025</span>
           </div>
           <span className="excel-live-tag">
             <span className="excel-live-dot" /> LIVE MIRROR
@@ -203,23 +177,6 @@ export function FapSheetPreview({
         </div>
 
         <div className="excel-ribbon-right">
-          <div className="excel-scope-switch">
-            <button
-              type="button"
-              className={scope === 'fap' ? 'active' : ''}
-              onClick={() => setScope('fap')}
-            >
-              FAP Stage (1-45)
-            </button>
-            <button
-              type="button"
-              className={scope === 'full' ? 'active' : ''}
-              onClick={() => setScope('full')}
-            >
-              Lembar Lengkap (1-118)
-            </button>
-          </div>
-
           <div className="excel-zoom-controls">
             <button
               type="button"
@@ -257,13 +214,6 @@ export function FapSheetPreview({
         </div>
       </div>
 
-      {/* Excel Formula Bar */}
-      <div className="excel-fap-formulabar">
-        <div className="excel-cell-coord">{activeCell.coord}</div>
-        <div className="excel-fx-label">fx</div>
-        <div className="excel-fx-value">{activeCell.val}</div>
-      </div>
-
       {/* Spreadsheet Canvas & Viewport */}
       <div className="excel-fap-viewport">
         <div
@@ -272,116 +222,325 @@ export function FapSheetPreview({
           className="excel-fap-paper"
           style={{ width: zoom === 100 ? '100%' : `${zoom}%` }}
         >
-          {/* Pure 100% Excel Matrix Table */}
-          <table className="excel-fap-table">
-            <colgroup>
-              {EXCEL_COL_WIDTHS_PCT.map((w, i) => (
-                <col key={i} style={{ width: `${w}%` }} />
-              ))}
-            </colgroup>
-            <tbody>
-              {displayRows.map(row => (
-                <tr key={row.r} style={{ height: getRowHeight(row.r) }}>
-                  {row.cells.map(cell => {
-                    let cellValue = cell.v || '';
-                    const isDynamic = Boolean(cell.k && dynamicValues[cell.k]);
+          {/* Header Section */}
+          <div className="excel-exact-header">
+            <div className="exact-header-top">
+              <div className="exact-header-logo">
+                <img src={LIUGONG_LOGO_B64} alt="LiuGong Finance Indonesia" />
+              </div>
+              <div className="exact-header-title">APPLICATION FORM</div>
+              <div className="exact-header-reg">
+                <span className="reg-lbl">No. Register :</span>
+                <span className="reg-val">{dynamicValues.fapNumber}</span>
+              </div>
+            </div>
 
-                    if (isDynamic) {
-                      cellValue = dynamicValues[cell.k!] || cell.v || '';
-                    }
+            {/* Solid Navy Blue Bar */}
+            <div className="exact-navy-bar" />
 
-                    // Special rendering for official LiuGong logo in cell B2
-                    const isLogoCell = cell.c === 'B2';
-                    const isAppFormTitle = cell.c === 'A3';
+            {/* 4 Classification Boxes */}
+            <div className="exact-matrix-grid">
+              {/* Box 1 */}
+              <div className="exact-matrix-box">
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Tanggal/ Date</span>
+                  <span className="exact-matrix-val">{dynamicValues.applicationDate}</span>
+                </div>
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Cabang/ Branch</span>
+                  <span className="exact-matrix-val">{dynamicValues.branchCode}</span>
+                </div>
+              </div>
 
-                    // Parse custom cell styling
-                    const style: React.CSSProperties = {
-                      fontSize: cell.fs ? `${cell.fs}pt` : '8.5pt',
-                      fontWeight: cell.fw === 'bold' ? 700 : 400,
-                      color: isDynamic ? '#002060' : (cell.col || '#0f172a'),
-                      backgroundColor: cell.bg || (row.r === 6 ? '#002060' : row.r === 10 ? '#eaa358' : undefined),
-                      textAlign: (cell.ta as any) || 'left',
-                      verticalAlign: (cell.va as any) || 'middle',
-                    };
+              {/* Box 2 */}
+              <div className="exact-matrix-box">
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Customer Baru/ New Customer</span>
+                  <span className="exact-matrix-chk">{isNew ? '☑' : '☐'}</span>
+                </div>
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Customer Lama / Existing Customer</span>
+                  <span className="exact-matrix-chk">{!isNew ? '☑' : '☐'}</span>
+                </div>
+              </div>
 
-                    if (cell.b) {
-                      cell.b.split(';').forEach(rule => {
-                        const [prop, val] = rule.split(':').map(s => s.trim());
-                        if (prop && val) {
-                          if (prop === 'border-top') style.borderTop = val;
-                          if (prop === 'border-bottom') style.borderBottom = val;
-                          if (prop === 'border-left') style.borderLeft = val;
-                          if (prop === 'border-right') style.borderRight = val;
-                        }
-                      });
-                    }
+              {/* Box 3 */}
+              <div className="exact-matrix-box">
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Corporate</span>
+                  <span className="exact-matrix-chk">{isCorporate ? '☑' : '☐'}</span>
+                </div>
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Commercial</span>
+                  <span className="exact-matrix-chk">{isCommercial ? '☑' : '☐'}</span>
+                </div>
+              </div>
 
-                    if (row.r === 6) {
-                      style.backgroundColor = '#002060';
-                      style.height = '5px';
-                      style.padding = 0;
-                      style.lineHeight = '5px';
-                    } else if (row.r === 10) {
-                      style.backgroundColor = '#eaa358';
-                      style.height = '3px';
-                      style.padding = 0;
-                      style.lineHeight = '3px';
-                    }
+              {/* Box 4 */}
+              <div className="exact-matrix-box">
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">Micro</span>
+                  <span className="exact-matrix-chk">{isMicro ? '☑' : '☐'}</span>
+                </div>
+                <div className="exact-matrix-row">
+                  <span className="exact-matrix-lbl">LiuGong Used</span>
+                  <span className="exact-matrix-chk">{isLiuGongUser ? '☑' : '☐'}</span>
+                </div>
+              </div>
+            </div>
 
-                    const isSelected = activeCell.coord === cell.c;
+            {/* Solid Orange Divider Bar */}
+            <div className="exact-orange-bar" />
+          </div>
 
-                    return (
-                      <td
-                        key={cell.c}
-                        colSpan={cell.cs || 1}
-                        rowSpan={cell.rs || 1}
-                        style={style}
-                        className={`excel-fap-cell ${isSelected ? 'excel-cell-active' : ''} ${
-                          isDynamic ? 'fap-dynamic-highlight' : ''
-                        }`}
-                        onClick={() =>
-                          setActiveCell({
-                            coord: cell.c,
-                            val: cellValue || '(kosong)',
-                          })
-                        }
-                      >
-                        {isLogoCell ? (
-                          <div style={{ padding: '2px 0' }}>
-                            <img
-                              src={LIUGONG_LOGO_B64}
-                              alt="LiuGong Finance Indonesia"
-                              style={{
-                                height: '36px',
-                                width: 'auto',
-                                display: 'block',
-                                objectFit: 'contain',
-                              }}
-                            />
-                          </div>
-                        ) : isAppFormTitle ? (
-                          <div
-                            style={{
-                              fontSize: '18px',
-                              fontWeight: 900,
-                              color: '#002060',
-                              textAlign: 'center',
-                              letterSpacing: '0.8px',
-                              padding: '4px 0',
-                            }}
-                          >
-                            APPLICATION FORM
-                          </div>
-                        ) : (
-                          cellValue
-                        )}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Form Main Body: Two-Column Grid matching img_2e4e6503caa5.jpg */}
+          <div className="exact-fap-body">
+            {/* Left Column: Company Information */}
+            <div className="exact-fap-col">
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Nama Perusahaan/<br />Company’s Name</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">
+                  {dynamicValues.companyName || ''}
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Alamat Perusahaan/<br />Company Address</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box multiline highlight-dynamic">
+                  {dynamicValues.companyAddress || ''}
+                </div>
+              </div>
+
+              <div className="exact-sub-row">
+                <div className="exact-sub-lbl">Kota/ City</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.city || ''}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <div className="exact-sub-lbl">Provinsi/ Province</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.province || ''}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <div className="exact-sub-lbl">Postal code</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.postalCode || ''}</div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Bisnis Utama/<br />Main Business</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">
+                  {dynamicValues.mainBusiness || ''}
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">No. Akta Pendirian/<br />Deed Establishment</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-dual-row">
+                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.2 }}>
+                    {dynamicValues.establishmentActNo || ''}
+                  </div>
+                  <div className="exact-inline-group">
+                    <span className="exact-inline-lbl">Tanggal/ Est Date :</span>
+                    <div className="exact-fap-box highlight-dynamic" style={{ width: '75px', flex: 'none' }}>
+                      {dynamicValues.establishmentDate || ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Pengalaman/<br />Experience</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-inline-group">
+                  <div className="exact-fap-box highlight-dynamic" style={{ width: '45px', flex: 'none', justifyContent: 'center' }}>
+                    {dynamicValues.experienceYears !== '' ? dynamicValues.experienceYears : ''}
+                  </div>
+                  <span className="exact-inline-lbl">years</span>
+                  <div className="exact-fap-box highlight-dynamic" style={{ width: '45px', flex: 'none', justifyContent: 'center' }}>
+                    {dynamicValues.experienceMonths !== '' ? dynamicValues.experienceMonths : ''}
+                  </div>
+                  <span className="exact-inline-lbl">months</span>
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">No. Akta Perubahan Terakhir/<br />Latest Deed Amendment</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-dual-row">
+                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.2 }}>
+                    {dynamicValues.latestDeedNo || ''}
+                  </div>
+                  <div className="exact-inline-group">
+                    <span className="exact-inline-lbl">Tanggal/ Date :</span>
+                    <div className="exact-fap-box highlight-dynamic" style={{ width: '75px', flex: 'none' }}>
+                      {dynamicValues.latestDeedDate || ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">NIB (No Induk Berusaha)</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.nib || ''}</div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">NPWP/ No. Tax</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.npwp || ''}</div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Phone / Fax</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.phoneFax || ''}</div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Website</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.website || ''}</div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Email</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.email || ''}</div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Sumber Pembayaran/<br />Repayment source</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">
+                  {dynamicValues.repaymentSource || ''}
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl">Status tempat usaha/<br />Business Location Status</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">
+                  {dynamicValues.locationStatus || ''}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: PIC Details & Shareholder Table */}
+            <div className="exact-fap-col">
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl" style={{ width: '115px' }}>
+                  Penanggung Jawab/<br />PIC
+                </div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-dual-row">
+                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.4 }}>
+                    {dynamicValues.picName || ''}
+                  </div>
+                  <div className="exact-inline-group">
+                    <span className="exact-inline-lbl">Telepon/ Phone :</span>
+                    <div className="exact-fap-box highlight-dynamic" style={{ flex: 1 }}>
+                      {dynamicValues.phone || ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl" style={{ width: '115px' }}>
+                  Jabatan/<br />Position
+                </div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-dual-row">
+                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.4 }}>
+                    {dynamicValues.position || ''}
+                  </div>
+                  <div className="exact-inline-group">
+                    <span className="exact-inline-lbl">Email :</span>
+                    <div className="exact-fap-box highlight-dynamic" style={{ flex: 1 }}>
+                      {dynamicValues.picEmail || ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="exact-fap-row">
+                <div className="exact-fap-lbl" style={{ width: '115px' }}>
+                  Alamat Tempat Tinggal/<br />Current Address
+                </div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box multiline highlight-dynamic">
+                  {dynamicValues.currentAddress || ''}
+                </div>
+              </div>
+
+              <div className="exact-sub-row" style={{ marginLeft: '12px' }}>
+                <div className="exact-sub-lbl" style={{ width: '107px' }}>Kota/ City</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.picCity || ''}</div>
+              </div>
+
+              <div className="exact-sub-row" style={{ marginLeft: '12px' }}>
+                <div className="exact-sub-lbl" style={{ width: '107px' }}>Provinsi/ Province</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.picProvince || ''}</div>
+              </div>
+
+              <div className="exact-sub-row" style={{ marginLeft: '12px' }}>
+                <div className="exact-sub-lbl" style={{ width: '107px' }}>Kode Pos/ Postal code</div>
+                <div className="exact-fap-colon">:</div>
+                <div className="exact-fap-box highlight-dynamic">{dynamicValues.picPostalCode || ''}</div>
+              </div>
+
+              {/* Shareholder Structure Table */}
+              <div className="exact-sh-section">
+                <div className="exact-sh-title">
+                  Struktur Organisasi & Pemegang Saham / Organization & Shareholder Structure
+                </div>
+                <div className="exact-sh-subtitle">
+                  Berdasarkan Akta / Based on Act No.{' '}
+                  <u>{dynamicValues.selectedDeedNo || '________________________'}</u>
+                </div>
+
+                <table className="exact-sh-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: '28px' }}>No</th>
+                      <th style={{ width: '38%' }}>Name</th>
+                      <th style={{ width: '22%' }}>Position</th>
+                      <th style={{ width: '24%' }}>Amount of Share</th>
+                      <th style={{ width: '16%' }}>% share</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[0, 1, 2, 3, 4, 5, 6, 7].map(idx => {
+                      const sh = dynamicValues.stakeholders[idx];
+                      return (
+                        <tr key={idx}>
+                          <td className="center">{idx + 1}</td>
+                          <td className="highlight-dynamic">{sh?.name || sh?.shareholderName || ''}</td>
+                          <td className="highlight-dynamic">{sh?.position || ''}</td>
+                          <td className="right highlight-dynamic">
+                            {sh ? formatNumber(sh.amount || sh.amountOfShare) : ''}
+                          </td>
+                          <td className="right highlight-dynamic">
+                            {sh ? formatPct(sh.sharePercentage || sh.pctShare) : ''}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
