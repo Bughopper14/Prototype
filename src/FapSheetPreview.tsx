@@ -57,10 +57,10 @@ export interface FapSheetData {
   bankReferences?: any[];
   financialStatements?: any[];
   units?: any[];
-  assetSummaryHeLiuGong?: number;
-  assetSummaryTruckLiuGong?: number;
-  assetSummaryHeNonLiuGong?: number;
-  assetSummaryTruckNonLiuGong?: number;
+  assetSummaryHeLiuGong?: number | string;
+  assetSummaryTruckLiuGong?: number | string;
+  assetSummaryHeNonLiuGong?: number | string;
+  assetSummaryTruckNonLiuGong?: number | string;
   [key: string]: any;
 }
 
@@ -150,76 +150,67 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     const sh = props.stakeholders || app.stakeholders || raw.stakeholders || [];
     const prop = raw.proposal || app.proposal || {};
 
+    const pick = (valA: any, valB: any, valC?: any, fallback = '') => {
+      if (valA !== undefined && valA !== null && valA !== '') return valA;
+      if (valB !== undefined && valB !== null && valB !== '') return valB;
+      if (valC !== undefined && valC !== null && valC !== '') return valC;
+      return fallback;
+    };
+
     return {
-      fapNumber: raw.fapNumber || app.fapNumber || '0006/AF/03/2026',
-      applicationDate: raw.applicationDate || app.applicationDate || new Date().toISOString(),
-      branchCode: raw.branchCode || app.branchCode || 'JKT01',
-      customerStatus: raw.customerStatus || app.customerStatus || 'EXISTING',
-      companyName: raw.companyName || cust.companyName || 'PT LiuGong Customer Indonesia',
-      companyType: raw.companyType || cust.companyType || 'CORPORATE',
-      nib: raw.nib || cust.nib || '1234567890123',
-      npwp: raw.npwp || cust.npwp || '01.234.567.8-012.000',
-      establishmentActNo: raw.establishmentActNo || cust.establishmentActNo || 'AHU-0012345.AH.01.01.2018',
-      establishmentDate: raw.establishmentDate || cust.establishmentDate || '2018-05-10',
-      companyAddress: raw.companyAddress || prof.companyAddress || 'Jl. Jend. Sudirman Kav. 52-53, SCBD Lot 9',
-      city: raw.city || prof.city || 'Jakarta Selatan',
-      province: raw.province || prof.province || 'DKI Jakarta',
-      postalCode: raw.postalCode || prof.postalCode || '12190',
-      experienceYears: raw.experienceYears ?? prof.experienceYears ?? 8,
-      experienceMonths: raw.experienceMonths ?? prof.experienceMonths ?? 6,
-      mainBusiness: raw.mainBusiness || prof.mainBusiness || 'Jasa Kontraktor Tambang & Alat Berat',
-      latestDeedNo: raw.latestDeedNo || prof.latestDeedNo || 'AHU-0098765.AH.01.02.2023',
-      latestDeedDate: raw.latestDeedDate || prof.latestDeedDate || '2023-08-15',
-      phoneFax: raw.phoneFax || prof.phoneFax || '021-52998888',
-      website: raw.website || prof.website || 'www.liugong-customer.co.id',
-      email: raw.email || prof.email || 'corporate@liugong-customer.co.id',
-      repaymentSource: raw.repaymentSource || prof.repaymentSource || 'Pendapatan Kontrak Tambang PT Vale & Antam',
-      locationStatus: raw.locationStatus || prof.locationStatus || 'Milik Sendiri',
-      picName: raw.picName || p.picName || p.name || 'Budi Santoso',
-      position: raw.position || p.position || 'Direktur Utama',
-      phone: raw.phone || p.phone || p.mobilePhone || '081198765432',
-      picEmail: raw.picEmail || p.email || 'budi.santoso@liugong-customer.co.id',
-      currentAddress: raw.currentAddress || p.currentAddress || 'Jl. Senopati No. 45, Kebayoran Baru',
-      picCity: raw.picCity || p.city || 'Jakarta Selatan',
-      picProvince: raw.picProvince || p.province || 'DKI Jakarta',
-      picPostalCode: raw.picPostalCode || p.postalCode || '12110',
-      selectedDeedNo: raw.selectedDeedNo || prof.latestDeedNo || 'AHU-0098765.AH.01.02.2023',
-      stakeholders: sh.length ? sh : [
-        { name: 'Budi Santoso', position: 'Direktur Utama', shareAmount: 5000, sharePercentage: 50 },
-        { name: 'Hendra Wijaya', position: 'Komisaris Utama', shareAmount: 3000, sharePercentage: 30 },
-        { name: 'PT Investama Megah Mandiri', position: 'Pemegang Saham', shareAmount: 2000, sharePercentage: 20 },
-      ],
+      fapNumber: pick(raw.fapNumber, app.fapNumber, '', '—'),
+      applicationDate: pick(raw.applicationDate, app.applicationDate, ''),
+      branchCode: pick(raw.branchCode, app.branchCode, ''),
+      customerStatus: pick(raw.customerStatus, app.customerStatus, ''),
+      companyName: pick(raw.companyName, cust.companyName, ''),
+      companyType: pick(raw.companyType, cust.companyType, ''),
+      nib: pick(raw.nib, cust.nib, ''),
+      npwp: pick(raw.npwp, cust.npwp, ''),
+      establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
+      establishmentDate: pick(raw.establishmentDate, cust.establishmentDate, ''),
+      companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
+      city: pick(raw.city, prof.city, ''),
+      province: pick(raw.province, prof.province, ''),
+      postalCode: pick(raw.postalCode, prof.postalCode, ''),
+      experienceYears: pick(raw.experienceYears, prof.experienceYears, ''),
+      experienceMonths: pick(raw.experienceMonths, prof.experienceMonths, ''),
+      mainBusiness: pick(raw.mainBusiness, prof.mainBusiness, ''),
+      latestDeedNo: pick(raw.latestDeedNo, prof.latestDeedNo, ''),
+      latestDeedDate: pick(raw.latestDeedDate, prof.latestDeedDate, ''),
+      phoneFax: pick(raw.phoneFax, prof.phoneFax, ''),
+      website: pick(raw.website, prof.website, ''),
+      email: pick(raw.email, prof.email, ''),
+      repaymentSource: pick(raw.repaymentSource, prof.repaymentSource, ''),
+      locationStatus: pick(raw.locationStatus, prof.locationStatus, ''),
+      picName: pick(raw.picName, p.picName, p.name, ''),
+      position: pick(raw.position, p.position, ''),
+      phone: pick(raw.phone, p.phone, p.mobilePhone, ''),
+      picEmail: pick(raw.picEmail, p.email, ''),
+      currentAddress: pick(raw.currentAddress, p.currentAddress, ''),
+      picCity: pick(raw.picCity, p.city, ''),
+      picProvince: pick(raw.picProvince, p.province, ''),
+      picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
+      selectedDeedNo: pick(raw.selectedDeedNo, prof.latestDeedNo, ''),
+      stakeholders: sh.length ? sh : (raw.stakeholders || app.stakeholders || []),
       // Extended fields
-      facilityPurpose: raw.facilityPurpose || prop.facilityPurpose || 'INVESTMENT',
-      financingMethod: raw.financingMethod || prop.financingMethod || 'FINANCIAL_LEASE',
-      financingValue: raw.financingValue || prop.financingValue || 12500000000,
-      downPaymentValue: raw.downPaymentValue || prop.downPaymentValue || 2500000000,
-      interestRate: raw.interestRate || prop.interestRate || 10.5,
-      tenorMonths: raw.tenorMonths || prop.tenorMonths || 36,
-      paymentMethod: raw.paymentMethod || prop.paymentMethod || 'In Arrear',
-      industrySegment: raw.industrySegment || app.industrySegment || 'MINING',
-      businessRole: raw.businessRole || app.businessRole || 'CONTRACTORS',
+      facilityPurpose: pick(raw.facilityPurpose, prop.facilityPurpose, ''),
+      financingMethod: pick(raw.financingMethod, prop.financingMethod, ''),
+      financingValue: pick(raw.financingValue, prop.financingValue, ''),
+      downPaymentValue: pick(raw.downPaymentValue, prop.downPaymentValue, ''),
+      interestRate: pick(raw.interestRate, prop.interestRate, ''),
+      tenorMonths: pick(raw.tenorMonths, prop.tenorMonths, ''),
+      paymentMethod: pick(raw.paymentMethod, prop.paymentMethod, ''),
+      industrySegment: pick(raw.industrySegment, app.industrySegment, ''),
+      businessRole: pick(raw.businessRole, app.businessRole, ''),
       proposal: prop,
-      projects: raw.projects || app.projects || [
-        { projectOwner: 'PT Vale Indonesia Tbk', projectLocation: 'Sorowako, Sulsel', projectRole: 'Main Contractor', contractStatus: 'Existing' },
-        { projectOwner: 'PT Aneka Tambang Tbk', projectLocation: 'Pomalaa, Sultra', projectRole: 'Contractor', contractStatus: 'Existing' },
-      ],
-      bankReferences: raw.bankReferences || app.bankReferences || [
-        { bankOrFinInstitution: 'Bank Mandiri', currency: 'IDR', creditFacility: 15000000000, monthlyInstallment: 450000000, yearStarted: 2021, interestRate: 9.5, paymentRecord: 'Lancar (Kol 1)', facilityStatus: 'Active' },
-        { bankOrFinInstitution: 'Bank BCA', currency: 'IDR', creditFacility: 10000000000, monthlyInstallment: 310000000, yearStarted: 2022, interestRate: 9.25, paymentRecord: 'Lancar (Kol 1)', facilityStatus: 'Active' },
-      ],
-      financialStatements: raw.financialStatements || app.financialStatements || [
-        { fiscalYear: 2023, isAudited: true, currentAssets: 28500000000, nonCurrentAssets: 45200000000, totalAssets: 73700000000, currentLiabilities: 18200000000, longTermLiabilities: 24100000000, totalLiabilities: 42300000000, equity: 31400000000, revenue: 68500000000, grossMargin: 15200000000, operatingMargin: 9800000000, tax: 2150000000, netIncome: 7650000000 },
-        { fiscalYear: 2024, isAudited: true, currentAssets: 34200000000, nonCurrentAssets: 51800000000, totalAssets: 86000000000, currentLiabilities: 21400000000, longTermLiabilities: 27500000000, totalLiabilities: 48900000000, equity: 37100000000, revenue: 82400000000, grossMargin: 18700000000, operatingMargin: 12400000000, tax: 2720000000, netIncome: 9680000000 },
-        { fiscalYear: 2025, isAudited: false, currentAssets: 41000000000, nonCurrentAssets: 58000000000, totalAssets: 99000000000, currentLiabilities: 24500000000, longTermLiabilities: 30500000000, totalLiabilities: 55000000000, equity: 44000000000, revenue: 98600000000, grossMargin: 22500000000, operatingMargin: 15100000000, tax: 3320000000, netIncome: 11780000000 },
-      ],
-      units: raw.units || prop.units || [
-        { brand: 'LiuGong', unitCategory: 'HE', unitType: 'Hydraulic Excavator', modelName: '936E', quantity: 2 },
-      ],
-      assetSummaryHeLiuGong: raw.assetSummaryHeLiuGong ?? app.assetSummaryHeLiuGong ?? 4,
-      assetSummaryTruckLiuGong: raw.assetSummaryTruckLiuGong ?? app.assetSummaryTruckLiuGong ?? 2,
-      assetSummaryHeNonLiuGong: raw.assetSummaryHeNonLiuGong ?? app.assetSummaryHeNonLiuGong ?? 3,
-      assetSummaryTruckNonLiuGong: raw.assetSummaryTruckNonLiuGong ?? app.assetSummaryTruckNonLiuGong ?? 5,
+      projects: raw.projects || app.projects || [],
+      bankReferences: raw.bankReferences || app.bankReferences || [],
+      financialStatements: raw.financialStatements || app.financialStatements || [],
+      units: raw.units || prop.units || [],
+      assetSummaryHeLiuGong: pick(raw.assetSummaryHeLiuGong, app.assetSummaryHeLiuGong, ''),
+      assetSummaryTruckLiuGong: pick(raw.assetSummaryTruckLiuGong, app.assetSummaryTruckLiuGong, ''),
+      assetSummaryHeNonLiuGong: pick(raw.assetSummaryHeNonLiuGong, app.assetSummaryHeNonLiuGong, ''),
+      assetSummaryTruckNonLiuGong: pick(raw.assetSummaryTruckNonLiuGong, app.assetSummaryTruckNonLiuGong, ''),
     };
   }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders]);
 
@@ -238,18 +229,26 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   };
 
   const formatNumber = (num?: number | string) => {
-    if (num === undefined || num === null || num === '') return '0,00';
+    if (num === undefined || num === null || num === '' || num === 0) return '—';
     const n = Number(num);
-    if (isNaN(n)) return String(num);
+    if (isNaN(n) || n === 0) return '—';
     return n.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
   const formatCurrency = (num?: number | string) => {
-    if (!num) return 'Rp 0';
+    if (num === undefined || num === null || num === '' || num === 0) return '—';
     const n = Number(num);
-    if (isNaN(n)) return String(num);
+    if (isNaN(n) || n === 0) return '—';
     return 'Rp ' + n.toLocaleString('id-ID');
   };
+
+  const fsList = (d.financialStatements && d.financialStatements.length > 0)
+    ? d.financialStatements
+    : [
+        { fiscalYear: 2023, isAudited: false, currentAssets: '', nonCurrentAssets: '', totalAssets: '', currentLiabilities: '', longTermLiabilities: '', totalLiabilities: '', equity: '', revenue: '', grossMargin: '', operatingMargin: '', tax: '', netIncome: '' },
+        { fiscalYear: 2024, isAudited: false, currentAssets: '', nonCurrentAssets: '', totalAssets: '', currentLiabilities: '', longTermLiabilities: '', totalLiabilities: '', equity: '', revenue: '', grossMargin: '', operatingMargin: '', tax: '', netIncome: '' },
+        { fiscalYear: 2025, isAudited: false, currentAssets: '', nonCurrentAssets: '', totalAssets: '', currentLiabilities: '', longTermLiabilities: '', totalLiabilities: '', equity: '', revenue: '', grossMargin: '', operatingMargin: '', tax: '', netIncome: '' },
+      ];
 
   const handlePrint = () => {
     window.print();
@@ -669,31 +668,34 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <tbody>
                   <tr>
                     <td><b>LiuGong</b></td>
-                    <td className="center highlight-dynamic">{d.assetSummaryHeLiuGong || 0}</td>
-                    <td className="center highlight-dynamic">{d.assetSummaryTruckLiuGong || 0}</td>
-                    <td className="center highlight-dynamic">{(d.assetSummaryHeLiuGong || 0) + (d.assetSummaryTruckLiuGong || 0)}</td>
+                    <td className="center highlight-dynamic">{d.assetSummaryHeLiuGong !== '' && d.assetSummaryHeLiuGong !== undefined ? d.assetSummaryHeLiuGong : '—'}</td>
+                    <td className="center highlight-dynamic">{d.assetSummaryTruckLiuGong !== '' && d.assetSummaryTruckLiuGong !== undefined ? d.assetSummaryTruckLiuGong : '—'}</td>
+                    <td className="center highlight-dynamic">{(Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0) || '—'}</td>
                     <td className="right highlight-dynamic">
-                      {((((d.assetSummaryHeLiuGong || 0) + (d.assetSummaryTruckLiuGong || 0)) / Math.max(1, ((d.assetSummaryHeLiuGong || 0) + (d.assetSummaryTruckLiuGong || 0) + (d.assetSummaryHeNonLiuGong || 0) + (d.assetSummaryTruckNonLiuGong || 0)))) * 100).toFixed(1)}%
+                      {((Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0) + (Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0)) > 0
+                        ? (((((Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0)) / Math.max(1, ((Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0) + (Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0)))) * 100).toFixed(1) + '%')
+                        : '—'}
                     </td>
                   </tr>
                   <tr>
                     <td>Non LiuGong</td>
-                    <td className="center highlight-dynamic">{d.assetSummaryHeNonLiuGong || 0}</td>
-                    <td className="center highlight-dynamic">{d.assetSummaryTruckNonLiuGong || 0}</td>
-                    <td className="center highlight-dynamic">{(d.assetSummaryHeNonLiuGong || 0) + (d.assetSummaryTruckNonLiuGong || 0)}</td>
+                    <td className="center highlight-dynamic">{d.assetSummaryHeNonLiuGong !== '' && d.assetSummaryHeNonLiuGong !== undefined ? d.assetSummaryHeNonLiuGong : '—'}</td>
+                    <td className="center highlight-dynamic">{d.assetSummaryTruckNonLiuGong !== '' && d.assetSummaryTruckNonLiuGong !== undefined ? d.assetSummaryTruckNonLiuGong : '—'}</td>
+                    <td className="center highlight-dynamic">{(Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0) || '—'}</td>
                     <td className="right highlight-dynamic">
-                      {((((d.assetSummaryHeNonLiuGong || 0) + (d.assetSummaryTruckNonLiuGong || 0)) / Math.max(1, ((d.assetSummaryHeLiuGong || 0) + (d.assetSummaryTruckLiuGong || 0) + (d.assetSummaryHeNonLiuGong || 0) + (d.assetSummaryTruckNonLiuGong || 0)))) * 100).toFixed(1)}%
+                      {((Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0) + (Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0)) > 0
+                        ? (((((Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0)) / Math.max(1, ((Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0) + (Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0)))) * 100).toFixed(1) + '%')
+                        : '—'}
                     </td>
                   </tr>
                   <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
                     <td>Total</td>
-                    <td className="center">{(d.assetSummaryHeLiuGong || 0) + (d.assetSummaryHeNonLiuGong || 0)}</td>
-                    <td className="center">{(d.assetSummaryTruckLiuGong || 0) + (d.assetSummaryTruckNonLiuGong || 0)}</td>
-                    <td className="center">{(d.assetSummaryHeLiuGong || 0) + (d.assetSummaryTruckLiuGong || 0) + (d.assetSummaryHeNonLiuGong || 0) + (d.assetSummaryTruckNonLiuGong || 0)}</td>
+                    <td className="center">{(Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryHeNonLiuGong) || 0) || '—'}</td>
+                    <td className="center">{(Number(d.assetSummaryTruckLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0) || '—'}</td>
+                    <td className="center">{(Number(d.assetSummaryHeLiuGong) || 0) + (Number(d.assetSummaryTruckLiuGong) || 0) + (Number(d.assetSummaryHeNonLiuGong) || 0) + (Number(d.assetSummaryTruckNonLiuGong) || 0) || '—'}</td>
                     <td className="right">100.0%</td>
                   </tr>
-                </tbody>
-              </table>
+                </tbody></table>
             </div>
           </div>
 
@@ -843,7 +845,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                   <div className="exact-fap-box highlight-dynamic">{formatCurrency(d.downPaymentValue)}</div>
                   <div className="exact-inline-group">
                     <span className="exact-inline-lbl">Bunga / Rate :</span>
-                    <div className="exact-fap-box highlight-dynamic">{d.interestRate}% p.a.</div>
+                    <div className="exact-fap-box highlight-dynamic">{d.interestRate ? `${d.interestRate}% p.a.` : '—'}</div>
                   </div>
                 </div>
               </div>
@@ -852,10 +854,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl">Jangka Waktu / Tenor</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic">{d.tenorMonths} Bulan</div>
+                  <div className="exact-fap-box highlight-dynamic">{d.tenorMonths ? `${d.tenorMonths} Bulan` : '—'}</div>
                   <div className="exact-inline-group">
                     <span className="exact-inline-lbl">Cara Bayar :</span>
-                    <div className="exact-fap-box highlight-dynamic">{d.paymentMethod}</div>
+                    <div className="exact-fap-box highlight-dynamic">{d.paymentMethod || '—'}</div>
                   </div>
                 </div>
               </div>
@@ -884,12 +886,20 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                     </tr>
                   ))}
                   {(!d.units || d.units.length === 0) && (
-                    <tr>
-                      <td className="highlight-dynamic">LiuGong</td>
-                      <td className="highlight-dynamic">HE</td>
-                      <td className="highlight-dynamic">Hydraulic Excavator 936E</td>
-                      <td className="center highlight-dynamic">2</td>
-                    </tr>
+                    <>
+                      <tr>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                      </tr>
+                      <tr>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                        <td className="center" style={{ color: '#94a3b8' }}>—</td>
+                      </tr>
+                    </>
                   )}
                 </tbody>
               </table>
@@ -908,11 +918,11 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <thead>
                 <tr>
                   <th style={{ textAlign: 'left', width: '220px' }}>Neraca / Balance Sheet (IDR)</th>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <th key={i} style={{ width: '110px', textAlign: 'right' }}>{fs.fiscalYear} {fs.isAudited ? '(Audited)' : '(In-house)'}</th>
                   ))}
                   <th style={{ textAlign: 'left', width: '200px' }}>Laba Rugi / Income Statement</th>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <th key={i} style={{ width: '110px', textAlign: 'right' }}>{fs.fiscalYear}</th>
                   ))}
                 </tr>
@@ -920,74 +930,74 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <tbody>
                 <tr>
                   <td>Total Aset Lancar / Current Assets</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentAssets)}</td>
                   ))}
                   <td>Pendapatan / Revenue</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.revenue)}</td>
                   ))}
                 </tr>
                 <tr>
                   <td>Total Aset Tetap / Non Current Assets</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.nonCurrentAssets)}</td>
                   ))}
                   <td>Laba Kotor / Gross Margin</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.grossMargin)}</td>
                   ))}
                 </tr>
                 <tr style={{ background: '#f8fafc', fontWeight: 600 }}>
                   <td><b>Total Aset / Total Asset</b></td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.totalAssets)}</b></td>
                   ))}
                   <td>Laba Usaha / Operating Margin</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.operatingMargin)}</td>
                   ))}
                 </tr>
                 <tr>
                   <td>Total Liabilitas Lancar / Current Liab.</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentLiabilities)}</td>
                   ))}
                   <td>Pajak / Tax</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.tax)}</td>
                   ))}
                 </tr>
                 <tr>
                   <td>Total Liabilitas Jangka Panjang</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.longTermLiabilities)}</td>
                   ))}
                   <td style={{ background: '#f8fafc', fontWeight: 600 }}><b>Laba Bersih / Net Income</b></td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.netIncome)}</b></td>
                   ))}
                 </tr>
                 <tr style={{ background: '#f8fafc', fontWeight: 600 }}>
                   <td><b>Total Liabilitas / Total Liabilities</b></td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.totalLiabilities)}</b></td>
                   ))}
-                  <td colSpan={1 + (d.financialStatements || []).length} style={{ background: '#f1f5f9' }}></td>
+                  <td colSpan={1 + fsList.length} style={{ background: '#f1f5f9' }}></td>
                 </tr>
                 <tr>
                   <td>Ekuitas / Equity</td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.equity)}</td>
                   ))}
-                  <td colSpan={1 + (d.financialStatements || []).length} style={{ background: '#f1f5f9' }}></td>
+                  <td colSpan={1 + fsList.length} style={{ background: '#f1f5f9' }}></td>
                 </tr>
                 <tr style={{ background: '#f1f5f9', fontWeight: 700 }}>
                   <td><b>Total Liabilitas & Ekuitas</b></td>
-                  {(d.financialStatements || []).map((fs: any, i: number) => (
+                  {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber((fs.totalLiabilities || 0) + (fs.equity || 0))}</b></td>
                   ))}
-                  <td colSpan={1 + (d.financialStatements || []).length} style={{ background: '#f1f5f9' }}></td>
+                  <td colSpan={1 + fsList.length} style={{ background: '#f1f5f9' }}></td>
                 </tr>
               </tbody>
             </table>
