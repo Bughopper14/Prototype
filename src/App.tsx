@@ -1357,6 +1357,26 @@ function StakeholderModalDialog({
   );
 }
 
+const normalizeRemarksToHtml = (remarks?: string): string => {
+  if (!remarks || !remarks.trim()) return '';
+  if (/<(ol|ul)[\s>]/i.test(remarks)) return remarks;
+  const cleaned = remarks
+    .replace(/<\/p>\s*<p>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?(p|div|span)[^>]*>/gi, '')
+    .trim();
+  const lines = cleaned.split('\n').map(l => l.trim()).filter(Boolean);
+  const isNumbered = lines.some(l => /^(\d+)[\.\)]\s+/.test(l));
+  if (isNumbered) {
+    const lis = lines.map(l => {
+      const stripped = l.replace(/^(\d+)[\.\)]\s+/, '').trim();
+      return `<li>${stripped}</li>`;
+    });
+    return `<ol>${lis.join('')}</ol>`;
+  }
+  return lines.map(l => `<p>${l}</p>`).join('');
+};
+
 function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChange,disabled,user,onReview}:{value:any,application:any,stakeholders:any[],onChange:(v:any)=>void,onStakeholdersChange:(legal:any,rows:any[])=>void,disabled:boolean,user:any,onReview:(id:string)=>void}){
  const [formError,setFormError]=useState('');
  const [actionMenu,setActionMenu]=useState<any>(null);
@@ -1511,7 +1531,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     <Editor
       licenseKey="gpl"
       tinymceScriptSrc="/crm/tinymce/tinymce.min.js"
-      initialValue={editing.remarks || ''}
+      initialValue={normalizeRemarksToHtml(editing.remarks)}
       disabled={editorLocked}
       onEditorChange={(newContent) => {
         setEditing((prev: any) => prev ? { ...prev, remarks: newContent } : prev);
@@ -1525,7 +1545,43 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
           'insertdatetime', 'table', 'help', 'wordcount'
         ],
         toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 13.5px; line-height: 1.6; color: #0f172a; padding: 10px 14px; }',
+        text_patterns: [
+          { start: '1. ', cmd: 'InsertOrderedList' },
+          { start: '1) ', cmd: 'InsertOrderedList' },
+          { start: '* ', cmd: 'InsertUnorderedList' },
+          { start: '- ', cmd: 'InsertUnorderedList' }
+        ],
+        content_style: `
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            font-size: 13.5px; 
+            line-height: 1.6; 
+            color: #0f172a; 
+            padding: 10px 14px; 
+          }
+          ol {
+            margin: 0 0 10px 0;
+            padding-left: 26px;
+            list-style-type: decimal !important;
+          }
+          ol li {
+            margin-bottom: 5px;
+            line-height: 1.6;
+          }
+          ul {
+            margin: 0 0 10px 0;
+            padding-left: 26px;
+            list-style-type: disc !important;
+          }
+          ul li {
+            margin-bottom: 5px;
+            line-height: 1.6;
+          }
+          p {
+            margin: 0 0 8px 0;
+            line-height: 1.6;
+          }
+        `,
         branding: false,
         promotion: false,
         statusbar: true,
@@ -1535,6 +1591,22 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
             if (!editorLocked) {
               ed.mode.set('design');
             }
+          });
+          ed.on('NodeChange keyup', () => {
+            try {
+              const body = ed.getBody();
+              if (!body) return;
+              const adjacentOls = body.querySelectorAll('ol + ol');
+              adjacentOls.forEach((secondOl: any) => {
+                const prevOl = secondOl.previousElementSibling;
+                if (prevOl && prevOl.tagName === 'OL') {
+                  while (secondOl.firstChild) {
+                    prevOl.appendChild(secondOl.firstChild);
+                  }
+                  secondOl.remove();
+                }
+              });
+            } catch {}
           });
         }
       }}

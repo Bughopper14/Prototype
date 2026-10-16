@@ -1900,6 +1900,26 @@ button:focus-visible, a:focus-visible {
   border: none !important;
 }
 
+
+/* TinyMCE & Legal Remarks List Numbering */
+.legal-single-remark-view ol {
+  margin: 0 0 10px 0;
+  padding-left: 26px !important;
+  list-style-type: decimal !important;
+}
+.legal-single-remark-view ol li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.legal-single-remark-view ul {
+  margin: 0 0 10px 0;
+  padding-left: 26px !important;
+  list-style-type: disc !important;
+}
+.legal-single-remark-view ul li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
 /* TinyMCE GPL / Clean UI */
 .tox-notifications-container,
 .tox-statusbar__branding,

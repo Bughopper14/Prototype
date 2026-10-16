@@ -212,7 +212,7 @@ export const SCENARIO_APPLICATIONS = [
             "establishment-deed"
           ],
           "remarkCategoryId": "establishment-deed",
-          "remarks": "<p>1. Akta Pendirian perseroan terbatas PT Nusantara Mining Pratama dihadapan Notaris Resmi.</p><p>2. Modal dasar perseroan ditetapkan sebesar Rp 25,000,000,000 dengan modal disetor 50%.</p>",
+          "remarks": "<ol><li>Akta Pendirian perseroan terbatas PT Nusantara Mining Pratama dihadapan Notaris Resmi.</li><li>Modal dasar perseroan ditetapkan sebesar Rp 25,000,000,000 dengan modal disetor 50%.</li></ol>",
           "parties": {
             "representative": "GUOHUI CHEN",
             "notaryName": "H. Ahmad Fauzi, S.H., M.Kn.",
@@ -302,7 +302,7 @@ export const SCENARIO_APPLICATIONS = [
             "amendment-management-change"
           ],
           "remarkCategoryId": "amendment-share-change",
-          "remarks": "<p>1. Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Nusantara Mining Pratama.</p><p>2. Penetapan kembali susunan Direksi dan Dewan Komisaris.</p><p>3. Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</p>",
+          "remarks": "<ol><li>Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Nusantara Mining Pratama.</li><li>Penetapan kembali susunan Direksi dan Dewan Komisaris.</li><li>Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</li></ol>",
           "parties": {
             "representative": "GUOHUI CHEN",
             "notaryName": "Bambang Soeprapto, S.H., M.Kn.",
@@ -743,7 +743,7 @@ export const SCENARIO_APPLICATIONS = [
             "establishment-deed"
           ],
           "remarkCategoryId": "establishment-deed",
-          "remarks": "<p>1. Akta Pendirian perseroan terbatas PT Cipta Infrastruktur Nusantara dihadapan Notaris Resmi.</p><p>2. Modal dasar perseroan ditetapkan sebesar Rp 17,000,000,000 dengan modal disetor 50%.</p>",
+          "remarks": "<ol><li>Akta Pendirian perseroan terbatas PT Cipta Infrastruktur Nusantara dihadapan Notaris Resmi.</li><li>Modal dasar perseroan ditetapkan sebesar Rp 17,000,000,000 dengan modal disetor 50%.</li></ol>",
           "parties": {
             "representative": "Ir. Bambang Soepomo",
             "notaryName": "H. Ahmad Fauzi, S.H., M.Kn.",
@@ -833,7 +833,7 @@ export const SCENARIO_APPLICATIONS = [
             "amendment-management-change"
           ],
           "remarkCategoryId": "amendment-share-change",
-          "remarks": "<p>1. Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Cipta Infrastruktur Nusantara.</p><p>2. Penetapan kembali susunan Direksi dan Dewan Komisaris.</p><p>3. Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</p>",
+          "remarks": "<ol><li>Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Cipta Infrastruktur Nusantara.</li><li>Penetapan kembali susunan Direksi dan Dewan Komisaris.</li><li>Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</li></ol>",
           "parties": {
             "representative": "Ir. Bambang Soepomo",
             "notaryName": "Bambang Soeprapto, S.H., M.Kn.",
@@ -1243,7 +1243,7 @@ export const SCENARIO_APPLICATIONS = [
             "establishment-deed"
           ],
           "remarkCategoryId": "establishment-deed",
-          "remarks": "<p>1. Akta Pendirian perseroan terbatas PT Sumber Alam Lestari dihadapan Notaris Resmi.</p><p>2. Modal dasar perseroan ditetapkan sebesar Rp 12,800,000,000 dengan modal disetor 50%.</p>",
+          "remarks": "<ol><li>Akta Pendirian perseroan terbatas PT Sumber Alam Lestari dihadapan Notaris Resmi.</li><li>Modal dasar perseroan ditetapkan sebesar Rp 12,800,000,000 dengan modal disetor 50%.</li></ol>",
           "parties": {
             "representative": "Denny Kurniawan",
             "notaryName": "H. Ahmad Fauzi, S.H., M.Kn.",
@@ -1333,7 +1333,7 @@ export const SCENARIO_APPLICATIONS = [
             "amendment-management-change"
           ],
           "remarkCategoryId": "amendment-share-change",
-          "remarks": "<p>1. Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Sumber Alam Lestari.</p><p>2. Penetapan kembali susunan Direksi dan Dewan Komisaris.</p><p>3. Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</p>",
+          "remarks": "<ol><li>Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Sumber Alam Lestari.</li><li>Penetapan kembali susunan Direksi dan Dewan Komisaris.</li><li>Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</li></ol>",
           "parties": {
             "representative": "Denny Kurniawan",
             "notaryName": "Bambang Soeprapto, S.H., M.Kn.",
@@ -1732,7 +1732,7 @@ export const SCENARIO_APPLICATIONS = [
             "establishment-deed"
           ],
           "remarkCategoryId": "establishment-deed",
-          "remarks": "<p>1. Akta Pendirian perseroan terbatas PT Mitra Tambang Sejahtera dihadapan Notaris Resmi.</p><p>2. Modal dasar perseroan ditetapkan sebesar Rp 36,000,000,000 dengan modal disetor 50%.</p>",
+          "remarks": "<ol><li>Akta Pendirian perseroan terbatas PT Mitra Tambang Sejahtera dihadapan Notaris Resmi.</li><li>Modal dasar perseroan ditetapkan sebesar Rp 36,000,000,000 dengan modal disetor 50%.</li></ol>",
           "parties": {
             "representative": "H. Ahmad Zulkarnain",
             "notaryName": "H. Ahmad Fauzi, S.H., M.Kn.",
@@ -1822,7 +1822,7 @@ export const SCENARIO_APPLICATIONS = [
             "amendment-management-change"
           ],
           "remarkCategoryId": "amendment-share-change",
-          "remarks": "<p>1. Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Mitra Tambang Sejahtera.</p><p>2. Penetapan kembali susunan Direksi dan Dewan Komisaris.</p><p>3. Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</p>",
+          "remarks": "<ol><li>Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Mitra Tambang Sejahtera.</li><li>Penetapan kembali susunan Direksi dan Dewan Komisaris.</li><li>Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</li></ol>",
           "parties": {
             "representative": "H. Ahmad Zulkarnain",
             "notaryName": "Bambang Soeprapto, S.H., M.Kn.",
@@ -2284,7 +2284,7 @@ export const SCENARIO_APPLICATIONS = [
             "establishment-deed"
           ],
           "remarkCategoryId": "establishment-deed",
-          "remarks": "<p>1. Akta Pendirian perseroan terbatas PT Agro Prima Indonesia dihadapan Notaris Resmi.</p><p>2. Modal dasar perseroan ditetapkan sebesar Rp 8,400,000,000 dengan modal disetor 50%.</p>",
+          "remarks": "<ol><li>Akta Pendirian perseroan terbatas PT Agro Prima Indonesia dihadapan Notaris Resmi.</li><li>Modal dasar perseroan ditetapkan sebesar Rp 8,400,000,000 dengan modal disetor 50%.</li></ol>",
           "parties": {
             "representative": "Michael Tanoto",
             "notaryName": "H. Ahmad Fauzi, S.H., M.Kn.",
@@ -2374,7 +2374,7 @@ export const SCENARIO_APPLICATIONS = [
             "amendment-management-change"
           ],
           "remarkCategoryId": "amendment-share-change",
-          "remarks": "<p>1. Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Agro Prima Indonesia.</p><p>2. Penetapan kembali susunan Direksi dan Dewan Komisaris.</p><p>3. Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</p>",
+          "remarks": "<ol><li>Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Agro Prima Indonesia.</li><li>Penetapan kembali susunan Direksi dan Dewan Komisaris.</li><li>Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</li></ol>",
           "parties": {
             "representative": "Michael Tanoto",
             "notaryName": "Bambang Soeprapto, S.H., M.Kn.",
@@ -2846,7 +2846,7 @@ export const SCENARIO_APPLICATIONS = [
             "establishment-deed"
           ],
           "remarkCategoryId": "establishment-deed",
-          "remarks": "<p>1. Akta Pendirian perseroan terbatas PT Konstruksi Mandiri Sejahtera dihadapan Notaris Resmi.</p><p>2. Modal dasar perseroan ditetapkan sebesar Rp 19,200,000,000 dengan modal disetor 50%.</p>",
+          "remarks": "<ol><li>Akta Pendirian perseroan terbatas PT Konstruksi Mandiri Sejahtera dihadapan Notaris Resmi.</li><li>Modal dasar perseroan ditetapkan sebesar Rp 19,200,000,000 dengan modal disetor 50%.</li></ol>",
           "parties": {
             "representative": "Ir. Dedi Supriyadi",
             "notaryName": "H. Ahmad Fauzi, S.H., M.Kn.",
@@ -2936,7 +2936,7 @@ export const SCENARIO_APPLICATIONS = [
             "amendment-management-change"
           ],
           "remarkCategoryId": "amendment-share-change",
-          "remarks": "<p>1. Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Konstruksi Mandiri Sejahtera.</p><p>2. Penetapan kembali susunan Direksi dan Dewan Komisaris.</p><p>3. Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</p>",
+          "remarks": "<ol><li>Penyesuaian modal disetor dan komposisi kepemilikan saham perseroan PT Konstruksi Mandiri Sejahtera.</li><li>Penetapan kembali susunan Direksi dan Dewan Komisaris.</li><li>Penyesuaian anggaran dasar sesuai KBLI kegiatan usaha terbaru.</li></ol>",
           "parties": {
             "representative": "Ir. Dedi Supriyadi",
             "notaryName": "Bambang Soeprapto, S.H., M.Kn.",
