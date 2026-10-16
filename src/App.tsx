@@ -45,7 +45,7 @@ function NewApplication({customers,onClose,onCreated}:{customers:any[],onClose:(
  const [error,setError]=useState(""),[busy,setBusy]=useState(false);
  const selectedCustomer=customers.find(c=>c.id===customerId);
  const fapCustomerKeys=["companyName","companyType","nib","npwp","establishmentActNo","establishmentDate"];
- const fapProfileKeys=["branchCode","companyAddress","city","province","postalCode","experienceYears","experienceMonths"];
+ const fapProfileKeys=["branchCode","companyAddress","province","city","postalCode","experienceYears","experienceMonths"];
  const fapCustomerFields=customerFields.filter(f=>fapCustomerKeys.includes(f.key));
  const fapProfileFields=profileFields.filter(f=>fapProfileKeys.includes(f.key));
  function changeCategory(value:string){setCustomerCategory(value);setCustomerId("");setError("");setProfile({...profile,customerStatus:value});}

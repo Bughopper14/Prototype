@@ -34,7 +34,31 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
 
  if(path==='/notifications'&&method==='GET')return copy((s.notifications||[]).filter((n:any)=>n.recipientUserId===s.user.id));
  if(parts[0]==='notifications'&&parts[2]==='read'&&method==='PATCH'){const n=(s.notifications||[]).find((n:any)=>n.id===parts[1]&&n.recipientUserId===s.user.id);if(!n)throw Error('Notifikasi tidak ditemukan.');n.readAt=n.readAt||new Date().toISOString();save(s);return {ok:true};}
- if(path==='/master-data'&&method==='GET'){if(s.masterData&&!Array.isArray(s.masterData.postalCode)){s.masterData.postalCode=[];save(s);}if(!s.masterData){const catalog=defaultMasterCatalog();try{const old=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');if(Array.isArray(old))for(const row of old){const value=String(row.id||'').trim().slice(0,150),name=String(row.name||'').trim().slice(0,150);if(value&&name&&!catalog.remarkCategoryId.some(x=>x.value===value||x.name.toLowerCase()===name.toLowerCase()))catalog.remarkCategoryId.push({value,name,active:true});}}catch{}s.masterData=catalog;s.masterRevision=0;save(s);}return copy({catalog:s.masterData,revision:s.masterRevision||0});}
+ if(path==='/master-data'&&method==='GET'){
+  const def=defaultMasterCatalog();
+  if(!s.masterData){
+    s.masterData=def;s.masterRevision=0;
+    try{
+      const old=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');
+      if(Array.isArray(old))for(const row of old){
+        const value=String(row.id||'').trim().slice(0,150),name=String(row.name||'').trim().slice(0,150);
+        if(value&&name&&!s.masterData.remarkCategoryId.some((x:any)=>x.value===value||x.name.toLowerCase()===name.toLowerCase()))
+          s.masterData.remarkCategoryId.push({value,name,active:true});
+      }
+    }catch{}
+    save(s);
+  } else {
+    let touched=false;
+    for(const k of ['district','village','postalCode'] as const){
+      if(!s.masterData[k]||!Array.isArray(s.masterData[k])||s.masterData[k].length===0){
+        s.masterData[k]=def[k];
+        touched=true;
+      }
+    }
+    if(touched)save(s);
+  }
+  return copy({catalog:s.masterData,revision:s.masterRevision||0});
+}
  if(path==='/master-data'&&method==='PUT'){if(body.revision!==(s.masterRevision||0))throw Error('Master data telah berubah. Coba simpan kembali.');const catalog=validateMasterCatalog(body.catalog);s.masterData=catalog;s.masterRevision=(s.masterRevision||0)+1;save(s);return copy({catalog,revision:s.masterRevision});}
  if(path==='/customers'&&method==='GET')return copy(s.customers);
  if(path==='/customers'&&method==='POST'){const c={...body,id:generateUUID()};s.customers.push(c);save(s);return copy(c);}
