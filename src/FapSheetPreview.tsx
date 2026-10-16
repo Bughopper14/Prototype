@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   FileSpreadsheet,
   ZoomIn,
@@ -76,8 +76,70 @@ export interface FapSheetPreviewProps {
 }
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
-  const [zoomLevel, setZoomLevel] = useState<number>(props.compact ? 0.88 : 1.0);
+  const [autoFit, setAutoFit] = useState<boolean>(true);
+  const [zoomLevel, setZoomLevel] = useState<number>(props.compact ? 0.85 : 1.0);
+  const [paperHeight, setPaperHeight] = useState<number>(2400);
   const containerRef = useRef<HTMLDivElement>(null);
+  const paperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const updateFit = () => {
+      if (!containerRef.current) return;
+      const cWidth = containerRef.current.clientWidth;
+      if (paperRef.current) {
+        const h = paperRef.current.offsetHeight;
+        if (h > 0) setPaperHeight(h);
+      }
+      if (!autoFit) return;
+      
+      const targetWidth = 940;
+      // Account for viewport padding (14px * 2 = 28px) plus 8px safety
+      const padding = 32;
+      const available = Math.max(260, cWidth - padding);
+      const scale = Math.min(1.15, Math.max(0.35, available / targetWidth));
+      setZoomLevel(Number(scale.toFixed(3)));
+    };
+
+    updateFit();
+
+    // Use ResizeObserver on container and paper
+    const ro = new ResizeObserver(() => {
+      updateFit();
+    });
+
+    if (containerRef.current) {
+      ro.observe(containerRef.current);
+    }
+    if (paperRef.current) {
+      ro.observe(paperRef.current);
+    }
+
+    // Window resize & Windows Zoom / Display Scaling listener
+    window.addEventListener('resize', updateFit);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateFit);
+    }
+
+    // Also listen to devicePixelRatio / Windows scale changes
+    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    const handleDpiChange = () => {
+      updateFit();
+    };
+    try {
+      mq.addEventListener('change', handleDpiChange);
+    } catch {}
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateFit);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateFit);
+      }
+      try {
+        mq.removeEventListener('change', handleDpiChange);
+      } catch {}
+    };
+  }, [autoFit]);
 
   const d: FapSheetData = useMemo(() => {
     const raw = props.data || {};
@@ -216,16 +278,32 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           <div className="excel-zoom-controls">
             <button
               type="button"
-              onClick={() => setZoomLevel((z) => Math.max(0.5, z - 0.1))}
-              title="Zoom Out"
+              className={`excel-zoom-mode-btn ${autoFit ? 'active' : ''}`}
+              onClick={() => setAutoFit(!autoFit)}
+              title={autoFit ? 'Auto-fit aktif: dokumen otomatis menyesuaikan lebar view' : 'Aktifkan Auto-fit view'}
+            >
+              Auto Fit
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAutoFit(false);
+                setZoomLevel((z) => Math.max(0.35, Number((z - 0.05).toFixed(2))));
+              }}
+              title="Perkecil (-)"
             >
               <ZoomOut size={13} />
             </button>
-            <span className="excel-zoom-btn-label">{Math.round(zoomLevel * 100)}%</span>
+            <span className="excel-zoom-btn-label">
+              {Math.round(zoomLevel * 100)}%
+            </span>
             <button
               type="button"
-              onClick={() => setZoomLevel((z) => Math.min(1.5, z + 0.1))}
-              title="Zoom In"
+              onClick={() => {
+                setAutoFit(false);
+                setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
+              }}
+              title="Perbesar (+)"
             >
               <ZoomIn size={13} />
             </button>
@@ -244,15 +322,30 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       {/* Spreadsheet Canvas */}
       <div className="excel-fap-viewport" ref={containerRef}>
         <div
-          id="fap-excel-printable-doc"
-          className="excel-fap-paper"
+          className="excel-fap-paper-scaler"
           style={{
-            transform: `scale(${zoomLevel})`,
-            transformOrigin: 'top center',
-            width: '940px',
-            minWidth: '940px',
+            width: `${Math.round(940 * zoomLevel)}px`,
+            minHeight: `${Math.round(paperHeight * zoomLevel) + 24}px`,
+            margin: '0 auto',
+            position: 'relative',
+            overflow: 'visible',
+            flexShrink: 0
           }}
         >
+          <div
+            id="fap-excel-printable-doc"
+            ref={paperRef}
+            className="excel-fap-paper"
+            style={{
+              transform: `scale(${zoomLevel})`,
+              transformOrigin: 'top left',
+              width: '940px',
+              minWidth: '940px',
+              position: 'absolute',
+              top: 0,
+              left: 0
+            }}
+          >
           {/* ==============================================================
               SECTION 1: HEADER & CLASSIFICATION (ROWS 1 - 10)
               ============================================================== */}
@@ -942,6 +1035,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </div>
