@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS "document_checklists" (
   "document_code" VARCHAR(50) NOT NULL,
   "document_name" VARCHAR(150) NOT NULL,
   "is_mandatory" BOOLEAN NOT NULL DEFAULT false,
-  "assigned_role" TEXT NOT NULL CHECK ("assigned_role" IN ('MKT','BS','CA','LEGAL')),
+  "assigned_role" TEXT NOT NULL CHECK ("assigned_role" IN ('MKT','BS','CA','LEGAL','COMMITTEE')),
   "checked_by_mkt" BOOLEAN NOT NULL DEFAULT false,
   "checked_by_bs" BOOLEAN NOT NULL DEFAULT false,
   "checked_by_ca" BOOLEAN NOT NULL DEFAULT false,
