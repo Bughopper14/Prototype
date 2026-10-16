@@ -9,9 +9,9 @@ import {
   Eye,
 } from 'lucide-react';
 import {
-  FAP_EXCEL_ROWS,
   EXCEL_COL_WIDTHS_PCT,
-  EXCEL_COL_NAMES,
+  FAP_EXCEL_ROWS,
+  type ExcelRowData,
   type ExcelCellData,
 } from './fap-excel-data';
 import { LIUGONG_LOGO_B64 } from './liugong-logo-b64';
@@ -20,193 +20,185 @@ export interface FapSheetData {
   fapNumber?: string;
   applicationDate?: string;
   branchCode?: string;
-  customerStatus?: 'NEW' | 'EXISTING' | string;
+  customerStatus?: string;
   companyName?: string;
-  companyType?: 'CORPORATE' | 'COMMERCIAL' | 'MICRO' | 'LIUGONG_USER' | string;
+  companyType?: string;
   nib?: string;
   npwp?: string;
   establishmentActNo?: string;
   establishmentDate?: string;
-  latestDeedNo?: string;
-  latestDeedDate?: string;
   companyAddress?: string;
   city?: string;
   province?: string;
   postalCode?: string;
-  village?: string;
+  experienceYears?: string | number;
+  experienceMonths?: string | number;
   mainBusiness?: string;
-  experienceYears?: number | string;
-  experienceMonths?: number | string;
+  latestDeedNo?: string;
+  latestDeedDate?: string;
   phoneFax?: string;
   website?: string;
   email?: string;
   repaymentSource?: string;
-  locationStatus?: 'OWNED' | 'RENTED' | string;
-  industrySegment?: string;
-  businessRole?: string;
-  pic?: {
-    picName?: string;
-    position?: string;
-    phone?: string;
-    email?: string;
-    currentAddress?: string;
-    city?: string;
-    province?: string;
-    postalCode?: string;
-    district?: string;
-    village?: string;
-    rt?: string;
-    rw?: string;
-  };
-  stakeholders?: any[];
+  locationStatus?: string;
+  picName?: string;
+  position?: string;
+  phone?: string;
+  currentAddress?: string;
+  picCity?: string;
+  picProvince?: string;
+  picPostalCode?: string;
   selectedDeedNo?: string;
-  proposal?: any;
+  stakeholders?: any[];
+  [key: string]: any;
 }
 
-export function FapSheetPreview({ data, compact = false }: { data: FapSheetData; compact?: boolean }) {
+export interface FapSheetPreviewProps {
+  data?: FapSheetData;
+  application?: any;
+  customer?: any;
+  profile?: any;
+  pic?: any;
+  stakeholders?: any[];
+  compact?: boolean;
+  readOnly?: boolean;
+}
+
+export function FapSheetPreview({
+  data,
+  application = {},
+  customer = {},
+  profile = {},
+  pic = {},
+  stakeholders = [],
+  compact = false,
+}: FapSheetPreviewProps) {
   const [zoom, setZoom] = useState<number>(100);
-  const [scope, setScope] = useState<'stage' | 'full'>('stage');
-  const [selectedCell, setSelectedCell] = useState<{ coord: string; val: string }>({ coord: 'E12', val: data.companyName || '' });
+  const [activeCell, setActiveCell] = useState<{ coord: string; val: string }>({
+    coord: 'A3',
+    val: 'APPLICATION FORM',
+  });
+  const [scope, setScope] = useState<'fap' | 'full'>('fap');
+  const printRef = useRef<HTMLDivElement>(null);
 
-  const isNew = data.customerStatus === 'NEW';
-  const cType = data.companyType || '';
-  const isCorporate = cType === 'CORPORATE';
-  const isCommercial = cType === 'COMMERCIAL';
-  const isMicro = cType === 'MICRO';
-  const isLiuGongUser = cType === 'LIUGONG_USER';
-
-  // Compute live mapped dynamic values
+  // Map dynamic inputs to Excel coordinates
   const dynamicValues = useMemo(() => {
-    const values: Record<string, any> = {};
+    const d = data || {};
+    const p = profile || {};
+    const c = customer || {};
+    const a = application || {};
+    const pc = pic || {};
+    const shList = stakeholders.length ? stakeholders : (d.stakeholders || []);
 
-    values.fapNumber = data.fapNumber || '0006/AF/03/2026';
-    values.applicationDate = data.applicationDate
-      ? new Date(data.applicationDate).toLocaleDateString('en-GB')
-      : new Date().toLocaleDateString('en-GB');
-    values.branchCode = data.branchCode || 'JKT01';
+    const custStatus = d.customerStatus || p.customerStatus || c.customerStatus || a.customerStatus || '';
+    const isNew = custStatus !== 'EXISTING';
+    const compType = (d.companyType || c.companyType || p.companyType || a.companyType || '').toUpperCase();
+    const isCorporate = compType.includes('CORPORATE');
+    const isCommercial = compType.includes('COMMERCIAL');
+    const isMicro = compType.includes('MICRO');
+    const isLiuGongUser = compType.includes('LIUGONG') || compType.includes('USER');
 
-    // Left Column - Company Profile
-    values.companyName = data.companyName || '';
-    values.companyAddress = data.companyAddress || '';
-    values.city = data.city || '';
-    values.province = data.province || '';
-    values.postalCode = data.postalCode || '';
-    values.mainBusiness = data.mainBusiness || '';
-    values.establishmentActNo = data.establishmentActNo || '';
-    values.establishmentDate = data.establishmentDate || '';
-    values.experienceYears = data.experienceYears !== undefined && data.experienceYears !== '' ? String(data.experienceYears) : '';
-    values.experienceMonths = data.experienceMonths !== undefined && data.experienceMonths !== '' ? String(data.experienceMonths) : '';
-    values.latestDeedNo = data.latestDeedNo || '';
-    values.latestDeedDate = data.latestDeedDate || '';
-    values.nib = data.nib || '';
-    values.npwp = data.npwp || '';
-    values.phoneFax = data.phoneFax || '';
-    values.website = data.website || '';
-    values.email = data.email || '';
-    values.repaymentSource = data.repaymentSource || '';
+    const appDateRaw = d.applicationDate || a.applicationDate;
+    const estDateRaw = d.establishmentDate || p.establishmentDate;
+    const deedDateRaw = d.latestDeedDate || p.latestDeedDate;
 
-    const isOwned = data.locationStatus === 'OWNED';
-    const isRented = data.locationStatus === 'RENTED';
-    values.locationStatus = `${isOwned ? '●' : '○'} Milik Sendiri   /   ${isRented ? '●' : '○'} Sewa`;
+    const result: Record<string, string> = {
+      fapNumber: d.fapNumber || a.fapNumber || '0006/AF/03/2026',
+      applicationDate: appDateRaw
+        ? new Date(appDateRaw).toLocaleDateString('id-ID')
+        : '16/10/2026',
+      branchCode: d.branchCode || p.branchCode || a.branchCode || 'JKT01',
+      checkCustomerNew: isNew ? '☑' : '☐',
+      checkCustomerExisting: !isNew ? '☑' : '☐',
+      checkCorporate: isCorporate ? '☑' : '☐',
+      checkCommercial: isCommercial ? '☑' : '☐',
+      checkMicro: isMicro ? '☑' : '☐',
+      checkLiuGongUser: isLiuGongUser ? '☑' : '☐',
+      companyName: d.companyName || c.companyName || p.companyName || a.companyName || '',
+      companyAddress: d.companyAddress || p.companyAddress || c.address || '',
+      city: d.city || p.city || c.city || '',
+      province: d.province || p.province || c.province || '',
+      postalCode: d.postalCode || p.postalCode || c.postalCode || '',
+      mainBusiness: d.mainBusiness || p.mainBusiness || '',
+      establishmentActNo: d.establishmentActNo || p.establishmentActNo || '',
+      establishmentDate: estDateRaw
+        ? new Date(estDateRaw).toLocaleDateString('id-ID')
+        : '',
+      experienceYears: d.experienceYears
+        ? `${d.experienceYears} Tahun`
+        : (p.experienceYears ? `${p.experienceYears} Tahun` : ''),
+      experienceMonths: d.experienceMonths
+        ? `${d.experienceMonths} Bulan`
+        : (p.experienceMonths ? `${p.experienceMonths} Bulan` : ''),
+      latestDeedNo: d.latestDeedNo || p.latestDeedNo || '',
+      latestDeedDate: deedDateRaw
+        ? new Date(deedDateRaw).toLocaleDateString('id-ID')
+        : '',
+      nib: d.nib || c.nib || p.nib || '',
+      npwp: d.npwp || c.npwp || p.npwp || '',
+      phoneFax: d.phoneFax || p.phoneFax || '',
+      website: d.website || p.website || '',
+      email: d.email || p.email || c.email || '',
+      repaymentSource: d.repaymentSource || p.repaymentSource || '',
+      locationStatus: d.locationStatus || p.locationStatus || '',
+      picName: d.picName || pc.picName || '',
+      picPhone: d.phone || pc.phone || '',
+      picPosition: d.position || pc.position || '',
+      picEmail: d.email || pc.email || '',
+      picAddress: d.currentAddress || pc.currentAddress || '',
+      picCity: d.picCity || pc.city || '',
+      picProvince: d.picProvince || pc.province || '',
+      picPostalCode: d.picPostalCode || pc.postalCode || '',
+      selectedDeedNo: d.selectedDeedNo || p.selectedDeedNo || p.latestDeedNo || '',
+    };
 
-    // Right Column - PIC
-    const pic = data.pic || {};
-    values.picName = pic.picName || '';
-    values.picPhone = pic.phone || '';
-    values.picPosition = pic.position || '';
-    values.picEmail = pic.email || '';
+    // Populate up to 8 stakeholders
+    shList.slice(0, 8).forEach((sh: any, idx: number) => {
+      const num = idx + 1;
+      result[`sh${num}_name`] = sh.name || '';
+      result[`sh${num}_pos`] = sh.position || '';
+      result[`sh${num}_amount`] = sh.shareAmount
+        ? Number(sh.shareAmount).toLocaleString('id-ID')
+        : '';
+      result[`sh${num}_pct`] = sh.sharePercentage ? `${sh.sharePercentage}%` : '';
+    });
 
-    const addrParts = [pic.currentAddress, pic.rt ? `RT ${pic.rt}` : null, pic.rw ? `RW ${pic.rw}` : null, pic.village, pic.district].filter(Boolean);
-    values.picAddress = addrParts.join(', ') || pic.currentAddress || '';
-    values.picCity = pic.city || '';
-    values.picProvince = pic.province || '';
-    values.picPostalCode = pic.postalCode || '';
+    return result;
+  }, [data, application, customer, profile, pic, stakeholders]);
 
-    values.selectedDeedNo = data.selectedDeedNo || data.latestDeedNo || data.establishmentActNo || '';
-
-    // Right Column - Stakeholders (up to 8 rows)
-    const shList = data.stakeholders || [];
-    for (let i = 0; i < 8; i++) {
-      const sh = shList[i];
-      const prefix = `sh${i + 1}`;
-      if (sh) {
-        const name = sh.name || [sh.firstName, sh.lastName].filter(Boolean).join(' ') || '';
-        values[`${prefix}_name`] = name;
-        values[`${prefix}_pos`] = sh.position || sh.designation || '';
-        const amount = sh.depositedCapital || sh.shareAmount || 0;
-        values[`${prefix}_amount`] = amount ? new Intl.NumberFormat('id-ID', { maximumFractionDigits: 0 }).format(Number(amount)) : '';
-        const pct = sh.sharePercentage || sh.percentage || 0;
-        values[`${prefix}_pct`] = pct ? `${Number(pct).toFixed(2)}%` : '';
-      } else {
-        values[`${prefix}_name`] = '';
-        values[`${prefix}_pos`] = '';
-        values[`${prefix}_amount`] = '';
-        values[`${prefix}_pct`] = '';
-      }
-    }
-
-    return values;
-  }, [data]);
-
-  // Rows starting from Row 12 onwards (since rows 1-11 are in the dedicated pixel-perfect header)
-  const renderedRows = useMemo(() => {
-    const bodyRows = FAP_EXCEL_ROWS.filter(r => r.r >= 12);
-    if (scope === 'stage') {
-      return bodyRows.filter(r => r.r <= 45);
-    }
-    return bodyRows;
+  // Rows to display based on scope: Rows 1 to 45 (FAP) or 1 to 118 (Full Sheet)
+  const displayRows = useMemo(() => {
+    return scope === 'fap'
+      ? FAP_EXCEL_ROWS.filter(r => r.r <= 45)
+      : FAP_EXCEL_ROWS;
   }, [scope]);
 
-  // Handle native print / download PDF
   const handlePrint = () => {
-    const el = document.getElementById('fap-excel-printable-doc');
-    if (!el) return;
-    const printWin = window.open('', '_blank');
-    if (!printWin) {
-      window.print();
-      return;
-    }
-    printWin.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>FAP-Document_${dynamicValues.fapNumber || '0006/AF/03/2026'}</title>
-          <style>
-            @page { size: A4 portrait; margin: 8mm 6mm; }
-            body { font-family: Calibri, 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #fff; color: #000; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .excel-fap-paper { width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; }
-            table { width: 100% !important; border-collapse: collapse !important; table-layout: fixed !important; }
-            .excel-header-navy-bar { background: #002060 !important; height: 5px !important; margin: 8px 0 !important; }
-            .excel-header-orange-bar { background: #eaa358 !important; height: 2.5px !important; margin: 8px 0 !important; }
-            ${document.querySelector('style')?.innerHTML || ''}
-          </style>
-          <link rel="stylesheet" href="/crm/assets/index.css" />
-        </head>
-        <body>
-          <div class="excel-fap-paper">
-            ${el.innerHTML}
-          </div>
-          <script>
-            setTimeout(() => { window.print(); window.close(); }, 350);
-          </script>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
+    window.print();
+  };
+
+  const getRowHeight = (rowNum: number): string | undefined => {
+    if (rowNum === 6) return '5px';
+    if (rowNum === 10) return '3px';
+    if (rowNum === 1 || rowNum === 5 || rowNum === 7 || rowNum === 11) return '10px';
+    if (rowNum === 3) return '36px';
+    if (rowNum === 4) return '24px';
+    if (rowNum === 8 || rowNum === 9) return '26px';
+    return undefined;
   };
 
   return (
     <div className="excel-fap-viewer">
-      {/* 1. Ribbon Bar */}
+      {/* Excel Green Ribbon Toolbar */}
       <div className="excel-fap-ribbon">
         <div className="excel-ribbon-left">
           <FileSpreadsheet size={16} className="excel-green-icon" />
           <div className="excel-file-badge">
-            <span className="excel-file-name">APPROVED v01.2025.xlsx</span>
-            <span className="excel-tab-badge">Sheet: APPROVED v01.2025</span>
+            <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
+            <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (100% Exact Grid)</span>
           </div>
           <span className="excel-live-tag">
-            <span className="excel-live-dot" /> Live Mirror
+            <span className="excel-live-dot" /> LIVE MIRROR
           </span>
         </div>
 
@@ -214,40 +206,40 @@ export function FapSheetPreview({ data, compact = false }: { data: FapSheetData;
           <div className="excel-scope-switch">
             <button
               type="button"
-              className={scope === 'stage' ? 'active' : ''}
-              onClick={() => setScope('stage')}
+              className={scope === 'fap' ? 'active' : ''}
+              onClick={() => setScope('fap')}
             >
-              FAP Stage (Rows 1–45)
+              FAP Stage (1-45)
             </button>
             <button
               type="button"
               className={scope === 'full' ? 'active' : ''}
               onClick={() => setScope('full')}
             >
-              Full Sheet (118 Rows)
+              Lembar Lengkap (1-118)
             </button>
           </div>
 
           <div className="excel-zoom-controls">
             <button
               type="button"
-              onClick={() => setZoom(z => Math.max(70, z - 10))}
-              title="Zoom out"
+              title="Perkecil (-10%)"
+              onClick={() => setZoom(z => Math.max(60, z - 10))}
             >
               <ZoomOut size={13} />
             </button>
-            <span
-              className="excel-zoom-btn-label"
-              onClick={() => setZoom(100)}
-              title="Click to reset to 100% Fit"
-              style={{ cursor: 'pointer' }}
-            >
-              {zoom}% {zoom === 100 ? '(Fit)' : ''}
-            </span>
             <button
               type="button"
-              onClick={() => setZoom(z => Math.min(150, z + 10))}
-              title="Zoom in"
+              className="excel-zoom-btn-label"
+              title="Reset ke Fit Width"
+              onClick={() => setZoom(100)}
+            >
+              {zoom === 100 ? 'Fit Width' : `${zoom}%`}
+            </button>
+            <button
+              type="button"
+              title="Perbesar (+10%)"
+              onClick={() => setZoom(z => Math.min(160, z + 10))}
             >
               <ZoomIn size={13} />
             </button>
@@ -256,178 +248,133 @@ export function FapSheetPreview({ data, compact = false }: { data: FapSheetData;
           <button
             type="button"
             className="excel-print-btn"
+            title="Cetak / Simpan PDF Dokumen Excel FAP"
             onClick={handlePrint}
-            title="Download PDF atau Cetak lembar FAP resmi"
           >
-            <Printer size={13} /> Unduh / Cetak PDF
+            <Printer size={13} />
+            <span>Unduh / Cetak PDF</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Formula Bar */}
+      {/* Excel Formula Bar */}
       <div className="excel-fap-formulabar">
-        <span className="excel-cell-coord">{selectedCell.coord}</span>
-        <span className="excel-fx-label">fx</span>
-        <span className="excel-fx-value">{selectedCell.val || ' '}</span>
+        <div className="excel-cell-coord">{activeCell.coord}</div>
+        <div className="excel-fx-label">fx</div>
+        <div className="excel-fx-value">{activeCell.val}</div>
       </div>
 
-      {/* 3. Worksheet Body Viewport */}
+      {/* Spreadsheet Canvas & Viewport */}
       <div className="excel-fap-viewport">
         <div
+          ref={printRef}
           id="fap-excel-printable-doc"
           className="excel-fap-paper"
           style={{ width: zoom === 100 ? '100%' : `${zoom}%` }}
         >
-          {/* ============================================================== */}
-          {/* EXACT EXCEL HEADER SECTION (Matching Rows 1-11 from Excel)     */}
-          {/* ============================================================== */}
-          <div className="excel-document-header">
-            {/* Top Band: Logo (Left), APPLICATION FORM (Center), No. Register (Right) */}
-            <div className="excel-header-top-band">
-              <div className="excel-header-logo-col">
-                <img
-                  src={LIUGONG_LOGO_B64}
-                  alt="LiuGong Finance Indonesia"
-                  className="excel-liugong-logo-img"
-                />
-              </div>
-
-              <div className="excel-header-title-col">
-                <h1 className="excel-fap-title">APPLICATION FORM</h1>
-              </div>
-
-              <div className="excel-header-reg-col">
-                <div className="excel-fap-reg-box">
-                  <span className="excel-fap-reg-label">No. Register :</span>
-                  <span className="excel-fap-reg-val">{dynamicValues.fapNumber}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 6: Solid Dark Navy Blue Dividing Bar */}
-            <div className="excel-header-navy-bar" />
-
-            {/* Rows 8 & 9: Four Information & Classification Boxes */}
-            <div className="excel-header-boxes-grid">
-              {/* Box 1: Tanggal & Cabang */}
-              <div className="excel-meta-box">
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Tanggal/ Date</span>
-                  <span className="excel-meta-val highlight">{dynamicValues.applicationDate}</span>
-                </div>
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Cabang/ Branch</span>
-                  <span className="excel-meta-val highlight">{dynamicValues.branchCode}</span>
-                </div>
-              </div>
-
-              {/* Box 2: Customer Baru / Customer Lama */}
-              <div className="excel-meta-box">
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Customer Baru/ New Customer</span>
-                  <span className={`excel-meta-chk ${isNew ? 'checked' : ''}`}>
-                    {isNew ? '☑' : '☐'}
-                  </span>
-                </div>
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Customer Lama / Existing Customer</span>
-                  <span className={`excel-meta-chk ${!isNew ? 'checked' : ''}`}>
-                    {!isNew ? '☑' : '☐'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Box 3: Corporate & Commercial */}
-              <div className="excel-meta-box">
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Corporate</span>
-                  <span className={`excel-meta-chk ${isCorporate ? 'checked' : ''}`}>
-                    {isCorporate ? '☑' : '☐'}
-                  </span>
-                </div>
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Commercial</span>
-                  <span className={`excel-meta-chk ${isCommercial ? 'checked' : ''}`}>
-                    {isCommercial ? '☑' : '☐'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Box 4: Micro & LiuGong Used */}
-              <div className="excel-meta-box">
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">Micro</span>
-                  <span className={`excel-meta-chk ${isMicro ? 'checked' : ''}`}>
-                    {isMicro ? '☑' : '☐'}
-                  </span>
-                </div>
-                <div className="excel-meta-row">
-                  <span className="excel-meta-lbl">LiuGong Used</span>
-                  <span className={`excel-meta-chk ${isLiuGongUser ? 'checked' : ''}`}>
-                    {isLiuGongUser ? '☑' : '☐'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 10: Solid Corporate Orange Line */}
-            <div className="excel-header-orange-bar" />
-          </div>
-
-          {/* ============================================================== */}
-          {/* EXACT EXCEL TABLE GRID (Rows 12 to 118 from openpyxl matrix)    */}
-          {/* ============================================================== */}
+          {/* Pure 100% Excel Matrix Table */}
           <table className="excel-fap-table">
             <colgroup>
-              {EXCEL_COL_WIDTHS_PCT.map((pct, idx) => (
-                <col key={idx} style={{ width: `${pct}%` }} />
+              {EXCEL_COL_WIDTHS_PCT.map((w, i) => (
+                <col key={i} style={{ width: `${w}%` }} />
               ))}
             </colgroup>
-
             <tbody>
-              {renderedRows.map(row => (
-                <tr key={row.r}>
+              {displayRows.map(row => (
+                <tr key={row.r} style={{ height: getRowHeight(row.r) }}>
                   {row.cells.map(cell => {
-                    const dynamicVal = cell.k ? dynamicValues[cell.k] : undefined;
-                    const displayVal = dynamicVal !== undefined ? dynamicVal : cell.v;
-                    const isFilled = cell.k && dynamicVal;
-                    const isSelected = selectedCell.coord === cell.c;
+                    let cellValue = cell.v || '';
+                    const isDynamic = Boolean(cell.k && dynamicValues[cell.k]);
+
+                    if (isDynamic) {
+                      cellValue = dynamicValues[cell.k!] || cell.v || '';
+                    }
+
+                    // Special rendering for official LiuGong logo in cell B2
+                    const isLogoCell = cell.c === 'B2';
+                    const isAppFormTitle = cell.c === 'A3';
+
+                    // Parse custom cell styling
+                    const style: React.CSSProperties = {
+                      fontSize: cell.fs ? `${cell.fs}pt` : '8.5pt',
+                      fontWeight: cell.fw === 'bold' ? 700 : 400,
+                      color: isDynamic ? '#002060' : (cell.col || '#0f172a'),
+                      backgroundColor: cell.bg || (row.r === 6 ? '#002060' : row.r === 10 ? '#eaa358' : undefined),
+                      textAlign: (cell.ta as any) || 'left',
+                      verticalAlign: (cell.va as any) || 'middle',
+                    };
+
+                    if (cell.b) {
+                      cell.b.split(';').forEach(rule => {
+                        const [prop, val] = rule.split(':').map(s => s.trim());
+                        if (prop && val) {
+                          if (prop === 'border-top') style.borderTop = val;
+                          if (prop === 'border-bottom') style.borderBottom = val;
+                          if (prop === 'border-left') style.borderLeft = val;
+                          if (prop === 'border-right') style.borderRight = val;
+                        }
+                      });
+                    }
+
+                    if (row.r === 6) {
+                      style.backgroundColor = '#002060';
+                      style.height = '5px';
+                      style.padding = 0;
+                      style.lineHeight = '5px';
+                    } else if (row.r === 10) {
+                      style.backgroundColor = '#eaa358';
+                      style.height = '3px';
+                      style.padding = 0;
+                      style.lineHeight = '3px';
+                    }
+
+                    const isSelected = activeCell.coord === cell.c;
 
                     return (
                       <td
                         key={cell.c}
-                        id={`cell_${cell.c}`}
                         colSpan={cell.cs || 1}
                         rowSpan={cell.rs || 1}
-                        className={`excel-fap-cell ${cell.k ? 'excel-cell-dynamic' : ''} ${
-                          isFilled ? 'fap-dynamic-highlight' : ''
-                        } ${isSelected ? 'excel-cell-active' : ''}`}
-                        style={{
-                          ...(cell.b
-                            ? cell.b.split(';').reduce((acc: any, item: string) => {
-                                const [prop, val] = item.split(':').map(s => s.trim());
-                                if (prop && val) {
-                                  const camel = prop.replace(/-([a-z])/g, g => g[1].toUpperCase());
-                                  acc[camel] = val;
-                                }
-                                return acc;
-                              }, {})
-                            : {}),
-                          backgroundColor: cell.bg ? cell.bg : undefined,
-                          color: cell.c ? cell.c : undefined,
-                          fontSize: cell.fs ? `${cell.fs}px` : undefined,
-                          fontWeight: cell.fw ? cell.fw : undefined,
-                          textAlign: cell.ta ? cell.ta : undefined,
-                          verticalAlign: cell.va ? cell.va : 'middle',
-                        }}
+                        style={style}
+                        className={`excel-fap-cell ${isSelected ? 'excel-cell-active' : ''} ${
+                          isDynamic ? 'fap-dynamic-highlight' : ''
+                        }`}
                         onClick={() =>
-                          setSelectedCell({
+                          setActiveCell({
                             coord: cell.c,
-                            val: String(displayVal || ''),
+                            val: cellValue || '(kosong)',
                           })
                         }
                       >
-                        {displayVal}
+                        {isLogoCell ? (
+                          <div style={{ padding: '2px 0' }}>
+                            <img
+                              src={LIUGONG_LOGO_B64}
+                              alt="LiuGong Finance Indonesia"
+                              style={{
+                                height: '36px',
+                                width: 'auto',
+                                display: 'block',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          </div>
+                        ) : isAppFormTitle ? (
+                          <div
+                            style={{
+                              fontSize: '18px',
+                              fontWeight: 900,
+                              color: '#002060',
+                              textAlign: 'center',
+                              letterSpacing: '0.8px',
+                              padding: '4px 0',
+                            }}
+                          >
+                            APPLICATION FORM
+                          </div>
+                        ) : (
+                          cellValue
+                        )}
                       </td>
                     );
                   })}
