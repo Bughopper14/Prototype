@@ -273,17 +273,31 @@ function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>vo
   });
 
   const activeItem = items.find(x => x.code === selectedCode) || items[0];
-  const canUpload = ['MKT','BS','CA','LEGAL','COMMITTEE'].includes(user.role) && !['APPROVED','REJECTED'].includes(a.status);
+  const canUpload = ['MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'].includes(user.role);
 
   async function previewFile(f: any) {
     try {
+      if (f.demoData && f.demoData.startsWith('data:')) {
+        setActiveFileUrl(f.demoData);
+        setActiveFile(f);
+        setZoom(1);
+        setRotation(0);
+        return;
+      }
       const v = await api(`/files/${f.id}/url`);
       setActiveFileUrl(v.url);
       setActiveFile(f);
       setZoom(1);
       setRotation(0);
     } catch (e: any) {
-      setError(e.message || 'Gagal memuat preview dokumen.');
+      if (f.demoData) {
+        setActiveFileUrl(f.demoData);
+        setActiveFile(f);
+        setZoom(1);
+        setRotation(0);
+      } else {
+        setError(e.message || 'Gagal memuat preview dokumen.');
+      }
     }
   }
 
@@ -292,18 +306,22 @@ function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>vo
     setError('');
     try {
       const body = new FormData();
-      body.append('checklistId', item.chk.id);
+      body.append('checklistId', item.chk.id || item.code);
+      body.append('documentCode', item.code);
       body.append('file', file);
       await api(`/applications/${a.id}/documents/upload`, 'POST', body);
       const updated = await api(`/applications/${a.id}`);
       onChange(updated);
       notify(`Evidence ${item.title} berhasil diunggah.`);
-      const updatedChk = (updated.documentChecks || []).find((d: any) => d.id === item.chk.id || String(d.documentCode).toUpperCase() === item.code);
+      const updatedChk = (updated.documentChecks || []).find((d: any) => 
+        d.id === item.chk.id || 
+        String(d.documentCode).toUpperCase() === item.code
+      );
       if (updatedChk?.files?.length) {
         previewFile(updatedChk.files[updatedChk.files.length - 1]);
       }
     } catch (e: any) {
-      setError(e.message || 'Gagal mengunggah evidence.');
+      setError(e.message || 'Gagal mengunggah evidence: ' + e.message);
     } finally {
       setBusy(false);
     }

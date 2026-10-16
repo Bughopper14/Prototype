@@ -7,7 +7,11 @@ const key='liugong-los-public-demo-v1';const fileUrls=new Map<string,string>();
 const roles:any=[['MKT','Marketing'],['BS','Business Support'],['HEAD_BS','Head BS'],['CA','Credit Analyst'],['LEGAL','Legal'],['COMMITTEE','Credit Committee']];
 const names=['PT Bumi Karya Nusantara','PT Cipta Infrastruktur','PT Sumber Alam Lestari','PT Mitra Tambang Sejahtera','PT Agro Prima Indonesia','PT Konstruksi Mandiri'];
 const stages=['IN_CA_LEGAL_REVIEW','SUBMITTED_TO_BS','DRAFT','CREDIT_COMMITTEE_REVIEW','APPROVED','RETURNED'];
-const docTypes:any=[['NIB','Business registration (NIB)','BS',true],['NPWP','Company tax registration (NPWP)','BS',true],['DEED','Establishment & latest deed','LEGAL',true],['KTP','Directors’ identification','BS',true],['FINANCIALS','Financial statements · 3 years','CA',true],['BANK','Bank statements · 6 months','CA',true],['CONTRACT','Project contracts / purchase orders','CA',false],['QUOTATION','Equipment quotation','BS',true],['LEGAL_OPINION','Legal opinion','LEGAL',true],['EKITAS','E-KITAS for foreign shareholders','LEGAL',false]];
+const docTypes:any=[
+  ['FAP','fap','MKT',true,'FAP (Financing Application Form)','FAP Intake'],
+  ['PREANALYSIS','Preanalysis','CA',true,'Pre-analysis Document','Pre-analysis'],
+  ['ICLF','Iclf','COMMITTEE',true,'ICLF (Credit Committee Review)','Credit Committee']
+];
 const copy=(x:any)=>JSON.parse(JSON.stringify(x));
 const generateUUID=()=>{if(typeof crypto!=="undefined"&&typeof crypto.randomUUID==="function")return crypto.randomUUID();return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=(Math.random()*16)|0,v=c==="x"?r:(r&0x3)|0x8;return v.toString(16);});};
 const sampleDeedsForApp=(i:number)=>[
@@ -24,12 +28,21 @@ function initial(){
 const read=()=>{try{const s=localStorage.getItem(key);if(!s)return initial();const data=JSON.parse(s);let updated=false;
  const evidenceCodes=['FAP','PREANALYSIS','ICLF'];
  for(const app of (data.applications||[])){
-  const filtered=(app.documentChecks||[]).filter((d:any)=>evidenceCodes.includes(String(d.documentCode||'').toUpperCase()));
-  if(filtered.length!==3){
-   app.documentChecks=docTypes.map((item:any,j:number)=>{
-    const found=filtered.find((d:any)=>String(d.documentCode).toUpperCase()===item[0]);
-    if(found)return found;
-    return {id:`demo-doc-${app.id}-${item[0]}`,documentCode:item[0],documentName:item[1],assignedRole:item[2],isMandatory:item[3],status:'PENDING',checkedByMkt:false,checkedByBs:false,checkedByCa:false,checkedByLegal:false,registrationDate:null,expiredDate:null,dataSummary:'',notes:'',files:[]};
+  const existing=app.documentChecks||[];
+  const hasLegacy=existing.some((d:any)=>!evidenceCodes.includes(String(d.documentCode||'').toUpperCase()));
+  const hasAllThree=evidenceCodes.every(code=>existing.some((d:any)=>String(d.documentCode||'').toUpperCase()===code));
+  if(hasLegacy||!hasAllThree){
+   app.documentChecks=docTypes.map((item:any)=>{
+    const found=existing.find((d:any)=>String(d.documentCode||'').toUpperCase()===item[0]||String(d.documentName||'').toLowerCase()===item[1].toLowerCase());
+    return {
+      id:found?.id||`demo-doc-${app.id}-${item[0]}`,
+      documentCode:item[0],
+      documentName:item[1],
+      assignedRole:item[2],
+      isMandatory:item[3],
+      status:found?.files?.length?'UPLOADED':'PENDING',
+      files:found?.files||[]
+    };
    });
    updated=true;
   }
@@ -96,8 +109,61 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
   if(parts[2]==='page-legal'&&method==='PUT'){if(!canEditLegal(s.user,a))throw Error('Akun/tahap ini tidak dapat mengubah akta.');const merged=mergeLegal(a.legal||{},body.legal);if(!['DRAFT','RETURNED'].includes(a.status))for(const d of merged.deeds){const old=(a.legal?.deeds||[]).find((x:any)=>x.id===d.id);if(!old||JSON.stringify(old)!==JSON.stringify(d)&&reviewStatus(old)!=='REJECTED')throw Error('MKT hanya boleh memperbaiki akta yang ditolak.');}a.legal=copy(merged);if(body.stakeholders)a.stakeholders=copy(body.stakeholders);save(s);return copy(a);}
   if(parts[2]==='page-2'&&method==='PUT'){if(body.proposal)a.proposal=copy(body.proposal);if(body.financialStatements)a.financialStatements=copy(body.financialStatements);save(s);return copy(a);}
   if(parts[2]==='checklist'&&parts[4]==='verify'&&method==='PATCH'){const d=a.documentChecks.find((x:any)=>x.id===parts[3]);if(!d)throw Error('Checklist item not found');const field:any={BS:'checkedByBs',CA:'checkedByCa',LEGAL:'checkedByLegal'};d[field[body.department]]=body.isVerified;if(body.department===d.assignedRole)d.status=body.isVerified?'VERIFIED':'REJECTED';Object.assign(d,{registrationDate:body.registrationDate,expiredDate:body.expiredDate,dataSummary:body.dataSummary,notes:body.notes});save(s);return copy(a);}
-  if(parts[2]==='documents'&&parts[3]==='upload'&&method==='POST'){const file=body.get('file'),d=a.documentChecks.find((x:any)=>x.id===body.get('checklistId'));if(!file||!d)throw Error('Choose a file and checklist item');if(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(s.user.role))throw Error('Akun ini tidak dapat upload dokumen.');if(file.size>20*1024*1024)throw Error('Ukuran file maksimal 20 MB.');const bytes=new Uint8Array(await file.arrayBuffer());const valid=file.type==='application/pdf'&&String.fromCharCode(...bytes.slice(0,5))==='%PDF-'||file.type==='image/png'&&[137,80,78,71,13,10,26,10].every((n,i)=>bytes[i]===n)||file.type==='image/jpeg'&&bytes[0]===255&&bytes[1]===216&&bytes[2]===255;if(!valid)throw Error('Upload file PDF, PNG atau JPEG yang valid.');let binary='';for(let i=0;i<bytes.length;i+=8192)binary+=String.fromCharCode(...bytes.slice(i,i+8192));const demoData=`data:${file.type};base64,${btoa(binary)}`;const f={demoData,id:generateUUID(),checklistId:d.id,fileName:file.name,fileKey:'browser-only',fileSize:file.size,mimeType:file.type||'application/octet-stream',uploadedBy:s.user.name,uploadedAt:new Date().toISOString()};d.files.push(f);d.status='UPLOADED';d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;s.events.unshift({id:generateUUID(),applicationId:a.id,checklistId:d.id,actor:s.user.name,action:'UPLOAD',created_at:new Date().toISOString()});save(s);return safeFile(f);}
-  if(parts[2]==='documents'&&method==='DELETE'){if(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(s.user.role))throw Error('Akun ini tidak dapat menghapus dokumen.');const fileId=parts[3];const d=a.documentChecks.find((chk:any)=>chk.files?.some((f:any)=>f.id===fileId));if(!d)throw Error('Dokumen tidak ditemukan.');const isUsedByDeed=(a.legal?.deeds||[]).some((deed:any)=>deed.review?.documentId===fileId);if(isUsedByDeed)throw Error('Dokumen sedang digunakan oleh akta.');d.files=d.files.filter((f:any)=>f.id!==fileId);if(d.files.length===0){d.status='PENDING';d.checkedByMkt=d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;}else{d.status='UPLOADED';d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;}fileUrls.delete(fileId);save(s);return {success:true};}
+  if(parts[2]==='documents'&&parts[3]==='upload'&&method==='POST'){
+    const file = body.get('file');
+    const chkId = body.get('checklistId');
+    const docCode = String(body.get('documentCode') || '').toUpperCase();
+    if(!file) throw Error('Pilih berkas yang ingin diunggah.');
+    
+    let d = a.documentChecks.find((x:any)=>
+      x.id===chkId || 
+      (docCode && String(x.documentCode).toUpperCase()===docCode) ||
+      (chkId && String(chkId).toUpperCase().includes(String(x.documentCode).toUpperCase()))
+    );
+
+    if(!d){
+      const resolvedCode = docCode || (chkId && String(chkId).toUpperCase().includes('PREANALYSIS')?'PREANALYSIS':chkId && String(chkId).toUpperCase().includes('ICLF')?'ICLF':'FAP');
+      const foundDef = docTypes.find((item:any)=>item[0]===resolvedCode) || docTypes[0];
+      d = {
+        id: chkId || `demo-doc-${a.id}-${foundDef[0]}`,
+        documentCode: foundDef[0],
+        documentName: foundDef[1],
+        assignedRole: foundDef[2],
+        isMandatory: true,
+        status: 'PENDING',
+        files: []
+      };
+      a.documentChecks.push(d);
+    }
+
+    if(file.size > 20*1024*1024) throw Error('Ukuran file maksimal 20 MB.');
+    
+    const demoData = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error('Gagal membaca file di browser.'));
+      reader.readAsDataURL(file);
+    });
+
+    const fileId = generateUUID();
+    const newFile = {
+      id: fileId,
+      checklistId: d.id,
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'),
+      uploadedBy: s.user ? s.user.name : 'User',
+      uploadedAt: new Date().toISOString(),
+      demoData
+    };
+
+    d.files = d.files || [];
+    d.files.push(newFile);
+    d.status = 'UPLOADED';
+    save(s);
+    return copy(newFile);
+   }
+   if(parts[2]==='documents'&&method==='DELETE'){if(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(s.user.role))throw Error('Akun ini tidak dapat menghapus dokumen.');const fileId=parts[3];const d=a.documentChecks.find((chk:any)=>chk.files?.some((f:any)=>f.id===fileId));if(!d)throw Error('Dokumen tidak ditemukan.');const isUsedByDeed=(a.legal?.deeds||[]).some((deed:any)=>deed.review?.documentId===fileId);if(isUsedByDeed)throw Error('Dokumen sedang digunakan oleh akta.');d.files=d.files.filter((f:any)=>f.id!==fileId);if(d.files.length===0){d.status='PENDING';d.checkedByMkt=d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;}else{d.status='UPLOADED';d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;}fileUrls.delete(fileId);save(s);return {success:true};}
   if(parts[2]==='transition'&&method==='POST'){const action=body.action,from=a.status,next:any={SUBMIT_TO_BS:'SUBMITTED_TO_BS',VERIFY_BS:'BS_VERIFIED',START_REVIEW:'IN_CA_LEGAL_REVIEW',APPROVE_COMMITTEE:'APPROVED',REJECT_COMMITTEE:'REJECTED'};if(action==='SUBMIT_TO_BS'&&(!a.pic||!a.proposal?.units?.length))throw Error('Complete PIC and add an equipment unit first.');if(action==='VERIFY_BS'&&a.documentChecks.some((d:any)=>d.isMandatory&&d.assignedRole==='BS'&&d.status!=='VERIFIED'))throw Error('Verify mandatory BS documents first.');if(action==='RETURN')a.status='RETURNED';else if(action==='RECOMMEND_CA'||action==='RECOMMEND_LEGAL'){const role=action==='RECOMMEND_CA'?'CA':'LEGAL';a.signoffs=a.signoffs.filter((x:any)=>x.role!==role);a.signoffs.push({role,actor:s.user.name,signed_at:new Date().toISOString()});if(a.signoffs.length===2)a.status='CREDIT_COMMITTEE_REVIEW';}else if(next[action])a.status=next[action];else throw Error('Unsupported demo action');a.approvalLogs.unshift({id:generateUUID(),applicationId:a.id,actionBy:s.user.name,userRole:s.user.role,previousStatus:from,newStatus:a.status,comments:body.comments||action,actionTimestamp:new Date().toISOString()});save(s);return copy(a);}
  }
  if(parts[0]==='files'&&parts[2]==='url'){const f=s.applications.flatMap((a:any)=>a.documentChecks.flatMap((d:any)=>d.files)).find((x:any)=>x.id===parts[1]);if(!f)throw Error('File not found');if(!f.demoData)throw Error('Dokumen demo lama perlu diupload ulang agar dapat dibuka setelah reload.');if(!fileUrls.has(f.id)){const bytes=Uint8Array.from(atob(f.demoData.split(',')[1]),c=>c.charCodeAt(0));fileUrls.set(f.id,URL.createObjectURL(new Blob([bytes],{type:f.mimeType})));}return {url:fileUrls.get(f.id),expiresIn:900};}
