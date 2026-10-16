@@ -40,7 +40,7 @@ export function validateInput(value:any,now=new Date(),requireCompleteOwnership=
    if(item&&typeof item==='object')walk(item,path?`${path} / ${key}`:key);
   }
   const required=(record:any,keys:string[],context:string)=>{for(const key of keys)if(record[key]===undefined||record[key]===null||String(record[key]).trim()==='')throw Error(`${context}: ${names[key]||key} wajib diisi.`);};
-  if(node.pic&&typeof node.pic==='object')required(node.pic,['picName','position','phone','email','currentAddress','city','province','postalCode'],'Primary contact (PIC)');
+  if(node.pic&&typeof node.pic==='object'&&requireCompleteOwnership)required(node.pic,['picName','position','phone','email','currentAddress','city','province','postalCode'],'Primary contact (PIC)');
   if(Array.isArray(node.projects))node.projects.forEach((r:any)=>required(r,['projectOwner','projectLocation','projectRole','contractStatus'],'Project contract'));
   if(Array.isArray(node.bankReferences))node.bankReferences.forEach((r:any)=>required(r,['bankOrFinInstitution','currency','creditFacility','monthlyInstallment','yearStarted','interestRate','paymentRecord','facilityStatus'],'Bank facility'));
   if(Array.isArray(node.units))node.units.forEach((r:any)=>required(r,['quantity','unitCategory','brand','modelName'],'Equipment unit'));

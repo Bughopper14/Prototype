@@ -149,9 +149,26 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
     setCustomerId(id);
     if(onCustomerCreated)onCustomerCreated(createdCust);
    }
-   validateInput(draft);
    const {isNew,customer,id:_draftId,...profileData}=draft;
-   const application=await api('/applications','POST',{...profileData,customerId:id,customerStatus:customerCategory,stage:'FAP Stage'});
+   const safePayload = {
+     branchCode: profileData.branchCode || 'JKT01',
+     companyAddress: profileData.companyAddress || '-',
+     city: profileData.city || '-',
+     province: profileData.province || '-',
+     postalCode: profileData.postalCode || '00000',
+     phoneFax: profileData.phoneFax || '-',
+     email: profileData.email || (customerDraft.email || 'draft@liugong.local'),
+     mainBusiness: profileData.mainBusiness || '-',
+     locationStatus: profileData.locationStatus || 'OWNED',
+     repaymentSource: profileData.repaymentSource || 'Operating Cash Flow',
+     industrySegment: profileData.industrySegment || 'MINING',
+     businessRole: profileData.businessRole || 'CONTRACTOR',
+     ...profileData,
+     customerId: id,
+     customerStatus: customerCategory,
+     stage: 'FAP Stage'
+   };
+   const application=await api('/applications','POST',safePayload);
    notify(`Aplikasi berhasil dibuat dengan nomor ${application.fapNumber}`);
    const fullApp=await api(`/applications/${application.id}`);
    setDraft(structuredClone(fullApp));
@@ -259,7 +276,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
   assetSummaryHeNonLiuGong: a.assetSummaryHeNonLiuGong,
   assetSummaryTruckNonLiuGong: a.assetSummaryTruckNonLiuGong,
 };useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&(Boolean(draft.isNew)||['DRAFT','RETURNED'].includes(a.status)),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
- async function save(){setBusy(true);setError('');try{const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);const body=tab===0?{profile:draft,pic:draft.pic||blank(picFields)}:tab===2?{projects:draft.projects,bankReferences:draft.bankReferences,proposal:draft.proposal}:tab===3?{proposal:draft.proposal}:tab===4?{financialStatements:draft.financialStatements}:{legal:draft.legal||{},...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})};const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:'Pre-analysis'});const nextApp={...a,...v,stage:'Pre-analysis'};setDraft((prev:any)=>({...prev,...nextApp}));onChange(nextApp);notify('Changes saved');}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ async function save(){setBusy(true);setError('');try{if(tab===0&&customerCategory==='NEW'&&customerDraft&&(customerDraft.companyName||customerDraft.nib||customerDraft.npwp)){const nib=String(customerDraft.nib||'').replace(/\D/g,'');const npwp=String(customerDraft.npwp||'').replace(/\D/g,'');if(!String(customerDraft.companyName||'').trim())throw new Error('Nama perusahaan calon debitur wajib diisi.');if(nib.length!==13)throw new Error('NIB wajib terdiri dari 13 digit angka.');if(npwp.length<15||npwp.length>16)throw new Error('NPWP wajib terdiri dari 15 atau 16 digit angka.');validateInput(customerDraft);}const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);const hasPicData=draft.pic&&Object.values(draft.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');const body=tab===0?{profile:draft,...(hasPicData?{pic:draft.pic}:{})}:tab===2?{projects:draft.projects,bankReferences:draft.bankReferences,proposal:draft.proposal}:tab===3?{proposal:draft.proposal}:tab===4?{financialStatements:draft.financialStatements}:{legal:draft.legal||{},...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})};const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:'Pre-analysis'});const nextApp={...a,...v,stage:'Pre-analysis'};setDraft((prev:any)=>({...prev,...nextApp}));onChange(nextApp);notify('Perubahan berhasil disimpan');}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  const master=useMasterData();const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
  async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Akta tidak ditemukan.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
