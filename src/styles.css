@@ -1167,7 +1167,7 @@ button:focus-visible, a:focus-visible {
   display: flex !important;
   flex-direction: row !important;
   gap: 24px !important;
-  align-items: flex-start !important;
+  align-items: stretch !important;
   width: 100% !important;
   margin-top: 14px !important;
   box-sizing: border-box !important;
@@ -1186,9 +1186,9 @@ button:focus-visible, a:focus-visible {
   width: 50% !important;
   min-width: 0 !important;
   max-width: 50% !important;
-  position: sticky !important;
-  top: 16px !important;
-  max-height: calc(100vh - 120px) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
   box-sizing: border-box !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1200,7 +1200,9 @@ button:focus-visible, a:focus-visible {
 
 .fap-detail-preview-col .excel-fap-viewer {
   width: 100% !important;
-  height: calc(100vh - 122px) !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
@@ -1208,9 +1210,17 @@ button:focus-visible, a:focus-visible {
   border-radius: 8px !important;
 }
 
+.fap-detail-preview-col .excel-fap-ribbon {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+}
+
 .fap-detail-preview-col .excel-fap-viewport {
-  flex: 1 !important;
+  flex: 1 1 auto !important;
   width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
   overflow-x: hidden !important;
   overflow-y: auto !important;
   padding: 12px 14px !important;
