@@ -49,14 +49,28 @@ async function sync() {
     
     for (const d of a.documentChecks) {
       d.files = await all('DocumentFile', { checklistId: d.id });
-      // Berikan demoData fallback jika belum ada
+      // demoData tidak perlu diduplikasi di setiap file agar ukuran bundle tidak membengkak
       for (const f of d.files) {
-        if (!f.demoData) {
-          if (String(d.documentCode).toUpperCase() === 'FAP') f.demoData = FAP_SAMPLE_PDF;
-          else if (String(d.documentCode).toUpperCase() === 'PREANALYSIS') f.demoData = PREANALYSIS_SAMPLE_PDF;
-          else if (String(d.documentCode).toUpperCase() === 'ICLF') f.demoData = ICLF_SAMPLE_PDF;
-          else if (f.mimeType?.startsWith('image/')) f.demoData = KTP_SAMPLE_IMAGE;
-          else f.demoData = FAP_SAMPLE_PDF;
+        delete f.demoData;
+      }
+    }
+    
+    // Jangan duplikasi base64 ktpUrl yang sama persis di setiap stakeholder dan legal deeds
+    for (const s of (a.stakeholders || [])) {
+      if (s.ktpUrl && s.ktpUrl.startsWith('data:image/')) {
+        delete s.ktpUrl;
+      }
+    }
+    if (a.legal?.deeds) {
+      for (const deed of a.legal.deeds) {
+        for (const key of ['parties', 'stakeholders', 'directors', 'commissioners', 'shareholders']) {
+          if (Array.isArray(deed[key])) {
+            for (const item of deed[key]) {
+              if (item.ktpUrl && item.ktpUrl.startsWith('data:image/')) {
+                delete item.ktpUrl;
+              }
+            }
+          }
         }
       }
     }

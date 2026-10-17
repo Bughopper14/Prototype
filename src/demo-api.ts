@@ -1,4 +1,4 @@
-import { SCENARIO_CUSTOMERS, SCENARIO_APPLICATIONS } from './demo-scenarios-data';
+import { SCENARIO_CUSTOMERS, SCENARIO_APPLICATIONS, KTP_SAMPLE_IMAGE, FAP_SAMPLE_PDF } from './demo-scenarios-data';
 import {profileFields} from './fields';
 import {mergeLegal,deedTransition,deedBaseline,canEditLegal,reviewStatus,saveSingleDeed} from './deed-workflow';
 import {validateWrite} from './input-validation';
@@ -185,7 +185,16 @@ if(path==='/master-data'&&method==='GET'){
    if(parts[2]==='documents'&&method==='DELETE'){if(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(s.user.role))throw Error('Akun ini tidak dapat menghapus dokumen.');const fileId=parts[3];const d=a.documentChecks.find((chk:any)=>chk.files?.some((f:any)=>f.id===fileId));if(!d)throw Error('Dokumen tidak ditemukan.');const isUsedByDeed=(a.legal?.deeds||[]).some((deed:any)=>deed.review?.documentId===fileId);if(isUsedByDeed)throw Error('Dokumen sedang digunakan oleh akta.');d.files=d.files.filter((f:any)=>f.id!==fileId);if(d.files.length===0){d.status='PENDING';d.checkedByMkt=d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;}else{d.status='UPLOADED';d.checkedByBs=d.checkedByCa=d.checkedByLegal=false;}fileUrls.delete(fileId);save(s);return {success:true};}
   if(parts[2]==='transition'&&method==='POST'){const action=body.action,from=a.status,next:any={SUBMIT_TO_BS:'SUBMITTED_TO_BS',VERIFY_BS:'BS_VERIFIED',START_REVIEW:'IN_CA_LEGAL_REVIEW',APPROVE_COMMITTEE:'APPROVED',REJECT_COMMITTEE:'REJECTED'};if(action==='SUBMIT_TO_BS'&&(!a.pic||!a.proposal?.units?.length))throw Error('Complete PIC and add an equipment unit first.');if(action==='VERIFY_BS'&&a.documentChecks.some((d:any)=>d.isMandatory&&d.assignedRole==='BS'&&d.status!=='VERIFIED'))throw Error('Verify mandatory BS documents first.');if(action==='RETURN')a.status='RETURNED';else if(action==='RECOMMEND_CA'||action==='RECOMMEND_LEGAL'){const role=action==='RECOMMEND_CA'?'CA':'LEGAL';a.signoffs=a.signoffs.filter((x:any)=>x.role!==role);a.signoffs.push({role,actor:s.user.name,signed_at:new Date().toISOString()});if(a.signoffs.length===2)a.status='CREDIT_COMMITTEE_REVIEW';}else if(next[action])a.status=next[action];else throw Error('Unsupported demo action');a.approvalLogs.unshift({id:generateUUID(),applicationId:a.id,actionBy:s.user.name,userRole:s.user.role,previousStatus:from,newStatus:a.status,comments:body.comments||action,actionTimestamp:new Date().toISOString()});save(s);return copy(a);}
  }
- if(parts[0]==='files'&&parts[2]==='url'){const f=s.applications.flatMap((a:any)=>a.documentChecks.flatMap((d:any)=>d.files)).find((x:any)=>x.id===parts[1]);if(!f)throw Error('File not found');if(!f.demoData)throw Error('Dokumen demo lama perlu diupload ulang agar dapat dibuka setelah reload.');if(!fileUrls.has(f.id)){const bytes=Uint8Array.from(atob(f.demoData.split(',')[1]),c=>c.charCodeAt(0));fileUrls.set(f.id,URL.createObjectURL(new Blob([bytes],{type:f.mimeType})));}return {url:fileUrls.get(f.id),expiresIn:900};}
+ if(parts[0]==='files'&&parts[2]==='url'){
+  const f=s.applications.flatMap((a:any)=>a.documentChecks.flatMap((d:any)=>d.files)).find((x:any)=>x.id===parts[1]);
+  if(!f)throw Error('File not found');
+  const sampleData = f.demoData || (f.mimeType?.startsWith('image/') ? KTP_SAMPLE_IMAGE : FAP_SAMPLE_PDF);
+  if(!fileUrls.has(f.id)){
+    const bytes=Uint8Array.from(atob(sampleData.split(',')[1]),c=>c.charCodeAt(0));
+    fileUrls.set(f.id,URL.createObjectURL(new Blob([bytes],{type:f.mimeType || 'application/pdf'})));
+  }
+  return {url:fileUrls.get(f.id),expiresIn:900};
+ }
  if(parts[0]==='applications'&&parts[2]==='document-events')return copy(s.events.filter((x:any)=>x.applicationId===parts[1]));
  throw Error('This action is not included in the public demo. Changes are saved only in this browser.');
 }
