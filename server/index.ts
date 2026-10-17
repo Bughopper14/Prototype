@@ -37,7 +37,11 @@ let secret=process.env.JWT_SECRET;
 if(!secret){if(process.env.NODE_ENV==='production')throw new Error('JWT_SECRET is required in production');const file=path.join(dataDir,'session-secret');try{secret=await fs.readFile(file,'utf8');}catch{secret=crypto.randomBytes(48).toString('hex');await fs.writeFile(file,secret);}}
 const jwtSecret=secret;
 const app=express();app.disable('x-powered-by');app.use(express.json({limit:'2mb'}));
-app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');if(req.path.startsWith('/api'))res.setHeader('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){const origin=new URL(req.headers.origin);if(!['http://127.0.0.1:5173','http://localhost:5173',`http://${req.headers.host}`,process.env.APP_ORIGIN].includes(origin.origin))return next(new Problem(403,'Origin is not allowed'));}next();});
+app.use((req,res,next)=>{
+  if (req.url.startsWith('/crm/api/')) {
+    req.url = req.url.replace('/crm/api/', '/api/');
+  }
+  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');if(req.path.startsWith('/api'))res.setHeader('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){const origin=new URL(req.headers.origin);if(!['http://127.0.0.1:5173','http://localhost:5173',`http://${req.headers.host}`,process.env.APP_ORIGIN].includes(origin.origin))return next(new Problem(403,'Origin is not allowed'));}next();});
 type Actor={id:string,name:string,email:string,role:string};
 declare global{namespace Express{interface Request{actor:Actor}}}
 const attempts=new Map<string,{count:number,until:number}>();

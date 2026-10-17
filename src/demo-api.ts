@@ -29,7 +29,7 @@ function initial(){
   };
 }
 
-const SEED_VERSION = 'v13_all_scenarios_ol_numbering';
+const SEED_VERSION = 'v14_all_24_scenarios_complete';
 const read = () => {
   try {
     const s = localStorage.getItem(key);
