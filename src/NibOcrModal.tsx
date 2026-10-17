@@ -352,7 +352,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 style={{
                   width: '100%', padding: '8px 10px', fontSize: '0.85rem',
                   borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600,
-                  background: formData.nib ? '#f0fdf4' : '#ffffff'
+                  background: formData.nib ? '#f0f7ff' : '#ffffff'
                 }}
               />
             </div>
@@ -382,7 +382,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 style={{
                   width: '100%', padding: '8px 10px', fontSize: '0.85rem',
                   borderRadius: 6, border: '1px solid #cbd5e1', resize: 'vertical',
-                  background: formData.alamat ? '#f0fdf4' : '#ffffff'
+                  background: formData.alamat ? '#f0f7ff' : '#ffffff'
                 }}
               />
             </div>
@@ -401,7 +401,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   style={{
                     width: '100%', padding: '8px 10px', fontSize: '0.85rem',
                     borderRadius: 6, border: '1px solid #cbd5e1',
-                    background: formData.email ? '#f0fdf4' : '#ffffff'
+                    background: formData.email ? '#f0f7ff' : '#ffffff'
                   }}
                 />
               </div>
@@ -418,7 +418,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   style={{
                     width: '100%', padding: '8px 10px', fontSize: '0.85rem',
                     borderRadius: 6, border: '1px solid #cbd5e1',
-                    background: formData.phone ? '#f0fdf4' : '#ffffff'
+                    background: formData.phone ? '#f0f7ff' : '#ffffff'
                   }}
                 />
               </div>
@@ -448,7 +448,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 style={{
                   width: '100%', padding: '8px 10px', fontSize: '0.85rem',
                   borderRadius: 6, border: '1px solid #cbd5e1',
-                  background: formData.tanggalTerbit ? '#f0fdf4' : '#ffffff'
+                  background: formData.tanggalTerbit ? '#f0f7ff' : '#ffffff'
                 }}
               />
             </div>

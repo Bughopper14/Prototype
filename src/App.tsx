@@ -1111,7 +1111,7 @@ function StakeholderDetailDialog({
           {/* Card 1: Kepemilikan Saham & Modal Legal */}
           <div className="detail-bento-card shareholding-card">
             <div className="bento-card-head">
-              <div className="bento-card-icon" style={{ background: '#ecfdf5', color: '#059669' }}>
+              <div className="bento-card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
                 <Wallet size={16} />
               </div>
               <h4>Kepemilikan Saham & Modal</h4>
@@ -1179,7 +1179,7 @@ function StakeholderDetailDialog({
                       onClick={() => copyText(item.idNumber, 'idNumber')}
                       title="Salin No. Identitas"
                     >
-                      {copied === 'idNumber' ? <Check size={12} color="#16a34a" /> : <Copy size={12} />}
+                      {copied === 'idNumber' ? <Check size={12} color="#2563eb" /> : <Copy size={12} />}
                     </button>
                   )}
                 </div>
@@ -1266,7 +1266,7 @@ function StakeholderDetailDialog({
                   }}
                 />
                 <div className="detail-ktp-status-pill">
-                  <CheckCircle size={13} color="#107c41" /> Terverifikasi
+                  <CheckCircle size={13} color="#2563eb" /> Terverifikasi
                 </div>
               </div>
             ) : (
@@ -1440,7 +1440,7 @@ function StakeholderModalDialog({
               <h3 style={{margin:'2px 0 0 0',fontSize:'15px',color:'#0f172a'}}>Data Pemegang Saham & Pengurus</h3>
             </div>
             {copiedKey === 'applied_all' && (
-              <span className="subtle-chip" style={{background:'#dcfce7',color:'#15803d',fontWeight:600,fontSize:'11px'}}>
+              <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',fontWeight:600,fontSize:'11px'}}>
                 ✓ Data KTP Terisi ke Form!
               </span>
             )}
@@ -1972,7 +1972,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                       ) : isPrimaryEst ? (
                         <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Utama</span>
                       ) : isLatestAmend ? (
-                        <span className="legal-role-badge" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>Terbaru</span>
+                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Terbaru</span>
                       ) : null}
                     </div>
                     <b className="legal-deed-number">{x.deedNumber || 'Nomor belum diisi'}</b>
@@ -2098,7 +2098,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     <div>
       <div className="legal-list-heading">
         <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <CheckCircle size={17} style={{color:'#16a34a'}}/> Akta aktif &amp; rujukan terkini
+          <CheckCircle size={17} style={{color:'#2563eb'}}/> Akta aktif &amp; rujukan terkini
         </h3>
         <span className="legal-count active-count">{activeDeeds.length}</span>
       </div>

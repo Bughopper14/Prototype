@@ -268,7 +268,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       {/* Excel Green Ribbon Header */}
       <div className="excel-fap-ribbon">
         <div className="excel-ribbon-left">
-          <FileSpreadsheet size={16} className="excel-green-icon" />
+          <FileSpreadsheet size={16} className="excel-brand-icon" />
           <div className="excel-file-badge">
             <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
             <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (Rows 1-118)</span>
