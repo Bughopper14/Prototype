@@ -119,5 +119,9 @@ export async function initialize(){
   `);
   await q('INSERT INTO schema_migrations VALUES(7)');
  });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=8')).rows.length)await transaction(async q=>{
+  await q("ALTER TABLE document_checklists DROP CONSTRAINT IF EXISTS document_checklists_assigned_role_check; ALTER TABLE document_checklists ADD CONSTRAINT document_checklists_assigned_role_check CHECK(assigned_role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
+  await q('INSERT INTO schema_migrations VALUES(8)');
+ });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}
