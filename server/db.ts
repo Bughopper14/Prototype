@@ -123,5 +123,9 @@ export async function initialize(){
   await q("ALTER TABLE document_checklists DROP CONSTRAINT IF EXISTS document_checklists_assigned_role_check; ALTER TABLE document_checklists ADD CONSTRAINT document_checklists_assigned_role_check CHECK(assigned_role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
   await q('INSERT INTO schema_migrations VALUES(8)');
  });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=9')).rows.length)await transaction(async q=>{
+  await q('ALTER TABLE applications ADD COLUMN IF NOT EXISTS district TEXT, ADD COLUMN IF NOT EXISTS village TEXT, ADD COLUMN IF NOT EXISTS rt TEXT, ADD COLUMN IF NOT EXISTS rw TEXT');
+  await q('INSERT INTO schema_migrations VALUES(9)');
+ });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}

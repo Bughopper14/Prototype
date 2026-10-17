@@ -171,6 +171,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
       city: pick(raw.city, prof.city, ''),
       province: pick(raw.province, prof.province, ''),
+      district: pick(raw.district, prof.district, ''),
+      village: pick(raw.village, prof.village, ''),
+      rt: pick(raw.rt, prof.rt, ''),
+      rw: pick(raw.rw, prof.rw, ''),
       postalCode: pick(raw.postalCode, prof.postalCode, ''),
       experienceYears: pick(raw.experienceYears, prof.experienceYears, ''),
       experienceMonths: pick(raw.experienceMonths, prof.experienceMonths, ''),
@@ -436,6 +440,24 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-sub-lbl">Kota/City</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.city}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <span className="exact-sub-lbl">Kecamatan/District</span>
+                <span className="exact-fap-colon">:</span>
+                <div className="exact-fap-box highlight-dynamic">{d.district || '—'}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <span className="exact-sub-lbl">Kelurahan/Village</span>
+                <span className="exact-fap-colon">:</span>
+                <div className="exact-fap-box highlight-dynamic">{d.village || '—'}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <span className="exact-sub-lbl">RT / RW</span>
+                <span className="exact-fap-colon">:</span>
+                <div className="exact-fap-box highlight-dynamic">{d.rt && d.rw ? `${d.rt} / ${d.rw}` : d.rt || d.rw || '—'}</div>
               </div>
 
               <div className="exact-sub-row">
