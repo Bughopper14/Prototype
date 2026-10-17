@@ -473,9 +473,9 @@ function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:a
 function FinancialEditor({rows,onChange,disabled}:{rows:any[],onChange:(r:any[])=>void,disabled:boolean}){const change=(i:number,k:string,v:any)=>onChange(rows.map((r,j)=>j===i?{...r,[k]:v}:r));return <><div className="section-title"><span className="muted">Enter exact values; totals are checked when saved.</span>{!disabled&&rows.length<3&&<button className="button small" onClick={()=>onChange([...rows,{...blank(financialFields),fiscalYear:new Date().getFullYear()-3+rows.length,isAudited:false}])}><Plus size={15}/>Add fiscal year</button>}</div><div className="table-scroll"><table className="financial-table"><thead><tr><th>FINANCIAL METRIC</th>{rows.map((r,i)=><th key={i}><div className="year-input"><input aria-label="Fiscal year" type="number" {...inputLimits('fiscalYear')} disabled={disabled} value={r.fiscalYear} onChange={e=>change(i,'fiscalYear',e.target.value)}/>{!disabled&&<button className="icon-button" onClick={()=>onChange(rows.filter((_,j)=>j!==i))}><X size={14}/></button>}</div><label className="checkbox"><input type="checkbox" disabled={disabled} checked={r.isAudited} onChange={e=>change(i,'isAudited',e.target.checked)}/>Audited</label></th>)}</tr></thead><tbody>{financialFields.map(f=><tr key={f.key} className={f.key.startsWith('total')||f.key==='netIncome'?'total-row':''}><td>{f.label}</td>{rows.map((r,i)=><td key={i}><input aria-label={`${r.fiscalYear} ${f.label}`} type="number" step="0.01" disabled={disabled} value={r[f.key]} onChange={e=>change(i,f.key,e.target.value)}/></td>)}</tr>)}<tr className="balance-row"><td>Balance check</td>{rows.map((r,i)=>{const ok=Number(r.currentAssets)+Number(r.nonCurrentAssets)===Number(r.totalAssets)&&Number(r.currentLiabilities)+Number(r.nonCurrentLiabilities)===Number(r.totalLiabilities)&&Number(r.totalAssets)===Number(r.totalLiabilities)+Number(r.equity)&&Number(r.totalAssets)===Number(r.totalLiabAndEquity);return <td key={i}><span className={ok?'text-green':'text-red'}>{ok?'✓ Balanced':'! Unbalanced'}</span></td>;})}</tr>{[['Current ratio','currentAssets','currentLiabilities'],['Debt / equity','totalLiabilities','equity'],['Net profit margin','netIncome','revenue']].map(([name,n,d])=><tr key={name}><td>{name}</td>{rows.map((r,i)=><td key={i} className="ratio">{Number(r[d])?((Number(r[n])/Number(r[d]))*(name==='Net profit margin'?100:1)).toFixed(2)+(name==='Net profit margin'?'%':'×'):'N/A'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<div className="empty-small">Add three fiscal years to begin financial spreading.</div>}<p className="field-note">DSCR is unavailable because the specification does not capture depreciation. Zero-denominator ratios are shown as N/A.</p></>;}
 function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void}){
   const evidenceDefs = [
-    { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT' },
-    { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA' },
-    { code: 'ICLF', name: 'Iclf', title: 'ICLF (Credit Committee Review)', stage: 'Credit Committee', badgeClass: 'stage-badge-iclf', role: 'COMMITTEE' },
+    { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT', desc: 'Formulir aplikasi pembiayaan resmi bertandatangan debitur' },
+    { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA', desc: 'Kajian awal dan analisis kelayakan kredit oleh Credit Analyst' },
+    { code: 'ICLF', name: 'Iclf', title: 'ICLF (Credit Committee Review)', stage: 'Credit Committee', badgeClass: 'stage-badge-iclf', role: 'COMMITTEE', desc: 'Rekomendasi persetujuan dan risalah rapat komite pembiayaan' },
   ];
 
   const [selectedCode, setSelectedCode] = useState<string>('FAP');
@@ -504,7 +504,9 @@ function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>vo
     return { ...def, chk };
   });
 
+  const totalFilesCount = items.reduce((sum, item) => sum + (item.chk.files?.length || 0), 0);
   const activeItem = items.find(x => x.code === selectedCode) || items[0];
+  const activeFiles = activeItem.chk.files || [];
   const pdfViewerSrc = useMemo(() => {
     if (!activeFileUrl || activeFile?.mimeType !== 'application/pdf') return activeFileUrl;
     const base = activeFileUrl.split('#')[0];
@@ -587,275 +589,362 @@ function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>vo
   }
 
   return (
-    <div className={`evidence-workspace-layout ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-
-      {/* Left Column: 3 Clean Evidence Stage Cards */}
-      <div className="evidence-cards-pane">
-        <div className="panel-head" style={{ marginBottom: 0 }}>
-          <div>
-            <h2>Upload Evidence Dokumen</h2>
-            <p className="muted">Upload bukti berkas resmi untuk tahapan FAP, Pre-analysis, dan ICLF</p>
+    <div className="evidence-studio-container">
+      {/* Studio Header & Stage Pill Navigation */}
+      <div className="evidence-studio-header">
+        <div className="evidence-studio-title-area">
+          <div className="evidence-studio-badge">
+            <FolderCheck size={14} /> Studio Evidence
           </div>
+          <h2>Berkas Evidence & Live Document Studio</h2>
+          <p>
+            Manajemen dokumen digital permohonan pembiayaan debitur <strong>{a.customer?.companyName || 'Debitur'}</strong> ({a.fapNumber || 'FAP'}) · <strong>{totalFilesCount} Berkas Terunggah</strong>
+          </p>
         </div>
 
-        {error && <div className="error" role="alert">{error}</div>}
-
-        {items.map(item => {
-          const isSelected = item.code === selectedCode;
-          const files = item.chk.files || [];
-          const hasFile = files.length > 0;
-          return (
-            <div 
-              key={item.code} 
-              className={`evidence-card ${isSelected ? 'active' : ''}`}
-              onClick={() => setSelectedCode(item.code)}
-              style={{ cursor: 'pointer' }}
-            >
-              <div className="evidence-card-header">
-                <div>
-                  <span className={`evidence-stage-badge ${item.badgeClass}`}>{item.stage}</span>
-                  <h3 style={{ margin: '4px 0 0 0', fontSize: '15px', color: '#002060' }}>{item.title}</h3>
-                </div>
-                <Badge status={item.chk.status || (hasFile ? 'UPLOADED' : 'PENDING')} />
-              </div>
-
-              {/* Upload Dropzone */}
-              {canUpload && (
-                <label className="evidence-dropzone" onClick={e => e.stopPropagation()}>
-                  <Upload size={20} style={{ color: '#002060' }} />
-                  <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#0f172a' }}>
-                    {busy ? 'Mengupload berkas...' : `Upload Evidence ${item.name}`}
-                  </span>
-                  <span style={{ fontSize: '9.5px', color: '#64748b' }}>
-                    Format PDF, JPG, atau PNG (Maks 20 MB)
-                  </span>
-                  <input
-                    type="file"
-                    accept="application/pdf,image/png,image/jpeg"
-                    disabled={busy}
-                    onChange={e => {
-                      const f = e.target.files?.[0];
-                      if (f) handleFileUpload(item, f);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
-              )}
-
-              {/* File List */}
-              {files.map((f: any) => (
-                <div key={f.id} className="evidence-file-item" onClick={e => e.stopPropagation()}>
-                  <div className="evidence-file-info" onClick={() => previewFile(f)} style={{ cursor: 'pointer' }}>
-                    <FileText size={16} style={{ color: '#002060', flexShrink: 0 }} />
-                    <div>
-                      <div className="evidence-file-name">{f.fileName}</div>
-                      <div className="evidence-file-meta">
-                        {(f.fileSize / 1024).toFixed(0)} KB · Diunggah oleh {f.uploadedBy || 'User'}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button
-                      type="button"
-                      className="button small button-secondary"
-                      onClick={() => previewFile(f)}
-                      title="Preview dokumen"
-                      style={{ padding: '3px 7px' }}
-                    >
-                      <Eye size={13} />
-                    </button>
-                    {canUpload && (
-                      <button
-                        type="button"
-                        className="button small"
-                        onClick={() => handleDeleteFile(item, f.id)}
-                        title="Hapus file"
-                        style={{ padding: '3px 7px', color: '#dc2626' }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          );
-        })}
+        {/* Linear/Prolab Segmented Pill Navigation */}
+        <div className="evidence-pill-nav" role="tablist" aria-label="Navigasi Tahapan Dokumen">
+          {items.map(item => {
+            const isSelected = item.code === selectedCode;
+            const count = item.chk.files?.length || 0;
+            const isDone = item.chk.status === 'VERIFIED' || count > 0;
+            return (
+              <button
+                key={item.code}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                className={`evidence-pill-btn ${isSelected ? 'active' : ''}`}
+                onClick={() => setSelectedCode(item.code)}
+              >
+                <span className="evidence-pill-label">{item.stage}</span>
+                <span className="evidence-pill-role">{item.role}</span>
+                <span className={`evidence-pill-count ${count > 0 ? 'has-files' : ''}`}>
+                  {count}
+                </span>
+                {isDone && <CheckCircle size={13} className="evidence-pill-done-icon" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Right Column: Live Document Previewer */}
-      <section className={`panel document-viewer ${isMaximized ? 'maximized' : ''}`}>
-        <div className="panel-head" style={{ padding: '12px 18px', borderBottom: '1px solid #e2e8f0', background: '#ffffff' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {sidebarCollapsed && (
+      {error && <div className="error" role="alert" style={{ marginBottom: '14px' }}>{error}</div>}
+
+      {/* Main Studio Split Layout */}
+      <div className={`evidence-studio-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+        
+        {/* Left Column: Stage Inspector & File Deck */}
+        <div className="evidence-studio-sidebar">
+          {/* Active Stage Card */}
+          <div className="evidence-stage-card">
+            <div className="evidence-stage-card-header">
+              <div>
+                <span className={`evidence-stage-badge ${activeItem.badgeClass}`}>
+                  {activeItem.stage} · {activeItem.role}
+                </span>
+                <h3 className="evidence-stage-title">{activeItem.title}</h3>
+                <p className="evidence-stage-desc">{activeItem.desc}</p>
+              </div>
+              <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+            </div>
+
+            {/* Upload Dropzone */}
+            {canUpload && (
+              <label className="evidence-dropzone-studio" onClick={e => e.stopPropagation()}>
+                <div className="evidence-dropzone-icon-wrap">
+                  <Upload size={20} />
+                </div>
+                <div className="evidence-dropzone-text">
+                  <strong>{busy ? 'Mengunggah berkas...' : `Unggah Evidence ${activeItem.name}`}</strong>
+                  <span>Tarik berkas ke sini atau klik untuk memilih</span>
+                </div>
+                <span className="evidence-dropzone-hint">
+                  PDF, PNG, JPEG · Maks. 20 MB
+                </span>
+                <input
+                  type="file"
+                  accept="application/pdf,image/png,image/jpeg"
+                  disabled={busy}
+                  onChange={e => {
+                    const f = e.target.files?.[0];
+                    if (f) handleFileUpload(activeItem, f);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            )}
+
+            {/* Stage Files Deck */}
+            <div className="evidence-files-section">
+              <div className="evidence-files-header">
+                <h4>Daftar Berkas Terunggah ({activeFiles.length})</h4>
+                <span className="evidence-files-summary">
+                  {activeFiles.length > 0 ? 'Pilih untuk pratinjau' : 'Belum ada berkas'}
+                </span>
+              </div>
+
+              {activeFiles.length === 0 ? (
+                <div className="evidence-files-empty">
+                  <FileText size={28} className="evidence-empty-icon" />
+                  <p>Belum ada berkas pada tahapan {activeItem.stage}</p>
+                  <small>Silakan unggah dokumen pendukung melalui area unggah di atas.</small>
+                </div>
+              ) : (
+                <div className="evidence-files-list">
+                  {activeFiles.map((f: any) => {
+                    const isPreviewed = activeFile?.id === f.id;
+                    const isPdf = f.mimeType === 'application/pdf' || f.fileName?.toLowerCase().endsWith('.pdf');
+                    return (
+                      <div
+                        key={f.id}
+                        className={`evidence-deck-card ${isPreviewed ? 'active' : ''}`}
+                        onClick={() => previewFile(f)}
+                        title="Klik untuk membuka pratinjau dokumen"
+                      >
+                        <div className={`evidence-file-icon-box ${isPdf ? 'pdf' : 'img'}`}>
+                          <FileText size={16} />
+                          <span className="evidence-file-format-tag">{isPdf ? 'PDF' : 'IMG'}</span>
+                        </div>
+                        <div className="evidence-deck-card-info">
+                          <div className="evidence-deck-filename" title={f.fileName}>
+                            {f.fileName}
+                          </div>
+                          <div className="evidence-deck-meta">
+                            <span>{(f.fileSize / 1024).toFixed(0)} KB</span>
+                            <span>·</span>
+                            <span>{f.uploadedBy || 'User'}</span>
+                          </div>
+                        </div>
+                        <div className="evidence-deck-actions" onClick={e => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className={`evidence-action-btn ${isPreviewed ? 'active' : ''}`}
+                            onClick={() => previewFile(f)}
+                            title="Pratinjau dokumen"
+                          >
+                            <Eye size={13} />
+                          </button>
+                          {canUpload && (
+                            <button
+                              type="button"
+                              className="evidence-action-btn danger"
+                              onClick={() => handleDeleteFile(activeItem, f.id)}
+                              title="Hapus berkas ini"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Studio Document Previewer */}
+        <section className={`panel document-viewer-studio ${isMaximized ? 'maximized' : ''}`}>
+          {/* Studio Top Context Bar */}
+          <div className="document-viewer-studio-head">
+            <div className="document-viewer-head-info">
+              {sidebarCollapsed && (
+                <button
+                  type="button"
+                  className="button small studio-expand-btn"
+                  onClick={() => setSidebarCollapsed(false)}
+                  title="Tampilkan kembali sidebar berkas"
+                >
+                  <Columns size={13} /> Buka Sidebar
+                </button>
+              )}
+              <div>
+                <h3 className="document-viewer-title">
+                  {activeFile ? activeFile.fileName : `Preview Dokumen · ${activeItem.title}`}
+                </h3>
+                <span className="document-viewer-subtitle">
+                  Tahapan: <strong>{activeItem.stage}</strong> · Role: <strong>{activeItem.role}</strong>
+                </span>
+              </div>
+            </div>
+            <div className="document-viewer-head-status">
+              <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+            </div>
+          </div>
+
+          {/* Translucent Glass Toolbar */}
+          <div className="studio-glass-toolbar">
+            <div className="studio-toolbar-left">
               <button
                 type="button"
-                className="button small"
-                onClick={() => setSidebarCollapsed(false)}
-                title="Tampilkan kembali kartu tahapan upload"
-                style={{ background: '#f8fafc', color: '#002060', border: '1px solid #cbd5e1', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '5px' }}
+                className="studio-toolbar-toggle-btn"
+                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                title={sidebarCollapsed ? "Tampilkan daftar berkas (Split View)" : "Lebarkan Pratinjau (Full Canvas)"}
               >
-                <Columns size={13} /> Tampilkan Daftar
+                <Columns size={14} />
+                <span>{sidebarCollapsed ? "Split View" : "Full Canvas"}</span>
               </button>
-            )}
-            <div>
-              <h2 style={{ fontSize: '16px', margin: 0, color: '#002060' }}>Preview: {activeItem.title}</h2>
-              <p className="muted" style={{ margin: '2px 0 0 0', fontSize: '11.5px' }}>
-                Tahapan <b>{activeItem.stage}</b> · Penanggung Jawab / Role: <b>{activeItem.role}</b>
-              </p>
+              {activeFile && (
+                <span className="studio-file-chip">
+                  <span className="studio-file-tag">{activeFile.mimeType === 'application/pdf' ? 'PDF' : 'IMG'}</span>
+                  <span className="studio-file-name">{activeFile.fileName}</span>
+                  {activeFile.fileSize && (
+                    <span className="studio-file-size">({(activeFile.fileSize / 1024).toFixed(0)} KB)</span>
+                  )}
+                </span>
+              )}
+            </div>
+
+            <div className="studio-toolbar-center">
+              {activeFile?.mimeType === 'application/pdf' && (
+                <div className="studio-pdf-zoom-group">
+                  <button
+                    type="button"
+                    className={`evidence-zoom-pill ${pdfZoom === 'FitH' ? 'active' : ''}`}
+                    onClick={() => setPdfZoom('FitH')}
+                    title="Pas Lebar (Fit Width)"
+                  >
+                    Fit Width
+                  </button>
+                  <button
+                    type="button"
+                    className={`evidence-zoom-pill ${pdfZoom === '100' ? 'active' : ''}`}
+                    onClick={() => setPdfZoom('100')}
+                    title="Skala 100%"
+                  >
+                    100%
+                  </button>
+                  <button
+                    type="button"
+                    className={`evidence-zoom-pill ${pdfZoom === '125' ? 'active' : ''}`}
+                    onClick={() => setPdfZoom('125')}
+                    title="Skala 125%"
+                  >
+                    125%
+                  </button>
+                  <button
+                    type="button"
+                    className={`evidence-zoom-pill ${pdfZoom === 'Fit' ? 'active' : ''}`}
+                    onClick={() => setPdfZoom('Fit')}
+                    title="Pas Halaman (Fit Page)"
+                  >
+                    Fit Page
+                  </button>
+                </div>
+              )}
+
+              {activeFile?.mimeType?.startsWith('image/') && (
+                <div className="studio-image-controls">
+                  <button
+                    type="button"
+                    className="studio-tool-btn"
+                    onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
+                    title="Perkecil"
+                  >
+                    <ZoomOut size={14} />
+                  </button>
+                  <span className="studio-zoom-val">{Math.round(zoom * 100)}%</span>
+                  <button
+                    type="button"
+                    className="studio-tool-btn"
+                    onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+                    title="Perbesar"
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    className="studio-tool-btn"
+                    onClick={() => setRotation(rotation + 90)}
+                    title="Putar 90 Derajat"
+                  >
+                    <RotateCw size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="studio-toolbar-right">
+              {activeFileUrl && (
+                <>
+                  <a
+                    className="studio-action-icon-link"
+                    href={activeFileUrl}
+                    download={activeFile?.fileName || 'document.pdf'}
+                    title="Unduh Berkas Asli"
+                  >
+                    <Download size={14} />
+                    <span>Unduh</span>
+                  </a>
+                  <a
+                    className="studio-action-icon-link"
+                    href={activeFileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    title="Buka Dokumen di Tab Baru"
+                  >
+                    <ExternalLink size={14} />
+                  </a>
+                </>
+              )}
+
+              <button
+                type="button"
+                className={`studio-action-icon-btn ${isMaximized ? 'active' : ''}`}
+                onClick={() => setIsMaximized(!isMaximized)}
+                title={isMaximized ? "Perkecil (Normal View)" : "Layar Penuh (Fullscreen)"}
+              >
+                {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+              </button>
             </div>
           </div>
-          <Badge status={activeItem.chk.status || (activeItem.chk.files?.length ? 'UPLOADED' : 'PENDING')} />
-        </div>
 
-        {/* Enhanced High-End Toolbar */}
-        <div className="viewer-toolbar" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '8px 16px',
-          background: '#0f172a',
-          color: '#ffffff',
-          borderBottom: '1px solid #1e293b'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              title={sidebarCollapsed ? "Tampilkan daftar berkas upload" : "Sembunyikan daftar berkas (Lebar Dokumen Penuh)"}
-              style={{ color: '#ffffff', background: sidebarCollapsed ? '#2563eb' : 'rgba(255,255,255,0.12)', borderRadius: '4px', padding: '5px' }}
-            >
-              <Columns size={15} />
-            </button>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {activeFile?.fileName || `${activeItem.name} Evidence View`}
-            </span>
-            {activeFile?.fileSize && (
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                ({(activeFile.fileSize / 1024).toFixed(0)} KB)
-              </span>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {activeFile?.mimeType === 'application/pdf' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(255,255,255,0.1)', padding: '2px 4px', borderRadius: '5px' }}>
-                <button
-                  type="button"
-                  className={`evidence-zoom-pill ${pdfZoom === 'FitH' ? 'active' : ''}`}
-                  onClick={() => setPdfZoom('FitH')}
-                  title="Pas Lebar (Fit Width) - Teks Besar & Nyaman Dibaca"
-                >
-                  Fit Width
-                </button>
-                <button
-                  type="button"
-                  className={`evidence-zoom-pill ${pdfZoom === '100' ? 'active' : ''}`}
-                  onClick={() => setPdfZoom('100')}
-                  title="Skala 100%"
-                >
-                  100%
-                </button>
-                <button
-                  type="button"
-                  className={`evidence-zoom-pill ${pdfZoom === '125' ? 'active' : ''}`}
-                  onClick={() => setPdfZoom('125')}
-                  title="Skala 125% (Lebih Besar & Jelas)"
-                >
-                  125%
-                </button>
-                <button
-                  type="button"
-                  className={`evidence-zoom-pill ${pdfZoom === 'Fit' ? 'active' : ''}`}
-                  onClick={() => setPdfZoom('Fit')}
-                  title="Pas Seluruh Halaman (Fit Page)"
-                >
-                  Fit Page
-                </button>
-              </div>
-            )}
-
-            {activeFile?.mimeType?.startsWith('image/') && (
-              <>
-                <button className="icon-button" aria-label="Zoom out" onClick={() => setZoom(Math.max(0.25, zoom - 0.25))} style={{ color: '#fff' }}>
-                  <ZoomOut size={16} />
-                </button>
-                <small style={{ color: '#fff' }}>{Math.round(zoom * 100)}%</small>
-                <button className="icon-button" aria-label="Zoom in" onClick={() => setZoom(Math.min(3, zoom + 0.25))} style={{ color: '#fff' }}>
-                  <ZoomIn size={16} />
-                </button>
-                <button className="icon-button" aria-label="Rotate" onClick={() => setRotation(rotation + 90)} style={{ color: '#fff' }}>
-                  <RotateCw size={16} />
-                </button>
-              </>
-            )}
-
-            {activeFileUrl && (
-              <>
-                <a 
-                  className="icon-button" 
-                  href={activeFileUrl} 
-                  download={activeFile?.fileName || 'document.pdf'}
-                  title="Unduh Berkas Asli"
-                  style={{ color: '#cbd5e1', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '5px' }}
-                >
-                  <Download size={15} />
-                </a>
-                <a 
-                  className="icon-button" 
-                  href={activeFileUrl} 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  title="Buka Dokumen di Tab Baru"
-                  style={{ color: '#cbd5e1', background: 'rgba(255,255,255,0.1)', borderRadius: '4px', padding: '5px' }}
-                >
-                  <ExternalLink size={15} />
-                </a>
-              </>
-            )}
-
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => setIsMaximized(!isMaximized)}
-              title={isMaximized ? "Perkecil (Normal View)" : "Maksimalkan Layar Penuh (Fullscreen)"}
-              style={{ color: '#ffffff', background: isMaximized ? '#2563eb' : 'rgba(255,255,255,0.15)', borderRadius: '4px', padding: '5px' }}
-            >
-              {isMaximized ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Viewport Canvas */}
-        <div className="preview" style={{ flex: 1, minHeight: '520px', background: '#323639' }}>
-          {activeFileUrl ? (
-            activeFile?.mimeType === 'application/pdf' ? (
-              <iframe 
-                key={`${activeFile.id}-${pdfZoom}`}
-                title={activeFile.fileName} 
-                src={pdfViewerSrc} 
-                style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} 
-              />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '20px' }}>
-                <img
-                  alt={activeFile?.fileName}
-                  src={activeFileUrl}
-                  style={{ transform: `scale(${zoom}) rotate(${rotation}deg)`, maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', transition: 'transform 0.15s ease' }}
+          {/* Viewport Canvas */}
+          <div className="studio-viewport-canvas">
+            {activeFileUrl ? (
+              activeFile?.mimeType === 'application/pdf' ? (
+                <iframe
+                  key={`${activeFile.id}-${pdfZoom}`}
+                  title={activeFile.fileName}
+                  src={pdfViewerSrc}
+                  className="studio-pdf-iframe"
                 />
+              ) : (
+                <div className="studio-image-wrapper">
+                  <img
+                    alt={activeFile?.fileName}
+                    src={activeFileUrl}
+                    style={{
+                      transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                      maxWidth: '100%',
+                      maxHeight: '100%',
+                      objectFit: 'contain',
+                      transition: 'transform 0.15s ease'
+                    }}
+                  />
+                </div>
+              )
+            ) : (
+              <div className="studio-empty-canvas">
+                <div className="studio-empty-icon-wrap">
+                  <FileText size={44} />
+                </div>
+                <h3>Pilih Dokumen untuk Pratinjau Langsung</h3>
+                <p>
+                  Pilih salah satu berkas dari daftar di sisi kiri untuk melihat pratinjau lengkap di kanvas studio ini.
+                </p>
+                <div className="studio-empty-features">
+                  <span>✓ Pratinjau PDF & Gambar resolusi tinggi</span>
+                  <span>✓ Kontrol skala Zoom Fit Width & Fit Page</span>
+                  <span>✓ Mode Fullscreen untuk evaluasi komite</span>
+                </div>
               </div>
-            )
-          ) : (
-            <div className="preview-empty">
-              <div><FileText size={42} style={{ color: '#002060' }} /></div>
-              <h3>Pilih atau Upload Berkas Evidence</h3>
-              <p>Pilih file yang sudah diunggah pada kartu tahapan di sisi kiri, atau upload file baru untuk melihat pratinjau di sini.</p>
-              <small>Mendukung format PDF, PNG, JPEG hingga 20 MB</small>
-            </div>
-          )}
-        </div>
-      </section>
+            )}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
