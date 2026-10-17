@@ -1876,8 +1876,256 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
 
   const saveStakeholder=()=>{if(!stakeholderModal||editorLocked)return;try{validateInput(stakeholderModal.value);for(const [key,name] of [['email','Email'],['mobilePhone','Mobile phone'],['primaryCapital','Primary capital']])if(String(stakeholderModal.value[key]??'').trim()==='')throw Error(name+' wajib diisi.');if(![stakeholderModal.value.firstName,stakeholderModal.value.lastName,stakeholderModal.value.name].some(v=>String(v||'').trim()))throw Error('Nama stakeholder wajib diisi.');setFormError('');}catch(e:any){setFormError(e.message);return;}const x=deeds.find(d=>d.id===stakeholderModal.deedId);if(!x)return;const rows=rowsFor(x),next=stakeholderModal.index<0?[...rows,stakeholderModal.value]:rows.map((r,i)=>i===stakeholderModal.index?stakeholderModal.value:r);try{validateInput({stakeholders:next});}catch(e:any){setFormError(e.message);return;}updateRows(x.id,next);setStakeholderModal(null);};
  const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const complete=editing&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
- return <><div className="section-title legal-table-title"><div><div className="legal-list-heading"><h3>Daftar akta</h3><span className="legal-count">{deeds.length}</span></div><p className="muted">{disabled?"Mode lihat: tambah, edit, dan delete tersedia untuk akun MKT pada aplikasi Draft atau Returned.":"Stakeholder dan shareholder dikelola melalui satu tombol tambah pada setiap akta."}</p></div>{!disabled&&['DRAFT','RETURNED'].includes(application.status)&&<div className="legal-table-actions"><button className="button small" onClick={openAdd}><Plus size={15}/>Tambah akta</button></div>}</div>
- <div className="table-scroll legal-table-wrap"><table className="data-table legal-deed-table"><thead><tr><th>AKTA</th><th>TANGGAL</th><th>STATUS</th><th>BERLAKU SAMPAI</th><th>SK MENTERI</th><th>KATEGORI REMARKS</th><th>STAKEHOLDERS</th><th>AKSI</th></tr></thead><tbody>{deeds.map(x=>{const rowLocked=locked(x),total=rowsFor(x).reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),isExceeded=total>100.01,isComplete=Math.abs(total-100)<.01,ownershipClass=isExceeded?'exceeded':isComplete?'complete':total>0?'partial':'incomplete',ownershipLabel=isExceeded?`⚠ ${total.toFixed(2)}% · Melebihi 100%`:isComplete?'✓ 100%':total>0?`✓ ${total.toFixed(2)}%`:'0.00% · Belum ada data';return <tr key={x.id} className={selectedId===x.id?'selected':''} aria-selected={selectedId===x.id}><td data-label="Akta"><div className="legal-deed-primary"><span className="legal-type-badge">{deedNames[x.type]}</span>{selectedId===x.id&&<span className="legal-current">Dipilih</span>}</div><b className="legal-deed-number">{x.deedNumber||'Nomor belum diisi'}</b><span className={'deed-review-status compact '+reviewStatus(x).toLowerCase()}>{deedReviewLabels[reviewStatus(x)]}</span>{x.review?.rejectionReason&&<small className="text-red">{x.review.rejectionReason}</small>}<small>{x.source==='Sistem'?'Data awal sistem':'Input Legal'}</small></td><td data-label="Tanggal"><span className="legal-cell-main">{date(x.deedDate)}</span></td><td data-label="Status"><span className={'deed-validity '+(deedValidity(x.deedDate).active===null?'unknown':deedValidity(x.deedDate).active?'active':'inactive')}>{deedValidity(x.deedDate).status}</span></td><td data-label="Berlaku sampai"><span className="legal-cell-main">{date(deedValidity(x.deedDate).expiry)}</span></td><td data-label="SK Menteri"><span className="legal-cell-main">{x.ministerialDecreeNumber||'—'}</span><small>{date(x.ministerialDecreeDate)}</small></td><td data-label="Kategori Remarks">{(()=>{const rawIds=getDeedCategoryIds(x);if(!rawIds.length)return <span className="legal-category-label">—</span>;return <div className="legal-categories-wrap">{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <button key={id} type="button" className="legal-category-badge clickable" onClick={(e)=>{e.stopPropagation();setViewRemarkDeed({deed:x,activeCatId:id});}} title={`Klik untuk melihat rincian remarks ${name}`}>{name}</button>;})}</div>;})()}</td><td data-label="Stakeholders"><button className="legal-count-link" onClick={(e)=>{e.stopPropagation();onChange({...value,selectedDeedId:x.id});setStakeholderList(x.id);}}>{rowsFor(x).length} stakeholder · Kelola</button><button className={'legal-ownership-summary '+ownershipClass} onClick={(e)=>{e.stopPropagation();setShareholderCountDeed(x.id);}} title="Lihat rincian kepemilikan saham">{ownershipLabel}</button></td><td className="legal-row-action"><div className="legal-row-buttons"><button className="button primary small deed-review-action" onClick={(e)=>{e.stopPropagation();onReview(x.id);}}>{user.role==='MKT'&&['DRAFT','REJECTED'].includes(reviewStatus(x))?'Ajukan akta':user.role==='BS'&&reviewStatus(x)==='PENDING_CHECK'?'Periksa akta':user.role==='HEAD_BS'&&reviewStatus(x)==='PENDING_APPROVAL'?'Approval akta':'Lihat approval'}</button><button className="button small legal-kebab" aria-label={`Aksi akta ${x.deedNumber||'tanpa nomor'}`} aria-haspopup="menu" aria-expanded={actionMenu?.id===x.id} onClick={e=>{e.stopPropagation();const rect=e.currentTarget.getBoundingClientRect();setActionMenu({id:x.id,left:Math.max(8,Math.min(rect.right-180,window.innerWidth-188)),top:Math.min(rect.bottom+5,window.innerHeight-110)});}}><MoreHorizontal size={17}/></button></div></td></tr>;})}</tbody></table>{!deeds.length&&<div className="empty-small">Belum ada akta. Klik Tambah akta untuk membuatnya.</div>}</div>
+
+  // Klasifikasi Akta Aktif (Strict Legal) vs Akta Historical (Riwayat)
+  const establishmentDeeds = deeds.filter((d: any) => d.type === 'establishment');
+  const amendmentDeeds = deeds.filter((d: any) => d.type === 'amendment');
+
+  // 1. Akta pendirian utama: yang cocok dengan nomor di customer profile, atau yang tertua
+  const matchedEst = establishmentDeeds.find((d: any) => 
+    (application.customer?.establishmentActNo && d.deedNumber === application.customer.establishmentActNo) ||
+    (application.establishmentActNo && d.deedNumber === application.establishmentActNo)
+  );
+  const primaryEstablishmentDeed = matchedEst || establishmentDeeds.slice().sort((a: any, b: any) => {
+    const ad = Date.parse(String(a.deedDate || '')) || 0;
+    const bd = Date.parse(String(b.deedDate || '')) || 0;
+    return ad - bd;
+  })[0] || null;
+
+  // 2. Akta perubahan terakhir (Latest Amendment): urutkan tanggal terbaru
+  const sortedAmendments = amendmentDeeds.slice().sort((a: any, b: any) => {
+    const ad = Date.parse(String(a.deedDate || a.createdAt || '')) || 0;
+    const bd = Date.parse(String(b.deedDate || b.createdAt || '')) || 0;
+    return bd - ad;
+  });
+  const latestAmendmentDeed = sortedAmendments[0] || null;
+
+  // 3. Akta Aktif (Tabel Atas): 1 Akta Pendirian Utama + 1 Akta Perubahan Terakhir (yang aktif)
+  const activeDeeds: any[] = [];
+  if (primaryEstablishmentDeed) {
+    activeDeeds.push(primaryEstablishmentDeed);
+  }
+  if (latestAmendmentDeed && latestAmendmentDeed.id !== primaryEstablishmentDeed?.id) {
+    const validity = deedValidity(latestAmendmentDeed.deedDate);
+    if (validity.active !== false) {
+      activeDeeds.push(latestAmendmentDeed);
+    }
+  }
+
+  // 4. Akta Historical (Tabel Bawah): Seluruh akta selain yang aktif
+  const activeIdSet = new Set(activeDeeds.map((d: any) => d.id));
+  const historicalDeeds = deeds.filter((d: any) => !activeIdSet.has(d.id)).sort((a: any, b: any) => {
+    const ad = Date.parse(String(a.deedDate || a.createdAt || '')) || 0;
+    const bd = Date.parse(String(b.deedDate || b.createdAt || '')) || 0;
+    return bd - ad;
+  });
+
+  const renderDeedTable = (targetList: any[], isHistory: boolean, emptyMsg: string) => {
+    if (!targetList.length) {
+      return (
+        <div className={`table-scroll legal-table-wrap ${isHistory ? 'legal-table-history' : ''}`}>
+          <div className="empty-small" style={{ padding: '24px 20px', color: '#64748b', textAlign: 'center' }}>
+            {emptyMsg}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className={`table-scroll legal-table-wrap ${isHistory ? 'legal-table-history' : ''}`}>
+        <table className="data-table legal-deed-table">
+          <thead>
+            <tr>
+              <th>AKTA</th>
+              <th>TANGGAL</th>
+              <th>STATUS</th>
+              <th>BERLAKU SAMPAI</th>
+              <th>SK MENTERI</th>
+              <th>KATEGORI REMARKS</th>
+              <th>STAKEHOLDERS</th>
+              <th>AKSI</th>
+            </tr>
+          </thead>
+          <tbody>
+            {targetList.map((x: any) => {
+              const rowLocked = locked(x);
+              const total = rowsFor(x).reduce((sum, r) => sum + Number(r.sharePercentage || 0), 0);
+              const isExceeded = total > 100.01;
+              const isComplete = Math.abs(total - 100) < 0.01;
+              const ownershipClass = isExceeded ? 'exceeded' : isComplete ? 'complete' : total > 0 ? 'partial' : 'incomplete';
+              const ownershipLabel = isExceeded ? `⚠ ${total.toFixed(2)}% · Melebihi 100%` : isComplete ? '✓ 100%' : total > 0 ? `✓ ${total.toFixed(2)}%` : '0.00% · Belum ada data';
+              const val = deedValidity(x.deedDate);
+              const isPrimaryEst = primaryEstablishmentDeed?.id === x.id;
+              const isLatestAmend = latestAmendmentDeed?.id === x.id;
+              return (
+                <tr key={x.id} className={selectedId === x.id ? 'selected' : ''} aria-selected={selectedId === x.id}>
+                  <td data-label="Akta">
+                    <div className="legal-deed-primary">
+                      <span className="legal-type-badge">{deedNames[x.type]}</span>
+                      {selectedId === x.id && <span className="legal-current">Dipilih</span>}
+                      {isHistory ? (
+                        <span className="legal-history-badge">Historical</span>
+                      ) : isPrimaryEst ? (
+                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Utama</span>
+                      ) : isLatestAmend ? (
+                        <span className="legal-role-badge" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}>Terbaru</span>
+                      ) : null}
+                    </div>
+                    <b className="legal-deed-number">{x.deedNumber || 'Nomor belum diisi'}</b>
+                    <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
+                      {deedReviewLabels[reviewStatus(x)]}
+                    </span>
+                    {x.review?.rejectionReason && <small className="text-red">{x.review.rejectionReason}</small>}
+                    <small>{x.source === 'Sistem' ? 'Data awal sistem' : 'Input Legal'}</small>
+                  </td>
+                  <td data-label="Tanggal">
+                    <span className="legal-cell-main">{date(x.deedDate)}</span>
+                  </td>
+                  <td data-label="Status">
+                    <span className={'deed-validity ' + (val.active === null ? 'unknown' : val.active ? 'active' : 'inactive')}>
+                      {val.status}
+                    </span>
+                  </td>
+                  <td data-label="Berlaku sampai">
+                    <span className="legal-cell-main">{date(val.expiry)}</span>
+                  </td>
+                  <td data-label="SK Menteri">
+                    <span className="legal-cell-main">{x.ministerialDecreeNumber || '—'}</span>
+                    <small>{date(x.ministerialDecreeDate)}</small>
+                  </td>
+                  <td data-label="Kategori Remarks">
+                    {(() => {
+                      const rawIds = getDeedCategoryIds(x);
+                      if (!rawIds.length) return <span className="legal-category-label">—</span>;
+                      return (
+                        <div className="legal-categories-wrap">
+                          {rawIds.map((id: string) => {
+                            const cat = remarkCategories.find(c => c.id === id || c.name === id);
+                            const name = cat?.name || id;
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                className="legal-category-badge clickable"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewRemarkDeed({ deed: x, activeCatId: id });
+                                }}
+                                title={`Klik untuk melihat rincian remarks ${name}`}
+                              >
+                                {name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </td>
+                  <td data-label="Stakeholders">
+                    <button
+                      className="legal-count-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onChange({ ...value, selectedDeedId: x.id });
+                        setStakeholderList(x.id);
+                      }}
+                    >
+                      {rowsFor(x).length} stakeholder · Kelola
+                    </button>
+                    <button
+                      className={'legal-ownership-summary ' + ownershipClass}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShareholderCountDeed(x.id);
+                      }}
+                      title="Lihat rincian kepemilikan saham"
+                    >
+                      {ownershipLabel}
+                    </button>
+                  </td>
+                  <td className="legal-row-action">
+                    <div className="legal-row-buttons">
+                      <button
+                        className="button primary small deed-review-action"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onReview(x.id);
+                        }}
+                      >
+                        {user.role === 'MKT' && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
+                          ? 'Ajukan akta'
+                          : user.role === 'BS' && reviewStatus(x) === 'PENDING_CHECK'
+                          ? 'Periksa akta'
+                          : user.role === 'HEAD_BS' && reviewStatus(x) === 'PENDING_APPROVAL'
+                          ? 'Approval akta'
+                          : 'Lihat approval'}
+                      </button>
+                      <button
+                        className="button small legal-kebab"
+                        aria-label={`Aksi akta ${x.deedNumber || 'tanpa nomor'}`}
+                        aria-haspopup="menu"
+                        aria-expanded={actionMenu?.id === x.id}
+                        onClick={e => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setActionMenu({
+                            id: x.id,
+                            left: Math.max(8, Math.min(rect.right - 180, window.innerWidth - 188)),
+                            top: Math.min(rect.bottom + 5, window.innerHeight - 110)
+                          });
+                        }}
+                      >
+                        <MoreHorizontal size={17} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+ return <>
+  {/* 1. TABEL ATAS: AKTA AKTIF & RUJUKAN TERKINI */}
+  <div className="section-title legal-table-title">
+    <div>
+      <div className="legal-list-heading">
+        <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
+          <CheckCircle size={17} style={{color:'#16a34a'}}/> Akta aktif &amp; rujukan terkini
+        </h3>
+        <span className="legal-count active-count">{activeDeeds.length}</span>
+      </div>
+      <p className="muted">
+        Menampilkan 1 akta pendirian utama dan 1 akta perubahan terakhir yang berlaku efektif sebagai rujukan legalitas yuridis saat ini.
+      </p>
+    </div>
+    {!disabled&&['DRAFT','RETURNED'].includes(application.status)&&(
+      <div className="legal-table-actions">
+        <button className="button small" onClick={openAdd}><Plus size={15}/>Tambah akta</button>
+      </div>
+    )}
+  </div>
+
+  {renderDeedTable(activeDeeds, false, 'Belum ada akta aktif yang tercatat.')}
+
+  {/* 2. TABEL BAWAH: RIWAYAT AKTA LAMA (HISTORICAL DATA) */}
+  <div className="section-title legal-table-title" style={{marginTop:'34px'}}>
+    <div>
+      <div className="legal-list-heading">
+        <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
+          <Clock size={17} style={{color:'#64748b'}}/> Riwayat akta lama (historical data)
+        </h3>
+        <span className="legal-count history-count">{historicalDeeds.length}</span>
+      </div>
+      <p className="muted">
+        Arsip kronologis akta perubahan terdahulu dan akta yang sudah tidak aktif / kedaluwarsa.
+      </p>
+    </div>
+  </div>
+
+  {renderDeedTable(historicalDeeds, true, 'Tidak ada riwayat akta lama. Seluruh akta tercatat pada tabel rujukan aktif.')}
 
   {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Aksi akta" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing(structuredClone(target));setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'Lihat detail':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Akta yang sudah disetujui tidak boleh dihapus':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
  {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Pendirian akta',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Detail akta':'Edit akta':'Tambah akta'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}<label className="legal-deed-select">Jenis akta<select aria-label="Jenis akta" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment">Akta pendirian</option><option value="amendment">Akta perubahan</option></select></label><Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Tanggal akta perubahan (${date(dDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}else if(formError&&formError.includes('tidak boleh sebelum tanggal akta pendirian')){setFormError('');}}}/><><h3 className="form-heading">Pihak terkait · {deedNames[editing.type]}</h3><Fields className="legal-amendment-party-fields" fields={legalPartyFields} value={parties} disabled={editorLocked} onChange={partyValues=>setEditing({...editing,parties:partyValues})}/><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-unified-remarks-box">

@@ -525,6 +525,49 @@ button:focus-visible, a:focus-visible {
   box-shadow: inset 3px 0 #001f42 !important;
 }
 
+/* Dual Legal Deed Tables (Active vs Historical) */
+.legal-table-history {
+  border-color: #cbd5e1 !important;
+  background: #fbfcfd;
+}
+.legal-table-history thead {
+  background: #f1f5f9 !important;
+}
+.legal-table-history tr.selected {
+  background: #f1f5f9 !important;
+}
+.legal-history-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  margin-left: 5px;
+}
+.legal-role-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 5px;
+}
+.legal-count.active-count {
+  background: #ecfdf5 !important;
+  color: #15803d !important;
+  border: 1px solid #bbf7d0 !important;
+}
+.legal-count.history-count {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
 .legal-deed-table tr.selected .legal-row-action span {
   color: #001f42 !important;
 }
