@@ -356,7 +356,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             <div className="exact-header-top">
               <div className="exact-header-logo">
                 <img
-                  src={`data:image/png;base64,${LIUGONG_LOGO_B64}`}
+                  src={LIUGONG_LOGO_B64.startsWith('data:') ? LIUGONG_LOGO_B64 : `data:image/png;base64,${LIUGONG_LOGO_B64}`}
                   alt="LiuGong Finance Indonesia"
                 />
               </div>
