@@ -1552,8 +1552,11 @@ function StakeholderModalDialog({
 
 const normalizeRemarksToHtml = (remarks?: string): string => {
   if (!remarks || !remarks.trim()) return '';
-  if (/<(ol|ul)[\s>]/i.test(remarks)) return remarks;
-  const cleaned = remarks
+  let html = remarks;
+  if (/<(ol|ul)[\s>]/i.test(html)) {
+    return html.replace(/<\/ol>\s*<ol[^>]*>/gi, '').replace(/<\/ul>\s*<ul[^>]*>/gi, '');
+  }
+  const cleaned = html
     .replace(/<\/p>\s*<p>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/?(p|div|span)[^>]*>/gi, '')
@@ -1569,6 +1572,82 @@ const normalizeRemarksToHtml = (remarks?: string): string => {
   }
   return lines.map(l => `<p>${l}</p>`).join('');
 };
+
+function DeedRemarksTinyMCE({
+  initialContent,
+  disabled,
+  onChange,
+}: {
+  initialContent: string;
+  disabled: boolean;
+  onChange: (html: string) => void;
+}) {
+  const [initialValue] = useState(() => initialContent);
+
+  return (
+    <div className="legal-tinymce-wrapper">
+      <Editor
+        licenseKey="gpl"
+        tinymceScriptSrc="/crm/tinymce/tinymce.min.js"
+        initialValue={initialValue}
+        disabled={disabled}
+        onEditorChange={onChange}
+        init={{
+          height: 260,
+          menubar: false,
+          plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'charmap',
+            'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'table', 'help', 'wordcount'
+          ],
+          toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+          content_style: `
+            body { 
+              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              font-size: 13.5px; 
+              line-height: 1.6; 
+              color: #0f172a; 
+              padding: 10px 14px; 
+            }
+            ol {
+              margin: 0 0 10px 0;
+              padding-left: 26px;
+              list-style-type: decimal !important;
+            }
+            ol li {
+              margin-bottom: 5px;
+              line-height: 1.6;
+            }
+            ul {
+              margin: 0 0 10px 0;
+              padding-left: 26px;
+              list-style-type: disc !important;
+            }
+            ul li {
+              margin-bottom: 5px;
+              line-height: 1.6;
+            }
+            p {
+              margin: 0 0 8px 0;
+              line-height: 1.6;
+            }
+          `,
+          branding: false,
+          promotion: false,
+          statusbar: true,
+          placeholder: 'Tuliskan rincian catatan perubahan akta di sini...',
+          setup: (ed: any) => {
+            ed.on('init', () => {
+              if (!disabled) {
+                ed.mode.set('design');
+              }
+            });
+          }
+        }}
+      />
+    </div>
+  );
+}
 
 function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChange,disabled,user,onReview}:{value:any,application:any,stakeholders:any[],onChange:(v:any)=>void,onStakeholdersChange:(legal:any,rows:any[])=>void,disabled:boolean,user:any,onReview:(id:string)=>void}){
  const [formError,setFormError]=useState('');
@@ -1587,7 +1666,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const updateRows=(deedId:string,rows:any[])=>{const hydrated=deeds.map(x=>x.id===selectedId&&!Array.isArray(x.stakeholders)?{...x,stakeholders}:x);const updated=hydrated.map(x=>x.id===deedId?{...x,stakeholders:rows}:x);onStakeholdersChange({...value,deeds:updated,selectedDeedId:deedId},rows);};
  const safeUUID=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():'deed-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
  const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
- const saveDeed=()=>{if(!editing||editorLocked)return;try{validateInput({...editing,stakeholders:undefined});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;if(editing.type==='amendment'&&editing.deedDate&&estDate){if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}}if(editing.type==='establishment'&&editing.deedDate){const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));if(earlierAmendment){throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);}}setFormError('');}catch(e:any){setFormError(e.message);return;}const catsToSave=getDeedCategoryIds(editing);const saved={...editing,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};onChange({...value,deeds:deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved],selectedDeedId:editing.id});setEditing(null);};
+ const saveDeed=()=>{if(!editing||editorLocked)return;try{validateInput({...editing,stakeholders:undefined});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;if(editing.type==='amendment'&&editing.deedDate&&estDate){if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}}if(editing.type==='establishment'&&editing.deedDate){const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));if(earlierAmendment){throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);}}setFormError('');}catch(e:any){setFormError(e.message);return;}const catsToSave=getDeedCategoryIds(editing);const cleanRemarks=(editing.remarks||'').replace(/<\/ol>\s*<ol[^>]*>/gi,'').replace(/<\/ul>\s*<ul[^>]*>/gi,'');const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};onChange({...value,deeds:deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved],selectedDeedId:editing.id});setEditing(null);};
  const removeDeed=()=>{if(!deleting||locked(deleting)||deleting.approvedSnapshot)return;const remaining=deeds.filter(x=>x.id!==deleting.id),nextId=remaining[0]?.id,legal={...value,deeds:remaining,hiddenDeedIds:[...new Set([...(value.hiddenDeedIds||[]),deleting.id])],selectedDeedId:nextId};if(deleting.id===selectedId)onStakeholdersChange(legal,nextId?rowsFor(remaining[0]):[]);else onChange(legal);setDeleting(null);};
  const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -1720,91 +1799,14 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       TinyMCE Editor
     </span>
   </div>
-  <div className="legal-tinymce-wrapper">
-    <Editor
-      licenseKey="gpl"
-      tinymceScriptSrc="/crm/tinymce/tinymce.min.js"
-      initialValue={normalizeRemarksToHtml(editing.remarks)}
-      disabled={editorLocked}
-      onEditorChange={(newContent) => {
-        setEditing((prev: any) => prev ? { ...prev, remarks: newContent } : prev);
-      }}
-      init={{
-        height: 260,
-        menubar: false,
-        plugins: [
-          'advlist', 'autolink', 'lists', 'link', 'charmap',
-          'searchreplace', 'visualblocks', 'code', 'fullscreen',
-          'insertdatetime', 'table', 'help', 'wordcount'
-        ],
-        toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
-        text_patterns: [
-          { start: '1. ', cmd: 'InsertOrderedList' },
-          { start: '1) ', cmd: 'InsertOrderedList' },
-          { start: '* ', cmd: 'InsertUnorderedList' },
-          { start: '- ', cmd: 'InsertUnorderedList' }
-        ],
-        content_style: `
-          body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-            font-size: 13.5px; 
-            line-height: 1.6; 
-            color: #0f172a; 
-            padding: 10px 14px; 
-          }
-          ol {
-            margin: 0 0 10px 0;
-            padding-left: 26px;
-            list-style-type: decimal !important;
-          }
-          ol li {
-            margin-bottom: 5px;
-            line-height: 1.6;
-          }
-          ul {
-            margin: 0 0 10px 0;
-            padding-left: 26px;
-            list-style-type: disc !important;
-          }
-          ul li {
-            margin-bottom: 5px;
-            line-height: 1.6;
-          }
-          p {
-            margin: 0 0 8px 0;
-            line-height: 1.6;
-          }
-        `,
-        branding: false,
-        promotion: false,
-        statusbar: true,
-        placeholder: 'Tuliskan rincian catatan perubahan akta di sini...',
-        setup: (ed: any) => {
-          ed.on('init', () => {
-            if (!editorLocked) {
-              ed.mode.set('design');
-            }
-          });
-          ed.on('NodeChange keyup', () => {
-            try {
-              const body = ed.getBody();
-              if (!body) return;
-              const adjacentOls = body.querySelectorAll('ol + ol');
-              adjacentOls.forEach((secondOl: any) => {
-                const prevOl = secondOl.previousElementSibling;
-                if (prevOl && prevOl.tagName === 'OL') {
-                  while (secondOl.firstChild) {
-                    prevOl.appendChild(secondOl.firstChild);
-                  }
-                  secondOl.remove();
-                }
-              });
-            } catch {}
-          });
-        }
-      }}
-    />
-  </div>
+  <DeedRemarksTinyMCE
+    key={editing.id}
+    initialContent={normalizeRemarksToHtml(editing.remarks)}
+    disabled={editorLocked}
+    onChange={(newContent) => {
+      setEditing((prev: any) => prev ? { ...prev, remarks: newContent } : prev);
+    }}
+  />
 </div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
  {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Lihat detail lengkap stakeholder"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
