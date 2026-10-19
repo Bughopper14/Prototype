@@ -286,7 +286,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       ];
 
   const handlePrint = () => {
-    window.print();
+    printFapDocument(d.fapNumber);
   };
 
   const isCustNew = d.customerStatus === 'NEW';
@@ -1142,6 +1142,12 @@ export function printFapDocument(fapNumber?: string) {
     return;
   }
 
+  // Remove existing print iframe if any
+  const existingIframe = document.getElementById('fap-print-iframe');
+  if (existingIframe) {
+    existingIframe.remove();
+  }
+
   // Create an invisible iframe for isolated printing
   const iframe = document.createElement('iframe');
   iframe.id = 'fap-print-iframe';
@@ -1151,6 +1157,7 @@ export function printFapDocument(fapNumber?: string) {
   iframe.style.width = '0';
   iframe.style.height = '0';
   iframe.style.border = '0';
+  iframe.style.visibility = 'hidden';
   document.body.appendChild(iframe);
 
   const doc = iframe.contentWindow?.document;
@@ -1159,25 +1166,11 @@ export function printFapDocument(fapNumber?: string) {
     return;
   }
 
-  // Extract all stylesheets from host document
-  let styles = '';
-  document.querySelectorAll('style, link[rel="stylesheet"]').forEach(s => {
-    styles += s.outerHTML;
-  });
-
   // Deep clone the printable sheet and strip screen zoom/transforms
   const clone = el.cloneNode(true) as HTMLElement;
   clone.id = 'fap-excel-printable-doc-cloned';
-  clone.style.transform = 'none';
-  clone.style.transformOrigin = 'top left';
-  clone.style.position = 'static';
-  clone.style.width = '100%';
-  clone.style.minWidth = '100%';
-  clone.style.maxWidth = '100%';
-  clone.style.boxShadow = 'none';
-  clone.style.border = 'none';
-  clone.style.margin = '0 auto';
-  clone.style.padding = '0';
+  clone.removeAttribute('style');
+  clone.className = 'excel-fap-paper fap-print-sheet';
 
   doc.open();
   doc.write(`<!DOCTYPE html>
@@ -1185,14 +1178,16 @@ export function printFapDocument(fapNumber?: string) {
 <head>
   <meta charset="utf-8" />
   <title>Application Form - ${fapNumber || 'Print'}</title>
-  ${styles}
   <style>
     @page {
       size: A4 portrait;
-      margin: 6mm 5mm 6mm 5mm;
+      margin: 6mm 6mm 6mm 6mm;
     }
     *, *::before, *::after {
       box-sizing: border-box !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      visibility: visible !important;
     }
     html, body {
       margin: 0 !important;
@@ -1201,11 +1196,11 @@ export function printFapDocument(fapNumber?: string) {
       height: auto !important;
       background: #ffffff !important;
       color: #000000 !important;
-      font-family: 'Segoe UI', Calibri, Arial, sans-serif !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+      font-size: 8.5pt !important;
+      line-height: 1.25 !important;
     }
-    .excel-fap-paper {
+    .fap-print-sheet {
       width: 100% !important;
       min-width: 100% !important;
       max-width: 100% !important;
@@ -1213,7 +1208,7 @@ export function printFapDocument(fapNumber?: string) {
       position: static !important;
       box-shadow: none !important;
       border: none !important;
-      margin: 0 !important;
+      margin: 0 auto !important;
       padding: 0 !important;
       background: #ffffff !important;
     }
@@ -1221,7 +1216,7 @@ export function printFapDocument(fapNumber?: string) {
       display: flex !important;
       justify-content: space-between !important;
       align-items: center !important;
-      margin-bottom: 6px !important;
+      margin-bottom: 5px !important;
     }
     .exact-header-logo img {
       height: 38px !important;
@@ -1245,6 +1240,10 @@ export function printFapDocument(fapNumber?: string) {
       gap: 6px !important;
       background: #ffffff !important;
     }
+    .exact-header-reg .reg-val {
+      color: #002060 !important;
+      font-family: monospace !important;
+    }
     .exact-navy-bar {
       background: #002060 !important;
       height: 5px !important;
@@ -1256,6 +1255,8 @@ export function printFapDocument(fapNumber?: string) {
       grid-template-columns: 1.15fr 1.35fr 1.05fr 1fr !important;
       gap: 8px !important;
       margin-bottom: 8px !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
     .exact-matrix-box {
       border: 1px solid #000000 !important;
@@ -1272,6 +1273,19 @@ export function printFapDocument(fapNumber?: string) {
     }
     .exact-matrix-row:last-child {
       border-bottom: none !important;
+    }
+    .exact-matrix-lbl {
+      font-weight: 600 !important;
+      color: #000000 !important;
+    }
+    .exact-matrix-val {
+      font-weight: 700 !important;
+      color: #002060 !important;
+    }
+    .exact-matrix-chk {
+      font-size: 13px !important;
+      font-weight: bold !important;
+      color: #002060 !important;
     }
     .exact-orange-bar {
       background: #eaa358 !important;
@@ -1300,6 +1314,7 @@ export function printFapDocument(fapNumber?: string) {
       flex-shrink: 0 !important;
       font-weight: 500 !important;
       line-height: 1.25 !important;
+      color: #000000 !important;
     }
     .exact-fap-colon {
       width: 8px !important;
@@ -1322,6 +1337,7 @@ export function printFapDocument(fapNumber?: string) {
     .exact-fap-box.multiline {
       min-height: 48px !important;
       align-items: flex-start !important;
+      line-height: 1.3 !important;
     }
     .exact-sub-row {
       display: flex !important;
@@ -1335,10 +1351,45 @@ export function printFapDocument(fapNumber?: string) {
       flex-shrink: 0 !important;
       font-weight: 500 !important;
     }
+    .exact-dual-row {
+      display: flex !important;
+      gap: 6px !important;
+      flex: 1 !important;
+    }
+    .exact-inline-group {
+      display: flex !important;
+      align-items: center !important;
+      gap: 4px !important;
+      flex: 1 !important;
+    }
+    .exact-inline-lbl {
+      font-size: 9px !important;
+      font-weight: 500 !important;
+      white-space: nowrap !important;
+    }
+    .exact-sh-section {
+      margin-top: 4px !important;
+      border-top: 1px solid #cbd5e1 !important;
+      padding-top: 6px !important;
+    }
+    .exact-sh-title {
+      font-size: 10.5px !important;
+      font-weight: 700 !important;
+      color: #002060 !important;
+      line-height: 1.2 !important;
+    }
+    .exact-sh-subtitle {
+      font-size: 9px !important;
+      font-style: italic !important;
+      color: #475569 !important;
+      margin: 2px 0 5px 0 !important;
+    }
     .exact-sh-table {
       width: 100% !important;
       border-collapse: collapse !important;
       font-size: 9px !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
     .exact-sh-table th, .exact-sh-table td {
       border: 1px solid #000000 !important;
@@ -1348,6 +1399,31 @@ export function printFapDocument(fapNumber?: string) {
       background: #f1f5f9 !important;
       font-weight: 700 !important;
       text-align: center !important;
+      color: #000000 !important;
+    }
+    .exact-sh-table td {
+      background: #ffffff !important;
+    }
+    .exact-sh-table td.center {
+      text-align: center !important;
+    }
+    .exact-sh-table td.right {
+      text-align: right !important;
+      font-family: monospace !important;
+    }
+    .exact-section-divider {
+      margin-top: 14px !important;
+      margin-bottom: 6px !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    .exact-section-header {
+      background: #002060 !important;
+      color: #ffffff !important;
+      font-size: 10px !important;
+      font-weight: 700 !important;
+      padding: 3.5px 8px !important;
+      letter-spacing: 0.5px !important;
     }
     .highlight-dynamic {
       color: #002060 !important;
@@ -1372,7 +1448,7 @@ export function printFapDocument(fapNumber?: string) {
       try {
         if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
       } catch {}
-    }, 2500);
-  }, 400);
+    }, 4000);
+  }, 250);
 }
 

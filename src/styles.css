@@ -1058,7 +1058,7 @@ button:focus-visible, a:focus-visible {
    ========================================================================== */
 @page {
   size: A4 portrait;
-  margin: 6mm 5mm 6mm 5mm;
+  margin: 6mm 6mm 6mm 6mm;
 }
 
 @media print {
@@ -1070,50 +1070,78 @@ button:focus-visible, a:focus-visible {
     background: #ffffff !important;
     color: #000000 !important;
     overflow: visible !important;
-    font-size: 8pt !important;
+    font-size: 8.5pt !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Reset all containers */
-  #root, .app-layout, .main-content, .modal-backdrop, .modal-content, .detail-layout, .excel-fap-viewer, .excel-fap-viewport {
-    position: static !important;
-    overflow: visible !important;
-    height: auto !important;
+  /* Sembunyikan elemen UI website dan form input */
+  aside,
+  .sidebar,
+  .sidebar-backdrop,
+  header.topbar,
+  .topbar,
+  footer,
+  .breadcrumb,
+  .notification-bell,
+  .fap-tab-layout-toggle,
+  .fap-detail-form-col,
+  .excel-fap-ribbon,
+  .excel-section-chips,
+  .form-bottom-actions,
+  .workflow-buttons,
+  .toast,
+  .loading-strip,
+  .error,
+  .modal-backdrop,
+  .modal {
+    display: none !important;
+  }
+
+  /* Reset layout wrapper */
+  #root,
+  .shell,
+  main,
+  .content,
+  .detail-layout,
+  .fap-detail-split-container,
+  .fap-detail-preview-col,
+  .excel-fap-viewer,
+  .excel-fap-viewport,
+  .excel-fap-paper-scaler {
+    display: block !important;
     width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
     margin: 0 !important;
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    display: block !important;
     background: transparent !important;
     transform: none !important;
   }
 
-  body * {
-    visibility: hidden !important;
-  }
-
-  #fap-excel-printable-doc,
-  #fap-excel-printable-doc * {
-    visibility: visible !important;
-  }
-
   #fap-excel-printable-doc {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
     width: 100% !important;
+    min-width: 100% !important;
     max-width: 100% !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
     padding: 0 !important;
     border: none !important;
     box-shadow: none !important;
     background: #ffffff !important;
+    transform: none !important;
   }
 
-  .excel-fap-ribbon {
-    display: none !important;
+  #fap-excel-printable-doc * {
+    visibility: visible !important;
   }
 }
 
