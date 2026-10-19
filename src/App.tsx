@@ -190,37 +190,64 @@ function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}
 function stakeholderEditorValues(s:any){const parts=String(s.name||'').trim().split(/\s+/);return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP'),title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};}
 function stakeholderForSave(s:any){const first=s.firstName||'',last=s.lastName||'',name=[first,s.middleName,last].map((x:string)=>String(x||'').trim()).filter(Boolean).join(' ')||s.name||'';return {...s,name,position:s.designation&&s.designation!=='NONE'?s.designation:s.position||'Shareholder',nationalityType:s.citizenship==='INDONESIAN'?'WNI':'WNA',shareAmount:s.depositedCapital??0,sharePercentage:s.sharePercentage??0,taxNumber:null};}
 function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustomerCreated,notify}:{value:any,user:any,customers?:any[],initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,onCustomerCreated?:(c:any)=>void,notify:(s:string)=>void}){
- const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(a.isNew?'NEW':(a.customerId?'EXISTING':'NEW')));
- const [customerId,setCustomerId]=useState<string>(()=>a.isNew?(a.customerId||''):(a.customerId||a.customer_id||a.customer?.id||''));
- const [customerDraft,setCustomerDraft]=useState<any>(()=>a.customer?structuredClone(a.customer):blank(customerFields));
- const [nibOcrOpen,setNibOcrOpen]=useState(false);
- const handleApplyNibOcr=(extracted:{nib?:string,companyName?:string,alamat?:string,email?:string,phone?:string,tanggalTerbit?:string})=>{
-  if(extracted.nib||extracted.tanggalTerbit||extracted.companyName){
-   setCustomerDraft((prev:any)=>({
-    ...prev,
-    ...(extracted.nib?{nib:extracted.nib}:{}),
-    ...(extracted.companyName&&!prev.companyName?{companyName:extracted.companyName}:{}),
-    ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
-   }));
-  }
-  setDraft((prev:any)=>({
-   ...prev,
-   ...(extracted.nib?{nib:extracted.nib}:{}),
-   ...(extracted.alamat?{companyAddress:extracted.alamat}:{}),
-   ...(extracted.email?{email:extracted.email}:{}),
-   ...(extracted.phone?{phoneFax:extracted.phone}:{}),
-   ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
-   customer:{
-    ...(prev.customer||{}),
-    ...(extracted.nib?{nib:extracted.nib}:{}),
-    ...(extracted.companyName&&!prev.customer?.companyName?{companyName:extracted.companyName}:{}),
-    ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+  const master=useMasterData();
+  const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(a.isNew?'NEW':(a.customerId?'EXISTING':'NEW')));
+  const [customerId,setCustomerId]=useState<string>(()=>a.isNew?(a.customerId||''):(a.customerId||a.customer_id||a.customer?.id||''));
+  const [customerDraft,setCustomerDraft]=useState<any>(()=>a.customer?structuredClone(a.customer):blank(customerFields));
+  const [nibOcrOpen,setNibOcrOpen]=useState(false);
+  const handleApplyNibOcr=(extracted:{
+    nib?:string,
+    companyName?:string,
+    alamat?:string,
+    email?:string,
+    phone?:string,
+    tanggalTerbit?:string,
+    province?:string,
+    city?:string,
+    district?:string,
+    village?:string,
+    postalCode?:string,
+    rt?:string,
+    rw?:string
+  })=>{
+   if(extracted.nib||extracted.tanggalTerbit||extracted.companyName){
+    setCustomerDraft((prev:any)=>({
+     ...prev,
+     ...(extracted.nib?{nib:extracted.nib}:{}),
+     ...(extracted.companyName?{companyName:extracted.companyName}:{}),
+     ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+    }));
    }
-  }));
-  if(customerCategory==='EXISTING'&&draft.isNew){
-   setCustomerCategory('NEW');
-  }
- };
+   setDraft((prev:any)=>{
+    let next = {
+     ...prev,
+     ...(extracted.nib?{nib:extracted.nib}:{}),
+     ...(extracted.companyName?{companyName:extracted.companyName}:{}),
+     ...(extracted.alamat?{companyAddress:extracted.alamat}:{}),
+     ...(extracted.email?{email:extracted.email}:{}),
+     ...(extracted.phone?{phoneFax:extracted.phone}:{}),
+     ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+     ...(extracted.province?{province:extracted.province}:{}),
+     ...(extracted.city?{city:extracted.city,cityRegency:extracted.city}:{}),
+     ...(extracted.district?{district:extracted.district}:{}),
+     ...(extracted.village?{village:extracted.village}:{}),
+     ...(extracted.postalCode?{postalCode:extracted.postalCode}:{}),
+     ...(extracted.rt?{rt:extracted.rt}:{}),
+     ...(extracted.rw?{rw:extracted.rw}:{}),
+     customer:{
+      ...(prev.customer||{}),
+      ...(extracted.nib?{nib:extracted.nib}:{}),
+      ...(extracted.companyName?{companyName:extracted.companyName}:{}),
+      ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+     }
+    };
+    next = resolveWilayahUpwards(next, master);
+    return next;
+   });
+   if(customerCategory==='EXISTING'&&draft.isNew){
+    setCustomerCategory('NEW');
+   }
+  };
  const selectedCustomer=customerId?customers.find((c:any)=>c.id===customerId):null;
  const fapCustomerKeys=['companyName','companyType','nib','nibDate','npwp','establishmentActNo','establishmentDate'];
  const fapCustomerFields=customerFields.filter(f=>fapCustomerKeys.includes(f.key));
@@ -418,7 +445,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
   assetSummaryTruckNonLiuGong: a.assetSummaryTruckNonLiuGong,
 };useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&(Boolean(draft.isNew)||['DRAFT','RETURNED'].includes(a.status)),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
  async function save(){setBusy(true);setError('');try{if(tab===0&&customerCategory==='NEW'&&customerDraft&&(customerDraft.companyName||customerDraft.nib||customerDraft.npwp)){const nib=String(customerDraft.nib||'').replace(/\D/g,'');const npwp=String(customerDraft.npwp||'').replace(/\D/g,'');if(!String(customerDraft.companyName||'').trim())throw new Error('Nama perusahaan calon debitur wajib diisi.');if(nib.length!==13)throw new Error('NIB wajib terdiri dari 13 digit angka.');if(npwp.length<15||npwp.length>16)throw new Error('NPWP wajib terdiri dari 15 atau 16 digit angka.');validateInput(customerDraft);}const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);const hasPicData=draft.pic&&Object.values(draft.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');const cleanProjects=(draft.projects||[]).filter((p:any)=>p&&Object.values(p).some((v:any)=>v!==undefined&&v!==null&&String(v).trim()!==''));const safeProfileData=Object.fromEntries(Object.entries(draft).filter(([k])=>!['proposal','financialStatements','legal','stakeholders','documentChecks','approvalLogs','signoffs','ratios'].includes(k)));const body=tab===0?{profile:safeProfileData,...(hasPicData?{pic:draft.pic}:{}),projects:cleanProjects}:tab===2?{projects:cleanProjects,bankReferences:draft.bankReferences,proposal:draft.proposal}:tab===3?{proposal:draft.proposal}:tab===4?{financialStatements:draft.financialStatements}:{legal:draft.legal||{},...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})};const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:'Pre-analysis'});const nextApp={...a,...v,stage:'Pre-analysis'};setDraft((prev:any)=>({...prev,...nextApp}));onChange(nextApp);notify('Perubahan berhasil disimpan');if(tab===0)setTab(5);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
- const master=useMasterData();const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
+ const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
  async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Akta tidak ditemukan.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  useEffect(()=>{if(tab!==1)return;const timer=setInterval(()=>api('/applications/'+a.id).then(onChange).catch(()=>{}),15000);return()=>clearInterval(timer);},[tab,a.id]);

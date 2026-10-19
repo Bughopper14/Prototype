@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, Upload, ScanLine, Sparkles, CheckCircle2, Copy, FileText, 
   Check, Loader2, Calendar, Mail, Phone, MapPin, Hash, ArrowRight,
-  FileSearch, RefreshCw
+  FileSearch, RefreshCw, Building2
 } from 'lucide-react';
 import { 
   extractNibTextFromDocument, parseNibText, SAMPLE_NIB_TEXT, ParsedNibData 
@@ -89,8 +89,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
   };
 
   const loadSampleDoc = () => {
-    setFileName('contoh_nib_oss_indonesia.png');
-    setFileUrl('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="100%" height="100%" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%230f172a">Contoh Dokumen NIB (OSS)</text></svg>');
+    setFileName('sample_oss_nib_document.png');
+    setFileUrl('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="100%" height="100%" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%230f172a">Sample OSS NIB Document</text></svg>');
     setOcrLoading(true);
     setTimeout(() => {
       const extracted = parseNibText(SAMPLE_NIB_TEXT);
@@ -108,18 +108,18 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
   };
 
   const handleApply = () => {
-    if (!formData.nib && !formData.alamat && !formData.email && !formData.phone && !formData.tanggalTerbit) {
-      if (notify) notify('Belum ada data NIB yang diekstrak untuk diterapkan.');
+    if (!formData.nib && !formData.companyName && !formData.alamat && !formData.email && !formData.phone && !formData.tanggalTerbit) {
+      if (notify) notify('No NIB data extracted to apply.');
       return;
     }
     onApply(formData);
     if (notify) {
-      notify('✓ 5 Data NIB berhasil disinkronkan ke formulir (NIB, Alamat, Email, No. Telp, Tanggal Terbit)');
+      notify('✓ 6 NIB fields successfully synced to form (NIB, Company Name, Address, Email, Phone, Issue Date)');
     }
     onClose();
   };
 
-  const hasData = Boolean(formData.nib || formData.alamat || formData.email || formData.phone || formData.tanggalTerbit);
+  const hasData = Boolean(formData.nib || formData.companyName || formData.alamat || formData.email || formData.phone || formData.tanggalTerbit);
 
   return (
     <div 
@@ -147,7 +147,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
         style={{
-          width: '900px',
+          width: '920px',
           maxWidth: '95vw',
           maxHeight: '90vh',
           display: 'flex',
@@ -179,10 +179,10 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             </div>
             <div>
               <h3 style={{margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a'}}>
-                Upload & Scan Dokumen NIB · Auto-Fill OCR
+                Upload & Scan NIB Document · Auto-Fill OCR
               </h3>
               <p style={{margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b'}}>
-                Ekstrak otomatis Nomor NIB, Alamat, Email, Nomor Telepon, dan Tanggal Terbit dari dokumen NIB OSS.
+                Automatically extract NIB number, company name, address, email, phone number, and issue date from OSS NIB documents.
               </p>
             </div>
           </div>
@@ -190,7 +190,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             type="button" 
             onClick={onClose} 
             className="icon-button"
-            aria-label="Tutup"
+            aria-label="Close"
             style={{background:'transparent', border:'none', cursor:'pointer', color:'#64748b'}}
           >
             <X size={20} />
@@ -202,7 +202,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           padding: '20px',
           overflowY: 'auto',
           display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 1fr) minmax(360px, 1.3fr)',
+          gridTemplateColumns: 'minmax(280px, 1fr) minmax(380px, 1.3fr)',
           gap: 20
         }}>
           {/* LEFT: UPLOAD & FILE ZONE */}
@@ -234,10 +234,10 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 </div>
                 <div>
                   <b style={{fontSize: '0.9rem', color: '#0f172a', display:'block'}}>
-                    Klik atau Seret Berkas NIB ke Sini
+                    Click or Drag NIB File Here
                   </b>
                   <span style={{fontSize: '0.78rem', color: '#64748b'}}>
-                    Format didukung: PNG, JPG, JPEG, WEBP, atau PDF
+                    Supported formats: PNG, JPG, JPEG, WEBP, or PDF
                   </span>
                 </div>
                 {fileName && (
@@ -262,7 +262,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   background: '#ffffff', color: '#2563eb', borderColor: '#2563eb'
                 }}
               >
-                <Sparkles size={13} /> Gunakan Contoh Dokumen NIB OSS
+                <Sparkles size={13} /> Use Sample OSS NIB Document
               </button>
 
               {rawText && (
@@ -272,7 +272,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   className="text-link"
                   style={{fontSize: '0.75rem', color: '#64748b'}}
                 >
-                  {showRaw ? 'Sembunyikan Raw OCR' : 'Lihat Raw OCR'}
+                  {showRaw ? 'Hide Raw OCR' : 'View Raw OCR'}
                 </button>
               )}
             </div>
@@ -288,17 +288,17 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               {ocrLoading ? (
                 <>
                   <Loader2 size={16} className="spin" />
-                  <span>Sedang memindai dan membaca teks dokumen NIB...</span>
+                  <span>Scanning and reading NIB document text...</span>
                 </>
               ) : hasData ? (
                 <>
                   <CheckCircle2 size={16} />
-                  <span>5 Data terdeteksi siap disinkronkan ke formulir</span>
+                  <span>6 Fields detected and ready to sync to form</span>
                 </>
               ) : (
                 <>
                   <FileSearch size={16} />
-                  <span>Silakan unggah dokumen NIB untuk memulai proses OCR</span>
+                  <span>Please upload a NIB document to start OCR processing</span>
                 </>
               )}
             </div>
@@ -321,16 +321,16 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           }}>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 8}}>
               <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', display:'flex', alignItems:'center', gap: 6}}>
-                <Sparkles size={16} color="#2563eb" /> Data Hasil Ekstraksi OCR
+                <Sparkles size={16} color="#2563eb" /> OCR Extracted Data
               </h4>
-              <span style={{fontSize: '0.72rem', color: '#64748b'}}>Dapat ditinjau & diedit langsung</span>
+              <span style={{fontSize: '0.72rem', color: '#64748b'}}>Review & edit before applying</span>
             </div>
 
             {/* FIELD 1: NOMOR NIB */}
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Hash size={13} color="#2563eb" /> Nomor NIB (13 Digit)
+                  <Hash size={13} color="#2563eb" /> NIB Number (13 Digits)
                 </label>
                 {formData.nib && (
                   <button 
@@ -339,7 +339,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
                     {copiedKey === 'nib' ? <Check size={12}/> : <Copy size={12}/>}
-                    {copiedKey === 'nib' ? 'Tersalin' : 'Salin'}
+                    {copiedKey === 'nib' ? 'Copied' : 'Copy'}
                   </button>
                 )}
               </div>
@@ -347,7 +347,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 type="text" 
                 value={formData.nib}
                 maxLength={13}
-                placeholder="Contoh: 1209260000012"
+                placeholder="e.g. 1209260000012"
                 onChange={e => setFormData({...formData, nib: e.target.value.replace(/\D/g, '')})}
                 style={{
                   width: '100%', padding: '8px 10px', fontSize: '0.85rem',
@@ -357,11 +357,41 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               />
             </div>
 
-            {/* FIELD 2: ALAMAT */}
+            {/* FIELD 2: COMPANY NAME (SETELAH NOMOR NIB) */}
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <MapPin size={13} color="#2563eb" /> Alamat Perusahaan / Domisili
+                  <Building2 size={13} color="#2563eb" /> Company Name
+                </label>
+                {formData.companyName && (
+                  <button 
+                    type="button" 
+                    onClick={() => copyToClipboard('companyName', formData.companyName)} 
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                  >
+                    {copiedKey === 'companyName' ? <Check size={12}/> : <Copy size={12}/>}
+                    {copiedKey === 'companyName' ? 'Copied' : 'Copy'}
+                  </button>
+                )}
+              </div>
+              <input 
+                type="text" 
+                value={formData.companyName}
+                placeholder="e.g. PT NUSANTARA MINING RESOURCES"
+                onChange={e => setFormData({...formData, companyName: e.target.value})}
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                  borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600,
+                  background: formData.companyName ? '#f0f7ff' : '#ffffff'
+                }}
+              />
+            </div>
+
+            {/* FIELD 3: ALAMAT */}
+            <div>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
+                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                  <MapPin size={13} color="#2563eb" /> Company Address / Domicile
                 </label>
                 {formData.alamat && (
                   <button 
@@ -370,14 +400,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
                     {copiedKey === 'alamat' ? <Check size={12}/> : <Copy size={12}/>}
-                    {copiedKey === 'alamat' ? 'Tersalin' : 'Salin'}
+                    {copiedKey === 'alamat' ? 'Copied' : 'Copy'}
                   </button>
                 )}
               </div>
               <textarea 
                 rows={2}
                 value={formData.alamat}
-                placeholder="Alamat lengkap sesuai lembar NIB"
+                placeholder="Full address as stated on the NIB document"
                 onChange={e => setFormData({...formData, alamat: e.target.value})}
                 style={{
                   width: '100%', padding: '8px 10px', fontSize: '0.85rem',
@@ -387,11 +417,11 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               />
             </div>
 
-            {/* FIELD 3 & 4: EMAIL & NO TELPON */}
+            {/* FIELD 4 & 5: EMAIL & NO TELPON */}
             <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10}}>
               <div>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
-                  <Mail size={13} color="#2563eb" /> Email Perusahaan
+                  <Mail size={13} color="#2563eb" /> Company Email
                 </label>
                 <input 
                   type="email" 
@@ -408,7 +438,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
               <div>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
-                  <Phone size={13} color="#2563eb" /> No. Telepon
+                  <Phone size={13} color="#2563eb" /> Phone Number
                 </label>
                 <input 
                   type="text" 
@@ -424,11 +454,11 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </div>
             </div>
 
-            {/* FIELD 5: TANGGAL TERBIT */}
+            {/* FIELD 6: TANGGAL TERBIT NIB */}
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
                 <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Calendar size={13} color="#2563eb" /> Tanggal Terbit NIB
+                  <Calendar size={13} color="#2563eb" /> NIB Issued Date
                 </label>
                 {formData.tanggalTerbit && (
                   <button 
@@ -437,7 +467,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
                     {copiedKey === 'tgl' ? <Check size={12}/> : <Copy size={12}/>}
-                    {copiedKey === 'tgl' ? 'Tersalin' : 'Salin'}
+                    {copiedKey === 'tgl' ? 'Copied' : 'Copy'}
                   </button>
                 )}
               </div>
@@ -470,7 +500,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             onClick={onClose}
             style={{background:'#ffffff', borderColor:'#cbd5e1'}}
           >
-            Batal
+            Cancel
           </button>
           <button 
             type="button" 
@@ -483,7 +513,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             }}
           >
             <Check size={16} />
-            Terapkan ke Formulir / Auto-Fill (5 Data)
+            Apply to Form / Auto-Fill (6 Fields)
           </button>
         </div>
       </div>
