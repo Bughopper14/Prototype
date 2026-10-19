@@ -323,10 +323,15 @@ export function parseNibText(text: string, catalog?: MasterCatalog): ParsedNibDa
     }
   }
 
-  // 2. Nama Perusahaan / Pelaku Usaha (opsional)
-  const nameMatch = text.match(/(?:Nama\s+Perusahaan|Nama\s+Pelaku\s+Usaha|Nama\s+Badan\s+Usaha)\s*[:\.]?\s*([^\n\r]+)/i);
+  // 2. Nama Perusahaan / Pelaku Usaha (Company Name)
+  const nameMatch = text.match(/(?:Nama\s+Perusahaan|Nama\s+Pelaku\s+Usaha|Nama\s+Badan\s+Usaha|Nama\s+Perseroan|Nama\s+Usaha|Company\s*Name)\s*[:\.]?\s*([^\n\r]+)/i);
   if (nameMatch) {
     result.companyName = nameMatch[1].trim().replace(/^[:\-\s]+/, '');
+  } else {
+    const corpMatch = text.match(/\b((?:PT|CV|BLU|KOPERASI)\s+[A-Z0-9\s.,]{3,60})\b/);
+    if (corpMatch) {
+      result.companyName = corpMatch[1].trim().replace(/[\r\n].*$/, '');
+    }
   }
 
   // 3. Alamat Perusahaan / Domisili
