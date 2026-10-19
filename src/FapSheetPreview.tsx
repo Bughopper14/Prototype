@@ -16,6 +16,7 @@ export interface FapSheetData {
   companyName?: string;
   companyType?: string;
   nib?: string;
+  nibDate?: string;
   npwp?: string;
   establishmentActNo?: string;
   establishmentDate?: string;
@@ -165,6 +166,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       companyName: pick(raw.companyName, cust.companyName, ''),
       companyType: pick(raw.companyType, cust.companyType, ''),
       nib: pick(raw.nib, cust.nib, ''),
+      nibDate: pick(raw.nibDate, cust.nibDate, ''),
       npwp: pick(raw.npwp, cust.npwp, ''),
       establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
       establishmentDate: pick(raw.establishmentDate, cust.establishmentDate, ''),
@@ -494,7 +496,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">NIB (No Induk Berusaha)</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.nib}</div>
+                <div className="exact-dual-row">
+                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.nib}</div>
+                  <div className="exact-inline-group" style={{ flex: 1.1 }}>
+                    <span className="exact-inline-lbl">Tanggal/ Est Date :</span>
+                    <div className="exact-fap-box highlight-dynamic">{formatDate(d.nibDate)}</div>
+                  </div>
+                </div>
               </div>
 
               <div className="exact-fap-row">
