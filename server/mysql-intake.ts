@@ -153,7 +153,7 @@ export async function intakeDetail(id:string){
    legal:mandatoryList.some(r=>r.section==='Legal'&&Boolean(r.mandatory)),
    documents:Boolean(docRows[0]?.is_doc_mandatory)
  };
- return {...profile,id:row.application_id,customerId:row.customer_id,customer,establishmentActNo:customer.establishmentActNo,establishmentDate:customer.establishmentDate,nibDate:customer.nibDate,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),mandatoryConfig,approvalLogs:[],signoffs:[]};
+ return {...profile,id:row.application_id,companyName:customer.companyName,customerId:row.customer_id,customer,establishmentActNo:customer.establishmentActNo,establishmentDate:customer.establishmentDate,nibDate:customer.nibDate,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),mandatoryConfig,approvalLogs:[],signoffs:[]};
 }
 
 export async function intakeCustomers(){

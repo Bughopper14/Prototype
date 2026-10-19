@@ -210,23 +210,26 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
     rt?:string,
     rw?:string
   })=>{
-   if(extracted.nib||extracted.tanggalTerbit||extracted.companyName){
+   const rawComp=extracted.companyName?String(extracted.companyName).trim():'';
+   const rawNib=extracted.nib?String(extracted.nib).replace(/\D/g,'').slice(0,13):'';
+   const rawDate=extracted.tanggalTerbit?String(extracted.tanggalTerbit).trim():'';
+   if(rawNib||rawDate||rawComp){
     setCustomerDraft((prev:any)=>({
      ...prev,
-     ...(extracted.nib?{nib:extracted.nib}:{}),
-     ...(extracted.companyName?{companyName:extracted.companyName}:{}),
-     ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+     ...(rawNib?{nib:rawNib}:{}),
+     ...(rawComp?{companyName:rawComp}:{}),
+     ...(rawDate?{nibDate:rawDate}:{}),
     }));
    }
    setDraft((prev:any)=>{
     let next = {
      ...prev,
-     ...(extracted.nib?{nib:extracted.nib}:{}),
-     ...(extracted.companyName?{companyName:extracted.companyName}:{}),
+     ...(rawNib?{nib:rawNib}:{}),
+     ...(rawComp?{companyName:rawComp}:{}),
      ...(extracted.alamat?{companyAddress:extracted.alamat}:{}),
      ...(extracted.email?{email:extracted.email}:{}),
      ...(extracted.phone?{phoneFax:extracted.phone}:{}),
-     ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+     ...(rawDate?{nibDate:rawDate}:{}),
      ...(extracted.province?{province:extracted.province}:{}),
      ...(extracted.city?{city:extracted.city,cityRegency:extracted.city}:{}),
      ...(extracted.district?{district:extracted.district}:{}),
@@ -236,15 +239,15 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
      ...(extracted.rw?{rw:extracted.rw}:{}),
      customer:{
       ...(prev.customer||{}),
-      ...(extracted.nib?{nib:extracted.nib}:{}),
-      ...(extracted.companyName?{companyName:extracted.companyName}:{}),
-      ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
+      ...(rawNib?{nib:rawNib}:{}),
+      ...(rawComp?{companyName:rawComp}:{}),
+      ...(rawDate?{nibDate:rawDate}:{}),
      }
     };
     next = resolveWilayahUpwards(next, master);
     return next;
    });
-   if(customerCategory==='EXISTING'&&draft.isNew){
+   if(customerCategory==='EXISTING'){
     setCustomerCategory('NEW');
    }
   };
@@ -388,13 +391,70 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
   } finally {
     setBusy(false);
   }
- }const liveCompanyName=customerCategory==='EXISTING'?(selectedCustomer?.companyName||a.customer?.companyName||''):(customerDraft.companyName||draft.customer?.companyName||a.customer?.companyName||'');
- const liveCompanyType=customerCategory==='EXISTING'?(selectedCustomer?.companyType||a.customer?.companyType||''):(customerDraft.companyType||draft.customer?.companyType||a.customer?.companyType||'');
- const liveNib=customerCategory==='EXISTING'?(selectedCustomer?.nib||a.customer?.nib||''):(customerDraft.nib||draft.customer?.nib||a.customer?.nib||'');
- const liveNpwp=customerCategory==='EXISTING'?(selectedCustomer?.npwp||a.customer?.npwp||''):(customerDraft.npwp||draft.customer?.npwp||a.customer?.npwp||'');
- const liveEstablishmentActNo=customerCategory==='EXISTING'?(selectedCustomer?.establishmentActNo||a.customer?.establishmentActNo||''):(customerDraft.establishmentActNo||draft.customer?.establishmentActNo||a.customer?.establishmentActNo||'');
- const liveEstablishmentDate=customerCategory==='EXISTING'?(selectedCustomer?.establishmentDate||a.customer?.establishmentDate||''):(customerDraft.establishmentDate||draft.customer?.establishmentDate||a.customer?.establishmentDate||'');
- const liveNibDate=customerCategory==='EXISTING'?(selectedCustomer?.nibDate||a.customer?.nibDate||''):(customerDraft.nibDate||draft.customer?.nibDate||a.customer?.nibDate||'');
+ }
+  const liveCompanyName = String(
+    draft.customer?.companyName || 
+    customerDraft.companyName || 
+    draft.companyName || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.companyName : '') || 
+    a.customer?.companyName || 
+    a.companyName || 
+    ''
+  ).trim();
+
+  const liveCompanyType = String(
+    draft.customer?.companyType || 
+    customerDraft.companyType || 
+    draft.companyType || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.companyType : '') || 
+    a.customer?.companyType || 
+    'CORPORATE'
+  ).trim();
+
+  const liveNib = String(
+    draft.customer?.nib || 
+    customerDraft.nib || 
+    draft.nib || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.nib : '') || 
+    a.customer?.nib || 
+    ''
+  ).trim();
+
+  const liveNpwp = String(
+    draft.customer?.npwp || 
+    customerDraft.npwp || 
+    draft.npwp || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.npwp : '') || 
+    a.customer?.npwp || 
+    ''
+  ).trim();
+
+  const liveEstablishmentActNo = String(
+    draft.customer?.establishmentActNo || 
+    customerDraft.establishmentActNo || 
+    draft.establishmentActNo || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.establishmentActNo : '') || 
+    a.customer?.establishmentActNo || 
+    ''
+  ).trim();
+
+  const liveEstablishmentDate = String(
+    draft.customer?.establishmentDate || 
+    customerDraft.establishmentDate || 
+    draft.establishmentDate || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.establishmentDate : '') || 
+    a.customer?.establishmentDate || 
+    ''
+  ).trim();
+
+  const liveNibDate = String(
+    draft.customer?.nibDate || 
+    customerDraft.nibDate || 
+    draft.nibDate || 
+    (customerCategory === 'EXISTING' ? selectedCustomer?.nibDate : '') || 
+    a.customer?.nibDate || 
+    ''
+  ).trim();
 
  const liveDetailFapData: FapSheetData = {
   fapNumber: draft.isNew ? 'Auto (Generated on save)' : (draft.fapNumber || a.fapNumber || '—'),
@@ -447,8 +507,111 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
   assetSummaryTruckLiuGong: a.assetSummaryTruckLiuGong,
   assetSummaryHeNonLiuGong: a.assetSummaryHeNonLiuGong,
   assetSummaryTruckNonLiuGong: a.assetSummaryTruckNonLiuGong,
-};useEffect(()=>{setDraft(structuredClone(a));},[a]);useEffect(()=>setTab(initialTab),[initialTab,a.id]);const canLegal=canEditLegal(user,a);const canEdit=user.role==='MKT'&&(Boolean(draft.isNew)||['DRAFT','RETURNED'].includes(a.status)),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;async function submitFapStage(){setBusy(true);setError('');try{const updated={...draft,stage:'Pre-analysis'};await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});setDraft(updated);setActiveStage('Pre-analysis');setTab(2);setSubmitFapConfirm(false);notify('FAP Stage submitted. Tahap Pre-analysis aktif.');if(onChange)onChange(updated);}catch(e:any){setError(e.message||'Gagal submit FAP stage.');}finally{setBusy(false);}}let actions:string[]=[];if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
- async function save(){setBusy(true);setError('');try{if(tab===0&&customerCategory==='NEW'&&customerDraft&&(customerDraft.companyName||customerDraft.nib||customerDraft.npwp)){const nib=String(customerDraft.nib||'').replace(/\D/g,'');const npwp=String(customerDraft.npwp||'').replace(/\D/g,'');if(!String(customerDraft.companyName||'').trim())throw new Error('Nama perusahaan calon debitur wajib diisi.');if(nib.length!==13)throw new Error('NIB wajib terdiri dari 13 digit angka.');if(npwp.length<15||npwp.length>16)throw new Error('NPWP wajib terdiri dari 15 atau 16 digit angka.');validateInput(customerDraft);}const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);const hasPicData=draft.pic&&Object.values(draft.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');const cleanProjects=(draft.projects||[]).filter((p:any)=>p&&Object.values(p).some((v:any)=>v!==undefined&&v!==null&&String(v).trim()!==''));const safeProfileData=Object.fromEntries(Object.entries(draft).filter(([k])=>!['proposal','financialStatements','legal','stakeholders','documentChecks','approvalLogs','signoffs','ratios'].includes(k)));const customerPayload=customerCategory==='NEW'?{...customerDraft,companyName:liveCompanyName,nib:liveNib,npwp:liveNpwp}:{...(draft.customer||{}),...(selectedCustomer||{})};const body=tab===0?{profile:{...safeProfileData,companyName:liveCompanyName},customer:customerPayload,...(hasPicData?{pic:draft.pic}:{}),projects:cleanProjects}:tab===2?{projects:cleanProjects,bankReferences:draft.bankReferences,proposal:draft.proposal}:tab===3?{proposal:draft.proposal}:tab===4?{financialStatements:draft.financialStatements}:{legal:draft.legal||{},...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})};const currentStage=activeStage||draft.stage||a.stage||'FAP Stage';const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:currentStage});const nextApp={...a,...v,stage:currentStage};setDraft((prev:any)=>({...prev,...nextApp}));onChange(nextApp);notify('Perubahan berhasil disimpan');}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+};
+
+ useEffect(()=>{
+   setDraft(structuredClone(a));
+   if(a.customer){
+     setCustomerDraft(structuredClone(a.customer));
+   }
+ },[a]);
+ useEffect(()=>setTab(initialTab),[initialTab,a.id]);
+ const canLegal=canEditLegal(user,a);
+ const canEdit=user.role==='MKT'&&(Boolean(draft.isNew)||['DRAFT','RETURNED'].includes(a.status)),canFinance=canEdit||(user.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW');
+ const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'],tabNumbers:Record<number,number>={0:1,5:2,1:3,2:4,4:5,6:6},isFapStage=activeStage==='FAP Stage',fullTabOrder=[0,5,1,2,4,6,7],tabOrder=isFapStage?[0,5,1,7]:fullTabOrder;
+ 
+ async function submitFapStage(){
+   setBusy(true);setError('');
+   try{
+     const updated={...draft,stage:'Pre-analysis'};
+     await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});
+     setDraft(updated);
+     setActiveStage('Pre-analysis');
+     setTab(2);
+     setSubmitFapConfirm(false);
+     notify('FAP Stage submitted. Tahap Pre-analysis aktif.');
+     if(onChange)onChange(updated);
+   }catch(e:any){
+     setError(e.message||'Gagal submit FAP stage.');
+   }finally{
+     setBusy(false);
+   }
+ }
+ 
+ let actions:string[]=[];
+ if(user.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status))actions=['SUBMIT_TO_BS'];
+ if(user.role==='BS'&&a.status==='SUBMITTED_TO_BS')actions=['VERIFY_BS','RETURN'];
+ if(user.role==='BS'&&a.status==='BS_VERIFIED')actions=['START_REVIEW','RETURN'];
+ if(['CA','LEGAL'].includes(user.role)&&a.status==='IN_CA_LEGAL_REVIEW')actions=[user.role==='CA'?'RECOMMEND_CA':'RECOMMEND_LEGAL','RETURN'];
+ if(user.role==='COMMITTEE'&&a.status==='CREDIT_COMMITTEE_REVIEW')actions=['APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN'];
+
+ async function save(){
+   setBusy(true);
+   setError('');
+   try{
+     const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);
+     const hasPicData=draft.pic&&Object.values(draft.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');
+     const cleanProjects=(draft.projects||[]).filter((p:any)=>p&&Object.values(p).some((v:any)=>v!==undefined&&v!==null&&String(v).trim()!==''));
+     const safeProfileData=Object.fromEntries(Object.entries(draft).filter(([k])=>!['proposal','financialStatements','legal','stakeholders','documentChecks','approvalLogs','signoffs','ratios'].includes(k)));
+     
+     const resolvedName = liveCompanyName || customerDraft?.companyName || draft.customer?.companyName || draft.companyName || 'Perusahaan Baru (Draft)';
+     const customerPayload = {
+       ...(draft.customer||{}),
+       ...(customerDraft||{}),
+       companyName: resolvedName,
+       companyType: liveCompanyType || 'CORPORATE',
+       nib: liveNib || customerDraft?.nib || draft.customer?.nib || '',
+       npwp: liveNpwp || customerDraft?.npwp || draft.customer?.npwp || '',
+       establishmentActNo: liveEstablishmentActNo || customerDraft?.establishmentActNo || draft.customer?.establishmentActNo || '',
+       establishmentDate: liveEstablishmentDate || customerDraft?.establishmentDate || draft.customer?.establishmentDate || '',
+       nibDate: liveNibDate || customerDraft?.nibDate || draft.customer?.nibDate || ''
+     };
+
+     const body=tab===0?{
+       profile:{
+         ...safeProfileData,
+         companyName: resolvedName,
+         customerStatus: customerCategory
+       },
+       customer: customerPayload,
+       customerCategory: customerCategory,
+       ...(hasPicData?{pic:draft.pic}:{}),
+       projects: cleanProjects
+     }:tab===2?{
+       projects:cleanProjects,
+       bankReferences:draft.bankReferences,
+       proposal:draft.proposal
+     }:tab===3?{
+       proposal:draft.proposal
+     }:tab===4?{
+       financialStatements:draft.financialStatements
+     }:{
+       legal:draft.legal||{},
+       ...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})
+     };
+
+     const currentStage=activeStage||draft.stage||a.stage||'FAP Stage';
+     const v=await api(`/applications/${a.id}/page-${tab<3?1:tab===5?'legal':2}`,'PUT',{...body,stage:currentStage});
+     const nextApp={
+       ...a,
+       ...v,
+       stage:currentStage,
+       customer: {
+         ...(a.customer||{}),
+         ...(v?.customer||{}),
+         ...customerPayload
+       }
+     };
+     setDraft((prev:any)=>({...prev,...nextApp}));
+     setCustomerDraft((prev:any)=>({...prev,...customerPayload}));
+     onChange(nextApp);
+     notify('Perubahan berhasil disimpan');
+   }catch(e:any){
+     setError(e.message||'Gagal menyimpan perubahan.');
+   }finally{
+     setBusy(false);
+   }
+ }
  const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
  async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Akta tidak ditemukan.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
@@ -790,7 +953,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
     </div>
   );
 
-  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><h1>{liveCompanyName || (draft.isNew ? "Aplikasi Pembiayaan Baru" : "Aplikasi Pembiayaan")}</h1><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(a.industrySegment)} <span>·</span> {a.city} <span>·</span> Created {date(a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${(activeStage||draft.stage||a.stage||'FAP Stage')===st?'active':'inactive'}`} style={{cursor:(st==='FAP Stage'||(!draft.isNew&&(activeStage==='Pre-analysis'||a.stage==='Pre-analysis')))?'pointer':'default'}} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu untuk melanjutkan ke tahap berikutnya.');return;}if(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')setActiveStage(st);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu sebelum membuka tab lain.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Simpan aplikasi terlebih dahulu':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabNumbers[id]!==undefined&&<span>{tabNumbers[id]}</span>}{tabs[id]}{id===6&&a.documentChecks&&<em>{a.documentChecks.length}</em>}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<>
+  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><h1>{liveCompanyName || (draft.isNew ? "Aplikasi Pembiayaan Baru" : "Aplikasi Pembiayaan")}</h1><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${(activeStage||draft.stage||a.stage||'FAP Stage')===st?'active':'inactive'}`} style={{cursor:(st==='FAP Stage'||(!draft.isNew&&(activeStage==='Pre-analysis'||a.stage==='Pre-analysis')))?'pointer':'default'}} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu untuk melanjutkan ke tahap berikutnya.');return;}if(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')setActiveStage(st);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu sebelum membuka tab lain.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Simpan aplikasi terlebih dahulu':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabNumbers[id]!==undefined&&<span>{tabNumbers[id]}</span>}{tabs[id]}{id===6&&a.documentChecks&&<em>{a.documentChecks.length}</em>}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<>
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <Building2 size={18}/>
