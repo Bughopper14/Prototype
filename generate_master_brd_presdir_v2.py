@@ -241,11 +241,13 @@ def build_master_brd_presdir():
 
     p = doc.add_paragraph()
     p.paragraph_format.line_spacing = 1.15
-    p.paragraph_format.space_after = Pt(6)
+    p.paragraph_format.space_after = Pt(8)
     p.add_run(
-        "Aplikasi menerapkan alur 4 tahap berjenjang yang menyatukan otomasi AI dan kehati-hatian perbankan (Prudential Banking):\n"
-        "FAP STAGE  ⟶  [PEFINDO OCR GATEWAY]  ⟶  PRE-ANALYSIS  ⟶  ICLF  ⟶  PROPOSAL"
+        "Aplikasi menerapkan alur 4 tahap berjenjang yang menyatukan otomatisasi cerdas AI dan kehati-hatian perbankan (Prudential Banking), menghubungkan FAP Stage, Intelligent Pefindo Gateway, Pre-Analysis, ICLF, hingga Proposal final Komite Kredit:"
     )
+
+    add_image_figure(doc, r"D:\CRM App2\CRM App2\public\diagram_pipa_strategis_4_tahap.png",
+                     "Diagram Arsitektur Pipa Strategis 4-Tahap, Jembatan Pefindo Biro Kredit, dan Fondasi Ekosistem LiuGong Finance")
 
     flow_table = doc.add_table(rows=6, cols=3)
     flow_table.alignment = WD_TABLE_ALIGNMENT.CENTER

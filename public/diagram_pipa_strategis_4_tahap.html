@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagram Pipa Strategis 4-Tahap | LiuGong Finance Indonesia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #f8fafc;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px;
+    }
+    .diagram-container {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 8px 10px -6px rgba(15, 23, 42, 0.02);
+      padding: 28px;
+      max-width: 1460px;
+      width: 100%;
+    }
+    svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .header-bar {
+      margin-bottom: 24px;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .brand-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #ed7d31;
+      margin-bottom: 4px;
+    }
+    .doc-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #002060;
+    }
+    .doc-sub {
+      font-size: 12px;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .badge-status {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-status::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #16a34a;
+    }
+  </style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <div class="header-bar">
+    <div>
+      <div class="brand-title">PT LIUGONG FINANCE INDONESIA · ORIGINATION WORKSPACE (LOS-CRM)</div>
+      <div class="doc-title">PIPA STRATEGIS 4-TAHAP: END-TO-END CREDIT LIFECYCLE</div>
+      <div class="doc-sub">Otomatisasi Multi-Dokumen AI/OCR, Gateway Pefindo Biro Kredit, Triaging Risiko Dini, Pagu BMPP OJK, hingga Putusan Komite Kredit</div>
+    </div>
+    <div class="badge-status">STRATEGIC ARCHITECTURE · APPROVED V3.2</div>
+  </div>
+
+  <svg viewBox="0 0 1400 560" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Arrow Marker -->
+      <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#002060" />
+      </marker>
+      <marker id="arrow-accent" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#ed7d31" />
+      </marker>
+      <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 1 L 10 5 L 0 9 z" fill="#059669" />
+      </marker>
+
+      <!-- Gradients -->
+      <linearGradient id="grad-fap" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#ffffff"/>
+        <stop offset="100%" stop-color="#f8fafc"/>
+      </linearGradient>
+      <linearGradient id="grad-pefindo" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#fffbeb"/>
+        <stop offset="100%" stop-color="#fef3c7"/>
+      </linearGradient>
+      <linearGradient id="grad-proposal" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#f0fdf4"/>
+        <stop offset="100%" stop-color="#dcfce7"/>
+      </linearGradient>
+
+      <!-- Drop Shadows -->
+      <filter id="shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
+        <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#0f172a" flood-opacity="0.06"/>
+      </filter>
+      <filter id="glow-accent" x="-10%" y="-10%" width="120%" height="125%" filterUnits="userSpaceOnUse">
+        <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#ed7d31" flood-opacity="0.18"/>
+      </filter>
+    </defs>
+
+    <!-- Background Subtle Canvas Grid -->
+    <rect width="1400" height="560" fill="#ffffff" rx="12"/>
+
+    <!-- ==================== STAGE 1: FAP STAGE ==================== -->
+    <g transform="translate(40, 40)">
+      <rect width="250" height="340" rx="10" fill="url(#grad-fap)" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
+      <rect width="250" height="42" rx="10" fill="#002060"/>
+      <rect y="32" width="250" height="10" fill="#002060"/>
+      
+      <text x="18" y="26" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.05em">01 · FAP STAGE</text>
+      <rect x="180" y="10" width="58" height="22" rx="11" fill="#1e3a8a"/>
+      <text x="209" y="25" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#93c5fd" text-anchor="middle">MKT/BS</text>
+
+      <text x="18" y="70" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="800" fill="#0f172a">Onboarding &amp; Intake Cepat</text>
+      <text x="18" y="88" font-family="'Plus Jakarta Sans', sans-serif" font-size="10.5" fill="#64748b">Digital Twin Excel 118-Baris</text>
+
+      <!-- Multi-Doc OCR Feature Box -->
+      <rect x="14" y="104" width="222" height="150" rx="8" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="24" y="124" font-family="'Plus Jakarta Sans', sans-serif" font-size="10.5" font-weight="700" fill="#1e293b">⚡ MULTI-DOCUMENT AI / OCR</text>
+      
+      <circle cx="28" cy="144" r="3" fill="#2563eb"/>
+      <text x="38" y="147" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="600" fill="#334155">NIB OSS RBA (13-Digit Angka)</text>
+      <text x="38" y="160" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Ekstrak PT, Alamat, KBLI, Tgl Akta</text>
+
+      <circle cx="28" cy="178" r="3" fill="#2563eb"/>
+      <text x="38" y="181" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="600" fill="#334155">e-KTP Pengurus WNI</text>
+      <text x="38" y="194" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">NIK, Nama, Tanggal Lahir, Domisili</text>
+
+      <circle cx="28" cy="212" r="3" fill="#2563eb"/>
+      <text x="38" y="215" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="600" fill="#334155">Paspor &amp; E-KITAS (Direksi WNA)</text>
+      <text x="38" y="228" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Validasi legalitas ekspatriat LiuGong</text>
+
+      <circle cx="28" cy="244" r="3" fill="#2563eb"/>
+      <text x="38" y="247" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="600" fill="#334155">NPWP Badan Usaha (16-Digit)</text>
+
+      <!-- Output Deliverable Pill -->
+      <rect x="14" y="266" width="222" height="60" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+      <text x="24" y="284" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#1d4ed8">OUTPUT TAHAP 1:</text>
+      <text x="24" y="300" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="600" fill="#1e3a8a">• Dossier Legalitas 100% Lengkap</text>
+      <text x="24" y="315" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" fill="#2563eb">• Lembar FAP Sheet Terisi Otomatis</text>
+    </g>
+
+    <!-- ARROW 1: FAP -> PEFINDO GATEWAY -->
+    <path d="M 290 210 L 338 210" stroke="#002060" stroke-width="2" marker-end="url(#arrow)" fill="none"/>
+    <text x="314" y="200" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#002060" text-anchor="middle">API</text>
+
+    <!-- ==================== BRIDGE: PEFINDO OCR GATEWAY ==================== -->
+    <g transform="translate(345, 20)">
+      <rect width="210" height="380" rx="12" fill="url(#grad-pefindo)" stroke="#ed7d31" stroke-width="2" filter="url(#glow-accent)"/>
+      <rect width="210" height="42" rx="12" fill="#ed7d31"/>
+      <rect y="32" width="210" height="10" fill="#ed7d31"/>
+
+      <text x="16" y="26" font-family="'Plus Jakarta Sans', sans-serif" font-size="11.5" font-weight="800" fill="#ffffff" letter-spacing="0.05em">INTELLIGENT GATEWAY</text>
+      <rect x="148" y="10" width="50" height="22" rx="11" fill="#c2410c"/>
+      <text x="173" y="25" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#ffedd5" text-anchor="middle">BIRO</text>
+
+      <text x="16" y="68" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="800" fill="#7c2d12">PEFINDO OCR &amp; API</text>
+      <text x="16" y="84" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#9a3412">Automated SLIK &amp; IdScore Bridge</text>
+
+      <!-- Key Capabilities -->
+      <rect x="12" y="98" width="186" height="184" rx="8" fill="#ffffff" stroke="#fde68a" stroke-width="1"/>
+      
+      <text x="20" y="118" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#b45309">PARAMETER DIEKSTRAK:</text>
+
+      <circle cx="24" cy="138" r="3" fill="#ea580c"/>
+      <text x="34" y="141" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#1e293b">Pefindo Credit Score</text>
+      <text x="34" y="154" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Skala 250 - 900 (Grade 1 - 6)</text>
+
+      <circle cx="24" cy="174" r="3" fill="#ea580c"/>
+      <text x="34" y="177" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#1e293b">SLIK OJK 24-Bulan</text>
+      <text x="34" y="190" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Deteksi Kol 1 s/d Kol 5 Macet</text>
+
+      <circle cx="24" cy="210" r="3" fill="#ea580c"/>
+      <text x="34" y="213" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#1e293b">Total Baki Debet Nasional</text>
+      <text x="34" y="226" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Akumulasi utang di seluruh bank</text>
+
+      <circle cx="24" cy="246" r="3" fill="#ea580c"/>
+      <text x="34" y="249" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#1e293b">Legal / Default Check</text>
+      <text x="34" y="262" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Catatan gugatan/restrukturisasi</text>
+
+      <!-- Impact Pill -->
+      <rect x="12" y="292" width="186" height="74" rx="6" fill="#fff7ed" stroke="#fed7aa" stroke-width="1"/>
+      <text x="20" y="310" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="800" fill="#c2410c">NILAI STRATEGIS DIREKSI:</text>
+      <text x="20" y="326" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="600" fill="#9a3412">• Eliminasi 3-5 hari tarik SLIK</text>
+      <text x="20" y="340" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="600" fill="#9a3412">• Pemindaian instan PDF OCR</text>
+      <text x="20" y="354" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="600" fill="#9a3412">• Early Default Stop Gate</text>
+    </g>
+
+    <!-- ARROW 2: PEFINDO -> PRE-ANALYSIS -->
+    <path d="M 555 210 L 603 210" stroke="#ed7d31" stroke-width="2.5" marker-end="url(#arrow-accent)" fill="none"/>
+    <text x="579" y="200" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="#ed7d31" text-anchor="middle">SCORED</text>
+
+    <!-- ==================== STAGE 2: PRE-ANALYSIS ==================== -->
+    <g transform="translate(610, 40)">
+      <rect width="230" height="340" rx="10" fill="url(#grad-fap)" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
+      <rect width="230" height="42" rx="10" fill="#002060"/>
+      <rect y="32" width="230" height="10" fill="#002060"/>
+
+      <text x="16" y="26" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.05em">02 · PRE-ANALYSIS</text>
+      <rect x="162" y="10" width="54" height="22" rx="11" fill="#1e3a8a"/>
+      <text x="189" y="25" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#93c5fd" text-anchor="middle">BS / CA</text>
+
+      <text x="16" y="70" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="800" fill="#0f172a">Early Risk Gatekeeping</text>
+      <text x="16" y="88" font-family="'Plus Jakarta Sans', sans-serif" font-size="10.5" fill="#64748b">Filter NPL Dini (15 Menit)</text>
+
+      <!-- Criteria Box -->
+      <rect x="12" y="104" width="206" height="150" rx="8" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="20" y="124" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="700" fill="#1e293b">DECISION RULES:</text>
+
+      <circle cx="24" cy="144" r="3" fill="#dc2626"/>
+      <text x="34" y="147" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#b91c1c">Auto-Stop Filter (Reject)</text>
+      <text x="34" y="160" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Score &lt; 500 / Kol 3-5 dlm 12 bln</text>
+
+      <circle cx="24" cy="180" r="3" fill="#2563eb"/>
+      <text x="34" y="183" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#334155">Industry Suitability</text>
+      <text x="34" y="196" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Pertambangan nikel, CPO, infra</text>
+
+      <circle cx="24" cy="216" r="3" fill="#2563eb"/>
+      <text x="34" y="219" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#334155">Dealer SPK Verification</text>
+      <text x="34" y="232" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Cek stok unit LiuGong &amp; harga OTR</text>
+
+      <!-- Output Pill -->
+      <rect x="12" y="266" width="206" height="60" rx="6" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1"/>
+      <text x="20" y="284" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#15803d">OUTPUT TAHAP 2:</text>
+      <text x="20" y="300" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="700" fill="#166534">✓ Pre-Analysis Clearance</text>
+      <text x="20" y="315" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" fill="#15803d">Lolos filter risiko awal direksi</text>
+    </g>
+
+    <!-- ARROW 3: PRE-ANALYSIS -> ICLF -->
+    <path d="M 840 210 L 878 210" stroke="#002060" stroke-width="2" marker-end="url(#arrow)" fill="none"/>
+    <text x="859" y="200" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="#002060" text-anchor="middle">GO</text>
+
+    <!-- ==================== STAGE 3: ICLF ==================== -->
+    <g transform="translate(885, 40)">
+      <rect width="230" height="340" rx="10" fill="url(#grad-fap)" stroke="#cbd5e1" stroke-width="1.5" filter="url(#shadow)"/>
+      <rect width="230" height="42" rx="10" fill="#002060"/>
+      <rect y="32" width="230" height="10" fill="#002060"/>
+
+      <text x="16" y="26" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.05em">03 · ICLF</text>
+      <rect x="156" y="10" width="60" height="22" rx="11" fill="#1e3a8a"/>
+      <text x="186" y="25" font-family="'JetBrains Mono', monospace" font-size="9" font-weight="700" fill="#93c5fd" text-anchor="middle">HEAD CA</text>
+
+      <text x="16" y="70" font-family="'Plus Jakarta Sans', sans-serif" font-size="13" font-weight="800" fill="#0f172a">Initial Credit Limit Facility</text>
+      <text x="16" y="88" font-family="'Plus Jakarta Sans', sans-serif" font-size="10.5" fill="#64748b">Pagu Batas Pembiayaan BMPP</text>
+
+      <!-- Criteria Box -->
+      <rect x="12" y="104" width="206" height="150" rx="8" fill="#f1f5f9" stroke="#e2e8f0" stroke-width="1"/>
+      <text x="20" y="124" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="700" fill="#1e293b">KEY PARAMETERS:</text>
+
+      <circle cx="24" cy="144" r="3" fill="#2563eb"/>
+      <text x="34" y="147" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#334155">Single &amp; Group Limit</text>
+      <text x="34" y="160" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Batas BMPP OJK grup terafiliasi</text>
+
+      <circle cx="24" cy="180" r="3" fill="#2563eb"/>
+      <text x="34" y="183" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#334155">Down Payment (20% - 30%)</text>
+      <text x="34" y="196" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Struktur uang muka mitigasi LTV</text>
+
+      <circle cx="24" cy="216" r="3" fill="#2563eb"/>
+      <text x="34" y="219" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#334155">Dealer Subsidy Allocation</text>
+      <text x="34" y="232" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#64748b">Subsidi bunga / Buyback guarantee</text>
+
+      <!-- Output Pill -->
+      <rect x="12" y="266" width="206" height="60" rx="6" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1"/>
+      <text x="20" y="284" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#1d4ed8">OUTPUT TAHAP 3:</text>
+      <text x="20" y="300" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="700" fill="#1e3a8a">✓ Plafon Kredit Disetujui</text>
+      <text x="20" y="315" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" fill="#2563eb">Batas atas risiko pembiayaan terkunci</text>
+    </g>
+
+    <!-- ARROW 4: ICLF -> PROPOSAL -->
+    <path d="M 1115 210 L 1153 210" stroke="#002060" stroke-width="2" marker-end="url(#arrow)" fill="none"/>
+    <text x="1134" y="200" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="#002060" text-anchor="middle">LOCK</text>
+
+    <!-- ==================== STAGE 4: PROPOSAL ==================== -->
+    <g transform="translate(1160, 40)">
+      <rect width="200" height="340" rx="10" fill="url(#grad-proposal)" stroke="#059669" stroke-width="1.8" filter="url(#shadow)"/>
+      <rect width="200" height="42" rx="10" fill="#059669"/>
+      <rect y="32" width="200" height="10" fill="#059669"/>
+
+      <text x="14" y="26" font-family="'Plus Jakarta Sans', sans-serif" font-size="12" font-weight="700" fill="#ffffff" letter-spacing="0.05em">04 · PROPOSAL</text>
+      <rect x="136" y="10" width="52" height="22" rx="11" fill="#047857"/>
+      <text x="162" y="25" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="#d1fae5" text-anchor="middle">KOMITE</text>
+
+      <text x="14" y="70" font-family="'Plus Jakarta Sans', sans-serif" font-size="12.5" font-weight="800" fill="#064e3b">Dossier &amp; Putusan Akhir</text>
+      <text x="14" y="88" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" fill="#047857">Four-Eyes Principle</text>
+
+      <!-- Key Deliverables -->
+      <rect x="10" y="104" width="180" height="150" rx="8" fill="#ffffff" stroke="#a7f3d0" stroke-width="1"/>
+      <text x="16" y="124" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#065f46">DOSSIER KOMPLET:</text>
+
+      <circle cx="20" cy="144" r="3" fill="#059669"/>
+      <text x="28" y="147" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="700" fill="#1e293b">Unit Alat Berat LiuGong</text>
+      <text x="28" y="159" font-family="'Plus Jakarta Sans', sans-serif" font-size="8" fill="#64748b">Seri, VIN, harga OTR, tenor</text>
+
+      <circle cx="20" cy="178" r="3" fill="#059669"/>
+      <text x="28" y="181" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="700" fill="#1e293b">Kalkulasi Anuitas Efektif</text>
+      <text x="28" y="193" font-family="'Plus Jakarta Sans', sans-serif" font-size="8" fill="#64748b">Reducing balance presisi sen</text>
+
+      <circle cx="20" cy="212" r="3" fill="#059669"/>
+      <text x="28" y="215" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="700" fill="#1e293b">Spreading Neraca 3 Thn</text>
+      <text x="28" y="227" font-family="'Plus Jakarta Sans', sans-serif" font-size="8" fill="#64748b">Wajib seimbang Aset = L + E</text>
+
+      <!-- Committee Final Decision -->
+      <rect x="10" y="266" width="180" height="60" rx="6" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1"/>
+      <text x="16" y="284" font-family="'Plus Jakarta Sans', sans-serif" font-size="9" font-weight="800" fill="#047857">PUTUSAN KOMITE KREDIT:</text>
+      <text x="16" y="300" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" font-weight="700" fill="#065f46">Tier 1 / Tier 2 / Tier 3 (Presdir)</text>
+      <text x="16" y="315" font-family="'Plus Jakarta Sans', sans-serif" font-size="8.5" fill="#059669">Approve · Reject · Return</text>
+    </g>
+
+    <!-- ==================== BOTTOM HORIZONTAL LAYER: FOUNDATION & ECOSYSTEM ==================== -->
+    <g transform="translate(40, 420)">
+      <rect width="1320" height="110" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2"/>
+      
+      <!-- Box 1: Dealer Ecosystem -->
+      <rect x="16" y="14" width="410" height="82" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+      <rect x="26" y="24" width="8" height="8" rx="2" fill="#ed7d31"/>
+      <text x="40" y="32" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="800" fill="#002060">SINERGI TRIPARTIT DEALER RESMI LIUGONG</text>
+      <text x="26" y="52" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Penerbitan SPK, Faktur, BAST Resmi &amp; Alokasi Unit Cepat</text>
+      <text x="26" y="68" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Subsidi Bunga Khusus (Interest Subsidy) &amp; Buyback Guarantee</text>
+      <text x="26" y="84" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Jaminan Ketersediaan Suku Cadang &amp; Layanan Purna Jual Resmi</text>
+
+      <!-- Box 2: NPL Mitigation Architecture -->
+      <rect x="442" y="14" width="436" height="82" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+      <rect x="452" y="24" width="8" height="8" rx="2" fill="#dc2626"/>
+      <text x="466" y="32" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="800" fill="#002060">FRAMEWORK MITIGASI NPL / NPF (NON-PERFORMING LOAN)</text>
+      <text x="452" y="52" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Telematika IoT LiuGong: GPS Real-time &amp; Remote Engine Immobilizer</text>
+      <text x="452" y="68" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Proteksi Asuransi Alat Berat All-Risk &amp; Pendaftaran Fidusia Resmi</text>
+      <text x="452" y="84" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Debt Service Coverage Ratio (DSCR) Wajib Minimum &gt; 1.25x</text>
+
+      <!-- Box 3: Governance & Compliance -->
+      <rect x="894" y="14" width="410" height="82" rx="8" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+      <rect x="904" y="24" width="8" height="8" rx="2" fill="#059669"/>
+      <text x="918" y="32" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="800" fill="#002060">KEPATUHAN REGULASI &amp; AUDIT TRAIL ABADI</text>
+      <text x="904" y="52" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Kepatuhan POJK Multifinance &amp; Batas BMPP Pembiayaan Grup</text>
+      <text x="904" y="68" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• UU PDP No. 27/2022: Enkripsi Dokumen S3 &amp; Akses Berizin</text>
+      <text x="904" y="84" font-family="'Plus Jakarta Sans', sans-serif" font-size="9.5" fill="#475569">• Immutable Trigger Audit Log: Pencatatan Perubahan Negara Bagian</text>
+    </g>
+
+  </svg>
+</div>
+
+</body>
+</html>
