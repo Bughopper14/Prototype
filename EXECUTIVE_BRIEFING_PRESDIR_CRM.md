@@ -29,14 +29,14 @@ $$\textbf{1. FAP STAGE} \;\longrightarrow\; \textbf{2. PRE-ANALYSIS} \;\longrigh
 
 ---
 
-### [THE INTELLIGENT BRIDGE]: INTEGRASI PEFINDO OCR & SLIK OJK
+### [THE INTELLIGENT BRIDGE]: INTEGRASI PEFINDO OCR & BIRO KREDIT
 * **Poin Penjelasan:**
   * Di antara **FAP STAGE** dan **PRE-ANALYSIS**, sistem memiliki gerbang interkoneksi cerdas: **Pefindo OCR & API Gateway**.
-  * Data identitas nasabah (NIB/NPWP) dan pengurus (NIK/Paspor) yang sudah dipindai di FAP Stage **langsung ditembakkan ke sistem Pefindo Biro Kredit**.
+  * Begitu data legalitas NIB/KTP/NPWP diekstrak, sistem dapat langsung menembakkan query ke Pefindo Biro Kredit atau memindai dokumen laporan Pefindo menggunakan OCR parser.
   * **Data Intelijen yang Didapat Seketika:**
     1. **Pefindo Credit Score & Rating** (Skala 250–900 dan estimasi risiko gagal bayar).
-    2. **Histori Kolektibilitas SLIK 24 Bulan** (Melihat apakah ada riwayat Kol 2, Kol 3, atau macet di bank lain).
-    3. **Total Fasilitas Utang Berjalan** (Mengetahui total eksposur pinjaman nasabah di seluruh Indonesia).
+    2. **Histori Pembayaran Kredit Pefindo** (Melihat apakah ada riwayat tunggakan atau kredit macet).
+    3. **Total Fasilitas Utang Terbuka** (Mengetahui total akumulasi eksposur pinjaman nasabah di biro kredit).
   * **Nilai Bisnis:** Sebelum kita menghabiskan waktu berhari-hari menyusun proposal, kita sudah tahu persis apakah nasabah ini *bonafide* atau berisiko tinggi.
 
 ---

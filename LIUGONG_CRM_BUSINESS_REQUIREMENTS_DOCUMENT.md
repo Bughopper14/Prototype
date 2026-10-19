@@ -22,7 +22,7 @@
 2. [BAB 2: Glosarium, Kamus Terminologi & Singkatan Finansial](#bab-2-glosarium-kamus-terminologi--singkatan-finansial)
 3. [BAB 3: Pipa Strategis 4-Tahap Utama (The 4-Stage Strategic Pipeline)](#bab-3-pipa-strategis-4-tahap-utama-the-4-stage-strategic-pipeline)
    - 3.1. [Tahap 1: FAP Stage & Multi-Document AI/OCR Intake](#31-tahap-1-fap-stage--multi-document-aiocr-intake)
-   - 3.2. [Gateway Interkoneksi: Pefindo Biro Kredit & SLIK Ingestion Bridge](#32-gateway-interkoneksi-pefindo-biro-kredit--slik-ingestion-bridge)
+   - 3.2. [Gateway Interkoneksi: Pefindo Biro Kredit Ingestion Bridge](#32-gateway-interkoneksi-pefindo-biro-kredit-ingestion-bridge)
    - 3.3. [Tahap 2: Pre-Analysis & Early Risk Gatekeeping](#33-tahap-2-pre-analysis--early-risk-gatekeeping)
    - 3.4. [Tahap 3: ICLF (Initial Credit Limit Facility)](#34-tahap-3-iclf-initial-credit-limit-facility)
    - 3.5. [Tahap 4: Proposal Pembiayaan Final & Putusan Komite](#35-tahap-4-proposal-pembiayaan-final--putusan-komite)
@@ -66,7 +66,7 @@ Sistem **Origination Workspace & CRM (LOS-CRM)** ini dirancang atas visi kepemim
 | **PRE-ANALYSIS** | Tahap analisis kelayakan awal (*feasibility screening*) berbasis scoring historis dan kapabilitas operasional debitur sebelum evaluasi komprehensif. |
 | **ICLF** | *Initial Credit Limit Facility* — Penetapan pagu batas atas kredit maksimum yang dapat dinikmati oleh satu grup usaha debitur. |
 | **PROPOSAL** | Tahap penyusunan proposal fasilitas pembiayaan formal lengkap dengan struktur komersial, kalkulasi bunga anuitas, dan rekomendasi komite kredit. |
-| **PEFINDO OCR / API** | Integrasi sistem ke Pefindo Biro Kredit (Credit Bureau) untuk menarik riwayat kolektibilitas perbankan (SLIK), skor kredit, dan total eksposur utang debitur. |
+| **PEFINDO OCR / API** | Integrasi sistem ke Pefindo Biro Kredit (Credit Bureau) untuk menarik riwayat kredit, skor kredit IdScore, dan total eksposur utang terbuka debitur. |
 | **Multi-Doc AI/OCR** | Mesin kecerdasan buatan pemindai dokumen legal otomatis (NIB, KTP, Paspor, NPWP, E-KITAS) yang mengekstrak data instan tanpa pengetikan manual. |
 | **Digital Twin FAP** | Visualisasi digital interaktif 118-baris yang mencerminkan format fisik lembar kerja Excel resmi perusahaan secara *real-time*. |
 
@@ -87,7 +87,7 @@ Sistem mengadopsi kerangka kerja 4 tahap progresif yang linear, akuntabel, dan t
          │                         ▲
          │    [GATEWAY CERDAS]     │
          └──►  PEFINDO OCR / API  ──┘
-              • SLIK OJK Inquiry
+              • IdScore Inquiry
               • Credit Score 250-900
               • Debt Exposure Check
 ```
@@ -104,12 +104,12 @@ FAP Stage adalah gerbang utama pendaftaran debitur baru maupun penambahan unit n
 
 ---
 
-### 3.2. Gateway Interkoneksi: Pefindo Biro Kredit & SLIK Ingestion Bridge
+### 3.2. Gateway Interkoneksi: Pefindo Biro Kredit Ingestion Bridge
 Di antara FAP Stage dan Pre-Analysis, sistem menyediakan **Gateway Interkoneksi Cerdas**:
 * **Mekanisme Pemicu Otomatis:** Begitu data identitas perusahaan (NIB & NPWP) serta data pengurus kunci (NIK KTP / Paspor) berhasil diverifikasi di FAP Stage, sistem dapat langsung melakukan *inquiry* ke sistem Pefindo Biro Kredit melalui API terenkripsi atau pemrosesan laporan Pefindo OCR.
 * **Data Intelijen Finansial yang Ditarik:**
   1. **Pefindo Credit Score & Rating:** Skala skor kredit objektif (misal: 650–850) beserta probabilitas gagal bayar (*Probability of Default - PD*).
-  2. **Matriks Kolektibilitas Historis (SLIK 24 Bulan):** Rekam jejak kelancaran pembayaran cicilan (Kolektibilitas 1 / Lancar hingga Kolektibilitas 5 / Macet) di seluruh bank komersial dan multifinance di Indonesia.
+  2. **Matriks Riwayat Kredit Historis:** Rekam jejak kelancaran pembayaran cicilan dan riwayat tunggakan di lembaga pembiayaan dan perbankan.
   3. **Total Fasilitas Utang Berjalan (Active Debt Exposure):** Plafon total pinjaman yang sedang dinikmati debitur saat ini, besaran angsuran bulanan eksisting, serta jaminan yang sedang diagunkan di lembaga lain.
   4. **Peringatan Dini (Red Flags):** Deteksi otomatis jika debitur memiliki riwayat restrukturisasi kredit, gugatan perdata, atau cek kosong.
 * **Dampak Strategis bagi Presiden Direktur:** Manajemen tidak lagi 'membeli kucing dalam karung'. Profil risiko debitur langsung terkuak secara transparan sebelum tim analis melangkah lebih jauh.
@@ -258,7 +258,7 @@ $$\text{PMT} = \frac{PV \times r}{1 - (1 + r)^{-n}}$$
 | :--- | :---: | :---: |
 | **Turnaround Time (TAT) Siklus Kredit** | 10 – 14 Hari Kerja | **$\le$ 48 Jam (2 Hari Kerja)** |
 | **Waktu Pendaftaran & Input Data Debitur** | 4 – 6 Jam | **$\le$ 30 Menit (dengan Multi-Doc AI/OCR)** |
-| **Waktu Penarikan Data SLIK / Pefindo** | 1 – 2 Hari Kerja | **Real-time (Detik) via Pefindo Bridge** |
+| **Waktu Penarikan Laporan Kredit Pefindo** | 1 – 2 Hari Kerja | **Real-time (Detik) via Pefindo Bridge** |
 | **Tingkat Retur Berkas (*Defect Rate*)** | 35% – 40% permohonan | **$\le$ 3% permohonan** |
 | **Akurasi Validasi Neraca & Saham** | Rentan salah hitung | **100% Zero-Error (Tervalidasi Sistem)** |
 | **Ketersediaan Layanan Operasional** | Tergantung jam kantor | **24/7 Digital High Availability** |

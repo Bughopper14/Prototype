@@ -271,8 +271,8 @@ def build_master_brd_presdir():
         ("1. FAP STAGE\n(Intake & Profiling)", 
          "• Multi-Document AI/OCR (NIB, e-KTP, Paspor, NPWP, E-KITAS)\n• Form 5-Modul Accordion & Digital Twin Excel 118-Baris",
          "Onboarding nasabah seketika. Memangkas 80% waktu input data dan meniadakan salah ketik nomor identitas resmi."),
-        ("INTERKONEKSI CERDAS\n(Pefindo Biro Kredit)", 
-         "• Ingestion Data Otomatis ke Pefindo / SLIK OJK\n• Penarikan Credit Score (250–900) & Kol 1–5 24 Bulan\n• Total Eksposur Utang Perbankan Nasional",
+        ("INTERKONEKSI CERDAS\n(Pefindo Biro Kredit)",
+         "• Ingestion Data Otomatis ke Pefindo Biro Kredit\n• Penarikan Credit Score (250–900)\n• Total Eksposur Utang Terbuka",
          "Mengetahui integritas keuangan debitur secara seketika sebelum melangkah ke proses survei dan komite."),
         ("2. PRE-ANALYSIS\n(Risk Gatekeeping)", 
          "• Early Risk Triaging (Go / Review / No-Go)\n• Evaluasi KBLI Sektor Industri & Kapasitas Alat\n• Deteksi Dini Restrukturisasi & Gugatan",
@@ -368,15 +368,15 @@ def build_master_brd_presdir():
     p.paragraph_format.space_after = Pt(4)
     p.add_run(
         "Begitu identitas legal debitur dan para pengurus kunci tervalidasi pada FAP Stage, sistem secara otomatis "
-        "dapat menembakkan data tersebut ke Pefindo Biro Kredit (IdScore / SLIK OJK API Bridge) maupun membaca laporan PDF Pefindo via OCR parser. "
+        "dapat menembakkan data tersebut ke Pefindo Biro Kredit (IdScore API Bridge) maupun membaca laporan PDF Pefindo via OCR parser. "
         "Langkah ini menghadirkan profil intelijen finansial yang komprehensif dalam hitungan detik:"
     )
 
     add_callout(doc,
         "INTELIJEN RISIKO PEFINDO BIRO KREDIT:\n"
         "1. Pefindo Credit Score (Skala 250–900): Skor obyektif yang memetakan probabilitas gagal bayar (Probability of Default/PD).\n"
-        "2. Riwayat Kolektibilitas 24 Bulan (SLIK OJK): Mengetahui histori pembayaran cicilan debitur di bank atau leasing lain—apakah selalu Lancar (Kol 1) atau pernah Nunggak/Macet (Kol 2–5).\n"
-        "3. Total Eksposur Utang Perbankan Nasional: Mengetahui total baki debet dan beban angsuran bulanan yang sedang berjalan di lembaga keuangan lain.\n"
+        "2. Riwayat Kredit Pefindo: Mengetahui histori pembayaran cicilan debitur di lembaga pembiayaan lain—apakah selalu lancar atau memiliki catatan tunggakan.\n"
+        "3. Total Eksposur Utang Terbuka: Mengetahui akumulasi total kewajiban dan beban kredit berjalan di biro kredit.\n"
         "4. Deteksi Dini Restrukturisasi & Gugatan Hukum: Menghindarkan LiuGong Finance dari debitur yang sedang dalam sengketa perdata, PKPU, atau kepailitan.",
         title="NILAI STRATEGIS INTEGRASI PEFINDO BAGI MANAJEMEN RISIKO")
 
@@ -597,7 +597,7 @@ def build_master_brd_presdir():
     kpi_rows = [
         ("Turnaround Time (TAT) Siklus Kredit", "10 – 14 Hari Kerja", "Maksimal 48 Jam (2 Hari)"),
         ("Waktu Onboarding & Input Data Nasabah", "4 – 6 Jam", "≤ 30 Menit (Multi-Doc OCR)"),
-        ("Inquiry Riwayat Kredit SLIK / Pefindo", "1 – 2 Hari Kerja", "Real-Time / Hitungan Detik"),
+        ("Penarikan Laporan Kredit Pefindo", "1 – 2 Hari Kerja", "Real-Time / Hitungan Detik"),
         ("Tingkat Retur Berkas (Defect Rate)", "35% – 40% aplikasi", "≤ 3% permohonan"),
         ("Akurasi Laporan Keuangan & Saham", "Rentan salah hitung", "100% Zero-Error Terverifikasi")
     ]
