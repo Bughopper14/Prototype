@@ -200,7 +200,7 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
     ...prev,
     ...(extracted.nib?{nib:extracted.nib}:{}),
     ...(extracted.companyName&&!prev.companyName?{companyName:extracted.companyName}:{}),
-    ...(extracted.tanggalTerbit?{establishmentDate:extracted.tanggalTerbit,nibDate:extracted.tanggalTerbit}:{}),
+    ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
    }));
   }
   setDraft((prev:any)=>({
@@ -209,12 +209,12 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
    ...(extracted.alamat?{companyAddress:extracted.alamat}:{}),
    ...(extracted.email?{email:extracted.email}:{}),
    ...(extracted.phone?{phoneFax:extracted.phone}:{}),
-   ...(extracted.tanggalTerbit?{establishmentDate:extracted.tanggalTerbit,nibDate:extracted.tanggalTerbit}:{}),
+   ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
    customer:{
     ...(prev.customer||{}),
     ...(extracted.nib?{nib:extracted.nib}:{}),
     ...(extracted.companyName&&!prev.customer?.companyName?{companyName:extracted.companyName}:{}),
-    ...(extracted.tanggalTerbit?{establishmentDate:extracted.tanggalTerbit,nibDate:extracted.tanggalTerbit}:{}),
+    ...(extracted.tanggalTerbit?{nibDate:extracted.tanggalTerbit}:{}),
    }
   }));
   if(customerCategory==='EXISTING'&&draft.isNew){
@@ -525,7 +525,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
                     <dl>
                       <div><dt>NIB</dt><dd style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{selectedCustomer.nib || '—'}</span><button type="button" onClick={()=>setNibOcrOpen(true)} title="Scan & Verifikasi Dokumen NIB via OCR" className="nib-header-ocr-btn"><ScanLine size={11}/><span>Scan OCR NIB</span></button></dd></div>
                       <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
-                      <div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
+                      <div><dt>Establishment Deed Number</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
                     </dl>
                   </section>
                 )}
