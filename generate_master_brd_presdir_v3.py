@@ -435,6 +435,8 @@ def build_word_document():
 
     add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\03_step_nib_ocr_modal_opened.png",
                      "Modal Dialog Scan OCR NIB 13-Digit Terbuka Langsung dari Form Domisili Perusahaan")
+    add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\step_stakeholder_ktp_ocr_modal.png",
+                     "Modal Dialog Side-by-side OCR e-KTP & Paspor pada Pengurus dan Pemegang Saham (Stakeholders)")
 
     # 2.4 ALUR BERKESINAMBUNGAN DARI FAP HINGGA PROPOSAL
     sub24 = doc.add_paragraph()
