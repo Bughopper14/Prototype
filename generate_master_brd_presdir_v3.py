@@ -131,7 +131,7 @@ def build_word_document():
         doc,
         "DOKUMEN PRESENTASI EKSEKUTIF UNTUK PRESIDEN DIREKTUR:\n"
         "Dokumen ini membedah Roadmap Strategis Pengembangan Sistem 2026–2027 dengan fokus utama pada rilis Q4 2026 (FAP STAGE: Customer & PIC hingga Stakeholders + Tab Dokumen). "
-        "Dilengkapi rincian operasional input data oleh tim Marketing, integrasi OCR NIB OSS RBA, Digital Twin Excel 118-baris, validasi saham 100%, serta gambaran umum fase lanjutan 2027.",
+        "Dilengkapi rincian operasional langkah demi langkah (SOP 6 Tahap) penginputan data oleh tim Marketing, integrasi OCR NIB OSS RBA, Digital Twin Excel 118-baris, validasi saham 100%, serta gambaran umum fase lanjutan 2027.",
         title="RINGKASAN STRATEGIS DIREKSI"
     )
 
@@ -269,12 +269,12 @@ def build_word_document():
     doc.add_page_break()
 
     # -------------------------------------------------------------
-    # BAB 2: DETAIL PROSES FAP STAGE DARI SISI MARKETING (RILIS Q4 2026)
+    # BAB 2: PANDUAN OPERASIONAL STEP-BY-STEP FAP STAGE UNTUK MARKETING (SOP 6 LANGKAH)
     # -------------------------------------------------------------
     h2 = doc.add_paragraph()
     h2.paragraph_format.space_before = Pt(8)
     h2.paragraph_format.space_after = Pt(4)
-    r = h2.add_run("BAB 2: PROSES DETAIL FAP STAGE DARI SISI MARKETING (RILIS Q4 2026)")
+    r = h2.add_run("BAB 2: PANDUAN OPERASIONAL STEP-BY-STEP FAP STAGE (SOP 6 LANGKAH MARKETING)")
     r.font.name = "Calibri"
     r.font.size = Pt(15)
     r.bold = True
@@ -284,20 +284,19 @@ def build_word_document():
     p.paragraph_format.line_spacing = 1.15
     p.paragraph_format.space_after = Pt(6)
     p.add_run(
-        "Pada rilis Q4 2026, fokus implementasi difokuskan penuh pada FAP STAGE. "
-        "Di tahap ini, staf Marketing (MKT) di cabang bertindak sebagai garda terdepan penginputan data. "
-        "Seluruh alur dirancang secara ergonomis ke dalam 4 Tab Berurutan (Customer & PIC, Legal, Stakeholders, dan Documents) "
-        "yang dilengkapi otomatisasi AI dan live visual mirror:"
+        "Pada kuartal Q4 2026, sistem diresmikan dengan fokus utama pada FAP STAGE. "
+        "Berikut adalah Standard Operating Procedure (SOP) langkah demi langkah yang dijalankan oleh Marketing Officer (MKT) "
+        "di seluruh kantor cabang LiuGong saat menginput permohonan pembiayaan baru:"
     )
 
     add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\fap_stage_tabs_with_document.png",
                      "Tampilan Workspace FAP Stage Aktif Menampilkan 4 Tab Terstruktur Lengkap dengan Tab Dokumen (Live System)")
 
-    # 2.1 TAB CUSTOMER & PIC
-    sub21 = doc.add_paragraph()
-    sub21.paragraph_format.space_before = Pt(8)
-    sub21.paragraph_format.space_after = Pt(2)
-    r = sub21.add_run("2.1. Tab 1: Customer & PIC (5 Modul Accordion & Digital Twin Excel 118-Baris)")
+    # LANGKAH 1
+    sub_l1 = doc.add_paragraph()
+    sub_l1.paragraph_format.space_before = Pt(8)
+    sub_l1.paragraph_format.space_after = Pt(2)
+    r = sub_l1.add_run("Langkah 1: Inisiasi Permohonan Baru & Pendaftaran Registrasi")
     r.font.name = "Calibri"
     r.font.size = Pt(12)
     r.bold = True
@@ -307,15 +306,57 @@ def build_word_document():
     p.paragraph_format.line_spacing = 1.15
     p.paragraph_format.space_after = Pt(4)
     p.add_run(
-        "Untuk mencegah kelelahan pengguna (form fatigue) akibat lebih dari 35 field isian, formulir kiri dibagi ke dalam 5 modul kartu accordion bernomor:\n"
-        "1. Modul 01 - Identitas & Klasifikasi Debitur: Marketing memilih Kategori Nasabah (Customer Baru / Existing), Tipe Debitur (Corporate / Commercial / Micro), Kantor Cabang LiuGong (JKT01, SBY01, BPN01, PLB01, MDN01), serta Tanggal Permohonan.\n"
-        "2. Modul 02 - Kantor Registrasi & Domisili Perusahaan: Marketing memasukkan Nama Resmi Perusahaan, Alamat Kantor Pusat, Kota, Provinsi, Kode Pos, serta Nomor Telepon/Fax. "
-        "Pada field NIB (Nomor Induk Berusaha), tersedia tombol 'Scan OCR NIB' yang otomatis mengekstrak dokumen OSS RBA BKPM.\n"
-        "3. Modul 03 - Profil Usaha & Legalitas Awal: Pengisian Bisnis Utama (KBLI Sektor Tambang/Konstruksi/Sawit), Pengalaman Usaha (Tahun & Bulan), NPWP Badan Usaha (15/16 digit), serta No & Tanggal Akta Pendirian.\n"
-        "4. Modul 04 - Kontak Utama / Penanggung Jawab (PIC): Nama Lengkap PIC Pengadaan, Jabatan Formal (Direktur/Procurement), Alamat Domisili PIC, Nomor WhatsApp aktif, dan Email kantor resmi.\n"
-        "5. Modul 05 - Segmentasi Industri & Proyek Berjalan: Pemilihan sektor industri alat berat serta deskripsi kontrak kerja yang sedang dikerjakan debitur (pemberi kerja/bouwheer, lokasi tambang/konstruksi, durasi kontrak).\n\n"
-        "Fitur Digital Twin Live Excel: Pada kolom kanan, terpampang replika presisi formulir Excel resmi (FAP-Document_APPROVED_v01.2025.xlsx). "
-        "Setiap karakter yang diketik oleh Marketing langsung terproyeksi ke lembar kanan secara real-time, lengkap dengan tombol navigasi Auto-Sync Focus (1. Identitas s/d 5. Proyek)."
+        "1. Login Pengguna: Marketing masuk ke sistem menggunakan akun resmi cabang (misal: marketing@liugong.local).\n"
+        "2. Buka Origination Workspace: Memilih menu 'Applications' pada sidebar kiri.\n"
+        "3. Inisiasi Aplikasi: Klik tombol '+ New application' (atau membuka draft berjalan). "
+        "Sistem secara otomatis mengalokasikan nomor register resmi sesuai format standar: [Nomor Urut]/AF/[Bulan Romawi]/[Tahun] (contoh: 003/AF/IX/2026) "
+        "dan menetapkan tahap awal pada 'FAP Stage' berstatus 'Draft'."
+    )
+
+    # LANGKAH 2
+    sub_l2 = doc.add_paragraph()
+    sub_l2.paragraph_format.space_before = Pt(8)
+    sub_l2.paragraph_format.space_after = Pt(2)
+    r = sub_l2.add_run("Langkah 2: Pengisian Tab 1 (Customer & PIC) — 5 Modul Accordion & Digital Twin Excel")
+    r.font.name = "Calibri"
+    r.font.size = Pt(12)
+    r.bold = True
+    r.font.color.rgb = RGBColor(237, 125, 49)
+
+    p = doc.add_paragraph()
+    p.paragraph_format.line_spacing = 1.15
+    p.paragraph_format.space_after = Pt(4)
+    p.add_run(
+        "Marketing melengkapi data identitas calon debitur pada formulir sebelah kiri yang terbagi ke dalam 5 modul kartu accordion bernomor:\n"
+        "• Modul 01 - Identitas & Klasifikasi Debitur:\n"
+        "  - Memilih Kategori Pelanggan: 'Customer Baru' (New Customer) atau 'Customer Lama' (Existing Customer).\n"
+        "  - Memilih Segmen Bisnis: 'Corporate', 'Commercial', atau 'Micro'.\n"
+        "  - Menentukan Kantor Cabang LiuGong (misal: JKT01 Jakarta, SBY01 Surabaya, BPN01 Balikpapan, PLB01 Palembang, MDN01 Medan).\n"
+        "  - Memverifikasi Tanggal Aplikasi Pembiayaan.\n\n"
+        "• Modul 02 - Kantor Registrasi & Domisili (Otomasi Scan OCR NIB 13-Digit):\n"
+        "  - Memasukkan Nama Legal Perusahaan (PT/CV).\n"
+        "  - Pemanfaatan Fitur AI OCR NIB: Marketing menekan tombol pill '[ 📷 Scan OCR NIB ]' di header field NIB. "
+        "Jendela pop-up modal terbuka; Marketing mengunggah berkas sertifikat standar NIB OSS RBA (format PDF atau gambar). "
+        "AI OCR langsung membaca berkas dan mengekstrak secara otomatis 5 parameter kunci: 13-Digit Nomor NIB, Nama Perusahaan, Alamat Lengkap, Kode Pos, dan Tanggal Terbit OSS. "
+        "Seluruh field langsung terisi otomatis tanpa risiko salah ketik.\n"
+        "  - Melengkapi Kota, Provinsi, dan Nomor Telepon/Fax Kantor Pusat.\n\n"
+        "• Modul 03 - Profil Usaha & Legalitas Awal:\n"
+        "  - Memasukkan Bisnis Utama / KBLI (misal: Kontraktor Penambangan Nikel, Perkebunan Kelapa Sawit, Jasa Konstruksi Sipil).\n"
+        "  - Mengisi Pengalaman Usaha (Tahun dan Bulan berjalan).\n"
+        "  - Memasukkan Nomor NPWP Badan Usaha (15 atau 16 digit angka).\n"
+        "  - Memasukkan Nomor Akta Pendirian dan Tanggal Akta Pendirian awal.\n\n"
+        "• Modul 04 - Kontak Utama / Penanggung Jawab (PIC):\n"
+        "  - Mengisi Nama Lengkap PIC yang ditunjuk debitur untuk menangani pengadaan alat berat.\n"
+        "  - Mengisi Jabatan Formal di Perusahaan (misal: Direktur Operasional, GM Procurement).\n"
+        "  - Memasukkan Alamat Domisili Tempat Tinggal PIC, Kota, Provinsi, Kode Pos.\n"
+        "  - Memasukkan Nomor Handphone / WhatsApp aktif dan Email kantor resmi PIC.\n\n"
+        "• Modul 05 - Segmentasi Industri & Proyek Berjalan:\n"
+        "  - Memilih Sektor Industri (Mining Nikel/Batubara, Construction, Forestry, Agriculture, Logistics).\n"
+        "  - Mengisi Deskripsi Proyek / Kontrak Kerja yang sedang berjalan (nama bouwheer/pemberi kerja, lokasi tambang/konstruksi, durasi kontrak kerja).\n\n"
+        "• Verifikasi Visual Kolom Kanan (Live Excel Mirror 118-Baris):\n"
+        "  - Selama Marketing mengetik pada modul kiri, lembar kerja resmi Excel (FAP-Document_APPROVED_v01.2025.xlsx) pada kolom kanan terisi secara real-time.\n"
+        "  - Marketing dapat menggunakan tombol navigasi cepat (1. Identitas s/d 5. Proyek) di ribbon Excel untuk memverifikasi tata letak dokumen cetak A4.\n"
+        "  - Marketing menekan tombol 'Simpan' untuk mengunci data FAP Stage ke basis data."
     )
 
     add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\03_workspace_split_50_50.png",
@@ -324,11 +365,11 @@ def build_word_document():
     add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\04_nib_ocr_modal.png",
                      "Fitur Modal Scan OCR Dokumen NIB OSS RBA dengan Ekstraksi 5 Parameter Kunci Otomatis (Live System)")
 
-    # 2.2 TAB LEGAL
-    sub22 = doc.add_paragraph()
-    sub22.paragraph_format.space_before = Pt(8)
-    sub22.paragraph_format.space_after = Pt(2)
-    r = sub22.add_run("2.2. Tab 2: Legal Deeds (Akta Pendirian, Akta Perubahan & SK Kemenkumham)")
+    # LANGKAH 3
+    sub_l3 = doc.add_paragraph()
+    sub_l3.paragraph_format.space_before = Pt(8)
+    sub_l3.paragraph_format.space_after = Pt(2)
+    r = sub_l3.add_run("Langkah 3: Pengisian Tab 2 (Legal Deeds) — Akta Notaris & SK Kemenkumham")
     r.font.name = "Calibri"
     r.font.size = Pt(12)
     r.bold = True
@@ -338,22 +379,29 @@ def build_word_document():
     p.paragraph_format.line_spacing = 1.15
     p.paragraph_format.space_after = Pt(4)
     p.add_run(
-        "Di tab Legal, Marketing mendokumentasikan riwayat legalitas yuridis perusahaan debitur:\n"
-        "• Akta Pendirian Utama: Nomor Akta Notaris, Tanggal Akta, Nama Notaris, serta Nomor & Tanggal SK Menkumham Pendirian.\n"
-        "• Akta Perubahan Terakhir: Nomor Akta, Tanggal Akta, serta Nomor & Tanggal SK Menkumham Perubahan.\n"
-        "• Kategori Remarks Perubahan: Memilih chip kategori klausul yang diubah (Susunan Pemegang Saham, Pengurus Direksi/Komisaris, Modal Dasar/Disetor, atau Maksud & Tujuan Anggaran Dasar).\n"
-        "• Editor TinyMCE Catatan Akta: Dilengkapi teks editor kaya dengan penomoran otomatis berurutan (continuous numbered list) untuk mencatat ringkasan isi akta tanpa terputus.\n"
-        "• Segmentasi Tabel Cerdas: Sistem memisahkan antara 'Akta Aktif & Rujukan Terkini' di tabel atas dan 'Riwayat Akta Lama (Historical)' di tabel bawah."
+        "Setelah data Customer & PIC tersimpan, Marketing beralih ke Tab 2 'Legal':\n"
+        "1. Perekaman Akta Pendirian:\n"
+        "   - Klik tombol '+ Tambah akta', pilih tipe 'Akta Pendirian'.\n"
+        "   - Memasukkan Nomor Akta Notaris, Tanggal Akta, Nama Notaris Pembuat Akta.\n"
+        "   - Memasukkan Nomor SK Pengesahan Kemenkumham dan Tanggal SK.\n"
+        "2. Perekaman Akta Perubahan Terakhir:\n"
+        "   - Menambahkan baris akta perubahan, memilih tipe 'Akta Perubahan'.\n"
+        "   - Memasukkan Nomor Akta Perubahan, Tanggal Akta, Nomor dan Tanggal SK Menkumham Perubahan.\n"
+        "   - Memilih chip 'Kategori Remarks': Saham, Kepengurusan, Modal, atau Anggaran Dasar.\n"
+        "   - Pencatatan Ringkasan Klausul: Menggunakan teks editor TinyMCE dengan penomoran berurutan otomatis (continuous ordered list) untuk mendokumentasikan pasal-pasal penting perubahan akta.\n"
+        "3. Verifikasi Status Akta:\n"
+        "   - Sistem secara otomatis menempatkan akta yang berlaku efektif pada tabel atas 'Akta Aktif & Rujukan Terkini', "
+        "sementara draf atau akta lampau diarsipkan ke tabel bawah 'Riwayat Akta Lama (Historical)'."
     )
 
     add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\tab_2_legal.png",
                      "Manajemen Akta Legalitas: Tabel Akta Aktif Rujukan Terkini dan Riwayat Akta Historis (Live System)")
 
-    # 2.3 TAB STAKEHOLDERS
-    sub23 = doc.add_paragraph()
-    sub23.paragraph_format.space_before = Pt(8)
-    sub23.paragraph_format.space_after = Pt(2)
-    r = sub23.add_run("2.3. Tab 3: Stakeholders (Susunan Pengurus, Pemegang Saham & Validasi Modal 100%)")
+    # LANGKAH 4
+    sub_l4 = doc.add_paragraph()
+    sub_l4.paragraph_format.space_before = Pt(8)
+    sub_l4.paragraph_format.space_after = Pt(2)
+    r = sub_l4.add_run("Langkah 4: Pengisian Tab 3 (Stakeholders) — Struktur Pengurus & Validasi Saham Mutlak 100%")
     r.font.name = "Calibri"
     r.font.size = Pt(12)
     r.bold = True
@@ -363,22 +411,28 @@ def build_word_document():
     p.paragraph_format.line_spacing = 1.15
     p.paragraph_format.space_after = Pt(4)
     p.add_run(
-        "Di tab Stakeholders, Marketing memasukkan susunan jajaran manajemen dan struktur kepemilikan modal perseroan:\n"
-        "• Klasifikasi Pemilik: Perorangan WNI (NIK e-KTP 16 digit), Perorangan Asing / Expatriat (Paspor & E-KITAS), atau Badan Usaha (NPWP Badan).\n"
-        "• Jabatan Formal: Direktur Utama, Direktur, Komisaris Utama, Komisaris, atau Pemegang Saham Murni.\n"
-        "• Komposisi Saham: Jumlah lembar saham dan nilai nominal per lembar saham.\n"
-        "• Validasi Keras Mutlak 100% (Hard Gate Invariant): Total persentase seluruh pemegang saham WAJIB tepat 100.00%. "
-        "Apabila total persentase saham kurang (misal 99.8%) atau lebih (misal 101%), tombol pengajuan terkunci secara otomatis dan sistem memunculkan indikator peringatan merah. Hal ini menjamin integritas hukum kepemilikan modal sejak detik pertama."
+        "Marketing beralih ke Tab 3 'Stakeholders' untuk mendata jajaran manajemen dan pemegang saham:\n"
+        "1. Input Pengurus Perseroan:\n"
+        "   - Menambahkan Direktur Utama, Direktur, Komisaris Utama, dan Komisaris.\n"
+        "   - Menentukan kewarganegaraan: WNI (wajib memasukkan 16-digit NIK e-KTP) atau WNA (memasukkan Nomor Paspor & izin tinggal E-KITAS untuk direksi ekspatriat mitra LiuGong).\n"
+        "2. Input Pemegang Saham & Modal:\n"
+        "   - Menambahkan pemilik saham perorangan maupun badan hukum (memasukkan NPWP Perusahaan Pemegang Saham).\n"
+        "   - Memasukkan jumlah lembar saham dan nilai nominal per lembar saham.\n"
+        "3. Validasi Keras Mutlak 100% (Hard Gate Invariant):\n"
+        "   - Sistem menghitung persentase kepemilikan modal secara real-time.\n"
+        "   - Total persentase seluruh pemegang saham WAJIB tepat 100.00%. "
+        "Jika total saham kurang (misal 99.5%) atau lebih (misal 101.0%), sistem memunculkan indikator peringatan merah dan memblokir tombol pengajuan aplikasi. "
+        "Hal ini mengunci kepatuhan hukum kepemilikan perseroan sebelum melangkah ke tahap berikutnya."
     )
 
     add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\tab_3_stakeholders.png",
                      "Struktur Pemegang Saham & Jajaran Pengurus dengan Validasi Keras Kepemilikan Modal 100% (Live System)")
 
-    # 2.4 TAB DOCUMENTS
-    sub24 = doc.add_paragraph()
-    sub24.paragraph_format.space_before = Pt(8)
-    sub24.paragraph_format.space_after = Pt(2)
-    r = sub24.add_run("2.4. Tab 4: Documents (Checklist 13 Berkas Wajib & Repositori Digital)")
+    # LANGKAH 5
+    sub_l5 = doc.add_paragraph()
+    sub_l5.paragraph_format.space_before = Pt(8)
+    sub_l5.paragraph_format.space_after = Pt(2)
+    r = sub_l5.add_run("Langkah 5: Pengisian Tab 4 (Documents) — Verifikasi 13 Berkas Wajib & Unggah Digital")
     r.font.name = "Calibri"
     r.font.size = Pt(12)
     r.bold = True
@@ -388,26 +442,50 @@ def build_word_document():
     p.paragraph_format.line_spacing = 1.15
     p.paragraph_format.space_after = Pt(4)
     p.add_run(
-        "Sesuai arahan Direksi, Tab Dokumen kini dihadirkan secara penuh pada FAP Stage untuk memastikan seluruh berkas persyaratan terhimpun rapi:\n"
-        "• Checklist 13 Dokumen Wajib:\n"
-        "  1. KTP Pengurus (Direksi & Komisaris)\n"
-        "  2. NPWP Perusahaan & Pengurus\n"
-        "  3. NIB (Nomor Induk Berusaha) OSS BKPM\n"
-        "  4. Akta Pendirian Perusahaan + SK Kemenkumham\n"
-        "  5. Akta Perubahan Terakhir + SK Kemenkumham\n"
-        "  6. Rekening Koran Operasional (3–6 Bulan Terakhir)\n"
-        "  7. Laporan Keuangan Neraca & Laba Rugi\n"
-        "  8. SPT Tahunan Pajak Badan\n"
-        "  9. Profil Perusahaan (Company Profile)\n"
-        "  10. Kontrak Kerja / SPK Proyek Berjalan\n"
-        "  11. Izin Usaha Sektoral (IUJP/IUP Khusus Tambang)\n"
-        "  12. Formulir Aplikasi Pembiayaan (FAP) Bertandatangan Basah & Cap\n"
-        "  13. Surat Persetujuan Pengecekan Pefindo Biro Kredit\n"
-        "• Pengunggahan & Verifikasi Berkas: Setiap item dilengkapi tombol upload berkas (PDF / JPG), indikator status (Verified / Pending), serta counter badge 'Documents (13)' di header tab."
+        "Sesuai instruksi Direksi, Tab Dokumen dihadirkan secara penuh pada FAP Stage untuk memastikan berkas fisik terdigitalisasi sejak awal:\n"
+        "1. Checklist 13 Dokumen Persyaratan Wajib:\n"
+        "   1. KTP Pengurus (Seluruh Direksi & Komisaris)\n"
+        "   2. NPWP Badan Usaha & Pengurus\n"
+        "   3. NIB (Nomor Induk Berusaha) OSS BKPM\n"
+        "   4. Akta Pendirian Perusahaan + SK Pengesahan Kemenkumham\n"
+        "   5. Akta Perubahan Terakhir + SK Penerimaan Pemberitahuan Kemenkumham\n"
+        "   6. Rekening Koran Operasional Perusahaan (3–6 Bulan Terakhir)\n"
+        "   7. Laporan Keuangan Neraca & Laba Rugi (Audited / In-House)\n"
+        "   8. SPT Tahunan Pajak Penghasilan Badan\n"
+        "   9. Profil Perusahaan (Company Profile & Portofolio Pekerjaan)\n"
+        "   10. Salinan Kontrak Kerja / SPK Proyek Berjalan dengan Bouwheer\n"
+        "   11. Izin Usaha Sektoral (IUJP/IUP untuk Pertambangan, SBU Konstruksi)\n"
+        "   12. Formulir Aplikasi Pembiayaan (FAP) Asli Bertandatangan Basah & Cap Basah Perusahaan\n"
+        "   13. Surat Kuasa Persetujuan Pengecekan Data Kredit Pefindo Biro Kredit\n"
+        "2. Unggah Berkas Digital: Marketing menekan tombol 'Upload' pada masing-masing dokumen, memilih berkas scan (PDF/JPG) dari komputer.\n"
+        "3. Pemantauan Kelengkapan: Status berkas berubah menjadi 'Uploaded/Verified' dan counter kelengkapan di header tab bertambah (misal: 'Documents 13/13')."
     )
 
     add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\fap_stage_tab_document_view.png",
                      "Pusat Verifikasi Berkas: Checklist 13 Dokumen Wajib dengan Fitur Unggah & Status Kelengkapan (Live System)")
+
+    # LANGKAH 6
+    sub_l6 = doc.add_paragraph()
+    sub_l6.paragraph_format.space_before = Pt(8)
+    sub_l6.paragraph_format.space_after = Pt(2)
+    r = sub_l6.add_run("Langkah 6: Final Review & Pengajuan FAP Stage ke Business Support (BS)")
+    r.font.name = "Calibri"
+    r.font.size = Pt(12)
+    r.bold = True
+    r.font.color.rgb = RGBColor(237, 125, 49)
+
+    p = doc.add_paragraph()
+    p.paragraph_format.line_spacing = 1.15
+    p.paragraph_format.space_after = Pt(4)
+    p.add_run(
+        "1. Peninjauan Metrik Header: Marketing memeriksa ringkasan metrik di bagian atas workspace (Nilai Permohonan Pembiayaan, Tenor Angsuran, Kategori Nasabah, dan Status Verifikasi Dokumen 13/13).\n"
+        "2. Eksekusi Pengajuan: Marketing menekan tombol 'Submit FAP Stage' (atau 'SUBMIT_TO_BS'). "
+        "Sistem melakukan validasi menyeluruh (Nama perusahaan terisi, NIB 13 digit valid, NPWP valid, total saham 100.00%). "
+        "Jika seluruh aturan terpenuhi, dialog konfirmasi pengajuan muncul.\n"
+        "3. Transisi Tahap Otomatis: Status aplikasi secara resmi berpindah dari 'FAP Stage (Draft)' menjadi 'SUBMITTED_TO_BS'. "
+        "Aplikasi diteruskan secara digital ke meja kerja Business Support (BS) untuk verifikasi awal, dan tahap 'Pre-analysis' diaktifkan. "
+        "Seluruh riwayat aksi tercatat permanen pada tab Activity Log (Audit Trail abadi)."
+    )
 
     doc.add_page_break()
 
@@ -565,7 +643,7 @@ def build_word_document():
     # Simpan dokumen
     out_path = r"D:\CRM App2\CRM App2\LIUGONG_CRM_BUSINESS_SPECIFICATION_PRESDIR.docx"
     doc.save(out_path)
-    print(f"Roadmap v3 Masterpiece created at: {out_path} (size: {os.path.getsize(out_path)} bytes)")
+    print(f"Step-by-step SOP Document created at: {out_path} (size: {os.path.getsize(out_path)} bytes)")
 
 if __name__ == "__main__":
     build_word_document()
