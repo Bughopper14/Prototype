@@ -95,5 +95,46 @@ export async function initialize(){
   await q("ALTER TABLE business_partner ADD COLUMN IF NOT EXISTS business_partner_type TEXT NOT NULL DEFAULT 'Prorpect Customer'");
   await q('INSERT INTO schema_migrations VALUES(7)');
  });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=8')).rows.length)await transaction(async q=>{
+  await q(`
+    CREATE TABLE IF NOT EXISTS master_groups (
+      key VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(150) NOT NULL,
+      section VARCHAR(100) NOT NULL,
+      parent_key VARCHAR(50),
+      parent_field VARCHAR(50),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS master_items (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      group_key VARCHAR(50) NOT NULL REFERENCES master_groups(key) ON DELETE CASCADE,
+      value VARCHAR(150) NOT NULL,
+      name VARCHAR(150) NOT NULL,
+      active BOOLEAN NOT NULL DEFAULT true,
+      parent_value VARCHAR(150),
+      is_required BOOLEAN DEFAULT false,
+      role VARCHAR(50),
+      timing VARCHAR(50),
+      area_code VARCHAR(50),
+      region VARCHAR(100),
+      zip_code VARCHAR(20),
+      sort_order INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (group_key, value)
+    );
+    CREATE INDEX IF NOT EXISTS idx_master_items_group ON master_items(group_key);
+    CREATE INDEX IF NOT EXISTS idx_master_items_active ON master_items(group_key, active);
+  `);
+  await q('INSERT INTO schema_migrations VALUES(8)');
+ });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=9')).rows.length)await transaction(async q=>{
+  await q("ALTER TABLE document_checklists DROP CONSTRAINT IF EXISTS document_checklists_assigned_role_check; ALTER TABLE document_checklists ADD CONSTRAINT document_checklists_assigned_role_check CHECK(assigned_role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
+  await q('INSERT INTO schema_migrations VALUES(9)');
+ });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=10')).rows.length)await transaction(async q=>{
+  await q('ALTER TABLE applications ADD COLUMN IF NOT EXISTS district TEXT, ADD COLUMN IF NOT EXISTS village TEXT, ADD COLUMN IF NOT EXISTS rt TEXT, ADD COLUMN IF NOT EXISTS rw TEXT');
+  await q('INSERT INTO schema_migrations VALUES(10)');
+ });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}

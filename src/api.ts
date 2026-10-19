@@ -1,12 +1,15 @@
 import {validateWrite} from './input-validation';
+import {demoApi} from './demo-api';
 
 export const getApiBase = () => {
   if (typeof window !== 'undefined') {
     const p = window.location.pathname;
     if (p.startsWith('/crm-dashboard')) return '/crm-dashboard/api/v1';
     if (p.startsWith('/los-dashboard')) return '/los-dashboard/api/v1';
+    if (p.startsWith('/crm')) return '/crm/api/v1';
   }
-  return '/api/v1';
+  const base = (import.meta.env.BASE_URL || '/').replace(/\/$/, '');
+  return base ? base + '/api/v1' : '/api/v1';
 };
 
 async function remoteApi(path:string,method='GET',body?:any){
@@ -42,7 +45,10 @@ async function remoteApi(path:string,method='GET',body?:any){
   return data;
 }
 
-export async function api(path:string,method='GET',body?:any){validateWrite(path,method,body);return remoteApi(path,method,body);}
+export async function api(path:string,method='GET',body?:any){
+  validateWrite(path,method,body);
+  return import.meta.env.VITE_DEMO_MODE==='true'?demoApi(path,method,body):remoteApi(path,method,body);
+}
 
 let _currentUser: any = null;
 export function setCurrentUser(u: any) {

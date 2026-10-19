@@ -74,6 +74,9 @@ export interface FapSheetPreviewProps {
   stakeholders?: any[];
   compact?: boolean;
   readOnly?: boolean;
+  activeSection?: string;
+  syncTick?: number;
+  onSectionClick?: (sectionId: string) => void;
 }
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
@@ -142,6 +145,33 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     };
   }, [autoFit]);
 
+  useEffect(() => {
+    if (!props.activeSection || !containerRef.current) return;
+    const target = document.getElementById(props.activeSection);
+    if (!target) return;
+
+    const container = containerRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const currentScrollTop = container.scrollTop;
+    const relativeOffset = targetRect.top - containerRect.top;
+    const targetScroll = Math.max(0, currentScrollTop + relativeOffset - 28);
+
+    container.scrollTo({
+      top: targetScroll,
+      behavior: 'smooth'
+    });
+
+    target.classList.remove('fap-preview-sync-highlight');
+    void target.offsetWidth;
+    target.classList.add('fap-preview-sync-highlight');
+    const timer = setTimeout(() => {
+      target.classList.remove('fap-preview-sync-highlight');
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [props.activeSection, props.syncTick]);
+
   const d: FapSheetData = useMemo(() => {
     const raw = props.data || {};
     const app = props.application || {};
@@ -166,13 +196,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       companyName: pick(raw.companyName, cust.companyName, ''),
       companyType: pick(raw.companyType, cust.companyType, ''),
       nib: pick(raw.nib, cust.nib, ''),
-      nibDate: pick(raw.nibDate, cust.nibDate, ''),
       npwp: pick(raw.npwp, cust.npwp, ''),
       establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
       establishmentDate: pick(raw.establishmentDate, cust.establishmentDate, ''),
       companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
       city: pick(raw.city, prof.city, ''),
       province: pick(raw.province, prof.province, ''),
+      district: pick(raw.district, prof.district, ''),
+      village: pick(raw.village, prof.village, ''),
+      rt: pick(raw.rt, prof.rt, ''),
+      rw: pick(raw.rw, prof.rw, ''),
       postalCode: pick(raw.postalCode, prof.postalCode, ''),
       experienceYears: pick(raw.experienceYears, prof.experienceYears, ''),
       experienceMonths: pick(raw.experienceMonths, prof.experienceMonths, ''),
@@ -253,7 +286,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       ];
 
   const handlePrint = () => {
-    printFapDocument(d.fapNumber);
+    window.print();
   };
 
   const isCustNew = d.customerStatus === 'NEW';
@@ -266,7 +299,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       {/* Excel Green Ribbon Header */}
       <div className="excel-fap-ribbon">
         <div className="excel-ribbon-left">
-          <FileSpreadsheet size={16} className="excel-green-icon" />
+          <FileSpreadsheet size={16} className="excel-brand-icon" />
           <div className="excel-file-badge">
             <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
             <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (Rows 1-118)</span>
@@ -318,6 +351,30 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             <Printer size={13} /> Cetak Dokumen A4
           </button>
         </div>
+
+        {/* Quick Jump & Auto-Sync Bar */}
+        <div className="excel-section-chips">
+          <span className="excel-sync-bar-label">
+            <Eye size={12} /> Auto-Sync Focus:
+          </span>
+          {[
+            { id: 'fap-preview-sec-header', label: '1. Identitas' },
+            { id: 'fap-preview-sec-company', label: '2. Domisili' },
+            { id: 'fap-preview-sec-business', label: '3. Profil Usaha' },
+            { id: 'fap-preview-sec-pic', label: '4. PIC' },
+            { id: 'fap-preview-sec-projects', label: '5. Proyek' },
+          ].map(chip => (
+            <button
+              key={chip.id}
+              type="button"
+              className={`excel-chip-btn ${props.activeSection === chip.id ? 'active' : ''}`}
+              onClick={() => props.onSectionClick?.(chip.id)}
+              title={`Lompat ke bagian ${chip.label}`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Spreadsheet Canvas */}
@@ -350,11 +407,11 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           {/* ==============================================================
               SECTION 1: HEADER & CLASSIFICATION (ROWS 1 - 10)
               ============================================================== */}
-          <div className="excel-exact-header">
+          <div className="excel-exact-header" id="fap-preview-sec-header">
             <div className="exact-header-top">
               <div className="exact-header-logo">
                 <img
-                  src={`data:image/png;base64,${LIUGONG_LOGO_B64}`}
+                  src={LIUGONG_LOGO_B64.startsWith('data:') ? LIUGONG_LOGO_B64 : `data:image/png;base64,${LIUGONG_LOGO_B64}`}
                   alt="LiuGong Finance Indonesia"
                 />
               </div>
@@ -421,7 +478,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               ============================================================== */}
           <div className="exact-fap-body">
             {/* Left Column: Company Details */}
-            <div className="exact-fap-col">
+            <div className="exact-fap-col" id="fap-preview-sec-company">
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Nama Perusahaan/ Company's Name</span>
                 <span className="exact-fap-colon">:</span>
@@ -441,6 +498,24 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-sub-row">
+                <span className="exact-sub-lbl">Kecamatan/District</span>
+                <span className="exact-fap-colon">:</span>
+                <div className="exact-fap-box highlight-dynamic">{d.district || '—'}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <span className="exact-sub-lbl">Kelurahan/Village</span>
+                <span className="exact-fap-colon">:</span>
+                <div className="exact-fap-box highlight-dynamic">{d.village || '—'}</div>
+              </div>
+
+              <div className="exact-sub-row">
+                <span className="exact-sub-lbl">RT / RW</span>
+                <span className="exact-fap-colon">:</span>
+                <div className="exact-fap-box highlight-dynamic">{d.rt && d.rw ? `${d.rt} / ${d.rw}` : d.rt || d.rw || '—'}</div>
+              </div>
+
+              <div className="exact-sub-row">
                 <span className="exact-sub-lbl">Provinsi/Province</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.province}</div>
@@ -452,7 +527,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <div className="exact-fap-box highlight-dynamic">{d.postalCode}</div>
               </div>
 
-              <div className="exact-fap-row">
+              <div className="exact-fap-row" id="fap-preview-sec-business">
                 <span className="exact-fap-lbl">Bisnis Utama/ Main Business</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.mainBusiness}</div>
@@ -543,7 +618,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             </div>
 
             {/* Right Column: PIC & Shareholders */}
-            <div className="exact-fap-col">
+            <div className="exact-fap-col" id="fap-preview-sec-pic">
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl" style={{ width: '135px' }}>Penanggung Jawab/PIC</span>
                 <span className="exact-fap-colon">:</span>
@@ -710,7 +785,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           {/* ==============================================================
               SECTION 4: SEGMENTASI & PROYEK KONTRAK (ROWS 55 - 63)
               ============================================================== */}
-          <div className="exact-section-divider">
+          <div className="exact-section-divider" id="fap-preview-sec-projects">
             <div className="exact-section-header">SEGMENTASI INDUSTRI & PROYEK KONTRAK BERJALAN</div>
           </div>
 
