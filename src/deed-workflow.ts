@@ -2,7 +2,7 @@ import {validateInput} from './input-validation';
 export const deedReviewLabels:Record<string,string>={DRAFT:'Draft',PENDING_CHECK:'Menunggu Arianti',PENDING_APPROVAL:'Menunggu Dellatra',APPROVED:'Disetujui',REJECTED:'Ditolak'};
 export class DeedWorkflowError extends Error{constructor(message:string,public status=422){super(message);}}
 const assert=(ok:unknown,message:string,status=422)=>{if(!ok)throw new DeedWorkflowError(message,status);};
-const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','infoAdded','parties','stakeholders'];
+const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','remarkCategoryIds','categoryRemarks','infoAdded','parties','stakeholders'];
 export function deedData(deed:any){return Object.fromEntries(fields.filter(key=>deed[key]!==undefined).map(key=>[key,structuredClone(deed[key])]));}
 export function reviewStatus(deed:any){return deed?.review?.status||'DRAFT';}
 export const deedPending=(deed:any)=>['PENDING_CHECK','PENDING_APPROVAL'].includes(reviewStatus(deed));
@@ -16,9 +16,11 @@ export function mergeLegal(previous:any,incoming:any){
   return {...data,review:changed?{status:'DRAFT',revision:(old.review?.revision||0)+1}:old.review||{status:'DRAFT',revision:1},reviewHistory:old.reviewHistory||[],...(old.approvedSnapshot?{approvedSnapshot:old.approvedSnapshot,approvedAt:old.approvedAt}:{})};
  });
  for(const old of prior)assert(ids.has(old.id)||!deedPending(old)&&!old.approvedSnapshot,'Akta dalam proses approval atau sudah disetujui tidak boleh dihapus. Buat perubahan dan ajukan ulang.',409);
+ const est=deeds.find((d:any)=>d.type==='establishment');
+ if(est?.deedDate){for(const d of deeds){if(d.type==='amendment'&&d.deedDate)assert(String(d.deedDate).slice(0,10)>=String(est.deedDate).slice(0,10),`Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`);}}
  const {establishment,amendment,...current}=incoming;return {...current,deeds};
-}
-export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string},options:{revision:number,documentId?:string,comments?:string,beforeSnapshot?:any},now=new Date()){
+ }
+ export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string},options:{revision:number,documentId?:string,comments?:string,beforeSnapshot?:any},now=new Date()){
  assert(deed,'Akta tidak ditemukan.',404);assert(options.revision===(deed.review?.revision||1),'Akta telah berubah. Buka ulang sebelum melanjutkan.',409);
  const status=reviewStatus(deed),comments=String(options.comments||'').trim(),date=now.toISOString(),revision=(deed.review?.revision||1)+1;
  assert(comments.length<=10000,'Catatan maksimal 10.000 karakter.');
@@ -26,9 +28,10 @@ export function deedTransition(deed:any,action:string,actor:{id:string,name:stri
  if(action==='SUBMIT'){
   assert(actor.role==='MKT','Hanya MKT yang dapat mengajukan akta.',403);assert(['DRAFT','REJECTED'].includes(status),'Akta sudah diajukan atau disetujui.',409);
   for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])assert(String(deed[key]||'').trim(),`${key} wajib diisi sebelum mengajukan akta.`);
-  assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId,'Kategori akta perubahan wajib dipilih.');
+  assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId||(Array.isArray(deed.remarkCategoryIds)&&deed.remarkCategoryIds.length),'Kategori akta perubahan wajib dipilih.');
+
   assert(Array.isArray(deed.stakeholders)&&deed.stakeholders.length,'Tambahkan stakeholder/shareholder sebelum mengajukan akta.');
-  validateInput(deedData(deed),now,true);
+  validateInput(deedData(deed),now,false);
   for(const r of deed.stakeholders){validateInput({...r,nationalityType:r.citizenship==='FOREIGN'?'WNA':r.nationalityType||'WNI'},now);assert([r.firstName,r.lastName,r.name].some(x=>String(x||'').trim()),'Nama stakeholder wajib diisi.');for(const key of ['email','mobilePhone','primaryCapital','idNumber'])assert(String(r[key]??'').trim(),`${key} stakeholder wajib diisi.`);}
   next='PENDING_CHECK';
  }else if(action==='CHECK'){
@@ -39,7 +42,6 @@ export function deedTransition(deed:any,action:string,actor:{id:string,name:stri
   assert(actor.role==='BS'&&status==='PENDING_CHECK'||actor.role==='HEAD_BS'&&status==='PENDING_APPROVAL','Penolakan tidak tersedia untuk akun/status ini.',403);assert(comments,'Alasan penolakan wajib diisi.');next='REJECTED';
  }else throw new DeedWorkflowError('Aksi approval tidak valid.');
  const review:any={...deed.review,status:next,revision};
- if(action==='SUBMIT')Object.assign(review,{...(options.documentId?{documentId:options.documentId}:{}),submittedById:actor.id,submittedBy:actor.name,submittedAt:date,checkedById:null,checkedBy:null,checkedAt:null,approvedBy:null,rejectedBy:null,rejectionReason:null});
  if(action==='SUBMIT')Object.assign(review,{comparisonBefore:options.beforeSnapshot?structuredClone(options.beforeSnapshot):null,documentId:options.documentId,submittedById:actor.id,submittedBy:actor.name,submittedAt:date,checkedById:null,checkedBy:null,checkedAt:null,approvedBy:null,rejectedBy:null,rejectionReason:null});
  if(action==='CHECK')Object.assign(review,{checkedById:actor.id,checkedBy:actor.name,checkedAt:date});
  if(action==='APPROVE')Object.assign(review,{approvedBy:actor.name,approvedAt:date});

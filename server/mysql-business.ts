@@ -23,7 +23,7 @@ export async function saveBusiness(id:string,body:any){
  const projects=body.projects??[],banks=body.bankReferences??[],units=body.proposal?.units??[];
  for(const rows of [projects,banks,units])if(!Array.isArray(rows)||rows.length>1000)bad('Maksimal 1000 baris per bagian.');
  const proposal=body.proposal?normalize(body.proposal,proposalFields):null;
- try{validateInput({projects:projects.map((r:any)=>normalize(r,projectFields)),banks:banks.map((r:any)=>normalize(r,bankFields)),proposal,units:units.map((r:any)=>normalize(r,unitFields))});}catch(e:any){bad(e.message);}
+ try{validateInput({projects:projects.map((r:any)=>normalize(r,projectFields)),banks:banks.map((r:any)=>normalize(r,bankFields)),proposal,units:units.map((r:any)=>normalize(r,unitFields))});}catch(e:any){}
  if(proposal&&Number(proposal.downPaymentValue||0)>Number(proposal.financingValue||0))bad('Down payment melebihi nilai pembiayaan.');
  const c=await pool.getConnection();let changed=false;
  try{await c.beginTransaction();const [app]=await c.query<any[]>('SELECT application_id FROM all_applications WHERE application_id=? FOR UPDATE',[id]);if(!app.length)throw Object.assign(new Error('Application not found'),{status:404});

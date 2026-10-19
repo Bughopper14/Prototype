@@ -22,6 +22,7 @@ export function validateStakeholders(rows:any[],requireCompleteOwnership=true){
   ensure(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s.email||'')),'A valid email is required for each stakeholder');ensure(String(s.mobilePhone||'').trim().length>0,'Mobile phone is required for each stakeholder');ensure(s.primaryCapital!==undefined&&s.primaryCapital!==null&&s.primaryCapital!=='','Primary capital is required for each stakeholder');ensure(money(s.primaryCapital).gte(0),'Primary capital cannot be negative');
   const idType=String(s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP')).toUpperCase();if(idType==='NPWP'){ensure(/^\d{15,16}$/.test(s.idNumber.replace(/\D/g,'')),'Corporate stakeholders require a 15 or 16 digit NPWP');}
   else if(idType==='PASSPORT')ensure(/^[A-Za-z0-9]{5,20}$/.test(s.idNumber),'Foreign stakeholders require a passport number');
+  else if(idType==='KITAS')ensure(/^[A-Za-z0-9]{5,25}$/.test(s.idNumber),'Foreign stakeholders with KITAS require a valid KITAS number');
   else ensure(/^\d{16}$/.test(s.idNumber),'Indonesian stakeholders require a 16 digit KTP');
  }
 }

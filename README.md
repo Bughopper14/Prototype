@@ -11,7 +11,9 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. The API runs on port 3001. Local data persists in `.data/db`; document binaries persist in `.data/files`.
+Open http://127.0.0.1:4174 on this computer. Vite proxies API requests to the local API on the port set by `PORT` in `.env` (3001 by default). Local data persists in `.data/db`; document binaries persist in `.data/files`.
+
+To open the app on a smartphone connected to the same Wi-Fi, find this computer's IPv4 address (`ipconfig` on Windows), then open `http://<computer-ip>:4174` on the phone. Keep `npm run dev` running. Only Vite listens on the local network; the API remains bound to this computer and is reached through Vite's proxy. The computer's firewall must allow incoming TCP connections to port 4174 from the local network, and the Wi-Fi must permit devices to communicate with each other.
 
 Local demo accounts: `mkt@liugong.local`, `bs@liugong.local`, `ca@liugong.local`, `legal@liugong.local`, and `committee@liugong.local`. Default password: `LiuGong2026!`. The login screen provides department shortcuts. These are synthetic demo accounts and records.
 

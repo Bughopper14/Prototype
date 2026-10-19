@@ -10,3 +10,11 @@ dist/
 output/
 test-results/
 *.log
+__pycache__/
+Documents/
+eng.traineddata
+*.txt
+*.keith.*
+data-import/
+update-mandatory-fields.cjs
+server/create-fap-form.cjs

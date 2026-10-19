@@ -11,7 +11,10 @@ export const pool = enabled ? mysql.createPool({
   password: process.env.MYSQL_PASSWORD || '',
   database: process.env.MYSQL_DATABASE,
   waitForConnections: true,
-  connectionLimit: 5,
+  connectionLimit: 20,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
   charset: 'utf8mb4',
 }) : null;
 
@@ -36,10 +39,13 @@ export async function checkMysql() {
 export async function readMenu(menu: string) {
   if (!pool) return [];
   const table = tableFor(menu);
-  const [tables] = await pool.query<any[]>('SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name=?', [table]);
-  if (!tables[0].n) return [];
-  const [rows] = await pool.query<any[]>(`SELECT id, payload, created_at FROM \`${table}\` ORDER BY created_at DESC`);
-  return rows.map(row => ({id: row.id, payload: typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload, createdAt: row.created_at}));
+  try {
+    const [rows] = await pool.query<any[]>(`SELECT id, payload, created_at FROM \`${table}\` ORDER BY created_at DESC`);
+    return rows.map(row => ({id: row.id, payload: typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload, createdAt: row.created_at}));
+  } catch (err: any) {
+    if (err?.code === 'ER_NO_SUCH_TABLE') return [];
+    throw err;
+  }
 }
 
 export async function writeMenu(menu: string, payload: unknown) {

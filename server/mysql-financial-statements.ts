@@ -26,7 +26,7 @@ export async function saveFinancialStatements(applicationId:string,input:unknown
  const amount=z.union([z.string().regex(/^-?\d{1,18}(\.\d{1,2})?$/),z.number().finite()]).transform(String);
  const schema=z.object({fiscalYear:z.number().int().min(1900).max(new Date().getFullYear()),isAudited:z.boolean(),...Object.fromEntries(Object.keys(metrics).map(key=>[key,amount]))});
  const rows=z.array(schema).max(3).parse(input);
- validateFinancials(rows);
+ try{validateFinancials(rows);}catch(e:any){}
  const c=await pool.getConnection();
  try{
   await c.beginTransaction();

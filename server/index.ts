@@ -21,14 +21,18 @@ import multer from 'multer';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import zlib from 'node:zlib';
+import {execFile} from 'node:child_process';
+import util from 'node:util';
+const execFileAsync=util.promisify(execFile);
 import {z} from 'zod';
 import {S3Client,PutObjectCommand,GetObjectCommand,DeleteObjectCommand} from '@aws-sdk/client-s3';
 import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
 import {all,insert,update,replace,query,transaction,initialize,dataDir,type Query} from './db';
 import {seed} from './seed';
 import {defaultMasterCatalog,validateMasterCatalog,type MasterCatalog} from '../src/master-catalog';
-import {checkMysql,readMenu,writeMenu} from './mysql-store';
-import {initializeIntake,listIntake,intakeDetail,intakeCustomers,createIntake,saveCustomerPic} from './mysql-intake';
+import {checkMysql,readMenu,writeMenu,pool} from './mysql-store';
+import {initializeIntake,listIntake,intakeDetail,intakeCustomers,createIntake,saveCustomerPic,transitionIntake} from './mysql-intake';
 import {initializeLegal,saveLegal,migrateStakeholderLocationNames} from './mysql-legal';
 import {ensure,Problem,modelInput,validateStakeholders,validateFinancials,validateProposal,checklistTemplate,fapNumber,ratios,installment} from './domain';
 await initialize();await seed();
@@ -51,44 +55,230 @@ await initializeApplicationDocuments();
 await initializeAudit();
 async function refreshDocuments(){const documents=(await documentMasterCatalog(defaultMasterCatalog())).documents;await syncApplicationDocuments();await syncLegacyDocumentChecklists(documents);await syncLegacyDocumentCatalog(documents);}
 await refreshDocuments();
-async function masterData(q:Query=query){const row=(await q('SELECT catalog,revision FROM master_data WHERE id=1')).rows[0];const catalog=await locationCatalog({...defaultMasterCatalog(),...row.catalog} as MasterCatalog);return {catalog:await documentMasterCatalog(await equipmentMasterCatalog(await financeMasterCatalog(await legalMasterCatalog(await businessMasterCatalog(await customerMasterCatalog(catalog)))))),revision:row.revision};}
+let cachedMasterData:{catalog:any,revision:number}|null=null;
+let cachedMasterDataGzip:Buffer|null=null;
+async function masterData(q:Query=query,forceRefresh=false){if(cachedMasterData&&!forceRefresh&&q===query)return cachedMasterData;const row=(await q('SELECT catalog,revision FROM master_data WHERE id=1')).rows[0];const catalog=await locationCatalog({...defaultMasterCatalog(),...row.catalog} as MasterCatalog);const result={catalog:await documentMasterCatalog(await equipmentMasterCatalog(await financeMasterCatalog(await legalMasterCatalog(await businessMasterCatalog(await customerMasterCatalog(catalog)))))),revision:row.revision};if(q===query)cachedMasterData=result;return result;}
 let secret=process.env.JWT_SECRET;
 if(!secret){if(process.env.NODE_ENV==='production')throw new Error('JWT_SECRET is required in production');const file=path.join(dataDir,'session-secret');try{secret=await fs.readFile(file,'utf8');}catch{secret=crypto.randomBytes(48).toString('hex');await fs.writeFile(file,secret);}}
 const jwtSecret=secret;
 const app=express();app.disable('x-powered-by');app.use(express.json({limit:'30mb'}));
-app.use((req,res,next)=>{res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');if(req.path.startsWith('/api'))res.setHeader('Cache-Control','no-store');if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){const origin=new URL(req.headers.origin);if(!['http://127.0.0.1:5173','http://localhost:5173','http://127.0.0.1:4174','http://localhost:4174',`http://${req.headers.host}`,process.env.APP_ORIGIN].includes(origin.origin))return next(new Problem(403,'Origin is not allowed'));}next();});
+const documentsDir = path.resolve('Documents');
+fs.mkdir(documentsDir, { recursive: true }).catch(() => {});
+for (const sub of ['ktp', 'npwp', 'nib', 'passport', 'kitas', 'akta', 'id_types']) {
+  fs.mkdir(path.join(documentsDir, sub), { recursive: true }).catch(() => {});
+}
+app.use('/documents', express.static(documentsDir));
+
+function getPaddedDateParts(d = new Date()) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return { dateStr: `${yyyy}${mm}${dd}`, timeStr: `${hh}${mi}${ss}`, fullStamp: `${yyyy}${mm}${dd}_${hh}${mi}${ss}` };
+}
+
+async function generateDocumentStorageInfo(docTypeRaw: string, appIdRaw: string, stakeholderIdRaw: string, originalName: string) {
+  const docType = String(docTypeRaw || 'general').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'general';
+  const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
+  const cleanStk = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
+  const ext = (path.extname(originalName) || '.jpg').toLowerCase();
+  const { fullStamp } = getPaddedDateParts();
+
+  const typeDir = path.join(documentsDir, docType);
+  await fs.mkdir(typeDir, { recursive: true });
+
+  let baseName = `${docType}_${cleanApp}`;
+  if (cleanStk && cleanStk !== cleanApp && cleanStk !== 'unknown') {
+    baseName += `_${cleanStk}`;
+  }
+  baseName += `_${fullStamp}`;
+
+  let fileName = `${baseName}${ext}`;
+  let counter = 1;
+  while (true) {
+    try {
+      await fs.access(path.join(typeDir, fileName));
+      fileName = `${baseName}_${counter}${ext}`;
+      counter++;
+    } catch {
+      break;
+    }
+  }
+
+  const savedFilePath = path.join(typeDir, fileName);
+  const relativePath = `Documents/${docType}/${fileName}`;
+  const fileUrl = `/documents/${docType}/${fileName}`;
+
+  return { docType, fileName, savedFilePath, relativePath, fileUrl, typeDir };
+}
+
+app.use((req,res,next)=>{
+    res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('Referrer-Policy','no-referrer');
+    if(req.path.startsWith('/api'))res.setHeader('Cache-Control','no-store');
+    if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers.origin){
+        try{
+            const origin=new URL(req.headers.origin);
+            const isLocal=origin.hostname==='localhost'||origin.hostname==='127.0.0.1'||origin.hostname.startsWith('192.168.')||origin.hostname.startsWith('10.')||origin.hostname.startsWith('172.');
+            const isKnownPort=['8086','8087','5173','4174','3001','3002'].includes(origin.port);
+            const isMiddleware=Boolean(req.headers['x-middleware-gateway']);
+            if(!isMiddleware&&!isLocal&&!isKnownPort&&!['http://127.0.0.1:5173','http://localhost:5173','http://127.0.0.1:4174','http://localhost:4174',`http://${req.headers.host}`,process.env.APP_ORIGIN].includes(origin.origin)){
+                return next(new Problem(403,'Origin is not allowed'));
+            }
+        }catch(e){
+            // Ignore URL parse error
+        }
+    }
+    next();
+});
 type Actor={id:string,name:string,email:string,role:string,username?:string,isAdmin?:boolean,source?:string};
 declare global{namespace Express{interface Request{actor:Actor}}}
 const attempts=new Map<string,{count:number,until:number}>();
 const session=(res:Response,actor:Actor)=>res.cookie('los_session',jwt.sign(actor,jwtSecret,{expiresIn:'8h',audience:'los-api'}),{httpOnly:true,sameSite:'strict',secure:process.env.NODE_ENV==='production',maxAge:28800000,path:'/'});
 app.get('/api/v1/auth/setup',async(_req,res)=>res.json({needsSetup:await userCount()===0}));
 app.post('/api/v1/auth/setup',async(req,res)=>{const actor=await createUser(req.body,true);session(res,actor);res.status(201).json(actor);});
-app.post('/api/v1/auth/login',async(req,res)=>{const key=req.ip||'local',entry=attempts.get(key);ensure(!entry||entry.count<10||entry.until<Date.now(),'Too many login attempts. Try again in 15 minutes.',429);const body=z.object({email:z.string().optional(),username:z.string().optional(),password:z.string().min(1)}).parse(req.body);const login=(body.username||body.email||'').trim();ensure(login,'Enter username or email',422);const actual=await findUser(login);if(!actual||!actual.is_active||actual.is_placeholder||!await bcrypt.compare(body.password,actual.password_hash)){attempts.set(key,{count:(entry&&entry.until>Date.now()?entry.count:0)+1,until:Date.now()+900000});throw new Problem(401,'Username/email or password is incorrect');}attempts.delete(key);const actor=publicUser(actual);await mysqlActor.run(actual.user_id,async()=>{const {pool}=await import('./mysql-store');await pool!.execute('UPDATE users SET last_login_at=CURRENT_TIMESTAMP(3) WHERE user_id=?',[actual.user_id]);});session(res,actor);res.json(actor);});
+app.post('/api/v1/auth/login',async(req,res)=>{const key=req.ip||'local',entry=attempts.get(key);ensure(!entry||entry.count<10||entry.until<Date.now(),'Too many login attempts. Try again in 15 minutes.',429);const body=z.object({email:z.string().optional(),username:z.string().optional(),password:z.string().min(1)}).parse(req.body);const login=(body.username||body.email||'').trim();ensure(login,'Enter username or email',422);const actual=await findUser(login);if(!actual||!actual.is_active||actual.is_placeholder||!await bcrypt.compare(body.password,actual.password_hash)){attempts.set(key,{count:(entry&&entry.until>Date.now()?entry.count:0)+1,until:Date.now()+900000});throw new Problem(401,'Username/email or password is incorrect');}attempts.delete(key);const actor=publicUser(actual);await mysqlActor.run(actual.user_id,async()=>{const {pool}=await import('./mysql-store');await pool!.execute('UPDATE crm_users SET last_login_at=CURRENT_TIMESTAMP(3) WHERE user_id=?',[actual.user_id]);});session(res,actor);res.json(actor);});
 app.post('/api/v1/auth/logout',(_req,res)=>{res.clearCookie('los_session',{path:'/'});res.json({ok:true});});
 app.get('/api/v1/health',(_req,res)=>res.json({status:'ok'}));
 app.get('/api/v1/mysql/health',async(_req,res)=>{await checkMysql();res.json({status:'ok',database:process.env.MYSQL_DATABASE});});
+app.get('/api/v1/wilayah/reverse-lookup',async(req,res)=>{
+  const {kelurahan,kecamatan,postalCode}=req.query as Record<string,string>;
+  const clean=(s:any)=>String(s||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+  const cKec=clean(kecamatan),cKel=clean(kelurahan),cPos=clean(postalCode);
+  if(!pool)return res.json({found:false});
+  try{
+    let row:any=null;
+    if(cKec&&cKel){
+      const [rows]:any=await pool.query(`
+        SELECT v.id AS village_id, v.name AS village_name, v.postal_code,
+               d.id AS district_id, d.name AS district_name,
+               c.id AS city_id, c.name AS city_name,
+               p.id AS province_id, p.name AS province_name
+        FROM master_kelurahan_desa v
+        JOIN master_kecamatan d ON v.kecamatan_id=d.id
+        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id
+        JOIN master_provinsi p ON c.provinsi_id=p.id
+        WHERE REPLACE(UPPER(d.name),' ','')=? AND REPLACE(UPPER(v.name),' ','')=?
+        LIMIT 1
+      `,[cKec,cKel]);
+      if(rows&&rows.length>0)row=rows[0];
+    }
+    if(!row&&cPos&&cKec){
+      const [rows]:any=await pool.query(`
+        SELECT v.id AS village_id, v.name AS village_name, v.postal_code,
+               d.id AS district_id, d.name AS district_name,
+               c.id AS city_id, c.name AS city_name,
+               p.id AS province_id, p.name AS province_name
+        FROM master_kelurahan_desa v
+        JOIN master_kecamatan d ON v.kecamatan_id=d.id
+        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id
+        JOIN master_provinsi p ON c.provinsi_id=p.id
+        WHERE v.postal_code=? AND REPLACE(UPPER(d.name),' ','')=?
+        LIMIT 1
+      `,[cPos,cKec]);
+      if(rows&&rows.length>0)row=rows[0];
+    }
+    if(!row&&cPos){
+      const [rows]:any=await pool.query(`
+        SELECT v.id AS village_id, v.name AS village_name, v.postal_code,
+               d.id AS district_id, d.name AS district_name,
+               c.id AS city_id, c.name AS city_name,
+               p.id AS province_id, p.name AS province_name
+        FROM master_kelurahan_desa v
+        JOIN master_kecamatan d ON v.kecamatan_id=d.id
+        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id
+        JOIN master_provinsi p ON c.provinsi_id=p.id
+        WHERE v.postal_code=?
+        LIMIT 1
+      `,[cPos]);
+      if(rows&&rows.length>0)row=rows[0];
+    }
+    if(!row&&cKec){
+      const [rows]:any=await pool.query(`
+        SELECT NULL AS village_id, NULL AS village_name, NULL AS postal_code,
+               d.id AS district_id, d.name AS district_name,
+               c.id AS city_id, c.name AS city_name,
+               p.id AS province_id, p.name AS province_name
+        FROM master_kecamatan d
+        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id
+        JOIN master_provinsi p ON c.provinsi_id=p.id
+        WHERE REPLACE(UPPER(d.name),' ','')=?
+        LIMIT 1
+      `,[cKec]);
+      if(rows&&rows.length>0)row=rows[0];
+    }
+    if(!row&&cKel){
+      const [rows]:any=await pool.query(`
+        SELECT v.id AS village_id, v.name AS village_name, v.postal_code,
+               d.id AS district_id, d.name AS district_name,
+               c.id AS city_id, c.name AS city_name,
+               p.id AS province_id, p.name AS province_name
+        FROM master_kelurahan_desa v
+        JOIN master_kecamatan d ON v.kecamatan_id=d.id
+        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id
+        JOIN master_provinsi p ON c.provinsi_id=p.id
+        WHERE REPLACE(UPPER(v.name),' ','')=?
+        LIMIT 1
+      `,[cKel]);
+      if(rows&&rows.length>0)row=rows[0];
+    }
+    if(row){
+      return res.json({
+        found:true,
+        province:row.province_name,
+        provinceId:row.province_id,
+        city:row.city_name,
+        cityRegency:row.city_name,
+        cityId:row.city_id,
+        district:row.district_name,
+        districtId:row.district_id,
+        village:row.village_name,
+        villageId:row.village_id,
+        postalCode:row.postal_code
+      });
+    }
+    res.json({found:false});
+  }catch(err:any){
+    res.status(500).json({error:err.message||String(err)});
+  }
+});
 app.use('/api',async(req,res,next)=>{try{const token=(req.headers.cookie||'').split('; ').find(x=>x.startsWith('los_session='))?.slice(12);ensure(token,'Please sign in',401);const decoded=jwt.verify(token,jwtSecret,{audience:'los-api'}) as Actor;const actual=['mysql','placeholder'].includes(decoded.source||'')?await findUser(decoded.id,true):null;const user=actual?publicUser(actual):decoded.source==='mysql'?null:(await query('SELECT id,name,email,role FROM users WHERE id=$1',[decoded.id])).rows[0];ensure(user&&(!actual||actual.is_active),'Session is no longer valid',401);const placeholder=!actual||!!actual.is_placeholder;req.actor=placeholder?{...user,source:'placeholder'}:user;if(placeholder&&!['GET','HEAD','OPTIONS'].includes(req.method))throw new Problem(403,'Akun placeholder hanya untuk melihat. Perubahan memerlukan user MySQL aktif.');mysqlActor.run(placeholder?null:actual?.user_id||null,()=>next());}catch(e){next(e instanceof Problem?e:new Problem(401,'Session expired. Please sign in again.'));}});
-app.get('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);const {pool}=await import('./mysql-store');const [users]=await pool!.query<any[]>('SELECT * FROM users ORDER BY created_at');res.json(users.map(publicUser));});
+app.get('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);const {pool}=await import('./mysql-store');const [users]=await pool!.query<any[]>('SELECT * FROM crm_users ORDER BY created_at');res.json(users.map(publicUser));});
 app.post('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);res.status(201).json(await createUser(req.body));});
 app.get('/api/v1/workspace-data/:menu',async(req,res)=>res.json(await readMenu(String(req.params.menu))));
 app.post('/api/v1/workspace-data/:menu',async(req,res)=>res.status(201).json(await writeMenu(String(req.params.menu),req.body?.payload)));
 app.post('/api/v1/intake/drafts',async(req,res)=>{ensure(req.actor.role==='MKT','Only Marketing can create a draft',403);if(req.body.customerCategory==='EXISTING'){const mysqlCustomers=await intakeCustomers(),seedCustomers=await all('Customer');ensure([...mysqlCustomers,...seedCustomers].some(c=>c.id===req.body.customerId),'Existing customer was not found',404);}res.status(201).json(await createIntake(req.body));});
-app.get('/api/v1/applications/:id',async(req,res,next)=>{await refreshDocuments();const detail=await intakeDetail(String(req.params.id));if(detail)return res.json(detail);next();});
+app.get('/api/v1/applications/:id',async(req,res,next)=>{const detail=await intakeDetail(String(req.params.id));if(detail)return res.json(detail);next();});
 app.put('/api/v1/applications/:id/business',async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);const fallback=a?null:await detail(id);a=a||fallback;const marketing=req.actor.role==='MKT'&&['DRAFT','RETURNED'].includes(a.status),finance=req.actor.role==='CA'&&a.status==='IN_CA_LEGAL_REVIEW';ensure(marketing||finance,'Business information is locked at this workflow stage',403);if(fallback)await saveCustomerPic(id,{profile:fallback},fallback);await saveBusiness(id,{...req.body,...(finance?{projects:a.projects,bankReferences:a.bankReferences}:{})});res.json(await intakeDetail(id));});
-app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{if(!req.body.profile&&!req.body.pic)return next();const id=String(req.params.id);const existing=await intakeDetail(id);const fallback=existing?undefined:await detail(id);res.json(await saveCustomerPic(id,req.body,fallback));});
-app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);if(!a){const fallback=await detail(id);ensure(canEditLegal(req.actor,fallback),'Legal information is locked at this workflow stage',403);a=await saveCustomerPic(id,{profile:fallback},fallback);}ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);await saveLegal(id,req.body.legal,req.path.endsWith('/page-legal'));res.json(await intakeDetail(id));});
+app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{if(!req.body.profile&&!req.body.pic)return next();const id=String(req.params.id);const existing=await intakeDetail(id);if(!existing)return next();if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}res.json(await saveCustomerPic(id,req.body));});
+app.put('/api/v1/applications/:id/stage',async(req,res)=>{const id=String(req.params.id);const stage=String(req.body.stage||'Pre-analysis');try{if(pool)await pool.query('UPDATE applications SET stage=? WHERE id=?',[stage,id]);}catch{}res.json({success:true,stage});});
+app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res,next)=>{const id=String(req.params.id);let a=await intakeDetail(id);if(!a)return next();ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);await saveLegal(id,req.body.legal,false);res.json(await intakeDetail(id));});
 app.use('/api/v1',(req,res,next)=>{try{validateWrite(req.path,req.method,req.body);next();}catch(e:any){next(new Problem(422,e.message));}});
 const permit=(req:Request,roles:string[])=>ensure(roles.includes(req.actor.role),'Your role cannot perform this action',403);
 async function application(id:string,q=query){const a=(await all('Application',{id},q))[0];ensure(a,'Application not found',404);return a;}
-async function detail(id:string,q=query){const a=await application(id,q);a.legal=(await q('SELECT legal FROM applications WHERE id=$1',[id])).rows[0]?.legal||{};a.customer=(await all('Customer',{id:a.customerId},q))[0];a.pic=(await all('ApplicationPic',{applicationId:id},q))[0]||null;for(const [key,model] of Object.entries({stakeholders:'Stakeholder',projects:'ProjectContract',bankReferences:'BankReference',financialStatements:'FinancialStatement',documentChecks:'DocumentChecklist',approvalLogs:'ApprovalLog'}))a[key]=await all(model,{applicationId:id},q);a.proposal=(await all('FinancingProposal',{applicationId:id},q))[0]||null;if(a.proposal){a.proposal.units=await all('FinancingUnitItem',{proposalId:a.proposal.id},q);const timing=(await masterData(q)).catalog.paymentMethod.find(x=>x.value===a.proposal.paymentMethod)?.timing;a.proposal.estimatedInstallment=installment({...a.proposal,paymentMethod:timing==='advance'?'In Advance':'In Arrear'});}for(const d of a.documentChecks)d.files=await all('DocumentFile',{checklistId:d.id},q);a.financialStatements.sort((x:any,y:any)=>x.fiscalYear-y.fiscalYear);a.ratios=a.financialStatements.map((r:any)=>({fiscalYear:r.fiscalYear,...ratios(r)}));a.approvalLogs.sort((x:any,y:any)=>new Date(y.actionTimestamp).getTime()-new Date(x.actionTimestamp).getTime());a.signoffs=(await q('SELECT * FROM review_signoffs WHERE application_id=$1',[id])).rows;return a;}
+async function detail(id:string,q=query){const a=await application(id,q);a.legal=(await q('SELECT legal FROM applications WHERE id=$1',[id])).rows[0]?.legal||{};a.customer=(await all('Customer',{id:a.customerId},q))[0];a.pic=(await all('ApplicationPic',{applicationId:id},q))[0]||null;for(const [key,model] of Object.entries({stakeholders:'Stakeholder',projects:'ProjectContract',bankReferences:'BankReference',financialStatements:'FinancialStatement',documentChecks:'DocumentChecklist',approvalLogs:'ApprovalLog'}))a[key]=await all(model,{applicationId:id},q);a.proposal=(await all('FinancingProposal',{applicationId:id},q))[0]||null;if(a.proposal){a.proposal.units=await all('FinancingUnitItem',{proposalId:a.proposal.id},q);const timing=(await masterData(q)).catalog.paymentMethod.find((x:any)=>x.value===a.proposal.paymentMethod)?.timing;a.proposal.estimatedInstallment=installment({...a.proposal,paymentMethod:timing==='advance'?'In Advance':'In Arrear'});}for(const d of a.documentChecks)d.files=await all('DocumentFile',{checklistId:d.id},q);a.financialStatements.sort((x:any,y:any)=>x.fiscalYear-y.fiscalYear);a.ratios=a.financialStatements.map((r:any)=>({fiscalYear:r.fiscalYear,...ratios(r)}));a.approvalLogs.sort((x:any,y:any)=>new Date(y.actionTimestamp).getTime()-new Date(x.actionTimestamp).getTime());a.signoffs=(await q('SELECT * FROM review_signoffs WHERE application_id=$1',[id])).rows;return a;}
 app.get('/api/v1/auth/me',(req,res)=>res.json(req.actor));
-app.get('/api/v1/master-data',async(_req,res)=>{await refreshDocuments();res.json(await masterData());});
-app.put('/api/v1/master-data',async(req,res)=>{let catalog:MasterCatalog;try{catalog=validateMasterCatalog(req.body.catalog);}catch(e:any){throw new Problem(422,e.message);}const result=await transaction(async q=>{await q('SELECT id FROM master_data WHERE id=1 FOR UPDATE');const previous=await masterData(q);ensure(req.body.revision===previous.revision,'Master data telah berubah. Muat ulang lalu simpan kembali.',409);for(const [key,rows] of Object.entries(previous.catalog)){const values=new Set(catalog[key].map(x=>x.value));for(const row of rows)ensure(values.has(row.value),'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.');}await saveLocations(catalog,previous.catalog);await saveCustomerMasters(catalog);await saveBusinessMasters(catalog);await saveLegalMasters(catalog);await saveFinanceMasters(catalog);await saveEquipmentMasters(catalog);await saveDocumentMasters(catalog);await q('UPDATE master_data SET catalog=$1,revision=revision+1 WHERE id=1',[JSON.stringify(catalog)]);return masterData(q);});await syncLegacyDocumentChecklists(result.catalog.documents);res.json(result);});
+app.get('/api/v1/master-data',async(req,res)=>{
+  const data=await masterData();
+  const accept=req.headers['accept-encoding']||'';
+  if(typeof accept==='string'&&accept.includes('gzip')){
+    if(!cachedMasterDataGzip){
+      cachedMasterDataGzip=zlib.gzipSync(Buffer.from(JSON.stringify(data),'utf-8'));
+    }
+    res.setHeader('Content-Type','application/json; charset=utf-8');
+    res.setHeader('Content-Encoding','gzip');
+    return res.send(cachedMasterDataGzip);
+  }
+  res.json(data);
+});
+app.put('/api/v1/master-data',async(req,res)=>{let catalog:MasterCatalog;try{catalog=validateMasterCatalog(req.body.catalog);}catch(e:any){throw new Problem(422,e.message);}const result=await transaction(async q=>{await q('SELECT id FROM master_data WHERE id=1 FOR UPDATE');const previous=await masterData(q,true);ensure(req.body.revision===previous.revision,'Master data telah berubah. Muat ulang lalu simpan kembali.',409);for(const [key,rows] of Object.entries(previous.catalog as Record<string,any[]>)){const values=new Set((rows||[]).map(x=>x.value));for(const row of (rows||[]))ensure(values.has(row.value),'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.');}await saveLocations(catalog,previous.catalog);await saveCustomerMasters(catalog);await saveBusinessMasters(catalog);await saveLegalMasters(catalog);await saveFinanceMasters(catalog);await saveEquipmentMasters(catalog);await saveDocumentMasters(catalog);await q('UPDATE master_data SET catalog=$1,revision=revision+1 WHERE id=1',[JSON.stringify(catalog)]);cachedMasterData=null;cachedMasterDataGzip=null;return masterData(q,true);});await syncLegacyDocumentChecklists(result.catalog.documents);res.json(result);});
 app.get('/api/v1/customers',async(_req,res)=>{const original=await all('Customer'),current=await intakeCustomers(),byIdentity=new Map<string,any>(),customers:any[]=[];for(const customer of [...original,...current]){const nib=String(customer.nib||'').replace(/\D/g,''),npwp=String(customer.npwp||'').replace(/\D/g,''),identity=nib&&npwp?`${nib}|${npwp}`:`id:${customer.id}`;const existing=byIdentity.get(identity);if(existing)Object.assign(existing,customer,{id:existing.id});else{const row={...customer};byIdentity.set(identity,row);customers.push(row);}}res.json(customers);});
 app.post('/api/v1/customers',async(req,res)=>{permit(req,['MKT']);const data=modelInput('Customer',req.body,['companyName','companyType','nib','npwp']);ensure(/^\d{13}$/.test(data.nib),'NIB must contain 13 digits');ensure(/^\d{15,16}$/.test(data.npwp.replace(/\D/g,'')),'NPWP must contain 15 or 16 digits');res.status(201).json(await insert('Customer',data));});
 app.get('/api/v1/applications',async(_req,res)=>{const current=await listIntake(),original=(await query(`SELECT a.*,c.company_name,c.company_type,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id AND d.status='VERIFIED') AS verified_docs,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id) AS total_docs,p.financing_value,p.tenor_months,p.financing_method FROM applications a JOIN business_partner c ON c.id=a.customer_id LEFT JOIN financing_proposals p ON p.application_id=a.id ORDER BY a.created_at DESC`)).rows;res.json([...current,...original.filter((row:any)=>!current.some((saved:any)=>saved.id===row.id))].sort((a:any,b:any)=>new Date(b.created_at||b.createdAt||0).getTime()-new Date(a.created_at||a.createdAt||0).getTime()));});
 const appRequired=['branchCode','customerStatus','companyAddress','city','province','postalCode','phoneFax','email','mainBusiness','locationStatus','repaymentSource','industrySegment','businessRole'];
-app.post('/api/v1/applications',async(req,res)=>{permit(req,['MKT']);const body=modelInput('Application',req.body,appRequired);z.string().email().parse(body.email);const customerId=z.string().uuid().parse(req.body.customerId);ensure((await all('Customer',{id:customerId})).length,'Customer not found',404);const a=await transaction(async q=>{const year=new Date().getUTCFullYear();const n=(await q('INSERT INTO fap_sequences(year,value) VALUES($1,1) ON CONFLICT(year) DO UPDATE SET value=fap_sequences.value+1 RETURNING value',[year])).rows[0].value;const a=await insert('Application',{...body,customerId,fapNumber:fapNumber(n)},q);for(const doc of (await masterData(q)).catalog.documents.filter(x=>x.active))await insert('DocumentChecklist',{applicationId:a.id,documentCode:doc.value,documentName:doc.name,assignedRole:doc.role,isMandatory:doc.required},q);await insert('ApprovalLog',{applicationId:a.id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:'DRAFT',newStatus:'DRAFT',comments:'Application created'},q);return a;});res.status(201).json(a);});
+app.post('/api/v1/applications',async(req,res)=>{permit(req,['MKT']);const body=modelInput('Application',req.body,appRequired);z.string().email().parse(body.email);const customerId=z.string().uuid().parse(req.body.customerId);ensure((await all('Customer',{id:customerId})).length,'Customer not found',404);const a=await transaction(async q=>{const year=new Date().getUTCFullYear();const n=(await q('INSERT INTO fap_sequences(year,value) VALUES($1,1) ON CONFLICT(year) DO UPDATE SET value=fap_sequences.value+1 RETURNING value',[year])).rows[0].value;const a=await insert('Application',{...body,customerId,fapNumber:fapNumber(n)},q);for(const doc of (await masterData(q)).catalog.documents.filter((x:any)=>x.active))await insert('DocumentChecklist',{applicationId:a.id,documentCode:doc.value,documentName:doc.name,assignedRole:doc.role,isMandatory:doc.required},q);await insert('ApprovalLog',{applicationId:a.id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:'DRAFT',newStatus:'DRAFT',comments:'Application created'},q);return a;});res.status(201).json(a);});
 app.get('/api/v1/document-desk',async(_req,res)=>{const rows=await query("SELECT d.id AS checklist_id,d.application_id,d.document_code,d.document_name,d.assigned_role,d.is_mandatory,d.status,a.fap_number,c.company_name,(SELECT count(*)::integer FROM document_files f WHERE f.checklist_id=d.id) AS file_count FROM document_checklists d JOIN applications a ON a.id=d.application_id JOIN business_partner c ON c.id=a.customer_id ORDER BY CASE d.status WHEN 'REJECTED' THEN 0 WHEN 'PENDING' THEN 1 WHEN 'UPLOADED' THEN 2 ELSE 3 END,a.created_at DESC,d.document_name");res.json(rows.rows);});
 app.get('/api/v1/applications/:id',async(req,res)=>res.json(await detail(String(req.params.id))));
 const editable=(a:any,req:Request,ca=false)=>{permit(req,ca?['MKT','CA']:['MKT']);ensure(req.actor.role==='CA'?a.status==='IN_CA_LEGAL_REVIEW':['DRAFT','RETURNED'].includes(a.status),'This application is locked at its current workflow stage',409);};
@@ -107,6 +297,64 @@ app.put('/api/v1/applications/:id/page-2',async(req,res)=>{const id=String(req.p
  });res.json(await detail(id));});
 app.put('/api/v1/applications/:id/page-legal',async(req,res)=>{const id=String(req.params.id);await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q);a.legal=(await q('SELECT legal FROM applications WHERE id=$1',[id])).rows[0]?.legal||{};ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);const parties=z.object({representative:z.string().max(1000).optional(),shareholder:z.string().max(1000).optional(),shareholders:z.array(z.string().max(1000)).max(100).optional(),companyShareholder:z.string().max(1000).optional()});const deed=z.object({id:z.string().max(100).optional(),type:z.enum(['establishment','amendment']).optional(),source:z.string().max(100).optional(),createdAt:z.string().datetime().optional(),deedNumber:z.string().max(1000).optional(),deedDate:z.string().date().nullable().optional(),ministerialDecreeNumber:z.string().max(1000).optional(),ministerialDecreeDate:z.string().date().nullable().optional(),remarks:z.string().max(10000).optional(),remarkCategoryId:z.string().max(150).optional(),infoAdded:z.boolean().optional(),parties:parties.optional(),stakeholders:z.array(z.record(z.string(),z.any())).max(100).optional()});const legalInput=z.object({deeds:z.array(deed).max(100).optional(),hiddenDeedIds:z.array(z.string().max(100)).max(100).optional(),selectedDeedId:z.string().max(100).optional(),selectedDeed:z.enum(['establishment','amendment']).optional(),establishment:deed.optional(),amendment:deed.optional(),representative:z.string().max(1000).optional(),shareholder:z.string().max(1000).optional(),companyShareholder:z.string().max(1000).optional()}).parse(req.body.legal);const legal=mergeLegal(a.legal,legalInput);if(!['DRAFT','RETURNED'].includes(a.status)){for(const d of legal.deeds){const old=(a.legal.deeds||[]).find((x:any)=>x.id===d.id);ensure(old&&JSON.stringify(old)===JSON.stringify(d)||old&&reviewStatus(old)==='REJECTED','Pada tahap ini MKT hanya boleh memperbaiki akta yang ditolak.',409);}}if(req.body.stakeholders){const rows=z.array(z.any()).max(100).parse(req.body.stakeholders).map(x=>modelInput('Stakeholder',x,['name','position','stakeholderType','nationalityType','idNumber','shareAmount','sharePercentage','email','mobilePhone','primaryCapital']));if(rows.length)validateStakeholders(rows,false);await replace('Stakeholder','applicationId',id,rows,q);const d=(await all('DocumentChecklist',{applicationId:id,documentCode:'EKITAS'},q))[0];await update('DocumentChecklist',d.id,{isMandatory:rows.some(s=>s.stakeholderType==='INDIVIDUAL'&&s.nationalityType==='WNA')},q);}await q('UPDATE applications SET legal=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2',[JSON.stringify(legal),id]);await q('DELETE FROM review_signoffs WHERE application_id=$1 AND role=$2',[id,'LEGAL']);await insert('ApprovalLog',{applicationId:id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:a.status,newStatus:a.status,comments:'Legal information updated'},q);});res.json(await detail(id));});
 
+
+let cachedMandatoryRules: any[] | null = null;
+const getMandatoryHandler = async (_req: any, res: any) => {
+  if (cachedMandatoryRules) {
+    return res.json(cachedMandatoryRules);
+  }
+  if (!pool) return res.json([]);
+  try {
+    const [rows] = await pool.query<any[]>('SELECT id, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY section, id');
+    cachedMandatoryRules = rows;
+    res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+const putMandatoryHandler = async (req: any, res: any) => {
+  if (!pool) return res.status(503).json({ error: 'MySQL is not configured' });
+  try {
+    const { id, section, fieldKey, field_key, mandatory } = req.body;
+    const isMandatory = mandatory === 1 || mandatory === true || mandatory === '1' ? 1 : 0;
+    if (id !== undefined && id !== null) {
+      await pool.execute('UPDATE master_mandatory SET mandatory=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', [isMandatory, id]);
+    } else {
+      const fKey = fieldKey || field_key;
+      if (section && fKey) {
+        await pool.execute('UPDATE master_mandatory SET mandatory=?, updated_at=CURRENT_TIMESTAMP WHERE section=? AND field_key=?', [isMandatory, section, fKey]);
+      }
+    }
+    const [rows] = await pool.query<any[]>('SELECT id, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY section, id');
+    cachedMandatoryRules = rows;
+    res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+app.get('/api/v1/mandatory', getMandatoryHandler);
+app.get('/api/v1/master-mandatory', getMandatoryHandler);
+app.put('/api/v1/mandatory', putMandatoryHandler);
+app.put('/api/v1/master-mandatory', putMandatoryHandler);
+
+app.get('/api/v1/activity', async (_req, res) => {
+  try {
+    if (pool) {
+      const [rows] = await pool.query<any[]>(`
+        SELECT l.id, l.application_id AS applicationId, l.action_by AS actionBy,
+               l.user_role AS userRole, l.previous_status AS previousStatus,
+               l.new_status AS newStatus, l.comments, l.action_timestamp AS actionTimestamp,
+               COALESCE(c.company_name, '') AS companyName
+        FROM audit_logs l
+        LEFT JOIN applications a ON a.id = l.application_id
+        LEFT JOIN business_partner c ON c.id = a.customer_id
+        ORDER BY l.action_timestamp DESC LIMIT 100
+      `);
+      if (rows && rows.length) return res.json(rows);
+    }
+    const rows = (await query('SELECT id, application_id AS "applicationId", action_by AS "actionBy", user_role AS "userRole", previous_status AS "previousStatus", new_status AS "newStatus", comments, action_timestamp AS "actionTimestamp" FROM approval_logs ORDER BY action_timestamp DESC LIMIT 100')).rows;
+    res.json(rows);
+  } catch {
+    res.json([]);
+  }
+});
+
 app.get('/api/v1/notifications',async(req,res)=>res.json((await query('SELECT id, application_id AS "applicationId", deed_id AS "deedId", title, message, read_at AS "readAt", created_at AS "createdAt" FROM notifications WHERE recipient_user_id=$1 ORDER BY created_at DESC LIMIT 200',[req.actor.id])).rows));
 app.patch('/api/v1/notifications/:id/read',async(req,res)=>{const result=await query('UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE id=$1 AND recipient_user_id=$2 RETURNING id',[req.params.id,req.actor.id]);ensure(result.rows.length,'Notifikasi tidak ditemukan.',404);res.json({ok:true});});
 app.post('/api/v1/applications/:id/deeds/:deedId/review',async(req,res)=>{
@@ -123,9 +371,136 @@ app.get('/api/v1/applications/:id/checklist',async(req,res)=>res.json((await int
 const s3=process.env.S3_BUCKET?new S3Client({region:process.env.S3_REGION||'ap-southeast-1',endpoint:process.env.S3_ENDPOINT||undefined,forcePathStyle:!!process.env.S3_ENDPOINT,credentials:{accessKeyId:process.env.S3_ACCESS_KEY_ID||'',secretAccessKey:process.env.S3_SECRET_ACCESS_KEY||''}}):null;
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1}});
 app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async(req,res)=>{permit(req,['MKT','BS']);const id=String(req.params.id);const file=req.file;ensure(file,'Choose a file');const actual=file.buffer.subarray(0,8);const valid=(file.mimetype==='application/pdf'&&actual.subarray(0,5).toString()==='%PDF-')||(file.mimetype==='image/png'&&actual.equals(Buffer.from([137,80,78,71,13,10,26,10])))||(file.mimetype==='image/jpeg'&&actual[0]===255&&actual[1]===216&&actual[2]===255);ensure(valid,'Upload a valid PDF, PNG or JPEG file');
- if(await intakeDetail(id)){const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:path.basename(file.originalname)},req.actor.id,async key=>{if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);}});return res.status(201).json(result);}
- const result=await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q);ensure(!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(a.status),'Documents are locked at this stage',409);const d=(await all('DocumentChecklist',{id:req.body.checklistId,applicationId:id},q))[0];ensure(d,'Checklist item not found',404);const key=crypto.randomUUID();if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);}
+ if(await intakeDetail(id)){const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:path.basename(file.originalname)},req.actor.id,async key=>{if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);
+    const docCopyPath = path.join(documentsDir, path.basename(file.originalname));
+    await fs.writeFile(docCopyPath, file.buffer).catch(() => {});}});return res.status(201).json(result);}
+ const result=await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q);ensure(!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(a.status),'Documents are locked at this stage',409);const d=(await all('DocumentChecklist',{id:req.body.checklistId,applicationId:id},q))[0];ensure(d,'Checklist item not found',404);const key=crypto.randomUUID();if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);
+    const docCopyPath = path.join(documentsDir, path.basename(file.originalname));
+    await fs.writeFile(docCopyPath, file.buffer).catch(() => {});}
  const f=await insert('DocumentFile',{checklistId:d.id,fileName:path.basename(file.originalname),fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:req.actor.name},q);await update('DocumentChecklist',d.id,{status:'UPLOADED',checkedByMkt:true,checkedByBs:false,checkedByCa:false,checkedByLegal:false},q);await q('DELETE FROM review_signoffs WHERE application_id=$1',[id]);await q('INSERT INTO document_events(application_id,checklist_id,actor,action,details) VALUES($1,$2,$3,$4,$5)',[id,d.id,req.actor.name,'UPLOAD',JSON.stringify({fileName:f.fileName})]);return f;});res.status(201).json(result);});
+app.post('/api/v1/ocr/scan',upload.single('file'),async(req,res)=>{
+  const file = req.file;
+  if (!file) return res.status(400).json({ error: 'File tidak ditemukan' });
+  const docType = String(req.body.doc_type || 'auto').toLowerCase();
+  const stakeholderId = String(req.body.stakeholder_id || '').trim();
+  const appId = String(req.body.application_id || req.body.app_id || 'APP').trim();
+
+  const storageInfo = await generateDocumentStorageInfo(docType === 'auto' ? 'ktp' : docType, appId, stakeholderId, file.originalname);
+  await fs.writeFile(storageInfo.savedFilePath, file.buffer);
+
+  // Sync to LiugongApps_Clean/CRM_Dashboard/Documents as well if directory exists
+  try {
+    const crmDocPath = path.resolve('../LiugongApps_Clean/CRM_Dashboard', storageInfo.relativePath);
+    await fs.mkdir(path.dirname(crmDocPath), { recursive: true }).catch(() => {});
+    await fs.writeFile(crmDocPath, file.buffer).catch(() => {});
+  } catch {}
+
+  const tempFilePath = storageInfo.savedFilePath;
+
+  try {
+    const cliScript = path.resolve('server/ocr_cli.py');
+    const { stdout } = await execFileAsync('python', [cliScript, tempFilePath, docType], { timeout: 45000 });
+    const result = JSON.parse(stdout.trim());
+    
+    const detectedType = (result.doc_type || storageInfo.docType).toLowerCase();
+    result.fileName = storageInfo.fileName;
+    result.file_name = storageInfo.fileName;
+    result.filePath = storageInfo.relativePath;
+    result.document_path = storageInfo.relativePath;
+    result.fileUrl = storageInfo.fileUrl;
+
+    if (pool && stakeholderId && ['ktp', 'npwp', 'passport', 'kitas'].includes(detectedType) && result.data) {
+      try {
+        const type = detectedType;
+        const d = result.data;
+        const rawJson = JSON.stringify(d);
+        const [existing]: any = await pool.query(`SELECT id FROM \`${type}\` WHERE stakeholder_id=?`, [stakeholderId]);
+        if (existing && existing.length > 0) {
+          await pool.query(`UPDATE \`${type}\` SET file_name=?, document_path=?, raw_ocr_json=?, updated_at=NOW() WHERE stakeholder_id=?`, [storageInfo.fileName, storageInfo.relativePath, rawJson, stakeholderId]);
+        } else {
+          const id = crypto.randomUUID();
+          await pool.query(`INSERT INTO \`${type}\` (id, stakeholder_id, file_name, document_path, raw_ocr_json, created_at, updated_at) VALUES (?,?,?,?,?,NOW(),NOW())`, [id, stakeholderId, storageInfo.fileName, storageInfo.relativePath, rawJson]);
+        }
+      } catch (dbErr) {
+        console.warn('Auto save OCR metadata to DB error:', dbErr);
+      }
+    }
+
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: 'OCR processing error: ' + (err.message || String(err)) });
+  }
+});
+
+
+
+app.post('/api/v1/stakeholders/documents/save',async(req,res)=>{
+  const {stakeholder_id,doc_type,data}=req.body||{};
+  if(!stakeholder_id)return res.status(400).json({error:'stakeholder_id wajib diisi'});
+  if(!pool)return res.status(503).json({error:'Database unavailable'});
+  const type=String(doc_type||'ktp').toLowerCase();
+  const rawJson=JSON.stringify(data||{});
+  const fileName = data?.file_name || data?.fileName || null;
+  const docPath = data?.document_path || data?.filePath || (fileName ? `Documents/${type}/${fileName}` : null);
+  try{
+    if(type==='ktp'){
+      const [existing]:any=await pool.query('SELECT id FROM ktp WHERE stakeholder_id=?',[stakeholder_id]);
+      if(existing&&existing.length>0){
+        await pool.query('UPDATE ktp SET nik=?,nama=?,tempat_lahir=?,tanggal_lahir=?,jenis_kelamin=?,golongan_darah=?,alamat=?,rt_rw=?,kel_desa=?,kecamatan=?,agama=?,status_perkawinan=?,pekerjaan=?,kewarganegaraan=?,berlaku_hingga=?,file_name=COALESCE(?,file_name),document_path=COALESCE(?,document_path),raw_ocr_json=?,updated_at=NOW() WHERE stakeholder_id=?',[data.nik||null,data.nama||null,data.tempat_lahir||null,data.tanggal_lahir||null,data.jenis_kelamin||null,data.golongan_darah||null,data.alamat||null,data.rt_rw||null,data.kel_desa||null,data.kecamatan||null,data.agama||null,data.status_perkawinan||null,data.pekerjaan||null,data.kewarganegaraan||null,data.berlaku_hingga||null,fileName,docPath,rawJson,stakeholder_id]);
+      }else{
+        const id=crypto.randomUUID();
+        await pool.query('INSERT INTO ktp (id,stakeholder_id,nik,nama,tempat_lahir,tanggal_lahir,jenis_kelamin,golongan_darah,alamat,rt_rw,kel_desa,kecamatan,agama,status_perkawinan,pekerjaan,kewarganegaraan,berlaku_hingga,file_name,document_path,raw_ocr_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())',[id,stakeholder_id,data.nik||null,data.nama||null,data.tempat_lahir||null,data.tanggal_lahir||null,data.jenis_kelamin||null,data.golongan_darah||null,data.alamat||null,data.rt_rw||null,data.kel_desa||null,data.kecamatan||null,data.agama||null,data.status_perkawinan||null,data.pekerjaan||null,data.kewarganegaraan||null,data.berlaku_hingga||null,fileName,docPath,rawJson]);
+      }
+    }else if(type==='npwp'){
+      const [existing]:any=await pool.query('SELECT id FROM npwp WHERE stakeholder_id=?',[stakeholder_id]);
+      if(existing&&existing.length>0){
+        await pool.query('UPDATE npwp SET npwp_number=?,raw_npwp=?,nama=?,nik=?,alamat=?,kelurahan_kecamatan=?,kota_provinsi=?,kpp=?,tanggal_terdaftar=?,file_name=COALESCE(?,file_name),document_path=COALESCE(?,document_path),raw_ocr_json=?,updated_at=NOW() WHERE stakeholder_id=?',[data.npwp_number||null,data.raw_npwp||null,data.nama||null,data.nik||null,data.alamat||null,data.kelurahan_kecamatan||null,data.kota_provinsi||null,data.kpp||null,data.tanggal_terdaftar||null,fileName,docPath,rawJson,stakeholder_id]);
+      }else{
+        const id=crypto.randomUUID();
+        await pool.query('INSERT INTO npwp (id,stakeholder_id,npwp_number,raw_npwp,nama,nik,alamat,kelurahan_kecamatan,kota_provinsi,kpp,tanggal_terdaftar,file_name,document_path,raw_ocr_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())',[id,stakeholder_id,data.npwp_number||null,data.raw_npwp||null,data.nama||null,data.nik||null,data.alamat||null,data.kelurahan_kecamatan||null,data.kota_provinsi||null,data.kpp||null,data.tanggal_terdaftar||null,fileName,docPath,rawJson]);
+      }
+    }else if(type==='passport'){
+      const [existing]:any=await pool.query('SELECT id FROM passport WHERE stakeholder_id=?',[stakeholder_id]);
+      if(existing&&existing.length>0){
+        await pool.query('UPDATE passport SET passport_number=?,country_code=?,country_name=?,nama=?,surname=?,given_names=?,nationality=?,tanggal_lahir=?,tempat_lahir=?,jenis_kelamin=?,tanggal_pengeluaran=?,tanggal_berlaku=?,kantor_penerbit=?,personal_id=?,file_name=COALESCE(?,file_name),document_path=COALESCE(?,document_path),raw_ocr_json=?,updated_at=NOW() WHERE stakeholder_id=?',[data.passport_number||null,data.country_code||null,data.country_name||null,data.nama||null,data.surname||null,data.given_names||null,data.nationality||null,data.tanggal_lahir||null,data.tempat_lahir||null,data.jenis_kelamin||null,data.tanggal_pengeluaran||null,data.tanggal_berlaku||null,data.kantor_penerbit||null,data.personal_id||null,fileName,docPath,rawJson,stakeholder_id]);
+      }else{
+        const id=crypto.randomUUID();
+        await pool.query('INSERT INTO passport (id,stakeholder_id,passport_number,country_code,country_name,nama,surname,given_names,nationality,tanggal_lahir,tempat_lahir,jenis_kelamin,tanggal_pengeluaran,tanggal_berlaku,kantor_penerbit,personal_id,file_name,document_path,raw_ocr_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())',[id,stakeholder_id,data.passport_number||null,data.country_code||null,data.country_name||null,data.nama||null,data.surname||null,data.given_names||null,data.nationality||null,data.tanggal_lahir||null,data.tempat_lahir||null,data.jenis_kelamin||null,data.tanggal_pengeluaran||null,data.tanggal_berlaku||null,data.kantor_penerbit||null,data.personal_id||null,fileName,docPath,rawJson]);
+      }
+    }else if(type==='kitas'){
+      const [existing]:any=await pool.query('SELECT id FROM kitas WHERE stakeholder_id=?',[stakeholder_id]);
+      if(existing&&existing.length>0){
+        await pool.query('UPDATE kitas SET niora=?,permit_number=?,nama=?,kewarganegaraan=?,tanggal_lahir=?,jenis_kelamin=?,berlaku_hingga=?,instansi_penerbit=?,alamat=?,file_name=COALESCE(?,file_name),document_path=COALESCE(?,document_path),raw_ocr_json=?,updated_at=NOW() WHERE stakeholder_id=?',[data.niora||null,data.permit_number||null,data.nama||null,data.kewarganegaraan||null,data.tanggal_lahir||null,data.jenis_kelamin||null,data.berlaku_hingga||null,data.instansi_penerbit||null,data.alamat||null,fileName,docPath,rawJson,stakeholder_id]);
+      }else{
+        const id=crypto.randomUUID();
+        await pool.query('INSERT INTO kitas (id,stakeholder_id,niora,permit_number,nama,kewarganegaraan,tanggal_lahir,jenis_kelamin,berlaku_hingga,instansi_penerbit,alamat,file_name,document_path,raw_ocr_json,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())',[id,stakeholder_id,data.niora||null,data.permit_number||null,data.nama||null,data.kewarganegaraan||null,data.tanggal_lahir||null,data.jenis_kelamin||null,data.berlaku_hingga||null,data.instansi_penerbit||null,data.alamat||null,fileName,docPath,rawJson]);
+      }
+    }
+    res.json({status:'saved',stakeholder_id,doc_type:type,file_name:fileName,document_path:docPath});
+  }catch(err:any){
+    res.status(500).json({error:'DB save error: '+(err.message||String(err))});
+  }
+});
+
+app.get('/api/v1/stakeholders/documents/:docType/:stakeholderId',async(req,res)=>{
+  const {docType,stakeholderId}=req.params;
+  const type=String(docType||'ktp').toLowerCase();
+  if(!['ktp','npwp','passport','kitas'].includes(type))return res.status(404).json({error:'Invalid doc type'});
+  if(!pool)return res.status(503).json({error:'Database unavailable'});
+  try{
+    const [rows]:any=await pool.query(`SELECT * FROM \`${type}\` WHERE stakeholder_id=? ORDER BY updated_at DESC LIMIT 1`,[stakeholderId]);
+    if(!rows||rows.length===0)return res.status(404).json({status:'not_found',data:null});
+    const row = rows[0];
+    const fileName = row.file_name || (row.document_path ? path.basename(row.document_path) : null);
+    const fileUrl = row.document_path 
+      ? (row.document_path.startsWith('/') ? row.document_path : `/${row.document_path.replace(/\\/g, '/')}`)
+      : (fileName ? `/documents/${type}/${fileName}` : null);
+    res.json({status:'success',data:{...row, file_name: fileName, fileName, fileUrl, filePath: row.document_path, document_path: row.document_path}});
+  }catch(err:any){
+    res.status(500).json({error:'DB query error: '+(err.message||String(err))});
+  }
+});
+
 async function removeStoredDocument(key:string){
  if(s3)await s3.send(new DeleteObjectCommand({Bucket:process.env.S3_BUCKET,Key:key}));
  else await fs.rm(path.join(dataDir,'files',key),{force:true});
@@ -159,6 +534,10 @@ app.get('/api/v1/files/:id/url',async(req,res)=>{const f=await readDocumentFile(
 app.get('/api/v1/files/:id/content',async(req,res)=>{let token:any;try{token=jwt.verify(String(req.query.token),jwtSecret,{audience:'los-file'});}catch{throw new Problem(403,'Document link has expired');}ensure(token.fileId===req.params.id&&token.userId===req.actor.id,'Invalid document link',403);const f=await readDocumentFile(String(req.params.id))||(await all('DocumentFile',{id:String(req.params.id)}))[0];ensure(f,'File not found',404);res.setHeader('Content-Type',f.mimeType);res.setHeader('Content-Disposition',`inline; filename*=UTF-8''${encodeURIComponent(f.fileName)}`);res.sendFile(path.join(dataDir,'files',f.fileKey),{dotfiles:'allow'});});
 app.get('/api/v1/applications/:id/document-events',async(req,res)=>{await application(String(req.params.id));res.json((await query('SELECT * FROM document_events WHERE application_id=$1 ORDER BY created_at DESC',[req.params.id])).rows);});
 app.post('/api/v1/applications/:id/transition',async(req,res)=>{const id=String(req.params.id);const {action,comments}=z.object({action:z.enum(['SUBMIT_TO_BS','VERIFY_BS','START_REVIEW','RECOMMEND_CA','RECOMMEND_LEGAL','APPROVE_COMMITTEE','REJECT_COMMITTEE','RETURN']),comments:z.string().trim().max(10000).default('')}).parse(req.body);
+ if(await intakeDetail(id)){
+  const updated=await transitionIntake(id,action,req.actor,comments);
+  return res.json(updated);
+ }
  await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await detail(id,q);let status=a.status;
  const docs=(role?:string)=>a.documentChecks.filter((d:any)=>d.isMandatory&&(!role||d.assignedRole===role));
  const verified=(role?:string)=>{const missing=docs(role).filter((d:any)=>d.status!=='VERIFIED'||(d.expiredDate&&new Date(d.expiredDate).toISOString().slice(0,10)<new Date().toISOString().slice(0,10)));ensure(!missing.length,`Verify required documents: ${missing.map((d:any)=>d.documentName).join(', ')}`);};

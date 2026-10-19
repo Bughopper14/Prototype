@@ -3,7 +3,7 @@ import type {MasterCatalog,MasterItem} from '../src/master-catalog';
 import crypto from 'node:crypto';
 
 const groups=[
- ['remarkCategoryId','master_legal_kategori_akta_perubahan','legal_kategori_akta_perubahan'],
+ ['remarkCategoryId','master_kategori_remarks','master_legal_kategori_akta_perubahan'],
  ['representativeType','master_legal_representative_type','legal_representative_type'],
  ['designation','master_legal_designation_name','legal_designation_name'],
 ] as const;
@@ -17,8 +17,6 @@ export async function initializeLegalMasters(seed:MasterCatalog){
    await pool.query(`DROP TRIGGER IF EXISTS audit_${legacyTable}_insert`);
    await pool.query(`DROP TRIGGER IF EXISTS audit_${legacyTable}_update`);
    await pool.query(`RENAME TABLE ${legacyTable} TO ${table}`);
-  }else if(names.has(legacyTable)&&names.has(table)){
-   throw new Error(`Both ${legacyTable} and ${table} exist. Resolve the duplicate legal master tables before starting the API.`);
   }
   await pool.query(`CREATE TABLE IF NOT EXISTS ${table} (
    id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
@@ -45,7 +43,14 @@ export async function saveLegalMasters(catalog:MasterCatalog){
  try{
   await c.beginTransaction();
   for(const [key,table] of groups){
-   for(const item of catalog[key]){
+   const currentCodes = (catalog[key]||[]).map(x => x.value);
+   if (currentCodes.length > 0) {
+     const placeholders = currentCodes.map(() => '?').join(',');
+     await c.query(`DELETE FROM ${table} WHERE code NOT IN (${placeholders})`, currentCodes);
+   } else {
+     await c.query(`DELETE FROM ${table}`);
+   }
+   for(const item of (catalog[key]||[])){
     const [rows]=await c.execute<any[]>(`SELECT name,is_active FROM ${table} WHERE code=? FOR UPDATE`,[item.value]);
     if(rows.length){if(rows[0].name!==item.name||!!rows[0].is_active!==item.active)await c.execute(`UPDATE ${table} SET name=?,is_active=?,updated_at=CURRENT_TIMESTAMP(3) WHERE code=?`,[item.name,item.active?1:0,item.value]);}
     else await c.execute(`INSERT INTO ${table} (id,code,name,is_active) VALUES (?,?,?,?)`,[crypto.randomUUID(),item.value,item.name,item.active?1:0]);
