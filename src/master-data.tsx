@@ -306,9 +306,9 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
     <div className="master-content">
       <div className="section-title">
         <div>
-          <h3>Field Mandatory (master_mandatory)</h3>
+          <h3>Field Mandatory</h3>
           <p className="muted">
-            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0). Perubahan langsung disimpan ke tabel database <code>master_mandatory</code> dan otomatis menampilkan tanda bintang merah (*) pada form aplikasi.
+            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0). Perubahan langsung disimpan dan otomatis menampilkan tanda bintang merah (*) pada form aplikasi.
           </p>
         </div>
       </div>
@@ -387,8 +387,6 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         marginBottom: 16,
         alignItems: 'center'
       }}>
-        <span>Tabel Database: <code style={{ fontWeight: 600 }}>master_mandatory</code></span>
-        <span>•</span>
         <span>Total Kolom: <b>{rules.length}</b></span>
         <span>•</span>
         <span style={{ color: '#dc2626', fontWeight: 600 }}>
@@ -597,7 +595,7 @@ export function MasterDataPage(){
           <select value={selected} onChange={e=>{setSelected(e.target.value);setSearch('');}}>
             <option value="location">Konfigurasi lokasi</option>
             <optgroup label="ATURAN FORM">
-              <option value="master_mandatory">Field Mandatory (master_mandatory)</option>
+              <option value="master_mandatory">Field Mandatory</option>
             </optgroup>
             {[...new Set(masterGroups.map(x=>x.section))].map(section=><optgroup key={section} label={section}>{masterGroups.filter(x=>x.section===section).map(g=><option key={g.key} value={g.key}>{g.name}</option>)}</optgroup>)}
           </select>
