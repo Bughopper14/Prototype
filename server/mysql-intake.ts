@@ -251,7 +251,7 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
   const updateTable=async(table:string,idColumn:string,rowId:string,values:Record<string,any>)=>{const [old]=await c.execute<any[]>(`SELECT * FROM ${table} WHERE ${idColumn}=? FOR UPDATE`,[rowId]);if(!old.length)throw mysqlError('Application stage was not found',404);const keys=Object.keys(values),isChanged=keys.some(k=>!same(databaseValue(old[0][k],String(old[0][k] instanceof Date?'date':'')),databaseValue(values[k],String(values[k] instanceof Date?'date':''))));if(isChanged){await c.execute(`UPDATE ${table} SET ${keys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE ${idColumn}=?`,[...Object.values(values),rowId]);changed=true;}};
   await updateTable('new_application_fap_stage','id_fap_stage',app[0].id_fap_stage,fapData);
   await updateTable('new_application_pre_analisis','id_pre_analysis',app[0].id_pre_analysis,preData);
-  const directoryData:Record<string,any>=customerDirectoryValues({...current?.customer,...experience},profile,profile.customerStatus||current?.customerStatus||'EXISTING');
+  const directoryData:Record<string,any>=customerDirectoryValues({...customer,...experience},profile,profile.customerStatus||current?.customerStatus||'EXISTING');
   const directoryKeys=Object.keys(directoryData);
   const [directoryRows]=await c.execute<any[]>('SELECT * FROM business_partner WHERE id=? FOR UPDATE',[current?.customerId]);
   if(!directoryRows.length){await c.execute(`INSERT INTO business_partner (id,${directoryKeys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(directoryKeys.length+1).fill('?').join(',')})`,[current?.customerId,...Object.values(directoryData)]);changed=true;}
