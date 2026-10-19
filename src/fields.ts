@@ -12,4 +12,4 @@ export const financialFields=[f('currentAssets','Current assets','number'),f('no
 export const blank=(fields:Field[])=>Object.fromEntries(fields.map(f=>[f.key,f.options?.[0]??(f.type==='number'?0:f.type==='date'?null:'')]));
 export const label=(s:string)=>s?.replaceAll('_',' ').toLowerCase().replace(/\b\w/g,x=>x.toUpperCase())||'—';
 export const legalDeedFields=[f('deedNumber','Nomor akta'),f('deedDate','Tanggal akta','date'),f('ministerialDecreeNumber','Nomor SK Menteri'),f('ministerialDecreeDate','Tanggal SK Menteri','date')];
-export const legalPartyFields=[f('representative','Representative')];
+export const legalPartyFields: Field[] = [];
