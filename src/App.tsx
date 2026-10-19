@@ -181,6 +181,39 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
   finally{setBusy(false);}
  }
 const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));const [submitFapConfirm,setSubmitFapConfirm]=useState(false);useEffect(()=>{if(a.stage)setActiveStage(a.stage);else if(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status))setActiveStage('Pre-analysis');else setActiveStage('FAP Stage');},[a.id,a.stage,a.status]);const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);const [tab,setTab]=useState(initialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
+ const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+   'fap-preview-sec-header': true,
+   'fap-preview-sec-company': true,
+   'fap-preview-sec-business': false,
+   'fap-preview-sec-pic': false,
+   'fap-preview-sec-projects': false,
+ });
+ const [activeSyncSection, setActiveSyncSection] = useState<string>('fap-preview-sec-header');
+ const [syncTick, setSyncTick] = useState<number>(() => Date.now());
+
+ const handleTriggerSync = (secId: string) => {
+   setActiveSyncSection(secId);
+   setSyncTick(Date.now());
+ };
+
+ const toggleSection = (secId: string) => {
+   setOpenSections(prev => {
+     const willOpen = !prev[secId];
+     if (willOpen) {
+       handleTriggerSync(secId);
+     }
+     return { ...prev, [secId]: willOpen };
+   });
+ };
+
+ const handlePreviewSectionClick = (secId: string) => {
+   handleTriggerSync(secId);
+   setOpenSections(prev => ({ ...prev, [secId]: true }));
+   const formTarget = document.getElementById('acc-' + secId);
+   if (formTarget) {
+     formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+   }
+ };
  const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
  async function submitCustomerDetail(){
   setError('');
@@ -292,193 +325,377 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
 
  async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Akta tidak ditemukan.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  useEffect(()=>{if(tab!==1)return;const timer=setInterval(()=>api('/applications/'+a.id).then(onChange).catch(()=>{}),15000);return()=>clearInterval(timer);},[tab,a.id]);
- return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><h1>{draft.isNew ? (customerCategory === "EXISTING" ? (selectedCustomer?.companyName || "Pilih Debitur / Buat Aplikasi Baru") : (customerDraft.companyName || "Aplikasi Pembiayaan Baru")) : (a.customer?.companyName || "Aplikasi Pembiayaan")}</h1><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(a.industrySegment)} <span>·</span> {a.city} <span>·</span> Created {date(a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${(activeStage||draft.stage||a.stage||'FAP Stage')===st?'active':'inactive'}`} style={{cursor:(st==='FAP Stage'||(!draft.isNew&&(activeStage==='Pre-analysis'||a.stage==='Pre-analysis')))?'pointer':'default'}} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu untuk melanjutkan ke tahap berikutnya.');return;}if(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')setActiveStage(st);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu sebelum membuka tab lain.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Simpan aplikasi terlebih dahulu':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabNumbers[id]!==undefined&&<span>{tabNumbers[id]}</span>}{tabs[id]}{id===6&&a.documentChecks&&<em>{a.documentChecks.length}</em>}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<><div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}><div style={{display:'flex',alignItems:'center',gap:'8px'}}><Building2 size={18}/><span><b>{customerCategory==='EXISTING'?(selectedCustomer?.companyName||'Belum memilih debitur'):(customerDraft.companyName||'Calon Debitur Baru')}</b> · NIB {customerCategory==='EXISTING'?(selectedCustomer?.nib||'—'):(customerDraft.nib||'—')} · NPWP {customerCategory==='EXISTING'?(selectedCustomer?.npwp||'—'):(customerDraft.npwp||'—')}</span></div><div style={{display:'flex',alignItems:'center',gap:'8px'}}><button type="button" className="button small" onClick={()=>window.print()} title="Buka halaman cetak print dokumen Excel FAP (A4)" style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'#ffffff',color:'#0f172a',border:'1px solid #cbd5e1'}}><Printer size={14}/> Print</button><div className="fap-tab-layout-toggle" style={{margin:0}}><button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Tutup Side-by-side":"Buka Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Aktif)":"Buka Side-by-side FAP"}</button></div></div></div>{!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData}/></div>}{sideBySide?<div className="fap-detail-split-container"><div className="fap-detail-form-col"><div className="business-sections"><div className="business-section intake-section-merged">
-  <div className="business-section-heading" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
-    <div>
-      <span className="eyebrow" style={{display:'block',color:'#2563eb',fontWeight:700,fontSize:'0.75rem',letterSpacing:'0.05em',marginBottom:4}}>FAP INTAKE</span>
-      <h3>FAP Stage · Core Application & Customer Details</h3>
-      <p>Enter the core application and customer details. You can complete the remaining business profile directly in this workspace.</p>
-    </div>
-  </div>
-  <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
-    <div>
-      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
-      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
-    </div>
-    <div>
-      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP registration number</span>
-      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
-    </div>
-  </div>
-  <div className="customer-category-selector-box" style={{marginBottom:16}}>
-    <label className="customer-category-select">
-      Customer category
-      <select 
-        value={customerCategory} 
-        disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
-        onChange={e => changeCategory(e.target.value)}
+   const renderCustomerDetailSections = () => (
+    <div className="fap-accordion-group">
+      {/* 01: Identitas & Klasifikasi Debitur */}
+      <div 
+        className={`fap-accordion-card ${openSections['fap-preview-sec-header'] ? 'is-open' : 'is-closed'}`}
+        id="acc-fap-preview-sec-header"
+        onFocus={() => handleTriggerSync('fap-preview-sec-header')}
       >
-        <option value="EXISTING">Existing customer</option>
-        <option value="NEW">New customer</option>
-      </select>
-    </label>
-  </div>
-  {customerCategory === 'EXISTING' ? (
-    <>
-      <div className="existing-customer-picker" style={{marginBottom:16}}>
-        <label>
-          Existing customer
-          <select 
-            value={customerId} 
-            disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
-            onChange={e => {
-              const cid = e.target.value;
-              setCustomerId(cid);
-              setError('');
-              const cust = customers.find((c: any) => c.id === cid);
-              if (cust) {
-                setDraft((prev: any) => ({
-                  ...prev,
-                  customerId: cid,
-                  customer: cust,
-                }));
-              }
-            }}
-          >
-            <option value="">Select an existing customer</option>
-            {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
-          </select>
-        </label>
-      </div>
-      {selectedCustomer && (
-        <section className="existing-customer-summary" aria-label="FAP customer details">
-          <div>
-            <h3>{selectedCustomer.companyName}</h3>
-            <span>{label(selectedCustomer.companyType)} customer</span>
+        <div 
+          className="fap-accordion-header" 
+          onClick={() => toggleSection('fap-preview-sec-header')}
+        >
+          <div className="fap-acc-header-left">
+            <span className="fap-acc-step-badge">01</span>
+            <div className="fap-acc-titles">
+              <div className="fap-acc-title-row">
+                <h4 className="fap-acc-title">Identitas & Klasifikasi Debitur</h4>
+                <span className={`fap-acc-badge ${draft.companyName || customerDraft.companyName || selectedCustomer?.companyName ? 'success' : ''}`}>
+                  {customerCategory === 'EXISTING' ? (selectedCustomer ? selectedCustomer.companyName : 'Pilih Debitur') : (customerDraft.companyName || 'Debitur Baru')}
+                </span>
+              </div>
+              <p className="fap-acc-subtitle">Kategori debitur (Existing / Baru), Nomor Registrasi FAP, NIB, dan NPWP</p>
+            </div>
           </div>
-          <dl>
-            <div><dt>NIB</dt><dd style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{selectedCustomer.nib || '—'}</span><button type="button" onClick={()=>setNibOcrOpen(true)} title="Buka pop up OCR Dokumen NIB" className="button small" style={{background:'#2563eb',borderColor:'#2563eb',color:'#ffffff',fontSize:'0.72rem',padding:'3px 9px',borderRadius:5,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}}><ScanLine size={12}/> Open Pop-up OCR</button></dd></div>
-            <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
-            <div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
-          </dl>
-        </section>
-      )}
-    </>
-  ) : (
-    <div className="new-customer-fields-block" style={{marginTop:12}}>
-      <div style={{marginBottom:12}}>
-        <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company details</h4>
-        <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Identitas badan usaha baru (Nama PT/CV, tipe usaha, NIB 13 digit, NPWP 15-16 digit, dan akta pendirian).</p>
+          <div className="fap-acc-header-right">
+            <button 
+              type="button" 
+              className="fap-acc-sync-btn"
+              title="Sinkronkan dokumen preview ke bagian ini"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTriggerSync('fap-preview-sec-header');
+                setOpenSections(s => ({ ...s, ['fap-preview-sec-header']: true }));
+              }}
+            >
+              <Eye size={12}/> Sync View
+            </button>
+            <span className={`fap-acc-chevron ${openSections['fap-preview-sec-header'] ? 'rotate' : ''}`}>
+              <ChevronDown size={17} />
+            </span>
+          </div>
+        </div>
+        {openSections['fap-preview-sec-header'] && (
+          <div className="fap-accordion-content">
+            <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
+              <div>
+                <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
+                <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
+              </div>
+              <div>
+                <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP registration number</span>
+                <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
+              </div>
+            </div>
+            <div className="customer-category-selector-box" style={{marginBottom:16}}>
+              <label className="customer-category-select">
+                Customer category
+                <select 
+                  value={customerCategory} 
+                  disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
+                  onChange={e => changeCategory(e.target.value)}
+                >
+                  <option value="EXISTING">Existing customer</option>
+                  <option value="NEW">New customer</option>
+                </select>
+              </label>
+            </div>
+            {customerCategory === 'EXISTING' ? (
+              <>
+                <div className="existing-customer-picker" style={{marginBottom:16}}>
+                  <label>
+                    Existing customer
+                    <select 
+                      value={customerId} 
+                      disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                      onChange={e => {
+                        const cid = e.target.value;
+                        setCustomerId(cid);
+                        setError('');
+                        const cust = customers.find((c: any) => c.id === cid);
+                        if (cust) {
+                          setDraft((prev: any) => ({
+                            ...prev,
+                            customerId: cid,
+                            customer: cust,
+                          }));
+                        }
+                      }}
+                    >
+                      <option value="">Select an existing customer</option>
+                      {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
+                    </select>
+                  </label>
+                </div>
+                {selectedCustomer && (
+                  <section className="existing-customer-summary" aria-label="FAP customer details">
+                    <div>
+                      <h3>{selectedCustomer.companyName}</h3>
+                      <span>{label(selectedCustomer.companyType)} customer</span>
+                    </div>
+                    <dl>
+                      <div><dt>NIB</dt><dd style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{selectedCustomer.nib || '—'}</span><button type="button" onClick={()=>setNibOcrOpen(true)} title="Buka pop up OCR Dokumen NIB" className="button small" style={{background:'#2563eb',borderColor:'#2563eb',color:'#ffffff',fontSize:'0.72rem',padding:'3px 9px',borderRadius:5,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}}><ScanLine size={12}/> Open Pop-up OCR</button></dd></div>
+                      <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
+                      <div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
+                    </dl>
+                  </section>
+                )}
+              </>
+            ) : (
+              <div className="new-customer-fields-block" style={{marginTop:12}}>
+                <div style={{marginBottom:12}}>
+                  <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company details</h4>
+                  <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Identitas badan usaha baru (Nama PT/CV, tipe usaha, NIB 13 digit, NPWP 15-16 digit, dan akta pendirian).</p>
+                </div>
+                <Fields 
+                  fields={fapCustomerFields} 
+                  onNibOcr={()=>setNibOcrOpen(true)}
+                  value={customerDraft} 
+                  disabled={!canEdit} 
+                  onChange={c => {
+                    setCustomerDraft(c);
+                    setDraft((prev: any) => ({
+                      ...prev,
+                      customer: c,
+                    }));
+                  }} 
+                />
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <Fields 
-        fields={fapCustomerFields} 
-        onNibOcr={()=>setNibOcrOpen(true)}
-        value={customerDraft} 
-        disabled={!canEdit} 
-        onChange={c => {
-          setCustomerDraft(c);
-          setDraft((prev: any) => ({
-            ...prev,
-            customer: c,
-          }));
-        }} 
-      />
+
+      {/* 02: Kantor Registrasi & Domisili */}
+      <div 
+        className={`fap-accordion-card ${openSections['fap-preview-sec-company'] ? 'is-open' : 'is-closed'}`}
+        id="acc-fap-preview-sec-company"
+        onFocus={() => handleTriggerSync('fap-preview-sec-company')}
+      >
+        <div 
+          className="fap-accordion-header" 
+          onClick={() => toggleSection('fap-preview-sec-company')}
+        >
+          <div className="fap-acc-header-left">
+            <span className="fap-acc-step-badge">02</span>
+            <div className="fap-acc-titles">
+              <div className="fap-acc-title-row">
+                <h4 className="fap-acc-title">Kantor Registrasi & Domisili Perusahaan</h4>
+                <span className={`fap-acc-badge ${draft.city && draft.companyAddress ? 'success' : ''}`}>
+                  {draft.city ? `${draft.city} (${draft.branchCode || 'Cabang'})` : 'Belum diisi'}
+                </span>
+              </div>
+              <p className="fap-acc-subtitle">Cabang pengajuan, kepemilikan domisili, alamat lengkap, dan kontak resmi</p>
+            </div>
+          </div>
+          <div className="fap-acc-header-right">
+            <button 
+              type="button" 
+              className="fap-acc-sync-btn"
+              title="Sinkronkan dokumen preview ke bagian ini"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTriggerSync('fap-preview-sec-company');
+                setOpenSections(s => ({ ...s, ['fap-preview-sec-company']: true }));
+              }}
+            >
+              <Eye size={12}/> Sync View
+            </button>
+            <span className={`fap-acc-chevron ${openSections['fap-preview-sec-company'] ? 'rotate' : ''}`}>
+              <ChevronDown size={17} />
+            </span>
+          </div>
+        </div>
+        {openSections['fap-preview-sec-company'] && (
+          <div className="fap-accordion-content">
+            <div style={{marginBottom:14}}>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Status Kantor & Cabang</h5>
+              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+            </div>
+            <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Alamat Kantor & Kontak Resmi</h5>
+              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 03: Profil Usaha & Legalitas Akta */}
+      <div 
+        className={`fap-accordion-card ${openSections['fap-preview-sec-business'] ? 'is-open' : 'is-closed'}`}
+        id="acc-fap-preview-sec-business"
+        onFocus={() => handleTriggerSync('fap-preview-sec-business')}
+      >
+        <div 
+          className="fap-accordion-header" 
+          onClick={() => toggleSection('fap-preview-sec-business')}
+        >
+          <div className="fap-acc-header-left">
+            <span className="fap-acc-step-badge">03</span>
+            <div className="fap-acc-titles">
+              <div className="fap-acc-title-row">
+                <h4 className="fap-acc-title">Profil Usaha & Legalitas Akta</h4>
+                <span className={`fap-acc-badge ${draft.mainBusiness ? 'success' : ''}`}>
+                  {draft.mainBusiness || 'Belum diisi'}
+                </span>
+              </div>
+              <p className="fap-acc-subtitle">Bidang bisnis utama, pengalaman operasional, sumber dana, dan nomor akta terbaru</p>
+            </div>
+          </div>
+          <div className="fap-acc-header-right">
+            <button 
+              type="button" 
+              className="fap-acc-sync-btn"
+              title="Sinkronkan dokumen preview ke bagian ini"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTriggerSync('fap-preview-sec-business');
+                setOpenSections(s => ({ ...s, ['fap-preview-sec-business']: true }));
+              }}
+            >
+              <Eye size={12}/> Sync View
+            </button>
+            <span className={`fap-acc-chevron ${openSections['fap-preview-sec-business'] ? 'rotate' : ''}`}>
+              <ChevronDown size={17} />
+            </span>
+          </div>
+        </div>
+        {openSections['fap-preview-sec-business'] && (
+          <div className="fap-accordion-content">
+            <div style={{marginBottom:14}}>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Pengalaman & Operasional Usaha</h5>
+              <Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+            </div>
+            <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Ringkasan Legalitas Akta Perubahan</h5>
+              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 04: Kontak Utama / PIC */}
+      <div 
+        className={`fap-accordion-card ${openSections['fap-preview-sec-pic'] ? 'is-open' : 'is-closed'}`}
+        id="acc-fap-preview-sec-pic"
+        onFocus={() => handleTriggerSync('fap-preview-sec-pic')}
+      >
+        <div 
+          className="fap-accordion-header" 
+          onClick={() => toggleSection('fap-preview-sec-pic')}
+        >
+          <div className="fap-acc-header-left">
+            <span className="fap-acc-step-badge">04</span>
+            <div className="fap-acc-titles">
+              <div className="fap-acc-title-row">
+                <h4 className="fap-acc-title">Kontak Utama / Penanggung Jawab (PIC)</h4>
+                <span className={`fap-acc-badge ${draft.pic?.picName ? 'success' : ''}`}>
+                  {draft.pic?.picName ? `${draft.pic.picName} (${draft.pic.position || 'PIC'})` : 'Belum diisi'}
+                </span>
+              </div>
+              <p className="fap-acc-subtitle">Data personal PIC, posisi/jabatan, nomor seluler, dan alamat domisili PIC</p>
+            </div>
+          </div>
+          <div className="fap-acc-header-right">
+            <button 
+              type="button" 
+              className="fap-acc-sync-btn"
+              title="Sinkronkan dokumen preview ke bagian ini"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTriggerSync('fap-preview-sec-pic');
+                setOpenSections(s => ({ ...s, ['fap-preview-sec-pic']: true }));
+              }}
+            >
+              <Eye size={12}/> Sync View
+            </button>
+            <span className={`fap-acc-chevron ${openSections['fap-preview-sec-pic'] ? 'rotate' : ''}`}>
+              <ChevronDown size={17} />
+            </span>
+          </div>
+        </div>
+        {openSections['fap-preview-sec-pic'] && (
+          <div className="fap-accordion-content">
+            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/>
+          </div>
+        )}
+      </div>
+
+      {/* 05: Segmentasi & Proyek Berjalan */}
+      <div 
+        className={`fap-accordion-card ${openSections['fap-preview-sec-projects'] ? 'is-open' : 'is-closed'}`}
+        id="acc-fap-preview-sec-projects"
+        onFocus={() => handleTriggerSync('fap-preview-sec-projects')}
+      >
+        <div 
+          className="fap-accordion-header" 
+          onClick={() => toggleSection('fap-preview-sec-projects')}
+        >
+          <div className="fap-acc-header-left">
+            <span className="fap-acc-step-badge">05</span>
+            <div className="fap-acc-titles">
+              <div className="fap-acc-title-row">
+                <h4 className="fap-acc-title">Segmentasi Industri & Proyek Berjalan</h4>
+                <span className={`fap-acc-badge ${(draft.projects?.length || 0) > 0 ? 'success' : ''}`}>
+                  {draft.projects?.length || 0} Proyek
+                </span>
+              </div>
+              <p className="fap-acc-subtitle">Kontrak proyek dan aktivitas bisnis debitur yang sedang berjalan</p>
+            </div>
+          </div>
+          <div className="fap-acc-header-right">
+            <button 
+              type="button" 
+              className="fap-acc-sync-btn"
+              title="Sinkronkan dokumen preview ke bagian ini"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleTriggerSync('fap-preview-sec-projects');
+                setOpenSections(s => ({ ...s, ['fap-preview-sec-projects']: true }));
+              }}
+            >
+              <Eye size={12}/> Sync View
+            </button>
+            <span className={`fap-acc-chevron ${openSections['fap-preview-sec-projects'] ? 'rotate' : ''}`}>
+              <ChevronDown size={17} />
+            </span>
+          </div>
+        </div>
+        {openSections['fap-preview-sec-projects'] && (
+          <div className="fap-accordion-content">
+            <Repeater title="Project contracts" description="Kontrak proyek dan aktivitas bisnis yang sedang berjalan (diisi oleh Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><h1>{draft.isNew ? (customerCategory === "EXISTING" ? (selectedCustomer?.companyName || "Pilih Debitur / Buat Aplikasi Baru") : (customerDraft.companyName || "Aplikasi Pembiayaan Baru")) : (a.customer?.companyName || "Aplikasi Pembiayaan")}</h1><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(a.industrySegment)} <span>·</span> {a.city} <span>·</span> Created {date(a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${(activeStage||draft.stage||a.stage||'FAP Stage')===st?'active':'inactive'}`} style={{cursor:(st==='FAP Stage'||(!draft.isNew&&(activeStage==='Pre-analysis'||a.stage==='Pre-analysis')))?'pointer':'default'}} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu untuk melanjutkan ke tahap berikutnya.');return;}if(st==='FAP Stage'||activeStage==='Pre-analysis'||a.stage==='Pre-analysis')setActiveStage(st);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu sebelum membuka tab lain.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Simpan aplikasi terlebih dahulu':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabNumbers[id]!==undefined&&<span>{tabNumbers[id]}</span>}{tabs[id]}{id===6&&a.documentChecks&&<em>{a.documentChecks.length}</em>}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<>
+  <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
+    <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+      <Building2 size={18}/>
+      <span><b>{customerCategory==='EXISTING'?(selectedCustomer?.companyName||'Belum memilih debitur'):(customerDraft.companyName||'Calon Debitur Baru')}</b> · NIB {customerCategory==='EXISTING'?(selectedCustomer?.nib||'—'):(customerDraft.nib||'—')} · NPWP {customerCategory==='EXISTING'?(selectedCustomer?.npwp||'—'):(customerDraft.npwp||'—')}</span>
+    </div>
+    <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+      <button type="button" className="button small" onClick={()=>window.print()} title="Buka halaman cetak print dokumen Excel FAP (A4)" style={{display:'inline-flex',alignItems:'center',gap:'5px',background:'#ffffff',color:'#0f172a',border:'1px solid #cbd5e1'}}><Printer size={14}/> Print</button>
+      <div className="fap-tab-layout-toggle" style={{margin:0}}>
+        <button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Tutup Side-by-side":"Buka Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Aktif)":"Buka Side-by-side FAP"}</button>
+      </div>
+    </div>
+  </div>
+  {!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData}/></div>}
+  {sideBySide ? (
+    <div className="fap-detail-split-container">
+      <div className="fap-detail-form-col">
+        {renderCustomerDetailSections()}
+      </div>
+      <div className="fap-detail-preview-col">
+        <FapSheetPreview 
+          data={liveDetailFapData} 
+          activeSection={activeSyncSection} 
+          syncTick={syncTick} 
+          onSectionClick={handlePreviewSectionClick} 
+        />
+      </div>
+    </div>
+  ) : (
+    <div className="business-sections" style={{marginTop:14}}>
+      {renderCustomerDetailSections()}
     </div>
   )}
-</div><div className="business-section"><div className="business-section-heading"><div><h3>Kantor Pendaftaran & Status Tempat Usaha</h3><p>Cabang registrasi aplikasi, status relasi debitur, dan kepemilikan domisili usaha.</p></div></div><Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Alamat Kantor & Kontak Resmi Perusahaan</h3><p>Domisili operasional, kota, provinsi, kecamatan, kelurahan, RT/RW, kode pos, email resmi, telepon, dan website.</p></div></div><Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Profil Usaha & Pengalaman Operasional</h3><p>Bidang usaha utama, sektor industri, peran bisnis, lama beroperasi, dan sumber angsuran.</p></div></div><Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Ringkasan Legalitas Akta Perusahaan</h3><p>Nomor dan tanggal akta perubahan anggaran dasar terakhir.</p></div></div><Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Kontak Utama / Penanggung Jawab (PIC)</h3><p>Identitas, jabatan, nomor kontak langsung, dan alamat domisili PIC untuk verifikasi lapangan.</p></div></div><Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/></div><div className="business-section"><Repeater title="Project contracts" description="Kontrak proyek dan aktivitas bisnis yang sedang berjalan (diisi oleh Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/></div></div></div><div className="fap-detail-preview-col"><FapSheetPreview data={liveDetailFapData}/></div></div>:<div className="business-sections"><div className="business-section intake-section-merged">
-  <div className="business-section-heading" style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
-    <div>
-      <span className="eyebrow" style={{display:'block',color:'#2563eb',fontWeight:700,fontSize:'0.75rem',letterSpacing:'0.05em',marginBottom:4}}>FAP INTAKE</span>
-      <h3>FAP Stage · Core Application & Customer Details</h3>
-      <p>Enter the core application and customer details. You can complete the remaining business profile directly in this workspace.</p>
-    </div>
-  </div>
-  <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
-    <div>
-      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
-      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
-    </div>
-    <div>
-      <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP registration number</span>
-      <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
-    </div>
-  </div>
-  <div className="customer-category-selector-box" style={{marginBottom:16}}>
-    <label className="customer-category-select">
-      Customer category
-      <select 
-        value={customerCategory} 
-        disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
-        onChange={e => changeCategory(e.target.value)}
-      >
-        <option value="EXISTING">Existing customer</option>
-        <option value="NEW">New customer</option>
-      </select>
-    </label>
-  </div>
-  {customerCategory === 'EXISTING' ? (
-    <>
-      <div className="existing-customer-picker" style={{marginBottom:16}}>
-        <label>
-          Existing customer
-          <select 
-            value={customerId} 
-            disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
-            onChange={e => {
-              const cid = e.target.value;
-              setCustomerId(cid);
-              setError('');
-              const cust = customers.find((c: any) => c.id === cid);
-              if (cust) {
-                setDraft((prev: any) => ({
-                  ...prev,
-                  customerId: cid,
-                  customer: cust,
-                }));
-              }
-            }}
-          >
-            <option value="">Select an existing customer</option>
-            {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
-          </select>
-        </label>
-      </div>
-      {selectedCustomer && (
-        <section className="existing-customer-summary" aria-label="FAP customer details">
-          <div>
-            <h3>{selectedCustomer.companyName}</h3>
-            <span>{label(selectedCustomer.companyType)} customer</span>
-          </div>
-          <dl>
-            <div><dt>NIB</dt><dd style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{selectedCustomer.nib || '—'}</span><button type="button" onClick={()=>setNibOcrOpen(true)} title="Buka pop up OCR Dokumen NIB" className="button small" style={{background:'#2563eb',borderColor:'#2563eb',color:'#ffffff',fontSize:'0.72rem',padding:'3px 9px',borderRadius:5,fontWeight:600,cursor:'pointer',display:'inline-flex',alignItems:'center',gap:4}}><ScanLine size={12}/> Open Pop-up OCR</button></dd></div>
-            <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
-            <div><dt>Establishment deed</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
-          </dl>
-        </section>
-      )}
-    </>
-  ) : (
-    <div className="new-customer-fields-block" style={{marginTop:12}}>
-      <div style={{marginBottom:12}}>
-        <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company details</h4>
-        <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Identitas badan usaha baru (Nama PT/CV, tipe usaha, NIB 13 digit, NPWP 15-16 digit, dan akta pendirian).</p>
-      </div>
-      <Fields 
-        fields={fapCustomerFields} 
-        onNibOcr={()=>setNibOcrOpen(true)}
-        value={customerDraft} 
-        disabled={!canEdit} 
-        onChange={c => {
-          setCustomerDraft(c);
-          setDraft((prev: any) => ({
-            ...prev,
-            customer: c,
-          }));
-        }} 
-      />
-    </div>
-  )}
-</div><div className="business-section"><div className="business-section-heading"><div><h3>Kantor Pendaftaran & Status Tempat Usaha</h3><p>Cabang registrasi aplikasi, status relasi debitur, dan kepemilikan domisili usaha.</p></div></div><Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Alamat Kantor & Kontak Resmi Perusahaan</h3><p>Domisili operasional, kota, provinsi, kecamatan, kelurahan, RT/RW, kode pos, email resmi, telepon, dan website.</p></div></div><Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Profil Usaha & Pengalaman Operasional</h3><p>Bidang usaha utama, sektor industri, peran bisnis, lama beroperasi, dan sumber angsuran.</p></div></div><Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','experienceYears','experienceMonths','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Ringkasan Legalitas Akta Perusahaan</h3><p>Nomor dan tanggal akta perubahan anggaran dasar terakhir.</p></div></div><Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/></div><div className="business-section"><div className="business-section-heading"><div><h3>Kontak Utama / Penanggung Jawab (PIC)</h3><p>Identitas, jabatan, nomor kontak langsung, dan alamat domisili PIC untuk verifikasi lapangan.</p></div></div><Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/></div><div className="business-section"><Repeater title="Project contracts" description="Kontrak proyek dan aktivitas bisnis yang sedang berjalan (diisi oleh Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/></div></div>}</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>setDraft({...draft,legal})} onStakeholdersChange={(legal,stakeholders)=>setDraft({...draft,legal,stakeholders})}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Batal / Kembali ke Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Simpan & Buat Aplikasi</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=><button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{setComments('');setTransition(action);setError('');}}>{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>)}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/></>;
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>setDraft({...draft,legal})} onStakeholdersChange={(legal,stakeholders)=>setDraft({...draft,legal,stakeholders})}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Batal / Kembali ke Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Simpan & Buat Aplikasi</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=><button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{setComments('');setTransition(action);setError('');}}>{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>)}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/></>;
 }
 function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:any[])=>void,disabled:boolean}){const total=rows.reduce((sum,x)=>sum+Number(x.sharePercentage||0),0),isExceeded=total>100.01;return <><div className={'ownership '+(isExceeded?'unbalanced':'balanced')}><div><strong>{total.toFixed(2)}%</strong><span>Total ownership · maks 100% (tidak wajib 100%)</span></div><div className="ownership-bar"><i style={{width:Math.min(100,total)+'%',background:isExceeded?'#dc2626':'#002c5f'}}/></div></div>{isExceeded&&<p style={{color:'#dc2626',fontSize:'12px',marginTop:'6px',fontWeight:600}}>⚠ Total kepemilikan saham melebihi 100%. Mohon sesuaikan kembali porsi saham masing-masing pihak.</p>}<Repeater title="Stakeholders" fields={stakeholderFields} rows={rows.map(stakeholderEditorValues)} disabled={disabled} onChange={onChange}/></>;}
 function FinancialEditor({rows,onChange,disabled}:{rows:any[],onChange:(r:any[])=>void,disabled:boolean}){const change=(i:number,k:string,v:any)=>onChange(rows.map((r,j)=>j===i?{...r,[k]:v}:r));return <><div className="section-title"><span className="muted">Enter exact values; totals are checked when saved.</span>{!disabled&&rows.length<3&&<button className="button small" onClick={()=>onChange([...rows,{...blank(financialFields),fiscalYear:new Date().getFullYear()-3+rows.length,isAudited:false}])}><Plus size={15}/>Add fiscal year</button>}</div><div className="table-scroll"><table className="financial-table"><thead><tr><th>FINANCIAL METRIC</th>{rows.map((r,i)=><th key={i}><div className="year-input"><input aria-label="Fiscal year" type="number" {...inputLimits('fiscalYear')} disabled={disabled} value={r.fiscalYear} onChange={e=>change(i,'fiscalYear',e.target.value)}/>{!disabled&&<button className="icon-button" onClick={()=>onChange(rows.filter((_,j)=>j!==i))}><X size={14}/></button>}</div><label className="checkbox"><input type="checkbox" disabled={disabled} checked={r.isAudited} onChange={e=>change(i,'isAudited',e.target.checked)}/>Audited</label></th>)}</tr></thead><tbody>{financialFields.map(f=><tr key={f.key} className={f.key.startsWith('total')||f.key==='netIncome'?'total-row':''}><td>{f.label}</td>{rows.map((r,i)=><td key={i}><input aria-label={`${r.fiscalYear} ${f.label}`} type="number" step="0.01" disabled={disabled} value={r[f.key]} onChange={e=>change(i,f.key,e.target.value)}/></td>)}</tr>)}<tr className="balance-row"><td>Balance check</td>{rows.map((r,i)=>{const ok=Number(r.currentAssets)+Number(r.nonCurrentAssets)===Number(r.totalAssets)&&Number(r.currentLiabilities)+Number(r.nonCurrentLiabilities)===Number(r.totalLiabilities)&&Number(r.totalAssets)===Number(r.totalLiabilities)+Number(r.equity)&&Number(r.totalAssets)===Number(r.totalLiabAndEquity);return <td key={i}><span className={ok?'text-brand':'text-red'}>{ok?'✓ Balanced':'! Unbalanced'}</span></td>;})}</tr>{[['Current ratio','currentAssets','currentLiabilities'],['Debt / equity','totalLiabilities','equity'],['Net profit margin','netIncome','revenue']].map(([name,n,d])=><tr key={name}><td>{name}</td>{rows.map((r,i)=><td key={i} className="ratio">{Number(r[d])?((Number(r[n])/Number(r[d]))*(name==='Net profit margin'?100:1)).toFixed(2)+(name==='Net profit margin'?'%':'×'):'N/A'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<div className="empty-small">Add three fiscal years to begin financial spreading.</div>}<p className="field-note">DSCR is unavailable because the specification does not capture depreciation. Zero-denominator ratios are shown as N/A.</p></>;}
