@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, Upload, ScanLine, Sparkles, CheckCircle2, Copy, FileText, 
   Check, Loader2, Calendar, Mail, Phone, MapPin, Hash, ArrowRight,
-  FileSearch, RefreshCw, Building2
+  FileSearch, RefreshCw, Building2, Navigation, Compass, Map
 } from 'lucide-react';
 import { 
   extractNibTextFromDocument, parseNibText, SAMPLE_NIB_TEXT, ParsedNibData 
@@ -18,6 +18,13 @@ export interface NibOcrModalProps {
     email?: string;
     phone?: string;
     tanggalTerbit?: string;
+    city?: string;
+    district?: string;
+    village?: string;
+    postalCode?: string;
+    province?: string;
+    rt?: string;
+    rw?: string;
   }) => void;
   notify?: (msg: string) => void;
 }
@@ -36,7 +43,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
     alamat: '',
     email: '',
     phone: '',
-    tanggalTerbit: ''
+    tanggalTerbit: '',
+    city: '',
+    district: '',
+    village: '',
+    postalCode: '',
+    province: '',
+    rt: '',
+    rw: ''
   });
 
   if (!open) return null;
@@ -67,7 +81,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           alamat: extracted.alamat || '',
           email: extracted.email || '',
           phone: extracted.phone || '',
-          tanggalTerbit: extracted.tanggalTerbit || ''
+          tanggalTerbit: extracted.tanggalTerbit || '',
+          city: extracted.city || '',
+          district: extracted.district || '',
+          village: extracted.village || '',
+          postalCode: extracted.postalCode || '',
+          province: extracted.province || '',
+          rt: extracted.rt || '',
+          rw: extracted.rw || ''
         });
       } catch (err: any) {
         console.warn('OCR execution error:', err);
@@ -79,7 +100,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           alamat: fallback.alamat || '',
           email: fallback.email || '',
           phone: fallback.phone || '',
-          tanggalTerbit: fallback.tanggalTerbit || ''
+          tanggalTerbit: fallback.tanggalTerbit || '',
+          city: fallback.city || '',
+          district: fallback.district || '',
+          village: fallback.village || '',
+          postalCode: fallback.postalCode || '',
+          province: fallback.province || '',
+          rt: fallback.rt || '',
+          rw: fallback.rw || ''
         });
       } finally {
         setOcrLoading(false);
@@ -101,25 +129,45 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         alamat: extracted.alamat || '',
         email: extracted.email || '',
         phone: extracted.phone || '',
-        tanggalTerbit: extracted.tanggalTerbit || ''
+        tanggalTerbit: extracted.tanggalTerbit || '',
+        city: extracted.city || '',
+        district: extracted.district || '',
+        village: extracted.village || '',
+        postalCode: extracted.postalCode || '',
+        province: extracted.province || '',
+        rt: extracted.rt || '',
+        rw: extracted.rw || ''
       });
       setOcrLoading(false);
     }, 400);
   };
 
+  const filledCount = [
+    formData.nib,
+    formData.companyName,
+    formData.alamat,
+    formData.city,
+    formData.district,
+    formData.village,
+    formData.postalCode,
+    formData.email,
+    formData.phone,
+    formData.tanggalTerbit
+  ].filter(Boolean).length;
+
   const handleApply = () => {
-    if (!formData.nib && !formData.companyName && !formData.alamat && !formData.email && !formData.phone && !formData.tanggalTerbit) {
+    if (filledCount === 0) {
       if (notify) notify('No NIB data extracted to apply.');
       return;
     }
     onApply(formData);
     if (notify) {
-      notify('✓ 6 NIB fields successfully synced to form (NIB, Company Name, Address, Email, Phone, Issue Date)');
+      notify(`✓ ${filledCount} NIB fields successfully synced to form`);
     }
     onClose();
   };
 
-  const hasData = Boolean(formData.nib || formData.companyName || formData.alamat || formData.email || formData.phone || formData.tanggalTerbit);
+  const hasData = filledCount > 0;
 
   return (
     <div 
@@ -139,7 +187,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: '16px',
         boxSizing: 'border-box'
       }}
     >
@@ -147,9 +195,9 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
         style={{
-          width: '920px',
-          maxWidth: '95vw',
-          maxHeight: '90vh',
+          width: '960px',
+          maxWidth: '96vw',
+          maxHeight: '92vh',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
@@ -182,7 +230,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 Upload & Scan NIB Document · Auto-Fill OCR
               </h3>
               <p style={{margin: '2px 0 0 0', fontSize: '0.8rem', color: '#64748b'}}>
-                Automatically extract NIB number, company name, address, email, phone number, and issue date from OSS NIB documents.
+                Automatically extract NIB number, company name, address, administrative regions (regency, district, village, zip code), contacts, and issue date.
               </p>
             </div>
           </div>
@@ -202,7 +250,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           padding: '20px',
           overflowY: 'auto',
           display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 1fr) minmax(380px, 1.3fr)',
+          gridTemplateColumns: 'minmax(280px, 1fr) minmax(420px, 1.4fr)',
           gap: 20
         }}>
           {/* LEFT: UPLOAD & FILE ZONE */}
@@ -293,7 +341,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               ) : hasData ? (
                 <>
                   <CheckCircle2 size={16} />
-                  <span>6 Fields detected and ready to sync to form</span>
+                  <span>{filledCount} Fields detected and ready to sync to form</span>
                 </>
               ) : (
                 <>
@@ -317,28 +365,28 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           {/* RIGHT: EXTRACTED FORM FIELDS PREVIEW */}
           <div style={{
             background: '#ffffff', border: '1px solid #e2e8f0',
-            borderRadius: 10, padding: '16px', display:'flex', flexDirection:'column', gap: 12
+            borderRadius: 10, padding: '16px', display:'flex', flexDirection:'column', gap: 11
           }}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 8}}>
-              <h4 style={{margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', display:'flex', alignItems:'center', gap: 6}}>
-                <Sparkles size={16} color="#2563eb" /> OCR Extracted Data
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 6}}>
+              <h4 style={{margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display:'flex', alignItems:'center', gap: 6}}>
+                <Sparkles size={15} color="#2563eb" /> OCR Extracted Data
               </h4>
               <span style={{fontSize: '0.72rem', color: '#64748b'}}>Review & edit before applying</span>
             </div>
 
             {/* FIELD 1: NOMOR NIB */}
             <div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Hash size={13} color="#2563eb" /> NIB Number (13 Digits)
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 3}}>
+                <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                  <Hash size={12} color="#2563eb" /> NIB Number (13 Digits)
                 </label>
                 {formData.nib && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('nib', formData.nib)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.7rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
-                    {copiedKey === 'nib' ? <Check size={12}/> : <Copy size={12}/>}
+                    {copiedKey === 'nib' ? <Check size={11}/> : <Copy size={11}/>}
                     {copiedKey === 'nib' ? 'Copied' : 'Copy'}
                   </button>
                 )}
@@ -350,7 +398,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 placeholder="e.g. 1209260000012"
                 onChange={e => setFormData({...formData, nib: e.target.value.replace(/\D/g, '')})}
                 style={{
-                  width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                  width: '100%', padding: '6px 9px', fontSize: '0.82rem',
                   borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600,
                   background: formData.nib ? '#f0f7ff' : '#ffffff'
                 }}
@@ -359,17 +407,17 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
             {/* FIELD 2: COMPANY NAME (SETELAH NOMOR NIB) */}
             <div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Building2 size={13} color="#2563eb" /> Company Name
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 3}}>
+                <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                  <Building2 size={12} color="#2563eb" /> Company Name
                 </label>
                 {formData.companyName && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('companyName', formData.companyName)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.7rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
-                    {copiedKey === 'companyName' ? <Check size={12}/> : <Copy size={12}/>}
+                    {copiedKey === 'companyName' ? <Check size={11}/> : <Copy size={11}/>}
                     {copiedKey === 'companyName' ? 'Copied' : 'Copy'}
                   </button>
                 )}
@@ -380,7 +428,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 placeholder="e.g. PT NUSANTARA MINING RESOURCES"
                 onChange={e => setFormData({...formData, companyName: e.target.value})}
                 style={{
-                  width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                  width: '100%', padding: '6px 9px', fontSize: '0.82rem',
                   borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600,
                   background: formData.companyName ? '#f0f7ff' : '#ffffff'
                 }}
@@ -389,17 +437,17 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
             {/* FIELD 3: ALAMAT */}
             <div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <MapPin size={13} color="#2563eb" /> Company Address / Domicile
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 3}}>
+                <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                  <MapPin size={12} color="#2563eb" /> Company Address / Domicile
                 </label>
                 {formData.alamat && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('alamat', formData.alamat)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.7rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
-                    {copiedKey === 'alamat' ? <Check size={12}/> : <Copy size={12}/>}
+                    {copiedKey === 'alamat' ? <Check size={11}/> : <Copy size={11}/>}
                     {copiedKey === 'alamat' ? 'Copied' : 'Copy'}
                   </button>
                 )}
@@ -410,18 +458,98 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 placeholder="Full address as stated on the NIB document"
                 onChange={e => setFormData({...formData, alamat: e.target.value})}
                 style={{
-                  width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                  width: '100%', padding: '6px 9px', fontSize: '0.82rem',
                   borderRadius: 6, border: '1px solid #cbd5e1', resize: 'vertical',
                   background: formData.alamat ? '#f0f7ff' : '#ffffff'
                 }}
               />
             </div>
 
-            {/* FIELD 4 & 5: EMAIL & NO TELPON */}
-            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10}}>
+            {/* WILAYAH: KABUPATEN/KOTA, KECAMATAN, KELURAHAN, KODE POS */}
+            <div style={{
+              background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
+              padding: '10px', display: 'flex', flexDirection: 'column', gap: 8
+            }}>
+              <span style={{fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em'}}>
+                Administrative Regions (Wilayah)
+              </span>
+
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8}}>
+                <div>
+                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
+                    City / Regency (Kabupaten/Kota)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.city}
+                    placeholder="e.g. Jakarta Selatan"
+                    onChange={e => setFormData({...formData, city: e.target.value})}
+                    style={{
+                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      borderRadius: 6, border: '1px solid #cbd5e1',
+                      background: formData.city ? '#f0f7ff' : '#ffffff'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
+                    District (Kecamatan)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.district}
+                    placeholder="e.g. Setiabudi"
+                    onChange={e => setFormData({...formData, district: e.target.value})}
+                    style={{
+                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      borderRadius: 6, border: '1px solid #cbd5e1',
+                      background: formData.district ? '#f0f7ff' : '#ffffff'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
+                    Village / Sub-district (Kelurahan)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.village}
+                    placeholder="e.g. Karet Semanggi"
+                    onChange={e => setFormData({...formData, village: e.target.value})}
+                    style={{
+                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      borderRadius: 6, border: '1px solid #cbd5e1',
+                      background: formData.village ? '#f0f7ff' : '#ffffff'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
+                    Postal / Zip Code (Kode Pos)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.postalCode}
+                    placeholder="e.g. 12930"
+                    onChange={e => setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})}
+                    style={{
+                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      borderRadius: 6, border: '1px solid #cbd5e1',
+                      background: formData.postalCode ? '#f0f7ff' : '#ffffff'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* FIELD: EMAIL & NO TELPON */}
+            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8}}>
               <div>
-                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
-                  <Mail size={13} color="#2563eb" /> Company Email
+                <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 3}}>
+                  <Mail size={12} color="#2563eb" /> Company Email
                 </label>
                 <input 
                   type="email" 
@@ -429,7 +557,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   placeholder="legal@company.co.id"
                   onChange={e => setFormData({...formData, email: e.target.value})}
                   style={{
-                    width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                    width: '100%', padding: '6px 9px', fontSize: '0.82rem',
                     borderRadius: 6, border: '1px solid #cbd5e1',
                     background: formData.email ? '#f0f7ff' : '#ffffff'
                   }}
@@ -437,8 +565,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </div>
 
               <div>
-                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
-                  <Phone size={13} color="#2563eb" /> Phone Number
+                <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 3}}>
+                  <Phone size={12} color="#2563eb" /> Phone Number
                 </label>
                 <input 
                   type="text" 
@@ -446,7 +574,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   placeholder="021-xxxxxxxx"
                   onChange={e => setFormData({...formData, phone: e.target.value})}
                   style={{
-                    width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                    width: '100%', padding: '6px 9px', fontSize: '0.82rem',
                     borderRadius: 6, border: '1px solid #cbd5e1',
                     background: formData.phone ? '#f0f7ff' : '#ffffff'
                   }}
@@ -454,19 +582,19 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </div>
             </div>
 
-            {/* FIELD 6: TANGGAL TERBIT NIB */}
+            {/* FIELD: TANGGAL TERBIT NIB */}
             <div>
-              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
-                  <Calendar size={13} color="#2563eb" /> NIB Issued Date
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 3}}>
+                <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                  <Calendar size={12} color="#2563eb" /> NIB Issued Date
                 </label>
                 {formData.tanggalTerbit && (
                   <button 
                     type="button" 
                     onClick={() => copyToClipboard('tgl', formData.tanggalTerbit)} 
-                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.7rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
                   >
-                    {copiedKey === 'tgl' ? <Check size={12}/> : <Copy size={12}/>}
+                    {copiedKey === 'tgl' ? <Check size={11}/> : <Copy size={11}/>}
                     {copiedKey === 'tgl' ? 'Copied' : 'Copy'}
                   </button>
                 )}
@@ -476,7 +604,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 value={formData.tanggalTerbit}
                 onChange={e => setFormData({...formData, tanggalTerbit: e.target.value})}
                 style={{
-                  width: '100%', padding: '8px 10px', fontSize: '0.85rem',
+                  width: '100%', padding: '6px 9px', fontSize: '0.82rem',
                   borderRadius: 6, border: '1px solid #cbd5e1',
                   background: formData.tanggalTerbit ? '#f0f7ff' : '#ffffff'
                 }}
@@ -487,7 +615,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
         {/* MODAL FOOTER */}
         <div style={{
-          padding: '14px 20px',
+          padding: '12px 20px',
           borderTop: '1px solid #e2e8f0',
           display: 'flex',
           alignItems: 'center',
@@ -513,7 +641,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             }}
           >
             <Check size={16} />
-            Apply to Form / Auto-Fill (6 Fields)
+            Apply to Form / Auto-Fill ({filledCount} Fields)
           </button>
         </div>
       </div>
