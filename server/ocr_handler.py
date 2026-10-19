@@ -538,6 +538,9 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     if extracted.get("agama"):
         extracted["agama"] = re.sub(r'[^a-zA-Z]', '', extracted["agama"]).strip().upper()
 
+    # 8. Berlaku Hingga for KTP is always defaulted to SEUMUR HIDUP
+    extracted["berlaku_hingga"] = "SEUMUR HIDUP"
+
     return extracted
 
 
@@ -1006,6 +1009,7 @@ def save_document_db(config, stakeholder_id: str, doc_type: str, data: dict, doc
 
     try:
         if doc_type == "ktp":
+            data['berlaku_hingga'] = 'SEUMUR HIDUP'
             cursor.execute("SELECT id FROM ktp WHERE stakeholder_id = %s", (stakeholder_id,))
             existing = cursor.fetchone()
             if existing:

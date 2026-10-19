@@ -25,6 +25,7 @@ export interface ParsedKtpData {
   cityRegency?: string;
   agama?: string;
   pekerjaan?: string;
+  berlaku_hingga?: string;
   rawText: string;
 }
 
@@ -300,6 +301,8 @@ export function parseKtpText(text: string): ParsedKtpData {
       result.pekerjaan = rawPek || 'LAINNYA';
     }
   }
+
+  result.berlaku_hingga = 'SEUMUR HIDUP';
 
   return result;
 }

@@ -932,7 +932,7 @@ function IdDocCompanionPanel({
           next.occupation = ext.pekerjaan;
         }
         if (ext.kewarganegaraan) next.kewarganegaraan = ext.kewarganegaraan;
-        if (ext.berlaku_hingga) next.berlaku_hingga = ext.berlaku_hingga;
+        next.berlaku_hingga = 'SEUMUR HIDUP';
 
         // Auto-fill Kota / Kabupaten, Provinsi, and Kode Pos dari OCR
         if (ext.kabupaten_kota || ext.cityRegency || ext.city) {
@@ -2318,7 +2318,8 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
      city:currentVals?.cityRegency||currentVals?.city||'',
      province:currentVals?.province||'',
      postalCode:currentVals?.postalCode||'',
-     kewarganegaraan:currentVals?.citizenship==='FOREIGN'?'WNA':'WNI'
+     kewarganegaraan:currentVals?.citizenship==='FOREIGN'?'WNA':'WNI',
+      berlaku_hingga:docTypeLower==='ktp'?'SEUMUR HIDUP':(currentVals?.berlaku_hingga||'')
    };
 
    if(currentVals?.id){
@@ -2330,7 +2331,10 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
      }catch{}
    }
 
-   setIdDocData(initialData);
+   if (docTypeLower === 'ktp') {
+      initialData.berlaku_hingga = 'SEUMUR HIDUP';
+    }
+    setIdDocData(initialData);
    setShowIdDocPanel(true);
  };
  const handleSaveIdDoc=async()=>{
