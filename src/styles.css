@@ -1437,6 +1437,31 @@ button:focus-visible, a:focus-visible {
   box-sizing: border-box;
 }
 
+/* NIB Field OCR Trigger Pill (Header Level) */
+.nib-header-ocr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.nib-header-ocr-btn:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(29, 78, 216, 0.2);
+}
+
 .excel-sync-bar-label {
   font-size: 0.68rem;
   color: #93c5fd;
