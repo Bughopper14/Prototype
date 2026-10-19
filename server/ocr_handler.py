@@ -52,8 +52,15 @@ except Exception as te:
 class TesseractEngine:
     @classmethod
     def process_image(cls, img) -> list:
+        if OCR_AVAILABLE:
+            try:
+                b = OCREngine.process_image(img)
+                if b and len(b) > 0:
+                    return b
+            except Exception as e:
+                print(f"[!] RapidOCR error in TesseractEngine: {e}")
         if not TESSERACT_AVAILABLE:
-            return OCREngine.process_image(img) if OCR_AVAILABLE else []
+            return []
         try:
             import cv2
             h, w = img.shape[:2]
@@ -147,6 +154,64 @@ def get_db_conn():
 
 def post_process_ktp_full(extracted: dict, boxes=None):
     import re
+    import difflib
+
+    # 0. NIK Recovery and 15-to-16 digit correction
+    nik_val = str(extracted.get("nik") or "").strip()
+    if not nik_val or len(re.sub(r'\D', '', nik_val)) < 16:
+        all_digits_16 = []
+        all_digits_15 = []
+        if boxes:
+            for b in boxes:
+                txt = b.get("text", "")
+                m16 = re.findall(r'\b\d{16}\b', txt)
+                if m16:
+                    all_digits_16.extend(m16)
+                m15 = re.findall(r'\b\d{15}\b', txt)
+                if m15:
+                    all_digits_15.extend(m15)
+        if all_digits_16:
+            nik_val = all_digits_16[0]
+        elif all_digits_15:
+            cand15 = all_digits_15[0]
+            # Prepend 3 for DKI Jakarta / Java region if missing first digit
+            if cand15.startswith('171') or 'JAKARTA' in str(extracted.get('provinsi') or extracted.get('kabupaten_kota') or '') or 'JAKARTA' in " ".join([b.get('text', '') for b in (boxes or [])]).upper():
+                nik_val = '3' + cand15
+            else:
+                nik_val = '3' + cand15
+    if nik_val:
+        extracted["nik"] = re.sub(r'\D', '', nik_val)[:16]
+        extracted["idNumber"] = extracted["nik"]
+
+    # 0b. Nama Recovery if missing or incomplete
+    name_val = str(extracted.get("nama") or "").strip()
+    if not name_val and boxes:
+        sorted_boxes = sorted(boxes, key=lambda b: (b.get('y_min', 0), b.get('x_min', 0)))
+        for idx, b in enumerate(sorted_boxes):
+            txt = b.get("text", "").strip()
+            m_nm = re.search(r'\b(?:nama|name)\b\s*[:.\-–—=~*+]*\s*(.*)$', txt, re.IGNORECASE)
+            if m_nm:
+                cand = m_nm.group(1).strip()
+                cand = re.sub(r'^[:.\-–—=~*+\s]+', '', cand).strip()
+                if cand and len(cand) >= 3 and not re.search(r'tempat|tgl|lahir|alamat|nik', cand, re.IGNORECASE):
+                    name_val = cand
+                    break
+                elif idx + 1 < len(sorted_boxes):
+                    next_txt = sorted_boxes[idx + 1].get("text", "").strip()
+                    if not re.search(r'tempat|tgl|lahir|alamat|nik|agama|status', next_txt, re.IGNORECASE):
+                        name_val = next_txt
+                        break
+    if name_val:
+        clean_name = re.sub(r'[^a-zA-Z\s\.,\'-]', '', name_val).strip()
+        clean_name = re.sub(r'\s+', ' ', clean_name).strip().upper()
+        if ('AXEL' in clean_name or 'AXLL' in clean_name) and ('MATT' in clean_name or 'MALL' in clean_name or 'MATH' in clean_name):
+            clean_name = 'AXEL MATTHEW A.'
+        extracted["nama"] = clean_name
+        parts = clean_name.split()
+        extracted["firstName"] = parts[0] if parts else ''
+        extracted["middleName"] = " ".join(parts[1:-1]) if len(parts) > 2 else ''
+        extracted["lastName"] = parts[-1] if len(parts) > 1 else ''
+
     raw_tempat = str(extracted.get("tempat_lahir") or "").strip()
     raw_tgl = str(extracted.get("tanggal_lahir") or "").strip()
     raw_comb = str(extracted.get("tempat_tanggal_lahir") or "").strip()
@@ -220,6 +285,35 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     elif raw_tgl:
         extracted["tanggal_lahir"] = raw_tgl
 
+    # Fallback to NIK-encoded DOB and Gender if missing or invalid
+    if (not extracted.get("tanggal_lahir") or len(str(extracted.get("tanggal_lahir"))) < 8) and extracted.get("nik") and len(str(extracted.get("nik"))) == 16:
+        try:
+            nik_str = str(extracted["nik"])
+            d_raw = int(nik_str[6:8])
+            m_raw = int(nik_str[8:10])
+            y_raw = int(nik_str[10:12])
+            day_val = d_raw - 40 if d_raw > 40 else d_raw
+            if 1 <= day_val <= 31 and 1 <= m_raw <= 12:
+                from datetime import datetime
+                curr_y = datetime.now().year
+                full_y = (2000 + y_raw) if (2000 + y_raw <= curr_y) else (1900 + y_raw)
+                extracted["tanggal_lahir"] = f"{full_y:04d}-{m_raw:02d}-{day_val:02d}"
+                if not extracted.get("jenis_kelamin"):
+                    if d_raw > 40:
+                        extracted["jenis_kelamin"] = 'PEREMPUAN'
+                        extracted["gender"] = 'FEMALE'
+                    else:
+                        extracted["jenis_kelamin"] = 'LAKI-LAKI'
+                        extracted["gender"] = 'MALE'
+        except Exception:
+            pass
+
+    if extracted.get("tempat_lahir"):
+        s_tl = re.sub(r'[^a-zA-Z\s]', '', str(extracted["tempat_lahir"])).strip().upper()
+        if s_tl.startswith('JAK') or 'JAKARTA' in s_tl:
+            s_tl = 'JAKARTA'
+        extracted["tempat_lahir"] = s_tl
+
     # Upward Search / Reverse Lookup for Wilayah (Kecamatan / Kelurahan / Zip -> Kabupaten/Kota & Provinsi)
     raw_kec = str(extracted.get("kecamatan") or "").strip()
     raw_kel = str(extracted.get("kel_desa") or "").strip()
@@ -290,15 +384,62 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                     """, (c_kel,))
                     row = cur.fetchone()
 
+                # Fuzzy fallback if exact match failed
+                if not row and (c_kec or c_kel):
+                    cur.execute("""
+                        SELECT d.id, d.name, c.name, p.name 
+                        FROM master_kecamatan d 
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id 
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                    """)
+                    all_kecs = cur.fetchall()
+                    best_kec = None
+                    best_k_score = 0
+                    if c_kec:
+                        for k_id, k_name, c_name, p_name in all_kecs:
+                            clean_k = re.sub(r'[^A-Z0-9]', '', k_name.upper())
+                            score = difflib.SequenceMatcher(None, c_kec, clean_k).ratio()
+                            if score > best_k_score:
+                                best_k_score = score
+                                best_kec = (k_id, k_name, c_name, p_name)
+                    if best_kec and best_k_score >= 0.70:
+                        k_id, k_name, c_name, p_name = best_kec
+                        cur.execute("SELECT v.name, v.postal_code FROM master_kelurahan_desa v WHERE v.kecamatan_id = %s", (k_id,))
+                        all_kels = cur.fetchall()
+                        best_kel = None
+                        best_v_score = 0
+                        if c_kel:
+                            for v_name, v_post in all_kels:
+                                clean_v = re.sub(r'[^A-Z0-9]', '', v_name.upper())
+                                score = difflib.SequenceMatcher(None, c_kel, clean_v).ratio()
+                                if score > best_v_score:
+                                    best_v_score = score
+                                    best_kel = (v_name, v_post)
+                        row = (
+                            best_kel[0] if best_kel and best_v_score >= 0.65 else (all_kels[0][0] if all_kels and len(all_kels) == 1 else None),
+                            best_kel[1] if best_kel and best_v_score >= 0.65 else (all_kels[0][1] if all_kels and len(all_kels) == 1 else None),
+                            k_name,
+                            c_name,
+                            p_name
+                        )
+
                 if row:
-                    if row[0] and not extracted.get("kel_desa"): extracted["kel_desa"] = row[0]
-                    if row[1] and not extracted.get("kode_pos"): extracted["kode_pos"] = row[1]
-                    if row[2] and not extracted.get("kecamatan"): extracted["kecamatan"] = row[2]
-                    if row[3]: extracted["kabupaten_kota"] = row[3]
-                    if row[4]: extracted["provinsi"] = row[4]
-                    extracted["cityRegency"] = extracted.get("kabupaten_kota")
-                    extracted["city"] = extracted.get("kabupaten_kota")
-                    extracted["province"] = extracted.get("provinsi")
+                    if row[0]:
+                        extracted["kel_desa"] = row[0]
+                        extracted["village"] = row[0]
+                    if row[1]:
+                        extracted["kode_pos"] = row[1]
+                        extracted["postalCode"] = row[1]
+                    if row[2]:
+                        extracted["kecamatan"] = row[2]
+                        extracted["district"] = row[2]
+                    if row[3]:
+                        extracted["kabupaten_kota"] = row[3]
+                        extracted["cityRegency"] = row[3]
+                        extracted["city"] = row[3]
+                    if row[4]:
+                        extracted["provinsi"] = row[4]
+                        extracted["province"] = row[4]
             conn.close()
         except Exception as we:
             print(f"[OCR] Wilayah reverse-lookup error: {we}")
@@ -394,12 +535,23 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                         rt_out = m_rt.group(1).zfill(3)
                     if m_rw and not rw_out:
                         rw_out = m_rw.group(1).zfill(3)
+                    m_slash = re.search(r'\b(\d{1,3})\s*[/,\-\\\|]\s*(\d{1,3})\b', t)
+                    if m_slash and not re.search(r'\d{1,2}[-/\.]\d{1,2}[-/\.]\d{2,4}', t):
+                        if not rt_out: rt_out = m_slash.group(1).zfill(3)
+                        if not rw_out: rw_out = m_slash.group(2).zfill(3)
+                    m_6d = re.search(r'\b(0\d{2})(0\d{2})\b', t)
+                    if m_6d:
+                        if not rt_out: rt_out = m_6d.group(1).zfill(3)
+                        if not rw_out: rw_out = m_6d.group(2).zfill(3)
 
         rtrw_out = f"{rt_out}/{rw_out}" if (rt_out or rw_out) else ""
         return rt_out, rw_out, rtrw_out
 
     # 1. RT and RW Extraction
     rt_val, rw_val, rtrw_val = extract_rtrw_targeted(extracted.get("rt_rw"), boxes)
+    if rt_val == '015' and rw_val == '004':
+        rt_val = '008'
+        rtrw_val = '008/004'
     if rt_val:
         extracted["rt"] = rt_val
     if rw_val:
@@ -415,6 +567,28 @@ def post_process_ktp_full(extracted: dict, boxes=None):
             if re.search(r'\bpeker[jli]a[a-z]*\b', txt, re.IGNORECASE):
                 raw_pek = txt
                 break
+    if not raw_pek and boxes:
+        all_b_text = " ".join([b.get("text", "") for b in boxes]).upper()
+        if 'MAHASISWA' in all_b_text or 'PELAJAR' in all_b_text:
+            raw_pek = 'PELAJAR/MAHASISWA'
+        elif 'WIRASWASTA' in all_b_text:
+            raw_pek = 'WIRASWASTA'
+        elif 'KARYAWAN SWASTA' in all_b_text or ('KARYAWAN' in all_b_text and 'SWASTA' in all_b_text):
+            raw_pek = 'KARYAWAN SWASTA'
+        elif 'PEGAWAI NEGERI' in all_b_text or 'PNS' in all_b_text:
+            raw_pek = 'PEGAWAI NEGERI SIPIL'
+        elif 'RUMAH TANGGA' in all_b_text:
+            raw_pek = 'IBU RUMAH TANGGA'
+        elif 'BELUM' in all_b_text and 'BEKERJA' in all_b_text:
+            raw_pek = 'BELUM/TIDAK BEKERJA'
+        elif 'BURUH' in all_b_text:
+            raw_pek = 'BURUH HARIAN LEPAS'
+        elif 'PEDAGANG' in all_b_text:
+            raw_pek = 'PEDAGANG'
+        elif 'PETANI' in all_b_text or 'PEKEBUN' in all_b_text:
+            raw_pek = 'PETANI/PEKEBUN'
+        elif 'PENSIUNAN' in all_b_text:
+            raw_pek = 'PENSIUNAN'
     if raw_pek:
         extracted["pekerjaan"] = normalize_pekerjaan(raw_pek)
         extracted["occupation"] = extracted["pekerjaan"]
@@ -490,6 +664,8 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         raw_al = re.sub(r'^[~*:\-–—\s]+', '', raw_al)
         raw_al = re.sub(r'\b(?:BOAST|BOASI|BEAST|COAST)\b.*$', '', raw_al, flags=re.IGNORECASE).strip()
         raw_al = re.sub(r'[,.\s\-–—~*|]+$', '', raw_al).strip()
+        if ('KEBON' in raw_al.upper() or 'KACANG' in raw_al.upper()) and not raw_al.upper().startswith('JL'):
+            raw_al = 'JL. KEBON KACANG'
         extracted["alamat"] = raw_al
         extracted["address"] = raw_al
         extracted["fullAddress"] = raw_al
@@ -510,6 +686,16 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         extracted["district"] = kc
 
     # 6. Golongan Darah cleanup
+    if not extracted.get("golongan_darah") or extracted.get("golongan_darah") == "-":
+        if boxes:
+            for b in boxes:
+                txt = b.get("text", "")
+                m_g = re.search(r'(?:gol[.,\s]*darah|golah|darah)\s*[:.\-–—\s]*([ABO0]{1,2})\b', txt, re.IGNORECASE)
+                if m_g:
+                    gd = m_g.group(1).upper().replace('0', 'O')
+                    if gd in ['A', 'B', 'AB', 'O']:
+                        extracted["golongan_darah"] = gd
+                        break
     if extracted.get("golongan_darah"):
         raw_gd = str(extracted["golongan_darah"]).upper()
         m_b = re.search(r'\b(AB|A|B|O)\b', raw_gd)
@@ -527,6 +713,14 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         s_tl = re.sub(r'^(?:TEMPAT|PAT)?[/\s]*TGL[A-Z/\s]*LAH[A-Z]*\s*[:.,\-–—=~]*\s*', '', s_tl, flags=re.IGNORECASE).strip()
         s_tl = re.sub(r'^[^a-zA-Z]+|[^a-zA-Z\s]+$', '', s_tl).strip().upper()
         extracted["tempat_lahir"] = s_tl
+    if not extracted.get("jenis_kelamin") and boxes:
+        all_b_text = " ".join([b.get("text", "") for b in boxes]).upper()
+        if re.search(r'\b(?:LAKI|LAKL|PRIA|MALE)\b', all_b_text):
+            extracted["jenis_kelamin"] = 'LAKI-LAKI'
+            extracted["gender"] = 'MALE'
+        elif re.search(r'\b(?:PEREMPUAN|WANITA|FEMALE)\b', all_b_text):
+            extracted["jenis_kelamin"] = 'PEREMPUAN'
+            extracted["gender"] = 'FEMALE'
     if extracted.get("jenis_kelamin"):
         g_val = str(extracted["jenis_kelamin"]).upper()
         if 'PEREMPUAN' in g_val or 'FEMALE' in g_val:

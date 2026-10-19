@@ -1,4 +1,4 @@
-import Tesseract from 'tesseract.js';
+import { api } from './api';
 
 export interface ParsedKtpData {
   nik?: string;
@@ -11,6 +11,7 @@ export interface ParsedKtpData {
   tempatTglLahir?: string;
   dateOfBirth?: string;
   gender?: 'MALE' | 'FEMALE';
+  golonganDarah?: string;
   status?: string;
   maritalStatus?: string;
   kewarganegaraan?: string;
@@ -20,9 +21,14 @@ export interface ParsedKtpData {
   rt?: string;
   rw?: string;
   kelDesa?: string;
+  village?: string;
   kecamatan?: string;
+  district?: string;
   province?: string;
   cityRegency?: string;
+  city?: string;
+  kodePos?: string;
+  postalCode?: string;
   agama?: string;
   pekerjaan?: string;
   berlaku_hingga?: string;
@@ -307,51 +313,111 @@ export function parseKtpText(text: string): ParsedKtpData {
   return result;
 }
 
-export const GUOHUI_CHEN_TEXT = `PROVINSI JAWA BARAT
-KABUPATEN CIANJUR
-NIK : 3203012503770011
-Nama : GUOHUI CHEN
-Tempat/Tgl Lahir : FUJIAN, 25-03-1977
-Jenis Kelamin : MALE Gol. Darah : -
-Alamat : JL. SELAMET PERUMAHAN RANCABALI NO. 40
-RT/RW : 002/004
-Kel/Desa : MUKA
-Kecamatan : CIANJUR
-Agama : CHRISTIAN
-Status Perkawinan: MARRIED
-Pekerjaan : OTHERS
-Kewarganegaraan : CHINA
-Berlaku Hingga : 12-12-2023`;
+export const GUOHUI_CHEN_TEXT = ``;
 
-export async function extractKtpTextFromImage(dataUrl: string, fileName?: string): Promise<ParsedKtpData> {
-  const isChen = fileName && /chen|guohui|cianjur|320301/i.test(fileName);
+function dataUrlToBlob(dataUrl: string): Blob {
+  const parts = dataUrl.split(',');
+  const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+  const bstr = atob(parts[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
 
+export async function extractKtpTextFromImage(fileOrInput: File | Blob | string, fileName?: string): Promise<ParsedKtpData> {
   try {
-    const ocrPromise = Tesseract.recognize(dataUrl, 'eng');
-    const timeoutPromise = new Promise<{ data: { text: string } }>((_, reject) =>
-      setTimeout(() => reject(new Error('OCR Timeout')), 15000)
-    );
-
-    const res = await Promise.race([ocrPromise, timeoutPromise]);
-    const rawOcrText = res?.data?.text || '';
-
-    if (/chen|guohui|320301|cianjur|fujian/i.test(rawOcrText)) {
-      return parseKtpText(GUOHUI_CHEN_TEXT);
-    }
-
-    if (rawOcrText.trim().length > 20) {
-      const parsed = parseKtpText(rawOcrText);
-      if (parsed.nik || parsed.nama) {
-        return parsed;
+    const uploadPayload = new FormData();
+    if (typeof fileOrInput === 'string') {
+      if (fileOrInput.startsWith('data:')) {
+        const b = dataUrlToBlob(fileOrInput);
+        uploadPayload.append('file', b, fileName || 'ktp_scan.jpg');
+      } else {
+        uploadPayload.append('file', new Blob([fileOrInput]), fileName || 'ktp_scan.txt');
       }
+    } else if (fileOrInput instanceof File) {
+      uploadPayload.append('file', fileOrInput);
+    } else if (fileOrInput instanceof Blob) {
+      uploadPayload.append('file', fileOrInput, fileName || 'ktp_scan.jpg');
+    }
+    uploadPayload.append('doc_type', 'ktp');
+
+    const res = await api('/ocr/scan', 'POST', uploadPayload);
+    if (res && res.data) {
+      const d = res.data;
+      const rawLines: string[] = [];
+      if (d.provinsi || d.province) rawLines.push(`PROVINSI ${String(d.provinsi || d.province).toUpperCase()}`);
+      if (d.kabupaten_kota || d.cityRegency || d.city) rawLines.push(String(d.kabupaten_kota || d.cityRegency || d.city).toUpperCase());
+      if (d.nik) rawLines.push(`NIK : ${d.nik}`);
+      if (d.nama) rawLines.push(`Nama : ${d.nama}`);
+      if (d.tempat_lahir || d.tanggal_lahir) {
+        rawLines.push(`Tempat/Tgl Lahir : ${d.tempat_lahir || ''}${d.tanggal_lahir ? ', ' + d.tanggal_lahir : ''}`);
+      }
+      const genderStr = d.jenis_kelamin || (d.gender === 'FEMALE' ? 'PEREMPUAN' : 'LAKI-LAKI');
+      rawLines.push(`Jenis Kelamin : ${genderStr}   Gol. Darah : ${d.golongan_darah || '-'}`);
+      if (d.alamat || d.address || d.fullAddress) rawLines.push(`Alamat : ${d.alamat || d.address || d.fullAddress}`);
+      if (d.rt_rw) rawLines.push(`RT/RW : ${d.rt_rw}`);
+      if (d.kel_desa || d.village) rawLines.push(`Kel/Desa : ${d.kel_desa || d.village}`);
+      if (d.kecamatan || d.district) rawLines.push(`Kecamatan : ${d.kecamatan || d.district}`);
+      if (d.agama) rawLines.push(`Agama : ${d.agama}`);
+      if (d.status_perkawinan || d.maritalStatus) rawLines.push(`Status Perkawinan : ${d.status_perkawinan || d.maritalStatus}`);
+      if (d.pekerjaan || d.occupation) rawLines.push(`Pekerjaan : ${d.pekerjaan || d.occupation}`);
+      if (d.kewarganegaraan) rawLines.push(`Kewarganegaraan : ${d.kewarganegaraan}`);
+      rawLines.push(`Berlaku Hingga : ${d.berlaku_hingga || 'SEUMUR HIDUP'}`);
+
+      const cleanNik = String(d.nik || d.idNumber || '').replace(/\D/g, '').slice(0, 16);
+      const cleanNama = String(d.nama || '').trim();
+      const parts = cleanNama ? cleanNama.split(/\s+/).filter(Boolean) : [];
+
+      const parsedRes: ParsedKtpData = {
+        nik: cleanNik || undefined,
+        nama: cleanNama || undefined,
+        firstName: d.firstName || (parts[0] || ''),
+        middleName: d.middleName || (parts.length > 2 ? parts.slice(1, -1).join(' ') : ''),
+        lastName: d.lastName || (parts.length > 1 ? parts[parts.length - 1] : ''),
+        tempatLahir: d.tempat_lahir || undefined,
+        tanggalLahir: d.tanggal_lahir || undefined,
+        dateOfBirth: d.tanggal_lahir || undefined,
+        tempatTglLahir: (d.tempat_lahir || '') + (d.tanggal_lahir ? `, ${d.tanggal_lahir}` : ''),
+        gender: (d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('PEREMPUAN')) ? 'FEMALE' : 'MALE',
+        golonganDarah: d.golongan_darah || undefined,
+        status: (d.maritalStatus === 'MARRIED' || String(d.status_perkawinan).toUpperCase().includes('KAWIN')) ? 'MARRIED' : 'SINGLE',
+        maritalStatus: (d.maritalStatus === 'MARRIED' || String(d.status_perkawinan).toUpperCase().includes('KAWIN')) ? 'MARRIED' : 'SINGLE',
+        kewarganegaraan: d.kewarganegaraan || 'WNI',
+        citizenship: String(d.kewarganegaraan || '').toUpperCase().includes('WNA') ? 'WNA' : 'WNI',
+        alamat: d.alamat || d.address || d.fullAddress || undefined,
+        rtRw: d.rt_rw || undefined,
+        rt: d.rt || undefined,
+        rw: d.rw || undefined,
+        kelDesa: d.kel_desa || d.village || undefined,
+        village: d.kel_desa || d.village || undefined,
+        kecamatan: d.kecamatan || d.district || undefined,
+        district: d.kecamatan || d.district || undefined,
+        province: d.provinsi || d.province || undefined,
+        cityRegency: d.kabupaten_kota || d.cityRegency || d.city || undefined,
+        city: d.kabupaten_kota || d.cityRegency || d.city || undefined,
+        kodePos: d.kode_pos || d.postalCode || undefined,
+        postalCode: d.kode_pos || d.postalCode || undefined,
+        agama: d.agama || undefined,
+        pekerjaan: d.pekerjaan || d.occupation || undefined,
+        berlaku_hingga: d.berlaku_hingga || 'SEUMUR HIDUP',
+        rawText: rawLines.join('\n')
+      };
+
+      return parsedRes;
     }
   } catch (err) {
-    console.warn('Tesseract OCR fallback to template parser:', err);
+    console.warn('[KTP OCR] Remote OCR error, falling back to local text parsing if possible:', err);
   }
 
-  if (isChen) {
-    return parseKtpText(GUOHUI_CHEN_TEXT);
+  // If input was raw text, attempt to parse it
+  if (typeof fileOrInput === 'string' && !fileOrInput.startsWith('data:')) {
+    return parseKtpText(fileOrInput);
   }
 
-  return parseKtpText(GUOHUI_CHEN_TEXT);
+  return {
+    rawText: ''
+  };
 }

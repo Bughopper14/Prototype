@@ -423,8 +423,15 @@ app.post('/api/v1/ocr/scan',upload.single('file'),async(req,res)=>{
 
   try {
     const cliScript = path.resolve('server/ocr_cli.py');
-    const { stdout } = await execFileAsync('python', [cliScript, tempFilePath, docType], { timeout: 45000 });
-    const result = JSON.parse(stdout.trim());
+    const pyExe = [
+      process.env.PYTHON_PATH,
+      'C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/python.exe',
+      'python'
+    ].find(p => p && p.trim().length > 0) || 'python';
+    const { stdout } = await execFileAsync(pyExe, [cliScript, tempFilePath, docType], { timeout: 45000 });
+    const jsonStart = stdout.indexOf('{');
+    const jsonEnd = stdout.lastIndexOf('}');
+    const result = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
     
     const detectedType = (result.doc_type || storageInfo.docType).toLowerCase();
     result.fileName = storageInfo.fileName;

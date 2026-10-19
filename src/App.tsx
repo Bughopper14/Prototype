@@ -7,7 +7,7 @@ import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
 import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {FapSheetPreview, printFapDocument, type FapSheetData} from './FapSheetPreview';
-import {parseKtpText, extractKtpTextFromImage, GUOHUI_CHEN_TEXT, normalizeBirthDate} from './ktp-ocr';
+import {parseKtpText, extractKtpTextFromImage, normalizeBirthDate} from './ktp-ocr';
 import {api} from './api';
 import {MasterDataPage,MasterSelect,useMasterData,setMasterData,resetMasterChildren,useMandatoryRules,isFieldMandatory,resolveWilayahUpwards} from './master-data';
 import {masterGroups,masterKey} from './master-catalog';
@@ -1841,7 +1841,7 @@ function StakeholderModalDialog({
   const [ocrLoading, setOcrLoading] = useState(false);
 
   const curVal = modal.value || {};
-  const ocrText = curVal.ktpOcrText || (curVal.ktpUrl ? GUOHUI_CHEN_TEXT : '');
+  const ocrText = curVal.ktpOcrText || '';
   const parsed = parseKtpText(ocrText);
 
   const copyToClipboard = (key: string, val: string) => {
@@ -1861,13 +1861,13 @@ function StakeholderModalDialog({
       setZoom(1);
       setRotation(0);
       try {
-        const extracted = await extractKtpTextFromImage(dataUrl, f.name);
+        const extracted = await extractKtpTextFromImage(f, f.name);
         const nextVal: any = {
           ...curVal,
           ktpUrl: dataUrl,
           ktpFileName: f.name,
           ktpMime: f.type,
-          ktpOcrText: extracted.rawText || GUOHUI_CHEN_TEXT
+          ktpOcrText: extracted.rawText || ''
         };
         if (extracted.nik) { nextVal.idNumber = extracted.nik; nextVal.idType = 'KTP'; }
         if (extracted.nama) {
@@ -1890,11 +1890,13 @@ function StakeholderModalDialog({
         }
         if (extracted.alamat) nextVal.address = extracted.alamat;
         if (extracted.province) nextVal.province = extracted.province;
-        if (extracted.cityRegency) nextVal.cityRegency = extracted.cityRegency;
-        if (extracted.kecamatan) nextVal.district = extracted.kecamatan;
-        if (extracted.kelDesa) nextVal.village = extracted.kelDesa;
+        if (extracted.cityRegency || extracted.city) nextVal.cityRegency = extracted.cityRegency || extracted.city;
+        if (extracted.kecamatan || extracted.district) nextVal.district = extracted.kecamatan || extracted.district;
+        if (extracted.kelDesa || extracted.village) nextVal.village = extracted.kelDesa || extracted.village;
         if (extracted.rt) nextVal.rt = extracted.rt;
         if (extracted.rw) nextVal.rw = extracted.rw;
+        if (extracted.kodePos || extracted.postalCode) nextVal.postalCode = extracted.kodePos || extracted.postalCode;
+        if (extracted.pekerjaan) nextVal.occupation = extracted.pekerjaan;
         onChangeValue(nextVal);
       } catch (err) {
         console.warn('OCR error:', err);
@@ -1903,7 +1905,7 @@ function StakeholderModalDialog({
           ktpUrl: dataUrl,
           ktpFileName: f.name,
           ktpMime: f.type,
-          ktpOcrText: GUOHUI_CHEN_TEXT
+          ktpOcrText: ''
         });
       } finally {
         setOcrLoading(false);
@@ -1931,11 +1933,13 @@ function StakeholderModalDialog({
       country: p.kewarganegaraan?.includes('CHINA') ? 'CHINA' : curVal.country,
       address: p.alamat || curVal.address,
       province: p.province || curVal.province,
-      cityRegency: p.cityRegency || curVal.cityRegency,
-      district: p.kecamatan || curVal.district,
-      village: p.kelDesa || curVal.village,
+      cityRegency: p.cityRegency || p.city || curVal.cityRegency,
+      district: p.kecamatan || p.district || curVal.district,
+      village: p.kelDesa || p.village || curVal.village,
       rt: p.rt || curVal.rt,
-      rw: p.rw || curVal.rw
+      rw: p.rw || curVal.rw,
+      postalCode: p.postalCode || p.kodePos || curVal.postalCode,
+      occupation: p.pekerjaan || curVal.occupation
     };
     onChangeValue(nextVal);
     setCopiedKey('applied_all');
@@ -2285,7 +2289,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
  const saveDeed=()=>{if(!editing||editorLocked)return;try{validateInput({...editing,stakeholders:undefined});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;if(editing.type==='amendment'&&editing.deedDate&&estDate){if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}}if(editing.type==='establishment'&&editing.deedDate){const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));if(earlierAmendment){throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);}}setFormError('');}catch(e:any){setFormError(e.message);return;}const catsToSave=getDeedCategoryIds(editing);const cleanRemarks=(editing.remarks||'').replace(/<\/ol>\s*<ol[^>]*>/gi,'').replace(/<\/ul>\s*<ul[^>]*>/gi,'');const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};onChange({...value,deeds:deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved],selectedDeedId:editing.id});setEditing(null);};
  const removeDeed=()=>{if(!deleting||locked(deleting)||deleting.approvedSnapshot)return;const remaining=deeds.filter(x=>x.id!==deleting.id),nextId=remaining[0]?.id,legal={...value,deeds:remaining,hiddenDeedIds:[...new Set([...(value.hiddenDeedIds||[]),deleting.id])],selectedDeedId:nextId};if(deleting.id===selectedId)onStakeholdersChange(legal,nextId?rowsFor(remaining[0]):[]);else onChange(legal);setDeleting(null);};
- const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const r = new FileReader();
@@ -2299,11 +2303,11 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
           ktpUrl: dataUrl,
           ktpFileName: f.name,
           ktpMime: f.type,
-          ktpOcrText: GUOHUI_CHEN_TEXT,
+          ktpOcrText: '',
         }
       }));
       try {
-        const parsed = await extractKtpTextFromImage(dataUrl, f.name);
+        const parsed = await extractKtpTextFromImage(f, f.name);
         setStakeholderModal((prev: any) => {
           if (!prev) return prev;
           const currentVal = prev.value || {};
@@ -2312,7 +2316,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
             ktpUrl: dataUrl,
             ktpFileName: f.name,
             ktpMime: f.type,
-            ktpOcrText: parsed.rawText || GUOHUI_CHEN_TEXT,
+            ktpOcrText: parsed.rawText || '',
           };
           if (parsed.nik && (!currentVal.idNumber || currentVal.idNumber === '')) {
             nextVal.idNumber = parsed.nik;
@@ -2346,11 +2350,13 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
             nextVal.address = parsed.alamat;
           }
           if (parsed.province && !currentVal.province) nextVal.province = parsed.province;
-          if (parsed.cityRegency && !currentVal.cityRegency) nextVal.cityRegency = parsed.cityRegency;
-          if (parsed.kecamatan && !currentVal.district) nextVal.district = parsed.kecamatan;
-          if (parsed.kelDesa && !currentVal.village) nextVal.village = parsed.kelDesa;
+          if ((parsed.cityRegency || parsed.city) && !currentVal.cityRegency) nextVal.cityRegency = parsed.cityRegency || parsed.city;
+          if ((parsed.kecamatan || parsed.district) && !currentVal.district) nextVal.district = parsed.kecamatan || parsed.district;
+          if ((parsed.kelDesa || parsed.village) && !currentVal.village) nextVal.village = parsed.kelDesa || parsed.village;
           if (parsed.rt && !currentVal.rt) nextVal.rt = parsed.rt;
           if (parsed.rw && !currentVal.rw) nextVal.rw = parsed.rw;
+          if ((parsed.kodePos || parsed.postalCode) && !currentVal.postalCode) nextVal.postalCode = parsed.kodePos || parsed.postalCode;
+          if (parsed.pekerjaan && !currentVal.occupation) nextVal.occupation = parsed.pekerjaan;
           return { ...prev, value: nextVal };
         });
       } catch (err) {
@@ -2386,11 +2392,13 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
           country: parsed.kewarganegaraan?.includes('CHINA') ? 'CHINA' : v.country,
           address: parsed.alamat || v.address,
           province: parsed.province || v.province,
-          cityRegency: parsed.cityRegency || v.cityRegency,
-          district: parsed.kecamatan || v.district,
-          village: parsed.kelDesa || v.village,
+          cityRegency: parsed.cityRegency || parsed.city || v.cityRegency,
+          district: parsed.kecamatan || parsed.district || v.district,
+          village: parsed.kelDesa || parsed.village || v.village,
           rt: parsed.rt || v.rt,
-          rw: parsed.rw || v.rw
+          rw: parsed.rw || v.rw,
+          postalCode: parsed.postalCode || parsed.kodePos || v.postalCode,
+          occupation: parsed.pekerjaan || v.occupation
         }
       };
     });
