@@ -5,7 +5,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiPort = Number(env.PORT || 3001);
   return {
-    base: '/crm/',
+    base: './',
     plugins: [react()],
     server: {
       host: '0.0.0.0',
