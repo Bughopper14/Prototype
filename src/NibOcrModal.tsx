@@ -146,6 +146,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
     formData.nib,
     formData.companyName,
     formData.alamat,
+    formData.province,
     formData.city,
     formData.district,
     formData.village,
@@ -475,6 +476,23 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </span>
 
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8}}>
+                <div>
+                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
+                    Province (Provinsi)
+                  </label>
+                  <input 
+                    type="text" 
+                    value={formData.province}
+                    placeholder="e.g. DKI Jakarta"
+                    onChange={e => setFormData({...formData, province: e.target.value})}
+                    style={{
+                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      borderRadius: 6, border: '1px solid #cbd5e1',
+                      background: formData.province ? '#f0f7ff' : '#ffffff'
+                    }}
+                  />
+                </div>
+
                 <div>
                   <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
                     City / Regency (Kabupaten/Kota)
