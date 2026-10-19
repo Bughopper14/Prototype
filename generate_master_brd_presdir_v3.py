@@ -289,7 +289,7 @@ def build_word_document():
         "di seluruh kantor cabang LiuGong saat menginput permohonan pembiayaan baru:"
     )
 
-    add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\fap_stage_tabs_with_document.png",
+    add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\05_step_tab1_form_auto_filled.png",
                      "Tampilan Workspace FAP Stage Aktif Menampilkan 4 Tab Terstruktur Lengkap dengan Tab Dokumen (Live System)")
 
     # LANGKAH 1
@@ -359,10 +359,10 @@ def build_word_document():
         "  - Marketing menekan tombol 'Simpan' untuk mengunci data FAP Stage ke basis data."
     )
 
-    add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\03_workspace_split_50_50.png",
+    add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\02_step_click_new_application.png",
                      "Dual-Pane Split Workspace 50-50: Form Input Accordion Kiri dan Live Digital Twin Excel FAP Kanan (Live System)")
 
-    add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\04_nib_ocr_modal.png",
+    add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\03_step_nib_ocr_modal_opened.png",
                      "Fitur Modal Scan OCR Dokumen NIB OSS RBA dengan Ekstraksi 5 Parameter Kunci Otomatis (Live System)")
 
     # LANGKAH 3
@@ -425,7 +425,7 @@ def build_word_document():
         "Hal ini mengunci kepatuhan hukum kepemilikan perseroan sebelum melangkah ke tahap berikutnya."
     )
 
-    add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\tab_3_stakeholders.png",
+    add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\07_step_tab3_stakeholders.png",
                      "Struktur Pemegang Saham & Jajaran Pengurus dengan Validasi Keras Kepemilikan Modal 100% (Live System)")
 
     # LANGKAH 5
@@ -461,7 +461,7 @@ def build_word_document():
         "3. Pemantauan Kelengkapan: Status berkas berubah menjadi 'Uploaded/Verified' dan counter kelengkapan di header tab bertambah (misal: 'Documents 13/13')."
     )
 
-    add_image_figure(doc, r"D:\CRM App2\screenshots_presdir\fap_stage_tab_document_view.png",
+    add_image_figure(doc, r"D:\CRM App2\screenshots_fap_steps\08_step_tab4_documents_checklist.png",
                      "Pusat Verifikasi Berkas: Checklist 13 Dokumen Wajib dengan Fitur Unggah & Status Kelengkapan (Live System)")
 
     # LANGKAH 6
