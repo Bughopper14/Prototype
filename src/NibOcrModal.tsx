@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { 
   X, Upload, ScanLine, Sparkles, CheckCircle2, Copy, FileText, 
   Check, Loader2, Calendar, Mail, Phone, MapPin, Hash, ArrowRight,
-  FileSearch, RefreshCw, Building2, Navigation, Compass, Map
+  FileSearch, RefreshCw, Building2
 } from 'lucide-react';
+import { api } from './api';
 import { 
   extractNibTextFromDocument, parseNibText, SAMPLE_NIB_TEXT, ParsedNibData 
 } from './nib-ocr';
@@ -36,6 +37,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
   const [rawText, setRawText] = useState<string>('');
   const [showRaw, setShowRaw] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [formData, setFormData] = useState({
     nib: '',
@@ -62,12 +64,61 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
     setTimeout(() => setCopiedKey(null), 1500);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
+  const processFile = async (f: File) => {
     if (!f) return;
     setFileName(f.name);
     setOcrLoading(true);
 
+    try {
+      // 1. Try real backend OCR endpoint (supports PDF, PNG, JPG, WEBP)
+      const uploadPayload = new FormData();
+      uploadPayload.append('file', f);
+      uploadPayload.append('doc_type', 'nib');
+      
+      const res = await api('/ocr/scan', 'POST', uploadPayload);
+      if (res && res.data) {
+        const d = res.data;
+        const newNib = String(d.nib || '').replace(/\D/g, '').slice(0, 13);
+        const newCompanyName = String(d.company_name || d.companyName || '').trim();
+        const newAlamat = String(d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '').trim();
+        const newProvince = String(d.provinsi || d.province || '').trim();
+        const newCity = String(d.kota || d.city || d.cityRegency || '').trim();
+        const newDistrict = String(d.kecamatan || d.district || '').trim();
+        const newVillage = String(d.kel_desa || d.village || d.kelurahan || '').trim();
+        const newPostal = String(d.kode_pos || d.postalCode || '').replace(/\D/g, '').slice(0, 5);
+        const newEmail = String(d.email || '').trim();
+        const newPhone = String(d.phone || d.phoneFax || '').trim();
+        const newTanggal = String(d.tanggal_terbit || d.establishmentDate || '').trim();
+        const newRt = String(d.rt || '').trim();
+        const newRw = String(d.rw || '').trim();
+
+        // Overwrite fields on the right panel
+        setFormData({
+          nib: newNib,
+          companyName: newCompanyName,
+          alamat: newAlamat,
+          province: newProvince,
+          city: newCity,
+          district: newDistrict,
+          village: newVillage,
+          postalCode: newPostal,
+          email: newEmail,
+          phone: newPhone,
+          tanggalTerbit: newTanggal,
+          rt: newRt,
+          rw: newRw
+        });
+        setRawText(d.fullAddress || d.alamat_lengkap || JSON.stringify(d, null, 2));
+        if (notify) {
+          notify(`OCR processing complete for ${f.name}`);
+        }
+        return;
+      }
+    } catch (backendErr: any) {
+      console.warn('Backend OCR scan failed, attempting client-side fallback:', backendErr);
+    }
+
+    // 2. Client-side fallback (FileReader + Client Parser)
     const r = new FileReader();
     r.onload = async () => {
       const dataUrl = r.result as string;
@@ -91,29 +142,17 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           rw: extracted.rw || ''
         });
       } catch (err: any) {
-        console.warn('OCR execution error:', err);
-        const fallback = parseNibText(SAMPLE_NIB_TEXT);
-        setRawText(SAMPLE_NIB_TEXT);
-        setFormData({
-          nib: fallback.nib || '',
-          companyName: fallback.companyName || '',
-          alamat: fallback.alamat || '',
-          email: fallback.email || '',
-          phone: fallback.phone || '',
-          tanggalTerbit: fallback.tanggalTerbit || '',
-          city: fallback.city || '',
-          district: fallback.district || '',
-          village: fallback.village || '',
-          postalCode: fallback.postalCode || '',
-          province: fallback.province || '',
-          rt: fallback.rt || '',
-          rw: fallback.rw || ''
-        });
+        console.warn('Client-side OCR fallback error:', err);
       } finally {
         setOcrLoading(false);
       }
     };
     r.readAsDataURL(f);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) processFile(f);
   };
 
   const loadSampleDoc = () => {
@@ -139,7 +178,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         rw: extracted.rw || ''
       });
       setOcrLoading(false);
-    }, 400);
+    }, 300);
   };
 
   const filledCount = [
@@ -161,6 +200,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
       if (notify) notify('No NIB data extracted to apply.');
       return;
     }
+    // Apply data to outside form
     onApply(formData);
     if (notify) {
       notify(`✓ ${filledCount} NIB fields successfully synced to form`);
@@ -256,15 +296,28 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         }}>
           {/* LEFT: UPLOAD & FILE ZONE */}
           <div style={{display:'flex', flexDirection:'column', gap: 14}}>
-            <div style={{
-              border: '2px dashed #cbd5e1',
-              borderRadius: 10,
-              padding: '24px 16px',
-              textAlign: 'center',
-              background: '#f8fafc',
-              cursor: 'pointer',
-              position: 'relative'
-            }}>
+            <div 
+              onDragOver={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+              onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+              onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+              onDrop={e => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDragging(false);
+                const droppedFile = e.dataTransfer.files?.[0];
+                if (droppedFile) processFile(droppedFile);
+              }}
+              style={{
+                border: isDragging ? '2px dashed #2563eb' : '2px dashed #cbd5e1',
+                borderRadius: 10,
+                padding: '24px 16px',
+                textAlign: 'center',
+                background: isDragging ? '#eff6ff' : '#f8fafc',
+                cursor: 'pointer',
+                position: 'relative',
+                transition: 'all 0.2s ease'
+              }}
+            >
               <input 
                 type="file" 
                 accept="image/*,application/pdf"
@@ -276,14 +329,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               />
               <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 8}}>
                 <div style={{
-                  width: 44, height: 44, borderRadius: '50%', background: '#e0f2fe',
+                  width: 44, height: 44, borderRadius: '50%', background: isDragging ? '#dbeafe' : '#e0f2fe',
                   color: '#2563eb', display:'flex', alignItems:'center', justifyContent:'center'
                 }}>
                   <Upload size={22} />
                 </div>
                 <div>
                   <b style={{fontSize: '0.9rem', color: '#0f172a', display:'block'}}>
-                    Click or Drag NIB File Here
+                    {isDragging ? 'Drop NIB Document Here' : 'Click or Drag NIB File Here'}
                   </b>
                   <span style={{fontSize: '0.78rem', color: '#64748b'}}>
                     Supported formats: PNG, JPG, JPEG, WEBP, or PDF
@@ -337,7 +390,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               {ocrLoading ? (
                 <>
                   <Loader2 size={16} className="spin" />
-                  <span>Scanning and reading NIB document text...</span>
+                  <span>Scanning and reading NIB document via OCR Engine...</span>
                 </>
               ) : hasData ? (
                 <>
@@ -406,7 +459,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               />
             </div>
 
-            {/* FIELD 2: COMPANY NAME (SETELAH NOMOR NIB) */}
+            {/* FIELD 2: COMPANY NAME */}
             <div>
               <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 3}}>
                 <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
@@ -466,7 +519,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               />
             </div>
 
-            {/* WILAYAH: KABUPATEN/KOTA, KECAMATAN, KELURAHAN, KODE POS */}
+            {/* WILAYAH: PROVINSI, KABUPATEN/KOTA, KECAMATAN, KELURAHAN, KODE POS */}
             <div style={{
               background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
               padding: '10px', display: 'flex', flexDirection: 'column', gap: 8
@@ -543,23 +596,23 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     }}
                   />
                 </div>
+              </div>
 
-                <div>
-                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
-                    Postal / Zip Code (Kode Pos)
-                  </label>
-                  <input 
-                    type="text" 
-                    value={formData.postalCode}
-                    placeholder="e.g. 12930"
-                    onChange={e => setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})}
-                    style={{
-                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
-                      borderRadius: 6, border: '1px solid #cbd5e1',
-                      background: formData.postalCode ? '#f0f7ff' : '#ffffff'
-                    }}
-                  />
-                </div>
+              <div>
+                <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
+                  Postal / Zip Code (Kode Pos)
+                </label>
+                <input 
+                  type="text" 
+                  value={formData.postalCode}
+                  placeholder="e.g. 12930"
+                  onChange={e => setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})}
+                  style={{
+                    width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                    borderRadius: 6, border: '1px solid #cbd5e1',
+                    background: formData.postalCode ? '#f0f7ff' : '#ffffff'
+                  }}
+                />
               </div>
             </div>
 
