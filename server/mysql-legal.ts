@@ -132,12 +132,21 @@ async function stakeholderLocationNames(c:any,input:any){
 export async function migrateStakeholderLocationNames(){
  if(!pool)return;
  const fields=[['province','master_provinsi'],['city_regency','master_kabupaten_kota'],['district','master_kecamatan'],['village','master_kelurahan_desa']] as const;
- const c=await pool.getConnection();
  try{
-  await c.beginTransaction();
-  const [backup]=await c.query<any[]>('SELECT id,province,city_regency,district,village FROM legal_stakeholder WHERE '+fields.map(([key,table])=>'EXISTS (SELECT 1 FROM '+table+' m WHERE m.id=legal_stakeholder.'+key+')').join(' OR ')+' FOR UPDATE');
-  if(backup.length){await fs.mkdir('.data',{recursive:true});await fs.writeFile('.data/stakeholder-location-backup-'+Date.now()+'.json',JSON.stringify(backup,null,2));}
-  for(const [key,table] of fields)await c.query('UPDATE legal_stakeholder s JOIN '+table+' m ON m.id=s.'+key+' SET s.'+key+'=m.name');
-  await c.commit();
- }catch(e){await c.rollback();throw e;}finally{c.release();}
+  const c=await pool.getConnection();
+  try{
+   await c.beginTransaction();
+   const [backup]=await c.query<any[]>('SELECT id,province,city_regency,district,village FROM legal_stakeholder WHERE '+fields.map(([key,table])=>'EXISTS (SELECT 1 FROM '+table+' m WHERE m.id=legal_stakeholder.'+key+')').join(' OR ')+' FOR UPDATE');
+   if(backup.length){await fs.mkdir('.data',{recursive:true});await fs.writeFile('.data/stakeholder-location-backup-'+Date.now()+'.json',JSON.stringify(backup,null,2));}
+   for(const [key,table] of fields)await c.query('UPDATE legal_stakeholder s JOIN '+table+' m ON m.id=s.'+key+' SET s.'+key+'=m.name');
+   await c.commit();
+  }catch(e){
+   await c.rollback();
+   console.warn('migrateStakeholderLocationNames warning, skipped:', (e as any)?.message || e);
+  }finally{
+   c.release();
+  }
+ }catch(connErr){
+  console.warn('migrateStakeholderLocationNames connection error:', (connErr as any)?.message || connErr);
+ }
 }
