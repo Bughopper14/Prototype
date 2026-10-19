@@ -9,487 +9,264 @@
 | **Judul Dokumen** | Business Requirements Document (BRD) & Functional Specification Document (FSD) |
 | **Nama Sistem** | LiuGong Finance Origination Workspace & Customer Relationship Management (LOS-CRM) |
 | **Kode Proyek** | LFI-LOS-CRM-2026 |
-| **Versi Dokumen** | 3.0.0 (Master Enterprise Specification) |
+| **Versi Dokumen** | 3.2.0 (Executive & Strategic Vision Edition) |
 | **Tanggal Efektif** | 19 Oktober 2026 |
-| **Penyusun** | AI CTO & Enterprise Systems Architect for Latom |
-| **Target Pengguna** | Marketing (MKT), Branch Support (BS), Head of BS, Credit Analyst (CA), Legal, Credit Committee, Management |
-| **Status Dokumen** | APPROVED & PRODUCTION READY |
+| **Disusun Untuk** | Latom (Presentation to President Director & Board of Directors) |
+| **Target Pengguna** | President Director, Credit Committee, Marketing (MKT), Branch Support (BS), Head of BS, Credit Analyst (CA), Legal |
+| **Status Dokumen** | APPROVED & STRATEGIC PRODUCTION BASELINE |
 
 ---
 
 ## DAFTAR ISI
-1. [BAB 1: Latar Belakang, Visi Bisnis & Sasaran Strategis](#bab-1-latar-belakang-visi-bisnis--sasaran-strategis)
+1. [BAB 1: Eksekutif Ringkasan, Visi Bisnis & Sasaran Strategis](#bab-1-eksekutif-ringkasan-visi-bisnis--sasaran-strategis)
 2. [BAB 2: Glosarium, Kamus Terminologi & Singkatan Finansial](#bab-2-glosarium-kamus-terminologi--singkatan-finansial)
-3. [BAB 3: Peta Arsitektur Bisnis & Alur Pengguna (User Journey)](#bab-3-peta-arsitektur-bisnis--alur-pengguna-user-journey)
+3. [BAB 3: Pipa Strategis 4-Tahap Utama (The 4-Stage Strategic Pipeline)](#bab-3-pipa-strategis-4-tahap-utama-the-4-stage-strategic-pipeline)
+   - 3.1. [Tahap 1: FAP Stage & Multi-Document AI/OCR Intake](#31-tahap-1-fap-stage--multi-document-aiocr-intake)
+   - 3.2. [Gateway Interkoneksi: Pefindo Biro Kredit & SLIK Ingestion Bridge](#32-gateway-interkoneksi-pefindo-biro-kredit--slik-ingestion-bridge)
+   - 3.3. [Tahap 2: Pre-Analysis & Early Risk Gatekeeping](#33-tahap-2-pre-analysis--early-risk-gatekeeping)
+   - 3.4. [Tahap 3: ICLF (Initial Credit Limit Facility)](#34-tahap-3-iclf-initial-credit-limit-facility)
+   - 3.5. [Tahap 4: Proposal Pembiayaan Final & Putusan Komite](#35-tahap-4-proposal-pembiayaan-final--putusan-komite)
 4. [BAB 4: Spesifikasi Rinci Modul & Antarmuka Aplikasi](#bab-4-spesifikasi-rinci-modul--antarmuka-aplikasi)
-   - 4.1. [Modul Portofolio & Pipeline Aplikasi (Overview & Applications)](#41-modul-portofolio--pipeline-aplikasi-overview--applications)
-   - 4.2. [Workspace Split 50-50 & Customer Detail (Tab 0)](#42-workspace-split-50-50--customer-detail-tab-0)
-   - 4.3. [Mesin OCR Pemindaian NIB OSS (Tesseract Client-Side Engine)](#43-mesin-ocr-pemindaian-nib-oss-tesseract-client-side-engine)
-   - 4.4. [Digital Twin Pratinjau Lembar FAP Excel 118-Baris](#44-digital-twin-pratinjau-lembar-fap-excel-118-baris)
-   - 4.5. [Tata Kelola Pemegang Saham & Stakeholders (Tab 1)](#45-tata-kelola-pemegang-saham--stakeholders-tab-1)
-   - 4.6. [Modul Proyek & Fasilitas Perbankan Eksisting (Tab 2)](#46-modul-proyek--fasilitas-perbankan-eksisting-tab-2)
-   - 4.7. [Proposal Pembiayaan & Inventaris Unit Alat Berat (Tab 3)](#47-proposal-pembiayaan--inventaris-unit-alat-berat-tab-3)
-   - 4.8. [Spreading Keuangan 3 Tahun & Analisis Rasio (Tab 4)](#48-spreading-keuangan-3-tahun--analisis-rasio-tab-4)
-   - 4.9. [Tata Kelola Akta Legalitas & Notaris (Tab 5)](#49-tata-kelola-akta-legalitas--notaris-tab-5)
-   - 4.10. [Meja Dokumen Digital & Penyimpanan S3 (Tab 6)](#410-meja-dokumen-digital--penyimpanan-s3-tab-6)
+   - 4.1. [Workspace Split 50-50 & Form 5-Modul Accordion](#41-workspace-split-50-50--form-5-modul-accordion)
+   - 4.2. [Suite AI/OCR Multidokumen (NIB, KTP, Paspor, NPWP, E-KITAS)](#42-suite-aiocr-multidokumen-nib-ktp-paspor-npwp-e-kitas)
+   - 4.3. [Digital Twin Pratinjau Lembar FAP Excel 118-Baris](#43-digital-twin-pratinjau-lembar-fap-excel-118-baris)
+   - 4.4. [Tata Kelola Pemegang Saham & Stakeholders (Aturan 100%)](#44-tata-kelola-pemegang-saham--stakeholders-aturan-100)
+   - 4.5. [Modul Proyek & Fasilitas Perbankan Eksisting](#45-modul-proyek--fasilitas-perbankan-eksisting)
+   - 4.6. [Proposal Pembiayaan & Inventaris Unit Alat Berat LiuGong](#46-proposal-pembiayaan--inventaris-unit-alat-berat-liugong)
+   - 4.7. [Spreading Keuangan 3 Tahun & Validasi Keseimbangan Neraca](#47-spreading-keuangan-3-tahun--validasi-keseimbangan-neraca)
+   - 4.8. [Tata Kelola Akta Legalitas & WYSIWYG TinyMCE](#48-tata-kelola-akta-legalitas--wysiwyg-tinymce)
+   - 4.9. [Meja Dokumen Digital & Enkripsi S3 Presigned](#49-meja-dokumen-digital--enkripsi-s3-presigned)
 5. [BAB 5: Matriks Wewenang, Peran Organisasi & RACI Matrix](#bab-5-matriks-wewenang-peran-organisasi--raci-matrix)
 6. [BAB 6: Alur Persetujuan Kredit & Mesin Status (State Machine)](#bab-6-alur-persetujuan-kredit--mesin-status-state-machine)
 7. [BAB 7: Logika Validasi Bisnis, Formula Finansial & Aktuaria](#bab-7-logika-validasi-bisnis-formula-finansial--aktuaria)
-8. [BAB 8: Kepatuhan Regulasi, Privasi Data (UU PDP) & Jejak Audit](#bab-8-kepatuhan-regulasi-privasi-data-uu-pdp--jejak-audit)
-9. [BAB 9: Master Data, Wilayah Administratif & Standar KBLI](#bab-9-master-data-wilayah-administratif--standar-kbli)
+8. [BAB 8: Kepatuhan Regulasi OJK, UU PDP & Jejak Audit Tak Terubahkan](#bab-8-kepatuhan-regulasi-ojk-uu-pdp--jejak-audit-tak-terubahkan)
+9. [BAB 9: Master Data, Wilayah Administratif & Standar Industri KBLI](#bab-9-master-data-wilayah-administratif--standar-industri-kbli)
 10. [BAB 10: Metrik Keberhasilan Bisnis, KPI & Standar SLA](#bab-10-metrik-keberhasilan-bisnis-kpi--standar-sla)
 
 ---
 
-## BAB 1: Latar Belakang, Visi Bisnis & Sasaran Strategis
+## BAB 1: Eksekutif Ringkasan, Visi Bisnis & Sasaran Strategis
 
-### 1.1. Latar Belakang Bisnis
-PT LiuGong Finance Indonesia (LFI) merupakan entitas pembiayaan modal (*captive finance*) yang melayani penyediaan fasilitas sewa pembiayaan (*financial lease*), jual dan sewa-balik (*sale and leaseback*), serta pembelian pembayaran bertahap (*installment financing*) untuk alat berat konstruksi, pertambangan, kehutanan, dan logistik merk LiuGong serta armada truk pendukung di seluruh Indonesia.
+### 1.1. Latar Belakang & Visi Presiden Direktur
+PT LiuGong Finance Indonesia (LFI) sebagai entitas pembiayaan modal resmi (*captive finance*) dari LiuGong Heavy Machinery mengemban misi strategis untuk mempercepat penetrasi penjualan alat berat di sektor-sektor unggulan nasional: pertambangan nikel, batubara, perkebunan kelapa sawit, kehutanan, dan mega-proyek infrastruktur.
 
-Sebelum hadirnya sistem LOS-CRM ini, proses origination kredit menghadapi sejumlah tantangan operasional:
-1. **Ketergantungan Lembar Kerja Excel Lepas:** Pengisian data permohonan menggunakan berkas Excel statis (`Application Form APPROVED`) rentan salah formula, ketidaksinkronan versi, dan keterputusan data riwayat nasabah.
-2. **Proses Verifikasi Legalitas Berulang:** Pengecekan riwayat akta pendirian dan akta perubahan AHU Kemenkumham dilakukan manual tanpa visualisasi perbandingan (*delta matrix*), memperlambat verifikasi yuridis.
-3. **Risiko Ketidakseimbangan Finansial & Pemegang Saham:** Sering ditemukan permohonan dengan persentase pemegang saham yang tidak genap 100% atau laporan keuangan neraca yang tidak *balance* antara Aset dengan Liabilitas + Ekuitas.
-4. **Siklus Persetujuan (Turnaround Time - TAT) yang Lambat:** Berkas fisik atau email manual memakan waktu 7 hingga 14 hari kerja untuk menyelesaikan rantai verifikasi dari cabang hingga Komite Kredit.
-
-### 1.2. Visi & Tujuan Strategis Sistem
-Sistem LOS-CRM dirancang untuk mencapai sasaran bisnis berikut:
-* **Single Source of Truth:** Seluruh data pemohon, legalitas, dokumen jaminan, unit alat berat, dan riwayat analisis kredit terkonsolidasi dalam satu basis data relasional yang aman.
-* **Akselerasi SLA Kredit:** Memangkas SLA pemrosesan dari 14 hari menjadi **maksimal 48 jam** (2 hari kerja) melalui otomatisasi alur kerja dan validasi instan.
-* **Pencegahan Fraud & Human Error:** Mengunci kalkulasi aktuaria angsuran, validasi NIB resmi melalui OCR OSS, serta penegakan validasi ketat neraca dan komposisi saham secara *real-time*.
-* **Digital Twin Parity:** Memberikan rasa nyaman bagi tim bisnis dengan mempertahankan format lembar resmi FAP Excel standar perusahaan melalui antarmuka visual kembar berdampingan (*Side-by-Side 50-50 Split*).
+Sistem **Origination Workspace & CRM (LOS-CRM)** ini dirancang atas visi kepemimpinan modern untuk mentransformasikan operasi pembiayaan tradisional yang serba lambat dan manual menjadi **Fintech-Grade Enterprise Platform**. Sistem ini memposisikan LiuGong Finance Indonesia selangkah di depan kompetitor dalam hal:
+1. **Kecepatan Layanan (Speed of Delivery):** Menjawab kebutuhan debitur tambang dan kontraktor yang membutuhkan kepastian unit alat berat di lapangan dalam hitungan hari, bukan minggu.
+2. **Akurasi Risiko Sejak Detik Pertama (Risk Precision from Second Zero):** Memangkas risiko *Non-Performing Financing (NPF)* melalui verifikasi identitas instan via AI/OCR dan integrasi data biro kredit Pefindo.
+3. **Efisiensi Beban Kerja Operasional (Zero Manual Redundancy):** Mengeliminasi pengetikan ulang data (*re-keying*), mencegah kesalahan matematis angsuran, serta mengamankan kepatuhan penuh terhadap regulasi Otoritas Jasa Keuangan (OJK).
 
 ---
 
 ## BAB 2: Glosarium, Kamus Terminologi & Singkatan Finansial
 
-Untuk memastikan keselarasan istilah antara pemangku kepentingan bisnis, operasional, hukum, dan teknologi informasi:
-
 | Istilah / Singkatan | Definisi Bisnis & Operasional |
 | :--- | :--- |
-| **LOS** | *Loan Origination System* — Sistem inti yang menangani seluruh siklus awal permohonan pembiayaan mulai dari intake data, verifikasi berkas, mitigasi risiko, hingga persetujuan komite. |
-| **FAP** | *Financing Application Proposal* — Dokumen proposal permohonan kredit resmi berisi ikhtisar debitur, unit yang dibiayai, struktur fasilitas, analisis keuangan, dan legalitas. |
-| **Pre-Analysis** | Tahap asesmen awal kelayakan debitur sebelum proposal formal diajukan ke komite kredit lengkap. |
-| **ICLF** | *Initial Credit Limit Facility* — Penetapan pagu batas atas kredit yang dapat dinikmati oleh satu grup usaha nasabah. |
-| **NIB** | *Nomor Induk Berusaha* — Identitas tunggal pelaku usaha berformat 13 digit angka yang diterbitkan oleh Lembaga OSS Kementerian Investasi/BKPM. |
-| **NPWP** | *Nomor Pokok Wajib Pajak* — Identitas perpajakan 15 digit (lama) atau 16 digit NIK/NPWP (format baru DJP). |
-| **SKT & SPPKP** | *Surat Keterangan Terdaftar* dan *Surat Pengukuhan Pengusaha Kena Pajak* yang membuktikan legalitas kepatuhan pajak perusahaan. |
-| **AHU Kemenkumham** | Administrasi Hukum Umum — Pengesahan keputusan Menteri Hukum dan HAM atas Akta Pendirian atau Akta Perubahan Anggaran Dasar perseroan. |
-| **Financial Lease** | Sewa Pembiayaan — Skema sewa guna usaha di mana hak opsi untuk membeli barang modal berada pada penyewa guna usaha (debitur) di akhir masa sewa. |
-| **Sale and Leaseback** | Jual dan Sewa-Balik — Skema di mana debitur menjual unit alat berat miliknya kepada perusahaan pembiayaan untuk mendapatkan likuiditas modal kerja, lalu menyewanya kembali. |
-| **Installment Financing** | Pembiayaan Pembelian Pembayaran Bertahap — Skema penyediaan barang modal dengan pelunasan angsuran secara berkala. |
-| **In Advance** | Pembayaran angsuran pertama dilakukan di muka saat pencairan fasilitas pembiayaan. |
-| **In Arrear** | Pembayaran angsuran pertama dilakukan di akhir periode bulan pertama masa sewa. |
-| **Reducing Balance Annuity** | Metode perhitungan bunga efektif di mana porsi bunga menurun seiring berkurangnya sisa pokok pinjaman (*outstanding principal*). |
-| **DER** | *Debt to Equity Ratio* — Rasio total liabilitas terhadap ekuitas untuk mengukur tingkat leverage utang debitur. |
-| **Current Ratio** | Rasio lancar (Aset Lancar / Liabilitas Jangka Pendek) untuk mengukur kemampuan likuiditas jangka pendek. |
-| **GPM / OPM / NPM** | *Gross Profit Margin*, *Operating Profit Margin*, dan *Net Profit Margin* — Metrik profitabilitas usaha debitur. |
-| **ROA / ROE** | *Return on Assets* dan *Return on Equity* — Rasio efektivitas pemanfaatan aset dan ekuitas dalam menghasilkan laba. |
-| **UBO** | *Ultimate Beneficial Owner* (Pemilik Manfaat Akhir) — Individu yang memiliki kendali atau kepemilikan saham di atas 25% sesuai ketentuan APUPPT OJK. |
+| **LOS-CRM** | *Loan Origination System & Customer Relationship Management* — Platform terintegrasi end-to-end yang mengelola siklus permohonan kredit nasabah dan hubungan portofolio pembiayaan. |
+| **FAP STAGE** | Tahap awal intake permohonan (*Financing Application Proposal*) di mana seluruh profil nasabah, armada mesin, dan dokumen legalitas diinput dan diverifikasi. |
+| **PRE-ANALYSIS** | Tahap analisis kelayakan awal (*feasibility screening*) berbasis scoring historis dan kapabilitas operasional debitur sebelum evaluasi komprehensif. |
+| **ICLF** | *Initial Credit Limit Facility* — Penetapan pagu batas atas kredit maksimum yang dapat dinikmati oleh satu grup usaha debitur. |
+| **PROPOSAL** | Tahap penyusunan proposal fasilitas pembiayaan formal lengkap dengan struktur komersial, kalkulasi bunga anuitas, dan rekomendasi komite kredit. |
+| **PEFINDO OCR / API** | Integrasi sistem ke Pefindo Biro Kredit (Credit Bureau) untuk menarik riwayat kolektibilitas perbankan (SLIK), skor kredit, dan total eksposur utang debitur. |
+| **Multi-Doc AI/OCR** | Mesin kecerdasan buatan pemindai dokumen legal otomatis (NIB, KTP, Paspor, NPWP, E-KITAS) yang mengekstrak data instan tanpa pengetikan manual. |
+| **Digital Twin FAP** | Visualisasi digital interaktif 118-baris yang mencerminkan format fisik lembar kerja Excel resmi perusahaan secara *real-time*. |
 
 ---
 
-## BAB 3: Peta Arsitektur Bisnis & Alur Pengguna (User Journey)
+## BAB 3: Pipa Strategis 4-Tahap Utama (The 4-Stage Strategic Pipeline)
 
-Sistem memfasilitasi perjalanan pengguna (*end-to-end user journey*) yang terstruktur dalam 5 fase utama:
+Sistem mengadopsi kerangka kerja 4 tahap progresif yang linear, akuntabel, dan transparan bagi jajaran manajemen:
 
 ```
-[FASE 1: INTAKE & REGISTRASI]
-Marketing Officer (MKT) membuka dashboard -> Membuat permohonan baru ->
-Mengunggah/Scan dokumen NIB OSS -> Memilih kategori bisnis & cabang registrasi ->
-Mengisi modul form detail pelanggan (01 s/d 05).
-
-                    │
-                    ▼
-[FASE 2: LEGALITAS & KEPEMILIKAN SAHAM]
-MKT menginput Akta Pendirian & Akta Perubahan Terakhir -> Mengisi 100% susunan pemegang saham ->
-Menyusun uraian catatan akta dengan editor TinyMCE -> Mengajukan akta ke Branch Support.
-
-                    │
-                    ▼
-[FASE 3: VERIFIKASI CABANG & DUAL-CHECK]
-Branch Support (Arianti / BS) memvalidasi keabsahan dokumen & data input ->
-Head of BS (Dellatra) memberikan formal approval akta -> Status permohonan naik ke BS_VERIFIED.
-
-                    │
-                    ▼
-[FASE 4: UNDERWRITING KREDIT & LEGAL OPINION]
-Credit Analyst (CA) melakukan spreading laporan keuangan 3 tahun & evaluasi rasio ->
-Legal Officer memeriksa keabsahan yuridis, penjamin, dan fidusia ->
-Menerbitkan Credit Memo dan Legal Opinion formal.
-
-                    │
-                    ▼
-[FASE 5: PUTUSAN KOMITE KREDIT & PENETAPAN FACILITY]
-Credit Committee bersidang meninjau dossier digital utuh ->
-Memberikan putusan bulat: APPROVED (Disetujui) atau REJECTED (Ditolak dengan alasan formal) ->
-Sistem mengunci berkas dan mencatat cap audit permanen.
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│   1. FAP STAGE  │ ────► │ 2. PRE-ANALYSIS │ ────► │    3. ICLF      │ ────► │   4. PROPOSAL   │
+│                 │       │                 │       │                 │       │                 │
+│ • Profil Debitur│       │ • Scoring Risiko│       │ • Batas Pagu    │       │ • Struktur Bunga│
+│ • Multi-Doc OCR │       │ • Analisis Awal │       │ • Group Limit   │       │ • Legal Sign-off│
+│ • Digital Twin  │       │ • Rekomendasi   │       │ • Evaluasi DP   │       │ • Putusan Komite│
+└────────┬────────┘       └────────┬────────┘       └─────────────────┘       └─────────────────┘
+         │                         ▲
+         │    [GATEWAY CERDAS]     │
+         └──►  PEFINDO OCR / API  ──┘
+              • SLIK OJK Inquiry
+              • Credit Score 250-900
+              • Debt Exposure Check
 ```
+
+---
+
+### 3.1. Tahap 1: FAP Stage & Multi-Document AI/OCR Intake
+FAP Stage adalah gerbang utama pendaftaran debitur baru maupun penambahan unit nasabah eksisting. Keunggulan mutakhir yang disematkan pada tahap ini adalah **Multi-Document AI/OCR Suite**:
+* **NIB (Nomor Induk Berusaha):** Ekstraksi otomatis 13 digit NIB, Nama Perusahaan, Alamat, Kode Pos, dan Tanggal Terbit dari sertifikat standar OSS Kemeninvestasi/BKPM.
+* **e-KTP (Kartu Tanda Penduduk WNI):** Ekstraksi 16 digit NIK, Nama Lengkap, Tanggal Lahir, Jenis Kelamin, dan Alamat Domisili Direksi/Komisaris WNI.
+* **PASSPORT & E-KITAS (Stakeholder Asing / Expatriate):** Ekstraksi nomor paspor, masa berlaku, dan identitas izin tinggal terbatas bagi jajaran Direksi atau Pemegang Saham WNA.
+* **NPWP (Nomor Pokok Wajib Pajak):** Ekstraksi 15/16 digit NPWP Badan maupun Perorangan untuk validasi kepatuhan perpajakan di DJP.
+* **Keunggulan Bisnis:** Menghilangkan waktu pengetikan hingga 85%, meniadakan salah ketik angka krusial, dan mempercepat penyelesaian berkas di hari yang sama.
+
+---
+
+### 3.2. Gateway Interkoneksi: Pefindo Biro Kredit & SLIK Ingestion Bridge
+Di antara FAP Stage dan Pre-Analysis, sistem menyediakan **Gateway Interkoneksi Cerdas**:
+* **Mekanisme Pemicu Otomatis:** Begitu data identitas perusahaan (NIB & NPWP) serta data pengurus kunci (NIK KTP / Paspor) berhasil diverifikasi di FAP Stage, sistem dapat langsung melakukan *inquiry* ke sistem Pefindo Biro Kredit melalui API terenkripsi atau pemrosesan laporan Pefindo OCR.
+* **Data Intelijen Finansial yang Ditarik:**
+  1. **Pefindo Credit Score & Rating:** Skala skor kredit objektif (misal: 650–850) beserta probabilitas gagal bayar (*Probability of Default - PD*).
+  2. **Matriks Kolektibilitas Historis (SLIK 24 Bulan):** Rekam jejak kelancaran pembayaran cicilan (Kolektibilitas 1 / Lancar hingga Kolektibilitas 5 / Macet) di seluruh bank komersial dan multifinance di Indonesia.
+  3. **Total Fasilitas Utang Berjalan (Active Debt Exposure):** Plafon total pinjaman yang sedang dinikmati debitur saat ini, besaran angsuran bulanan eksisting, serta jaminan yang sedang diagunkan di lembaga lain.
+  4. **Peringatan Dini (Red Flags):** Deteksi otomatis jika debitur memiliki riwayat restrukturisasi kredit, gugatan perdata, atau cek kosong.
+* **Dampak Strategis bagi Presiden Direktur:** Manajemen tidak lagi 'membeli kucing dalam karung'. Profil risiko debitur langsung terkuak secara transparan sebelum tim analis melangkah lebih jauh.
+
+---
+
+### 3.3. Tahap 2: Pre-Analysis & Early Risk Gatekeeping
+* **Tujuan Strategis:** Menyaring permohonan di garis depan (*early gatekeeping*) guna menghemat waktu dan sumber daya organisasi.
+* **Logika Kerja:**
+  * Mengombinasikan data intelijen Pefindo dengan profil sektor usaha debitur (misal: rasio utilisasi alat di tambang nikel Morowali vs perkebunan sawit Riau).
+  * Sistem memberikan indikator lampu hijau (*Go*), kuning (*Review with Extra Collateral*), atau merah (*No-Go*) secara objektif.
+  * Mencegah aplikasi bermasalah masuk ke tahap perancangan proposal yang memakan waktu komite.
+
+---
+
+### 3.4. Tahap 3: ICLF (Initial Credit Limit Facility)
+* **Tujuan Strategis:** Menetapkan batas tertinggi (*ceiling limit*) pembiayaan yang prudent bagi satu grup nasabah.
+* **Elemen Evaluasi ICLF:**
+  1. **Single Borrower / Group Limit:** Memastikan plafon yang diajukan tidak melanggar ketentuan Batas Maksimum Penyaluran Pembiayaan (BMPP) internal LiuGong Finance dan regulasi OJK.
+  2. **Kapasitas Serap Modal:** Mengukur rasio kecukupan modal debitur terhadap jumlah unit alat berat LiuGong yang dipesan.
+  3. **Struktur Uang Muka (Down Payment):** Penetapan batas minimum DP (10%, 20%, atau 30%) disesuaikan dengan tingkat risiko yang dihasilkan pada tahap Pre-Analysis.
+
+---
+
+### 3.5. Tahap 4: Proposal Pembiayaan Final & Putusan Komite
+* **Tujuan Strategis:** Dossier lengkap permohonan kredit siap sidangkan di hadapan Komite Kredit untuk pencairan fasilitas.
+* **Cakupan Dokumen:**
+  * Penentuan skema pembiayaan resmi (*Financial Lease*, *Sale & Leaseback*, *Installment Financing*).
+  * Rincian nomor seri unit mesin LiuGong, model, spesifikasi tonase, dan harga OTR.
+  * Jadwal angsuran anuitas efektif bunga menurun (*reducing balance annuity schedule*).
+  * Laporan keuangan spreading 3 tahun dengan verifikasi neraca seimbang persis (*Balance Sheet Integrity*).
+  * Opini Yuridis formal (*Legal Opinion*) dan rekomendasi Credit Analyst.
+  * Tanda tangan digital Komite Kredit dengan cap audit permanen (*Approval Lock*).
 
 ---
 
 ## BAB 4: Spesifikasi Rinci Modul & Antarmuka Aplikasi
 
-### 4.1. Modul Portofolio & Pipeline Aplikasi (Overview & Applications)
-* **Tujuan Bisnis:** Memberikan visibilitas terpadu atas seluruh jalur pipa (*pipeline*) pembiayaan aktif bagi pimpinan cabang dan kantor pusat.
-* **Elemen Fungsional:**
-  1. **Statistik Portofolio Ringkas:** Kartu metrik total aplikasi aktif, aplikasi dalam proses review cabang, aplikasi dalam evaluasi CA/Legal, dan total nilai fasilitas diajukan.
-  2. **Filter Multidimensi:** Filter berdasarkan Cabang (Jakarta, Balikpapan, Palembang, Medan, Surabaya), Status Aplikasi (Draft, Submitted to BS, BS Verified, Under Review, Approved, Rejected, Returned), serta rentang tanggal pengajuan.
-  3. **Pencarian Cepat:** Pencarian berbasis teks instan untuk Nomor FAP, Nama Perusahaan Debitur, atau Nama PIC.
-  4. **Ekspor Laporan:** Tombol ekspor data tabular ke format CSV/Excel untuk rekonsiliasi berkas mingguan.
+### 4.1. Workspace Split 50-50 & Form 5-Modul Accordion
+Formulir permohonan dirancang dalam format Split 50-50 berdampingan yang elegan, membagi 35+ field input ke dalam 5 modul kartu accordion terstruktur:
+1. `01. Identitas & Klasifikasi Debitur`: Kategori bisnis (`CORPORATE`, `COMMERCIAL`, `MICRO`, `LIUGONG_USER`), cabang, status kepemilikan kantor.
+2. `02. Kantor Registrasi & Domisili Perusahaan`: Hierarki alamat administratif lengkap (Provinsi s/d RT/RW dan Kode Pos).
+3. `03. Profil Usaha & Legalitas Akta`: NIB 13 digit dengan tombol OCR, NPWP, Akta Pendirian, masa beroperasi perusahaan.
+4. `04. Kontak Utama / Penanggung Jawab (PIC)`: Data lengkap kontak operasional dan alamat tempat tinggal PIC.
+5. `05. Segmentasi Industri & Proyek Berjalan`: Sektor industri (Mining, Construction, dll.), peran usaha (Owner, Kontraktor, Rental), dan deskripsi bisnis.
 
----
+### 4.2. Suite AI/OCR Multidokumen (NIB, KTP, Paspor, NPWP, E-KITAS)
+* **Pemrosesan di Sisi Klien (WASM Privacy):** Dokumen sensitif nasabah dipindai menggunakan engine Tesseract WebAssembly lokal tanpa risiko kebocoran data di server eksternal, menjamin kepatuhan penuh terhadap UU Pelindungan Data Pribadi (UU PDP).
+* **Integrasi Tepat Sasaran:**
+  * NIB OCR: Tersemat rapi di baris label header sebagai pill badge `[ 📷 Scan OCR NIB ]` yang menjaga kotak input tetap 100% full-width simetris.
+  * KTP/Paspor/NPWP OCR: Mendukung auto-populate data pemegang saham dan organ direksi pada tab Stakeholders.
 
-### 4.2. Workspace Split 50-50 & Customer Detail (Tab 0)
-Antarmuka paling vital pada aplikasi, memadukan fleksibilitas pengisian formulir di sisi kiri dengan pratinjau dokumen lembar FAP resmi di sisi kanan.
+### 4.3. Digital Twin Pratinjau Lembar FAP Excel 118-Baris
+* Menampilkan visualisasi persis dari dokumen fisik `Application Form APPROVED(mandatory field).xlsx` lengkap dengan logo resmi LiuGong Finance Indonesia (`image2.jpg`).
+* **Sinkronisasi Dua Arah (Bidirectional Auto-Sync):**
+  * Perubahan pada input di form kiri memicu scroll otomatis ke baris sel di lembar Excel kanan disertai animasi *pulsing blue highlight* selama 2500ms.
+  * Ribbon bar di kanan dilengkapi 5 tombol quick-jump chips (`1. Identitas` s/d `5. Proyek`) untuk melompat cepat antar bagian dokumen.
 
-#### Tata Letak Sisi Kiri: 5 Modul Accordion Terstruktur
-Formulir dirancang dalam bentuk 5 kartu accordion bernomor yang dapat dibuka/tutup dengan indikator badge progres:
+### 4.4. Tata Kelola Pemegang Saham & Stakeholders (Aturan 100%)
+* **Strict 100% Equity Validation:** Sistem menolak pengajuan permohonan jika total porsi kepemilikan saham tidak genap persis 100.00% ($\pm 0.01\%$).
+* **Kepatuhan APU-PPT:** Mengidentifikasi secara transparan *Ultimate Beneficial Owner (UBO)* yang memiliki saham di atas 25%.
 
-* **Modul 01: Identitas & Klasifikasi Debitur**
-  * `companyName`: Nama resmi badan usaha sesuai akta (wajib).
-  * `companyType`: Kategori bisnis (`CORPORATE`, `COMMERCIAL`, `MICRO`, `LIUGONG_USER`).
-  * `customerStatus`: Hubungan nasabah (`NEW` / `EXISTING`).
-  * `branchCode`: Cabang pemroses (`JKT01` - Jakarta, `BPN01` - Balikpapan, `PLB01` - Palembang, `MDN01` - Medan, `SBY01` - Surabaya).
-  * `locationStatus`: Status kepemilikan tempat usaha (`OWNED` / Milik Sendiri vs `RENTED` / Sewa).
-  * `repaymentSource`: Sumber utama pelunasan kewajiban (e.g. *Termin Kontrak Tambang Nikel*).
+### 4.5. Modul Proyek & Fasilitas Perbankan Eksisting
+* Pencatatan kontrak kerja tambang/infrastruktur (Pemilik Proyek, Lokasi, Peran, Status Kontrak).
+* Pencatatan fasilitas kredit di bank lain (Plafon, Angsuran Bulanan, Bunga, Track Record Pembayaran).
 
-* **Modul 02: Kantor Registrasi & Domisili Perusahaan**
-  * Hierarki Alamat Terpadu: Provinsi $\rightarrow$ Kota/Kabupaten $\rightarrow$ Kecamatan $\rightarrow$ Kelurahan/Desa $\rightarrow$ RT $\rightarrow$ RW $\rightarrow$ Kode Pos.
-  * `companyAddress`: Alamat jalan lengkap kantor operasional/kantor pusat.
-  * `phoneFax`: Nomor telepon dan faksimili kantor (validasi 7–15 digit).
-  * `email`: Alamat email korespondensi resmi perusahaan.
-  * `website`: Alamat situs resmi perusahaan.
+### 4.6. Proposal Pembiayaan & Inventaris Unit Alat Berat LiuGong
+* Multi-unit inventory repeater: Kategori Unit (`HE` vs `TRUCK`), Model (e.g. *CLG922E*, *CLG856H*), Kelas Tonase, Jumlah Unit, dan Spesifikasi.
+* Skema komersial: Nilai Unit, DP (wajib lebih kecil dari nilai unit), Security Deposit, Tenor (hingga 60 bulan), Suku Bunga p.a., dan Opsi Pembayaran (`In Arrear` vs `In Advance`).
 
-* **Modul 03: Profil Usaha & Legalitas Akta**
-  * `nib`: Nomor Induk Berusaha 13 digit angka murni dengan tombol aksi OCR terintegrasi di header field.
-  * `npwp`: Nomor Pokok Wajib Pajak 15 atau 16 digit.
-  * `establishmentActNo`: Nomor Akta Pendirian perseroan.
-  * `establishmentDate`: Tanggal Akta Pendirian (format ISO `YYYY-MM-DD`, tidak boleh melampaui hari ini).
-  * `experienceYears` & `experienceMonths`: Pengalaman beroperasi perusahaan dalam tahun dan bulan (0–11).
-  * `latestDeedNo`: Nomor Akta Perubahan Anggaran Dasar Terakhir.
-  * `latestDeedDate`: Tanggal Akta Perubahan Terakhir.
+### 4.7. Spreading Keuangan 3 Tahun & Validasi Keseimbangan Neraca
+* Menampung laporan keuangan hingga 3 tahun buku terakhir.
+* **Enforced Balance Sheet Equilibrium:** Menggunakan kalkulasi integer sen (*BigInt cents*) yang menjamin:
+  $$\text{Total Aset} \equiv \text{Total Liabilitas} + \text{Ekuitas}$$
+* Kalkulasi 5 rasio profitabilitas dan solvabilitas (Current Ratio, DER, GPM, OPM, NPM, ROA, ROE) secara instan dan bebas galat `Infinity`.
 
-* **Modul 04: Kontak Utama / Penanggung Jawab (PIC)**
-  * `picName`: Nama lengkap pejabat penghubung/PIC.
-  * `position`: Jabatan dalam perusahaan (Direktur Utama, Finance Manager, Kuasa Direksi).
-  * `phone` / `mobilePhone`: Nomor kontak seluler langsung PIC.
-  * `email`: Alamat email kerja PIC.
-  * `currentAddress`: Alamat tempat tinggal domisili PIC saat ini.
-  * `city`, `province`, `postalCode`: Detail wilayah tempat tinggal PIC.
+### 4.8. Tata Kelola Akta Legalitas & WYSIWYG TinyMCE
+* Pemisahan tabel 2-tingkat: *Akta Aktif & Rujukan Terkini* di atas, dan *Riwayat Akta Lama* di bawah.
+* Editor catatan akta TinyMCE dengan normalisasi otomatis daftar bernomor kontinu (`<ol>`) untuk mencegah format nomor melompat.
+* Matriks perbandingan legalitas (*Deed Comparison Matrix*) yang memetakan perubahan modal dan pengurus antar versi akta.
 
-* **Modul 05: Segmentasi Industri & Proyek Berjalan**
-  * `industrySegment`: Klasifikasi sektor (`MINING`, `AGRICULTURE`, `FORESTRY`, `CONSTRUCTION`, `OIL_AND_GAS`, `OTHER`).
-  * `businessRole`: Peran usaha (`CONS_OWNER` / Pemilik Konsesi, `CONTRACTORS` / Kontraktor Utama, `SUB_CONT` / Sub-Kontraktor, `RENTAL` / Rental Alat Berat, `OTHER`).
-  * `mainBusiness`: Deskripsi naratif komoditas utama dan kegiatan operasional harian.
-
----
-
-### 4.3. Mesin OCR Pemindaian NIB OSS (Tesseract Client-Side Engine)
-* **Aksesibilitas UI:** Tombol `[ 📷 Scan OCR NIB ]` terletak pada baris label field NIB sebagai pill badge yang elegan tanpa mengorbankan lebar kotak input.
-* **Mekanisme Kerja:**
-  1. Pengguna mengunggah gambar/scan berkas NIB OSS (format PDF, PNG, JPG).
-  2. Engine Tesseract.js (WASM) memproses dokumen secara lokal di sisi peramban klien demi privasi data nasabah (tanpa mengirim berkas mentah ke API publik eksternal).
-  3. Mesin regex mengekstrak 5 entitas kunci:
-     * **Nomor NIB:** Pola 13 digit numerik persis.
-     * **Nama Perusahaan:** Ekstraksi teks setelah label *Nama Perusahaan* / *Nama Pelaku Usaha*.
-     * **Alamat Perusahaan:** Ekstraksi blok alamat domisili terdaftar.
-     * **Kode Pos:** Pola 5 digit angka wilayah pos.
-     * **Tanggal Pengesahan NIB:** Konversi format tanggal bahasa Indonesia (*contoh: 14 Maret 2022*) menjadi ISO `2022-03-14`.
-  4. Pengguna melihat kotak dialog pratinjau hasil ekstraksi dan dapat menekan tombol `Terapkan ke Formulir` untuk mengisi field secara otomatis.
-
----
-
-### 4.4. Digital Twin Pratinjau Lembar FAP Excel 118-Baris
-Sisi kanan workspace menyajikan pratinjau dokumen lembar FAP yang 100% identik dengan berkas resmi `Application Form APPROVED(mandatory field).xlsx`:
-* **Ribbon Bar Excel:** Dilengkapi kontrol zoom (Auto-Fit, 75%, 100%, 125%), tombol cetak/PDF, dan 5 quick-jump navigation chips.
-* **Auto-Sync Dua Arah (Bidirectional Synchronization):**
-  * Mengedit modul di form kiri mengalirkan data *live* ke sel tabel kanan dan memicu scroll otomatis ke section terkait dengan animasi seleksi border biru (*highlight pulse* 2500ms).
-  * Menekan chip navigasi di kanan otomatis menggulir pratinjau dokumen dan membuka modul accordion yang sesuai di kiri.
-* **Cakupan Struktur Lembar Resmi:**
-  1. Kop resmi dengan Logo PT LiuGong Finance Indonesia (`image2.jpg`) dan Nomor Registrasi FAP unik.
-  2. Bagian Identitas, Cabang, dan Tanggal Registrasi.
-  3. Bagian Profil Perusahaan, Kontak PIC, dan Susunan Pemegang Saham.
-  4. Bagian Tujuan Pembiayaan & Inventaris Fixed Assets Armada Eksisting.
-  5. Bagian Segmentasi Industri & Kontrak Proyek Berjalan.
-  6. Bagian Portofolio Rekening & Fasilitas Kredit Perbankan yang Dimiliki.
-  7. Bagian Usulan Fasilitas Pembiayaan LiuGong & Checklist Kelengkapan Dokumen.
-  8. Bagian Ikhtisar Laporan Keuangan 3 Tahun (Neraca & Laba Rugi).
-  9. Klausul Pernyataan Debitur 4 Butir Hukum.
-  10. Kolom Tanda Tangan Ganda: Debitur (tanda tangan & stempel cap perusahaan) dan Verifikasi Petugas Marketing PT LiuGong Finance Indonesia (kode formulir `ver 01/2025`).
-
----
-
-### 4.5. Tata Kelola Pemegang Saham & Stakeholders (Tab 1)
-* **Aturan Pokok Kepemilikan:**
-  * Mendukung entitas Pemegang Saham Perorangan (*Individual*) dan Badan Usaha (*Corporate*).
-  * **Aturan Saldo 100%:** Pada saat draft, persentase saham dapat diisi bertahap, namun saat permohonan diajukan (*submission*), total kepemilikan saham seluruh pemegang saham **wajib genap persis 100.00%** (toleransi pembulatan $\pm 0.01\%$).
-* **Validasi Identitas Hukum:**
-  * **WNI Perorangan:** Wajib mengisi KTP 16 digit angka valid.
-  * **WNA Perorangan:** Wajib mencantumkan nomor Paspor (5–20 karakter alfanumerik) dan mengunggah checklist E-KITAS.
-  * **Badan Usaha:** Wajib mencantumkan NPWP Badan 15 atau 16 digit.
-* **Struktur Pengurus:** Pencatatan organ perseroan (Direktur Utama, Direktur, Komisaris Utama, Komisaris) lengkap dengan masa berlaku kepengurusan.
-
----
-
-### 4.6. Modul Proyek & Fasilitas Perbankan Eksisting (Tab 2)
-* **Daftar Kontrak Proyek Berjalan:**
-  * Memetakan rekam jejak pekerjaan debitur: Pemilik Proyek (*Project Owner*, e.g. *PT Vale Indonesia Tbk*), Lokasi Proyek (*Project Location*, e.g. *Site Sorowako*), Peran dalam Proyek (*Contractor Role*, e.g. *Sub-kontraktor Hauling Batubara*), dan Status Kontrak (`EXISTING` vs `NEW`).
-* **Rekam Jejak Fasilitas Perbankan / Lembaga Pembiayaan:**
-  * Pencatatan kreditor eksisting: Nama Bank/Leasing, Mata Uang (`IDR`), Plafon Fasilitas (*Credit Facility*), Besaran Angsuran Bulanan (*Monthly Installment*), Tahun Mulai Fasilitas, Suku Bunga (%), Riwayat Kelancaran Pembayaran (*Payment Record*), dan Status Fasilitas (`Active` / `Lunas`).
-  * Informasi ini menjadi basis analisis komitmen utang bulanan debitur bagi Credit Analyst.
-
----
-
-### 4.7. Proposal Pembiayaan & Inventaris Unit Alat Berat (Tab 3)
-* **Spesifikasi Skema Pembiayaan:**
-  * `facilityPurpose`: Tujuan Fasilitas (`INVESTMENT` / Investasi Armada Baru vs `WORKING_CAPITAL` / Modal Kerja).
-  * `financingMethod`: Metode Pembiayaan (`FINANCIAL_LEASE`, `SALE_AND_LEASE_BACK`, `INSTALLMENT_FINANCING`).
-  * `financingValue`: Total Nilai Pembelian Unit Alat Berat (IDR).
-  * `downPaymentValue`: Nilai Uang Muka / DP (IDR) — *Aturan bisnis: DP wajib bernilai lebih kecil dari total nilai pembiayaan*.
-  * `securityDeposit`: Nilai Jaminan Pengaman / Simpanan Jaminan (IDR).
-  * `interestRate`: Suku Bunga Pembiayaan Tahunan (% p.a.).
-  * `tenorMonths`: Jangka waktu fasilitas (12, 24, 36, 48, hingga 60 bulan).
-  * `paymentMethod`: Waktu pembayaran angsuran (`In Arrear` / Belakang vs `In Advance` / Muka).
-* **Inventaris Unit Alat Berat (Equipment Repeater):**
-  * Pencatatan multi-unit rincian mesin: Kategori Unit (`HE` - Heavy Equipment vs `TRUCK`), Merk (LiuGong vs Non-LiuGong), Tipe, Nama Model (e.g. *CLG922E*, *CLG856H*), Kelas Kapasitas (Ton), Jumlah Unit (*Quantity*), Tahun Produksi (*Years*), dan Deskripsi Spesifikasi Teknis Mesin.
-
----
-
-### 4.8. Spreading Keuangan 3 Tahun & Analisis Rasio (Tab 4)
-* **Model Spreading Laporan Keuangan:**
-  * Menampung riwayat data laporan keuangan hingga **3 tahun buku terakhir** (misal: 2023, 2024, 2025).
-  * **Validasi Keseimbangan Neraca (Strict Balance Check):**
-    Sistem menggunakan kalkulasi aritmatika berbasis integer sen (*BigInt cents*) untuk mencegah galat pecahan float:
-    $$\text{Total Aset} = \text{Aset Lancar} + \text{Aset Tidak Lancar}$$
-    $$\text{Total Liabilitas} = \text{Liabilitas Jangka Pendek} + \text{Liabilitas Jangka Panjang}$$
-    $$\text{Total Aset} \equiv \text{Total Liabilitas} + \text{Ekuitas}$$
-    Jika persamaan di atas tidak seimbang, sistem secara deterministik menolak penyimpanan dengan pesan peringatan: *Neraca belum seimbang*.
-* **Rasio Keuangan Otomatis:**
-  * **Current Ratio:** $\frac{\text{Current Assets}}{\text{Current Liabilities}}$
-  * **Debt to Equity Ratio (DER):** $\frac{\text{Total Liabilities}}{\text{Equity}}$
-  * **Gross Profit Margin (GPM):** $\frac{\text{Gross Profit}}{\text{Revenue}} \times 100\%$
-  * **Operating Profit Margin (OPM):** $\frac{\text{Operating Profit}}{\text{Revenue}} \times 100\%$
-  * **Net Profit Margin (NPM):** $\frac{\text{Net Income}}{\text{Revenue}} \times 100\%$
-  * *Catatan Kebijakan:* Rasio menangani pembagian dengan angka nol secara elegan tanpa menampilkan error `Infinity`. Rasio DSCR (*Debt Service Coverage Ratio*) secara eksplisit ditandai *Unavailable* karena tidak tersedianya pos amortisasi & depresiasi pada skema standar FAP.
-
----
-
-### 4.9. Tata Kelola Akta Legalitas & Notaris (Tab 5)
-* **Pemisahan Tabel 2-Tingkat (Two-Tier Deed Table):**
-  1. **Tabel Atas: Akta Aktif & Rujukan Terkini:**
-     Menampilkan 1 Akta Pendirian utama dan 1 Akta Perubahan terakhir yang berlaku efektif sebagai rujukan yuridis operasional.
-  2. **Tabel Bawah: Riwayat Akta Lama (Historical Archive):**
-     Mengarsipkan seluruh akta perubahan historis sebelumnya dan akta yang masa berlakunya telah habis.
-* **Editor WYSIWYG TinyMCE untuk Catatan Akta:**
-  * Dilengkapi editor teks kaya TinyMCE untuk menyusun uraian notaris, perubahan susunan pengurus, atau penambahan setoran modal.
-  * **Normalisasi Daftar Bernomor Otomatis:** Sistem mendeteksi daftar berurutan (`<ol>`) dan menjamin penomoran tetap berlanjut secara kontinu (1, 2, 3...) antar alinea tanpa ter-reset secara tidak sengaja.
-* **Dialog Review & Matriks Komparasi Legalitas (`deed-comparison.tsx`):**
-  * Membandingkan perubahan hak suara, penambahan/penarikan modal, serta pergantian direksi antara akta terdahulu (*Baseline*) dan draf akta terbaru secara berdampingan.
-  * Menghapus field usang `Representative` dan seksi `Pihak terkait` untuk menjaga kesederhanaan dan kepatuhan terhadap format standar Kemenkumham.
-
----
-
-### 4.10. Meja Dokumen Digital & Penyimpanan S3 (Tab 6)
-* **Matriks Checklist Dokumen Wajib:**
-  * Company Profile, NIB, NPWP, SKT/SPPKP, KTP Pengurus & Pemegang Saham, Rekening Koran 3 Bulan Terakhir, Laporan Keuangan 3 Tahun Terakhir, Akta Pendirian & SK Kemenkumham, Akta Perubahan Terakhir & SK Kemenkumham, serta Kontrak Kerja / SPK Proyek.
-* **Keamanan Penyimpanan Objek (AWS S3 Presigned URL):**
-  * Dokumen fisik disimpan pada bucket privat S3 yang terisolasi.
-  * Pengguna hanya dapat mengunduh atau melihat dokumen melalui tautan terotentikasi (*signed URL*) yang memiliki masa kedaluwarsa **15 menit**.
-  * Validasi tanda tangan digital berkas (*magic bytes*) menjamin bahwa berkas yang diunggah benar-benar PDF, PNG, atau JPEG yang sah (maksimal ukuran 20 MB).
+### 4.9. Meja Dokumen Digital & Enkripsi S3 Presigned
+* Checklist kelengkapan berkas wajib sesuai profil nasabah.
+* Penyimpanan objek privat di AWS S3 dengan tautan aman bertanda tangan digital (*presigned URL*) yang kedaluwarsa otomatis dalam 15 menit.
 
 ---
 
 ## BAB 5: Matriks Wewenang, Peran Organisasi & RACI Matrix
 
-Sistem menerapkan prinsip *Separation of Duties (SoD)* perbankan yang ketat:
+Sistem menegakkan prinsip *Separation of Duties (Four-Eyes & Six-Eyes Principle)*:
 
-### 5.1. Definisi Peran Organisasi
-
-```
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│     MKT      │ ──► │      BS      │ ──► │   HEAD_BS    │
-│  (Marketing) │     │ (Branch Sp.) │     │ (Branch Head)│
-└──────────────┘     └──────────────┘     └──────────────┘
-                                                 │
-                                                 ▼
-┌──────────────┐     ┌──────────────┐     ┌──────────────┐
-│  COMMITTEE   │ ◄── │    LEGAL     │ ◄── │      CA      │
-│ (Credit Com.)│     │ (Legal Sp.)  │     │ (Risk Under) │
-└──────────────┘     └──────────────┘     └──────────────┘
-```
-
-1. **`MKT` (Marketing Officer / Relationship Manager):**
-   * Pemilik awal permohonan (*creator/maker*).
-   * Bertanggung jawab mengisi seluruh formulir profil nasabah, mengunggah dokumen agunan dan legalitas, mengoperasikan OCR NIB, serta mengajukan berkas ke Branch Support.
-2. **`BS` (Branch Support Officer - Arianti):**
-   * Verifikator cabang (*first-line checker*).
-   * Memvalidasi kelengkapan fisik berkas, memeriksa konsistensi KTP/NPWP, dan memeriksa draf akta legalitas. Berhak mengembalikan berkas ke MKT (`RETURNED`) jika terdapat kekurangan.
-3. **`HEAD_BS` (Head of Branch Support - Dellatra):**
-   * Pengawas operasional cabang (*authorizer*).
-   * Memberikan persetujuan resmi atas verifikasi akta dan menandatangani kelayakan berkas untuk dinaikkan ke meja kantor pusat (CA & Legal).
-4. **`CA` (Credit Analyst / Underwriter):**
-   * Spesialis asesmen risiko kredit.
-   * Melakukan spreading keuangan, memeriksa rasio solvabilitas/likuiditas, memverifikasi rekam jejak fasilitas bank lain (SLIK OJK), dan menerbitkan *Credit Memo* rekomendasi limit.
-5. **`LEGAL` (Legal Specialist):**
-   * Penelaah kepatuhan hukum dan perikatan jaminan.
-   * Melakukan verifikasi keabsahan notaris, memeriksa riwayat sengketa perseroan, menyusun advis legal (*Legal Opinion*), dan memastikan keabsahan fidusia agunan mesin.
-6. **`COMMITTEE` (Credit Committee):**
-   * Pengambil keputusan tertinggi kredit.
-   * Terdiri dari jajaran Direksi dan Kepala Divisi Risiko yang memiliki wewenang final untuk menyetujui (*APPROVED*) atau menolak (*REJECTED*) permohonan pembiayaan.
-
-### 5.2. Matriks RACI (Responsible, Accountable, Consulted, Informed)
-
-| Aktivitas / Tahapan Kerja | MKT | BS | HEAD_BS | CA | LEGAL | COMMITTEE |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| Registrasi Permohonan & Intake Data Nasabah | **R** | C | I | I | I | I |
-| Pemindaian OCR NIB & Validasi Lapangan | **R** | A | I | I | I | I |
-| Pengisian Struktur Pemegang Saham & Akta | **R** | C | I | I | C | I |
-| Pemeriksaan Kelengkapan Berkas (Checklist) | I | **R** | A | I | I | I |
-| Persetujuan Review Akta Notaris | I | C | **R / A** | I | C | I |
-| Pengembalian Berkas (*Return Workflow*) | I | **R** | A | I | I | I |
-| Spreading Keuangan & Evaluasi Rasio Bisnis | I | I | I | **R** | I | I |
-| Penyusunan Advis Hukum & Telaah Fidusia | I | I | I | I | **R** | I |
-| Sidang Putusan Komite Kredit | I | I | I | C | C | **R / A** |
-| Pencairan Fasilitas & Penguncian Berkas | I | I | I | I | I | **A** |
-
-*Keterangan: R = Responsible (Pelaksana), A = Accountable (Penanggung Jawab Akhir), C = Consulted (Pihak Berkonsultasi), I = Informed (Pihak Menerima Notifikasi).*
+| Departemen / Peran | Jabatan Kunci | Tanggung Jawab Utama dalam Sistem |
+| :--- | :--- | :--- |
+| **MKT** | Marketing / Relationship Mgr | Pendaftaran nasabah, pengoperasian OCR, penyusunan draf awal berkas. |
+| **BS** | Branch Support (Arianti) | Verifikasi keabsahan fisik berkas, pemadanan data KTP/NIB di cabang. |
+| **HEAD_BS** | Head of BS (Dellatra) | Persetujuan resmi cabang atas keabsahan akta dan kelayakan berkas. |
+| **CA** | Credit Analyst / Risk Underwriter | Spreading keuangan 3 tahun, evaluasi skor Pefindo, rekomendasi limit kredit. |
+| **LEGAL** | Legal Specialist | Pemeriksaan kepatuhan notaris, perikatan fidusia jaminan, opini hukum. |
+| **COMMITTEE** | President Director & Komite | Sidang putusan akhir kredit: *APPROVED* atau *REJECTED*. |
 
 ---
 
 ## BAB 6: Alur Persetujuan Kredit & Mesin Status (State Machine)
 
-Sistem memberlakukan 8 status transisi aplikasi yang terkunci secara deterministik:
+Sistem memberlakukan 8 status transisi yang terkunci secara deterministik:
+$$\text{DRAFT} \longrightarrow \text{SUBMITTED\_TO\_BS} \longleftrightarrow \text{RETURNED}$$
+$$\text{SUBMITTED\_TO\_BS} \longrightarrow \text{BS\_VERIFIED} \longrightarrow \text{IN\_CA\_LEGAL\_REVIEW} \longrightarrow \text{CREDIT\_COMMITTEE\_REVIEW} \longrightarrow \text{APPROVED / REJECTED}$$
 
-```
-                  ┌──────────────┐
-                  │    DRAFT     │ ◄──────────────────────┐
-                  └──────┬───────┘                        │
-                         │ Action: SUBMIT                 │
-                         ▼                                │
-              ┌──────────────────────┐                    │
-              │   SUBMITTED_TO_BS    │                    │
-              └──────────┬───────────┘                    │
-                         │ Action: RETURN                 │
-                         ├────────────────────────────────┘
-                         │ Action: VERIFY
-                         ▼
-              ┌──────────────────────┐
-              │     BS_VERIFIED      │
-              └──────────┬───────────┘
-                         │ Action: START_REVIEW
-                         ▼
-              ┌──────────────────────┐
-              │ IN_CA_LEGAL_REVIEW   │
-              └──────────┬───────────┘
-                         │ Action: RECOMMEND (Dual Sign-Off CA & Legal)
-                         ▼
-              ┌──────────────────────┐
-              │CREDIT_COMMITTEE_REV  │
-              └──────────┬───────────┘
-                         │
-         ┌───────────────┴───────────────┐
-         │ Action: APPROVE               │ Action: REJECT
-         ▼                               ▼
-  ┌──────────────┐                ┌──────────────┐
-  │   APPROVED   │                │   REJECTED   │
-  └──────────────┘                └──────────────┘
-```
-
-### Rincian Aturan Transisi:
-1. `DRAFT` $\rightarrow$ `SUBMITTED_TO_BS`:
-   * *Prasyarat:* Profil perusahaan, PIC lengkap, kontak telepon valid, dan susunan pemegang saham genap 100%.
-2. `SUBMITTED_TO_BS` $\rightarrow$ `RETURNED`:
-   * *Pemicu:* Branch Support menemukan dokumen buram atau data tidak cocok. MKT menerima notifikasi catatan perbaikan dan dapat mengedit ulang berkas.
-3. `SUBMITTED_TO_BS` $\rightarrow$ `BS_VERIFIED`:
-   * *Prasyarat:* BS telah memverifikasi seluruh berkas wajib dan Head of BS telah menyetujui Akta Pendirian & Perubahan.
-4. `BS_VERIFIED` $\rightarrow$ `IN_CA_LEGAL_REVIEW`:
-   * Berkas terbuka secara paralel bagi Credit Analyst (untuk analisis finansial) dan Legal (untuk legal opinion).
-5. `IN_CA_LEGAL_REVIEW` $\rightarrow$ `CREDIT_COMMITTEE_REVIEW`:
-   * *Prasyarat:* Kedua pihak (CA dan Legal) telah memberikan rekomendasi positif (*dual sign-off*). Jika salah satu pihak belum sign-off, tombol tidak aktif.
-6. `CREDIT_COMMITTEE_REVIEW` $\rightarrow$ `APPROVED`:
-   * Persetujuan final fasilitas kredit. Berkas dibekukan permanen (*read-only lock*) untuk audit OJK.
-7. `CREDIT_COMMITTEE_REVIEW` $\rightarrow$ `REJECTED`:
-   * Penolakan formal dengan kewajiban mencantumkan alasan tertulis yang tersimpan permanen pada riwayat audit.
+* **Dual Sign-Off Gate:** Berkas tidak dapat melangkah ke Komite Kredit jika salah satu dari Credit Analyst atau Legal belum memberikan rekomendasi persetujuan tertulis di sistem.
+* **Approval Freeze Lock:** Aplikasi yang berstatus *APPROVED* terkunci secara permanen menjadi arsip hukum *read-only*.
 
 ---
 
 ## BAB 7: Logika Validasi Bisnis, Formula Finansial & Aktuaria
 
-### 7.1. Formula Angsuran Pembiayaan (Annuity Reducing Balance)
-Perhitungan angsuran bulanan pokok dan bunga dihitung menggunakan rumus anuitas bunga efektif:
-
+### 7.1. Rumus Anuitas Bunga Efektif (Reducing Balance Annuity)
 $$\text{PMT} = \frac{PV \times r}{1 - (1 + r)^{-n}}$$
+* $PV$ = Total Pokok Pembiayaan Bersih ($\text{Harga Unit} - \text{Down Payment}$).
+* $r$ = Suku bunga per bulan ($\frac{\text{Suku Bunga Tahunan}}{12}$).
+* $n$ = Tenor dalam bulan.
 
-*Di mana:*
-* $PV$ (*Present Value*) = Nilai Pokok Pembiayaan Bersih ($\text{Total Nilai Unit} - \text{Down Payment}$).
-* $r$ = Suku bunga bulanan ($\frac{\text{Suku Bunga Tahunan}}{12}$).
-* $n$ = Total tenor dalam bulan (misal: 36 bulan).
-* *Penyesuaian In Advance:* Jika skema *In Advance*, angsuran pertama dipungut saat pencairan, sehingga sisa pokok yang diamortisasi berkurang satu periode.
-
-### 7.2. Validasi Batas Nilai & Format Karakter
-* **Tanggal Historis:** Tanggal Akta, Tanggal Lahir, Tanggal Registrasi, dan Tanggal SK Menteri dibatasi antara `1900-01-01` hingga tanggal hari ini (`today`). Tanggal di masa depan otomatis ditolak.
-* **Masa Berlaku Akta:** Masa berlaku akta dihitung secara dinamis:
-  $$\text{Tanggal Kedaluwarsa} = \text{Tanggal Akta} + 5 \text{ Tahun}$$
-  Akta yang melampaui tanggal tersebut ditandai dengan status `Tidak aktif`.
-* **Nomor Kontak:** Mendukung format lokal dan internasional (`+62`), dengan batas panjang digit bersih antara 7 hingga 15 digit angka.
-* **Presisi Angka Keuangan:** Seluruh nilai rupiah dibatasi maksimal 2 angka desimal dan batas atas mutlak $10^{16}$ (10 kuadriliun Rupiah).
+### 7.2. Integritas Batas Nilai & Penjaga Keuangan
+* Tanggal akta dan dokumen historis dibatasi antara tahun 1900 hingga tanggal hari ini (`today`).
+* Angka keuangan mendukung hingga skala 10 kuadriliun rupiah dengan toleransi maksimal 2 angka desimal.
 
 ---
 
-## BAB 8: Kepatuhan Regulasi, Privasi Data (UU PDP) & Jejak Audit
+## BAB 8: Kepatuhan Regulasi OJK, UU PDP & Jejak Audit Tak Terubahkan
 
-### 8.1. Kepatuhan Undang-Undang Pelindungan Data Pribadi (UU PDP No. 27/2022)
-1. **Pemrosesan Data Berbasis Peran (Least Privilege):** Pengguna hanya dapat mengakses dokumen identitas (KTP, KK, NPWP) sesuai dengan kebutuhan fungsi jabatannya.
-2. **Isolasi Tautan Dokumen:** Tidak ada tautan publik statis ke dokumen nasabah. Seluruh URL unduhan di-generate secara privat dengan masa aktif hanya 15 menit menggunakan signature AWS S3.
-3. **Penyimpanan Lokal WASM OCR:** Pemrosesan gambar NIB dan KTP dilakukan pada memori lokal peramban klien pengguna tanpa pernah dilempar ke pihak ketiga (mengeliminasi risiko kebocoran data di transit).
-
-### 8.2. Catatan Audit Tak Terubahkan (Immutable Append-Only Audit Trail)
-Setiap mutasi data dilindungi oleh pemicu (*database trigger*) pada tabel `audit_logs`:
-* **Pencegahan Modifikasi:** Percobaan operasi `UPDATE` atau `DELETE` pada tabel log audit akan langsung dibatalkan (*aborted*) oleh trigger basis data dengan kode error `P0001: Audit records are append-only and cannot be altered or removed`.
-* **Struktur Metadata Log:** Mencatat ID Aplikasi, ID Aktor, Peran Jabatan, Tipe Aksi, Alamat IP Pengguna, Stempel Waktu Mikrodetik (UTC), serta rekaman kondisi data sebelum (*previous_state*) dan sesudah (*new_state*).
+1. **Kepatuhan UU PDP No. 27/2022:** Tidak ada data nasabah yang bocor ke publik; pemrosesan OCR dilakukan di memori lokal peramban; tautan berkas privat dengan waktu kedaluwarsa ketat.
+2. **Kepatuhan Regulasi OJK (POJK Pembiayaan):** Dokumentasi digital memenuhi standar pembuktian hukum dan pemeriksaan audit kepatuhan multifinance.
+3. **Catatan Audit Tak Terubahkan (Immutable Trigger Log):** Tabel `audit_logs` dilindungi pemicu basis data tingkat kernel yang memblokir keras setiap perintah `UPDATE` dan `DELETE`. Setiap klik dan perubahan status tercatat abadi beserta stempel waktu, IP address, dan ID aktor.
 
 ---
 
-## BAB 9: Master Data, Wilayah Administratif & Standar KBLI
+## BAB 9: Master Data, Wilayah Administratif & Standar Industri KBLI
 
-Sistem mengintegrasikan katalog data referensi terstandarisasi:
-
-### 9.1. Wilayah Administratif Republik Indonesia
-Struktur hierarkis terpadu mencakup:
-* **38 Provinsi:** Dari Nanggroe Aceh Darussalam hingga Papua Selatan.
-* **514 Kota & Kabupaten:** Hubungan relasional otomatis yang memastikan pemilihan Kota hanya memunculkan Kecamatan yang valid.
-* **Kecamatan, Kelurahan & Kodifikasi Pos:** Pemilihan Kelurahan secara otomatis mempopulasikan 5 digit Kode Pos resmi PT Pos Indonesia.
-
-### 9.2. Sektor Usaha & KBLI
-Pilihan industri disesuaikan dengan fokus penyaluran pembiayaan alat berat LiuGong:
-1. **Pertambangan (Mining):** Batubara, Nikel, Bauksit, Emas, Pasir Besi, Quarry Granit/Batu.
-2. **Pertanian & Perkebunan (Agriculture):** Perkebunan Kelapa Sawit, Tebu, Karet, Pengolahan Lahan.
-3. **Kehutanan (Forestry):** Hutan Tanaman Industri (HTI), Penebangan Kayu Legal (*Logging*).
-4. **Konstruksi & Infrastruktur (Construction):** Pembangunan Jalan Tol, Bendungan, Pelabuhan, Gedung Bertingkat.
-5. **Minyak & Gas Bumi (Oil & Gas):** Pengeboran Darat, Pematangan Lahan Pipa Migas.
+* **Katalog Wilayah Nasional:** 38 Provinsi, 514 Kota/Kabupaten, ribuan Kecamatan dan Kelurahan, serta kodifikasi pos otomatis.
+* **Klasifikasi KBLI Industri:** Sektor Pertambangan, Pertanian/Perkebunan, Kehutanan, Konstruksi, dan Migas yang dipetakan langsung dengan matriks selera risiko (*risk appetite*) perusahaan.
 
 ---
 
 ## BAB 10: Metrik Keberhasilan Bisnis, KPI & Standar SLA
 
-Sistem dirancang untuk memenuhi sasaran indikator kinerja operasional:
-
-| Metrik Kinerja (KPI) | Standar Sebelum Sistem | Target Standar LOS-CRM | Metode Pengukuran |
-| :--- | :---: | :---: | :--- |
-| **Siklus Total Pengajuan (TAT)** | 10 – 14 Hari Kerja | **$\le$ 48 Jam (2 Hari Kerja)** | Waktu dari status `DRAFT` pertama kali dibuat hingga `APPROVED`. |
-| **SLA Verifikasi Cabang (BS)** | 2 – 3 Hari | **$\le$ 4 Jam Kerja** | Waktu dari `SUBMITTED_TO_BS` hingga `BS_VERIFIED`. |
-| **SLA Analisis CA & Legal** | 4 – 5 Hari | **$\le$ 24 Jam Kerja** | Waktu dari `BS_VERIFIED` hingga rekomendasi komite. |
-| **Tingkat Retur Berkas (Defect Rate)** | 35% – 40% permohonan | **$\le$ 3% permohonan** | Persentase aplikasi yang mengalami status `RETURNED`. |
-| **Akurasi Validasi Neraca & Saham** | Sering salah hitung | **100% Zero-Error** | Enforced secara algoritmik di sisi form & backend Zod. |
-| **Ketersediaan Sistem (Uptime)** | N/A (Manual) | **99.9% High Availability** | Pemantauan Task Scheduler & Express Healthcheck. |
+| Indikator Kinerja Utama (KPI) | Sebelum Sistem | Target Sistem Baru (LOS-CRM) |
+| :--- | :---: | :---: |
+| **Turnaround Time (TAT) Siklus Kredit** | 10 – 14 Hari Kerja | **$\le$ 48 Jam (2 Hari Kerja)** |
+| **Waktu Pendaftaran & Input Data Debitur** | 4 – 6 Jam | **$\le$ 30 Menit (dengan Multi-Doc AI/OCR)** |
+| **Waktu Penarikan Data SLIK / Pefindo** | 1 – 2 Hari Kerja | **Real-time (Detik) via Pefindo Bridge** |
+| **Tingkat Retur Berkas (*Defect Rate*)** | 35% – 40% permohonan | **$\le$ 3% permohonan** |
+| **Akurasi Validasi Neraca & Saham** | Rentan salah hitung | **100% Zero-Error (Tervalidasi Sistem)** |
+| **Ketersediaan Layanan Operasional** | Tergantung jam kantor | **24/7 Digital High Availability** |
 
 ---
 
 ### Lembar Pengesahan Spesifikasi Bisnis
 
-| Dibuat & Dirancang Oleh | Ditinjau & Disetujui Oleh |
+| Disusun & Diajukan Oleh | Ditelaah & Disetujui Oleh |
 | :---: | :---: |
-| <br/><br/>**Personal AI CTO / Systems Architect**<br/>Lead Enterprise Solution | <br/><br/>**Latom**<br/>Owner & Executive Decision Maker |
-
-*Dokumen ini merupakan spesifikasi bisnis resmi dan aset intelektual PT LiuGong Finance Indonesia.*
+| <br/><br/>**Latom**<br/>Lead Project In-Charge & System Owner | <br/><br/>**Presiden Direktur**<br/>PT LiuGong Finance Indonesia |
