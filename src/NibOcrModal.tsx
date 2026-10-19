@@ -6,8 +6,10 @@ import {
 } from 'lucide-react';
 import { api } from './api';
 import { 
-  extractNibTextFromDocument, parseNibText, SAMPLE_NIB_TEXT, ParsedNibData 
+  extractNibTextFromDocument, parseNibText, extractWilayahFromAddressAndText, 
+  SAMPLE_NIB_TEXT, ParsedNibData 
 } from './nib-ocr';
+import { useMasterData } from './master-data';
 
 export interface NibOcrModalProps {
   open: boolean;
@@ -31,6 +33,7 @@ export interface NibOcrModalProps {
 }
 
 export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps) {
+  const master = useMasterData();
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [ocrLoading, setOcrLoading] = useState(false);
@@ -70,7 +73,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
     setOcrLoading(true);
 
     try {
-      // 1. Try real backend OCR endpoint (supports PDF, PNG, JPG, WEBP)
+      // 1. Send file directly to OCR backend scanner (supports PDF, PNG, JPG, JPEG, WEBP)
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'nib');
@@ -80,23 +83,37 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         const d = res.data;
         const newNib = String(d.nib || '').replace(/\D/g, '').slice(0, 13);
         const newCompanyName = String(d.company_name || d.companyName || '').trim();
-        const newAlamat = String(d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '').trim();
-        const newProvince = String(d.provinsi || d.province || '').trim();
-        const newCity = String(d.kota || d.city || d.cityRegency || '').trim();
-        const newDistrict = String(d.kecamatan || d.district || '').trim();
-        const newVillage = String(d.kel_desa || d.village || d.kelurahan || '').trim();
-        const newPostal = String(d.kode_pos || d.postalCode || '').replace(/\D/g, '').slice(0, 5);
+        const rawAddress = String(d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '').trim();
+        
+        let newProvince = String(d.provinsi || d.province || '').trim();
+        let newCity = String(d.kota || d.city || d.cityRegency || '').trim();
+        let newDistrict = String(d.kecamatan || d.district || '').trim();
+        let newVillage = String(d.kel_desa || d.village || d.kelurahan || '').trim();
+        let newPostal = String(d.kode_pos || d.postalCode || '').replace(/\D/g, '').slice(0, 5);
+        let newRt = String(d.rt || '').trim();
+        let newRw = String(d.rw || '').trim();
+
+        // If any region fields are missing, resolve them via address parser & master data
+        if (!newProvince || !newCity || !newDistrict || !newVillage || !newPostal || !newRt || !newRw) {
+          const w = extractWilayahFromAddressAndText(rawAddress, rawAddress, master);
+          if (!newProvince && w.province) newProvince = w.province;
+          if (!newCity && w.city) newCity = w.city;
+          if (!newDistrict && w.district) newDistrict = w.district;
+          if (!newVillage && w.village) newVillage = w.village;
+          if (!newPostal && w.postalCode) newPostal = w.postalCode;
+          if (!newRt && w.rt) newRt = w.rt;
+          if (!newRw && w.rw) newRw = w.rw;
+        }
+
         const newEmail = String(d.email || '').trim();
         const newPhone = String(d.phone || d.phoneFax || '').trim();
         const newTanggal = String(d.tanggal_terbit || d.establishmentDate || '').trim();
-        const newRt = String(d.rt || '').trim();
-        const newRw = String(d.rw || '').trim();
 
-        // Overwrite fields on the right panel
+        // OVERWRITE fields on the right panel
         setFormData({
           nib: newNib,
           companyName: newCompanyName,
-          alamat: newAlamat,
+          alamat: rawAddress,
           province: newProvince,
           city: newCity,
           district: newDistrict,
@@ -108,23 +125,24 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           rt: newRt,
           rw: newRw
         });
-        setRawText(d.fullAddress || d.alamat_lengkap || JSON.stringify(d, null, 2));
+        setRawText(rawAddress || JSON.stringify(d, null, 2));
         if (notify) {
-          notify(`OCR processing complete for ${f.name}`);
+          notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
         }
+        setOcrLoading(false);
         return;
       }
     } catch (backendErr: any) {
       console.warn('Backend OCR scan failed, attempting client-side fallback:', backendErr);
     }
 
-    // 2. Client-side fallback (FileReader + Client Parser)
+    // 2. Client-side fallback for images or when server is unavailable
     const r = new FileReader();
     r.onload = async () => {
       const dataUrl = r.result as string;
       setFileUrl(dataUrl);
       try {
-        const extracted = await extractNibTextFromDocument(dataUrl, f.name);
+        const extracted = await extractNibTextFromDocument(dataUrl, f.name, master);
         setRawText(extracted.rawText);
         setFormData({
           nib: extracted.nib || '',
@@ -160,7 +178,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
     setFileUrl('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="150"><rect width="100%" height="100%" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="14" fill="%230f172a">Sample OSS NIB Document</text></svg>');
     setOcrLoading(true);
     setTimeout(() => {
-      const extracted = parseNibText(SAMPLE_NIB_TEXT);
+      const extracted = parseNibText(SAMPLE_NIB_TEXT, master);
       setRawText(SAMPLE_NIB_TEXT);
       setFormData({
         nib: extracted.nib || '',
