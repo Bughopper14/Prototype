@@ -474,10 +474,10 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
               <div className="fap-acc-title-row">
                 <h4 className="fap-acc-title">Kantor Registrasi & Domisili Perusahaan</h4>
                 <span className={`fap-acc-badge ${draft.city && draft.companyAddress ? 'success' : ''}`}>
-                  {draft.city ? `${draft.city} (${draft.branchCode || 'Cabang'})` : 'Belum diisi'}
+                  {draft.city ? `${draft.city} (${draft.branchCode || 'Area'})` : 'Belum diisi'}
                 </span>
               </div>
-              <p className="fap-acc-subtitle">Cabang pengajuan, kepemilikan domisili, alamat lengkap, dan kontak resmi</p>
+              <p className="fap-acc-subtitle">Area pengajuan, kepemilikan domisili, alamat lengkap, dan kontak resmi</p>
             </div>
           </div>
           <div className="fap-acc-header-right">
@@ -501,7 +501,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
         {openSections['fap-preview-sec-company'] && (
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
-              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Status Kantor & Cabang</h5>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Status Kantor & Area Operasional</h5>
               <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>

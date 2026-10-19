@@ -294,12 +294,14 @@ def build_word_document():
     p.paragraph_format.line_spacing = 1.15
     p.paragraph_format.space_after = Pt(6)
     p.add_run(
-        "FAP STAGE (Financing Application Process) adalah gerbang intake operasional paling awal pada sistem LOS-CRM LiuGong Finance. "
-        "Pada tahap ini, tim Marketing (MKT) di seluruh kantor cabang bertugas melakukan onboarding calon debitur secara komprehensif, "
+        "FAP STAGE (Financing Application Process) adalah gerbang intake operasional paling awal pada sistem LOS-CRM LiuGong Finance Indonesia. "
+        "Pada model bisnis LiuGong Finance, operasional berjalan terpusat di Kantor Pusat (Head Office) tanpa kantor cabang fisik di daerah, "
+        "bekerja sama langsung dengan jaringan Dealer Resmi LiuGong (seperti PT Megatama Mandiri, dll.). "
+        "Tim Marketing (MKT) bertugas melakukan onboarding calon debitur secara komprehensif, "
         "menghimpun data legalitas korporasi, memetakan susunan pengurus serta pemegang saham, dan memverifikasi kelengkapan berkas fisik "
         "persyaratan pembiayaan sebelum permohonan diteruskan ke tahap analisis risiko.\n\n"
         "Secara garis besar, aktivitas utama staf Marketing pada FAP Stage mencakup:\n"
-        "1. Inisiasi Permohonan: Menentukan kategori debitur (Baru/Lama), segmentasi (Corporate/Commercial/Micro), dan cabang operasional LiuGong.\n"
+        "1. Inisiasi Permohonan: Menentukan kategori debitur (Baru/Lama), segmentasi (Corporate/Commercial/Micro), dan penunjukan mitra dealer resmi LiuGong.\n"
         "2. Perekaman Identitas & Domisili: Memasukkan nama resmi PT/CV, alamat kantor pusat, kontak penanggung jawab operasional (PIC), serta segmentasi proyek kontrak berjalan.\n"
         "3. Dokumentasi Yuridis Notaris: Merekam data akta pendirian dan akta perubahan terakhir lengkap dengan tanggal dan nomor SK Menkumham.\n"
         "4. Pemetaan Tata Kelola Kepemilikan: Mendaftarkan seluruh direksi, komisaris, dan pemegang saham dengan validasi keras komposisi modal 100.00%.\n"
@@ -562,7 +564,7 @@ def build_word_document():
     p.add_run(
         "• Rincian Unit Alat Berat LiuGong: Inventaris unit (Excavator 922E, Wheel Loader 856H, Dump Truck), harga OTR, subsidi dealer, dan uang muka (DP 20%–30%).\n"
         "• Mesin Aktuaria Bunga Efektif: Simulasi angsuran anuitas menurun resmi (reducing balance annuity) presisi tinggi.\n"
-        "• Persetujuan Komite Kredit Digital: Pelaksanaan sidang komite kredit digital berjenjang (Tier 1 Cabang s/d Tier 3 Direksi/Presdir) dengan hak Approve, Reject, atau Return, disertai pencatatan audit trail permanen."
+        "• Persetujuan Komite Kredit Digital: Pelaksanaan sidang komite kredit digital berjenjang (Tier 1 s/d Tier 3 Direksi/Presdir) dengan hak Approve, Reject, atau Return, disertai pencatatan audit trail permanen."
     )
 
     doc.add_page_break()

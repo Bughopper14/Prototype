@@ -150,7 +150,7 @@ Di antara FAP Stage dan Pre-Analysis, sistem menyediakan **Gateway Interkoneksi 
 
 ### 4.1. Workspace Split 50-50 & Form 5-Modul Accordion
 Formulir permohonan dirancang dalam format Split 50-50 berdampingan yang elegan, membagi 35+ field input ke dalam 5 modul kartu accordion terstruktur:
-1. `01. Identitas & Klasifikasi Debitur`: Kategori bisnis (`CORPORATE`, `COMMERCIAL`, `MICRO`, `LIUGONG_USER`), cabang, status kepemilikan kantor.
+1. `01. Identitas & Klasifikasi Debitur`: Kategori bisnis (`CORPORATE`, `COMMERCIAL`, `MICRO`, `LIUGONG_USER`), penunjukan dealer/area operasional, status kepemilikan kantor.
 2. `02. Kantor Registrasi & Domisili Perusahaan`: Hierarki alamat administratif lengkap (Provinsi s/d RT/RW dan Kode Pos).
 3. `03. Profil Usaha & Legalitas Akta`: NIB 13 digit dengan tombol OCR, NPWP, Akta Pendirian, masa beroperasi perusahaan.
 4. `04. Kontak Utama / Penanggung Jawab (PIC)`: Data lengkap kontak operasional dan alamat tempat tinggal PIC.
@@ -203,9 +203,9 @@ Sistem menegakkan prinsip *Separation of Duties (Four-Eyes & Six-Eyes Principle)
 
 | Departemen / Peran | Jabatan Kunci | Tanggung Jawab Utama dalam Sistem |
 | :--- | :--- | :--- |
-| **MKT** | Marketing / Relationship Mgr | Pendaftaran nasabah, pengoperasian OCR, penyusunan draf awal berkas. |
-| **BS** | Branch Support (Arianti) | Verifikasi keabsahan fisik berkas, pemadanan data KTP/NIB di cabang. |
-| **HEAD_BS** | Head of BS (Dellatra) | Persetujuan resmi cabang atas keabsahan akta dan kelayakan berkas. |
+| **MKT** | Marketing / Relationship Mgr | Pendaftaran nasabah, pengoperasian OCR, penyusunan draf awal berkas bersama mitra Dealer Resmi. |
+| **BS** | Business Support (Arianti) | Verifikasi keabsahan fisik berkas, pemadanan data KTP/NIB di Head Office. |
+| **HEAD_BS** | Head of Business Support (Dellatra) | Persetujuan resmi keabsahan akta dan kelayakan berkas operasional. |
 | **CA** | Credit Analyst / Risk Underwriter | Spreading keuangan 3 tahun, evaluasi skor Pefindo, rekomendasi limit kredit. |
 | **LEGAL** | Legal Specialist | Pemeriksaan kepatuhan notaris, perikatan fidusia jaminan, opini hukum. |
 | **COMMITTEE** | President Director & Komite | Sidang putusan akhir kredit: *APPROVED* atau *REJECTED*. |

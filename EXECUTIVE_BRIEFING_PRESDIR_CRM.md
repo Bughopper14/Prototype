@@ -25,7 +25,7 @@ $$\textbf{1. FAP STAGE} \;\longrightarrow\; \textbf{2. PRE-ANALYSIS} \;\longrigh
     * **e-KTP:** Ekstraksi identitas pengurus WNI tanpa salah ketik NIK.
     * **PASSPORT & E-KITAS:** Ekstraksi otomatis bagi Direksi atau Pemegang Saham WNA/Expatriate.
     * **NPWP:** Validasi nomor pokok wajib pajak badan maupun perorangan.
-  * **Nilai Bisnis:** Menghemat waktu administrasi hingga 80%, mengeliminasi salah ketik, dan membuat proses onboarding nasabah di kantor cabang menjadi sangat profesional dan instan.
+  * **Nilai Bisnis:** Menghemat waktu administrasi hingga 80%, mengeliminasi salah ketik, dan membuat proses onboarding debitur bersama mitra dealer resmi menjadi sangat profesional dan instan.
 
 ---
 
@@ -44,7 +44,7 @@ $$\textbf{1. FAP STAGE} \;\longrightarrow\; \textbf{2. PRE-ANALYSIS} \;\longrigh
 ### 2. PRE-ANALYSIS (Early Risk Gatekeeping)
 * **Poin Penjelasan:**
   * Memanfaatkan data intelijen Pefindo dan profil industri (batubara, nikel, kelapa sawit, infrastruktur) untuk penilaian awal kelayakan (*early screening*).
-  * Tim risiko dan cabang langsung mendapatkan indikator awal: apakah permohonan ini layak dilanjutkan (*Go*), butuh jaminan tambahan (*Review*), atau ditolak di awal (*Drop*).
+  * Tim risiko langsung mendapatkan indikator awal: apakah permohonan ini layak dilanjutkan (*Go*), butuh jaminan tambahan (*Review*), atau ditolak di awal (*Drop*).
   * Mencegah pemborosan waktu analis untuk debitur bermasalah.
 
 ---
@@ -78,7 +78,7 @@ $$\textbf{1. FAP STAGE} \;\longrightarrow\; \textbf{2. PRE-ANALYSIS} \;\longrigh
    * Menggunakan *Immutable Append-Only Audit Trail* di mana setiap tindakan pengguna tercatat permanen di level basis data dan tidak bisa dimanipulasi atau dihapus.
    * Kepatuhan penuh terhadap UU Pelindungan Data Pribadi (UU PDP No. 27/2022).
 4. **Kenyamanan Operasional Tanpa Mengubah Budaya Kerja (Digital Twin Parity):**
-   * Antarmuka kerja tetap menampilkan pratinjau lembar kerja Excel FAP resmi 118-baris secara berdampingan (*Side-by-Side 50-50 Split*), sehingga tim cabang dan manajemen tetap familiar dengan format dokumen yang sudah ada.
+   * Antarmuka kerja tetap menampilkan pratinjau lembar kerja Excel FAP resmi 118-baris secara berdampingan (*Side-by-Side 50-50 Split*), sehingga tim operasional dan manajemen tetap familiar dengan format dokumen yang sudah ada.
 
 ---
 
@@ -88,10 +88,10 @@ $$\textbf{1. FAP STAGE} \;\longrightarrow\; \textbf{2. PRE-ANALYSIS} \;\longrigh
 | :--- | :--- | :---: |
 | **Fase 1 (Current)** | Arsitektur Inti, Workspace 50-50, 5 Modul Accordion, NIB OCR, Legal Review | **SELESAI (100% Verified)** |
 | **Fase 2 (Current)** | Penyesuaian Formula Spreading Keuangan 3 Tahun & Integrasi Digital Twin FAP | **SELESAI (100% Verified)** |
-| **Fase 3 (Next Sprint)**| Pemasangan Multi-Doc OCR (KTP, Paspor, NPWP, E-KITAS) & UAT Cabang Jakarta | **Ready for Execution** |
+| **Fase 3 (Next Sprint)**| Pemasangan Multi-Doc OCR (KTP, Paspor, NPWP, E-KITAS) & UAT Head Office | **Ready for Execution** |
 | **Fase 4 (Next Sprint)**| Integrasi API Gateway / OCR Parser Pefindo Biro Kredit & Go-Live Nasional | **Ready for Execution** |
 
 ---
 
 ## V. CLOSING STATEMENT UNTUK PRESIDEN DIREKTUR
-> *"Bapak Presiden Direktur, sistem ini dirancang dengan standar kualitas enterprise yang siap diskalakan ke seluruh cabang LiuGong di Indonesia. Kami siap mendemonstrasikan sistem ini secara langsung dan melanjutkan penyempurnaan integrasi fitur sesuai arahan strategis Bapak."*
+> *"Bapak Presiden Direktur, sistem ini dirancang dengan standar kualitas enterprise yang siap mendukung akselerasi pembiayaan unit alat berat LiuGong di seluruh ekosistem dealer resmi Indonesia. Kami siap mendemonstrasikan sistem ini secara langsung dan melanjutkan penyempurnaan integrasi fitur sesuai arahan strategis Bapak."*
