@@ -17,11 +17,24 @@ const appTables=['legal_stakeholder','akta_pendirian','akta_perubahan','daftar_a
 const column=(s:string)=>s.replace(/[A-Z]/g,c=>'_'+c.toLowerCase());
 const picColumn=(s:string)=>s==='district'?'kecamatan':s==='village'?'kelurahan':s==='currentAddress'?'alamat_pic':column(s);
 const same=(a:any,b:any)=>String(a??'')===String(b??'');
-const databaseValue=(value:any,type?:string)=>value instanceof Date&&type==='date'?value.toISOString().slice(0,10):value;
+const databaseValue=(value:any,type?:string)=>value instanceof Date?value.toISOString().slice(0,10):value;
 const fieldType=(f:any)=>f.key==='experienceYears'||f.key==='experienceMonths'?'INT':f.type==='date'?'DATE':f.type==='number'?'INT':'TEXT';
+export const sanitizeFieldValue=(value:any,type?:string)=>{
+ if(value===undefined||value===null)return null;
+ if(value instanceof Date)return value.toISOString().slice(0,10);
+ if(typeof value==='string'){
+  const trimmed=value.trim();
+  if(!trimmed)return null;
+  if(type==='date')return trimmed.slice(0,10);
+  return trimmed;
+ }
+ if(type==='date')return null;
+ if(type==='number'&&typeof value==='number'&&Number.isNaN(value))return null;
+ return value;
+};
 const readFields=(row:any,fields:readonly any[])=>Object.fromEntries(fields.map(f=>[f.key,databaseValue(row[column(f.key)],f.type)]));
-const inputFields=(input:any,fields:readonly any[])=>Object.fromEntries(fields.map(f=>{const value=input?.[f.key];return [column(f.key),value===undefined||value===''?null:value];}));
-const fieldValues=(input:any,fields:readonly any[])=>fields.map(f=>input?.[f.key]===undefined||input?.[f.key]===''?null:input[f.key]);
+const inputFields=(input:any,fields:readonly any[])=>Object.fromEntries(fields.map(f=>[column(f.key),sanitizeFieldValue(input?.[f.key],f.type)]));
+const fieldValues=(input:any,fields:readonly any[])=>fields.map(f=>sanitizeFieldValue(input?.[f.key],f.type));
 const customerDirectoryValues=(customer:any,profile:any,relationship:string)=>({...inputFields({...customer,...profile},directoryFields),customer_relationship:relationship});
 const mysqlError=(message:string,status=422)=>Object.assign(new Error(message),{status});
 
@@ -223,10 +236,15 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
  const customer={...(current?.customer||{}),...customerInput};
  const experience=experienceFromEstablishmentDate(customer?.establishmentDate);
  const fapData: Record<string, any>=Object.fromEntries(fapFields.map(f=>{
-  if (f.key==='experienceYears') return [column(f.key), experience.experienceYears];
-  if (f.key==='experienceMonths') return [column(f.key), experience.experienceMonths];
-  if (customer && customer[f.key] !== undefined && customer[f.key] !== null) return [column(f.key), customer[f.key]];
-  return [column(f.key), profile[f.key] ?? null];
+  if (f.key==='experienceYears') return [column(f.key), experience.experienceYears ?? 0];
+  if (f.key==='experienceMonths') return [column(f.key), experience.experienceMonths ?? 0];
+  let val: any = undefined;
+  if (customer && customer[f.key] !== undefined && customer[f.key] !== null) {
+   val = customer[f.key];
+  } else if (profile && profile[f.key] !== undefined && profile[f.key] !== null) {
+   val = profile[f.key];
+  }
+  return [column(f.key), sanitizeFieldValue(val, f.type)];
  }));
  const preData=inputFields({...customer,...profile},preFields);
  if(Object.hasOwn(profile,'customerStatus')&&profile.customerStatus)fapData.customer_category=profile.customerStatus;
@@ -248,10 +266,24 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
    const district=districts[0];storedPic.district=district.name;
    if(pic.village){const [villages]=await c.execute<any[]>('SELECT id,name FROM master_kelurahan_desa WHERE (id=? OR name=?) AND kecamatan_id=?',[pic.village,pic.village,district.id]);if(villages.length!==1)throw mysqlError('Pilih kelurahan/desa yang sesuai dengan kecamatan.');storedPic.village=villages[0].name;}
   }else if(pic.village)throw mysqlError('Pilih kecamatan sebelum memilih kelurahan/desa.');
-  const updateTable=async(table:string,idColumn:string,rowId:string,values:Record<string,any>)=>{const [old]=await c.execute<any[]>(`SELECT * FROM ${table} WHERE ${idColumn}=? FOR UPDATE`,[rowId]);if(!old.length)throw mysqlError('Application stage was not found',404);const keys=Object.keys(values),isChanged=keys.some(k=>!same(databaseValue(old[0][k],String(old[0][k] instanceof Date?'date':'')),databaseValue(values[k],String(values[k] instanceof Date?'date':''))));if(isChanged){await c.execute(`UPDATE ${table} SET ${keys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE ${idColumn}=?`,[...Object.values(values),rowId]);changed=true;}};
+  const updateTable=async(table:string,idColumn:string,rowId:string,values:Record<string,any>)=>{
+    const [old]=await c.execute<any[]>(`SELECT * FROM ${table} WHERE ${idColumn}=? FOR UPDATE`,[rowId]);
+    if(!old.length)throw mysqlError('Application stage was not found',404);
+    const sanitizedValues: Record<string, any> = {};
+    for (const [k, v] of Object.entries(values)) {
+      sanitizedValues[k] = (v === '' || v === undefined) ? null : v;
+    }
+    const keys=Object.keys(sanitizedValues);
+    const isChanged=keys.some(k=>!same(databaseValue(old[0][k],'date'),databaseValue(sanitizedValues[k],'date')));
+    if(isChanged){
+      await c.execute(`UPDATE ${table} SET ${keys.map(k=>`\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE ${idColumn}=?`,[...Object.values(sanitizedValues),rowId]);
+      changed=true;
+    }
+   };
   await updateTable('new_application_fap_stage','id_fap_stage',app[0].id_fap_stage,fapData);
   await updateTable('new_application_pre_analisis','id_pre_analysis',app[0].id_pre_analysis,preData);
-  const directoryData:Record<string,any>=customerDirectoryValues({...customer,...experience},profile,profile.customerStatus||current?.customerStatus||'EXISTING');
+  const rawDirectoryData:Record<string,any>=customerDirectoryValues({...customer,...experience},profile,profile.customerStatus||current?.customerStatus||'EXISTING');
+   const directoryData:Record<string,any>=Object.fromEntries(Object.entries(rawDirectoryData).map(([k,v])=>[k, (v === '' || v === undefined) ? null : v]));
   const directoryKeys=Object.keys(directoryData);
   const [directoryRows]=await c.execute<any[]>('SELECT * FROM business_partner WHERE id=? FOR UPDATE',[current?.customerId]);
   if(!directoryRows.length){await c.execute(`INSERT INTO business_partner (id,${directoryKeys.map(k=>`\`${k}\``).join(',')}) VALUES (${Array(directoryKeys.length+1).fill('?').join(',')})`,[current?.customerId,...Object.values(directoryData)]);changed=true;}

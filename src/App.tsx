@@ -370,7 +370,14 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       p && Object.values(p).some((v: any) => v !== undefined && v !== null && String(v).trim() !== '')
     );
     const customerPayload = customerCategory === 'NEW'
-      ? { ...customerDraft, companyName: liveCompanyName, nib: liveNib, npwp: liveNpwp }
+      ? { 
+          ...customerDraft, 
+          companyName: liveCompanyName, 
+          nib: liveNib, 
+          npwp: liveNpwp,
+          establishmentDate: (customerDraft?.establishmentDate || draft.customer?.establishmentDate || null) || null,
+          nibDate: (customerDraft?.nibDate || draft.customer?.nibDate || null) || null
+        }
       : { ...(draft.customer || {}), ...(selectedCustomer || {}) };
     const body = {
       profile: { ...updatedDraft, companyName: liveCompanyName },
@@ -464,10 +471,10 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
   companyName: liveCompanyName,
   companyType: liveCompanyType,
   nib: liveNib,
-  nibDate: liveNibDate,
+  nibDate: liveNibDate || '',
   npwp: liveNpwp,
   establishmentActNo: liveEstablishmentActNo,
-  establishmentDate: liveEstablishmentDate,
+  establishmentDate: liveEstablishmentDate || '',
   companyAddress: draft.companyAddress,
   province: draft.province,
   city: draft.city,
@@ -563,8 +570,8 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
        nib: liveNib || customerDraft?.nib || draft.customer?.nib || '',
        npwp: liveNpwp || customerDraft?.npwp || draft.customer?.npwp || '',
        establishmentActNo: liveEstablishmentActNo || customerDraft?.establishmentActNo || draft.customer?.establishmentActNo || '',
-       establishmentDate: liveEstablishmentDate || customerDraft?.establishmentDate || draft.customer?.establishmentDate || '',
-       nibDate: liveNibDate || customerDraft?.nibDate || draft.customer?.nibDate || ''
+       establishmentDate: (liveEstablishmentDate || customerDraft?.establishmentDate || draft.customer?.establishmentDate || null) || null,
+       nibDate: (liveNibDate || customerDraft?.nibDate || draft.customer?.nibDate || null) || null
      };
 
      const body=tab===0?{
