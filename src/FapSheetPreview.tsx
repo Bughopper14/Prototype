@@ -321,9 +321,6 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
             <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (Rows 1-118)</span>
           </div>
-          <span className="excel-live-tag">
-            <span className="excel-live-dot" /> Live Excel Mirror
-          </span>
         </div>
         <div className="excel-ribbon-right">
           <div className="excel-zoom-controls">
