@@ -549,9 +549,6 @@ def post_process_ktp_full(extracted: dict, boxes=None):
 
     # 1. RT and RW Extraction
     rt_val, rw_val, rtrw_val = extract_rtrw_targeted(extracted.get("rt_rw"), boxes)
-    if rt_val == '015' and rw_val == '004':
-        rt_val = '008'
-        rtrw_val = '008/004'
     if rt_val:
         extracted["rt"] = rt_val
     if rw_val:
@@ -595,7 +592,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
 
     # 3. Status Perkawinan Cleanup
     raw_sp = str(extracted.get("status_perkawinan") or "").upper()
-    if 'BELUM' in raw_sp or 'SINGLE' in raw_sp:
+    if 'BELUM' in raw_sp or 'TIDAK' in raw_sp or 'SINGLE' in raw_sp:
         extracted["status_perkawinan"] = 'BELUM KAWIN'
         extracted["maritalStatus"] = 'SINGLE'
     elif 'CERAI HIDUP' in raw_sp or 'DIVORCED' in raw_sp:
@@ -609,12 +606,15 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         extracted["maritalStatus"] = 'MARRIED'
     elif boxes:
         box_text = " ".join([b.get("text", "") for b in boxes]).upper()
-        if 'BELUM KAWIN' in box_text:
+        if 'BELUM' in box_text or 'TIDAK KAWIN' in box_text or 'BELUM KAWIN' in box_text:
             extracted["status_perkawinan"] = 'BELUM KAWIN'
             extracted["maritalStatus"] = 'SINGLE'
         elif 'KAWIN' in box_text:
             extracted["status_perkawinan"] = 'KAWIN'
             extracted["maritalStatus"] = 'MARRIED'
+        else:
+            extracted["status_perkawinan"] = 'BELUM KAWIN'
+            extracted["maritalStatus"] = 'SINGLE'
 
     # 4. Alamat Extraction & Cleanup
     raw_al = str(extracted.get("alamat") or "").strip()
@@ -664,8 +664,8 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         raw_al = re.sub(r'^[~*:\-–—\s]+', '', raw_al)
         raw_al = re.sub(r'\b(?:BOAST|BOASI|BEAST|COAST)\b.*$', '', raw_al, flags=re.IGNORECASE).strip()
         raw_al = re.sub(r'[,.\s\-–—~*|]+$', '', raw_al).strip()
-        if ('KEBON' in raw_al.upper() or 'KACANG' in raw_al.upper()) and not raw_al.upper().startswith('JL'):
-            raw_al = 'JL. KEBON KACANG'
+        if not raw_al.upper().startswith('JL') and not raw_al.upper().startswith('JALAN'):
+            raw_al = f"JL. {raw_al}"
         extracted["alamat"] = raw_al
         extracted["address"] = raw_al
         extracted["fullAddress"] = raw_al
@@ -1481,6 +1481,14 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
         # Robust Indonesian Birth Place and Date Adjuster and Administrative Upward Search
         if detected_type == "ktp":
             post_process_ktp_full(extracted, boxes)
+        elif detected_type in ["passport", "kitas"]:
+            raw_jk = str(extracted.get("jenis_kelamin") or extracted.get("gender") or extracted.get("sex") or "").upper()
+            if any(w in raw_jk for w in ["PEREMPUAN", "(F)", "FEMALE", "WANITA"]) or raw_jk == "F":
+                extracted["gender"] = "FEMALE"
+                extracted["jenis_kelamin"] = "Perempuan (F)"
+            elif any(w in raw_jk for w in ["LAKI", "(M)", "MALE", "PRIA"]) or raw_jk == "M":
+                extracted["gender"] = "MALE"
+                extracted["jenis_kelamin"] = "Laki-laki (M)"
 
         # Save structured document file if app_id or stakeholder_id provided
         storage_info = None

@@ -15,6 +15,7 @@ import {
   extractKitasTextFromImage,
   normalizeBirthDate,
   splitPersonName,
+  resolveGender,
   type ParsedKtpData,
   type ParsedPassportData,
   type ParsedNpwpData,
@@ -199,13 +200,14 @@ export default function App(){
 function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-brand"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Periksa dokumen akta':user.role==='HEAD_BS'?'Approve dokumen akta':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Perbaiki akta yang ditolak':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
 // Note: New application process has been merged directly into Detail view (Tab 0 FAP Intake).
-function stakeholderEditorValues(s:any){const parts=String(s.name||'').trim().split(/\s+/);return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP'),title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};}
+function stakeholderEditorValues(s:any){const parts=String(s.name||'').trim().split(/\s+/);const resolvedIdType=s.idType||(s.ktpUrl||s.ktpOcrText?'KTP':s.passportUrl||s.passportOcrText?'PASSPORT':s.npwpUrl||s.npwpOcrText?'NPWP':s.kitasUrl||s.kitasOcrText?'KITAS':(s.stakeholderType==='CORPORATE'?'NPWP':'NONE'));return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:resolvedIdType,title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};}
 function stakeholderForSave(s:any){const first=s.firstName||'',last=s.lastName||'',name=[first,s.middleName,last].map((x:string)=>String(x||'').trim()).filter(Boolean).join(' ')||s.name||'';return {...s,name,position:s.designation&&s.designation!=='NONE'?s.designation:s.position||'Shareholder',nationalityType:s.citizenship==='INDONESIAN'?'WNI':'WNA',shareAmount:s.depositedCapital??0,sharePercentage:s.sharePercentage??0,taxNumber:null};}
 function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustomerCreated,notify}:{value:any,user:any,customers?:any[],initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,onCustomerCreated?:(c:any)=>void,notify:(s:string)=>void}){
   const master=useMasterData();
   const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(a.isNew?'NEW':(a.customerId?'EXISTING':'NEW')));
   const [customerId,setCustomerId]=useState<string>(()=>a.isNew?(a.customerId||''):(a.customerId||a.customer_id||a.customer?.id||''));
-  const [customerDraft,setCustomerDraft]=useState<any>(()=>a.customer?structuredClone(a.customer):blank(customerFields));
+  const sanitizeCustomer=(c:any)=>{if(!c)return c;const npwpRaw=String(c.npwp||'').replace(/\D/g,'');return{...c,npwp:/^0+$/.test(npwpRaw)?'':c.npwp};};
+  const [customerDraft,setCustomerDraft]=useState<any>(()=>a.customer?sanitizeCustomer(structuredClone(a.customer)):blank(customerFields));
   const [nibOcrOpen,setNibOcrOpen]=useState(false);
   const handleApplyNibOcr=(extracted:{
     nib?:string,
@@ -439,14 +441,18 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
     ''
   ).trim();
 
-  const liveNpwp = String(
-    draft.customer?.npwp || 
-    customerDraft.npwp || 
-    draft.npwp || 
-    (customerCategory === 'EXISTING' ? selectedCustomer?.npwp : '') || 
-    a.customer?.npwp || 
-    ''
-  ).trim();
+  const liveNpwp = (() => {
+    const raw = String(
+      draft.customer?.npwp || 
+      customerDraft.npwp || 
+      draft.npwp || 
+      (customerCategory === 'EXISTING' ? selectedCustomer?.npwp : '') || 
+      a.customer?.npwp || 
+      ''
+    ).trim();
+    // Jika hanya berisi angka nol (misal '000000000000000'), anggap kosong
+    return /^0+$/.test(raw) ? '' : raw;
+  })();
 
   const liveEstablishmentActNo = String(
     draft.customer?.establishmentActNo || 
@@ -531,7 +537,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
  useEffect(()=>{
    setDraft(structuredClone(a));
    if(a.customer){
-     setCustomerDraft(structuredClone(a.customer));
+     setCustomerDraft(sanitizeCustomer(structuredClone(a.customer)));
    }
  },[a]);
  useEffect(()=>setTab(initialTab),[initialTab,a.id]);
@@ -1762,7 +1768,7 @@ function StakeholderDetailDialog({
 
               <div className="detail-kv-item">
                 <span className="detail-kv-lbl">Status Pernikahan</span>
-                <span className="detail-kv-val">{label(item.maritalStatus || (item.name?.includes('GUOHUI CHEN') ? 'MARRIED' : '—'))}</span>
+                <span className="detail-kv-val">{label(item.maritalStatus || 'SINGLE')}</span>
               </div>
 
               <div className="detail-kv-item">
@@ -1882,6 +1888,9 @@ function StakeholderModalDialog({
   onChangeValue: (val: any) => void;
   fields: Field[];
 }) {
+  const curVal = modal.value || {};
+  const isNewStakeholder = modal.index < 0;
+
   const [docType, setDocType] = useState<StakeholderDocType>(() => {
     const v = modal.value || {};
     if (v.idType === 'PASSPORT' || v.passportUrl) return 'PASSPORT';
@@ -1895,7 +1904,45 @@ function StakeholderModalDialog({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
-  const curVal = modal.value || {};
+  // Check if stakeholder already has documents / OCR uploaded
+  const hasExistingDocs = Boolean(
+    curVal.ktpUrl || curVal.passportUrl || curVal.npwpUrl || curVal.kitasUrl ||
+    curVal.ktpOcrText || curVal.passportOcrText || curVal.npwpOcrText || curVal.kitasOcrText
+  );
+
+  // Check if an ID type other than NONE is selected in the dropdown
+  const hasSelectedIdDoc = Boolean(curVal.idType && String(curVal.idType).toUpperCase() !== 'NONE');
+
+  // For New Stakeholder: right menu does NOT appear initially unless an ID document is selected or docs exist.
+  // For Edit Stakeholder: right menu appears if docs exist or if an ID doc is selected.
+  const isRightPaneVisible = (!isNewStakeholder && hasExistingDocs) || hasSelectedIdDoc;
+
+  // Sync docType tab whenever curVal.idType changes (e.g. from dropdown)
+  useEffect(() => {
+    if (curVal.idType) {
+      const upper = String(curVal.idType).toUpperCase();
+      if (['KTP', 'PASSPORT', 'NPWP', 'KITAS'].includes(upper)) {
+        setDocType(upper as StakeholderDocType);
+      }
+    }
+  }, [curVal.idType]);
+
+  const handleSelectOption = (key: string, val: string) => {
+    if (key === 'idType') {
+      const upper = String(val).toUpperCase();
+      if (['KTP', 'PASSPORT', 'NPWP', 'KITAS'].includes(upper)) {
+        setDocType(upper as StakeholderDocType);
+      }
+    }
+  };
+
+  const handleSelectDocTypeTab = (t: StakeholderDocType) => {
+    setDocType(t);
+    onChangeValue({
+      ...curVal,
+      idType: t
+    });
+  };
 
   // Auto-synchronize age whenever dateOfBirth changes
   useEffect(() => {
@@ -1929,6 +1976,10 @@ function StakeholderModalDialog({
   if (curVal.idNumber && (!ktpParsed.nik || ktpParsed.nik === '')) ktpParsed.nik = curVal.idNumber;
   if (curVal.name && (!ktpParsed.nama || ktpParsed.nama === '')) ktpParsed.nama = curVal.name;
   if (curVal.dateOfBirth && (!ktpParsed.dateOfBirth || ktpParsed.dateOfBirth === '')) ktpParsed.dateOfBirth = curVal.dateOfBirth;
+  if (curVal.maritalStatus && curVal.maritalStatus !== 'NONE') {
+    ktpParsed.maritalStatus = curVal.maritalStatus;
+    ktpParsed.status = curVal.maritalStatus;
+  }
 
   const passportParsed: ParsedPassportData = {
     ...(curVal.passportData || {}),
@@ -2248,9 +2299,13 @@ function StakeholderModalDialog({
 
   return (
     <Modal
-      title={modal.index < 0 ? 'Tambah Stakeholder · Side-by-side Dokumen OCR' : editorLocked ? 'Detail Stakeholder' : 'Edit Stakeholder · Side-by-side Dokumen OCR'}
+      title={
+        !isRightPaneVisible
+          ? (isNewStakeholder ? 'Tambah Stakeholder' : editorLocked ? 'Detail Stakeholder' : 'Edit Stakeholder')
+          : (isNewStakeholder ? 'Tambah Stakeholder · Dokumen Identitas & OCR' : editorLocked ? 'Detail Stakeholder' : 'Edit Stakeholder · Dokumen Identitas & OCR')
+      }
       onClose={onClose}
-      className="modal-side-by-side modal-stakeholder-ktp"
+      className={isRightPaneVisible ? "modal-side-by-side modal-stakeholder-ktp" : "modal-stakeholder-form-only"}
     >
       <div className="modal-side-by-side-body">
         {/* LEFT PANE: FORM FIELDS */}
@@ -2268,28 +2323,35 @@ function StakeholderModalDialog({
           </div>
 
           {formError && <div className="error" role="alert">{formError}</div>}
-          <Fields fields={fields} value={curVal} disabled={editorLocked} onChange={onChangeValue} />
+          <Fields
+            fields={fields}
+            value={curVal}
+            disabled={editorLocked}
+            onChange={onChangeValue}
+            onSelectOption={handleSelectOption}
+          />
         </div>
 
-        {/* RIGHT PANE: DOCUMENT PREVIEW & OCR WORKSPACE */}
-        <div className="modal-side-preview-pane stakeholder-ktp-pane">
-          {/* DOCUMENT TYPE SELECTOR TABS */}
-          <div className="doc-type-tabs">
-            {(['KTP', 'PASSPORT', 'NPWP', 'KITAS'] as StakeholderDocType[]).map(t => {
-              const hasDoc = Boolean(docAssets[t].url);
-              return (
-                <button
-                  type="button"
-                  key={t}
-                  className={`doc-type-tab ${docType === t ? 'active' : ''}`}
-                  onClick={() => setDocType(t)}
-                >
-                  {hasDoc && <span className="doc-type-tab-indicator" title="Berkas terunggah" />}
-                  {t === 'KTP' ? 'e-KTP' : t === 'PASSPORT' ? 'Passport' : t === 'NPWP' ? 'NPWP' : 'KITAS'}
-                </button>
-              );
-            })}
-          </div>
+        {/* RIGHT PANE: DOCUMENT PREVIEW & OCR WORKSPACE (Visible only when document is present or ID type selected) */}
+        {isRightPaneVisible && (
+          <div className="modal-side-preview-pane stakeholder-ktp-pane">
+            {/* DOCUMENT TYPE SELECTOR TABS */}
+            <div className="doc-type-tabs">
+              {(['KTP', 'PASSPORT', 'NPWP', 'KITAS'] as StakeholderDocType[]).map(t => {
+                const hasDoc = Boolean(docAssets[t].url);
+                return (
+                  <button
+                    type="button"
+                    key={t}
+                    className={`doc-type-tab ${docType === t ? 'active' : ''}`}
+                    onClick={() => handleSelectDocTypeTab(t)}
+                  >
+                    {hasDoc && <span className="doc-type-tab-indicator" title="Berkas terunggah" />}
+                    {t === 'KTP' ? 'e-KTP' : t === 'PASSPORT' ? 'Passport' : t === 'NPWP' ? 'NPWP' : 'KITAS'}
+                  </button>
+                );
+              })}
+            </div>
 
           {/* TOP TOOLBAR */}
           <div className="ktp-pane-topbar">
@@ -2663,6 +2725,7 @@ function StakeholderModalDialog({
             )}
           </div>
         </div>
+        )}
       </div>
 
       <div className="modal-actions">
@@ -2890,7 +2953,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
           if (parsed.gender && (!currentVal.gender || currentVal.gender === 'NONE')) {
             nextVal.gender = parsed.gender;
           }
-          if (parsed.maritalStatus && (!currentVal.maritalStatus || currentVal.maritalStatus === 'NONE')) {
+          if (parsed.maritalStatus) {
             nextVal.maritalStatus = parsed.maritalStatus;
           }
           if (parsed.citizenship) {
@@ -3262,7 +3325,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   />
 </div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
- {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Lihat detail lengkap stakeholder"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER"}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
+ {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Lihat detail lengkap stakeholder"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER",idType:'NONE'}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
  {stakeholderModal && (
     <StakeholderModalDialog
       modal={stakeholderModal}

@@ -337,16 +337,21 @@ export function parseKtpText(text: string): ParsedKtpData {
     }
   }
 
-  // 11. Status Perkawinan
-  if (/\bBELUM\s+KAWIN\b/i.test(text)) {
+  // 11. Status Perkawinan (cek kata 'BELUM' atau 'TIDAK' terlebih dahulu sebelum 'KAWIN')
+  const statusMatch = text.match(/(?:Status\s*Perkawinan|Status)\s*[:.\-–—=~]*\s*([^\n\r]+)/i);
+  const statusText = statusMatch ? statusMatch[1].toUpperCase() : text.toUpperCase();
+  if (/\b(?:BELUM|TIDAK)\b/i.test(statusText) || /\bBELUM\s*KAWIN\b/i.test(text) || /\bSINGLE\b/i.test(text)) {
     result.status = 'SINGLE';
     result.maritalStatus = 'SINGLE';
-  } else if (/\bKAWIN\b/i.test(text)) {
-    result.status = 'MARRIED';
-    result.maritalStatus = 'MARRIED';
-  } else if (/\bCERAI\b/i.test(text)) {
+  } else if (/\bCERAI\b/i.test(statusText)) {
     result.status = 'DIVORCED';
     result.maritalStatus = 'DIVORCED';
+  } else if (/\b(?:KAWIN|NIKAH|MARRIED)\b/i.test(statusText)) {
+    result.status = 'MARRIED';
+    result.maritalStatus = 'MARRIED';
+  } else {
+    result.status = 'SINGLE';
+    result.maritalStatus = 'SINGLE';
   }
 
   // 12. Pekerjaan
@@ -372,6 +377,36 @@ export function parseKtpText(text: string): ParsedKtpData {
 
   result.berlaku_hingga = 'SEUMUR HIDUP';
   return result;
+}
+
+export function resolveGender(val?: any): 'MALE' | 'FEMALE' | undefined {
+  if (!val) return undefined;
+  const s = String(val).toUpperCase().trim();
+  if (
+    s === 'F' ||
+    s === 'P' ||
+    s.includes('FEMALE') ||
+    s.includes('PEREMPUAN') ||
+    s.includes('(F)') ||
+    s.includes('/F') ||
+    s.includes('/ P') ||
+    s.includes('WANITA')
+  ) {
+    return 'FEMALE';
+  }
+  if (
+    s === 'M' ||
+    s === 'L' ||
+    s.includes('MALE') ||
+    s.includes('LAKI') ||
+    s.includes('(M)') ||
+    s.includes('/M') ||
+    s.includes('/ L') ||
+    s.includes('PRIA')
+  ) {
+    return 'MALE';
+  }
+  return undefined;
 }
 
 // -------------------------------------------------------------
@@ -416,8 +451,14 @@ export function parsePassportText(text: string): ParsedPassportData {
   if (pobMatch) result.placeOfBirth = pobMatch[1].trim().toUpperCase();
 
   // Gender / Sex
-  if (/\b(?:SEX|GENDER)[\s:.\-–—=~]*(?:M|MALE|LAKI|L)\b/i.test(text)) result.gender = 'MALE';
-  else if (/\b(?:SEX|GENDER)[\s:.\-–—=~]*(?:F|FEMALE|PEREMPUAN|P)\b/i.test(text)) result.gender = 'FEMALE';
+  const genMatch = text.match(/(?:SEX|GENDER|JENIS\s*KELAMIN)[\s:.\-–—=~]*([^\n\r]+)/i);
+  if (genMatch) {
+    result.gender = resolveGender(genMatch[1]);
+  }
+  if (!result.gender) {
+    if (/\b(?:F|FEMALE|PEREMPUAN|WANITA)\b/i.test(text)) result.gender = 'FEMALE';
+    else if (/\b(?:M|MALE|LAKI-LAKI|LAKI|PRIA)\b/i.test(text)) result.gender = 'MALE';
+  }
 
   // Issue / Expiry dates
   const expMatch = text.match(/(?:date\s*of\s*expiry|berlaku\s*sampai|expiry\s*date)[\s:.\-–—=~]*([^\n\r]+)/i);
@@ -605,6 +646,12 @@ export async function extractIdDocumentFromImage(
 export async function extractKtpTextFromImage(fileOrInput: File | Blob | string, fileName?: string): Promise<ParsedKtpData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName);
   const d = res.data || {};
+  const sLower = String(d.status_perkawinan || d.maritalStatus || d.status || '').toLowerCase();
+  const isSingle = sLower.includes('belum') || sLower.includes('tidak') || sLower.includes('single');
+  const isMarried = !isSingle && (sLower.includes('kawin') || sLower.includes('nikah') || sLower.includes('married'));
+  const isDivorced = sLower.includes('cerai') || sLower.includes('divorced') || sLower.includes('widowed');
+  const resolvedMarital = isSingle ? 'SINGLE' : isMarried ? 'MARRIED' : isDivorced ? 'DIVORCED' : 'SINGLE';
+
   return {
     nik: d.nik || d.idNumber,
     nama: d.nama || d.name,
@@ -617,8 +664,8 @@ export async function extractKtpTextFromImage(fileOrInput: File | Blob | string,
     tempatTglLahir: d.tempatTglLahir || (d.tempat_lahir ? `${d.tempat_lahir}, ${d.tanggal_lahir || ''}` : ''),
     gender: (d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('PEREMPUAN')) ? 'FEMALE' : 'MALE',
     golonganDarah: d.golongan_darah || d.golonganDarah,
-    status: (d.maritalStatus === 'MARRIED' || String(d.status_perkawinan).toUpperCase().includes('KAWIN')) ? 'MARRIED' : 'SINGLE',
-    maritalStatus: (d.maritalStatus === 'MARRIED' || String(d.status_perkawinan).toUpperCase().includes('KAWIN')) ? 'MARRIED' : 'SINGLE',
+    status: resolvedMarital,
+    maritalStatus: resolvedMarital,
     kewarganegaraan: d.kewarganegaraan || 'WNI',
     citizenship: String(d.kewarganegaraan || '').toUpperCase().includes('WNA') ? 'WNA' : 'WNI',
     alamat: d.alamat || d.address || d.fullAddress,
@@ -644,6 +691,7 @@ export async function extractKtpTextFromImage(fileOrInput: File | Blob | string,
 export async function extractPassportTextFromImage(fileOrInput: File | Blob | string, fileName?: string): Promise<ParsedPassportData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName);
   const d = res.data || {};
+  const resolvedGen = resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
   return {
     passportNumber: d.passport_number || d.passportNumber,
     countryCode: d.country_code || d.countryCode,
@@ -654,7 +702,7 @@ export async function extractPassportTextFromImage(fileOrInput: File | Blob | st
     nationality: d.nationality || d.country_name,
     dateOfBirth: d.tanggal_lahir || d.dateOfBirth,
     placeOfBirth: d.tempat_lahir || d.placeOfBirth,
-    gender: (d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('FEMALE')) ? 'FEMALE' : 'MALE',
+    gender: resolvedGen,
     issueDate: d.tanggal_pengeluaran || d.issueDate,
     expiryDate: d.tanggal_berlaku || d.expiryDate,
     issuingAuthority: d.kantor_penerbit || d.issuingAuthority,
@@ -685,13 +733,14 @@ export async function extractNpwpTextFromImage(fileOrInput: File | Blob | string
 export async function extractKitasTextFromImage(fileOrInput: File | Blob | string, fileName?: string): Promise<ParsedKitasData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName);
   const d = res.data || {};
+  const resolvedGen = resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
   return {
     permitNumber: d.permit_number || d.permitNumber,
     niora: d.niora,
     nama: d.nama,
     kewarganegaraan: d.kewarganegaraan,
     tanggalLahir: d.tanggal_lahir || d.tanggalLahir,
-    gender: (d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('FEMALE')) ? 'FEMALE' : 'MALE',
+    gender: resolvedGen,
     berlakuHingga: d.berlaku_hingga || d.berlakuHingga,
     instansiPenerbit: d.instansi_penerbit || d.instansiPenerbit || 'Direktorat Jenderal Imigrasi',
     rawText: res.rawText || ''

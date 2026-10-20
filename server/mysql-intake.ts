@@ -182,7 +182,7 @@ export async function createIntake(body:any,identity?:{id:string,fapNumber?:stri
  const nibRaw=String(customer.nib||'').replace(/\D/g,'');
  const nibVal=nibRaw.length===13?nibRaw:(nibRaw||'0000000000000').padEnd(13,'0').slice(0,13);
  const npwpRaw=String(customer.npwp||'').replace(/\D/g,'');
- const npwpVal=npwpRaw.length>=15?npwpRaw:(npwpRaw||'000000000000000').padEnd(15,'0').slice(0,15);
+ const npwpVal=npwpRaw.length>=15?npwpRaw:'';
  const normalizedCustomer={
   ...customer,
   companyName: compName,
