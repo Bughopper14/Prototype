@@ -79,6 +79,12 @@ export interface FapSheetPreviewProps {
   syncTick?: number;
   onSectionClick?: (sectionId: string) => void;
   onPrint?: () => void | Promise<void>;
+  hideToolbar?: boolean;
+  isComparison?: boolean;
+  diffs?: Array<{ field: string; label: string; oldValue: string; newValue: string }>;
+  onDiffClick?: (field: string) => void;
+  externalZoom?: number;
+  onZoomChange?: (z: number) => void;
 }
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
@@ -88,6 +94,19 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const [paperHeight, setPaperHeight] = useState<number>(2400);
   const containerRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (props.externalZoom !== undefined && props.externalZoom > 0) {
+      setZoomLevel(props.externalZoom);
+      setAutoFit(false);
+    }
+  }, [props.externalZoom]);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+  }, [props.application?.id, props.data?.fapNumber]);
 
   useEffect(() => {
     const updateFit = () => {
@@ -311,85 +330,125 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const isCorp = d.companyType === 'CORPORATE';
   const isComm = d.companyType === 'COMMERCIAL';
 
-  return (
-    <div className="excel-fap-viewer">
-      {/* Excel Green Ribbon Header */}
-      <div className="excel-fap-ribbon">
-        <div className="excel-ribbon-left">
-          <FileSpreadsheet size={16} className="excel-brand-icon" />
-          <div className="excel-file-badge">
-            <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
-            <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (Rows 1-118)</span>
-          </div>
-        </div>
-        <div className="excel-ribbon-right">
-          <div className="excel-zoom-controls">
-            <button
-              type="button"
-              className={`excel-zoom-mode-btn ${autoFit ? 'active' : ''}`}
-              onClick={() => setAutoFit(!autoFit)}
-              title={autoFit ? 'Auto-fit active: document automatically fits the view width' : 'Enable Auto-fit view'}
-            >
-              Auto Fit
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAutoFit(false);
-                setZoomLevel((z) => Math.max(0.35, Number((z - 0.05).toFixed(2))));
-              }}
-              title="Zoom Out (-)"
-            >
-              <ZoomOut size={13} />
-            </button>
-            <span className="excel-zoom-btn-label">
-              {Math.round(zoomLevel * 100)}%
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setAutoFit(false);
-                setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
-              }}
-              title="Zoom In (+)"
-            >
-              <ZoomIn size={13} />
-            </button>
-          </div>
-          <button
-            type="button"
-            className="excel-print-btn"
-            onClick={handlePrint}
-            title="Print / Download Official A4 PDF Sheet"
-          >
-            <Printer size={13} /> Print A4 Document
-          </button>
-        </div>
+  const showRibbon = !props.hideToolbar && !props.isComparison;
 
-        {/* Quick Jump & Auto-Sync Bar */}
-        <div className="excel-section-chips">
-          <span className="excel-sync-bar-label">
-            <Eye size={12} /> Auto-Sync Focus:
-          </span>
-          {[
-            { id: 'fap-preview-sec-header', label: '1. Identity' },
-            { id: 'fap-preview-sec-company', label: '2. Domicile' },
-            { id: 'fap-preview-sec-business', label: '3. Business Profile' },
-            { id: 'fap-preview-sec-pic', label: '4. PIC' },
-            { id: 'fap-preview-sec-projects', label: '5. Projects' },
-          ].map(chip => (
+  const getDiff = (key: string) => {
+    if (!props.diffs || props.diffs.length === 0) return null;
+    const lowerKey = key.toLowerCase();
+    return props.diffs.find((item: any) => {
+      const dField = (item.field || '').toLowerCase();
+      if (dField === lowerKey) return true;
+      if (lowerKey === 'phone' && (dField === 'picphone' || dField === 'phonefax')) return true;
+      if (lowerKey === 'picphone' && (dField === 'phone' || dField === 'picphone')) return true;
+      if (lowerKey === 'position' && (dField === 'picposition' || dField === 'position')) return true;
+      if (lowerKey === 'picposition' && (dField === 'picposition' || dField === 'position')) return true;
+      if (lowerKey === 'picemail' && (dField === 'picemail' || dField === 'email')) return true;
+      if (lowerKey === 'establishmentactno' && (dField === 'establishmentactno' || dField === 'deedno')) return true;
+      return false;
+    });
+  };
+
+  const getDiffClass = (key: string, baseClass = 'exact-fap-box highlight-dynamic') => {
+    const diff = getDiff(key);
+    if (!diff) return baseClass;
+    return `${baseClass} fap-diff-cell-highlight`;
+  };
+
+  const renderDiffBadge = (key: string) => {
+    const diff = getDiff(key);
+    if (!diff) return null;
+    return (
+      <span
+        className="fap-diff-tag-system"
+        title={`Perbedaan Dokumen Fisik OCR: "${diff.newValue}"\nNilai di Sistem: "${diff.oldValue || '—'}"`}
+      >
+        <span className="fap-diff-tag-dot" />
+        Fisik: {diff.newValue}
+      </span>
+    );
+  };
+
+  return (
+    <div className={`excel-fap-viewer ${props.isComparison ? 'in-comparison-mode' : ''}`}>
+      {/* Excel Green Ribbon Header (Hidden in 50/50 comparison mode for perfect vertical alignment) */}
+      {showRibbon && (
+        <div className="excel-fap-ribbon">
+          <div className="excel-ribbon-left">
+            <FileSpreadsheet size={16} className="excel-brand-icon" />
+            <div className="excel-file-badge">
+              <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
+              <span className="excel-tab-badge">Sheet: APPROVED v01.2025 (Rows 1-118)</span>
+            </div>
+          </div>
+          <div className="excel-ribbon-right">
+            <div className="excel-zoom-controls">
+              <button
+                type="button"
+                className={`excel-zoom-mode-btn ${autoFit ? 'active' : ''}`}
+                onClick={() => setAutoFit(!autoFit)}
+                title={autoFit ? 'Auto-fit active: document automatically fits the view width' : 'Enable Auto-fit view'}
+              >
+                Auto Fit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoFit(false);
+                  setZoomLevel((z) => Math.max(0.35, Number((z - 0.05).toFixed(2))));
+                }}
+                title="Zoom Out (-)"
+              >
+                <ZoomOut size={13} />
+              </button>
+              <span className="excel-zoom-btn-label">
+                {Math.round(zoomLevel * 100)}%
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoFit(false);
+                  setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
+                }}
+                title="Zoom In (+)"
+              >
+                <ZoomIn size={13} />
+              </button>
+            </div>
             <button
-              key={chip.id}
               type="button"
-              className={`excel-chip-btn ${props.activeSection === chip.id ? 'active' : ''}`}
-              onClick={() => props.onSectionClick?.(chip.id)}
-              title={`Jump to section ${chip.label}`}
+              className="excel-print-btn"
+              onClick={handlePrint}
+              title="Print / Download Official A4 PDF Sheet"
             >
-              {chip.label}
+              <Printer size={13} /> Print A4 Document
             </button>
-          ))}
+          </div>
+
+          {/* Quick Jump & Auto-Sync Bar */}
+          <div className="excel-section-chips">
+            <span className="excel-sync-bar-label">
+              <Eye size={12} /> Auto-Sync Focus:
+            </span>
+            {[
+              { id: 'fap-preview-sec-header', label: '1. Identity' },
+              { id: 'fap-preview-sec-company', label: '2. Domicile' },
+              { id: 'fap-preview-sec-business', label: '3. Business Profile' },
+              { id: 'fap-preview-sec-pic', label: '4. PIC' },
+              { id: 'fap-preview-sec-projects', label: '5. Projects' },
+            ].map(chip => (
+              <button
+                key={chip.id}
+                type="button"
+                className={`excel-chip-btn ${props.activeSection === chip.id ? 'active' : ''}`}
+                onClick={() => props.onSectionClick?.(chip.id)}
+                title={`Jump to section ${chip.label}`}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Spreadsheet Canvas */}
       <div className="excel-fap-viewport" ref={containerRef}>
@@ -496,65 +555,98 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Company Name</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.companyName}</div>
+                <div id="fap-diff-cell-companyName" className={getDiffClass('companyName')}>
+                  <span>{d.companyName}</span>
+                  {renderDiffBadge('companyName')}
+                </div>
               </div>
 
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Company Address</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box multiline highlight-dynamic">{d.companyAddress}</div>
+                <div id="fap-diff-cell-companyAddress" className={getDiffClass('companyAddress', 'exact-fap-box multiline highlight-dynamic')}>
+                  <span>{d.companyAddress}</span>
+                  {renderDiffBadge('companyAddress')}
+                </div>
               </div>
 
               <div className="exact-sub-row">
                 <span className="exact-sub-lbl">City</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.city}</div>
+                <div id="fap-diff-cell-city" className={getDiffClass('city')}>
+                  <span>{d.city}</span>
+                  {renderDiffBadge('city')}
+                </div>
               </div>
 
               <div className="exact-sub-row">
                 <span className="exact-sub-lbl">District</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.district || '—'}</div>
+                <div id="fap-diff-cell-district" className={getDiffClass('district')}>
+                  <span>{d.district || '—'}</span>
+                  {renderDiffBadge('district')}
+                </div>
               </div>
 
               <div className="exact-sub-row">
                 <span className="exact-sub-lbl">Village</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.village || '—'}</div>
+                <div id="fap-diff-cell-village" className={getDiffClass('village')}>
+                  <span>{d.village || '—'}</span>
+                  {renderDiffBadge('village')}
+                </div>
               </div>
 
               <div className="exact-sub-row">
                 <span className="exact-sub-lbl">RT / RW</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.rt && d.rw ? `${d.rt} / ${d.rw}` : d.rt || d.rw || '—'}</div>
+                <div id="fap-diff-cell-rt" className={getDiff('rt') || getDiff('rw') ? getDiffClass('rt') : 'exact-fap-box highlight-dynamic'}>
+                  <span>{d.rt && d.rw ? `${d.rt} / ${d.rw}` : d.rt || d.rw || '—'}</span>
+                  {renderDiffBadge('rt') || renderDiffBadge('rw')}
+                </div>
               </div>
 
               <div className="exact-sub-row">
                 <span className="exact-sub-lbl">Province</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.province}</div>
+                <div id="fap-diff-cell-province" className={getDiffClass('province')}>
+                  <span>{d.province}</span>
+                  {renderDiffBadge('province')}
+                </div>
               </div>
 
               <div className="exact-sub-row">
                 <span className="exact-sub-lbl">Postal code</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.postalCode}</div>
+                <div id="fap-diff-cell-postalCode" className={getDiffClass('postalCode')}>
+                  <span>{d.postalCode}</span>
+                  {renderDiffBadge('postalCode')}
+                </div>
               </div>
 
               <div className="exact-fap-row" id="fap-preview-sec-business">
                 <span className="exact-fap-lbl">Main Business</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.mainBusiness}</div>
+                <div id="fap-diff-cell-mainBusiness" className={getDiffClass('mainBusiness')}>
+                  <span>{d.mainBusiness}</span>
+                  {renderDiffBadge('mainBusiness')}
+                </div>
               </div>
 
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Establishment Deed No.</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.establishmentActNo}</div>
+                  <div id="fap-diff-cell-establishmentActNo" className={getDiffClass('establishmentActNo')} style={{ flex: 1.3 }}>
+                    <span>{d.establishmentActNo}</span>
+                    {renderDiffBadge('establishmentActNo')}
+                  </div>
                   <div className="exact-inline-group" style={{ flex: 1.1 }}>
                     <span className="exact-inline-lbl">Est. Date :</span>
-                    <div className="exact-fap-box highlight-dynamic">{formatDate(d.establishmentDate)}</div>
+                    <div id="fap-diff-cell-establishmentDate" className={getDiffClass('establishmentDate')}>
+                      <span>{formatDate(d.establishmentDate)}</span>
+                      {renderDiffBadge('establishmentDate')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -563,9 +655,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl">Experience</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row" style={{ alignItems: 'center' }}>
-                  <div className="exact-fap-box highlight-dynamic" style={{ maxWidth: '65px', textAlign: 'center' }}>{d.experienceYears}</div>
+                  <div id="fap-diff-cell-experienceYears" className={getDiffClass('experienceYears')} style={{ maxWidth: '65px', textAlign: 'center' }}>
+                    <span>{d.experienceYears}</span>
+                    {renderDiffBadge('experienceYears')}
+                  </div>
                   <span style={{ fontSize: '9px', fontWeight: 600 }}>years</span>
-                  <div className="exact-fap-box highlight-dynamic" style={{ maxWidth: '65px', textAlign: 'center' }}>{d.experienceMonths}</div>
+                  <div id="fap-diff-cell-experienceMonths" className={getDiffClass('experienceMonths')} style={{ maxWidth: '65px', textAlign: 'center' }}>
+                    <span>{d.experienceMonths}</span>
+                    {renderDiffBadge('experienceMonths')}
+                  </div>
                   <span style={{ fontSize: '9px', fontWeight: 600 }}>months</span>
                 </div>
               </div>
@@ -574,10 +672,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl">Latest Amendment Deed No.</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.latestDeedNo}</div>
+                  <div id="fap-diff-cell-latestDeedNo" className={getDiffClass('latestDeedNo')} style={{ flex: 1.3 }}>
+                    <span>{d.latestDeedNo}</span>
+                    {renderDiffBadge('latestDeedNo')}
+                  </div>
                   <div className="exact-inline-group" style={{ flex: 1.1 }}>
                     <span className="exact-inline-lbl">Date :</span>
-                    <div className="exact-fap-box highlight-dynamic">{formatDate(d.latestDeedDate)}</div>
+                    <div id="fap-diff-cell-latestDeedDate" className={getDiffClass('latestDeedDate')}>
+                      <span>{formatDate(d.latestDeedDate)}</span>
+                      {renderDiffBadge('latestDeedDate')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -586,10 +690,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl">NIB (Business Registration Number)</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.nib}</div>
+                  <div id="fap-diff-cell-nib" className={getDiffClass('nib')} style={{ flex: 1.3 }}>
+                    <span>{d.nib}</span>
+                    {renderDiffBadge('nib')}
+                  </div>
                   <div className="exact-inline-group" style={{ flex: 1.1 }}>
                     <span className="exact-inline-lbl">Est. Date :</span>
-                    <div className="exact-fap-box highlight-dynamic">{formatDate(d.nibDate)}</div>
+                    <div id="fap-diff-cell-nibDate" className={getDiffClass('nibDate')}>
+                      <span>{formatDate(d.nibDate)}</span>
+                      {renderDiffBadge('nibDate')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -597,13 +707,19 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">NPWP/No.Tax</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.npwp}</div>
+                <div id="fap-diff-cell-npwp" className={getDiffClass('npwp')}>
+                  <span>{d.npwp}</span>
+                  {renderDiffBadge('npwp')}
+                </div>
               </div>
 
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Phone / Fax</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.phoneFax}</div>
+                <div id="fap-diff-cell-phoneFax" className={getDiffClass('phoneFax')}>
+                  <span>{d.phoneFax}</span>
+                  {renderDiffBadge('phoneFax')}
+                </div>
               </div>
 
               <div className="exact-fap-row">
@@ -615,7 +731,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Email</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.email}</div>
+                <div id="fap-diff-cell-email" className={getDiffClass('email')}>
+                  <span>{d.email}</span>
+                  {renderDiffBadge('email')}
+                </div>
               </div>
 
               <div className="exact-fap-row">
@@ -637,10 +756,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl" style={{ width: '135px' }}>Person in Charge / PIC</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.2 }}>{d.picName}</div>
+                  <div id="fap-diff-cell-picName" className={getDiffClass('picName')} style={{ flex: 1.2 }}>
+                    <span>{d.picName}</span>
+                    {renderDiffBadge('picName')}
+                  </div>
                   <div className="exact-inline-group" style={{ flex: 1.2 }}>
                     <span className="exact-inline-lbl">Phone :</span>
-                    <div className="exact-fap-box highlight-dynamic">{d.phone}</div>
+                    <div id="fap-diff-cell-picPhone" className={getDiff('picPhone') || getDiff('phone') ? getDiffClass('picPhone') : 'exact-fap-box highlight-dynamic'}>
+                      <span>{d.phone}</span>
+                      {renderDiffBadge('picPhone') || renderDiffBadge('phone')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -649,10 +774,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl" style={{ width: '135px' }}>Position</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.2 }}>{d.position}</div>
+                  <div id="fap-diff-cell-picPosition" className={getDiff('picPosition') || getDiff('position') ? getDiffClass('picPosition') : 'exact-fap-box highlight-dynamic'} style={{ flex: 1.2 }}>
+                    <span>{d.position}</span>
+                    {renderDiffBadge('picPosition') || renderDiffBadge('position')}
+                  </div>
                   <div className="exact-inline-group" style={{ flex: 1.2 }}>
                     <span className="exact-inline-lbl">Email :</span>
-                    <div className="exact-fap-box highlight-dynamic">{d.picEmail}</div>
+                    <div id="fap-diff-cell-picEmail" className={getDiffClass('picEmail')}>
+                      <span>{d.picEmail}</span>
+                      {renderDiffBadge('picEmail')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -660,25 +791,37 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl" style={{ width: '135px' }}>Current Address</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box multiline highlight-dynamic">{d.currentAddress}</div>
+                <div id="fap-diff-cell-currentAddress" className={getDiffClass('currentAddress', 'exact-fap-box multiline highlight-dynamic')}>
+                  <span>{d.currentAddress}</span>
+                  {renderDiffBadge('currentAddress')}
+                </div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
                 <span className="exact-sub-lbl" style={{ width: '120px' }}>City</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.picCity}</div>
+                <div id="fap-diff-cell-picCity" className={getDiffClass('picCity')}>
+                  <span>{d.picCity}</span>
+                  {renderDiffBadge('picCity')}
+                </div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
                 <span className="exact-sub-lbl" style={{ width: '120px' }}>Province</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.picProvince}</div>
+                <div id="fap-diff-cell-picProvince" className={getDiffClass('picProvince')}>
+                  <span>{d.picProvince}</span>
+                  {renderDiffBadge('picProvince')}
+                </div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
                 <span className="exact-sub-lbl" style={{ width: '120px' }}>Postal Code</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">{d.picPostalCode}</div>
+                <div id="fap-diff-cell-picPostalCode" className={getDiffClass('picPostalCode')}>
+                  <span>{d.picPostalCode}</span>
+                  {renderDiffBadge('picPostalCode')}
+                </div>
               </div>
 
               {/* Shareholder Table */}
@@ -720,7 +863,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           {/* ==============================================================
               SECTION 3: TUJUAN PEMBIAYAAN & FIXED ASSETS (ROWS 46 - 54)
               ============================================================== */}
-          <div className="exact-section-divider">
+          <div className="exact-section-divider" id="fap-preview-sec-facility">
             <div className="exact-section-header">FINANCING PURPOSE & FIXED ASSETS SUMMARY</div>
           </div>
 
@@ -729,11 +872,12 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Financing Purpose</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-dual-row">
-                  <div className="exact-fap-box" style={{ flex: 1 }}>
+                <div className="exact-dual-row" id="fap-diff-cell-facilityPurpose">
+                  <div className={`exact-fap-box ${getDiff('facilityPurpose') ? 'fap-diff-cell-highlight' : ''}`} style={{ flex: 1 }}>
                     <span>Investment</span> <b style={{ color: '#002060', marginLeft: '6px' }}>{d.facilityPurpose === 'INVESTMENT' ? '(√)' : '( )'}</b>
+                    {getDiff('facilityPurpose') && renderDiffBadge('facilityPurpose')}
                   </div>
-                  <div className="exact-fap-box" style={{ flex: 1 }}>
+                  <div className={`exact-fap-box ${getDiff('facilityPurpose') ? 'fap-diff-cell-highlight' : ''}`} style={{ flex: 1 }}>
                     <span>Working Capital</span> <b style={{ color: '#002060', marginLeft: '6px' }}>{d.facilityPurpose === 'WORKING_CAPITAL' ? '(√)' : '( )'}</b>
                   </div>
                 </div>
@@ -873,7 +1017,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           {/* ==============================================================
               SECTION 5: REFERENSI BANK & PROPOSAL FASILITAS (ROWS 64 - 86)
               ============================================================== */}
-          <div className="exact-section-divider">
+          <div className="exact-section-divider" id="fap-preview-sec-proposal">
             <div className="exact-section-header">BANK FACILITY REFERENCES & FINANCING PROPOSAL</div>
           </div>
 
@@ -922,16 +1066,20 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Financing Method</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic">
-                  {d.financingMethod === 'FINANCIAL_LEASE' ? 'Financial Lease (√)' : d.financingMethod === 'SALE_AND_LEASE_BACK' ? 'Sale and Lease Back (√)' : 'Installment Purchase (√)'}
+                <div id="fap-diff-cell-financingMethod" className={getDiffClass('financingMethod')}>
+                  <span>
+                    {d.financingMethod === 'FINANCIAL_LEASE' ? 'Financial Lease (√)' : d.financingMethod === 'SALE_AND_LEASE_BACK' ? 'Sale and Lease Back (√)' : 'Installment Purchase (√)'}
+                  </span>
+                  {renderDiffBadge('financingMethod')}
                 </div>
               </div>
 
               <div className="exact-fap-row">
                 <span className="exact-fap-lbl">Financing Value</span>
                 <span className="exact-fap-colon">:</span>
-                <div className="exact-fap-box highlight-dynamic" style={{ fontWeight: 700 }}>
-                  {formatCurrency(d.financingValue)}
+                <div id="fap-diff-cell-financingValue" className={getDiffClass('financingValue')} style={{ fontWeight: 700 }}>
+                  <span>{formatCurrency(d.financingValue)}</span>
+                  {renderDiffBadge('financingValue')}
                 </div>
               </div>
 
@@ -939,10 +1087,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl">Down Payment</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic">{formatCurrency(d.downPaymentValue)}</div>
+                  <div id="fap-diff-cell-downPaymentValue" className={getDiffClass('downPaymentValue')}>
+                    <span>{formatCurrency(d.downPaymentValue)}</span>
+                    {renderDiffBadge('downPaymentValue')}
+                  </div>
                   <div className="exact-inline-group">
                     <span className="exact-inline-lbl">Rate :</span>
-                    <div className="exact-fap-box highlight-dynamic">{d.interestRate ? `${d.interestRate}% p.a.` : '—'}</div>
+                    <div id="fap-diff-cell-interestRate" className={getDiffClass('interestRate')}>
+                      <span>{d.interestRate ? `${d.interestRate}% p.a.` : '—'}</span>
+                      {renderDiffBadge('interestRate')}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -951,7 +1105,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 <span className="exact-fap-lbl">Tenor / Duration</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic">{d.tenorMonths ? `${d.tenorMonths} Months` : '—'}</div>
+                  <div id="fap-diff-cell-tenorMonths" className={getDiffClass('tenorMonths')}>
+                    <span>{d.tenorMonths ? `${d.tenorMonths} Months` : '—'}</span>
+                    {renderDiffBadge('tenorMonths')}
+                  </div>
                   <div className="exact-inline-group">
                     <span className="exact-inline-lbl">Payment Method :</span>
                     <div className="exact-fap-box highlight-dynamic">{d.paymentMethod || '—'}</div>

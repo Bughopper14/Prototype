@@ -1396,6 +1396,29 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
 
   const [fapComparison, setFapComparison] = useState<any>(null);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
+  const [showOcrOverlay, setShowOcrOverlay] = useState<boolean>(false);
+  const [systemZoom, setSystemZoom] = useState<number>(0.72);
+  const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
+
+  const scrollToFapField = (fieldKey: string) => {
+    const el = document.getElementById(`fap-diff-cell-${fieldKey}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.remove('fap-cell-diff-pulse');
+      void el.offsetWidth;
+      el.classList.add('fap-cell-diff-pulse');
+      setTimeout(() => {
+        el.classList.remove('fap-cell-diff-pulse');
+      }, 5000);
+    }
+  };
+
+  const scrollToFapSection = (secId: string) => {
+    const el = document.getElementById(secId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const items = evidenceDefs.map(def => {
     const chk = (a.documentChecks || []).find((d: any) => 
@@ -1731,6 +1754,28 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
             )}
           </div>
 
+          {/* Unified Section Navigation Bar */}
+          <div className="fap-unified-section-nav">
+            <div className="fap-nav-left">
+              <span className="fap-nav-label">
+                <Files size={14} color="#002060" /> Navigasi Formulir:
+              </span>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-header')}>1. Header & Register</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-company')}>2. Profil Perusahaan</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-pic')}>3. PIC & Pemegang Saham</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-facility')}>4. Fasilitas & Fixed Assets</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-proposal')}>5. Nilai Pembiayaan</button>
+            </div>
+            {fapComparison?.diffs && fapComparison.diffs.length > 0 && (
+              <div className="fap-nav-right">
+                <span className="fap-nav-diff-counter" title="Klik bar sorotan di bawah untuk melompat langsung ke perbedaan">
+                  <AlertTriangle size={12} color="#b45309" />
+                  <strong>{fapComparison.diffs.length}</strong> Perbedaan Terdeteksi OCR
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* 50 / 50 Comparison Split Grid */}
           <div className="fap-comparison-grid-5050">
             {/* Left Pane (50%): Dokumen Terakhir yang di-generate oleh sistem */}
@@ -1744,6 +1789,15 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   <span>Data live database saat ini · FAP No: {a.fapNumber || '-'}</span>
                 </div>
                 <div className="fap-pane-head-right">
+                  <div className="excel-zoom-controls compact" style={{display:'inline-flex', alignItems:'center', gap:'3px', background:'#f1f5f9', padding:'2px 6px', borderRadius:'6px', border:'1px solid #cbd5e1'}}>
+                    <button type="button" onClick={() => setSystemZoom(z => Math.max(0.4, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'24px'}} title="Zoom Out (-)">
+                      <ZoomOut size={12} />
+                    </button>
+                    <span style={{fontSize:'11px', fontWeight:600, minWidth:'36px', textAlign:'center'}}>{Math.round(systemZoom * 100)}%</span>
+                    <button type="button" onClick={() => setSystemZoom(z => Math.min(1.4, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'24px'}} title="Zoom In (+)">
+                      <ZoomIn size={12} />
+                    </button>
+                  </div>
                   <button
                     type="button"
                     className="button small"
@@ -1756,7 +1810,14 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 </div>
               </div>
               <div className="fap-pane-body fap-pane-body-system">
-                <FapSheetPreview data={liveFapData} onPrint={() => printFapDocument(a.fapNumber)} />
+                <FapSheetPreview
+                  data={liveFapData}
+                  isComparison={true}
+                  hideToolbar={true}
+                  diffs={fapComparison?.diffs || []}
+                  externalZoom={systemZoom}
+                  onPrint={() => printFapDocument(a.fapNumber)}
+                />
               </div>
             </div>
 
@@ -1768,11 +1829,22 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     <FileText size={16} color="#002060" />
                     Pratinjau Dokumen Fisik Terunggah
                   </h4>
-                  <span style={{maxWidth:'260px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
+                  <span style={{maxWidth:'240px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
                     {activeFile ? activeFile.fileName : 'Belum ada dokumen fisik diunggah'}
                   </span>
                 </div>
                 <div className="fap-pane-head-right">
+                  {fapComparison?.diffs && fapComparison.diffs.length > 0 && (
+                    <button
+                      type="button"
+                      className={`button small ${showOcrOverlay ? 'primary' : ''}`}
+                      onClick={() => setShowOcrOverlay(!showOcrOverlay)}
+                      style={{display:'inline-flex', alignItems:'center', gap:'5px', fontSize:'11.5px'}}
+                      title="Buka / tutup panel sorotan OCR"
+                    >
+                      <Sparkles size={12} /> Sorotan OCR ({fapComparison.diffs.length})
+                    </button>
+                  )}
                   {activeFile && (
                     <>
                       <span className="studio-file-tag" style={{padding:'3px 8px', fontSize:'11px', background:'#e2e8f0', borderRadius:'4px', fontWeight:600}}>
@@ -1795,15 +1867,76 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 </div>
               </div>
               <div className="fap-pane-body fap-pane-body-physical">
+                {/* Diff Inspector Strip on Right Pane */}
+                {fapComparison?.diffs && fapComparison.diffs.length > 0 && (
+                  <div className="fap-diff-inspector-bar">
+                    <div className="fap-diff-inspector-title">
+                      <AlertTriangle size={13} className="fap-diff-pulse-icon" />
+                      <span>{fapComparison.diffs.length} Perbedaan Terdeteksi OCR Dokumen Fisik:</span>
+                    </div>
+                    <div className="fap-diff-chips-row">
+                      {fapComparison.diffs.map((d: any) => (
+                        <button
+                          key={d.field}
+                          type="button"
+                          className="fap-diff-chip-btn"
+                          onClick={() => scrollToFapField(d.field)}
+                          title={`Klik untuk melompat & menyorot kolom "${d.label}" pada dokumen sistem`}
+                        >
+                          <span className="diff-chip-label">{d.label}:</span>
+                          <span className="diff-chip-val">"{d.newValue}"</span>
+                          <span className="diff-chip-arrow">↗</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Floating OCR Difference Cards Overlay */}
+                {showOcrOverlay && fapComparison?.diffs && (
+                  <div className="fap-ocr-overlay-card">
+                    <div className="fap-ocr-overlay-header">
+                      <h5><Sparkles size={14} color="#f59e0b" /> Hasil OCR Dokumen Fisik</h5>
+                      <button type="button" onClick={() => setShowOcrOverlay(false)} className="close-btn">✕</button>
+                    </div>
+                    <div className="fap-ocr-overlay-list">
+                      {fapComparison.diffs.map((d: any) => (
+                        <div
+                          key={d.field}
+                          className="fap-ocr-overlay-item"
+                          onClick={() => scrollToFapField(d.field)}
+                          title="Klik untuk fokus ke kolom ini di formulir sistem"
+                        >
+                          <div className="fap-ocr-item-label">{d.label}</div>
+                          <div className="fap-ocr-item-vals">
+                            <div className="fap-ocr-val-phys">
+                              <span className="val-tag">Dokumen Fisik (OCR):</span>
+                              <strong>{d.newValue}</strong>
+                            </div>
+                            <div className="fap-ocr-val-sys">
+                              <span className="val-tag">Sistem:</span>
+                              <span>{d.oldValue || '—'}</span>
+                            </div>
+                          </div>
+                          <div className="fap-ocr-jump-hint">
+                            Klik untuk sorot di formulir sistem ↗
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Main Physical Preview Viewer */}
                 {activeFileUrl ? (
                   activeFile?.mimeType === 'application/pdf' ? (
                     <iframe
                       src={pdfViewerSrc}
                       title="Dokumen Fisik Signed FAP"
-                      style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
+                      style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff', flex: 1 }}
                     />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '16px' }}>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '16px', flex: 1 }}>
                       <img
                         src={activeFileUrl}
                         alt="Dokumen Fisik Signed FAP"
@@ -1889,15 +2022,21 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   <table className="fap-diff-table">
                     <thead>
                       <tr>
-                        <th style={{width:'25%'}}>Nama Kolom (Field)</th>
-                        <th style={{width:'32%'}}>Data di Sistem Saat Ini</th>
-                        <th style={{width:'32%'}}>Data Terdeteksi OCR (Dokumen Fisik)</th>
-                        <th style={{width:'11%', textAlign:'center'}}>Status</th>
+                        <th style={{width:'24%'}}>Nama Kolom (Field)</th>
+                        <th style={{width:'30%'}}>Data di Sistem Saat Ini</th>
+                        <th style={{width:'30%'}}>Data Terdeteksi OCR (Dokumen Fisik)</th>
+                        <th style={{width:'16%', textAlign:'center'}}>Aksi / Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {fapComparison.diffs.map((d: any, idx: number) => (
-                        <tr key={d.field || idx} className="is-different">
+                        <tr
+                          key={d.field || idx}
+                          className="is-different"
+                          onClick={() => scrollToFapField(d.field)}
+                          style={{ cursor: 'pointer' }}
+                          title="Klik untuk melompat & menyorot kolom ini pada formulir dokumen sistem di atas"
+                        >
                           <td>
                             <strong>{d.label}</strong>
                             <div style={{fontSize:'11px', color:'#94a3b8', fontFamily:'monospace'}}>{d.field}</div>
@@ -1913,9 +2052,23 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             </span>
                           </td>
                           <td style={{textAlign:'center'}}>
-                            <span className="fap-diff-badge different">
-                              <AlertTriangle size={11} /> Berbeda
-                            </span>
+                            <div style={{display:'inline-flex', alignItems:'center', gap:'6px'}}>
+                              <span className="fap-diff-badge different">
+                                <AlertTriangle size={11} /> Berbeda
+                              </span>
+                              <button
+                                type="button"
+                                className="button mini"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  scrollToFapField(d.field);
+                                }}
+                                title="Fokus & sorot kolom di formulir sistem"
+                                style={{fontSize:'10px', padding:'2px 6px'}}
+                              >
+                                Sorot ↗
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
