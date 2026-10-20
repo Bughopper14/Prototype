@@ -4,10 +4,22 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2} from 'lucide-react';
+import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {FapSheetPreview, printFapDocument, type FapSheetData} from './FapSheetPreview';
-import {parseKtpText, extractKtpTextFromImage, normalizeBirthDate} from './ktp-ocr';
+import {
+  parseKtpText, 
+  extractKtpTextFromImage, 
+  extractPassportTextFromImage,
+  extractNpwpTextFromImage,
+  extractKitasTextFromImage,
+  normalizeBirthDate,
+  splitPersonName,
+  type ParsedKtpData,
+  type ParsedPassportData,
+  type ParsedNpwpData,
+  type ParsedKitasData
+} from './ktp-ocr';
 import {api} from './api';
 import {MasterDataPage,MasterSelect,useMasterData,setMasterData,resetMasterChildren,useMandatoryRules,isFieldMandatory,resolveWilayahUpwards} from './master-data';
 import {masterGroups,masterKey} from './master-catalog';
@@ -995,18 +1007,24 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>setDraft({...draft,legal})} onStakeholdersChange={(legal,stakeholders)=>setDraft({...draft,legal,stakeholders})}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Batal / Kembali ke Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Simpan & Buat Aplikasi</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=><button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} onClick={()=>{setComments('');setTransition(action);setError('');}}>{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>)}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/></>;
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>setDraft({...draft,legal})} onStakeholdersChange={(legal,stakeholders)=>setDraft({...draft,legal,stakeholders})}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Batal / Kembali ke Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Simpan & Buat Aplikasi</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Harap unggah dokumen FAP Stage di tab Dokumen terlebih dahulu.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Harap unggah dokumen FAP Stage di tab Dokumen terlebih dahulu.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Tombol Submit Terkunci:</b> Dokumen formulir FAP Stage belum diunggah di tab Documents (is_locked = 1). Silakan unggah dokumen pada tab Documents terlebih dahulu untuk membuka kunci submit.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/></>;
 }
 function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:any[])=>void,disabled:boolean}){const total=rows.reduce((sum,x)=>sum+Number(x.sharePercentage||0),0),isExceeded=total>100.01;return <><div className={'ownership '+(isExceeded?'unbalanced':'balanced')}><div><strong>{total.toFixed(2)}%</strong><span>Total ownership · maks 100% (tidak wajib 100%)</span></div><div className="ownership-bar"><i style={{width:Math.min(100,total)+'%',background:isExceeded?'#dc2626':'#002c5f'}}/></div></div>{isExceeded&&<p style={{color:'#dc2626',fontSize:'12px',marginTop:'6px',fontWeight:600}}>⚠ Total kepemilikan saham melebihi 100%. Mohon sesuaikan kembali porsi saham masing-masing pihak.</p>}<Repeater title="Stakeholders" fields={stakeholderFields} rows={rows.map(stakeholderEditorValues)} disabled={disabled} onChange={onChange}/></>;}
 function FinancialEditor({rows,onChange,disabled}:{rows:any[],onChange:(r:any[])=>void,disabled:boolean}){const change=(i:number,k:string,v:any)=>onChange(rows.map((r,j)=>j===i?{...r,[k]:v}:r));return <><div className="section-title"><span className="muted">Enter exact values; totals are checked when saved.</span>{!disabled&&rows.length<3&&<button className="button small" onClick={()=>onChange([...rows,{...blank(financialFields),fiscalYear:new Date().getFullYear()-3+rows.length,isAudited:false}])}><Plus size={15}/>Add fiscal year</button>}</div><div className="table-scroll"><table className="financial-table"><thead><tr><th>FINANCIAL METRIC</th>{rows.map((r,i)=><th key={i}><div className="year-input"><input aria-label="Fiscal year" type="number" {...inputLimits('fiscalYear')} disabled={disabled} value={r.fiscalYear} onChange={e=>change(i,'fiscalYear',e.target.value)}/>{!disabled&&<button className="icon-button" onClick={()=>onChange(rows.filter((_,j)=>j!==i))}><X size={14}/></button>}</div><label className="checkbox"><input type="checkbox" disabled={disabled} checked={r.isAudited} onChange={e=>change(i,'isAudited',e.target.checked)}/>Audited</label></th>)}</tr></thead><tbody>{financialFields.map(f=><tr key={f.key} className={f.key.startsWith('total')||f.key==='netIncome'?'total-row':''}><td>{f.label}</td>{rows.map((r,i)=><td key={i}><input aria-label={`${r.fiscalYear} ${f.label}`} type="number" step="0.01" disabled={disabled} value={r[f.key]} onChange={e=>change(i,f.key,e.target.value)}/></td>)}</tr>)}<tr className="balance-row"><td>Balance check</td>{rows.map((r,i)=>{const ok=Number(r.currentAssets)+Number(r.nonCurrentAssets)===Number(r.totalAssets)&&Number(r.currentLiabilities)+Number(r.nonCurrentLiabilities)===Number(r.totalLiabilities)&&Number(r.totalAssets)===Number(r.totalLiabilities)+Number(r.equity)&&Number(r.totalAssets)===Number(r.totalLiabAndEquity);return <td key={i}><span className={ok?'text-brand':'text-red'}>{ok?'✓ Balanced':'! Unbalanced'}</span></td>;})}</tr>{[['Current ratio','currentAssets','currentLiabilities'],['Debt / equity','totalLiabilities','equity'],['Net profit margin','netIncome','revenue']].map(([name,n,d])=><tr key={name}><td>{name}</td>{rows.map((r,i)=><td key={i} className="ratio">{Number(r[d])?((Number(r[n])/Number(r[d]))*(name==='Net profit margin'?100:1)).toFixed(2)+(name==='Net profit margin'?'%':'×'):'N/A'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<div className="empty-small">Add three fiscal years to begin financial spreading.</div>}<p className="field-note">DSCR is unavailable because the specification does not capture depreciation. Zero-denominator ratios are shown as N/A.</p></>;}
-function Documents({a,user,onChange,notify}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void}){
+function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void,filterStage?:string}){
   const evidenceDefs = [
     { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT', desc: 'Formulir aplikasi pembiayaan resmi bertandatangan debitur' },
     { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA', desc: 'Kajian awal dan analisis kelayakan kredit oleh Credit Analyst' },
     { code: 'ICLF', name: 'Iclf', title: 'ICLF (Credit Committee Review)', stage: 'Credit Committee', badgeClass: 'stage-badge-iclf', role: 'COMMITTEE', desc: 'Rekomendasi persetujuan dan risalah rapat komite pembiayaan' },
   ];
 
-  const [selectedCode, setSelectedCode] = useState<string>('FAP');
+  const defaultCode = filterStage === 'Pre-analysis' ? 'PREANALYSIS' : filterStage === 'ICLF' ? 'ICLF' : 'FAP';
+  const [selectedCode, setSelectedCode] = useState<string>(defaultCode);
+  useEffect(() => {
+    if (filterStage === 'Pre-analysis') setSelectedCode('PREANALYSIS');
+    else if (filterStage === 'ICLF') setSelectedCode('ICLF');
+    else if (filterStage === 'FAP Stage') setSelectedCode('FAP');
+  }, [filterStage]);
   const [activeFileUrl, setActiveFileUrl] = useState<string>('');
   const [activeFile, setActiveFile] = useState<any>(null);
   const [zoom, setZoom] = useState(1);
@@ -1486,8 +1504,16 @@ function legalDeedList(legal:any,application:any){const saved:any[]=Array.isArra
 function selectedLegalStakeholders(legal:any,application:any,fallback:any[]){const deeds=legalDeedList(legal,application),selected=deeds.find(x=>x.id===legal.selectedDeedId)||deeds[0];return selected&&Array.isArray(selected.stakeholders)?selected.stakeholders:fallback;}
 function shareholderNames(parties:any):string[]{return Array.isArray(parties?.shareholders)?parties.shareholders:parties?.shareholder?[parties.shareholder]:[];}
 function StakeholderDeedView({legal,application,fallbackRows}:{legal:any,application:any,fallbackRows:any[]}){
- const deeds=[...publishedDeeds(legal)].sort((a,b)=>{const ad=Date.parse(String(a.deedDate||a.createdAt||''))||0,bd=Date.parse(String(b.deedDate||b.createdAt||''))||0;return bd-ad||String(b.createdAt||'').localeCompare(String(a.createdAt||''));});
- return <div className="stakeholder-card-view"><div className="section-title"><div><h3>Akta & kepemilikan saham</h3><p className="muted">Akta terbaru ditampilkan terlebih dahulu. Data dikelola melalui tab Legal.</p></div><span className="subtle-chip">{deeds.length} akta</span></div><div className="stakeholder-deed-cards">{deeds.map((d,index)=>{const rows=Array.isArray(d.stakeholders)?d.stakeholders:(d.id===legal.selectedDeedId||!legal.selectedDeedId&&d.id===deeds[0]?.id)?fallbackRows||[]:[],shareholders=rows.filter((r:any)=>Number(r.sharePercentage)>0||r.representativeType==='SHAREHOLDER'),total=shareholders.reduce((sum:number,r:any)=>sum+Number(r.sharePercentage||0),0),validity=deedValidity(d.deedDate);return <div className={index===0?"stakeholder-latest-section":"stakeholder-history-item"} key={d.id}>{index===0?<div className="stakeholder-group-heading"><h3>Akta terbaru</h3><p>Akta dengan tanggal paling baru.</p></div>:index===1?<div className="stakeholder-group-heading history"><h3>Riwayat akta lama</h3><p>Akta sebelumnya, diurutkan dari yang paling baru.</p></div>:null}<article className="stakeholder-deed-card"><header><div><div className="stakeholder-card-badges"><span className="legal-type-badge">{deedNames[d.type]}</span>{index===0&&<span className="stakeholder-latest">Terbaru</span>}</div><h3>Akta {d.deedNumber||'Belum diisi'}</h3></div><span className={'deed-validity '+(validity.active===null?'unknown':validity.active?'active':'inactive')}>{validity.status}</span></header><dl className="stakeholder-deed-meta"><div><dt>Tanggal akta</dt><dd>{date(d.deedDate)}</dd></div><div><dt>Nomor SK Menteri</dt><dd>{d.ministerialDecreeNumber||'—'}</dd></div><div><dt>Berlaku sampai</dt><dd>{date(validity.expiry)}</dd></div></dl><div className="stakeholder-share-heading"><h4>Shareholders <span>{shareholders.length}</span></h4><span>Total kepemilikan <b>{total.toFixed(2)}%</b></span></div><div className="shareholder-cards">{shareholders.map((r:any,i:number)=>{const name=[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Shareholder ${i+1}`,percentage=Number(r.sharePercentage||0);return <div className="shareholder-card" key={r.id||i}><div className="shareholder-card-person"><span className="shareholder-avatar">{name.split(/\s+/).slice(0,2).map((part:string)=>part[0]).join('').toUpperCase()}</span><div><b>{name}</b><small>{r.stakeholderType==='CORPORATE'?'Perusahaan':'Perorangan'}</small></div></div><div className="shareholder-card-value"><strong>{percentage.toFixed(2)}%</strong><span>Kepemilikan saham</span></div><div className="shareholder-card-track"><i style={{width:`${Math.max(0,Math.min(100,percentage))}%`}}/></div></div>;})}</div>{!shareholders.length&&<div className="stakeholder-card-empty"><Users size={23}/><b>Belum ada shareholder</b><span>Tambahkan data shareholder pada akta ini melalui tab Legal.</span></div>}</article></div>;})}</div>{!deeds.length&&<div className="empty-small">Belum ada akta yang disetujui Head BS. Data akan tampil otomatis setelah pemeriksaan BS dan approval Head BS selesai.</div>}</div>;
+ const published = publishedDeeds(legal);
+ const allDeeds = legalDeedList(legal, application);
+ const deedSource = (published && published.length > 0) ? published : allDeeds;
+ const deeds=[...deedSource].sort((a,b)=>{const ad=Date.parse(String(a.deedDate||a.createdAt||''))||0,bd=Date.parse(String(b.deedDate||b.createdAt||''))||0;return bd-ad||String(b.createdAt||'').localeCompare(String(a.createdAt||''));});
+ return <div className="stakeholder-card-view"><div className="section-title"><div><h3>Akta & kepemilikan saham</h3><p className="muted">Akta terbaru ditampilkan terlebih dahulu. Data dikelola melalui tab Legal.</p></div><span className="subtle-chip">{deeds.length} akta</span></div><div className="stakeholder-deed-cards">{deeds.map((d,index)=>{
+   const rawRows=Array.isArray(d.stakeholders)&&d.stakeholders.length>0?d.stakeholders:(d.id===legal.selectedDeedId||!legal.selectedDeedId&&d.id===deeds[0]?.id)?fallbackRows||[]:[];
+   const displayRows = rawRows.length > 0 ? rawRows : (Array.isArray(fallbackRows) && fallbackRows.length > 0 ? fallbackRows : []);
+   const total=displayRows.reduce((sum:number,r:any)=>sum+Number(r.sharePercentage||0),0),validity=deedValidity(d.deedDate);
+   return <div className={index===0?"stakeholder-latest-section":"stakeholder-history-item"} key={d.id}>{index===0?<div className="stakeholder-group-heading"><h3>Akta terbaru</h3><p>Akta dengan tanggal paling baru.</p></div>:index===1?<div className="stakeholder-group-heading history"><h3>Riwayat akta lama</h3><p>Akta sebelumnya, diurutkan dari yang paling baru.</p></div>:null}<article className="stakeholder-deed-card"><header><div><div className="stakeholder-card-badges"><span className="legal-type-badge">{deedNames[d.type]||'Akta Notaris'}</span>{index===0&&<span className="stakeholder-latest">Terbaru</span>}</div><h3>Akta {d.deedNumber||'Belum diisi'}</h3></div><span className={'deed-validity '+(validity.active===null?'unknown':validity.active?'active':'inactive')}>{validity.status}</span></header><dl className="stakeholder-deed-meta"><div><dt>Tanggal akta</dt><dd>{date(d.deedDate)}</dd></div><div><dt>Nomor SK Menteri</dt><dd>{d.ministerialDecreeNumber||'—'}</dd></div><div><dt>Berlaku sampai</dt><dd>{date(validity.expiry)}</dd></div></dl><div className="stakeholder-share-heading"><h4>Stakeholders & Shareholders <span>{displayRows.length}</span></h4><span>Total kepemilikan <b>{total.toFixed(2)}%</b></span></div><div className="shareholder-cards">{displayRows.map((r:any,i:number)=>{const name=[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Stakeholder ${i+1}`,percentage=Number(r.sharePercentage||0),roleLabel=r.position||(r.stakeholderType==='CORPORATE'?'Perusahaan':'Perorangan');return <div className="shareholder-card" key={r.id||i}><div className="shareholder-card-person"><span className="shareholder-avatar">{name.split(/\s+/).slice(0,2).map((part:string)=>part[0]).join('').toUpperCase()}</span><div><b>{name}</b><small>{roleLabel}</small></div></div><div className="shareholder-card-value"><strong>{percentage>0?`${percentage.toFixed(2)}%`:(r.position||'—')}</strong><span>{percentage>0?'Kepemilikan saham':'Jabatan'}</span></div>{percentage>0&&<div className="shareholder-card-track"><i style={{width:`${Math.max(0,Math.min(100,percentage))}%`}}/></div>}</div>;})}</div>{!displayRows.length&&<div className="stakeholder-card-empty"><Users size={23}/><b>Belum ada stakeholder / shareholder</b><span>Tambahkan data stakeholder pada akta ini melalui tab Legal.</span></div>}</article></div>;
+ })}</div>{!deeds.length&&<div className="empty-small">Belum ada akta yang terdaftar. Silakan tambahkan akta dan stakeholder melalui tab Legal.</div>}</div>;
 }
 function LegalStakeholderSummary({legal,application}:{legal:any,application:any}){const deeds=legalDeedList(legal,application),deed=deeds.find(x=>x.id===legal.selectedDeedId)||deeds.find(x=>x.type===(legal.selectedDeed||'establishment'))||deeds[0],parties=deed?.parties||{};if(!deed?.deedNumber)return null;return <div className="legal-stakeholder-summary"><div className="section-title"><h3>Data akta terpilih</h3><span className="subtle-chip">{deedNames[deed.type]}</span></div><div className="legal-summary-grid">{legalDeedFields.map(f=><div key={f.key}><small>{f.label}</small><strong>{f.type==='date'?date(deed[f.key]):deed[f.key]||'â€”'}</strong></div>)}{deed.infoAdded&&<><div><small>Shareholders</small><strong>{shareholderNames(parties).filter(Boolean).join(', ')||'â€”'}</strong></div></>}</div></div>;}
 function AutoNumberedTextarea({value,onChange,disabled,rows=3,placeholder,ariaLabel,className}:{value:string,onChange:(v:string)=>void,disabled?:boolean,rows?:number,placeholder?:string,ariaLabel?:string,className?:string}){
@@ -1818,6 +1844,8 @@ function StakeholderDetailDialog({
   );
 }
 
+type StakeholderDocType = 'KTP' | 'PASSPORT' | 'NPWP' | 'KITAS';
+
 function StakeholderModalDialog({
   modal,
   editorLocked,
@@ -1835,32 +1863,75 @@ function StakeholderModalDialog({
   onChangeValue: (val: any) => void;
   fields: Field[];
 }) {
+  const [docType, setDocType] = useState<StakeholderDocType>(() => {
+    const v = modal.value || {};
+    if (v.idType === 'PASSPORT' || v.passportUrl) return 'PASSPORT';
+    if (v.idType === 'NPWP' || v.npwpUrl) return 'NPWP';
+    if (v.idType === 'KITAS' || v.kitasUrl) return 'KITAS';
+    return 'KTP';
+  });
+
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
   const curVal = modal.value || {};
-  const ocrText = curVal.ktpOcrText || '';
-  const rawParsed = parseKtpText(ocrText);
-  const parsed = {
-    ...rawParsed,
-    nik: curVal.idNumber || rawParsed.nik,
-    nama: curVal.name || ([curVal.firstName, curVal.middleName, curVal.lastName].filter(Boolean).join(' ')) || rawParsed.nama,
-    tempatTglLahir: (curVal.birthPlace || rawParsed.tempatLahir ? `${curVal.birthPlace || rawParsed.tempatLahir}, ` : '') + (curVal.dateOfBirth || rawParsed.dateOfBirth || ''),
-    dateOfBirth: curVal.dateOfBirth || rawParsed.dateOfBirth,
-    gender: (curVal.gender === 'FEMALE' || rawParsed.gender === 'FEMALE') ? 'FEMALE' : (curVal.gender === 'MALE' || rawParsed.gender === 'MALE') ? 'MALE' : undefined,
-    maritalStatus: curVal.maritalStatus || rawParsed.maritalStatus || rawParsed.status,
-    kewarganegaraan: curVal.nationalityType || curVal.citizenship || rawParsed.kewarganegaraan,
-    alamat: curVal.address || rawParsed.alamat,
-    rt: curVal.rt || rawParsed.rt,
-    rw: curVal.rw || rawParsed.rw,
-    rtRw: (curVal.rt && curVal.rw) ? `${curVal.rt}/${curVal.rw}` : rawParsed.rtRw,
-    kelDesa: curVal.village || rawParsed.kelDesa,
-    kecamatan: curVal.district || rawParsed.kecamatan,
-    cityRegency: curVal.cityRegency || rawParsed.cityRegency,
-    province: curVal.province || rawParsed.province,
+
+  // Auto-synchronize age whenever dateOfBirth changes
+  useEffect(() => {
+    if (curVal.dateOfBirth) {
+      const { years, months } = calculateAgeYearsMonths(curVal.dateOfBirth);
+      if (curVal.ageYears !== years || curVal.ageMonths !== months) {
+        onChangeValue({
+          ...curVal,
+          ageYears: years,
+          ageMonths: months
+        });
+      }
+    }
+  }, [curVal.dateOfBirth]);
+
+  // Document Assets per type
+  const docAssets: Record<StakeholderDocType, { url?: string; fileName?: string; mime?: string; ocrText?: string; data?: any }> = {
+    KTP: { url: curVal.ktpUrl, fileName: curVal.ktpFileName, mime: curVal.ktpMime, ocrText: curVal.ktpOcrText, data: curVal.ktpData },
+    PASSPORT: { url: curVal.passportUrl, fileName: curVal.passportFileName, mime: curVal.passportMime, ocrText: curVal.passportOcrText, data: curVal.passportData },
+    NPWP: { url: curVal.npwpUrl, fileName: curVal.npwpFileName, mime: curVal.npwpMime, ocrText: curVal.npwpOcrText, data: curVal.npwpData },
+    KITAS: { url: curVal.kitasUrl, fileName: curVal.kitasFileName, mime: curVal.kitasMime, ocrText: curVal.kitasOcrText, data: curVal.kitasData }
   };
+
+  const currentAsset = docAssets[docType];
+
+  // Parsed data for each doc type
+  const ktpParsed: ParsedKtpData = {
+    ...parseKtpText(curVal.ktpOcrText || ''),
+    ...(curVal.ktpData || {})
+  };
+  if (curVal.idNumber && (!ktpParsed.nik || ktpParsed.nik === '')) ktpParsed.nik = curVal.idNumber;
+  if (curVal.name && (!ktpParsed.nama || ktpParsed.nama === '')) ktpParsed.nama = curVal.name;
+  if (curVal.dateOfBirth && (!ktpParsed.dateOfBirth || ktpParsed.dateOfBirth === '')) ktpParsed.dateOfBirth = curVal.dateOfBirth;
+
+  const passportParsed: ParsedPassportData = {
+    ...(curVal.passportData || {}),
+    rawText: curVal.passportOcrText || ''
+  };
+  if (curVal.idNumber && curVal.idType === 'PASSPORT' && !passportParsed.passportNumber) passportParsed.passportNumber = curVal.idNumber;
+  if (curVal.name && !passportParsed.fullName) passportParsed.fullName = curVal.name;
+  if (curVal.dateOfBirth && !passportParsed.dateOfBirth) passportParsed.dateOfBirth = curVal.dateOfBirth;
+
+  const npwpParsed: ParsedNpwpData = {
+    ...(curVal.npwpData || {}),
+    rawText: curVal.npwpOcrText || ''
+  };
+  if (curVal.taxId && !npwpParsed.npwpNumber) npwpParsed.npwpNumber = curVal.taxId;
+  if (curVal.name && !npwpParsed.nama) npwpParsed.nama = curVal.name;
+
+  const kitasParsed: ParsedKitasData = {
+    ...(curVal.kitasData || {}),
+    rawText: curVal.kitasOcrText || ''
+  };
+  if (curVal.idNumber && curVal.idType === 'KITAS' && !kitasParsed.permitNumber) kitasParsed.permitNumber = curVal.idNumber;
+  if (curVal.name && !kitasParsed.nama) kitasParsed.nama = curVal.name;
 
   const copyToClipboard = (key: string, val: string) => {
     if (!val) return;
@@ -1869,7 +1940,7 @@ function StakeholderModalDialog({
     setTimeout(() => setCopiedKey(null), 1500);
   };
 
-  const handleKtpUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadDoc = async (e: React.ChangeEvent<HTMLInputElement>, targetType: StakeholderDocType) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const r = new FileReader();
@@ -1879,52 +1950,146 @@ function StakeholderModalDialog({
       setZoom(1);
       setRotation(0);
       try {
-        const extracted = await extractKtpTextFromImage(f, f.name);
-        const nextVal: any = {
-          ...curVal,
-          ktpUrl: dataUrl,
-          ktpFileName: f.name,
-          ktpMime: f.type,
-          ktpOcrText: extracted.rawText || ''
-        };
-        if (extracted.nik) { nextVal.idNumber = extracted.nik; nextVal.idType = 'KTP'; }
-        if (extracted.nama) {
-          nextVal.name = extracted.nama;
-          nextVal.firstName = extracted.firstName || '';
-          nextVal.middleName = extracted.middleName || '';
-          nextVal.lastName = extracted.lastName || '';
+        let nextVal = { ...curVal };
+        if (targetType === 'KTP') {
+          const extracted = await extractKtpTextFromImage(f, f.name);
+          nextVal = {
+            ...nextVal,
+            ktpUrl: dataUrl,
+            ktpFileName: f.name,
+            ktpMime: f.type,
+            ktpOcrText: extracted.rawText || '',
+            ktpData: extracted
+          };
+          if (extracted.nik) { nextVal.idNumber = extracted.nik; nextVal.idType = 'KTP'; }
+          if (extracted.nama) {
+            nextVal.name = extracted.nama;
+            nextVal.firstName = extracted.firstName || '';
+            nextVal.middleName = extracted.middleName || '';
+            nextVal.lastName = extracted.lastName || '';
+          }
+          if (extracted.dateOfBirth) {
+            nextVal.dateOfBirth = extracted.dateOfBirth;
+            const { years, months } = calculateAgeYearsMonths(extracted.dateOfBirth);
+            nextVal.ageYears = years;
+            nextVal.ageMonths = months;
+          }
+          if (extracted.gender) nextVal.gender = extracted.gender;
+          if (extracted.maritalStatus) nextVal.maritalStatus = extracted.maritalStatus;
+          if (extracted.citizenship) {
+            nextVal.citizenship = extracted.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
+            nextVal.nationalityType = extracted.citizenship;
+          }
+          if (extracted.kewarganegaraan?.includes('CHINA')) {
+            nextVal.nationalityType = 'WNA';
+            nextVal.citizenship = 'FOREIGN';
+            nextVal.country = 'CHINA';
+          }
+          if (extracted.alamat) nextVal.address = extracted.alamat;
+          if (extracted.province) nextVal.province = extracted.province;
+          if (extracted.cityRegency || extracted.city) nextVal.cityRegency = extracted.cityRegency || extracted.city;
+          if (extracted.kecamatan || extracted.district) nextVal.district = extracted.kecamatan || extracted.district;
+          if (extracted.kelDesa || extracted.village) nextVal.village = extracted.kelDesa || extracted.village;
+          if (extracted.rt) nextVal.rt = extracted.rt;
+          if (extracted.rw) nextVal.rw = extracted.rw;
+          if (extracted.kodePos || extracted.postalCode) nextVal.postalCode = extracted.kodePos || extracted.postalCode;
+          if (extracted.pekerjaan) nextVal.occupation = extracted.pekerjaan;
+        } else if (targetType === 'PASSPORT') {
+          const extracted = await extractPassportTextFromImage(f, f.name);
+          nextVal = {
+            ...nextVal,
+            passportUrl: dataUrl,
+            passportFileName: f.name,
+            passportMime: f.type,
+            passportOcrText: extracted.rawText || '',
+            passportData: extracted
+          };
+          if (extracted.passportNumber) {
+            nextVal.idNumber = extracted.passportNumber;
+            nextVal.idType = 'PASSPORT';
+          }
+          if (extracted.fullName || extracted.surname || extracted.givenNames) {
+            nextVal.name = extracted.fullName || [extracted.givenNames, extracted.surname].filter(Boolean).join(' ');
+            nextVal.firstName = extracted.givenNames || '';
+            nextVal.lastName = extracted.surname || '';
+          }
+          if (extracted.dateOfBirth) {
+            nextVal.dateOfBirth = extracted.dateOfBirth;
+            const { years, months } = calculateAgeYearsMonths(extracted.dateOfBirth);
+            nextVal.ageYears = years;
+            nextVal.ageMonths = months;
+          }
+          if (extracted.gender) nextVal.gender = extracted.gender;
+          if (extracted.countryCode || extracted.nationality) {
+            const isIndo = extracted.countryCode === 'IDN' || extracted.nationality?.toUpperCase().includes('INDONESIA');
+            nextVal.citizenship = isIndo ? 'INDONESIAN' : 'FOREIGN';
+            nextVal.nationalityType = isIndo ? 'WNI' : 'WNA';
+            nextVal.country = extracted.countryName || extracted.nationality || (isIndo ? 'INDONESIA' : '');
+          }
+        } else if (targetType === 'NPWP') {
+          const extracted = await extractNpwpTextFromImage(f, f.name);
+          nextVal = {
+            ...nextVal,
+            npwpUrl: dataUrl,
+            npwpFileName: f.name,
+            npwpMime: f.type,
+            npwpOcrText: extracted.rawText || '',
+            npwpData: extracted
+          };
+          if (extracted.npwpNumber || extracted.rawNpwp) {
+            nextVal.taxId = extracted.npwpNumber || extracted.rawNpwp;
+            nextVal.npwp = extracted.npwpNumber || extracted.rawNpwp;
+          }
+          if (extracted.nik && !nextVal.idNumber) {
+            nextVal.idNumber = extracted.nik;
+            nextVal.idType = 'KTP';
+          }
+          if (extracted.nama && !nextVal.name) {
+            nextVal.name = extracted.nama;
+            const sn = splitPersonName(extracted.nama);
+            nextVal.firstName = sn.firstName;
+            nextVal.middleName = sn.middleName;
+            nextVal.lastName = sn.lastName;
+          }
+          if (extracted.alamat && !nextVal.address) nextVal.address = extracted.alamat;
+          if (extracted.kotaProvinsi && !nextVal.cityRegency) nextVal.cityRegency = extracted.kotaProvinsi;
+        } else if (targetType === 'KITAS') {
+          const extracted = await extractKitasTextFromImage(f, f.name);
+          nextVal = {
+            ...nextVal,
+            kitasUrl: dataUrl,
+            kitasFileName: f.name,
+            kitasMime: f.type,
+            kitasOcrText: extracted.rawText || '',
+            kitasData: extracted
+          };
+          if (extracted.permitNumber || extracted.niora) {
+            nextVal.idNumber = extracted.permitNumber || extracted.niora;
+            nextVal.idType = 'KITAS';
+          }
+          if (extracted.nama) {
+            nextVal.name = extracted.nama;
+            const sn = splitPersonName(extracted.nama);
+            nextVal.firstName = sn.firstName;
+            nextVal.middleName = sn.middleName;
+            nextVal.lastName = sn.lastName;
+          }
+          if (extracted.tanggalLahir) {
+            nextVal.dateOfBirth = extracted.tanggalLahir;
+            const { years, months } = calculateAgeYearsMonths(extracted.tanggalLahir);
+            nextVal.ageYears = years;
+            nextVal.ageMonths = months;
+          }
+          if (extracted.gender) nextVal.gender = extracted.gender;
+          if (extracted.kewarganegaraan) {
+            nextVal.citizenship = 'FOREIGN';
+            nextVal.nationalityType = 'WNA';
+            nextVal.country = extracted.kewarganegaraan;
+          }
         }
-        if (extracted.dateOfBirth) nextVal.dateOfBirth = extracted.dateOfBirth;
-        if (extracted.gender) nextVal.gender = extracted.gender;
-        if (extracted.maritalStatus) nextVal.maritalStatus = extracted.maritalStatus;
-        if (extracted.citizenship) {
-          nextVal.citizenship = extracted.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
-          nextVal.nationalityType = extracted.citizenship;
-        }
-        if (extracted.kewarganegaraan?.includes('CHINA')) {
-          nextVal.nationalityType = 'WNA';
-          nextVal.citizenship = 'FOREIGN';
-          nextVal.country = 'CHINA';
-        }
-        if (extracted.alamat) nextVal.address = extracted.alamat;
-        if (extracted.province) nextVal.province = extracted.province;
-        if (extracted.cityRegency || extracted.city) nextVal.cityRegency = extracted.cityRegency || extracted.city;
-        if (extracted.kecamatan || extracted.district) nextVal.district = extracted.kecamatan || extracted.district;
-        if (extracted.kelDesa || extracted.village) nextVal.village = extracted.kelDesa || extracted.village;
-        if (extracted.rt) nextVal.rt = extracted.rt;
-        if (extracted.rw) nextVal.rw = extracted.rw;
-        if (extracted.kodePos || extracted.postalCode) nextVal.postalCode = extracted.kodePos || extracted.postalCode;
-        if (extracted.pekerjaan) nextVal.occupation = extracted.pekerjaan;
         onChangeValue(nextVal);
       } catch (err) {
         console.warn('OCR error:', err);
-        onChangeValue({
-          ...curVal,
-          ktpUrl: dataUrl,
-          ktpFileName: f.name,
-          ktpMime: f.type,
-          ktpOcrText: ''
-        });
       } finally {
         setOcrLoading(false);
       }
@@ -1932,41 +2097,139 @@ function StakeholderModalDialog({
     r.readAsDataURL(f);
   };
 
-  const applyOcrToForm = () => {
-    if (!ocrText) return;
-    const p = parseKtpText(ocrText);
-    const nextVal: any = {
-      ...curVal,
-      idNumber: p.nik || curVal.idNumber,
-      idType: p.nik ? 'KTP' : curVal.idType,
-      firstName: p.firstName || curVal.firstName,
-      middleName: p.middleName || curVal.middleName,
-      lastName: p.lastName || curVal.lastName,
-      name: p.nama || curVal.name,
-      dateOfBirth: p.dateOfBirth || curVal.dateOfBirth,
-      gender: p.gender || curVal.gender,
-      maritalStatus: p.maritalStatus || curVal.maritalStatus,
-      citizenship: p.citizenship ? (p.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN') : curVal.citizenship,
-      nationalityType: p.citizenship || curVal.nationalityType,
-      country: p.kewarganegaraan?.includes('CHINA') ? 'CHINA' : curVal.country,
-      address: p.alamat || curVal.address,
-      province: p.province || curVal.province,
-      cityRegency: p.cityRegency || p.city || curVal.cityRegency,
-      district: p.kecamatan || p.district || curVal.district,
-      village: p.kelDesa || p.village || curVal.village,
-      rt: p.rt || curVal.rt,
-      rw: p.rw || curVal.rw,
-      postalCode: p.postalCode || p.kodePos || curVal.postalCode,
-      occupation: p.pekerjaan || curVal.occupation
-    };
+  const applyDocOcrToForm = () => {
+    let nextVal = { ...curVal };
+    if (docType === 'KTP') {
+      const p = ktpParsed;
+      if (p.nik) { nextVal.idNumber = p.nik; nextVal.idType = 'KTP'; }
+      if (p.nama) {
+        nextVal.name = p.nama;
+        nextVal.firstName = p.firstName || '';
+        nextVal.middleName = p.middleName || '';
+        nextVal.lastName = p.lastName || '';
+      }
+      if (p.dateOfBirth) {
+        nextVal.dateOfBirth = p.dateOfBirth;
+        const { years, months } = calculateAgeYearsMonths(p.dateOfBirth);
+        nextVal.ageYears = years;
+        nextVal.ageMonths = months;
+      }
+      if (p.gender) nextVal.gender = p.gender;
+      if (p.maritalStatus) nextVal.maritalStatus = p.maritalStatus;
+      if (p.citizenship) {
+        nextVal.citizenship = p.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
+        nextVal.nationalityType = p.citizenship;
+      }
+      if (p.kewarganegaraan?.includes('CHINA')) {
+        nextVal.nationalityType = 'WNA';
+        nextVal.citizenship = 'FOREIGN';
+        nextVal.country = 'CHINA';
+      }
+      if (p.alamat) nextVal.address = p.alamat;
+      if (p.province) nextVal.province = p.province;
+      if (p.cityRegency || p.city) nextVal.cityRegency = p.cityRegency || p.city;
+      if (p.kecamatan || p.district) nextVal.district = p.kecamatan || p.district;
+      if (p.kelDesa || p.village) nextVal.village = p.kelDesa || p.village;
+      if (p.rt) nextVal.rt = p.rt;
+      if (p.rw) nextVal.rw = p.rw;
+      if (p.postalCode || p.kodePos) nextVal.postalCode = p.postalCode || p.kodePos;
+      if (p.pekerjaan) nextVal.occupation = p.pekerjaan;
+    } else if (docType === 'PASSPORT') {
+      const p = passportParsed;
+      if (p.passportNumber) {
+        nextVal.idNumber = p.passportNumber;
+        nextVal.idType = 'PASSPORT';
+      }
+      if (p.fullName || p.surname || p.givenNames) {
+        nextVal.name = p.fullName || [p.givenNames, p.surname].filter(Boolean).join(' ');
+        nextVal.firstName = p.givenNames || '';
+        nextVal.lastName = p.surname || '';
+      }
+      if (p.dateOfBirth) {
+        nextVal.dateOfBirth = p.dateOfBirth;
+        const { years, months } = calculateAgeYearsMonths(p.dateOfBirth);
+        nextVal.ageYears = years;
+        nextVal.ageMonths = months;
+      }
+      if (p.gender) nextVal.gender = p.gender;
+      if (p.countryCode || p.nationality) {
+        const isIndo = p.countryCode === 'IDN' || p.nationality?.toUpperCase().includes('INDONESIA');
+        nextVal.citizenship = isIndo ? 'INDONESIAN' : 'FOREIGN';
+        nextVal.nationalityType = isIndo ? 'WNI' : 'WNA';
+        nextVal.country = p.countryName || p.nationality || (isIndo ? 'INDONESIA' : '');
+      }
+    } else if (docType === 'NPWP') {
+      const p = npwpParsed;
+      if (p.npwpNumber || p.rawNpwp) {
+        nextVal.taxId = p.npwpNumber || p.rawNpwp;
+        nextVal.npwp = p.npwpNumber || p.rawNpwp;
+      }
+      if (p.nik && !nextVal.idNumber) {
+        nextVal.idNumber = p.nik;
+        nextVal.idType = 'KTP';
+      }
+      if (p.nama && !nextVal.name) {
+        nextVal.name = p.nama;
+        const sn = splitPersonName(p.nama);
+        nextVal.firstName = sn.firstName;
+        nextVal.middleName = sn.middleName;
+        nextVal.lastName = sn.lastName;
+      }
+      if (p.alamat && !nextVal.address) nextVal.address = p.alamat;
+      if (p.kotaProvinsi && !nextVal.cityRegency) nextVal.cityRegency = p.kotaProvinsi;
+    } else if (docType === 'KITAS') {
+      const p = kitasParsed;
+      if (p.permitNumber || p.niora) {
+        nextVal.idNumber = p.permitNumber || p.niora;
+        nextVal.idType = 'KITAS';
+      }
+      if (p.nama) {
+        nextVal.name = p.nama;
+        const sn = splitPersonName(p.nama);
+        nextVal.firstName = sn.firstName;
+        nextVal.middleName = sn.middleName;
+        nextVal.lastName = sn.lastName;
+      }
+      if (p.tanggalLahir) {
+        nextVal.dateOfBirth = p.tanggalLahir;
+        const { years, months } = calculateAgeYearsMonths(p.tanggalLahir);
+        nextVal.ageYears = years;
+        nextVal.ageMonths = months;
+      }
+      if (p.gender) nextVal.gender = p.gender;
+      if (p.kewarganegaraan) {
+        nextVal.citizenship = 'FOREIGN';
+        nextVal.nationalityType = 'WNA';
+        nextVal.country = p.kewarganegaraan;
+      }
+    }
     onChangeValue(nextVal);
     setCopiedKey('applied_all');
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
+  const handleRemoveDoc = () => {
+    if (docType === 'KTP') {
+      onChangeValue({ ...curVal, ktpUrl: undefined, ktpFileName: undefined, ktpMime: undefined, ktpOcrText: '', ktpData: undefined });
+    } else if (docType === 'PASSPORT') {
+      onChangeValue({ ...curVal, passportUrl: undefined, passportFileName: undefined, passportMime: undefined, passportOcrText: '', passportData: undefined });
+    } else if (docType === 'NPWP') {
+      onChangeValue({ ...curVal, npwpUrl: undefined, npwpFileName: undefined, npwpMime: undefined, npwpOcrText: '', npwpData: undefined });
+    } else if (docType === 'KITAS') {
+      onChangeValue({ ...curVal, kitasUrl: undefined, kitasFileName: undefined, kitasMime: undefined, kitasOcrText: '', kitasData: undefined });
+    }
+  };
+
+  const docTitles: Record<StakeholderDocType, string> = {
+    KTP: 'e-KTP (Kependudukan)',
+    PASSPORT: 'Paspor (Passport Internasional)',
+    NPWP: 'NPWP (Nomor Pokok Wajib Pajak)',
+    KITAS: 'KITAS / ITAS (Izin Tinggal Terbatas)'
+  };
+
   return (
     <Modal
-      title={modal.index < 0 ? 'Tambah Shareholder · Side-by-side KTP' : editorLocked ? 'Detail Shareholder' : 'Edit Shareholder · Side-by-side KTP'}
+      title={modal.index < 0 ? 'Tambah Stakeholder · Side-by-side Dokumen OCR' : editorLocked ? 'Detail Stakeholder' : 'Edit Stakeholder · Side-by-side Dokumen OCR'}
       onClose={onClose}
       className="modal-side-by-side modal-stakeholder-ktp"
     >
@@ -1975,12 +2238,12 @@ function StakeholderModalDialog({
         <div className="modal-side-form-pane">
           <div className="ktp-form-header-bar">
             <div>
-              <span className="eyebrow" style={{color:'#002060',fontWeight:700,letterSpacing:'0.5px'}}>FORMULIR SHAREHOLDER</span>
+              <span className="eyebrow" style={{color:'#002060',fontWeight:700,letterSpacing:'0.5px'}}>FORMULIR STAKEHOLDER</span>
               <h3 style={{margin:'2px 0 0 0',fontSize:'15px',color:'#0f172a'}}>Data Pemegang Saham & Pengurus</h3>
             </div>
             {copiedKey === 'applied_all' && (
               <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',fontWeight:600,fontSize:'11px'}}>
-                ✓ Data KTP Terisi ke Form!
+                ✓ Data Dokumen Terisi ke Form!
               </span>
             )}
           </div>
@@ -1989,40 +2252,58 @@ function StakeholderModalDialog({
           <Fields fields={fields} value={curVal} disabled={editorLocked} onChange={onChangeValue} />
         </div>
 
-        {/* RIGHT PANE: KTP PREVIEW & OCR WORKSPACE */}
+        {/* RIGHT PANE: DOCUMENT PREVIEW & OCR WORKSPACE */}
         <div className="modal-side-preview-pane stakeholder-ktp-pane">
+          {/* DOCUMENT TYPE SELECTOR TABS */}
+          <div className="doc-type-tabs">
+            {(['KTP', 'PASSPORT', 'NPWP', 'KITAS'] as StakeholderDocType[]).map(t => {
+              const hasDoc = Boolean(docAssets[t].url);
+              return (
+                <button
+                  type="button"
+                  key={t}
+                  className={`doc-type-tab ${docType === t ? 'active' : ''}`}
+                  onClick={() => setDocType(t)}
+                >
+                  {hasDoc && <span className="doc-type-tab-indicator" title="Berkas terunggah" />}
+                  {t === 'KTP' ? 'e-KTP' : t === 'PASSPORT' ? 'Passport' : t === 'NPWP' ? 'NPWP' : 'KITAS'}
+                </button>
+              );
+            })}
+          </div>
+
           {/* TOP TOOLBAR */}
           <div className="ktp-pane-topbar">
             <div>
               <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
-                <h4 style={{margin:0,fontSize:'14.5px',color:'#002060',fontWeight:700}}>Dokumen Identitas (e-KTP)</h4>
-                {curVal.ktpUrl && (
+                <h4 style={{margin:0,fontSize:'14.5px',color:'#002060',fontWeight:700}}>{docTitles[docType]}</h4>
+                {currentAsset.url && (
                   <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',fontSize:'10.5px',fontWeight:600}}>
                     ✓ Terpasang
                   </span>
                 )}
               </div>
-              <span style={{fontSize:'11px',color:'#64748b'}}>Pratinjau fisik kartu identitas & ekstraksi data otomatis</span>
+              <span style={{fontSize:'11px',color:'#64748b'}}>Pratinjau fisik berkas identitas & ekstraksi data cerdas (OCR)</span>
             </div>
 
-            {curVal.ktpUrl && !editorLocked && (
+            {currentAsset.url && !editorLocked && (
               <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
                 <label className="button small button-secondary" style={{padding:'4px 10px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'4px'}}>
                   <Upload size={13}/> Ganti Berkas
-                  <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={handleKtpUpload}/>
+                  <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={e => handleUploadDoc(e, docType)}/>
                 </label>
-                <button type="button" className="button small legal-delete-button" style={{padding:'4px 8px'}} onClick={()=>onChangeValue({...curVal,ktpUrl:undefined,ktpFileName:undefined,ktpMime:undefined,ktpOcrText:''})}>
+                <button type="button" className="button small legal-delete-button" style={{padding:'4px 8px'}} onClick={handleRemoveDoc}>
                   <Trash2 size={13}/> Hapus
                 </button>
               </div>
             )}
           </div>
 
-          {/* KTP VIEWER CARD */}
-          {curVal.ktpUrl ? (
+          {/* DOCUMENT VIEWER CARD */}
+          {currentAsset.url ? (
             <div className="ktp-viewer-card">
               <div className="ktp-viewer-controls">
-                <span className="ktp-viewer-filename">{curVal.ktpFileName || 'KTP File'}</span>
+                <span className="ktp-viewer-filename">{currentAsset.fileName || `${docType} File`}</span>
                 <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
                   <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.max(0.75, z-0.25))} title="Perkecil"><ZoomOut size={13}/></button>
                   <span style={{fontSize:'10px',color:'#475569',minWidth:'28px',textAlign:'center'}}>{Math.round(zoom*100)}%</span>
@@ -2035,13 +2316,13 @@ function StakeholderModalDialog({
               </div>
 
               <div className="ktp-img-stage">
-                {curVal.ktpMime?.includes('pdf') ? (
-                  <iframe title="KTP PDF" src={curVal.ktpUrl} className="ktp-preview-iframe" />
+                {currentAsset.mime?.includes('pdf') || currentAsset.fileName?.toLowerCase().endsWith('.pdf') ? (
+                  <iframe title={`${docType} PDF`} src={currentAsset.url} className="ktp-preview-iframe" />
                 ) : (
                   <div className="ktp-img-viewport">
                     <img
-                      src={curVal.ktpUrl}
-                      alt="KTP Preview"
+                      src={currentAsset.url}
+                      alt={`${docType} Preview`}
                       className="ktp-preview-img-interactive"
                       style={{
                         transform: `scale(${zoom}) rotate(${rotation}deg)`,
@@ -2058,14 +2339,14 @@ function StakeholderModalDialog({
                 <Upload size={28}/>
               </div>
               <div style={{textAlign:'center'}}>
-                <b style={{fontSize:'14.5px',color:'#0f172a',display:'block'}}>Unggah Berkas Scan / Foto KTP</b>
-                <span style={{fontSize:'12px',color:'#64748b',display:'block',marginTop:'4px'}}>Seret berkas ke sini atau klik untuk memilih file (JPG, PNG, PDF)</span>
+                <b style={{fontSize:'14.5px',color:'#0f172a',display:'block'}}>Unggah Berkas Scan / Foto {docTitles[docType]}</b>
+                <span style={{fontSize:'12px',color:'#64748b',display:'block',marginTop:'4px'}}>Pilih file format gambar (JPG, PNG) atau PDF dokumen</span>
               </div>
               <div className="ktp-upload-tip">
                 <Sparkles size={14} style={{color:'#002060',flexShrink:0}}/>
-                <span>Data identitas pada KTP akan otomatis dibaca secara cerdas (OCR) dan mengisi formulir di sisi kiri.</span>
+                <span>Data identitas pada dokumen akan otomatis dipindai secara terstruktur sesuai format {docType} untuk mempermudah verifikasi.</span>
               </div>
-              <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={handleKtpUpload}/>
+              <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={e => handleUploadDoc(e, docType)}/>
             </label>
           )}
 
@@ -2076,12 +2357,12 @@ function StakeholderModalDialog({
               <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
                 <div className="ktp-ocr-badge-icon"><Sparkles size={14}/></div>
                 <div>
-                  <h5 style={{margin:0,fontSize:'13.5px',color:'#002060',fontWeight:700}}>Hasil Pembacaan Dokumen (AI OCR)</h5>
+                  <h5 style={{margin:0,fontSize:'13.5px',color:'#002060',fontWeight:700}}>Hasil Pembacaan Dokumen ({docType} OCR)</h5>
                   <div style={{display:'flex',alignItems:'center',gap:'6px',marginTop:'2px'}}>
                     {ocrLoading ? (
-                      <span className="ktp-ocr-status loading">⏳ Sedang memindai gambar KTP...</span>
-                    ) : ocrText ? (
-                      <span className="ktp-ocr-status ready">✓ 7 Data Siap Disinkronkan</span>
+                      <span className="ktp-ocr-status loading">⏳ Sedang memindai gambar {docType}...</span>
+                    ) : currentAsset.ocrText ? (
+                      <span className="ktp-ocr-status ready">✓ Data Siap Disinkronkan</span>
                     ) : (
                       <span className="ktp-ocr-status empty">Menunggu unggahan berkas</span>
                     )}
@@ -2089,90 +2370,278 @@ function StakeholderModalDialog({
                 </div>
               </div>
 
-              {ocrText && !editorLocked && (
+              {currentAsset.ocrText && !editorLocked && (
                 <button
                   type="button"
                   className="button primary small ktp-autofill-btn"
-                  onClick={applyOcrToForm}
-                  title="Salin dan petakan seluruh data terbaca langsung ke formulir di sebelah kiri"
+                  onClick={applyDocOcrToForm}
+                  title={`Salin dan sinkronkan data hasil pembacaan ${docType} ke formulir sebelah kiri`}
                 >
                   <Sparkles size={13}/> Isi Otomatis ke Form Kiri
                 </button>
               )}
             </div>
 
-            {/* STRUCTURED KTP DATA TILES */}
-            <div className="ktp-structured-grid">
-              <div className="ktp-field-tile highlight">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">NOMOR INDUK KEPENDUDUKAN (NIK)</span>
-                  {parsed.nik && (
-                    <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nik', parsed.nik!)}>
-                      {copiedKey==='nik' ? <Check size={11}/> : <Copy size={11}/>}
-                      {copiedKey==='nik' ? 'Tersalin' : 'Salin'}
-                    </button>
+            {/* STRUCTURED DATA TILES PER DOCUMENT TYPE */}
+            {docType === 'KTP' && (
+              <div className="ktp-structured-grid">
+                <div className="ktp-field-tile highlight">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NOMOR INDUK KEPENDUDUKAN (NIK)</span>
+                    {ktpParsed.nik && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nik', ktpParsed.nik!)}>
+                        {copiedKey==='nik' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='nik' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val nik-val">{ktpParsed.nik || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NAMA LENGKAP</span>
+                    {ktpParsed.nama && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nama', ktpParsed.nama!)}>
+                        {copiedKey==='nama' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='nama' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val">{ktpParsed.nama || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">TEMPAT / TGL LAHIR & USIA</span>
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.tempatTglLahir || (ktpParsed.tempatLahir ? `${ktpParsed.tempatLahir}, ${ktpParsed.dateOfBirth||''}` : '—')}</span>
+                  {ktpParsed.dateOfBirth && (
+                    <small className="ktp-field-sub">
+                      ISO: {ktpParsed.dateOfBirth} · Usia: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} Thn {calculateAgeYearsMonths(ktpParsed.dateOfBirth).months} Bln
+                    </small>
                   )}
                 </div>
-                <b className="ktp-field-val nik-val">{parsed.nik || '—'}</b>
-              </div>
 
-              <div className="ktp-field-tile">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">NAMA LENGKAP</span>
-                  {parsed.nama && (
-                    <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('nama', parsed.nama!)}>
-                      {copiedKey==='nama' ? <Check size={11}/> : <Copy size={11}/>}
-                      {copiedKey==='nama' ? 'Tersalin' : 'Salin'}
-                    </button>
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">JENIS KELAMIN</span>
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.gender === 'MALE' ? 'LAKI-LAKI (MALE)' : ktpParsed.gender === 'FEMALE' ? 'PEREMPUAN (FEMALE)' : '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">STATUS PERKAWINAN</span>
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.maritalStatus || ktpParsed.status || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KEWARGANEGARAAN</span>
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.citizenship || ktpParsed.kewarganegaraan || 'WNI'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">PEKERJAAN</span>
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.pekerjaan || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile full-width">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
+                    {ktpParsed.alamat && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('alamat', ktpParsed.alamat!)}>
+                        {copiedKey==='alamat' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='alamat' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val address-val">
+                    {[ktpParsed.alamat, ktpParsed.rtRw ? `RT/RW ${ktpParsed.rtRw}` : '', ktpParsed.kelDesa ? `Kel. ${ktpParsed.kelDesa}` : '', ktpParsed.kecamatan ? `Kec. ${ktpParsed.kecamatan}` : '', ktpParsed.cityRegency, ktpParsed.province].filter(Boolean).join(', ') || '—'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {docType === 'PASSPORT' && (
+              <div className="ktp-structured-grid">
+                <div className="ktp-field-tile highlight">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NOMOR PASPOR (PASSPORT NO.)</span>
+                    {passportParsed.passportNumber && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('passNo', passportParsed.passportNumber!)}>
+                        {copiedKey==='passNo' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='passNo' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val nik-val">{passportParsed.passportNumber || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KODE NEGARA / NATIONALITY</span>
+                  </div>
+                  <b className="ktp-field-val">{passportParsed.countryCode ? `${passportParsed.countryCode} · ${passportParsed.countryName || passportParsed.nationality || ''}` : passportParsed.nationality || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NAMA LENGKAP</span>
+                  </div>
+                  <b className="ktp-field-val">{passportParsed.fullName || [passportParsed.givenNames, passportParsed.surname].filter(Boolean).join(' ') || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NAMA DEPAN / SURNAME</span>
+                  </div>
+                  <span className="ktp-field-val">{passportParsed.givenNames ? `Given: ${passportParsed.givenNames}` : ''} {passportParsed.surname ? `· Surname: ${passportParsed.surname}` : ''}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">TANGGAL LAHIR & USIA</span>
+                  </div>
+                  <span className="ktp-field-val">{passportParsed.dateOfBirth || '—'}</span>
+                  {passportParsed.dateOfBirth && (
+                    <small className="ktp-field-sub">
+                      Usia: {calculateAgeYearsMonths(passportParsed.dateOfBirth).years} Thn {calculateAgeYearsMonths(passportParsed.dateOfBirth).months} Bln
+                    </small>
                   )}
                 </div>
-                <b className="ktp-field-val">{parsed.nama || '—'}</b>
-              </div>
 
-              <div className="ktp-field-tile">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">TEMPAT / TGL LAHIR</span>
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">JENIS KELAMIN (SEX)</span>
+                  </div>
+                  <span className="ktp-field-val">{passportParsed.gender === 'MALE' ? 'M / LAKI-LAKI' : passportParsed.gender === 'FEMALE' ? 'F / PEREMPUAN' : '—'}</span>
                 </div>
-                <span className="ktp-field-val">{parsed.tempatTglLahir || '—'}</span>
-                {parsed.dateOfBirth && <small className="ktp-field-sub">Format ISO: {parsed.dateOfBirth}</small>}
-              </div>
 
-              <div className="ktp-field-tile">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">JENIS KELAMIN</span>
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">TANGGAL BERLAKU / EXPIRY</span>
+                  </div>
+                  <span className="ktp-field-val">{passportParsed.expiryDate || '—'}</span>
                 </div>
-                <span className="ktp-field-val">{parsed.gender === 'MALE' ? 'LAKI-LAKI (MALE)' : parsed.gender === 'FEMALE' ? 'PEREMPUAN (FEMALE)' : '—'}</span>
-              </div>
 
-              <div className="ktp-field-tile">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">STATUS PERKAWINAN</span>
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KANTOR PENERBIT (AUTHORITY)</span>
+                  </div>
+                  <span className="ktp-field-val">{passportParsed.issuingAuthority || '—'}</span>
                 </div>
-                <span className="ktp-field-val">{parsed.maritalStatus || parsed.status || '—'}</span>
               </div>
+            )}
 
-              <div className="ktp-field-tile">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">KEWARGANEGARAAN</span>
+            {docType === 'NPWP' && (
+              <div className="ktp-structured-grid">
+                <div className="ktp-field-tile highlight">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NOMOR NPWP (15-16 DIGIT)</span>
+                    {npwpParsed.npwpNumber && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('npwp', npwpParsed.npwpNumber!)}>
+                        {copiedKey==='npwp' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='npwp' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val nik-val">{npwpParsed.npwpNumber || npwpParsed.rawNpwp || '—'}</b>
                 </div>
-                <span className="ktp-field-val">{parsed.kewarganegaraan || parsed.citizenship || '—'}</span>
-              </div>
 
-              <div className="ktp-field-tile full-width">
-                <div className="ktp-field-meta">
-                  <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
-                  {parsed.alamat && (
-                    <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('alamat', `${parsed.alamat}, RT ${parsed.rt||'000'}/RW ${parsed.rw||'000'}, ${parsed.kelDesa||''}, ${parsed.kecamatan||''}`)}>
-                      {copiedKey==='alamat' ? <Check size={11}/> : <Copy size={11}/>}
-                      {copiedKey==='alamat' ? 'Tersalin' : 'Salin'}
-                    </button>
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NAMA WAJIB PAJAK</span>
+                  </div>
+                  <b className="ktp-field-val">{npwpParsed.nama || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NIK TERDAFTAR</span>
+                  </div>
+                  <span className="ktp-field-val">{npwpParsed.nik || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KANTOR PELAYANAN PAJAK (KPP)</span>
+                  </div>
+                  <span className="ktp-field-val">{npwpParsed.kpp || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile full-width">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">ALAMAT TERDAFTAR NPWP</span>
+                  </div>
+                  <span className="ktp-field-val address-val">
+                    {[npwpParsed.alamat, npwpParsed.kelurahanKecamatan, npwpParsed.kotaProvinsi].filter(Boolean).join(', ') || '—'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {docType === 'KITAS' && (
+              <div className="ktp-structured-grid">
+                <div className="ktp-field-tile highlight">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NOMOR IZIN TINGGAL / NIORA</span>
+                    {kitasParsed.permitNumber && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('kitasNo', kitasParsed.permitNumber!)}>
+                        {copiedKey==='kitasNo' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='kitasNo' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <b className="ktp-field-val nik-val">{kitasParsed.permitNumber || kitasParsed.niora || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">NAMA LENGKAP</span>
+                  </div>
+                  <b className="ktp-field-val">{kitasParsed.nama || '—'}</b>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KEWARGANEGARAAN</span>
+                  </div>
+                  <span className="ktp-field-val">{kitasParsed.kewarganegaraan || 'WNA'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">TANGGAL LAHIR & USIA</span>
+                  </div>
+                  <span className="ktp-field-val">{kitasParsed.tanggalLahir || '—'}</span>
+                  {kitasParsed.tanggalLahir && (
+                    <small className="ktp-field-sub">
+                      Usia: {calculateAgeYearsMonths(kitasParsed.tanggalLahir).years} Thn {calculateAgeYearsMonths(kitasParsed.tanggalLahir).months} Bln
+                    </small>
                   )}
                 </div>
-                <span className="ktp-field-val address-val">
-                  {[parsed.alamat, parsed.rtRw ? `RT/RW ${parsed.rtRw}` : '', parsed.kelDesa ? `Kel. ${parsed.kelDesa}` : '', parsed.kecamatan ? `Kec. ${parsed.kecamatan}` : '', parsed.cityRegency, parsed.province].filter(Boolean).join(', ') || '—'}
-                </span>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">BERLAKU HINGGA</span>
+                  </div>
+                  <span className="ktp-field-val">{kitasParsed.berlakuHingga || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">INSTANSI PENERBIT</span>
+                  </div>
+                  <span className="ktp-field-val">{kitasParsed.instansiPenerbit || 'Direktorat Jenderal Imigrasi'}</span>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -2302,11 +2771,61 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const deeds=legalDeedList(value,application),selectedId=value.selectedDeedId||deeds.find(x=>x.type===(value.selectedDeed||'establishment'))?.id||deeds[0]?.id,parties=editing?.parties||{};
  const locked=(d:any)=>disabled||deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED';const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
  const rowsFor=(x:any):any[]=>Array.isArray(x.stakeholders)?x.stakeholders:x.id===selectedId?stakeholders:[];
- const updateRows=(deedId:string,rows:any[])=>{const hydrated=deeds.map(x=>x.id===selectedId&&!Array.isArray(x.stakeholders)?{...x,stakeholders}:x);const updated=hydrated.map(x=>x.id===deedId?{...x,stakeholders:rows}:x);onStakeholdersChange({...value,deeds:updated,selectedDeedId:deedId},rows);};
+ const updateRows=(deedId:string,rows:any[])=>{
+   const hydrated=deeds.map(x=>x.id===selectedId&&!Array.isArray(x.stakeholders)?{...x,stakeholders}:x);
+   const updated=hydrated.map(x=>x.id===deedId?{...x,stakeholders:rows}:x);
+   const nextLegal = {...value,deeds:updated,selectedDeedId:deedId};
+   onStakeholdersChange(nextLegal,rows);
+   if(application?.id && !application.isNew){
+     api(`/applications/${application.id}/page-legal`,'PUT',{legal:nextLegal,stakeholders:rows}).catch(e=>console.warn('Auto-save legal stakeholders error:',e));
+   }
+ };
  const safeUUID=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():'deed-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
  const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
- const saveDeed=()=>{if(!editing||editorLocked)return;try{validateInput({...editing,stakeholders:undefined});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;if(editing.type==='amendment'&&editing.deedDate&&estDate){if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}}if(editing.type==='establishment'&&editing.deedDate){const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));if(earlierAmendment){throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);}}setFormError('');}catch(e:any){setFormError(e.message);return;}const catsToSave=getDeedCategoryIds(editing);const cleanRemarks=(editing.remarks||'').replace(/<\/ol>\s*<ol[^>]*>/gi,'').replace(/<\/ul>\s*<ul[^>]*>/gi,'');const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};onChange({...value,deeds:deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved],selectedDeedId:editing.id});setEditing(null);};
- const removeDeed=()=>{if(!deleting||locked(deleting)||deleting.approvedSnapshot)return;const remaining=deeds.filter(x=>x.id!==deleting.id),nextId=remaining[0]?.id,legal={...value,deeds:remaining,hiddenDeedIds:[...new Set([...(value.hiddenDeedIds||[]),deleting.id])],selectedDeedId:nextId};if(deleting.id===selectedId)onStakeholdersChange(legal,nextId?rowsFor(remaining[0]):[]);else onChange(legal);setDeleting(null);};
+ const saveDeed=()=>{
+   if(!editing||editorLocked)return;
+   try{
+     validateInput({...editing,stakeholders:undefined});
+     const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);
+     const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;
+     if(editing.type==='amendment'&&editing.deedDate&&estDate){
+       if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){
+         throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);
+       }
+     }
+     if(editing.type==='establishment'&&editing.deedDate){
+       const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));
+       if(earlierAmendment){
+         throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);
+       }
+     }
+     setFormError('');
+   }catch(e:any){
+     setFormError(e.message);
+     return;
+   }
+   const catsToSave=getDeedCategoryIds(editing);
+   const cleanRemarks=(editing.remarks||'').replace(/<\/ol>\s*<ol[^>]*>/gi,'').replace(/<\/ul>\s*<ul[^>]*>/gi,'');
+   const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};
+   const updatedDeeds = deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved];
+   const nextLegal = {...value,deeds:updatedDeeds,selectedDeedId:editing.id};
+   onChange(nextLegal);
+   if(application?.id && !application.isNew){
+     api(`/applications/${application.id}/page-legal`,'PUT',{legal:nextLegal}).catch(e=>console.warn('Auto-save legal deed error:',e));
+   }
+   setEditing(null);
+ };
+ const removeDeed=()=>{
+   if(!deleting||locked(deleting)||deleting.approvedSnapshot)return;
+   const remaining=deeds.filter(x=>x.id!==deleting.id),nextId=remaining[0]?.id,legal={...value,deeds:remaining,hiddenDeedIds:[...new Set([...(value.hiddenDeedIds||[]),deleting.id])],selectedDeedId:nextId};
+   const nextRows = nextId?rowsFor(remaining[0]):[];
+   if(deleting.id===selectedId)onStakeholdersChange(legal,nextRows);
+   else onChange(legal);
+   if(application?.id && !application.isNew){
+     api(`/applications/${application.id}/page-legal`,'PUT',{legal,stakeholders:nextRows}).catch(e=>console.warn('Auto-delete legal deed error:',e));
+   }
+   setDeleting(null);
+ };
   const handleKtpUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -2422,8 +2941,32 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     });
   };
 
-  const saveStakeholder=()=>{if(!stakeholderModal||editorLocked)return;try{validateInput(stakeholderModal.value);for(const [key,name] of [['email','Email'],['mobilePhone','Mobile phone'],['primaryCapital','Primary capital']])if(String(stakeholderModal.value[key]??'').trim()==='')throw Error(name+' wajib diisi.');if(![stakeholderModal.value.firstName,stakeholderModal.value.lastName,stakeholderModal.value.name].some(v=>String(v||'').trim()))throw Error('Nama stakeholder wajib diisi.');setFormError('');}catch(e:any){setFormError(e.message);return;}const x=deeds.find(d=>d.id===stakeholderModal.deedId);if(!x)return;const rows=rowsFor(x),next=stakeholderModal.index<0?[...rows,stakeholderModal.value]:rows.map((r,i)=>i===stakeholderModal.index?stakeholderModal.value:r);try{validateInput({stakeholders:next});}catch(e:any){setFormError(e.message);return;}updateRows(x.id,next);setStakeholderModal(null);};
- const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const complete=editing&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
+  const saveStakeholder=()=>{
+    if(!stakeholderModal||editorLocked)return;
+    try{
+      validateInput(stakeholderModal.value);
+      for(const [key,name] of [['email','Email'],['mobilePhone','Mobile phone'],['primaryCapital','Primary capital']])if(String(stakeholderModal.value[key]??'').trim()==='')throw Error(name+' wajib diisi.');
+      if(![stakeholderModal.value.firstName,stakeholderModal.value.lastName,stakeholderModal.value.name].some(v=>String(v||'').trim()))throw Error('Nama stakeholder wajib diisi.');
+      setFormError('');
+    }catch(e:any){
+      setFormError(e.message);
+      return;
+    }
+    const x=deeds.find(d=>d.id===stakeholderModal.deedId);
+    if(!x)return;
+    const rows=rowsFor(x);
+    let valToSave={...stakeholderModal.value};
+    if(valToSave.dateOfBirth){
+      const {years,months}=calculateAgeYearsMonths(valToSave.dateOfBirth);
+      valToSave.ageYears=years;
+      valToSave.ageMonths=months;
+    }
+    const next=stakeholderModal.index<0?[...rows,valToSave]:rows.map((r,i)=>i===stakeholderModal.index?valToSave:r);
+    try{validateInput({stakeholders:next});}catch(e:any){setFormError(e.message);return;}
+    updateRows(x.id,next);
+    setStakeholderModal(null);
+  };
+  const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const complete=editing&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
 
   // Klasifikasi Akta Aktif (Strict Legal) vs Akta Historical (Riwayat)
   const establishmentDeeds = deeds.filter((d: any) => d.type === 'establishment');

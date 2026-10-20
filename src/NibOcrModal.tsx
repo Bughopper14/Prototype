@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   X, Upload, ScanLine, Sparkles, CheckCircle2, Copy, FileText, 
   Check, Loader2, Calendar, Mail, Phone, MapPin, Hash, ArrowRight,
-  FileSearch, RefreshCw, Building2
+  FileSearch, RefreshCw, Building2, ZoomIn, ZoomOut, RotateCw, Maximize2
 } from 'lucide-react';
 import { api } from './api';
 import { 
@@ -36,6 +36,9 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
   const master = useMasterData();
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
+  const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [rawText, setRawText] = useState<string>('');
   const [showRaw, setShowRaw] = useState(false);
@@ -71,6 +74,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
     if (!f) return;
     setFileName(f.name);
     setOcrLoading(true);
+    const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+    setFileType(isPdf ? 'pdf' : 'image');
+    try {
+      const objectUrl = URL.createObjectURL(f);
+      setFileUrl(objectUrl);
+    } catch {}
+    setZoom(1);
+    setRotation(0);
 
     try {
       // 1. Send file directly to OCR backend scanner (supports PDF, PNG, JPG, JPEG, WEBP)
@@ -314,63 +325,172 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         }}>
           {/* LEFT: UPLOAD & FILE ZONE */}
           <div style={{display:'flex', flexDirection:'column', gap: 14}}>
-            <div 
-              onDragOver={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-              onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-              onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
-              onDrop={e => {
-                e.preventDefault();
-                e.stopPropagation();
-                setIsDragging(false);
-                const droppedFile = e.dataTransfer.files?.[0];
-                if (droppedFile) processFile(droppedFile);
-              }}
-              style={{
-                border: isDragging ? '2px dashed #2563eb' : '2px dashed #cbd5e1',
+            {fileUrl ? (
+              <div style={{
+                background: '#0f172a',
+                border: '1px solid #cbd5e1',
                 borderRadius: 10,
-                padding: '24px 16px',
-                textAlign: 'center',
-                background: isDragging ? '#eff6ff' : '#f8fafc',
-                cursor: 'pointer',
-                position: 'relative',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <input 
-                type="file" 
-                accept="image/*,application/pdf"
-                onChange={handleFileUpload}
-                style={{
-                  position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                  opacity: 0, cursor: 'pointer'
-                }}
-              />
-              <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 8}}>
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                {/* TOOLBAR */}
                 <div style={{
-                  width: 44, height: 44, borderRadius: '50%', background: isDragging ? '#dbeafe' : '#e0f2fe',
-                  color: '#2563eb', display:'flex', alignItems:'center', justifyContent:'center'
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '7px 12px',
+                  background: '#1e293b',
+                  borderBottom: '1px solid #334155'
                 }}>
-                  <Upload size={22} />
-                </div>
-                <div>
-                  <b style={{fontSize: '0.9rem', color: '#0f172a', display:'block'}}>
-                    {isDragging ? 'Drop NIB Document Here' : 'Click or Drag NIB File Here'}
-                  </b>
-                  <span style={{fontSize: '0.78rem', color: '#64748b'}}>
-                    Supported formats: PNG, JPG, JPEG, WEBP, or PDF
-                  </span>
-                </div>
-                {fileName && (
-                  <div style={{
-                    marginTop: 6, padding: '4px 10px', background: '#eff6ff',
-                    border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.78rem',
-                    color: '#1e40af', display:'inline-flex', alignItems:'center', gap: 6
-                  }}>
-                    <FileText size={14} /> {fileName}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '55%' }}>
+                    <FileText size={14} color="#60a5fa" />
+                    <span style={{ fontSize: '0.74rem', color: '#f8fafc', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {fileName || 'Dokumen NIB'}
+                    </span>
                   </div>
-                )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => setZoom(z => Math.max(0.5, z - 0.2))}
+                      title="Zoom Out"
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <ZoomOut size={13} />
+                    </button>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', minWidth: 32, textAlign: 'center' }}>
+                      {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setZoom(z => Math.min(3, z + 0.2))}
+                      title="Zoom In"
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <ZoomIn size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRotation(r => (r + 90) % 360)}
+                      title="Putar 90°"
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <RotateCw size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setZoom(1); setRotation(0); }}
+                      title="Reset"
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                    >
+                      <Maximize2 size={13} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* PREVIEW CANVAS */}
+                <div style={{
+                  height: '270px',
+                  overflow: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: '#090d16',
+                  padding: '8px'
+                }}>
+                  {fileType === 'pdf' ? (
+                    <iframe
+                      src={`${fileUrl}#toolbar=0`}
+                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff' }}
+                      title="NIB PDF Preview"
+                    />
+                  ) : (
+                    <img
+                      src={fileUrl}
+                      alt="NIB Preview"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
+                        transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                        transition: 'transform 0.15s ease'
+                      }}
+                    />
+                  )}
+                </div>
+
+                {/* BOTTOM ACTION */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '6px 10px',
+                  background: '#1e293b',
+                  borderTop: '1px solid #334155'
+                }}>
+                  <label style={{ fontSize: '0.72rem', color: '#60a5fa', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, margin: 0 }}>
+                    <RefreshCw size={12} /> Ganti Dokumen NIB
+                    <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setFileUrl(null); setFileName(''); setFileType(null); }}
+                    style={{ background: 'none', border: 'none', color: '#f87171', fontSize: '0.72rem', cursor: 'pointer' }}
+                  >
+                    Hapus Dokumen
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div 
+                onDragOver={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
+                onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(false);
+                  const droppedFile = e.dataTransfer.files?.[0];
+                  if (droppedFile) processFile(droppedFile);
+                }}
+                style={{
+                  border: isDragging ? '2px dashed #2563eb' : '2px dashed #cbd5e1',
+                  borderRadius: 10,
+                  padding: '24px 16px',
+                  textAlign: 'center',
+                  background: isDragging ? '#eff6ff' : '#f8fafc',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <input 
+                  type="file" 
+                  accept="image/*,application/pdf"
+                  onChange={handleFileUpload}
+                  style={{
+                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                    opacity: 0, cursor: 'pointer'
+                  }}
+                />
+                <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 8}}>
+                  <div style={{
+                    width: 44, height: 44, borderRadius: '50%', background: isDragging ? '#dbeafe' : '#e0f2fe',
+                    color: '#2563eb', display:'flex', alignItems:'center', justifyContent:'center'
+                  }}>
+                    <Upload size={22} />
+                  </div>
+                  <div>
+                    <b style={{fontSize: '0.9rem', color: '#0f172a', display:'block'}}>
+                      {isDragging ? 'Drop NIB Document Here' : 'Click or Drag NIB File Here'}
+                    </b>
+                    <span style={{fontSize: '0.78rem', color: '#64748b'}}>
+                      Supported formats: PNG, JPG, JPEG, WEBP, or PDF
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
               <button 

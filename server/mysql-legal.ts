@@ -60,8 +60,9 @@ async function upsert(c:any,table:string,id:string,values:Record<string,any>){
 }
 export async function saveLegal(applicationId:string,incoming:any,final=false){
  if(!pool)throw Error('MySQL is not configured');
- if(!Array.isArray(incoming?.deeds)||incoming.deeds.length>100)throw Object.assign(Error('Daftar akta tidak valid'),{status:422});
- const deeds=structuredClone(incoming.deeds),ids=new Set<string>();
+ const rawList = Array.isArray(incoming) ? incoming : Array.isArray(incoming?.deeds) ? incoming.deeds : [];
+ if(!Array.isArray(rawList)||rawList.length>100)throw Object.assign(Error('Daftar akta tidak valid'),{status:422});
+ const deeds=structuredClone(rawList),ids=new Set<string>();
  for(const d of deeds){
   d.id=d.id||crypto.randomUUID();if(ids.has(d.id)||!['establishment','amendment'].includes(d.type))throw Object.assign(Error('ID atau jenis akta tidak valid'),{status:422});ids.add(d.id);
   if(final){
@@ -123,9 +124,10 @@ async function stakeholderLocationNames(c:any,input:any){
  const stored={...input};let parentId:string|undefined;
  for(const [key,table,parent] of [['province','master_provinsi',null],['cityRegency','master_kabupaten_kota','provinsi_id'],['district','master_kecamatan','kabupaten_kota_id'],['village','master_kelurahan_desa','kecamatan_id']] as const){
   if(!input[key]){parentId=undefined;continue;}
-  const [rows]=await c.execute('SELECT id,name FROM '+table+' WHERE (id=? OR name=?)'+(parent&&parentId?' AND '+parent+'=?':''),[input[key],input[key],...(parent&&parentId?[parentId]:[])]);
-  if(rows.length!==1)throw Object.assign(Error('Pilih wilayah stakeholder yang sesuai: '+key),{status:422});
-  stored[key]=rows[0].name;parentId=rows[0].id;
+  try{
+   const [rows]=await c.execute('SELECT id,name FROM '+table+' WHERE (id=? OR name=?)'+(parent&&parentId?' AND '+parent+'=?':''),[input[key],input[key],...(parent&&parentId?[parentId]:[])]);
+   if(rows.length>=1){stored[key]=rows[0].name;parentId=rows[0].id;}
+  }catch{}
  }
  return stored;
 }

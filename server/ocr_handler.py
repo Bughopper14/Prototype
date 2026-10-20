@@ -738,6 +738,317 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     return extracted
 
 
+def extract_ktp_nib_style(boxes: list) -> tuple:
+    import re
+
+    sorted_boxes = sorted(boxes, key=lambda b: (b.get("y_min", 0.0), b.get("x_min", 0.0)))
+    lines = []
+    full_text_list = []
+    for b in sorted_boxes:
+        t = (b.get("text") or "").strip()
+        if t:
+            lines.append(t)
+            full_text_list.append(t)
+    full_text = "\n".join(full_text_list)
+
+    month_map = {
+        'JAN': '01', 'JANUARI': '01', 'JANUARY': '01',
+        'FEB': '02', 'FEBRUARI': '02', 'FEBRUARY': '02',
+        'MAR': '03', 'MARET': '03', 'MARCH': '03',
+        'APR': '04', 'APRIL': '04',
+        'MEI': '05', 'MAY': '05',
+        'JUN': '06', 'JUNI': '06', 'JUNE': '06',
+        'JUL': '07', 'JULI': '07', 'JULY': '07',
+        'AGU': '08', 'AGT': '08', 'AGUSTUS': '08', 'AUG': '08', 'AUGUST': '08',
+        'SEP': '09', 'SEPTEMBER': '09',
+        'OKT': '10', 'OCT': '10', 'OKTOBER': '10', 'OCTOBER': '10',
+        'NOV': '11', 'NOP': '11', 'NOVEMBER': '11',
+        'DES': '12', 'DEC': '12', 'DESEMBER': '12', 'DECEMBER': '12',
+    }
+
+    def parse_indo_date(val: str) -> str:
+        if not val:
+            return ""
+        v = str(val).strip()
+        m = re.search(r'\b(\d{1,2})[-\s/\.]+([A-Za-z]+)[-\s/\.]+(\d{4})\b', v)
+        if m:
+            d_val, m_str, y_val = m.groups()
+            m_num = month_map.get(m_str.upper())
+            if not m_num:
+                for k, code in month_map.items():
+                    if m_str.upper().startswith(k) or k.startswith(m_str.upper()):
+                        m_num = code
+                        break
+            if m_num:
+                return f"{int(y_val):04d}-{m_num}-{int(d_val):02d}"
+        m_iso = re.search(r'\b(\d{4})-(\d{1,2})-(\d{1,2})\b', v)
+        if m_iso:
+            return f"{int(m_iso.group(1)):04d}-{int(m_iso.group(2)):02d}-{int(m_iso.group(3)):02d}"
+        m_dm = re.search(r'\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b', v)
+        if m_dm:
+            return f"{int(m_dm.group(3)):04d}-{int(m_dm.group(2)):02d}-{int(m_dm.group(1)):02d}"
+        return ""
+
+    nik = ""
+    nama = ""
+    tempat_lahir = ""
+    tanggal_lahir = ""
+    jenis_kelamin = ""
+    golongan_darah = "-"
+    alamat = ""
+    rt = ""
+    rw = ""
+    kel_desa = ""
+    kecamatan = ""
+    kabupaten_kota = ""
+    provinsi = ""
+    agama = ""
+    status_perkawinan = ""
+    pekerjaan = ""
+    kewarganegaraan = "WNI"
+
+    # 1. Provinsi & Kota / Kabupaten from header
+    for line in lines[:5]:
+        m_prov = re.search(r'PROVINSI\s+([A-Z\s]+)', line, re.IGNORECASE)
+        if m_prov and not provinsi:
+            provinsi = re.sub(r'[^A-Za-z\s]', '', m_prov.group(1)).strip().upper()
+        m_kab = re.search(r'(?:KOTA|KABUPATEN|KAB\.)\s+([A-Z\s]+)', line, re.IGNORECASE)
+        if m_kab and not kabupaten_kota:
+            kabupaten_kota = re.sub(r'[^A-Za-z\s]', '', m_kab.group(1)).strip().upper()
+
+    # 2. NIK (16 digit angka with OCR error handling)
+    def clean_nik_digits(raw: str) -> str:
+        s = raw.upper()
+        for old, new in [('O', '0'), ('D', '0'), ('I', '1'), ('L', '1'), ('B', '8'), ('S', '5'), ('Z', '2')]:
+            s = s.replace(old, new)
+        return re.sub(r'\D', '', s)
+
+    nik_match = re.search(r'(?:nik|nik\s*[:\.]|nomor\s+induk)[\s:.\-–—]*([0-9A-Za-z\s]{14,24})', full_text, re.IGNORECASE)
+    if nik_match:
+        cand = clean_nik_digits(nik_match.group(1))
+        if len(cand) == 16:
+            nik = cand
+        elif len(cand) > 16:
+            nik = cand[:16]
+
+    if not nik:
+        for idx, line in enumerate(lines):
+            if re.search(r'\b(?:nik|nomor\s+induk)\b', line, re.IGNORECASE):
+                d_match = clean_nik_digits(line)
+                if len(d_match) >= 16:
+                    nik = d_match[:16]
+                    break
+                if idx + 1 < len(lines):
+                    next_cand = clean_nik_digits(lines[idx + 1])
+                    if len(next_cand) >= 16:
+                        nik = next_cand[:16]
+                        break
+
+    if not nik:
+        all_16 = re.findall(r'\b\d{16}\b', full_text)
+        if all_16:
+            nik = all_16[0]
+
+    # 3. Nama
+    for idx, line in enumerate(lines):
+        m_name = re.search(r'^(?:\d+[\.\)]\s*)?nama[\s:.\-–—=~]+(.*)$', line.strip(), re.IGNORECASE)
+        if m_name:
+            cand = m_name.group(1).strip()
+            cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', cand).strip()
+            if len(cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat', cand, re.IGNORECASE):
+                nama = cand.upper()
+                break
+            elif not cand and idx + 1 < len(lines):
+                next_cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', lines[idx + 1].strip()).strip()
+                if len(next_cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat|jenis|kelamin', next_cand, re.IGNORECASE):
+                    nama = next_cand.upper()
+                    break
+
+    if not nama:
+        m_name_all = re.search(r'(?:nama|name)[\s:.\-–—=~]*([A-Za-z\s\.,\'-]{3,50})(?:$|\n|tempat|lahir)', full_text, re.IGNORECASE)
+        if m_name_all:
+            cand = m_name_all.group(1).strip()
+            if not re.search(r'tempat|lahir|nik|alamat|provinsi|kabupaten', cand, re.IGNORECASE):
+                nama = cand.upper()
+
+    # 4. Tempat / Tanggal Lahir
+    for line in lines:
+        m_ttl = re.search(r'(?:tempat[/\s\.]*tgl[/\s\.]*lahir|tempat|lahir)[\s:.\-–—=~]*(.*)$', line.strip(), re.IGNORECASE)
+        if m_ttl:
+            ttl_val = m_ttl.group(1).strip()
+            m_date = re.search(r'(\d{1,2}[-/\.\s]+[A-Za-z0-9]+[-/\.\s]+\d{4})', ttl_val)
+            if m_date:
+                tanggal_lahir = parse_indo_date(m_date.group(1))
+                place_cand = ttl_val[:m_date.start()].strip()
+                place_cand = re.sub(r'[,.\s\-–—:=~]+$', '', place_cand).strip()
+                place_cand = re.sub(r'^[^a-zA-Z]+', '', place_cand).strip()
+                if place_cand:
+                    tempat_lahir = place_cand.upper()
+                break
+
+    if not tanggal_lahir:
+        m_dob = re.search(r'\b(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})\b', full_text)
+        if m_dob:
+            tanggal_lahir = parse_indo_date(m_dob.group(1))
+
+    # 5. Jenis Kelamin
+    if re.search(r'\b(?:LAKI-LAKI|LAKI|LAKL|PRIA|MALE)\b', full_text, re.IGNORECASE):
+        jenis_kelamin = "LAKI-LAKI"
+    elif re.search(r'\b(?:PEREMPUAN|WANITA|FEMALE)\b', full_text, re.IGNORECASE):
+        jenis_kelamin = "PEREMPUAN"
+
+    # Golongan Darah
+    m_gd = re.search(r'(?:gol[.,\s]*darah|darah)\s*[:.\-–—\s]*([ABO0]{1,2})\b', full_text, re.IGNORECASE)
+    if m_gd:
+        gd = m_gd.group(1).upper().replace('0', 'O')
+        if gd in ['A', 'B', 'AB', 'O']:
+            golongan_darah = gd
+
+    # 6. Alamat
+    for idx, line in enumerate(lines):
+        m_al = re.search(r'^(?:\d+[\.\)]\s*)?alamat[\s:.\-–—=~]+(.*)$', line.strip(), re.IGNORECASE)
+        if m_al:
+            val = m_al.group(1).strip()
+            val = re.sub(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b.*$', '', val, flags=re.IGNORECASE).strip()
+            val = re.sub(r'[,.\s\-–—*~|]+$', '', val).strip()
+            if len(val) >= 4:
+                alamat = val.upper()
+                break
+
+    if not alamat:
+        for line in lines:
+            m_st = re.search(r'\b(?:JL|JALAN|KP|KAMPUNG|KOMP|KOMPLEK|GG|GANG|DUSUN)\b[.\s]+([^\n\r]+)', line, re.IGNORECASE)
+            if m_st:
+                val = m_st.group(0).strip()
+                val = re.split(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b', val, flags=re.IGNORECASE)[0].strip()
+                val = re.sub(r'[,.\s\-–—*~|]+$', '', val).strip()
+                if len(val) >= 4:
+                    alamat = val.upper()
+                    break
+
+    # 7. RT & RW
+    m_rtrw = re.search(r'\b(?:rt[/\s.:]*(\d{1,3}))[\s/,\-]+(?:rw[/\s.:]*(\d{1,3}))\b', full_text, re.IGNORECASE)
+    if m_rtrw:
+        rt = m_rtrw.group(1).zfill(3)
+        rw = m_rtrw.group(2).zfill(3)
+    else:
+        m_slash = re.search(r'\brt[i/|!\s]*rw[\s:.\-–—=]*(\d{1,3})[/\s\-]+(\d{1,3})\b', full_text, re.IGNORECASE)
+        if m_slash:
+            rt = m_slash.group(1).zfill(3)
+            rw = m_slash.group(2).zfill(3)
+
+    # 8. Kel/Desa
+    m_kd = re.search(r'(?:kel\s*[\/\.]?\s*desa|kelurahan|desa)[\s:.\-–—=~]*([A-Za-z0-9\s]+?)(?:$|\n|kecamatan|rt|rw)', full_text, re.IGNORECASE)
+    if m_kd:
+        kel_desa = re.sub(r'[^A-Za-z0-9\s]', '', m_kd.group(1)).strip().upper()
+
+    # 9. Kecamatan
+    m_kc = re.search(r'(?:kecamatan|kec\.?)[\s:.\-–—=~]*([A-Za-z0-9\s]+?)(?:$|\n|kabupaten|kota|kelurahan|agama)', full_text, re.IGNORECASE)
+    if m_kc:
+        kecamatan = re.sub(r'[^A-Za-z0-9\s]', '', m_kc.group(1)).strip().upper()
+
+    # 10. Agama
+    for rel in ['ISLAM', 'KRISTEN', 'KATHOLIK', 'KATOLIK', 'HINDU', 'BUDDHA', 'BUDHA', 'KONGHUCU', 'KHONGHUCU']:
+        if re.search(r'\b' + rel + r'\b', full_text, re.IGNORECASE):
+            agama = 'KATOLIK' if rel == 'KATHOLIK' else 'BUDDHA' if rel == 'BUDHA' else rel
+            break
+
+    # 11. Status Perkawinan
+    if re.search(r'\bBELUM\s+KAWIN\b', full_text, re.IGNORECASE):
+        status_perkawinan = "BELUM KAWIN"
+    elif re.search(r'\bKAWIN\b', full_text, re.IGNORECASE):
+        status_perkawinan = "KAWIN"
+    elif re.search(r'\bCERAI\s+HIDUP\b', full_text, re.IGNORECASE):
+        status_perkawinan = "CERAI HIDUP"
+    elif re.search(r'\bCERAI\s+MATI\b', full_text, re.IGNORECASE):
+        status_perkawinan = "CERAI MATI"
+
+    # 12. Pekerjaan
+    m_pek = re.search(r'(?:pekerjaan|pekeriaan)[\s:.\-–—=~]*([^\n\r]+)', full_text, re.IGNORECASE)
+    if m_pek:
+        raw_p = m_pek.group(1).strip().upper()
+        if 'WIRASWASTA' in raw_p:
+            pekerjaan = 'WIRASWASTA'
+        elif 'KARYAWAN SWASTA' in raw_p or 'SWASTA' in raw_p:
+            pekerjaan = 'KARYAWAN SWASTA'
+        elif 'PEGAWAI NEGERI' in raw_p or 'PNS' in raw_p:
+            pekerjaan = 'PEGAWAI NEGERI SIPIL'
+        elif 'PELAJAR' in raw_p or 'MAHASISWA' in raw_p:
+            pekerjaan = 'PELAJAR/MAHASISWA'
+        elif 'IBU RUMAH TANGGA' in raw_p:
+            pekerjaan = 'IBU RUMAH TANGGA'
+        elif 'BELUM' in raw_p or 'TIDAK BEKERJA' in raw_p:
+            pekerjaan = 'BELUM/TIDAK BEKERJA'
+        elif 'BURUH' in raw_p:
+            pekerjaan = 'BURUH'
+        elif 'DOKTER' in raw_p:
+            pekerjaan = 'DOKTER'
+        elif 'GURU' in raw_p:
+            pekerjaan = 'GURU'
+        elif 'DOSEN' in raw_p:
+            pekerjaan = 'DOSEN'
+        else:
+            pekerjaan = re.sub(r'[^A-Z\s]', '', raw_p).strip()
+
+    # 13. Kewarganegaraan
+    if re.search(r'\bWNA\b', full_text, re.IGNORECASE):
+        kewarganegaraan = "WNA"
+    else:
+        kewarganegaraan = "WNI"
+
+    parts = nama.split() if nama else []
+    first_name = parts[0] if parts else ""
+    middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ""
+    last_name = parts[-1] if len(parts) > 1 else ""
+
+    data = {
+        "nik": nik,
+        "idNumber": nik,
+        "nama": nama,
+        "name": nama,
+        "firstName": first_name,
+        "middleName": middle_name,
+        "lastName": last_name,
+        "tempat_lahir": tempat_lahir,
+        "tanggal_lahir": tanggal_lahir,
+        "dateOfBirth": tanggal_lahir,
+        "tempatTglLahir": f"{tempat_lahir}, {tanggal_lahir}" if (tempat_lahir or tanggal_lahir) else "",
+        "jenis_kelamin": jenis_kelamin,
+        "gender": "FEMALE" if jenis_kelamin == "PEREMPUAN" else "MALE" if jenis_kelamin == "LAKI-LAKI" else "",
+        "golongan_darah": golongan_darah,
+        "alamat": alamat,
+        "address": alamat,
+        "fullAddress": alamat,
+        "rt": rt,
+        "rw": rw,
+        "rt_rw": f"{rt}/{rw}" if (rt or rw) else "",
+        "kel_desa": kel_desa,
+        "village": kel_desa,
+        "kecamatan": kecamatan,
+        "district": kecamatan,
+        "kabupaten_kota": kabupaten_kota,
+        "cityRegency": kabupaten_kota,
+        "city": kabupaten_kota,
+        "provinsi": provinsi,
+        "province": provinsi,
+        "agama": agama,
+        "status_perkawinan": status_perkawinan,
+        "maritalStatus": "MARRIED" if "KAWIN" in status_perkawinan and "BELUM" not in status_perkawinan else "SINGLE" if "BELUM" in status_perkawinan else "DIVORCED" if "CERAI" in status_perkawinan else "SINGLE",
+        "pekerjaan": pekerjaan,
+        "occupation": pekerjaan,
+        "kewarganegaraan": kewarganegaraan,
+        "citizenship": kewarganegaraan,
+        "berlaku_hingga": "SEUMUR HIDUP"
+    }
+
+    try:
+        post_process_ktp_full(data, sorted_boxes)
+    except Exception:
+        pass
+
+    return data, []
+
+
 def extract_nib(boxes: list) -> tuple:
     import re
 

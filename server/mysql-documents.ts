@@ -43,6 +43,16 @@ export async function initializeApplicationDocuments(){
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,
   FOREIGN KEY(checklist_id) REFERENCES application_document_checklist(id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+ await pool.query(`CREATE TABLE IF NOT EXISTS application_submit_lock (
+  application_id CHAR(36) PRIMARY KEY,
+  is_locked TINYINT(1) NOT NULL DEFAULT 1,
+  stage VARCHAR(50) NOT NULL DEFAULT 'FAP_STAGE',
+  fap_doc_uploaded TINYINT(1) NOT NULL DEFAULT 0,
+  unlocked_at TIMESTAMP(3) NULL,
+  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  FOREIGN KEY(application_id) REFERENCES all_applications(application_id)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  await auditTable('application_document_checklist');await auditTable('application_document_file');
  await syncApplicationDocuments();
 }
@@ -68,7 +78,9 @@ export async function uploadApplicationDocument(id:string,checklistId:string,fil
   const key=crypto.randomUUID(),fileId=crypto.randomUUID();await store(key);
   await c.execute('INSERT INTO application_document_file (id,checklist_id,file_name,file_key,file_size,mime_type,uploaded_by) VALUES (?,?,?,?,?,?,?)',[fileId,checklistId,file.originalname,key,file.size,file.mimetype,actorId]);
   await c.execute("UPDATE application_document_checklist SET status='UPLOADED',checked_by_mkt=1,checked_by_bs=0,checked_by_ca=0,checked_by_legal=0,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?",[checklistId]);
-  await c.commit();return {id:fileId,checklistId,fileName:file.originalname,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
+  await c.commit();
+  try{await syncSubmitLock(id);}catch{}
+  return {id:fileId,checklistId,fileName:file.originalname,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 export async function deleteApplicationDocumentFile(id:string,fileId:string,removeStoredFile:(key:string)=>Promise<void>){
@@ -90,6 +102,7 @@ export async function deleteApplicationDocumentFile(id:string,fileId:string,remo
    updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[remaining.length?'UPLOADED':'PENDING',remaining.length?1:0,file.checklist_id]);
   await removeStoredFile(file.file_key);
   await c.commit();
+  try{await syncSubmitLock(id);}catch{}
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 export async function verifyApplicationDocument(id:string,checklistId:string,body:any){
@@ -106,4 +119,43 @@ export async function verifyApplicationDocument(id:string,checklistId:string,bod
   await c.execute(`UPDATE application_document_checklist SET ${column}=?,status=?,registration_date=?,expired_date=?,data_summary=?,notes=?,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[body.isVerified,body.department===docs[0].assigned_role?(body.isVerified?'VERIFIED':'REJECTED'):docs[0].status,body.registrationDate??null,body.expiredDate??null,body.dataSummary??'',body.notes??'',checklistId]);
   await c.commit();
  }catch(e){await c.rollback();throw e;}finally{c.release();}
+}
+
+export async function syncSubmitLock(applicationId:string){
+ if(!pool)return {isLocked:1,fapDocUploaded:0};
+ try{
+  const [rows]=await pool.execute<any[]>(`
+   SELECT COUNT(f.id) AS file_count
+   FROM application_document_checklist d
+   JOIN application_document_file f ON f.checklist_id = d.id
+   WHERE d.application_id = ?
+     AND (UPPER(d.document_code) = 'FAP' OR LOWER(d.document_name) LIKE '%fap%' OR (d.assigned_role = 'MKT' AND d.is_mandatory = 1))
+  `,[applicationId]);
+  const hasUploaded=Number(rows[0]?.file_count||0)>0;
+  const isLocked=hasUploaded?0:1;
+  await pool.execute(`
+   INSERT INTO application_submit_lock (application_id, is_locked, stage, fap_doc_uploaded, unlocked_at)
+   VALUES (?, ?, 'FAP_STAGE', ?, ?)
+   ON DUPLICATE KEY UPDATE
+     is_locked = VALUES(is_locked),
+     fap_doc_uploaded = VALUES(fap_doc_uploaded),
+     unlocked_at = IF(VALUES(is_locked) = 0, COALESCE(unlocked_at, CURRENT_TIMESTAMP(3)), NULL),
+     updated_at = CURRENT_TIMESTAMP(3)
+  `,[applicationId,isLocked,hasUploaded?1:0,hasUploaded?new Date():null]);
+  return {isLocked,fapDocUploaded:hasUploaded?1:0};
+ }catch(err){
+  console.warn('syncSubmitLock error:',err);
+  return {isLocked:1,fapDocUploaded:0};
+ }
+}
+
+export async function getSubmitLock(applicationId:string){
+ if(!pool)return {isLocked:1,fapDocUploaded:0};
+ try{
+  const [rows]=await pool.execute<any[]>('SELECT * FROM application_submit_lock WHERE application_id=?',[applicationId]);
+  if(!rows.length)return await syncSubmitLock(applicationId);
+  return {isLocked:Number(rows[0].is_locked),fapDocUploaded:Number(rows[0].fap_doc_uploaded)};
+ }catch{
+  return {isLocked:1,fapDocUploaded:0};
+ }
 }

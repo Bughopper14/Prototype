@@ -77,16 +77,20 @@ def main():
             dtype_clean = detected.value if hasattr(detected, "value") else str(detected).lower()
 
         if dtype_clean == "ktp":
-            obj, tagged = InformationExtractor.extract_ktp(boxes)
+            from ocr_handler import extract_ktp_nib_style
+            extracted, tagged = extract_ktp_nib_style(boxes)
             detected_type = "ktp"
         elif dtype_clean == "npwp":
             obj, tagged = InformationExtractor.extract_npwp(boxes)
+            extracted = obj.model_dump() if hasattr(obj, "model_dump") else dict(obj)
             detected_type = "npwp"
         elif dtype_clean == "passport":
             obj, tagged = InformationExtractor.extract_passport(boxes)
+            extracted = obj.model_dump() if hasattr(obj, "model_dump") else dict(obj)
             detected_type = "passport"
         elif dtype_clean == "kitas":
             obj, tagged = InformationExtractor.extract_kitas(boxes)
+            extracted = obj.model_dump() if hasattr(obj, "model_dump") else dict(obj)
             detected_type = "kitas"
         elif dtype_clean == "nib":
             from ocr_handler import extract_nib
@@ -94,16 +98,8 @@ def main():
             detected_type = "nib"
         else:
             obj, tagged = InformationExtractor.extract_generic(boxes)
-            detected_type = "generic"
-
-        if dtype_clean != "nib":
             extracted = obj.model_dump() if hasattr(obj, "model_dump") else dict(obj)
-        if detected_type == "ktp":
-            try:
-                from ocr_handler import post_process_ktp_full
-                post_process_ktp_full(extracted, boxes)
-            except Exception as pe:
-                sys.stderr.write(f"[OCR_CLI] post_process_ktp_full warning: {pe}\n")
+            detected_type = "generic"
 
         print(json.dumps({
             "status": "success",

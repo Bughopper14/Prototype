@@ -1,4 +1,4 @@
-import {readApplicationDocuments,seedApplicationDocuments} from './mysql-documents';
+import {readApplicationDocuments,seedApplicationDocuments,getSubmitLock,syncSubmitLock} from './mysql-documents';
 import {readBusiness} from './mysql-business';
 import {readFinancialStatements} from './mysql-financial-statements';
 import {readLegal} from './mysql-legal';
@@ -166,7 +166,7 @@ export async function intakeDetail(id:string){
    legal:mandatoryList.some(r=>r.section==='Legal'&&Boolean(r.mandatory)),
    documents:Boolean(docRows[0]?.is_doc_mandatory)
  };
- return {...profile,id:row.application_id,companyName:customer.companyName,customerId:row.customer_id,customer,establishmentActNo:customer.establishmentActNo,establishmentDate:customer.establishmentDate,nibDate:customer.nibDate,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),mandatoryConfig,approvalLogs:[],signoffs:[]};
+ return {...profile,id:row.application_id,companyName:customer.companyName,customerId:row.customer_id,customer,establishmentActNo:customer.establishmentActNo,establishmentDate:customer.establishmentDate,nibDate:customer.nibDate,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||legal.deeds[0]?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),mandatoryConfig,submitLock:await getSubmitLock(id),approvalLogs:[],signoffs:[]};
 }
 
 export async function intakeCustomers(){
@@ -345,6 +345,10 @@ export async function transitionIntake(id:string,action:string,actor:{name:strin
     HAVING COUNT(adf.id) = 0`,
    [id]
   );
+  const submitLock = await getSubmitLock(id);
+  if(submitLock.isLocked){
+    throw mysqlError('Tombol submit terkunci (is_locked=1). Unggah dokumen FAP Stage terlebih dahulu di tab Documents.', 422);
+  }
   if(docRows.length>0){
    const missingDocNames=docRows.map((r:any)=>r.document_name).join(', ');
    throw mysqlError(
