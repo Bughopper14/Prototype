@@ -86,7 +86,7 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
     const isRequired=isFieldMandatory(mandatoryRules,section,f.key,f.required);
     const fieldValue=f.type==='date'?String(value?.[f.key]||'').slice(0,10):value?.[f.key]??'';
     const isDigitsOnly=['phone','mobilePhone','phoneFax','rt','rw'].includes(f.key);
-    const isAgeField=['ageYears','ageMonths'].includes(f.key);
+    const isAgeField=['ageYears','ageMonths','experienceYears','experienceMonths'].includes(f.key);
     const isFieldDisabled=disabled||isAgeField;
     const ageStyle=isAgeField?{backgroundColor:'#f1f5f9',cursor:'not-allowed',color:'#64748b'}:undefined;
     const update=(raw:string)=>{
@@ -1005,19 +1005,42 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Pengalaman & Operasional Usaha</h5>
-              <Fields fields={profileFields.filter(f=>['mainBusiness','industrySegment','businessRole','repaymentSource'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
-              {/* Experience dihitung otomatis dari Establishment Deed Date */}
-              <div className="formgrid" style={{marginTop:8}}>
-                <label>
-                  <div className="field-label-header"><span className="field-label" title="Experience · years">Experience · years</span></div>
-                  <input aria-label="Experience · years" type="text" readOnly disabled value={liveEstablishmentDate ? String(calculateAgeYearsMonths(liveEstablishmentDate).years) : (draft.experienceYears ?? '')} style={{backgroundColor:'#f1f5f9',cursor:'not-allowed',color:'#64748b'}}/>
-                  <small style={{color:'#94a3b8',fontSize:'0.72rem'}}>Dihitung otomatis dari Establishment Deed Date</small>
-                </label>
-                <label>
-                  <div className="field-label-header"><span className="field-label" title="Experience · months">Experience · months</span></div>
-                  <input aria-label="Experience · months" type="text" readOnly disabled value={liveEstablishmentDate ? String(calculateAgeYearsMonths(liveEstablishmentDate).months) : (draft.experienceMonths ?? '')} style={{backgroundColor:'#f1f5f9',cursor:'not-allowed',color:'#64748b'}}/>
-                </label>
-              </div>
+              {(() => {
+                const calculatedExp = liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate) : null;
+                const operationalValues = {
+                  ...draft,
+                  experienceYears: calculatedExp ? String(calculatedExp.years) : (draft.experienceYears ?? ''),
+                  experienceMonths: calculatedExp ? String(calculatedExp.months) : (draft.experienceMonths ?? ''),
+                };
+                const opFields: Field[] = [
+                  profileFields.find(f => f.key === 'mainBusiness')!,
+                  profileFields.find(f => f.key === 'repaymentSource')!,
+                  profileFields.find(f => f.key === 'industrySegment')!,
+                  profileFields.find(f => f.key === 'businessRole')!,
+                  { ...profileFields.find(f => f.key === 'experienceYears')!, type: 'text' },
+                  { ...profileFields.find(f => f.key === 'experienceMonths')!, type: 'text' },
+                ].filter(Boolean);
+                return (
+                  <>
+                    <Fields 
+                      fields={opFields} 
+                      value={operationalValues} 
+                      disabled={!canEdit} 
+                      onChange={v => {
+                        const exp = liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate) : null;
+                        setDraft({
+                          ...v,
+                          experienceYears: exp ? exp.years : (v.experienceYears ?? draft.experienceYears ?? 0),
+                          experienceMonths: exp ? exp.months : (v.experienceMonths ?? draft.experienceMonths ?? 0)
+                        });
+                      }}
+                    />
+                    <small style={{color:'#64748b',fontSize:'0.72rem',display:'block',marginTop:6}}>
+                      * Experience years & months dihitung otomatis dari Tanggal Akta Pendirian (Establishment Deed Date)
+                    </small>
+                  </>
+                );
+              })()}
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Ringkasan Legalitas Akta Perubahan</h5>
