@@ -578,10 +578,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
   establishmentActNo: liveEstablishmentActNo,
   establishmentDate: liveEstablishmentDate || '',
   companyAddress: draft.companyAddress,
-  province: draft.province,
-  city: draft.city,
-  district: draft.district,
-  village: draft.village,
+  province: master.province?.find(x => x.value === draft.province || x.name.toLowerCase() === String(draft.province || '').toLowerCase())?.name || draft.province,
+  city: master.city?.find(x => x.value === draft.city || x.name.toLowerCase() === String(draft.city || '').toLowerCase())?.name || draft.city,
+  district: master.district?.find(x => x.value === draft.district || x.name.toLowerCase() === String(draft.district || '').toLowerCase())?.name || (/^[0-9a-f-]{36}$/i.test(String(draft.district || '')) ? '' : draft.district),
+  village: master.village?.find(x => x.value === draft.village || x.name.toLowerCase() === String(draft.village || '').toLowerCase())?.name || (/^[0-9a-f-]{36}$/i.test(String(draft.village || '')) ? '' : draft.village),
   rt: draft.rt,
   rw: draft.rw,
   postalCode: draft.postalCode,
@@ -864,7 +864,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                     <dl>
                       <div><dt>NIB</dt><dd style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{selectedCustomer.nib || '—'}</span><button type="button" onClick={()=>setNibOcrOpen(true)} title="Scan & Verifikasi Dokumen NIB via OCR" className="nib-header-ocr-btn"><ScanLine size={11}/><span>Scan OCR NIB</span></button></dd></div>
                       <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
-                      <div><dt>Establishment Deed Number</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
+                      <div><dt>Establishment Deed No</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
                     </dl>
                   </section>
                 )}

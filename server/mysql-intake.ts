@@ -133,6 +133,15 @@ export async function migrateCustomerPicLocations(){
  if(updateTrigger.length){try{await pool.query('DROP TRIGGER IF EXISTS audit_customer_pic_update');}catch(e){console.warn('Could not drop audit_customer_pic_update:', e);}}
  for(const [oldName,newName,table] of migrations){const current=columns.has(newName)?newName:columns.has(oldName)?oldName:null;if(!current)continue;await pool.query(`UPDATE customer_pic p JOIN ${table} m ON m.id=p.\`${current}\` SET p.\`${current}\`=m.name`);if(current===oldName){await pool.query(`ALTER TABLE customer_pic CHANGE COLUMN \`${oldName}\` \`${newName}\` TEXT NULL`);columns.delete(oldName);columns.add(newName);}}
  if(updateTrigger.length){const {auditTable}=await import('./mysql-users');await auditTable('customer_pic');}
+ try {
+  await pool.query(`UPDATE new_application_fap_stage f JOIN master_kecamatan d ON d.id=f.district SET f.district=d.name`);
+  await pool.query(`UPDATE new_application_fap_stage f JOIN master_kelurahan_desa v ON v.id=f.village SET f.village=v.name`);
+  await pool.query(`UPDATE business_partner bp JOIN master_kecamatan d ON d.id=bp.district SET bp.district=d.name`);
+  await pool.query(`UPDATE business_partner bp JOIN master_kelurahan_desa v ON v.id=bp.village SET bp.village=v.name`);
+  await pool.query(`UPDATE master_mandatory SET field_label='Establishment Deed No' WHERE field_key='establishmentActNo'`);
+ } catch (migErr) {
+  console.warn('Location plaintext migration note:', migErr);
+ }
 }
 
 function listSelect(){
@@ -148,15 +157,15 @@ export async function intakeDetail(id:string){
  const customer={...readFields(row,fapFields.filter(f=>customerFields.some(x=>x.key===f.key))),...readFields(row,preFields.filter(f=>customerFields.some(x=>x.key===f.key))),id:row.customer_id};
  const profile={...readFields(row,fapFields.filter(f=>profileFields.some(x=>x.key===f.key))),...readFields(row,preFields.filter(f=>profileFields.some(x=>x.key===f.key))),customerStatus:row.customer_category};
  if(row.district||row.village){
-  const [pLocs]=await pool.execute<any[]>(`SELECT d.id AS district_master_id,v.id AS village_master_id FROM master_provinsi pr LEFT JOIN master_kabupaten_kota c ON c.name=? AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=? OR d.id=?) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=? OR v.id=?) AND v.kecamatan_id=d.id WHERE pr.name=?`,[row.city||'',row.district||'',row.district||'',row.village||'',row.village||'',row.province||'']);
+  const [pLocs]=await pool.execute<any[]>(`SELECT d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM master_provinsi pr LEFT JOIN master_kabupaten_kota c ON c.name=? AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=? OR d.id=?) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=? OR v.id=?) AND v.kecamatan_id=d.id WHERE pr.name=?`,[row.city||'',row.district||'',row.district||'',row.village||'',row.village||'',row.province||'']);
   if(pLocs.length){
-   if(pLocs[0].district_master_id) profile.district=pLocs[0].district_master_id;
-   if(pLocs[0].village_master_id) profile.village=pLocs[0].village_master_id;
+   profile.district=pLocs[0].district_name||row.district;
+   profile.village=pLocs[0].village_name||row.village;
   }
  }
- const [pics]=await pool.execute<any[]>(`SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id FROM customer_pic cp LEFT JOIN master_provinsi pr ON pr.name=cp.province LEFT JOIN master_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,[id]);
+ const [pics]=await pool.execute<any[]>(`SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM customer_pic cp LEFT JOIN master_provinsi pr ON pr.name=cp.province LEFT JOIN master_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,[id]);
  const legal=await readLegal(id);
- const pic=pics[0]?{...Object.fromEntries(picFields.map(f=>[f.key,databaseValue(pics[0][picColumn(f.key)],f.type)])),district:pics[0].district_master_id||pics[0].kecamatan,village:pics[0].village_master_id||pics[0].kelurahan,id:pics[0].id,createdAt:pics[0].created_at,updatedAt:pics[0].updated_at}:null;
+ const pic=pics[0]?{...Object.fromEntries(picFields.map(f=>[f.key,databaseValue(pics[0][picColumn(f.key)],f.type)])),district:pics[0].district_name||pics[0].kecamatan,village:pics[0].village_name||pics[0].kelurahan,id:pics[0].id,createdAt:pics[0].created_at,updatedAt:pics[0].updated_at}:null;
  const [docRows]=await pool.execute<any[]>(`SELECT COALESCE(MAX(is_mandatory), 0) AS is_doc_mandatory FROM application_document_checklist WHERE application_id = ?`,[id]);
  const [mandatoryList]=await pool.query<any[]>('SELECT section, field_key, field_label, mandatory FROM master_mandatory');
  const mandatoryConfig={

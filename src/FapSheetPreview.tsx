@@ -7,6 +7,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { LIUGONG_LOGO_B64 } from './liugong-logo-b64';
+import { useMasterData } from './master-data';
 
 export interface FapSheetData {
   fapNumber?: string;
@@ -81,6 +82,7 @@ export interface FapSheetPreviewProps {
 }
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
+  const master = useMasterData();
   const [autoFit, setAutoFit] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(props.compact ? 0.85 : 1.0);
   const [paperHeight, setPaperHeight] = useState<number>(2400);
@@ -189,6 +191,20 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       return fallback;
     };
 
+    const resolveLocationLabel = (groupKey: 'province' | 'city' | 'district' | 'village', val: any) => {
+      if (!val) return '';
+      const str = String(val).trim();
+      if (!str) return '';
+      const items = (master as any)?.[groupKey] || [];
+      const found = items.find((x: any) => x.value === str || x.name.toLowerCase() === str.toLowerCase());
+      if (found) return found.name;
+      // If it's a UUID and not found in master data, avoid showing hashcode
+      if (/^[0-9a-f-]{32,36}$/i.test(str)) {
+        return '';
+      }
+      return str;
+    };
+
     return {
       fapNumber: pick(raw.fapNumber, app.fapNumber, '', '—'),
       applicationDate: pick(raw.applicationDate, app.applicationDate, ''),
@@ -201,10 +217,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
       establishmentDate: pick(raw.establishmentDate, cust.establishmentDate, ''),
       companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
-      city: pick(raw.city, prof.city, ''),
-      province: pick(raw.province, prof.province, ''),
-      district: pick(raw.district, prof.district, ''),
-      village: pick(raw.village, prof.village, ''),
+      city: resolveLocationLabel('city', pick(raw.city, prof.city, '')),
+      province: resolveLocationLabel('province', pick(raw.province, prof.province, '')),
+      district: resolveLocationLabel('district', pick(raw.district, prof.district, '')),
+      village: resolveLocationLabel('village', pick(raw.village, prof.village, '')),
       rt: pick(raw.rt, prof.rt, ''),
       rw: pick(raw.rw, prof.rw, ''),
       postalCode: pick(raw.postalCode, prof.postalCode, ''),
@@ -223,8 +239,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       phone: pick(raw.phone, p.phone, p.mobilePhone, ''),
       picEmail: pick(raw.picEmail, p.email, ''),
       currentAddress: pick(raw.currentAddress, p.currentAddress, ''),
-      picCity: pick(raw.picCity, p.city, ''),
-      picProvince: pick(raw.picProvince, p.province, ''),
+      picCity: resolveLocationLabel('city', pick(raw.picCity, p.city, '')),
+      picProvince: resolveLocationLabel('province', pick(raw.picProvince, p.province, '')),
       picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
       selectedDeedNo: pick(raw.selectedDeedNo, prof.latestDeedNo, ''),
       stakeholders: sh.length ? sh : (raw.stakeholders || app.stakeholders || []),
@@ -248,7 +264,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       assetSummaryHeNonLiuGong: pick(raw.assetSummaryHeNonLiuGong, app.assetSummaryHeNonLiuGong, ''),
       assetSummaryTruckNonLiuGong: pick(raw.assetSummaryTruckNonLiuGong, app.assetSummaryTruckNonLiuGong, ''),
     };
-  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders]);
+  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, master]);
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '  /  /    ';
