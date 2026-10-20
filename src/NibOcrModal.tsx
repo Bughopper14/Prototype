@@ -120,65 +120,71 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         const newPhone = String(d.phone || d.phoneFax || '').trim();
         const newTanggal = String(d.tanggal_terbit || d.establishmentDate || '').trim();
 
-        if (newNib || newCompanyName || rawAddress || newEmail || newPhone || newTanggal) {
-          // OVERWRITE fields on the right panel
-          setFormData({
-            nib: newNib,
-            companyName: newCompanyName,
-            alamat: rawAddress,
-            province: newProvince,
-            city: newCity,
-            district: newDistrict,
-            village: newVillage,
-            postalCode: newPostal,
-            email: newEmail,
-            phone: newPhone,
-            tanggalTerbit: newTanggal,
-            rt: newRt,
-            rw: newRw
-          });
-          setRawText(rawAddress || JSON.stringify(d, null, 2));
-          if (notify) {
-            notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
-          }
-          setOcrLoading(false);
-          return;
+        setFormData({
+          nib: newNib,
+          companyName: newCompanyName,
+          alamat: rawAddress,
+          province: newProvince,
+          city: newCity,
+          district: newDistrict,
+          village: newVillage,
+          postalCode: newPostal,
+          email: newEmail,
+          phone: newPhone,
+          tanggalTerbit: newTanggal,
+          rt: newRt,
+          rw: newRw
+        });
+        setRawText(rawAddress || JSON.stringify(d, null, 2));
+        if (notify) {
+          notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
         }
+        setOcrLoading(false);
+        return;
       }
     } catch (backendErr: any) {
-      console.warn('Backend OCR scan failed, attempting client-side fallback:', backendErr);
+      console.warn('Backend OCR scan failed:', backendErr);
+      if (isPdf) {
+        setOcrLoading(false);
+        if (notify) notify(`Document scan error: ${backendErr?.message || 'Server error'}`);
+        return;
+      }
     }
 
-    // 2. Client-side fallback for images or when server is unavailable
-    const r = new FileReader();
-    r.onload = async () => {
-      const dataUrl = r.result as string;
-      setFileUrl(dataUrl);
-      try {
-        const extracted = await extractNibTextFromDocument(dataUrl, f.name, master);
-        setRawText(extracted.rawText);
-        setFormData({
-          nib: extracted.nib || '',
-          companyName: extracted.companyName || '',
-          alamat: extracted.alamat || '',
-          email: extracted.email || '',
-          phone: extracted.phone || '',
-          tanggalTerbit: extracted.tanggalTerbit || '',
-          city: extracted.city || '',
-          district: extracted.district || '',
-          village: extracted.village || '',
-          postalCode: extracted.postalCode || '',
-          province: extracted.province || '',
-          rt: extracted.rt || '',
-          rw: extracted.rw || ''
-        });
-      } catch (err: any) {
-        console.warn('Client-side OCR fallback error:', err);
-      } finally {
-        setOcrLoading(false);
-      }
-    };
-    r.readAsDataURL(f);
+    if (!isPdf) {
+      // 2. Client-side fallback for images when server is unavailable
+      const r = new FileReader();
+      r.onload = async () => {
+        const dataUrl = r.result as string;
+        setFileUrl(dataUrl);
+        try {
+          const extracted = await extractNibTextFromDocument(dataUrl, f.name, master);
+          setRawText(extracted.rawText);
+          setFormData({
+            nib: extracted.nib || '',
+            companyName: extracted.companyName || '',
+            alamat: extracted.alamat || '',
+            email: extracted.email || '',
+            phone: extracted.phone || '',
+            tanggalTerbit: extracted.tanggalTerbit || '',
+            city: extracted.city || '',
+            district: extracted.district || '',
+            village: extracted.village || '',
+            postalCode: extracted.postalCode || '',
+            province: extracted.province || '',
+            rt: extracted.rt || '',
+            rw: extracted.rw || ''
+          });
+        } catch (err: any) {
+          console.warn('Client-side OCR fallback error:', err);
+        } finally {
+          setOcrLoading(false);
+        }
+      };
+      r.readAsDataURL(f);
+    } else {
+      setOcrLoading(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,10 +273,10 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
         style={{
-          width: 'min(1360px, 95vw)',
-          maxWidth: '95vw',
-          maxHeight: '90vh',
-          height: 'min(860px, 90vh)',
+          width: 'min(1600px, 96vw)',
+          maxWidth: '96vw',
+          maxHeight: '94vh',
+          height: 'min(920px, 94vh)',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
@@ -324,12 +330,12 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           padding: '16px 20px',
           overflow: 'hidden',
           display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+          gridTemplateColumns: '1fr 1fr',
           gap: 20,
           flex: '1 1 auto',
           minHeight: 0
         }}>
-          {/* LEFT: UPLOAD & FILE ZONE */}
+          {/* LEFT: UPLOAD & FILE ZONE (50% VIEW) */}
           <div style={{display:'flex', flexDirection:'column', gap: 12, height: '100%', minHeight: 0}}>
             {fileUrl ? (
               <div style={{
@@ -400,7 +406,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 {/* PREVIEW CANVAS */}
                 <div style={{
                   flex: '1 1 0',
-                  minHeight: '260px',
+                  minHeight: '480px',
+                  height: '100%',
                   overflow: 'auto',
                   display: 'flex',
                   alignItems: 'center',
@@ -411,7 +418,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   {fileType === 'pdf' ? (
                     <iframe
                       src={`${fileUrl}#toolbar=0`}
-                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff', minHeight: '300px' }}
+                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff', minHeight: '480px' }}
                       title="NIB PDF Preview"
                     />
                   ) : (
@@ -467,14 +474,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 style={{
                   border: isDragging ? '2px dashed #2563eb' : '2px dashed #cbd5e1',
                   borderRadius: 10,
-                  padding: '24px 16px',
+                  padding: '32px 20px',
                   textAlign: 'center',
                   background: isDragging ? '#eff6ff' : '#f8fafc',
                   cursor: 'pointer',
                   position: 'relative',
                   transition: 'all 0.2s ease',
                   flex: '1 1 0',
-                  minHeight: '220px',
+                  minHeight: '340px',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
@@ -490,18 +497,18 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     opacity: 0, cursor: 'pointer'
                   }}
                 />
-                <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 8}}>
+                <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap: 10}}>
                   <div style={{
-                    width: 44, height: 44, borderRadius: '50%', background: isDragging ? '#dbeafe' : '#e0f2fe',
+                    width: 52, height: 52, borderRadius: '50%', background: isDragging ? '#dbeafe' : '#e0f2fe',
                     color: '#2563eb', display:'flex', alignItems:'center', justifyContent:'center'
                   }}>
-                    <Upload size={22} />
+                    <Upload size={26} />
                   </div>
                   <div>
-                    <b style={{fontSize: '0.9rem', color: '#0f172a', display:'block'}}>
+                    <b style={{fontSize: '0.96rem', color: '#0f172a', display:'block'}}>
                       {isDragging ? 'Drop NIB Document Here' : 'Click or Drag NIB File Here'}
                     </b>
-                    <span style={{fontSize: '0.78rem', color: '#64748b'}}>
+                    <span style={{fontSize: '0.8rem', color: '#64748b'}}>
                       Supported formats: PNG, JPG, JPEG, WEBP, or PDF
                     </span>
                   </div>
@@ -509,20 +516,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </div>
             )}
 
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink: 0}}>
-              <button 
-                type="button" 
-                onClick={loadSampleDoc}
-                className="button small"
-                style={{
-                  fontSize: '0.75rem', display:'inline-flex', alignItems:'center', gap: 5,
-                  background: '#ffffff', color: '#2563eb', borderColor: '#2563eb'
-                }}
-              >
-                <Sparkles size={13} /> Use Sample OSS NIB Document
-              </button>
-
-              {rawText && (
+            {rawText && (
+              <div style={{display:'flex', justifyContent:'flex-end', alignItems:'center', flexShrink: 0}}>
                 <button
                   type="button"
                   onClick={() => setShowRaw(!showRaw)}
@@ -531,8 +526,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 >
                   {showRaw ? 'Hide Raw OCR' : 'View Raw OCR'}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* STATUS BADGE */}
             <div style={{

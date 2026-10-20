@@ -1586,37 +1586,43 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
     try:
         file_storage.save(str(temp_path))
 
-        # 1. Load document (renders PDF page at 300 DPI or loads image directly)
-        raw_img, page_count = DocumentPreprocessor.load_document(temp_path)
-        oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
-        deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-        img_to_process = deskewed_img
-
-        boxes = OCREngine.process_image(img_to_process) if OCR_AVAILABLE else []
-        if not boxes:
-            boxes = TesseractEngine.process_image(img_to_process)
-
-        # In case of PDF, also collect any embedded digital text from pages to enrich OCR boxes
+        # 1. In case of PDF, check if digital text already exists (e.g. OSS NIB, FAP, Akta)
+        boxes = []
+        page_count = 1
         if temp_path.suffix.lower() == '.pdf':
             try:
                 import fitz
                 p_doc = fitz.open(str(temp_path))
-                existing_text_blob = " ".join([b.get("text", "") for b in boxes]).lower()
-                for p_idx in range(min(len(p_doc), 3)):
+                page_count = len(p_doc)
+                digital_boxes = []
+                for p_idx in range(len(p_doc)):
                     page_blocks = p_doc[p_idx].get_text("blocks")
                     for blk in page_blocks:
                         blk_txt = blk[4].strip() if len(blk) > 4 else ""
                         for blk_line in blk_txt.split('\n'):
                             clean_line = blk_line.strip()
-                            if len(clean_line) > 3 and clean_line.lower() not in existing_text_blob:
-                                boxes.append({
+                            if clean_line:
+                                digital_boxes.append({
                                     "text": clean_line,
-                                    "confidence": 0.99,
+                                    "confidence": 1.0,
                                     "box": [int(blk[0]), int(blk[1]), int(blk[2]), int(blk[3])]
                                 })
                 p_doc.close()
+                if len(digital_boxes) >= 5:
+                    boxes = digital_boxes
             except Exception as pdf_extra_err:
-                print(f"[OCR] PDF text enrichment note: {pdf_extra_err}")
+                print(f"[OCR] PDF text extraction note: {pdf_extra_err}")
+
+        # 2. If no digital text (scanned PDF) or image, load and run OCR engine
+        if not boxes:
+            raw_img, page_count = DocumentPreprocessor.load_document(temp_path)
+            oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
+            deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+            img_to_process = deskewed_img
+
+            boxes = OCREngine.process_image(img_to_process) if OCR_AVAILABLE else []
+            if not boxes:
+                boxes = TesseractEngine.process_image(img_to_process)
 
         # 5. Document Type detection
         dtype_clean = (doc_type or "auto").strip().lower()

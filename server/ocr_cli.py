@@ -25,9 +25,10 @@ def main():
         sys.exit(1)
 
     try:
-        # Check if PDF contains high-res embedded image (e.g. CamScanner or scanned KTP)
+        # Check if PDF has digital text or contains scanned image
         img_to_process = None
         page_count = 1
+        digital_boxes = []
         if p.suffix.lower() == '.pdf':
             try:
                 import pymupdf as fitz
@@ -35,41 +36,65 @@ def main():
                 import numpy as np
                 doc = fitz.open(str(p))
                 page_count = len(doc)
-                best_img = None
-                max_area = 0
+                
+                # Check for digital text in PDF pages
                 for page in doc:
-                    for img_info in page.get_images():
-                        xref = img_info[0]
-                        base_img = doc.extract_image(xref)
-                        img_bytes = base_img.get('image')
-                        if img_bytes:
-                            nparr = np.frombuffer(img_bytes, np.uint8)
-                            decoded = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                            if decoded is not None:
-                                area = decoded.shape[0] * decoded.shape[1]
-                                if area > max_area and area > 200000:
-                                    max_area = area
-                                    best_img = decoded
-                if best_img is not None:
-                    img_to_process = best_img
+                    for blk in page.get_text('blocks'):
+                        blk_txt = blk[4].strip() if len(blk) > 4 else ''
+                        for line in blk_txt.split('\n'):
+                            clean_line = line.strip()
+                            if clean_line:
+                                digital_boxes.append({
+                                    "text": clean_line,
+                                    "confidence": 1.0,
+                                    "box": [int(blk[0]), int(blk[1]), int(blk[2]), int(blk[3])]
+                                })
+
+                # Only extract embedded image if PDF has NO digital text (e.g. scanned KTP PDF)
+                dtype_hint = (doc_type or "auto").strip().lower()
+                if len(digital_boxes) < 5 and dtype_hint not in ['nib', 'fap', 'deed', 'akta']:
+                    best_img = None
+                    max_area = 0
+                    for page in doc:
+                        for img_info in page.get_images():
+                            xref = img_info[0]
+                            base_img = doc.extract_image(xref)
+                            img_bytes = base_img.get('image')
+                            if img_bytes:
+                                nparr = np.frombuffer(img_bytes, np.uint8)
+                                decoded = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                                if decoded is not None:
+                                    area = decoded.shape[0] * decoded.shape[1]
+                                    if area > max_area and area > 200000:
+                                        max_area = area
+                                        best_img = decoded
+                    if best_img is not None:
+                        img_to_process = best_img
             except Exception as pdf_err:
-                sys.stderr.write(f"[OCR_CLI] PDF image extraction note: {pdf_err}\n")
+                sys.stderr.write(f"[OCR_CLI] PDF text/image extraction note: {pdf_err}\n")
 
-        if img_to_process is None:
-            raw_img, page_count = DocumentPreprocessor.load_document(p)
-            oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
-            deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-            img_to_process = deskewed_img
+        boxes = []
+        # If PDF already had rich digital text (like official OSS NIB or FAP), use digital text
+        if digital_boxes and len(digital_boxes) >= 5:
+            boxes.extend(digital_boxes)
         else:
-            oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(img_to_process)
-            deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-            img_to_process = deskewed_img
+            if img_to_process is None:
+                raw_img, page_count = DocumentPreprocessor.load_document(p)
+                oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
+                deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+                img_to_process = deskewed_img
+            else:
+                oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(img_to_process)
+                deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+                img_to_process = deskewed_img
 
-        # 1. Prioritize RapidOCR (OCREngine) for superior text detection on KTP and documents
-        boxes = OCREngine.process_image(img_to_process)
-        if not boxes:
-            from ocr_handler import TesseractEngine
-            boxes = TesseractEngine.process_image(img_to_process)
+            # Prioritize RapidOCR (OCREngine) for superior text detection on KTP and documents
+            boxes = OCREngine.process_image(img_to_process)
+            if not boxes:
+                from ocr_handler import TesseractEngine
+                boxes = TesseractEngine.process_image(img_to_process)
+            if digital_boxes:
+                boxes.extend(digital_boxes)
 
         dtype_clean = (doc_type or "auto").strip().lower()
         if dtype_clean in ["auto", "none", ""]:
