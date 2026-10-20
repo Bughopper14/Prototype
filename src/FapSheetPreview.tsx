@@ -352,34 +352,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const getDiffClass = (key: string, baseClass = 'exact-fap-box highlight-dynamic') => {
     const diff = getDiff(key);
     if (!diff) return baseClass;
-    const sideClass = props.diffSide === 'ocr' ? 'fap-diff-cell-ocr' : 'fap-diff-cell-system';
-    return `${baseClass} fap-diff-cell-highlight ${sideClass}`;
+    return `${baseClass} fap-diff-cell-highlight`;
   };
 
-  const renderDiffBadge = (key: string) => {
-    const diff = getDiff(key);
-    if (!diff) return null;
-    if (props.diffSide === 'ocr') {
-      return (
-        <span
-          className="fap-diff-tag-ocr"
-          title={`Nilai Dokumen Fisik (OCR): "${diff.newValue}"\nNilai di Database Sistem: "${diff.oldValue || '—'}"`}
-        >
-          <span className="fap-diff-tag-dot fap-diff-tag-dot-ocr" />
-          Sistem: {diff.oldValue || '—'}
-        </span>
-      );
-    }
-    return (
-      <span
-        className="fap-diff-tag-system"
-        title={`Perbedaan Dokumen Fisik OCR: "${diff.newValue}"\nNilai di Sistem: "${diff.oldValue || '—'}"`}
-      >
-        <span className="fap-diff-tag-dot" />
-        Fisik: {diff.newValue}
-      </span>
-    );
-  };
+  const renderDiffBadge = (_key: string) => null;
 
   return (
     <div className={`excel-fap-viewer ${props.isComparison ? 'in-comparison-mode' : ''}`}>

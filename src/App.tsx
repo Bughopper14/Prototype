@@ -1533,50 +1533,65 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   }), [a]);
 
   const ocrFapData: FapSheetData = useMemo(() => {
-    if (!fapComparison?.extractedData) return liveFapData;
-    const ext = fapComparison.extractedData;
+    const ext = fapComparison?.extractedData || {};
     return {
-      ...liveFapData,
-      fapNumber: ext.fapNumber || liveFapData.fapNumber,
-      companyName: ext.companyName || liveFapData.companyName,
-      companyType: ext.companyType || liveFapData.companyType,
-      nib: ext.nib || liveFapData.nib,
-      npwp: ext.npwp || liveFapData.npwp,
-      establishmentActNo: ext.establishmentActNo || liveFapData.establishmentActNo,
-      establishmentDate: ext.establishmentDate || liveFapData.establishmentDate,
-      latestDeedNo: ext.latestDeedNo || liveFapData.latestDeedNo,
-      latestDeedDate: ext.latestDeedDate || liveFapData.latestDeedDate,
-      companyAddress: ext.companyAddress || liveFapData.companyAddress,
-      city: ext.city || liveFapData.city,
-      postalCode: ext.postalCode || liveFapData.postalCode,
-      phoneFax: ext.phoneFax || liveFapData.phoneFax,
-      email: ext.email || liveFapData.email,
-      website: ext.website || liveFapData.website,
-      repaymentSource: ext.repaymentSource || liveFapData.repaymentSource,
-      locationStatus: ext.locationStatus || liveFapData.locationStatus,
-      picName: ext.picName || liveFapData.picName,
-      position: ext.position || liveFapData.position,
-      phone: ext.phone || liveFapData.phone,
-      currentAddress: ext.currentAddress || liveFapData.currentAddress,
-      facilityPurpose: ext.facilityPurpose || liveFapData.facilityPurpose,
-      financingMethod: ext.financingMethod || liveFapData.financingMethod,
-      financingValue: ext.financingValue != null ? ext.financingValue : liveFapData.financingValue,
-      downPaymentValue: ext.downPaymentValue != null ? ext.downPaymentValue : liveFapData.downPaymentValue,
-      interestRate: ext.interestRate != null ? ext.interestRate : liveFapData.interestRate,
-      tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : liveFapData.tenorMonths,
-      paymentMethod: ext.paymentMethod || liveFapData.paymentMethod,
+      fapNumber: ext.fapNumber || a.fapNumber || '',
+      applicationDate: ext.applicationDate || '',
+      branchCode: ext.branchCode || '',
+      customerStatus: ext.customerStatus || '',
+      companyName: ext.companyName || '',
+      companyType: ext.companyType || '',
+      nib: ext.nib || '',
+      nibDate: ext.nibDate || '',
+      npwp: ext.npwp || '',
+      establishmentActNo: ext.establishmentActNo || '',
+      establishmentDate: ext.establishmentDate || '',
+      latestDeedNo: ext.latestDeedNo || '',
+      latestDeedDate: ext.latestDeedDate || '',
+      companyAddress: ext.companyAddress || '',
+      rt: ext.rt || '',
+      rw: ext.rw || '',
+      city: ext.city || '',
+      province: ext.province || '',
+      postalCode: ext.postalCode || '',
+      phoneFax: ext.phoneFax || '',
+      email: ext.email || '',
+      website: ext.website || '',
+      repaymentSource: ext.repaymentSource || '',
+      locationStatus: ext.locationStatus || '',
+      mainBusiness: ext.mainBusiness || '',
+      experienceYears: ext.experienceYears || '',
+      experienceMonths: ext.experienceMonths || '',
+      picName: ext.picName || '',
+      position: ext.picPosition || ext.position || '',
+      phone: ext.picPhone || ext.phone || '',
+      picEmail: ext.picEmail || ext.email || '',
+      currentAddress: ext.picAddress || ext.currentAddress || '',
+      picCity: ext.picCity || '',
+      picProvince: ext.picProvince || '',
+      picPostalCode: ext.picPostalCode || '',
+      facilityPurpose: ext.facilityPurpose || '',
+      financingMethod: ext.financingMethod || '',
+      financingValue: ext.financingValue != null ? ext.financingValue : 0,
+      downPaymentValue: ext.downPaymentValue != null ? ext.downPaymentValue : 0,
+      interestRate: ext.interestRate != null ? ext.interestRate : 0,
+      tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : 0,
+      paymentMethod: ext.paymentMethod || '',
+      stakeholders: ext.stakeholders || [],
+      projects: ext.projects || [],
+      bankReferences: ext.bankReferences || [],
+      financialStatements: ext.financialStatements || [],
       proposal: {
-        ...(liveFapData.proposal || {}),
-        facilityPurpose: ext.facilityPurpose || liveFapData.facilityPurpose,
-        financingMethod: ext.financingMethod || liveFapData.financingMethod,
-        financingValue: ext.financingValue != null ? ext.financingValue : liveFapData.financingValue,
-        downPaymentValue: ext.downPaymentValue != null ? ext.downPaymentValue : liveFapData.downPaymentValue,
-        interestRate: ext.interestRate != null ? ext.interestRate : liveFapData.interestRate,
-        tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : liveFapData.tenorMonths,
-        paymentMethod: ext.paymentMethod || liveFapData.paymentMethod
+        facilityPurpose: ext.facilityPurpose || '',
+        financingMethod: ext.financingMethod || '',
+        financingValue: ext.financingValue != null ? ext.financingValue : 0,
+        downPaymentValue: ext.downPaymentValue != null ? ext.downPaymentValue : 0,
+        interestRate: ext.interestRate != null ? ext.interestRate : 0,
+        tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : 0,
+        paymentMethod: ext.paymentMethod || ''
       }
     };
-  }, [liveFapData, fapComparison]);
+  }, [fapComparison, a.fapNumber]);
 
   async function previewFile(f: any) {
     try {
@@ -1945,7 +1960,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       isComparison={true}
                       hideToolbar={true}
                       diffSide="ocr"
-                      diffs={fapComparison?.diffs || []}
+                      diffs={activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : []}
                       externalZoom={systemZoom}
                       onPrint={() => printFapDocument(a.fapNumber)}
                     />
