@@ -1894,9 +1894,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 <div className="fap-pane-head-left">
                   <h4>
                     <FileText size={16} color="#002060" />
-                    Dokumen Hasil OCR (Fisik Terunggah)
+                    Dokumen FAP Fisik (Hasil OCR)
                   </h4>
-                  <span style={{maxWidth:'240px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
+                  <span style={{maxWidth:'220px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
                     {activeFile ? activeFile.fileName : 'Belum ada dokumen fisik diunggah'}
                   </span>
                 </div>

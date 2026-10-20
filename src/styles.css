@@ -3732,7 +3732,10 @@ button:focus-visible, a:focus-visible {
 }
 
 .fap-pane-head {
-  padding: 12px 18px;
+  padding: 10px 16px;
+  min-height: 58px;
+  height: 58px;
+  box-sizing: border-box;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
@@ -3741,25 +3744,38 @@ button:focus-visible, a:focus-visible {
   gap: 10px;
 }
 
+.fap-pane-head-left {
+  min-width: 0;
+  flex: 1;
+}
+
 .fap-pane-head-left h4 {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 700;
   color: #002060;
   margin: 0 0 2px 0;
   display: flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .fap-pane-head-left span {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .fap-pane-head-right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* Unified Section Navigation Bar */
@@ -3821,15 +3837,17 @@ button:focus-visible, a:focus-visible {
   box-sizing: border-box;
 }
 
-.fap-pane-body-system {
-  background: #cbd5e1;
+.fap-pane-body-system,
+.fap-pane-body-physical {
+  background: #94a3b8;
   padding: 0 !important;
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
 }
 
-.fap-pane-body-system .excel-fap-viewer {
+.fap-pane-body-system .excel-fap-viewer,
+.fap-pane-body-physical .excel-fap-viewer {
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
@@ -3837,7 +3855,8 @@ button:focus-visible, a:focus-visible {
   background: transparent !important;
 }
 
-.fap-pane-body-system .excel-fap-viewport {
+.fap-pane-body-system .excel-fap-viewport,
+.fap-pane-body-physical .excel-fap-viewport {
   flex: 1 1 auto;
   overflow-y: auto !important;
   overflow-x: auto !important;
@@ -3845,14 +3864,6 @@ button:focus-visible, a:focus-visible {
   box-sizing: border-box !important;
   background: #94a3b8;
   scroll-behavior: smooth !important;
-}
-
-.fap-pane-body-physical {
-  background: #0f172a;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
 }
 
 /* System Document Diff Highlighting */
