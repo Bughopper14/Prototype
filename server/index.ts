@@ -745,8 +745,8 @@ app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
   res.json({ success: true });
 });
 
-app.delete('/api/v1/applications/:id/documents/files/:fileId',async(req,res)=>{
- permit(req,['MKT','BS']);
+app.delete(['/api/v1/applications/:id/documents/files/:fileId', '/api/v1/applications/:id/documents/:fileId'],async(req,res)=>{
+ permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);
  const id=String(req.params.id),fileId=String(req.params.fileId);
  if(await intakeDetail(id)){
   await deleteApplicationDocumentFile(id,fileId,removeStoredDocument);

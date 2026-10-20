@@ -1854,9 +1854,10 @@ button:focus-visible, a:focus-visible {
 /* Stage Files Section */
 .evidence-files-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 12px;
 }
 
 .evidence-files-header h4 {
@@ -1866,11 +1867,13 @@ button:focus-visible, a:focus-visible {
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .evidence-files-summary {
-  font-size: 10.5px;
+  font-size: 11px;
   color: #64748b;
+  white-space: nowrap;
 }
 
 .evidence-files-empty {
@@ -1954,6 +1957,7 @@ button:focus-visible, a:focus-visible {
 .evidence-deck-card-info {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 .evidence-deck-filename {
@@ -1966,12 +1970,15 @@ button:focus-visible, a:focus-visible {
 }
 
 .evidence-deck-meta {
-  font-size: 9.5px;
+  font-size: 10px;
   color: #64748b;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .evidence-deck-actions {

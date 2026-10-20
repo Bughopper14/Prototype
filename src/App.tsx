@@ -1463,7 +1463,11 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     setBusy(true);
     setError('');
     try {
-      await api(`/applications/${a.id}/documents/${fileId}`, 'DELETE');
+      try {
+        await api(`/applications/${a.id}/documents/${fileId}`, 'DELETE');
+      } catch (err1: any) {
+        await api(`/applications/${a.id}/documents/files/${fileId}`, 'DELETE');
+      }
       const updated = await api(`/applications/${a.id}`);
       onChange(updated);
       if (activeFile?.id === fileId) {
@@ -1568,37 +1572,42 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
             {/* Stage Files Deck */}
             <div className="evidence-files-section">
               <div className="evidence-files-header">
-                <h4>Daftar Berkas Terunggah ({activeFiles.length})</h4>
-                <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
-                  {activeItem.code === 'FAP' && activeFiles.length > 0 && (
-                    <button
-                      type="button"
-                      className="button small"
-                      onClick={async () => {
-                        try {
-                          setBusy(true);
-                          const compRes = await api(`/applications/${a.id}/fap-comparison`);
-                          if (compRes?.comparison?.diffs?.length) {
-                            setDocFapModal(compRes.comparison);
-                          } else {
-                            notify('Dokumen FAP telah diverifikasi: Tidak ada perbedaan data dengan sistem saat ini.');
-                          }
-                        } catch (err: any) {
-                          notify('Gagal memuat hasil perbandingan OCR: ' + err.message);
-                        } finally {
-                          setBusy(false);
-                        }
-                      }}
-                      title="Buka hasil perbandingan OCR data dokumen FAP"
-                      style={{display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'12px', padding:'3px 8px'}}
-                    >
-                      <Sparkles size={13} /> Bandingkan OCR Dokumen FAP
-                    </button>
-                  )}
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%'}}>
+                  <h4>Daftar Berkas Terunggah ({activeFiles.length})</h4>
                   <span className="evidence-files-summary">
                     {activeFiles.length > 0 ? 'Pilih untuk pratinjau' : 'Belum ada berkas'}
                   </span>
                 </div>
+                {activeItem.code === 'FAP' && activeFiles.length > 0 && (
+                  <button
+                    type="button"
+                    className="button small"
+                    onClick={async () => {
+                      try {
+                        setBusy(true);
+                        const compRes = await api(`/applications/${a.id}/fap-comparison`);
+                        if (compRes?.comparison?.diffs?.length) {
+                          setDocFapModal(compRes.comparison);
+                        } else {
+                          notify('Dokumen FAP telah diverifikasi: Tidak ada perbedaan data dengan sistem saat ini.');
+                        }
+                      } catch (err: any) {
+                        notify('Gagal memuat hasil perbandingan OCR: ' + err.message);
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                    title="Buka hasil perbandingan OCR data dokumen FAP"
+                    style={{
+                      display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
+                      fontSize:'12px', padding:'6px 12px', width:'100%',
+                      background: '#f0fdf4', color: '#166534', border: '1px solid #86efac', fontWeight: 600,
+                      borderRadius: '6px'
+                    }}
+                  >
+                    <Sparkles size={14} color="#16a34a" /> Bandingkan OCR Dokumen FAP
+                  </button>
+                )}
               </div>
 
               {activeFiles.length === 0 ? (
@@ -1612,6 +1621,12 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   {activeFiles.map((f: any) => {
                     const isPreviewed = activeFile?.id === f.id;
                     const isPdf = f.mimeType === 'application/pdf' || f.fileName?.toLowerCase().endsWith('.pdf');
+                    const sizeNum = Number(f.fileSize || 0);
+                    const sizeStr = sizeNum > 1024 * 1024
+                      ? `${(sizeNum / (1024 * 1024)).toFixed(1)} MB`
+                      : `${Math.max(1, Math.round(sizeNum / 1024))} KB`;
+                    const dateStr = f.createdAt ? new Date(f.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+
                     return (
                       <div
                         key={f.id}
@@ -1628,9 +1643,13 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             {f.fileName}
                           </div>
                           <div className="evidence-deck-meta">
-                            <span>{(f.fileSize / 1024).toFixed(0)} KB</span>
-                            <span>·</span>
-                            <span>{f.uploadedBy || 'User'}</span>
+                            <span>{sizeStr}</span>
+                            {dateStr && (
+                              <>
+                                <span>•</span>
+                                <span>{dateStr}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                         <div className="evidence-deck-actions" onClick={e => e.stopPropagation()}>
