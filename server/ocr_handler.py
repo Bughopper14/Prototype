@@ -1094,14 +1094,49 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
     try:
         file_storage.save(str(temp_path))
 
-        # 1. Load document (image or PDF)
-        raw_img, page_count = DocumentPreprocessor.load_document(temp_path)
-        # 2. Auto-orient
-        oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
-        # 3. Deskew
-        deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-        # 4. Tesseract OCR Engine (with fallback)
-        boxes = TesseractEngine.process_image(deskewed_img)
+        # 1. Load document (image or PDF with embedded image check)
+        img_to_process = None
+        page_count = 1
+        if temp_path.suffix.lower() == '.pdf':
+            try:
+                import fitz
+                import cv2
+                import numpy as np
+                doc = fitz.open(str(temp_path))
+                page_count = len(doc)
+                best_img = None
+                max_area = 0
+                for page in doc:
+                    for img_info in page.get_images():
+                        xref = img_info[0]
+                        base_img = doc.extract_image(xref)
+                        img_bytes = base_img.get('image')
+                        if img_bytes:
+                            nparr = np.frombuffer(img_bytes, np.uint8)
+                            decoded = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                            if decoded is not None:
+                                area = decoded.shape[0] * decoded.shape[1]
+                                if area > max_area and area > 200000:
+                                    max_area = area
+                                    best_img = decoded
+                if best_img is not None:
+                    img_to_process = best_img
+            except Exception as pdf_err:
+                print(f"[OCR] PDF image extraction note: {pdf_err}")
+
+        if img_to_process is None:
+            raw_img, page_count = DocumentPreprocessor.load_document(temp_path)
+            oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
+            deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+            img_to_process = deskewed_img
+        else:
+            oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(img_to_process)
+            deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+            img_to_process = deskewed_img
+
+        boxes = OCREngine.process_image(img_to_process) if OCR_AVAILABLE else []
+        if not boxes:
+            boxes = TesseractEngine.process_image(img_to_process)
 
         # 5. Document Type detection
         dtype_clean = (doc_type or "auto").strip().lower()

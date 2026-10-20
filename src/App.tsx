@@ -1842,7 +1842,25 @@ function StakeholderModalDialog({
 
   const curVal = modal.value || {};
   const ocrText = curVal.ktpOcrText || '';
-  const parsed = parseKtpText(ocrText);
+  const rawParsed = parseKtpText(ocrText);
+  const parsed = {
+    ...rawParsed,
+    nik: curVal.idNumber || rawParsed.nik,
+    nama: curVal.name || ([curVal.firstName, curVal.middleName, curVal.lastName].filter(Boolean).join(' ')) || rawParsed.nama,
+    tempatTglLahir: (curVal.birthPlace || rawParsed.tempatLahir ? `${curVal.birthPlace || rawParsed.tempatLahir}, ` : '') + (curVal.dateOfBirth || rawParsed.dateOfBirth || ''),
+    dateOfBirth: curVal.dateOfBirth || rawParsed.dateOfBirth,
+    gender: (curVal.gender === 'FEMALE' || rawParsed.gender === 'FEMALE') ? 'FEMALE' : (curVal.gender === 'MALE' || rawParsed.gender === 'MALE') ? 'MALE' : undefined,
+    maritalStatus: curVal.maritalStatus || rawParsed.maritalStatus || rawParsed.status,
+    kewarganegaraan: curVal.nationalityType || curVal.citizenship || rawParsed.kewarganegaraan,
+    alamat: curVal.address || rawParsed.alamat,
+    rt: curVal.rt || rawParsed.rt,
+    rw: curVal.rw || rawParsed.rw,
+    rtRw: (curVal.rt && curVal.rw) ? `${curVal.rt}/${curVal.rw}` : rawParsed.rtRw,
+    kelDesa: curVal.village || rawParsed.kelDesa,
+    kecamatan: curVal.district || rawParsed.kecamatan,
+    cityRegency: curVal.cityRegency || rawParsed.cityRegency,
+    province: curVal.province || rawParsed.province,
+  };
 
   const copyToClipboard = (key: string, val: string) => {
     if (!val) return;

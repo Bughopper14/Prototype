@@ -130,7 +130,7 @@ export async function migrateCustomerPicLocations(){
  const migrations=[['district','kecamatan','master_kecamatan'],['village','kelurahan','master_kelurahan_desa']] as const;
  for(const [oldName,newName,table] of migrations){const current=columns.has(newName)?newName:columns.has(oldName)?oldName:null;if(!current)continue;const [unmapped]=await pool.query<any[]>(`SELECT COUNT(*) AS n FROM customer_pic p WHERE p.\`${current}\` REGEXP '^[0-9a-fA-F-]{32,36}$' AND NOT EXISTS (SELECT 1 FROM ${table} m WHERE m.id=p.\`${current}\`)`);if(Number(unmapped[0]?.n||0)>0)throw new Error(`Tidak dapat memetakan ${unmapped[0].n} nilai ${current} ke master lokasi.`);}
  const [updateTrigger]=await pool.query<any[]>(`SELECT TRIGGER_NAME FROM information_schema.triggers WHERE trigger_schema=DATABASE() AND event_object_table='customer_pic' AND trigger_name='audit_customer_pic_update'`);
- if(updateTrigger.length)await pool.query('DROP TRIGGER audit_customer_pic_update');
+ if(updateTrigger.length){try{await pool.query('DROP TRIGGER IF EXISTS audit_customer_pic_update');}catch(e){console.warn('Could not drop audit_customer_pic_update:', e);}}
  for(const [oldName,newName,table] of migrations){const current=columns.has(newName)?newName:columns.has(oldName)?oldName:null;if(!current)continue;await pool.query(`UPDATE customer_pic p JOIN ${table} m ON m.id=p.\`${current}\` SET p.\`${current}\`=m.name`);if(current===oldName){await pool.query(`ALTER TABLE customer_pic CHANGE COLUMN \`${oldName}\` \`${newName}\` TEXT NULL`);columns.delete(oldName);columns.add(newName);}}
  if(updateTrigger.length){const {auditTable}=await import('./mysql-users');await auditTable('customer_pic');}
 }
