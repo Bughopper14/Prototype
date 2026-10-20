@@ -222,6 +222,11 @@ export async function createIntake(body:any,identity?:{id:string,fapNumber?:stri
   await insertRow('new_application_pre_analisis',{id_pre_analysis:preId,...preData});
   await insertRow('all_applications',{application_id:appId,id_fap_stage:fapId,id_pre_analysis:preId});
   await seedApplicationDocuments(c,appId);
+   await c.execute(`
+     INSERT INTO application_submit_lock (application_id, is_locked, stage, fap_doc_uploaded)
+     VALUES (?, 1, 'FAP_STAGE', 0)
+     ON DUPLICATE KEY UPDATE is_locked = 1, fap_doc_uploaded = 0
+   `, [appId]);
   await c.commit();return {id:appId};
  }catch(e){await c.rollback();throw e;}finally{if(lock)try{await c.query("SELECT RELEASE_LOCK(CONCAT('lfi-fap-',YEAR(CURRENT_DATE)))");}catch{}c.release();}
 }

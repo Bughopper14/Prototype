@@ -148,7 +148,7 @@ def get_db_conn():
     port = int(cfg.get('port', 3306)) if cfg else 3306
     user = cfg.get('user', 'root') if cfg else 'root'
     password = cfg.get('password', '123987') if cfg else '123987'
-    database = cfg.get('name', 'liugongapps_db') if cfg else 'liugongapps_db'
+    database = cfg.get('name', 'internaltest1') if cfg else 'internaltest1'
     import pymysql
     return pymysql.connect(host=host, port=port, user=user, password=password, database=database)
 

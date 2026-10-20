@@ -45,7 +45,7 @@ export async function initializeApplicationDocuments(){
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  await pool.query(`CREATE TABLE IF NOT EXISTS application_submit_lock (
   application_id CHAR(36) PRIMARY KEY,
-  is_locked TINYINT(1) NOT NULL DEFAULT 0,
+  is_locked TINYINT(1) NOT NULL DEFAULT 1,
   stage VARCHAR(50) NOT NULL DEFAULT 'FAP_STAGE',
   fap_doc_uploaded TINYINT(1) NOT NULL DEFAULT 0,
   unlocked_at TIMESTAMP(3) NULL,
@@ -74,13 +74,21 @@ export async function uploadApplicationDocument(id:string,checklistId:string,fil
   await c.beginTransaction();
   const [apps]=await c.execute<any[]>('SELECT p.application_status FROM all_applications a JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis WHERE a.application_id=? FOR UPDATE',[id]);
   ensure(apps.length,'Application not found',404);ensure(!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(apps[0].application_status),'Documents are locked at this stage',409);
-  const [docs]=await c.execute<any[]>('SELECT id FROM application_document_checklist WHERE id=? AND application_id=? FOR UPDATE',[checklistId,id]);ensure(docs.length,'Checklist item not found',404);
+  let [docs]=await c.execute<any[]>('SELECT id FROM application_document_checklist WHERE id=? AND application_id=? FOR UPDATE',[checklistId,id]);
+  if(!docs.length){
+    [docs]=await c.execute<any[]>('SELECT id FROM application_document_checklist WHERE (document_code=? OR UPPER(document_code)=? OR document_name=?) AND application_id=? FOR UPDATE',[checklistId,checklistId.toUpperCase(),checklistId,id]);
+  }
+  if(!docs.length && (checklistId.toUpperCase().includes('FAP') || checklistId.includes('demo-doc-'))){
+    [docs]=await c.execute<any[]>('SELECT id FROM application_document_checklist WHERE UPPER(document_code)="FAP" AND application_id=? FOR UPDATE',[id]);
+  }
+  ensure(docs.length,'Checklist item not found',404);
+  const targetChecklistId = docs[0].id;
   const key=crypto.randomUUID(),fileId=crypto.randomUUID();await store(key);
-  await c.execute('INSERT INTO application_document_file (id,checklist_id,file_name,file_key,file_size,mime_type,uploaded_by) VALUES (?,?,?,?,?,?,?)',[fileId,checklistId,file.originalname,key,file.size,file.mimetype,actorId]);
-  await c.execute("UPDATE application_document_checklist SET status='UPLOADED',checked_by_mkt=1,checked_by_bs=0,checked_by_ca=0,checked_by_legal=0,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?",[checklistId]);
+  await c.execute('INSERT INTO application_document_file (id,checklist_id,file_name,file_key,file_size,mime_type,uploaded_by) VALUES (?,?,?,?,?,?,?)',[fileId,targetChecklistId,file.originalname,key,file.size,file.mimetype,actorId]);
+  await c.execute("UPDATE application_document_checklist SET status='UPLOADED',checked_by_mkt=1,checked_by_bs=0,checked_by_ca=0,checked_by_legal=0,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?",[targetChecklistId]);
   await c.commit();
   try{await syncSubmitLock(id);}catch{}
-  return {id:fileId,checklistId,fileName:file.originalname,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
+  return {id:fileId,checklistId:targetChecklistId,fileName:file.originalname,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 export async function deleteApplicationDocumentFile(id:string,fileId:string,removeStoredFile:(key:string)=>Promise<void>){

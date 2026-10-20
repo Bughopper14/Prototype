@@ -538,7 +538,8 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
  const isFapStage = activeStage === 'FAP Stage';
  const fapChk = (a.documentChecks || []).find((d: any) => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase() === 'fap');
  const hasSignedFap = Boolean(fapChk && Array.isArray(fapChk.files) && fapChk.files.length > 0);
- const isSubmitLocked = !hasSignedFap;
+ const isDbLocked = a.submitLock !== undefined ? (Number(a.submitLock.isLocked) === 1) : !hasSignedFap;
+  const isSubmitLocked = !draft.isNew && isDbLocked;
  const isPreAnalysisReached = hasSignedFap || a.stage === 'Pre-analysis' || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
  const currentAppStage = isPreAnalysisReached ? 'Pre-analysis' : 'FAP Stage';
 
@@ -561,7 +562,7 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
    setBusy(true);setError('');
    try{
      const updated={...draft,stage:'Pre-analysis'};
-     await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'}).catch(()=>{});
+     await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'});
      setDraft(updated);
      setActiveStage('Pre-analysis');
      setTab(2);
