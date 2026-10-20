@@ -45,7 +45,7 @@ export async function initializeApplicationDocuments(){
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  await pool.query(`CREATE TABLE IF NOT EXISTS application_submit_lock (
   application_id CHAR(36) PRIMARY KEY,
-  is_locked TINYINT(1) NOT NULL DEFAULT 1,
+  is_locked TINYINT(1) NOT NULL DEFAULT 0,
   stage VARCHAR(50) NOT NULL DEFAULT 'FAP_STAGE',
   fap_doc_uploaded TINYINT(1) NOT NULL DEFAULT 0,
   unlocked_at TIMESTAMP(3) NULL,
