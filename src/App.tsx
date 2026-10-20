@@ -460,6 +460,8 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       ...draft,
       customerDetailLocked: true,
       pic: draft.pic || blank(picFields),
+      latestDeedDate: (!draft.latestDeedDate || String(draft.latestDeedDate).trim() === '' || String(draft.latestDeedDate) === 'null') ? null : draft.latestDeedDate,
+      latestDeedNo: (!draft.latestDeedNo || String(draft.latestDeedNo).trim() === '') ? null : draft.latestDeedNo,
     };
     const cleanProjects = (draft.projects || []).filter((p: any) => 
       p && Object.values(p).some((v: any) => v !== undefined && v !== null && String(v).trim() !== '')
@@ -470,6 +472,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           companyName: liveCompanyName, 
           nib: liveNib, 
           npwp: liveNpwp,
+          establishmentActNo: (liveEstablishmentActNo || customerDraft?.establishmentActNo || draft.customer?.establishmentActNo || '').trim() || null,
           establishmentDate: (customerDraft?.establishmentDate || draft.customer?.establishmentDate || null) || null,
           nibDate: (customerDraft?.nibDate || draft.customer?.nibDate || null) || null
         }
@@ -689,6 +692,12 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
      const hasPicData=draft.pic&&Object.values(draft.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');
      const cleanProjects=(draft.projects||[]).filter((p:any)=>p&&Object.values(p).some((v:any)=>v!==undefined&&v!==null&&String(v).trim()!==''));
      const safeProfileData=Object.fromEntries(Object.entries(draft).filter(([k])=>!['proposal','financialStatements','legal','stakeholders','documentChecks','approvalLogs','signoffs','ratios'].includes(k)));
+     if (!safeProfileData.latestDeedDate || String(safeProfileData.latestDeedDate).trim() === '' || String(safeProfileData.latestDeedDate) === 'null') {
+       safeProfileData.latestDeedDate = null;
+     }
+     if (!safeProfileData.latestDeedNo || String(safeProfileData.latestDeedNo).trim() === '') {
+       safeProfileData.latestDeedNo = null;
+     }
      
      const resolvedName = liveCompanyName || customerDraft?.companyName || draft.customer?.companyName || draft.companyName || 'Perusahaan Baru (Draft)';
      const customerPayload = {
@@ -698,7 +707,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
        companyType: liveCompanyType || 'CORPORATE',
        nib: liveNib || customerDraft?.nib || draft.customer?.nib || '',
        npwp: liveNpwp || customerDraft?.npwp || draft.customer?.npwp || '',
-       establishmentActNo: liveEstablishmentActNo || customerDraft?.establishmentActNo || draft.customer?.establishmentActNo || '',
+       establishmentActNo: (liveEstablishmentActNo || customerDraft?.establishmentActNo || draft.customer?.establishmentActNo || '').trim() || null,
        establishmentDate: (liveEstablishmentDate || customerDraft?.establishmentDate || draft.customer?.establishmentDate || null) || null,
        nibDate: (liveNibDate || customerDraft?.nibDate || draft.customer?.nibDate || null) || null
      };

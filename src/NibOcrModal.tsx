@@ -267,10 +267,10 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
         style={{
-          width: 'min(1040px, 90vw)',
-          maxWidth: '90vw',
-          maxHeight: '86vh',
-          height: 'auto',
+          width: 'min(1360px, 95vw)',
+          maxWidth: '95vw',
+          maxHeight: '90vh',
+          height: 'min(860px, 90vh)',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
@@ -322,16 +322,15 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         {/* MODAL BODY */}
         <div style={{
           padding: '16px 20px',
-          overflowY: 'auto',
-          maxHeight: 'calc(86vh - 130px)',
+          overflow: 'hidden',
           display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 1fr) minmax(400px, 1.35fr)',
-          gap: 18,
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+          gap: 20,
           flex: '1 1 auto',
           minHeight: 0
         }}>
           {/* LEFT: UPLOAD & FILE ZONE */}
-          <div style={{display:'flex', flexDirection:'column', gap: 14}}>
+          <div style={{display:'flex', flexDirection:'column', gap: 12, height: '100%', minHeight: 0}}>
             {fileUrl ? (
               <div style={{
                 background: '#0f172a',
@@ -339,7 +338,9 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 borderRadius: 10,
                 overflow: 'hidden',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                flex: '1 1 0',
+                minHeight: 0
               }}>
                 {/* TOOLBAR */}
                 <div style={{
@@ -348,7 +349,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   alignItems: 'center',
                   padding: '7px 12px',
                   background: '#1e293b',
-                  borderBottom: '1px solid #334155'
+                  borderBottom: '1px solid #334155',
+                  flexShrink: 0
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '55%' }}>
                     <FileText size={14} color="#60a5fa" />
@@ -397,7 +399,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
                 {/* PREVIEW CANVAS */}
                 <div style={{
-                  height: '270px',
+                  flex: '1 1 0',
+                  minHeight: '260px',
                   overflow: 'auto',
                   display: 'flex',
                   alignItems: 'center',
@@ -408,7 +411,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   {fileType === 'pdf' ? (
                     <iframe
                       src={`${fileUrl}#toolbar=0`}
-                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff' }}
+                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff', minHeight: '300px' }}
                       title="NIB PDF Preview"
                     />
                   ) : (
@@ -433,7 +436,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   alignItems: 'center',
                   padding: '6px 10px',
                   background: '#1e293b',
-                  borderTop: '1px solid #334155'
+                  borderTop: '1px solid #334155',
+                  flexShrink: 0
                 }}>
                   <label style={{ fontSize: '0.72rem', color: '#60a5fa', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, margin: 0 }}>
                     <RefreshCw size={12} /> Replace NIB Document
@@ -468,7 +472,13 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   background: isDragging ? '#eff6ff' : '#f8fafc',
                   cursor: 'pointer',
                   position: 'relative',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  flex: '1 1 0',
+                  minHeight: '220px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 <input 
@@ -499,7 +509,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </div>
             )}
 
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', flexShrink: 0}}>
               <button 
                 type="button" 
                 onClick={loadSampleDoc}
@@ -530,7 +540,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               display: 'flex', alignItems: 'center', gap: 8,
               background: ocrLoading ? '#f8fafc' : hasData ? '#eff6ff' : '#f1f5f9',
               border: `1px solid ${ocrLoading ? '#cbd5e1' : hasData ? '#bfdbfe' : '#e2e8f0'}`,
-              color: ocrLoading ? '#2563eb' : hasData ? '#1e40af' : '#64748b'
+              color: ocrLoading ? '#2563eb' : hasData ? '#1e40af' : '#64748b',
+              flexShrink: 0
             }}>
               {ocrLoading ? (
                 <>
@@ -553,8 +564,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
             {showRaw && rawText && (
               <div style={{
                 background: '#0f172a', color: '#f8fafc', padding: '10px 12px',
-                borderRadius: 6, fontSize: '0.72rem', maxHeight: '140px', overflowY: 'auto',
-                fontFamily: 'monospace', whiteSpace: 'pre-wrap'
+                borderRadius: 6, fontSize: '0.72rem', maxHeight: '120px', overflowY: 'auto',
+                fontFamily: 'monospace', whiteSpace: 'pre-wrap', flexShrink: 0
               }}>
                 {rawText}
               </div>
@@ -564,14 +575,26 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           {/* RIGHT: EXTRACTED FORM FIELDS PREVIEW */}
           <div style={{
             background: '#ffffff', border: '1px solid #e2e8f0',
-            borderRadius: 10, padding: '16px', display:'flex', flexDirection:'column', gap: 11
+            borderRadius: 10, padding: '16px', display:'flex', flexDirection:'column',
+            height: '100%', minHeight: 0
           }}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 6}}>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 8, marginBottom: 12, flexShrink: 0}}>
               <h4 style={{margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', display:'flex', alignItems:'center', gap: 6}}>
                 <Sparkles size={15} color="#2563eb" /> OCR Extracted Data
               </h4>
               <span style={{fontSize: '0.72rem', color: '#64748b'}}>Review & edit before applying</span>
             </div>
+
+            {/* SCROLLABLE FORM FIELDS */}
+            <div style={{
+              flex: '1 1 0',
+              overflowY: 'auto',
+              paddingRight: '6px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 11,
+              minHeight: 0
+            }}>
 
             {/* FIELD 1: NOMOR NIB */}
             <div>
@@ -825,6 +848,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   background: formData.tanggalTerbit ? '#f0f7ff' : '#ffffff'
                 }}
               />
+            </div>
             </div>
           </div>
         </div>
