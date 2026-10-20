@@ -53,6 +53,8 @@ export async function initializeApplicationDocuments(){
   updated_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
   FOREIGN KEY(application_id) REFERENCES all_applications(application_id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+ const [hasOcrCol]=await pool.query<any[]>(`SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='application_submit_lock' AND column_name='ocr_comparison_json'`);
+ if(!hasOcrCol.length)await pool.query(`ALTER TABLE application_submit_lock ADD COLUMN ocr_comparison_json LONGTEXT NULL`);
  await auditTable('application_document_checklist');await auditTable('application_document_file');
  await syncApplicationDocuments();
 }
@@ -130,7 +132,7 @@ export async function verifyApplicationDocument(id:string,checklistId:string,bod
 }
 
 export async function syncSubmitLock(applicationId:string){
- if(!pool)return {isLocked:1,fapDocUploaded:0};
+ if(!pool)return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
  try{
   const [rows]=await pool.execute<any[]>(`
    SELECT COUNT(f.id) AS file_count
@@ -150,14 +152,35 @@ export async function syncSubmitLock(applicationId:string){
      unlocked_at = IF(VALUES(is_locked) = 0, COALESCE(unlocked_at, CURRENT_TIMESTAMP(3)), NULL),
      updated_at = CURRENT_TIMESTAMP(3)
   `,[applicationId,isLocked,hasUploaded?1:0,hasUploaded?new Date():null]);
-  return {isLocked,fapDocUploaded:hasUploaded?1:0};
+  return {isLocked,fapDocUploaded:hasUploaded?1:0,ocrComparison:null};
  }catch(err){
   console.warn('syncSubmitLock error:',err);
-  return {isLocked:1,fapDocUploaded:0};
+  return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
  }
 }
 
+export async function saveFapComparison(applicationId:string,comparison:any){
+ if(!pool)return;
+ const jsonStr=comparison?JSON.stringify(comparison):null;
+ try{
+  await pool.execute('UPDATE application_submit_lock SET ocr_comparison_json=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[jsonStr,applicationId]);
+ }catch(e){console.warn('saveFapComparison error:',e);}
+}
+
 export async function getSubmitLock(applicationId:string){
+ if(!pool)return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
+ try{
+  const [rows]=await pool.execute<any[]>('SELECT * FROM application_submit_lock WHERE application_id=?',[applicationId]);
+  if(!rows.length)return await syncSubmitLock(applicationId);
+  let ocrComparison=null;
+  if(rows[0].ocr_comparison_json){try{ocrComparison=JSON.parse(rows[0].ocr_comparison_json);}catch{}}
+  return {isLocked:Number(rows[0].is_locked),fapDocUploaded:Number(rows[0].fap_doc_uploaded),ocrComparison};
+ }catch{
+  return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
+ }
+}
+
+async function _old_getSubmitLock(applicationId:string){
  if(!pool)return {isLocked:1,fapDocUploaded:0};
  try{
   const [rows]=await pool.execute<any[]>('SELECT * FROM application_submit_lock WHERE application_id=?',[applicationId]);

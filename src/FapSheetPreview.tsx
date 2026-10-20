@@ -77,6 +77,7 @@ export interface FapSheetPreviewProps {
   activeSection?: string;
   syncTick?: number;
   onSectionClick?: (sectionId: string) => void;
+  onPrint?: () => void | Promise<void>;
 }
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
@@ -314,7 +315,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               type="button"
               className={`excel-zoom-mode-btn ${autoFit ? 'active' : ''}`}
               onClick={() => setAutoFit(!autoFit)}
-              title={autoFit ? 'Auto-fit aktif: dokumen otomatis menyesuaikan lebar view' : 'Aktifkan Auto-fit view'}
+              title={autoFit ? 'Auto-fit active: document automatically fits the view width' : 'Enable Auto-fit view'}
             >
               Auto Fit
             </button>
@@ -324,7 +325,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 setAutoFit(false);
                 setZoomLevel((z) => Math.max(0.35, Number((z - 0.05).toFixed(2))));
               }}
-              title="Perkecil (-)"
+              title="Zoom Out (-)"
             >
               <ZoomOut size={13} />
             </button>
@@ -337,7 +338,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 setAutoFit(false);
                 setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
               }}
-              title="Perbesar (+)"
+              title="Zoom In (+)"
             >
               <ZoomIn size={13} />
             </button>
@@ -346,9 +347,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             type="button"
             className="excel-print-btn"
             onClick={handlePrint}
-            title="Print / Unduh PDF Lembar Resmi A4"
+            title="Print / Download Official A4 PDF Sheet"
           >
-            <Printer size={13} /> Cetak Dokumen A4
+            <Printer size={13} /> Print A4 Document
           </button>
         </div>
 
@@ -358,18 +359,18 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             <Eye size={12} /> Auto-Sync Focus:
           </span>
           {[
-            { id: 'fap-preview-sec-header', label: '1. Identitas' },
-            { id: 'fap-preview-sec-company', label: '2. Domisili' },
-            { id: 'fap-preview-sec-business', label: '3. Profil Usaha' },
+            { id: 'fap-preview-sec-header', label: '1. Identity' },
+            { id: 'fap-preview-sec-company', label: '2. Domicile' },
+            { id: 'fap-preview-sec-business', label: '3. Business Profile' },
             { id: 'fap-preview-sec-pic', label: '4. PIC' },
-            { id: 'fap-preview-sec-projects', label: '5. Proyek' },
+            { id: 'fap-preview-sec-projects', label: '5. Projects' },
           ].map(chip => (
             <button
               key={chip.id}
               type="button"
               className={`excel-chip-btn ${props.activeSection === chip.id ? 'active' : ''}`}
               onClick={() => props.onSectionClick?.(chip.id)}
-              title={`Lompat ke bagian ${chip.label}`}
+              title={`Jump to section ${chip.label}`}
             >
               {chip.label}
             </button>
@@ -427,22 +428,22 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             <div className="exact-matrix-grid">
               <div className="exact-matrix-box">
                 <div className="exact-matrix-row">
-                  <span className="exact-matrix-lbl">Tanggal/ Date</span>
+                  <span className="exact-matrix-lbl">Date</span>
                   <span className="exact-matrix-val highlight-dynamic">{formatDate(d.applicationDate)}</span>
                 </div>
                 <div className="exact-matrix-row">
-                  <span className="exact-matrix-lbl">Cabang/ Branch</span>
+                  <span className="exact-matrix-lbl">Branch</span>
                   <span className="exact-matrix-val highlight-dynamic">{d.branchCode}</span>
                 </div>
               </div>
 
               <div className="exact-matrix-box">
                 <div className="exact-matrix-row">
-                  <span className="exact-matrix-lbl">Customer Baru/ New Customer</span>
+                  <span className="exact-matrix-lbl">New Customer</span>
                   <span className="exact-matrix-chk">{isCustNew ? '☑' : '☐'}</span>
                 </div>
                 <div className="exact-matrix-row">
-                  <span className="exact-matrix-lbl">Customer Lama / Existing Customer</span>
+                  <span className="exact-matrix-lbl">Existing Customer</span>
                   <span className="exact-matrix-chk">{isCustExisting ? '☑' : '☐'}</span>
                 </div>
               </div>
@@ -480,31 +481,31 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             {/* Left Column: Company Details */}
             <div className="exact-fap-col" id="fap-preview-sec-company">
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Nama Perusahaan/ Company's Name</span>
+                <span className="exact-fap-lbl">Company Name</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.companyName}</div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Alamat Perusahaan/ Company Address</span>
+                <span className="exact-fap-lbl">Company Address</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box multiline highlight-dynamic">{d.companyAddress}</div>
               </div>
 
               <div className="exact-sub-row">
-                <span className="exact-sub-lbl">Kota/City</span>
+                <span className="exact-sub-lbl">City</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.city}</div>
               </div>
 
               <div className="exact-sub-row">
-                <span className="exact-sub-lbl">Kecamatan/District</span>
+                <span className="exact-sub-lbl">District</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.district || '—'}</div>
               </div>
 
               <div className="exact-sub-row">
-                <span className="exact-sub-lbl">Kelurahan/Village</span>
+                <span className="exact-sub-lbl">Village</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.village || '—'}</div>
               </div>
@@ -516,7 +517,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-sub-row">
-                <span className="exact-sub-lbl">Provinsi/Province</span>
+                <span className="exact-sub-lbl">Province</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.province}</div>
               </div>
@@ -528,25 +529,25 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-fap-row" id="fap-preview-sec-business">
-                <span className="exact-fap-lbl">Bisnis Utama/ Main Business</span>
+                <span className="exact-fap-lbl">Main Business</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.mainBusiness}</div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">No. Akta Pendirian/ Deed Establishment</span>
+                <span className="exact-fap-lbl">Establishment Deed No.</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.establishmentActNo}</div>
                   <div className="exact-inline-group" style={{ flex: 1.1 }}>
-                    <span className="exact-inline-lbl">Tanggal/ Est Date :</span>
+                    <span className="exact-inline-lbl">Est. Date :</span>
                     <div className="exact-fap-box highlight-dynamic">{formatDate(d.establishmentDate)}</div>
                   </div>
                 </div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Pengalaman/ Experience</span>
+                <span className="exact-fap-lbl">Experience</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row" style={{ alignItems: 'center' }}>
                   <div className="exact-fap-box highlight-dynamic" style={{ maxWidth: '65px', textAlign: 'center' }}>{d.experienceYears}</div>
@@ -557,24 +558,24 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">No. Akta Perubahan Terakhir</span>
+                <span className="exact-fap-lbl">Latest Amendment Deed No.</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.latestDeedNo}</div>
                   <div className="exact-inline-group" style={{ flex: 1.1 }}>
-                    <span className="exact-inline-lbl">Tanggal/ Date :</span>
+                    <span className="exact-inline-lbl">Date :</span>
                     <div className="exact-fap-box highlight-dynamic">{formatDate(d.latestDeedDate)}</div>
                   </div>
                 </div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">NIB (No Induk Berusaha)</span>
+                <span className="exact-fap-lbl">NIB (Business Registration Number)</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.3 }}>{d.nib}</div>
                   <div className="exact-inline-group" style={{ flex: 1.1 }}>
-                    <span className="exact-inline-lbl">Tanggal/ Est Date :</span>
+                    <span className="exact-inline-lbl">Est. Date :</span>
                     <div className="exact-fap-box highlight-dynamic">{formatDate(d.nibDate)}</div>
                   </div>
                 </div>
@@ -605,13 +606,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Sumber Pembayaran/ Repayment source</span>
+                <span className="exact-fap-lbl">Repayment Source</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.repaymentSource}</div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Status tempat usaha/Business Location Status</span>
+                <span className="exact-fap-lbl">Business Location Status</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.locationStatus}</div>
               </div>
@@ -620,19 +621,19 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             {/* Right Column: PIC & Shareholders */}
             <div className="exact-fap-col" id="fap-preview-sec-pic">
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl" style={{ width: '135px' }}>Penanggung Jawab/PIC</span>
+                <span className="exact-fap-lbl" style={{ width: '135px' }}>Person in Charge / PIC</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.2 }}>{d.picName}</div>
                   <div className="exact-inline-group" style={{ flex: 1.2 }}>
-                    <span className="exact-inline-lbl">Telepon/Phone :</span>
+                    <span className="exact-inline-lbl">Phone :</span>
                     <div className="exact-fap-box highlight-dynamic">{d.phone}</div>
                   </div>
                 </div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl" style={{ width: '135px' }}>Jabatan/ Position</span>
+                <span className="exact-fap-lbl" style={{ width: '135px' }}>Position</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box highlight-dynamic" style={{ flex: 1.2 }}>{d.position}</div>
@@ -644,34 +645,34 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl" style={{ width: '135px' }}>Alamat Tempat Tinggal/ Current Address</span>
+                <span className="exact-fap-lbl" style={{ width: '135px' }}>Current Address</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box multiline highlight-dynamic">{d.currentAddress}</div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                <span className="exact-sub-lbl" style={{ width: '120px' }}>Kota/City</span>
+                <span className="exact-sub-lbl" style={{ width: '120px' }}>City</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.picCity}</div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                <span className="exact-sub-lbl" style={{ width: '120px' }}>Provinsi/Province</span>
+                <span className="exact-sub-lbl" style={{ width: '120px' }}>Province</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.picProvince}</div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                <span className="exact-sub-lbl" style={{ width: '120px' }}>Kode Pos/Postal code</span>
+                <span className="exact-sub-lbl" style={{ width: '120px' }}>Postal Code</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">{d.picPostalCode}</div>
               </div>
 
               {/* Shareholder Table */}
               <div className="exact-sh-section">
-                <div className="exact-sh-title">Struktur Organisasi & Pemegang Saham/ Organization & Shareholder Structure</div>
+                <div className="exact-sh-title">Organization & Shareholder Structure</div>
                 <div className="exact-sh-subtitle">
-                  Berdasarkan Akta/ Based on Act No. <span className="highlight-dynamic" style={{ fontWeight: 600 }}>{d.selectedDeedNo || d.latestDeedNo}</span>
+                  Based on Deed No. <span className="highlight-dynamic" style={{ fontWeight: 600 }}>{d.selectedDeedNo || d.latestDeedNo}</span>
                 </div>
 
                 <table className="exact-sh-table">
@@ -707,29 +708,29 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               SECTION 3: TUJUAN PEMBIAYAAN & FIXED ASSETS (ROWS 46 - 54)
               ============================================================== */}
           <div className="exact-section-divider">
-            <div className="exact-section-header">TUJUAN PEMBIAYAAN / FINANCING PURPOSE & FIXED ASSETS SUMMARY</div>
+            <div className="exact-section-header">FINANCING PURPOSE & FIXED ASSETS SUMMARY</div>
           </div>
 
           <div className="exact-fap-body" style={{ marginTop: '8px' }}>
             <div className="exact-fap-col">
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Tujuan Pembiayaan / Financing purpose</span>
+                <span className="exact-fap-lbl">Financing Purpose</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box" style={{ flex: 1 }}>
-                    <span>Investasi / Investment</span> <b style={{ color: '#002060', marginLeft: '6px' }}>{d.facilityPurpose === 'INVESTMENT' ? '(√)' : '( )'}</b>
+                    <span>Investment</span> <b style={{ color: '#002060', marginLeft: '6px' }}>{d.facilityPurpose === 'INVESTMENT' ? '(√)' : '( )'}</b>
                   </div>
                   <div className="exact-fap-box" style={{ flex: 1 }}>
-                    <span>Modal Kerja / Working capital</span> <b style={{ color: '#002060', marginLeft: '6px' }}>{d.facilityPurpose === 'WORKING_CAPITAL' ? '(√)' : '( )'}</b>
+                    <span>Working Capital</span> <b style={{ color: '#002060', marginLeft: '6px' }}>{d.facilityPurpose === 'WORKING_CAPITAL' ? '(√)' : '( )'}</b>
                   </div>
                 </div>
               </div>
 
               <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                <span className="exact-sub-lbl">Kategori Investasi</span>
+                <span className="exact-sub-lbl">Investment Category</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">
-                  {d.facilityPurpose === 'INVESTMENT' ? 'Aktivitas Usaha & Penambahan Unit Armada' : 'Kebutuhan Operasional & Kas Berjalan'}
+                  {d.facilityPurpose === 'INVESTMENT' ? 'Business Activity & Fleet Unit Addition' : 'Operational Needs & Working Cash'}
                 </div>
               </div>
             </div>
@@ -786,7 +787,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               SECTION 4: SEGMENTASI & PROYEK KONTRAK (ROWS 55 - 63)
               ============================================================== */}
           <div className="exact-section-divider" id="fap-preview-sec-projects">
-            <div className="exact-section-header">SEGMENTASI INDUSTRI & PROYEK KONTRAK BERJALAN</div>
+            <div className="exact-section-header">INDUSTRY SEGMENTATION & ACTIVE PROJECT CONTRACTS</div>
           </div>
 
           <div className="exact-fap-body" style={{ marginTop: '8px' }}>
@@ -794,9 +795,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <div className="exact-matrix-box">
                   <div style={{ background: '#f1f5f9', padding: '3px 6px', fontWeight: 700, fontSize: '9px', borderBottom: '1px solid #000' }}>
-                    Segmentasi / Segmentation :
+                    Segmentation :
                   </div>
-                  {['MINING:Pertambangan', 'AGRICULTURE:Pertanian', 'FORESTRY:Kehutanan', 'CONSTRUCTION:Konstruksi', 'OIL_GAS:Oil & Gas', 'OTHER:Lainnya'].map(item => {
+                  {['MINING:Mining', 'AGRICULTURE:Agriculture', 'FORESTRY:Forestry', 'CONSTRUCTION:Construction', 'OIL_GAS:Oil & Gas', 'OTHER:Other'].map(item => {
                     const [key, label] = item.split(':');
                     const isSel = d.industrySegment === key;
                     return (
@@ -810,7 +811,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
                 <div className="exact-matrix-box">
                   <div style={{ background: '#f1f5f9', padding: '3px 6px', fontWeight: 700, fontSize: '9px', borderBottom: '1px solid #000' }}>
-                    Bisnis Utama / Main Business :
+                    Main Business :
                   </div>
                   {['CONCESSION_OWNER:Cons. Owner', 'CONTRACTORS:Contractors', 'SUB_CONTRACTORS:Sub Cont', 'RENTAL:Rental', 'OTHER:Other'].map(item => {
                     const [key, label] = item.split(':');
@@ -828,13 +829,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
             <div className="exact-fap-col" style={{ flex: 1.1 }}>
               <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#002060', marginBottom: '4px' }}>
-                Daftar Kontrak Proyek / Project Contracts :
+                Project Contracts :
               </div>
               <table className="exact-sh-table">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left' }}>Pemilik Proyek / Owner</th>
-                    <th style={{ width: '120px', textAlign: 'left' }}>Lokasi / Location</th>
+                    <th style={{ textAlign: 'left' }}>Project Owner</th>
+                    <th style={{ width: '120px', textAlign: 'left' }}>Location</th>
                     <th style={{ width: '95px', textAlign: 'left' }}>Role</th>
                     <th style={{ width: '65px', textAlign: 'center' }}>Status</th>
                   </tr>
@@ -860,12 +861,12 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               SECTION 5: REFERENSI BANK & PROPOSAL FASILITAS (ROWS 64 - 86)
               ============================================================== */}
           <div className="exact-section-divider">
-            <div className="exact-section-header">REFERENSI FASILITAS BANK & PROPOSAL PEMBIAYAAN</div>
+            <div className="exact-section-header">BANK FACILITY REFERENCES & FINANCING PROPOSAL</div>
           </div>
 
           <div style={{ marginTop: '8px' }}>
             <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#002060', marginBottom: '4px' }}>
-              Fasilitas Kredit Bank & Lembaga Keuangan Berjalan :
+              Active Bank & Financial Institution Credit Facilities :
             </div>
             <table className="exact-sh-table">
               <thead>
@@ -906,15 +907,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           <div className="exact-fap-body" style={{ marginTop: '12px' }}>
             <div className="exact-fap-col">
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Cara Pembiayaan / Financing Method</span>
+                <span className="exact-fap-lbl">Financing Method</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic">
-                  {d.financingMethod === 'FINANCIAL_LEASE' ? 'Sewa Pembiayaan / Financial Lease (√)' : d.financingMethod === 'SALE_AND_LEASE_BACK' ? 'Jual dan Sewa Kembali / Sale and Lease Back (√)' : 'Pembelian Angsuran / Installment (√)'}
+                  {d.financingMethod === 'FINANCIAL_LEASE' ? 'Financial Lease (√)' : d.financingMethod === 'SALE_AND_LEASE_BACK' ? 'Sale and Lease Back (√)' : 'Installment Purchase (√)'}
                 </div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Nilai Pembiayaan / Financing Value</span>
+                <span className="exact-fap-lbl">Financing Value</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-fap-box highlight-dynamic" style={{ fontWeight: 700 }}>
                   {formatCurrency(d.financingValue)}
@@ -922,24 +923,24 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Uang Muka / Down Payment</span>
+                <span className="exact-fap-lbl">Down Payment</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
                   <div className="exact-fap-box highlight-dynamic">{formatCurrency(d.downPaymentValue)}</div>
                   <div className="exact-inline-group">
-                    <span className="exact-inline-lbl">Bunga / Rate :</span>
+                    <span className="exact-inline-lbl">Rate :</span>
                     <div className="exact-fap-box highlight-dynamic">{d.interestRate ? `${d.interestRate}% p.a.` : '—'}</div>
                   </div>
                 </div>
               </div>
 
               <div className="exact-fap-row">
-                <span className="exact-fap-lbl">Jangka Waktu / Tenor</span>
+                <span className="exact-fap-lbl">Tenor / Duration</span>
                 <span className="exact-fap-colon">:</span>
                 <div className="exact-dual-row">
-                  <div className="exact-fap-box highlight-dynamic">{d.tenorMonths ? `${d.tenorMonths} Bulan` : '—'}</div>
+                  <div className="exact-fap-box highlight-dynamic">{d.tenorMonths ? `${d.tenorMonths} Months` : '—'}</div>
                   <div className="exact-inline-group">
-                    <span className="exact-inline-lbl">Cara Bayar :</span>
+                    <span className="exact-inline-lbl">Payment Method :</span>
                     <div className="exact-fap-box highlight-dynamic">{d.paymentMethod || '—'}</div>
                   </div>
                 </div>
@@ -948,7 +949,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
             <div className="exact-fap-col">
               <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#002060', marginBottom: '4px' }}>
-                Rencana Realisasi Unit / Unit Realization :
+                Unit Realization Plan :
               </div>
               <table className="exact-sh-table">
                 <thead>
@@ -993,18 +994,18 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               SECTION 6: RINGKASAN LAPORAN KEUANGAN (ROWS 89 - 100)
               ============================================================== */}
           <div className="exact-section-divider">
-            <div className="exact-section-header">RINGKASAN LAPORAN KEUANGAN 3 TAHUN TERAKHIR / FINANCIAL STATEMENTS</div>
+            <div className="exact-section-header">FINANCIAL STATEMENTS — LAST 3 YEARS</div>
           </div>
 
           <div style={{ marginTop: '8px' }}>
             <table className="exact-sh-table">
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', width: '220px' }}>Neraca / Balance Sheet (IDR)</th>
+                  <th style={{ textAlign: 'left', width: '220px' }}>Balance Sheet (IDR)</th>
                   {fsList.map((fs: any, i: number) => (
                     <th key={i} style={{ width: '110px', textAlign: 'right' }}>{fs.fiscalYear} {fs.isAudited ? '(Audited)' : '(In-house)'}</th>
                   ))}
-                  <th style={{ textAlign: 'left', width: '200px' }}>Laba Rugi / Income Statement</th>
+                  <th style={{ textAlign: 'left', width: '200px' }}>Income Statement</th>
                   {fsList.map((fs: any, i: number) => (
                     <th key={i} style={{ width: '110px', textAlign: 'right' }}>{fs.fiscalYear}</th>
                   ))}
@@ -1012,71 +1013,71 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               </thead>
               <tbody>
                 <tr>
-                  <td>Total Aset Lancar / Current Assets</td>
+                  <td>Current Assets</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentAssets)}</td>
                   ))}
-                  <td>Pendapatan / Revenue</td>
+                  <td>Revenue</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.revenue)}</td>
                   ))}
                 </tr>
                 <tr>
-                  <td>Total Aset Tetap / Non Current Assets</td>
+                  <td>Non-Current Assets</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.nonCurrentAssets)}</td>
                   ))}
-                  <td>Laba Kotor / Gross Margin</td>
+                  <td>Gross Profit</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.grossMargin)}</td>
                   ))}
                 </tr>
                 <tr style={{ background: '#f8fafc', fontWeight: 600 }}>
-                  <td><b>Total Aset / Total Asset</b></td>
+                  <td><b>Total Assets</b></td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.totalAssets)}</b></td>
                   ))}
-                  <td>Laba Usaha / Operating Margin</td>
+                  <td>Operating Profit (EBIT)</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.operatingMargin)}</td>
                   ))}
                 </tr>
                 <tr>
-                  <td>Total Liabilitas Lancar / Current Liab.</td>
+                  <td>Current Liabilities</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentLiabilities)}</td>
                   ))}
-                  <td>Pajak / Tax</td>
+                  <td>Tax</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.tax)}</td>
                   ))}
                 </tr>
                 <tr>
-                  <td>Total Liabilitas Jangka Panjang</td>
+                  <td>Long-Term Liabilities</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.longTermLiabilities)}</td>
                   ))}
-                  <td style={{ background: '#f8fafc', fontWeight: 600 }}><b>Laba Bersih / Net Income</b></td>
+                  <td style={{ background: '#f8fafc', fontWeight: 600 }}><b>Net Income</b></td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.netIncome)}</b></td>
                   ))}
                 </tr>
                 <tr style={{ background: '#f8fafc', fontWeight: 600 }}>
-                  <td><b>Total Liabilitas / Total Liabilities</b></td>
+                  <td><b>Total Liabilities</b></td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.totalLiabilities)}</b></td>
                   ))}
                   <td colSpan={1 + fsList.length} style={{ background: '#f1f5f9' }}></td>
                 </tr>
                 <tr>
-                  <td>Ekuitas / Equity</td>
+                  <td>Equity</td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic">{formatNumber(fs.equity)}</td>
                   ))}
                   <td colSpan={1 + fsList.length} style={{ background: '#f1f5f9' }}></td>
                 </tr>
                 <tr style={{ background: '#f1f5f9', fontWeight: 700 }}>
-                  <td><b>Total Liabilitas & Ekuitas</b></td>
+                  <td><b>Total Liabilities & Equity</b></td>
                   {fsList.map((fs: any, i: number) => (
                     <td key={i} className="right highlight-dynamic"><b>{formatNumber((fs.totalLiabilities || 0) + (fs.equity || 0))}</b></td>
                   ))}
@@ -1090,22 +1091,22 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
               SECTION 7: PERNYATAAN & TANDA TANGAN (ROWS 102 - 118)
               ============================================================== */}
           <div className="exact-section-divider">
-            <div className="exact-section-header">PERNYATAAN DEBITUR & TANDA TANGAN RESMI</div>
+            <div className="exact-section-header">DEBTOR DECLARATION & OFFICIAL SIGNATURES</div>
           </div>
 
           <div style={{ fontSize: '8.5px', color: '#1e293b', lineHeight: 1.35, margin: '8px 0 12px 0' }}>
-            <div style={{ fontWeight: 700, marginBottom: '3px' }}>Dengan ini kami menyatakan dan menyetujui bahwa:</div>
-            <div>1. PT LiuGong Finance Indonesia telah memberikan penjelasan mengenai karakteristik produk pembiayaan, hak dan kewajiban debitur, serta risiko pembiayaan.</div>
-            <div>2. Menyatakan semua informasi dan/atau dokumen yang disampaikan adalah benar, lengkap dan sah sesuai dengan kondisi yang sebenarnya.</div>
-            <div>3. Dalam proses persetujuan pengajuan pembiayaan, PT LiuGong Finance Indonesia berhak melakukan pengecekan data ke pihak ketiga (SLIK OJK / Biro Kredit).</div>
-            <div>4. PT LiuGong Finance Indonesia berhak untuk menolak permohonan pembiayaan ini tanpa berkewajiban memberikan alasan penolakannya.</div>
+            <div style={{ fontWeight: 700, marginBottom: '3px' }}>We hereby declare and agree that:</div>
+            <div>1. PT LiuGong Finance Indonesia has provided an explanation of the financing product characteristics, debtor rights and obligations, and financing risks.</div>
+            <div>2. We declare that all information and/or documents submitted are true, complete and valid in accordance with the actual conditions.</div>
+            <div>3. During the financing approval process, PT LiuGong Finance Indonesia reserves the right to conduct data checks with third parties (SLIK OJK / Credit Bureau).</div>
+            <div>4. PT LiuGong Finance Indonesia reserves the right to reject this financing application without obligation to provide a reason for rejection.</div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
             <div style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', background: '#ffffff' }}>
-              <div style={{ fontSize: '9.5px', fontWeight: 700 }}>Di tanda tangani debitur / signed by debtor</div>
+              <div style={{ fontSize: '9.5px', fontWeight: 700 }}>Signed by debtor</div>
               <div style={{ height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
-                [ Materai Rp 10.000 & Stempel Perusahaan ]
+                [ Revenue Stamp Rp 10,000 & Company Seal ]
               </div>
               <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontSize: '10px', fontWeight: 700 }}>
                 {d.picName}
@@ -1116,9 +1117,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             </div>
 
             <div style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', background: '#ffffff' }}>
-              <div style={{ fontSize: '9.5px', fontWeight: 700 }}>Diverifikasi oleh pihak LFI / verified by LFI</div>
+              <div style={{ fontSize: '9.5px', fontWeight: 700 }}>Verified by LFI</div>
               <div style={{ height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
-                [ Tanda Tangan Relationship Manager ]
+                [ Relationship Manager Signature ]
               </div>
               <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontSize: '10px', fontWeight: 700 }}>
                 Marketing Representative

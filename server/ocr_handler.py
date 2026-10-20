@@ -1368,6 +1368,187 @@ def extract_nib(boxes: list) -> tuple:
 
     return data, boxes
 
+def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tuple:
+    import re
+    texts = []
+    if pdf_path and os.path.exists(pdf_path) and pdf_path.lower().endswith('.pdf'):
+        try:
+            import pymupdf as fitz
+            doc = fitz.open(pdf_path)
+            for page in doc:
+                t = page.get_text()
+                if t and t.strip():
+                    texts.append(t.strip())
+        except Exception as pe:
+            print(f"[OCR] PyMuPDF FAP extraction notice: {pe}")
+
+    for b in boxes:
+        t = (b.get("text") or "").strip()
+        if t:
+            texts.append(t)
+
+    if full_text:
+        texts.insert(0, full_text.strip())
+
+    combined_full_text = "\n".join(texts)
+    lines = [l.strip() for l in combined_full_text.splitlines() if l.strip()]
+
+    def parse_num(val):
+        if not val:
+            return None
+        clean = re.sub(r'[^\d]', '', str(val))
+        return int(clean) if clean else None
+
+    data = {
+        "companyName": "",
+        "customerCategory": "",
+        "companyType": "",
+        "nib": "",
+        "npwp": "",
+        "establishmentActNo": "",
+        "establishmentDate": "",
+        "companyAddress": "",
+        "rt": "",
+        "rw": "",
+        "city": "",
+        "province": "",
+        "postalCode": "",
+        "phoneFax": "",
+        "email": "",
+        "mainBusiness": "",
+        "picName": "",
+        "picPosition": "",
+        "picPhone": "",
+        "picEmail": "",
+        "financingValue": None,
+        "downPaymentValue": None,
+        "tenorMonths": None,
+        "facilityPurpose": "",
+        "financingMethod": "",
+        "raw_text": combined_full_text
+    }
+
+    # 1. Company Name
+    m = re.search(r'(?:nama\s+perusahaan|company\s+name|nama\s+debitur)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["companyName"] = m.group(1).strip()
+    else:
+        for line in lines:
+            if re.match(r'^(?:PT|CV|UD|PO)\b', line, re.IGNORECASE):
+                data["companyName"] = line.strip()
+                break
+
+    # 2. NIB (13 digits)
+    m = re.search(r'\bnib\s*[:=]?\s*([0-9\s]{13,20})', combined_full_text, re.IGNORECASE)
+    if m:
+        digits = re.sub(r'\D', '', m.group(1))
+        data["nib"] = digits[:13]
+    else:
+        m13 = re.findall(r'\b\d{13}\b', combined_full_text)
+        if m13:
+            data["nib"] = m13[0]
+
+    # 3. NPWP (15 or 16 digits)
+    m = re.search(r'\bnpwp\s*[:=]?\s*([0-9.\-\s]{15,25})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["npwp"] = re.sub(r'[.\-\s]', '', m.group(1))
+    else:
+        m_npwp = re.findall(r'\b\d{2}[.\s]?\d{3}[.\s]?\d{3}[.\s]?\d{1}[.\s\-]?\d{3}[.\s]?\d{3}\b', combined_full_text)
+        if m_npwp:
+            data["npwp"] = re.sub(r'[.\-\s]', '', m_npwp[0])
+
+    # 4. Company Address
+    m = re.search(r'(?:alamat\s+perusahaan|company\s+address|alamat\s+domisili|alamat\s+kantor)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["companyAddress"] = m.group(1).strip()
+
+    # 5. RT / RW
+    m = re.search(r'\brt\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["rt"] = m.group(1).zfill(3)
+    m = re.search(r'\brw\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["rw"] = m.group(1).zfill(3)
+
+    # 6. City / Kota
+    m = re.search(r'(?:kota\s*/\s*kabupaten|kota|kabupaten|city)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:provinsi|kode\s+pos|\n|$))', combined_full_text, re.IGNORECASE)
+    if m:
+        data["city"] = m.group(1).strip()
+
+    # 7. Province
+    m = re.search(r'(?:provinsi|province)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:kode\s+pos|negara|\n|$))', combined_full_text, re.IGNORECASE)
+    if m:
+        data["province"] = m.group(1).strip()
+
+    # 8. Postal Code (5 digits)
+    m = re.search(r'(?:kode\s+pos|postal\s+code|zip\s+code)\s*[:=]?\s*(\d{5})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["postalCode"] = m.group(1)
+
+    # 9. Phone / Fax
+    m = re.search(r'(?:telepon\s*/\s*fax|phone\s*/\s*fax|telepon\s+perusahaan|no\.?\s*telp)\s*[:=]?\s*([+0-9\s().\-]{7,20})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["phoneFax"] = m.group(1).strip()
+
+    # 10. Email (Company Email)
+    m_emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', combined_full_text)
+    if m_emails:
+        data["email"] = m_emails[0]
+
+    # 11. Main Business
+    m = re.search(r'(?:bidang\s+usaha|main\s+business|kegiatan\s+usaha)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["mainBusiness"] = m.group(1).strip()
+
+    # 12. Establishment Deed No & Date
+    m = re.search(r'(?:no\.?\s*(?:akta\s+)?pendirian|akta\s+pendirian)\s*[:=]?\s*([^\n\r,]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["establishmentActNo"] = m.group(1).strip()
+    m = re.search(r'(?:tanggal\s+akta(?:\s+pendirian)?|establishment\s+date)\s*[:=]?\s*(\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["establishmentDate"] = m.group(1).strip()
+
+    # 13. PIC Information
+    m = re.search(r'(?:nama\s+pic|contact\s+person|penanggung\s+jawab|pic\s+name)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picName"] = m.group(1).strip()
+    m = re.search(r'(?:jabatan\s+pic|jabatan|position)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picPosition"] = m.group(1).strip()
+    m = re.search(r'(?:no\.?\s*hp\s+pic|telepon\s+pic|phone\s+pic|no\.?\s*hp|mobile\s+pic)\s*[:=]?\s*([+0-9\s().\-]{9,16})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picPhone"] = re.sub(r'[^\d+]', '', m.group(1))
+    m = re.search(r'(?:email\s+pic|pic\s+email)\s*[:=]?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picEmail"] = m.group(1).strip()
+    elif len(m_emails) > 1:
+        data["picEmail"] = m_emails[1]
+
+    # 14. Financing Values & Terms
+    m = re.search(r'(?:total\s+equipment\s+value|nilai\s+pembiayaan|financing\s+value|total\s+fasilitas)\s*[:=]?\s*(?:idr|rp\.?)?\s*([0-9.,\s]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["financingValue"] = parse_num(m.group(1))
+    m = re.search(r'(?:down\s+payment|uang\s+muka|dp)\s*[:=]?\s*(?:idr|rp\.?)?\s*([0-9.,\s]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["downPaymentValue"] = parse_num(m.group(1))
+    m = re.search(r'(?:tenor|jangka\s+waktu)\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["tenorMonths"] = int(m.group(1))
+
+    # 15. Customer Status & Facility Purpose
+    if re.search(r'\bEXISTING\b', combined_full_text, re.IGNORECASE):
+        data["customerStatus"] = "EXISTING"
+    elif re.search(r'\bNEW\b', combined_full_text, re.IGNORECASE):
+        data["customerStatus"] = "NEW"
+
+    if re.search(r'\bWORKING[\s_-]*CAPITAL\b', combined_full_text, re.IGNORECASE):
+        data["facilityPurpose"] = "WORKING_CAPITAL"
+    elif re.search(r'\bINVESTMENT\b', combined_full_text, re.IGNORECASE):
+        data["facilityPurpose"] = "INVESTMENT"
+
+    return data, boxes
+
+
 def generate_document_storage_info(doc_type: str, app_id: str = None, stakeholder_id: str = None, original_filename: str = None) -> dict:
     import re
     doc_type = (doc_type or 'general').lower().strip()

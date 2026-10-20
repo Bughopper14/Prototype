@@ -1,4 +1,4 @@
-import {initializeApplicationDocuments,syncApplicationDocuments,readApplicationDocuments,readDocumentFile,uploadApplicationDocument,deleteApplicationDocumentFile,verifyApplicationDocument,getSubmitLock} from './mysql-documents';
+import {initializeApplicationDocuments,syncApplicationDocuments,readApplicationDocuments,readDocumentFile,uploadApplicationDocument,deleteApplicationDocumentFile,verifyApplicationDocument,getSubmitLock,saveFapComparison,syncSubmitLock} from './mysql-documents';
 import {syncLegacyDocumentChecklists,syncLegacyDocumentCatalog} from './legacy-document-sync';
 import {initializeUsers,initializeAudit,findUser,publicUser,userCount,createUser} from './mysql-users';
 import {mysqlActor} from './mysql-audit-context';
@@ -394,6 +394,90 @@ app.post('/api/v1/applications/:id/deeds/:deedId/review',async(req,res)=>{
 app.get('/api/v1/applications/:id/checklist',async(req,res)=>res.json((await intakeDetail(String(req.params.id))||await detail(String(req.params.id))).documentChecks));
 const s3=process.env.S3_BUCKET?new S3Client({region:process.env.S3_REGION||'ap-southeast-1',endpoint:process.env.S3_ENDPOINT||undefined,forcePathStyle:!!process.env.S3_ENDPOINT,credentials:{accessKeyId:process.env.S3_ACCESS_KEY_ID||'',secretAccessKey:process.env.S3_SECRET_ACCESS_KEY||''}}):null;
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1}});
+
+async function compareFapDocumentOcr(id: string, fileName: string, currentApp: any) {
+  try {
+    const cliScript = path.resolve('server/ocr_cli.py');
+    const pyExe = [
+      process.env.PYTHON_PATH,
+      'C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/python.exe',
+      'python'
+    ].find(p => p && p.trim().length > 0) || 'python';
+    const docFilePath = path.join(documentsDir, path.basename(fileName));
+    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 60000 });
+    const jsonStart = stdout.indexOf('{');
+    const jsonEnd = stdout.lastIndexOf('}');
+    const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
+    const extracted = ocrRes.data || {};
+
+    const diffs: Array<{ field: string; label: string; oldValue: string; newValue: string }> = [];
+    const compareField = (key: string, label: string, oldVal: any, newVal: any, isNumber = false) => {
+      if (newVal === undefined || newVal === null || String(newVal).trim() === '') return;
+      const sNew = String(newVal).trim();
+      const sOld = oldVal !== undefined && oldVal !== null ? String(oldVal).trim() : '';
+
+      if (isNumber) {
+        const nNew = Number(sNew.replace(/[^\d.-]/g, ''));
+        const nOld = Number(sOld.replace(/[^\d.-]/g, ''));
+        if (!isNaN(nNew) && !isNaN(nOld) && nNew === nOld) return;
+      } else {
+        const cleanNew = sNew.replace(/\s+/g, ' ').toUpperCase();
+        const cleanOld = sOld.replace(/\s+/g, ' ').toUpperCase();
+        if (cleanNew === cleanOld) return;
+        if (key === 'nib' || key === 'npwp') {
+          const dNew = sNew.replace(/\D/g, '');
+          const dOld = sOld.replace(/\D/g, '');
+          if (dNew && dOld && dNew === dOld) return;
+        }
+      }
+
+      diffs.push({
+        field: key,
+        label,
+        oldValue: sOld || '—',
+        newValue: sNew
+      });
+    };
+
+    compareField('companyName', 'Nama Perusahaan', currentApp.customer?.companyName || currentApp.companyName, extracted.companyName);
+    compareField('nib', 'Nomor Induk Berusaha (NIB)', currentApp.customer?.nib || currentApp.nib, extracted.nib);
+    compareField('npwp', 'NPWP Perusahaan', currentApp.customer?.npwp || currentApp.npwp, extracted.npwp);
+    compareField('companyAddress', 'Alamat Perusahaan', currentApp.companyAddress || currentApp.customer?.companyAddress, extracted.companyAddress);
+    compareField('rt', 'RT', currentApp.rt || currentApp.customer?.rt, extracted.rt);
+    compareField('rw', 'RW', currentApp.rw || currentApp.customer?.rw, extracted.rw);
+    compareField('city', 'Kota / Kabupaten', currentApp.city || currentApp.customer?.city, extracted.city);
+    compareField('province', 'Provinsi', currentApp.province || currentApp.customer?.province, extracted.province);
+    compareField('postalCode', 'Kode Pos', currentApp.postalCode || currentApp.customer?.postalCode, extracted.postalCode);
+    compareField('phoneFax', 'Telepon / Fax', currentApp.phoneFax, extracted.phoneFax);
+    compareField('email', 'Email Perusahaan', currentApp.email, extracted.email);
+    compareField('mainBusiness', 'Bidang Usaha Utama', currentApp.mainBusiness, extracted.mainBusiness);
+    compareField('picName', 'Nama PIC', currentApp.pic?.picName || currentApp.pic?.name, extracted.picName);
+    compareField('picPosition', 'Jabatan PIC', currentApp.pic?.position, extracted.picPosition);
+    compareField('picPhone', 'No. HP / Telepon PIC', currentApp.pic?.phone || currentApp.pic?.mobilePhone, extracted.picPhone);
+    compareField('picEmail', 'Email PIC', currentApp.pic?.email, extracted.picEmail);
+    compareField('financingValue', 'Nilai Pembiayaan', currentApp.proposal?.financingValue, extracted.financingValue, true);
+    compareField('downPaymentValue', 'Uang Muka (DP)', currentApp.proposal?.downPaymentValue, extracted.downPaymentValue, true);
+    compareField('tenorMonths', 'Tenor (Bulan)', currentApp.proposal?.tenorMonths, extracted.tenorMonths, true);
+    compareField('facilityPurpose', 'Tujuan Pembiayaan', currentApp.proposal?.facilityPurpose, extracted.facilityPurpose);
+    compareField('financingMethod', 'Metode Pembayaran', currentApp.proposal?.financingMethod, extracted.financingMethod);
+
+    const comparison = {
+      isFap: true,
+      hasDifferences: diffs.length > 0,
+      diffs,
+      extractedData: extracted,
+      fileName,
+      comparedAt: new Date().toISOString()
+    };
+
+    await saveFapComparison(id, comparison);
+    return comparison;
+  } catch (err: any) {
+    console.warn('compareFapDocumentOcr error:', err);
+    return null;
+  }
+}
+
 app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async(req,res)=>{permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);const id=String(req.params.id);const file=req.file;ensure(file,'Choose a file');const actual=file.buffer.subarray(0,8);const valid=(file.mimetype==='application/pdf'&&actual.subarray(0,5).toString()==='%PDF-')||(file.mimetype==='image/png'&&actual.equals(Buffer.from([137,80,78,71,13,10,26,10])))||(file.mimetype==='image/jpeg'&&actual[0]===255&&actual[1]===216&&actual[2]===255);ensure(valid,'Upload a valid PDF, PNG or JPEG file');
  if(await intakeDetail(id)){const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:path.basename(file.originalname)},req.actor.id,async key=>{if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);
     const docCopyPath = path.join(documentsDir, path.basename(file.originalname));
@@ -537,6 +621,129 @@ async function removeStoredDocument(key:string){
  if(s3)await s3.send(new DeleteObjectCommand({Bucket:process.env.S3_BUCKET,Key:key}));
  else await fs.rm(path.join(dataDir,'files',key),{force:true});
 }
+
+app.get('/api/v1/applications/:id/fap-comparison', async (req, res) => {
+  const id = String(req.params.id);
+  const lock = await getSubmitLock(id);
+  res.json({ status: 'success', comparison: lock.ocrComparison || null });
+});
+
+app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
+  permit(req, ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE']);
+  const id = String(req.params.id);
+  const current = await intakeDetail(id);
+  if (!current) return res.status(404).json({ error: 'Application not found' });
+
+  const bodyData = req.body?.approvedData || {};
+  const approvedFields: string[] = Array.isArray(req.body?.fields) ? req.body.fields : Object.keys(bodyData);
+  const shouldApply = (f: string) => approvedFields.includes(f) && bodyData[f] !== undefined && bodyData[f] !== null && String(bodyData[f]).trim() !== '';
+
+  const customerUpdates: Record<string, any> = { ...(current.customer || {}) };
+  const profileUpdates: Record<string, any> = { ...current };
+  const picUpdates: Record<string, any> = { ...(current.pic || {}) };
+  const proposalUpdates: Record<string, any> = { ...(current.proposal || {}) };
+
+  if (shouldApply('companyName')) {
+    customerUpdates.companyName = bodyData.companyName;
+    profileUpdates.companyName = bodyData.companyName;
+  }
+  if (shouldApply('nib')) {
+    customerUpdates.nib = bodyData.nib;
+    profileUpdates.nib = bodyData.nib;
+  }
+  if (shouldApply('npwp')) {
+    customerUpdates.npwp = bodyData.npwp;
+    profileUpdates.npwp = bodyData.npwp;
+  }
+  if (shouldApply('companyAddress')) {
+    customerUpdates.companyAddress = bodyData.companyAddress;
+    profileUpdates.companyAddress = bodyData.companyAddress;
+  }
+  if (shouldApply('rt')) {
+    customerUpdates.rt = bodyData.rt;
+    profileUpdates.rt = bodyData.rt;
+  }
+  if (shouldApply('rw')) {
+    customerUpdates.rw = bodyData.rw;
+    profileUpdates.rw = bodyData.rw;
+  }
+  if (shouldApply('city')) {
+    customerUpdates.city = bodyData.city;
+    profileUpdates.city = bodyData.city;
+  }
+  if (shouldApply('province')) {
+    customerUpdates.province = bodyData.province;
+    profileUpdates.province = bodyData.province;
+  }
+  if (shouldApply('postalCode')) {
+    customerUpdates.postalCode = bodyData.postalCode;
+    profileUpdates.postalCode = bodyData.postalCode;
+  }
+  if (shouldApply('phoneFax')) {
+    profileUpdates.phoneFax = bodyData.phoneFax;
+  }
+  if (shouldApply('email')) {
+    profileUpdates.email = bodyData.email;
+  }
+  if (shouldApply('mainBusiness')) {
+    profileUpdates.mainBusiness = bodyData.mainBusiness;
+  }
+
+  if (shouldApply('picName')) picUpdates.picName = bodyData.picName;
+  if (shouldApply('picPosition')) picUpdates.position = bodyData.picPosition;
+  if (shouldApply('picPhone')) picUpdates.phone = bodyData.picPhone;
+  if (shouldApply('picEmail')) picUpdates.email = bodyData.picEmail;
+
+  let hasProposalUpdates = false;
+  if (shouldApply('financingValue')) {
+    proposalUpdates.financingValue = Number(String(bodyData.financingValue).replace(/[^\d.-]/g, ''));
+    hasProposalUpdates = true;
+  }
+  if (shouldApply('downPaymentValue')) {
+    proposalUpdates.downPaymentValue = Number(String(bodyData.downPaymentValue).replace(/[^\d.-]/g, ''));
+    hasProposalUpdates = true;
+  }
+  if (shouldApply('tenorMonths')) {
+    proposalUpdates.tenorMonths = Number(String(bodyData.tenorMonths).replace(/[^\d.-]/g, ''));
+    hasProposalUpdates = true;
+  }
+  if (shouldApply('facilityPurpose')) {
+    proposalUpdates.facilityPurpose = bodyData.facilityPurpose;
+    hasProposalUpdates = true;
+  }
+  if (shouldApply('financingMethod')) {
+    proposalUpdates.financingMethod = bodyData.financingMethod;
+    hasProposalUpdates = true;
+  }
+
+  await saveCustomerPic(id, {
+    customer: customerUpdates,
+    profile: profileUpdates,
+    pic: picUpdates
+  });
+
+  if (hasProposalUpdates) {
+    try {
+      await saveBusiness(id, { proposal: proposalUpdates });
+    } catch (bizErr) {
+      console.warn('saveBusiness proposal updates error:', bizErr);
+    }
+  }
+
+  await saveFapComparison(id, null);
+  await syncSubmitLock(id);
+
+  const updated = await intakeDetail(id);
+  res.json({ success: true, application: updated });
+});
+
+app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
+  const id = String(req.params.id);
+  await saveFapComparison(id, null);
+  await syncSubmitLock(id);
+  res.json({ success: true });
+});
+
 app.delete('/api/v1/applications/:id/documents/files/:fileId',async(req,res)=>{
  permit(req,['MKT','BS']);
  const id=String(req.params.id),fileId=String(req.params.fileId);

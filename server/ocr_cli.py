@@ -73,10 +73,19 @@ def main():
 
         dtype_clean = (doc_type or "auto").strip().lower()
         if dtype_clean in ["auto", "none", ""]:
-            detected = InformationExtractor.detect_document_type(boxes, p.name)
-            dtype_clean = detected.value if hasattr(detected, "value") else str(detected).lower()
+            full_b_text = " ".join((b.get("text") or "") for b in boxes)
+            import re
+            if "fap" in p.name.lower() or re.search(r'financing\s+application\s+form|\bfap\b|tujuan\s+pembiayaan|fap\s+intake', full_b_text, re.IGNORECASE):
+                dtype_clean = "fap"
+            else:
+                detected = InformationExtractor.detect_document_type(boxes, p.name)
+                dtype_clean = detected.value if hasattr(detected, "value") else str(detected).lower()
 
-        if dtype_clean == "ktp":
+        if dtype_clean == "fap":
+            from ocr_handler import extract_fap
+            extracted, tagged = extract_fap(boxes, pdf_path=str(p) if p.suffix.lower() == '.pdf' else None)
+            detected_type = "fap"
+        elif dtype_clean == "ktp":
             from ocr_handler import extract_ktp_nib_style
             extracted, tagged = extract_ktp_nib_style(boxes)
             detected_type = "ktp"
