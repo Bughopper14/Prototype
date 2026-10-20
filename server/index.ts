@@ -844,6 +844,11 @@ app.delete(['/api/v1/applications/:id/documents/files/:fileId', '/api/v1/applica
  const id=String(req.params.id),fileId=String(req.params.fileId);
  if(await intakeDetail(id)){
   await deleteApplicationDocumentFile(id,fileId,removeStoredDocument);
+  const docs = await readApplicationDocuments(id);
+  const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
+  if (!fapCheck || !fapCheck.files || fapCheck.files.length === 0) {
+    await saveFapComparison(id, null);
+  }
   return res.json(await intakeDetail(id));
  }
  await transaction(async q=>{
@@ -860,6 +865,9 @@ app.delete(['/api/v1/applications/:id/documents/files/:fileId', '/api/v1/applica
   await q('DELETE FROM review_signoffs WHERE application_id=$1',[id]);
   await q('INSERT INTO document_events(application_id,checklist_id,actor,action,details) VALUES($1,$2,$3,$4,$5)',[id,d.id,req.actor.name,'DELETE_FILE',JSON.stringify({fileId,fileName:f.fileName})]);
   await removeStoredDocument(f.fileKey);
+  if ((String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap')) && !remaining) {
+    await saveFapComparison(id, null);
+  }
  });
  res.json(await detail(id));
 });

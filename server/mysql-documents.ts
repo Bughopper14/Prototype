@@ -118,7 +118,19 @@ export async function deleteApplicationDocumentFile(id:string,fileId:string,remo
    updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[remaining.length?'UPLOADED':'PENDING',remaining.length?1:0,file.checklist_id]);
   await removeStoredFile(file.file_key);
   await c.commit();
-  try{await syncSubmitLock(id);}catch{}
+  try{
+    await syncSubmitLock(id);
+    const [fapFiles]=await pool!.execute<any[]>(`
+      SELECT COUNT(f.id) AS cnt
+      FROM application_document_checklist d
+      JOIN application_document_file f ON f.checklist_id = d.id
+      WHERE d.application_id = ?
+        AND (UPPER(d.document_code) = 'FAP' OR LOWER(d.document_name) LIKE '%fap%')
+    `,[id]);
+    if(Number(fapFiles[0]?.cnt||0) === 0){
+      await pool!.execute('UPDATE application_submit_lock SET ocr_comparison_json = NULL, fap_doc_uploaded = 0, is_locked = 1 WHERE application_id = ?',[id]);
+    }
+  }catch{}
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 export async function verifyApplicationDocument(id:string,checklistId:string,body:any){
@@ -145,7 +157,7 @@ export async function syncSubmitLock(applicationId:string){
    FROM application_document_checklist d
    JOIN application_document_file f ON f.checklist_id = d.id
    WHERE d.application_id = ?
-     AND (UPPER(d.document_code) = 'FAP' OR LOWER(d.document_name) LIKE '%fap%' OR (d.assigned_role = 'MKT' AND d.is_mandatory = 1))
+     AND (UPPER(d.document_code) = 'FAP' OR LOWER(d.document_name) LIKE '%fap%')
   `,[applicationId]);
   const hasUploaded=Number(rows[0]?.file_count||0)>0;
   const isLocked=hasUploaded?0:1;
