@@ -356,9 +356,9 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
    'fap-preview-sec-header': true,
    'fap-preview-sec-company': true,
-   'fap-preview-sec-business': false,
-   'fap-preview-sec-pic': false,
-   'fap-preview-sec-projects': false,
+   'fap-preview-sec-business': true,
+   'fap-preview-sec-pic': true,
+   'fap-preview-sec-projects': true,
  });
  const [activeSyncSection, setActiveSyncSection] = useState<string>('fap-preview-sec-header');
  const [syncTick, setSyncTick] = useState<number>(() => Date.now());
@@ -2936,26 +2936,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
  const saveDeed=()=>{
    if(!editing||editorLocked)return;
-   try{
-     validateInput({...editing,stakeholders:undefined});
-     const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);
-     const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;
-     if(editing.type==='amendment'&&editing.deedDate&&estDate){
-       if(String(editing.deedDate).slice(0,10)<String(estDate).slice(0,10)){
-         throw new Error(`Tanggal akta perubahan (${date(editing.deedDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);
-       }
-     }
-     if(editing.type==='establishment'&&editing.deedDate){
-       const earlierAmendment=deeds.find((x:any)=>x.type==='amendment'&&x.id!==editing.id&&x.deedDate&&String(x.deedDate).slice(0,10)<String(editing.deedDate).slice(0,10));
-       if(earlierAmendment){
-         throw new Error(`Tanggal akta pendirian (${date(editing.deedDate)}) tidak boleh melebihi tanggal akta perubahan yang sudah ada (${date(earlierAmendment.deedDate)}).`);
-       }
-     }
-     setFormError('');
-   }catch(e:any){
-     setFormError(e.message);
-     return;
-   }
+   setFormError('');
    const catsToSave=getDeedCategoryIds(editing);
    const cleanRemarks=(editing.remarks||'').replace(/<\/ol>\s*<ol[^>]*>/gi,'').replace(/<\/ul>\s*<ul[^>]*>/gi,'');
    const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};
@@ -3095,15 +3076,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
 
   const saveStakeholder=()=>{
     if(!stakeholderModal||editorLocked)return;
-    try{
-      validateInput(stakeholderModal.value);
-      for(const [key,name] of [['email','Email'],['mobilePhone','Mobile phone'],['primaryCapital','Primary capital']])if(String(stakeholderModal.value[key]??'').trim()==='')throw Error(name+' wajib diisi.');
-      if(![stakeholderModal.value.firstName,stakeholderModal.value.lastName,stakeholderModal.value.name].some(v=>String(v||'').trim()))throw Error('Nama stakeholder wajib diisi.');
-      setFormError('');
-    }catch(e:any){
-      setFormError(e.message);
-      return;
-    }
+    setFormError('');
     const x=deeds.find(d=>d.id===stakeholderModal.deedId);
     if(!x)return;
     const rows=rowsFor(x);
@@ -3114,7 +3087,6 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       valToSave.ageMonths=months;
     }
     const next=stakeholderModal.index<0?[...rows,valToSave]:rows.map((r,i)=>i===stakeholderModal.index?valToSave:r);
-    try{validateInput({stakeholders:next});}catch(e:any){setFormError(e.message);return;}
     updateRows(x.id,next);
     setStakeholderModal(null);
   };

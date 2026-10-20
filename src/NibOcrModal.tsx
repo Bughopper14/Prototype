@@ -353,7 +353,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, maxWidth: '55%' }}>
                     <FileText size={14} color="#60a5fa" />
                     <span style={{ fontSize: '0.74rem', color: '#f8fafc', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {fileName || 'Dokumen NIB'}
+                      {fileName || 'NIB Document'}
                     </span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -379,7 +379,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     <button
                       type="button"
                       onClick={() => setRotation(r => (r + 90) % 360)}
-                      title="Putar 90°"
+                      title="Rotate 90°"
                       style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                       <RotateCw size={13} />
@@ -436,7 +436,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   borderTop: '1px solid #334155'
                 }}>
                   <label style={{ fontSize: '0.72rem', color: '#60a5fa', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, margin: 0 }}>
-                    <RefreshCw size={12} /> Ganti Dokumen NIB
+                    <RefreshCw size={12} /> Replace NIB Document
                     <input type="file" accept="image/*,application/pdf" onChange={handleFileUpload} style={{ display: 'none' }} />
                   </label>
                   <button
@@ -444,7 +444,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     onClick={() => { setFileUrl(null); setFileName(''); setFileType(null); }}
                     style={{ background: 'none', border: 'none', color: '#f87171', fontSize: '0.72rem', cursor: 'pointer' }}
                   >
-                    Hapus Dokumen
+                    Remove Document
                   </button>
                 </div>
               </div>

@@ -266,11 +266,26 @@ export async function saveCustomerPic(id:string,body:any,fallback?:any){
   }
   const storedPic={...pic};
   if(pic.district){
-   const [districts]=await c.execute<any[]>(`SELECT d.id,d.name,c.name AS city_name,p.name AS province_name FROM master_kecamatan d JOIN master_kabupaten_kota c ON c.id=d.kabupaten_kota_id JOIN master_provinsi p ON p.id=c.provinsi_id WHERE (d.id=? OR d.name=?) AND (?='' OR c.name=?) AND (?='' OR p.name=?)`,[pic.district,pic.district,pic.city||'',pic.city||'',pic.province||'',pic.province||'']);
-   if(districts.length!==1)throw mysqlError('Pilih kecamatan yang sesuai dengan kota/kabupaten dan provinsi.');
-   const district=districts[0];storedPic.district=district.name;
-   if(pic.village){const [villages]=await c.execute<any[]>('SELECT id,name FROM master_kelurahan_desa WHERE (id=? OR name=?) AND kecamatan_id=?',[pic.village,pic.village,district.id]);if(villages.length!==1)throw mysqlError('Pilih kelurahan/desa yang sesuai dengan kecamatan.');storedPic.village=villages[0].name;}
-  }else if(pic.village)throw mysqlError('Pilih kecamatan sebelum memilih kelurahan/desa.');
+   try{
+    const [districts]=await c.execute<any[]>(`SELECT d.id,d.name,c.name AS city_name,p.name AS province_name FROM master_kecamatan d JOIN master_kabupaten_kota c ON c.id=d.kabupaten_kota_id JOIN master_provinsi p ON p.id=c.provinsi_id WHERE (d.id=? OR d.name=?) AND (?='' OR c.name=?) AND (?='' OR p.name=?)`,[pic.district,pic.district,pic.city||'',pic.city||'',pic.province||'',pic.province||'']);
+    if(districts.length>=1){
+     const district=districts[0];storedPic.district=district.name;
+     if(pic.village){
+      const [villages]=await c.execute<any[]>('SELECT id,name FROM master_kelurahan_desa WHERE (id=? OR name=?) AND kecamatan_id=?',[pic.village,pic.village,district.id]);
+      if(villages.length>=1)storedPic.village=villages[0].name;
+      else storedPic.village=pic.village;
+     }
+    }else{
+     storedPic.district=pic.district;
+     storedPic.village=pic.village;
+    }
+   }catch{
+    storedPic.district=pic.district;
+    storedPic.village=pic.village;
+   }
+  }else if(pic.village){
+   storedPic.village=pic.village;
+  }
   const updateTable=async(table:string,idColumn:string,rowId:string,values:Record<string,any>)=>{
     const [old]=await c.execute<any[]>(`SELECT * FROM ${table} WHERE ${idColumn}=? FOR UPDATE`,[rowId]);
     if(!old.length)throw mysqlError('Application stage was not found',404);

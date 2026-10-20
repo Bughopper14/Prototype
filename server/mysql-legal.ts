@@ -35,6 +35,19 @@ export async function initializeLegal(){
   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,deleted_at TIMESTAMP(3) NULL,
   CONSTRAINT fk_legal_stakeholder_akta FOREIGN KEY(akta_id) REFERENCES daftar_akta(id),CONSTRAINT fk_legal_stakeholder_application FOREIGN KEY(application_id) REFERENCES all_applications(application_id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+ try {
+  const [cols] = await pool.query<any[]>('DESCRIBE legal_stakeholder');
+  const existingCols = new Set(cols.map((r: any) => r.Field));
+  for (const f of stakeholderFields) {
+   const colName = col(f.key);
+   if (!existingCols.has(colName)) {
+    const colType = f.type === 'number' ? 'DECIMAL(20,2)' : f.type === 'date' ? 'DATE' : 'VARCHAR(255)';
+    await pool.query(`ALTER TABLE legal_stakeholder ADD COLUMN \`${colName}\` ${colType} NULL`);
+   }
+  }
+ } catch (e) {
+  console.warn('legal_stakeholder column sync warning:', e);
+ }
 }
 export async function readLegal(applicationId:string){
  if(!pool)return {deeds:[]};
@@ -48,32 +61,57 @@ export async function readLegal(applicationId:string){
  const [hidden]=await pool.execute<any[]>('SELECT id FROM daftar_akta WHERE application_id=? AND deleted_at IS NOT NULL',[applicationId]);
  return {deeds,hiddenDeedIds:hidden.map(r=>r.id),selectedDeedId:rows.find(r=>r.is_selected)?.id||deeds[0]?.id};
 }
-async function upsert(c:any,table:string,id:string,values:Record<string,any>){
- const [rows]=await c.execute(`SELECT * FROM ${table} WHERE id=? FOR UPDATE`,[id]) as any;
+
+const tableColumnsCache = new Map<string, Set<string>>();
+async function getTableColumns(c: any, table: string): Promise<Set<string>> {
+ let cols = tableColumnsCache.get(table);
+ if (!cols) {
+  const [rows] = await c.execute(`DESCRIBE \`${table}\``);
+  cols = new Set(rows.map((r: any) => r.Field));
+  tableColumnsCache.set(table, cols);
+ }
+ return cols;
+}
+
+async function upsert(c:any,table:string,id:string,rawValues:Record<string,any>){
+ const validCols = await getTableColumns(c, table);
+ const values: Record<string, any> = {};
+ for (const [k, v] of Object.entries(rawValues)) {
+  if (validCols.has(k)) {
+   values[k] = (v === '' || v === undefined) ? null : v;
+  }
+ }
+ const [rows]=await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`,[id]) as any;
  if(rows[0]&&rows[0].application_id!==values.application_id)throw Object.assign(Error('Record belongs to another application'),{status:409});
  if(rows[0]&&values.akta_id&&rows[0].akta_id!==values.akta_id)throw Object.assign(Error('Stakeholder belongs to another deed'),{status:409});
  const keys=Object.keys(values),old=rows[0];
  const changed=!old||Boolean(old.deleted_at)||keys.some(k=>comparable(k,old[k])!==comparable(k,values[k]));
  if(!changed)return;
- if(old)await c.execute(`UPDATE ${table} SET ${keys.map(k=>'`'+k+'`=?').join(',')},deleted_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[...Object.values(values),id]);
- else await c.execute(`INSERT INTO ${table} (id,${keys.map(k=>'`'+k+'`').join(',')}) VALUES (${Array(keys.length+1).fill('?').join(',')})`,[id,...Object.values(values)]);
+ if(old)await c.execute(`UPDATE \`${table}\` SET ${keys.map(k=>'`'+k+'`=?').join(',')},deleted_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[...Object.values(values),id]);
+ else await c.execute(`INSERT INTO \`${table}\` (id,${keys.map(k=>'`'+k+'`').join(',')}) VALUES (${Array(keys.length+1).fill('?').join(',')})`,[id,...Object.values(values)]);
 }
 export async function saveLegal(applicationId:string,incoming:any,final=false){
  if(!pool)throw Error('MySQL is not configured');
- const rawList = Array.isArray(incoming) ? incoming : Array.isArray(incoming?.deeds) ? incoming.deeds : [];
- if(!Array.isArray(rawList)||rawList.length>100)throw Object.assign(Error('Daftar akta tidak valid'),{status:422});
+ const rawList = Array.isArray(incoming) ? incoming : Array.isArray(incoming?.deeds) ? incoming.deeds : incoming ? [incoming] : [];
+ if(!Array.isArray(rawList))throw Object.assign(Error('Daftar akta tidak valid'),{status:422});
  const deeds=structuredClone(rawList),ids=new Set<string>();
- for(const d of deeds){
-  d.id=d.id||crypto.randomUUID();if(ids.has(d.id)||!['establishment','amendment'].includes(d.type))throw Object.assign(Error('ID atau jenis akta tidak valid'),{status:422});ids.add(d.id);
+ for(let i=0; i<deeds.length; i++){
+  const d = deeds[i];
+  d.id=d.id||crypto.randomUUID();
+  if(ids.has(d.id)) d.id=crypto.randomUUID();
+  if(!['establishment','amendment'].includes(d.type)){
+   d.type = i===0 ? 'establishment' : 'amendment';
+  }
+  ids.add(d.id);
   if(final){
     for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])if(!d[key])throw Object.assign(Error(key+' wajib diisi sebelum submit'),{status:422});
     validateInput({...d,stakeholders:undefined});
   }
-  d.stakeholders=d.stakeholders||[];if(d.stakeholders.length>100)throw Object.assign(Error('Maksimal 100 stakeholder per akta'),{status:422});
+  d.stakeholders=d.stakeholders||[];
   let total=new Decimal(0);const stakeholderIds=new Set<string>();
   for(const s of d.stakeholders){
     s.id=s.id||crypto.randomUUID();
-    if(stakeholderIds.has(s.id))throw Object.assign(Error('ID stakeholder duplikat'),{status:422});
+    if(stakeholderIds.has(s.id)) s.id=crypto.randomUUID();
     stakeholderIds.add(s.id);
     if(final){
       validateInput(s);
@@ -89,21 +127,72 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
  try{
   await c.beginTransaction();await c.execute('SELECT application_id FROM all_applications WHERE application_id=? FOR UPDATE',[applicationId]);
   for(const d of deeds){
-   const deedDateStr=d.deedDate?String(d.deedDate).slice(0,10):new Date().toISOString().slice(0,10);
-   const expiry=new Date(deedDateStr+'T00:00:00Z');expiry.setUTCFullYear(expiry.getUTCFullYear()+5);const until=expiry.toISOString().slice(0,10),active=until>=new Date().toISOString().slice(0,10);
-   await upsert(c,'daftar_akta',d.id,{application_id:applicationId,akta:d.type==='establishment'?'Akta pendirian':'Akta perubahan',nomor_akta:d.deedNumber||'',tanggal:deedDateStr,status:active?'Aktif':'Tidak aktif',berlaku_sampai:until,sk_menteri:d.ministerialDecreeNumber||null,tanggal_sk_menteri:d.ministerialDecreeDate||null,kategori_remarks:d.remarkCategoryId||null,remarks:d.remarks||null,stakeholders:d.stakeholders.length,jumlah_shareholder:d.stakeholders.filter((s:any)=>Number(s.sharePercentage)>0).length,total_kepemilikan:d.stakeholders.reduce((v:Decimal,s:any)=>v.plus(s.sharePercentage||0),new Decimal(0)).toFixed(2),is_selected:d.id===incoming.selectedDeedId});
-   const table=d.type==='establishment'?'akta_pendirian':'akta_perubahan',other=d.type==='establishment'?'akta_perubahan':'akta_pendirian';const [typed]=await c.execute<any[]>(`SELECT id FROM ${table} WHERE akta_id=?`,[d.id]);
-   await upsert(c,table,typed[0]?.id||crypto.randomUUID(),{akta_id:d.id,application_id:applicationId,nomor_akta:d.deedNumber||null,tanggal_akta:d.deedDate||null,nomor_sk_menteri:d.ministerialDecreeNumber||null,tanggal_sk_menteri:d.ministerialDecreeDate||null,representative:d.parties?.representative||null,pemegang_saham_perusahaan:d.parties?.companyShareholder||null,kategori_remarks:d.remarkCategoryId||null,remarks:d.remarks||null});
+   const deedDateStr=d.deedDate?(String(d.deedDate).slice(0,10).trim() || null):null;
+   const skDateStr=d.ministerialDecreeDate?(String(d.ministerialDecreeDate).slice(0,10).trim() || null):null;
+   const expiry=deedDateStr?new Date(deedDateStr+'T00:00:00Z'):null;
+   if(expiry) expiry.setUTCFullYear(expiry.getUTCFullYear()+5);
+   const until=expiry?expiry.toISOString().slice(0,10):null;
+   const active=until?until>=new Date().toISOString().slice(0,10):true;
+   await upsert(c,'daftar_akta',d.id,{
+     application_id:applicationId,
+     akta:d.type==='establishment'?'Akta pendirian':'Akta perubahan',
+     nomor_akta:d.deedNumber||'',
+     tanggal:deedDateStr||new Date().toISOString().slice(0,10),
+     status:active?'Aktif':'Tidak aktif',
+     berlaku_sampai:until,
+     sk_menteri:d.ministerialDecreeNumber||null,
+     tanggal_sk_menteri:skDateStr,
+     kategori_remarks:d.remarkCategoryId||null,
+     remarks:d.remarks||null,
+     stakeholders:d.stakeholders.length,
+     jumlah_shareholder:d.stakeholders.filter((s:any)=>Number(s.sharePercentage)>0).length,
+     total_kepemilikan:d.stakeholders.reduce((v:Decimal,s:any)=>v.plus(s.sharePercentage||0),new Decimal(0)).toFixed(2),
+     is_selected:Boolean(d.id===incoming.selectedDeedId)
+   });
+   const table=d.type==='establishment'?'akta_pendirian':'akta_perubahan',other=d.type==='establishment'?'akta_perubahan':'akta_pendirian';
+   const [typed]=await c.execute<any[]>(`SELECT id FROM ${table} WHERE akta_id=?`,[d.id]);
+   await upsert(c,table,typed[0]?.id||crypto.randomUUID(),{
+     akta_id:d.id,
+     application_id:applicationId,
+     nomor_akta:d.deedNumber||null,
+     tanggal_akta:deedDateStr,
+     nomor_sk_menteri:d.ministerialDecreeNumber||null,
+     tanggal_sk_menteri:skDateStr,
+     representative:d.parties?.representative||null,
+     pemegang_saham_perusahaan:d.parties?.companyShareholder||null,
+     kategori_remarks:d.remarkCategoryId||null,
+     remarks:d.remarks||null
+   });
    await c.execute(`UPDATE ${other} SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL`,[d.id]);
-   for(const s of d.stakeholders){Object.assign(s,ageFromDateOfBirth(s.dateOfBirth));const stored=await stakeholderLocationNames(c,s);const value=Object.fromEntries(stakeholderFields.map(f=>[col(f.key),stored[f.key]===''||stored[f.key]===undefined?null:stored[f.key]]));const [old]=await c.execute<any[]>('SELECT id FROM legal_stakeholder WHERE id=?',[s.id]);await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});}
-   const stakeholderIds=d.stakeholders.map((s:any)=>s.id);await c.execute(`UPDATE legal_stakeholder SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL ${stakeholderIds.length?'AND id NOT IN ('+stakeholderIds.map(()=>'?').join(',')+')':''}`,[d.id,...stakeholderIds]);
+   for(const s of d.stakeholders){
+     if(s.dateOfBirth){
+       Object.assign(s,ageFromDateOfBirth(s.dateOfBirth));
+     }
+     const stored=await stakeholderLocationNames(c,s);
+     const value=Object.fromEntries(stakeholderFields.map(f=>{
+       let val = stored[f.key];
+       if (val === '' || val === undefined) val = null;
+       if (f.type === 'number' && val !== null) {
+         const num = Number(val);
+         val = isNaN(num) ? null : num;
+       }
+       if (f.type === 'date' && val !== null) {
+         val = String(val).slice(0, 10).trim() || null;
+       }
+       return [col(f.key), val];
+     }));
+     const [old]=await c.execute<any[]>('SELECT id FROM legal_stakeholder WHERE id=?',[s.id]);
+     await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});
+   }
+   const stakeholderIds=d.stakeholders.map((s:any)=>s.id);
+   await c.execute(`UPDATE legal_stakeholder SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL ${stakeholderIds.length?'AND id NOT IN ('+stakeholderIds.map(()=>'?').join(',')+')':''}`,[d.id,...stakeholderIds]);
   }
   const savedIds=deeds.map((d:any)=>d.id);for(const table of ['legal_stakeholder','akta_pendirian','akta_perubahan','daftar_akta'])await c.execute(`UPDATE ${table} SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=? AND deleted_at IS NULL ${savedIds.length?'AND '+(table==='daftar_akta'?'id':'akta_id')+' NOT IN ('+savedIds.map(()=>'?').join(',')+')':''}`,[applicationId,...savedIds]);
   const estDeed = deeds.find((d: any) => d.type === 'establishment');
   if (estDeed && estDeed.deedNumber) {
    await c.execute(
     'UPDATE new_application_fap_stage f JOIN all_applications a ON a.id_fap_stage = f.id_fap_stage SET f.establishment_act_no = ?, f.establishment_date = ? WHERE a.application_id = ?',
-    [estDeed.deedNumber, estDeed.deedDate || null, applicationId]
+    [estDeed.deedNumber, estDeed.deedDate ? String(estDeed.deedDate).slice(0, 10) : null, applicationId]
    );
   }
   const amendments = deeds
@@ -112,7 +201,7 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
   if (amendments.length > 0 && amendments[0].deedNumber) {
    await c.execute(
     'UPDATE new_application_pre_analisis p JOIN all_applications a ON a.id_pre_analysis = p.id_pre_analysis SET p.latest_deed_no = ?, p.latest_deed_date = ? WHERE a.application_id = ?',
-    [amendments[0].deedNumber, amendments[0].deedDate || null, applicationId]
+    [amendments[0].deedNumber, amendments[0].deedDate ? String(amendments[0].deedDate).slice(0, 10) : null, applicationId]
    );
   }
   await c.commit();

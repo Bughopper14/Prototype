@@ -7,28 +7,28 @@ export const masterGroups:MasterGroup[]=[
  {key:'industrySegment',name:'Industry',section:'Customer & PIC'},
  {key:'businessRole',name:'Business role',section:'Customer & PIC'},
  {key:'position',name:'Position PIC',section:'Customer & PIC'},
- {key:'remarkCategoryId',name:'Kategori Remarks',section:'Legal'},
+ {key:'remarkCategoryId',name:'Remarks Category',section:'Legal'},
  {key:'representativeType',name:'Representative type',section:'Legal'},
  {key:'designation',name:'Designation',section:'Legal'},
- {key:'country',name:'Country',section:'Alamat'},
- {key:'province',name:'Province',section:'Alamat',parent:'country',parentField:'country'},
- {key:'city',name:'Kota / Kabupaten',section:'Alamat',parent:'province',parentField:'province'},
- {key:'district',name:'Kecamatan',section:'Alamat',parent:'city',parentField:'cityRegency'},
- {key:'village',name:'Kelurahan / Desa',section:'Alamat',parent:'district',parentField:'district'},
- {key:'postalCode',name:'ZIP code',section:'Alamat',parent:'city',parentField:'cityRegency'},
+ {key:'country',name:'Country',section:'Address'},
+ {key:'province',name:'Province',section:'Address',parent:'country',parentField:'country'},
+ {key:'city',name:'City / Regency',section:'Address',parent:'province',parentField:'province'},
+ {key:'district',name:'District',section:'Address',parent:'city',parentField:'cityRegency'},
+ {key:'village',name:'Village / Sub-district',section:'Address',parent:'district',parentField:'district'},
+ {key:'postalCode',name:'ZIP code',section:'Address',parent:'city',parentField:'cityRegency'},
  {key:'bankOrFinInstitution',name:'Bank / financial institution',section:'Business & banks'},
  {key:'projectRole',name:'Role in project',section:'Business & banks'},
  {key:'applicationSource',name:'Application source',section:'Business & banks'},
  {key:'unitCategory',name:'Unit category',section:'Equipment'},
  {key:'brand',name:'Brand',section:'Equipment',parent:'unitCategory',parentField:'unitCategory'},
- {key:'unitType',name:'Tipe',section:'Equipment',parent:'brand',parentField:'brand'},
+ {key:'unitType',name:'Type',section:'Equipment',parent:'brand',parentField:'brand'},
  {key:'modelName',name:'Model',section:'Equipment',parent:'unitType',parentField:'unitType'},
  {key:'assetName',name:'Asset name',section:'Equipment',parent:'modelName',parentField:'modelName'},
  {key:'facilityPurpose',name:'Facility purpose',section:'Financing'},
  {key:'financingMethod',name:'Financing method',section:'Financing'},
  {key:'currency',name:'Currency',section:'Financing'},
  {key:'paymentMethod',name:'Payment timing',section:'Financing'},
- {key:'documents',name:'Jenis & dokumen wajib',section:'Documents'}
+ {key:'documents',name:'Document types & required',section:'Documents'}
 ];
 export const masterKey=(key:string)=>key==='cityRegency'?'city':key;
 const options=(values:string[]):MasterItem[]=>values.map(value=>({value,name:value.replaceAll('_',' ').toLowerCase().replace(/\b\w/g,x=>x.toUpperCase()),active:true}));
@@ -174,7 +174,7 @@ export function defaultMasterCatalog():MasterCatalog{
  bankOrFinInstitution:options(['Bank Mandiri','Bank BCA','Bank BRI','Bank BNI']),projectRole:options(['Main contractor','Subcontractor','Project owner']),applicationSource:options(['Direct','Dealer','Referral']),
  unitCategory:options(['HE','TRUCK']),brand:options(['LiuGong']),unitType:options(['Hydraulic excavator']),modelName:options(['936E']),assetName:options(['Excavator']),
  facilityPurpose:options(['INVESTMENT','WORKING_CAPITAL']),financingMethod:options(['FINANCIAL_LEASE','SALE_AND_LEASE_BACK','INSTALLMENT_FINANCING']),currency:options(['IDR']),paymentMethod:[{value:'In Arrear',name:'In Arrear',active:true,timing:'arrear'},{value:'In Advance',name:'In Advance',active:true,timing:'advance'}],
- remarkCategoryId:[['amendment-share-change','Saham'],['amendment-management-change','Kepengurusan'],['amendment-business-activity-change','Kegiatan Usaha'],['amendment-articles-change','Anggaran Dasar'],['amendment-other','Lainnya'],['establishment-deed','Pendirian akta'],['akta-pendirian','Akta Pendirian'],['akta-perubahan','Akta Perubahan']].map(([value,name])=>({value,name,active:true})),
+ remarkCategoryId:[['amendment-share-change','Shares'],['amendment-management-change','Management'],['amendment-business-activity-change','Business Activity'],['amendment-articles-change','Articles of Association'],['amendment-other','Other'],['establishment-deed','Establishment deed'],['akta-pendirian','Establishment Deed'],['akta-perubahan','Amendment Deed']].map(([value,name])=>({value,name,active:true})),
  documents:[['FAP','fap','MKT',true],['PREANALYSIS','Preanalysis','CA',true],['ICLF','Iclf','COMMITTEE',true],['NIB','Business registration (NIB)','BS',true],['NPWP','Company tax registration (NPWP)','BS',true],['DEED','Establishment & latest deed','LEGAL',true],['KTP','Directors’ identification','BS',true],['FINANCIALS','Financial statements · 3 years','CA',true],['BANK','Bank statements · 6 months','CA',true],['CONTRACT','Project contracts / purchase orders','CA',false],['QUOTATION','Equipment quotation','BS',true],['LEGAL_OPINION','Legal opinion','LEGAL',true],['EKITAS','E-KITAS for foreign shareholders','LEGAL',false]].map(([value,name,role,required])=>({value:String(value),name:String(name),role:String(role),required:Boolean(required),active:true}))
  };
  result.province.forEach(x=>x.parentValue='Indonesia');
@@ -184,22 +184,22 @@ export function defaultMasterCatalog():MasterCatalog{
  return result;
 }
 export function validateMasterCatalog(input:unknown):MasterCatalog{
- if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Master data tidak valid.');
+ if(!input||typeof input!=='object'||Array.isArray(input))throw Error('Master data is not valid.');
  const result:MasterCatalog={};
  for(const group of masterGroups){
   const rows=(input as MasterCatalog)[group.key];
-  if(!Array.isArray(rows)||rows.length>(['province','city','district','village','postalCode'].includes(group.key)?150000:1000))throw Error(`Daftar ${group.name} tidak valid.`);
+  if(!Array.isArray(rows)||rows.length>(['province','city','district','village','postalCode'].includes(group.key)?150000:1000))throw Error(`${group.name} list is not valid.`);
   const seen=new Set<string>();
   result[group.key]=rows.map(row=>{
-   if(!row||typeof row.value!=='string'||typeof row.name!=='string'||typeof row.active!=='boolean')throw Error(`Data ${group.name} tidak valid.`);
+   if(!row||typeof row.value!=='string'||typeof row.name!=='string'||typeof row.active!=='boolean')throw Error(`${group.name} data is not valid.`);
    const value=row.value.trim(),name=row.name.trim();
    const valueLimit=({postalCode:20,currency:5,branchCode:20,brand:50,paymentMethod:50,position:100,projectRole:100,applicationSource:100,province:100,city:100,district:100,village:100,modelName:100} as Record<string,number>)[group.key]||150;
-   if(value.length>valueLimit)throw Error(`Kode ${group.name} maksimal ${valueLimit} karakter.`);
-   if(!value||value.length>150||!name||name.length>150)throw Error('Kode dan nama wajib diisi, maksimal 150 karakter.');
-   const uniqueValue=group.key==='postalCode'?`${row.parentValue||''}|${value.toLowerCase()}`:value.toLowerCase();if(seen.has(uniqueValue))throw Error(`Kode duplikat pada ${group.name}.`);seen.add(uniqueValue);
-   if(group.key==='documents'&&(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(row.role||'')||typeof row.required!=='boolean'))throw Error('Pilih departemen dokumen dan status wajib.');
-   if(group.key==='paymentMethod'&&!['advance','arrear'].includes(row.timing||''))throw Error('Pilih aturan waktu pembayaran.');
-   for(const [key,limit] of [['areaCode',20],['region',100],['zipCode',20]] as const)if(row[key]!==undefined&&(typeof row[key]!=='string'||row[key]!.trim().length>limit))throw Error(`Field ${key} maksimal ${limit} karakter.`);
+   if(value.length>valueLimit)throw Error(`${group.name} code exceeds maximum of ${valueLimit} characters.`);
+   if(!value||value.length>150||!name||name.length>150)throw Error('Code and name are required, maximum 150 characters.');
+   const uniqueValue=group.key==='postalCode'?`${row.parentValue||''}|${value.toLowerCase()}`:value.toLowerCase();if(seen.has(uniqueValue))throw Error(`Duplicate code in ${group.name}.`);seen.add(uniqueValue);
+   if(group.key==='documents'&&(!['MKT','BS','CA','LEGAL','COMMITTEE'].includes(row.role||'')||typeof row.required!=='boolean'))throw Error('Please select the document department and required status.');
+   if(group.key==='paymentMethod'&&!['advance','arrear'].includes(row.timing||''))throw Error('Please select the payment timing rule.');
+   for(const [key,limit] of [['areaCode',20],['region',100],['zipCode',20]] as const)if(row[key]!==undefined&&(typeof row[key]!=='string'||row[key]!.trim().length>limit))throw Error(`Field ${key} exceeds maximum of ${limit} characters.`);
    return {value,name,active:row.active,...(row.areaCode?{areaCode:row.areaCode.trim()}:{}),...(row.region?{region:row.region.trim()}:{}),...(row.zipCode?{zipCode:row.zipCode.trim()}:{}),...(row.parentValue?{parentValue:String(row.parentValue)}:{}),...(group.key==='documents'?{role:row.role,required:row.required}:{}),...(group.key==='paymentMethod'?{timing:row.timing}:{})};
   });
  }
@@ -208,11 +208,11 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
   const seenNames=new Set<string>();
   for(const row of result[group.key]){
    const nameKey=(row.parentValue||'')+'|'+row.name.toLocaleLowerCase();
-   if(seenNames.has(nameKey)&&!['province','city','district','village'].includes(group.key))throw Error(`Nama duplikat pada ${group.name}.`);seenNames.add(nameKey);
-   if(group.key==='village'&&row.zipCode){const district=lookup.district.get(row.parentValue||''),zipRows=result.postalCode.filter(zip=>zip.value===row.zipCode);if(!zipRows.length)throw Error('ZIP code tidak tersedia di master data.');if(!district||!zipRows.some(zip=>zip.parentValue===district.parentValue))throw Error('ZIP code harus berasal dari kota/kabupaten yang sama dengan kelurahan.');}
-   if(group.parent&&row.parentValue&&!lookup[group.parent].has(row.parentValue))throw Error(`Data induk tidak tersedia untuk ${group.name}.`);
+   if(seenNames.has(nameKey)&&!['province','city','district','village'].includes(group.key))throw Error(`Duplicate name in ${group.name}.`);seenNames.add(nameKey);
+   if(group.key==='village'&&row.zipCode){const district=lookup.district.get(row.parentValue||''),zipRows=result.postalCode.filter(zip=>zip.value===row.zipCode);if(!zipRows.length)throw Error('ZIP code is not available in master data.');if(!district||!zipRows.some(zip=>zip.parentValue===district.parentValue))throw Error('ZIP code must belong to the same city/regency as the village.');}
+   if(group.parent&&row.parentValue&&!lookup[group.parent].has(row.parentValue))throw Error(`Parent data not available for ${group.name}.`);
   }
  }
- if(!result.documents.some(x=>x.value==='EKITAS'&&x.active)||!result.documents.some(x=>x.value==='LEGAL_OPINION'&&x.active&&x.required))throw Error('Dokumen E-KITAS dan Legal opinion wajib dipertahankan untuk alur review.');
+ if(!result.documents.some(x=>x.value==='EKITAS'&&x.active)||!result.documents.some(x=>x.value==='LEGAL_OPINION'&&x.active&&x.required))throw Error('E-KITAS and Legal opinion documents must be retained for the review workflow.');
  return result;
 }
