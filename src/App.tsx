@@ -2060,18 +2060,12 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                         <th style={{width:'24%'}}>Nama Kolom (Field)</th>
                         <th style={{width:'30%'}}>Data di Sistem Saat Ini</th>
                         <th style={{width:'30%'}}>Data Terdeteksi OCR (Dokumen Fisik)</th>
-                        <th style={{width:'16%', textAlign:'center'}}>Aksi / Status</th>
+                        <th style={{width:'16%', textAlign:'center'}}>Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {fapComparison.diffs.map((d: any, idx: number) => (
-                        <tr
-                          key={d.field || idx}
-                          className="is-different"
-                          onClick={() => scrollToFapField(d.field)}
-                          style={{ cursor: 'pointer' }}
-                          title="Klik untuk melompat & menyorot kolom ini pada formulir dokumen sistem di atas"
-                        >
+                        <tr key={d.field || idx} className="is-different">
                           <td>
                             <strong>{d.label}</strong>
                             <div style={{fontSize:'11px', color:'#94a3b8', fontFamily:'monospace'}}>{d.field}</div>
@@ -2087,23 +2081,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             </span>
                           </td>
                           <td style={{textAlign:'center'}}>
-                            <div style={{display:'inline-flex', alignItems:'center', gap:'6px'}}>
-                              <span className="fap-diff-badge different">
-                                <AlertTriangle size={11} /> Berbeda
-                              </span>
-                              <button
-                                type="button"
-                                className="button mini"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  scrollToFapField(d.field);
-                                }}
-                                title="Fokus & sorot kolom di formulir sistem"
-                                style={{fontSize:'10px', padding:'2px 6px'}}
-                              >
-                                Sorot ↗
-                              </button>
-                            </div>
+                            <span className="fap-diff-badge different">
+                              <AlertTriangle size={11} /> Berbeda
+                            </span>
                           </td>
                         </tr>
                       ))}
