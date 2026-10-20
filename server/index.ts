@@ -451,11 +451,22 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     compareField('postalCode', 'Kode Pos', currentApp.postalCode || currentApp.customer?.postalCode, extracted.postalCode);
     compareField('phoneFax', 'Telepon / Fax', currentApp.phoneFax, extracted.phoneFax);
     compareField('email', 'Email Perusahaan', currentApp.email, extracted.email);
+    compareField('website', 'Website Perusahaan', currentApp.website, extracted.website);
     compareField('mainBusiness', 'Bidang Usaha Utama', currentApp.mainBusiness, extracted.mainBusiness);
+    compareField('establishmentActNo', 'Nomor Akta Pendirian', currentApp.establishmentActNo || currentApp.legal?.establishmentActNo, extracted.establishmentActNo);
+    compareField('establishmentDate', 'Tanggal Akta Pendirian', currentApp.establishmentDate || currentApp.legal?.establishmentDate, extracted.establishmentDate);
+    compareField('latestDeedNo', 'Nomor Akta Perubahan Terakhir', currentApp.latestDeedNo || currentApp.legal?.latestDeedNo, extracted.latestDeedNo);
+    compareField('latestDeedDate', 'Tanggal Akta Perubahan Terakhir', currentApp.latestDeedDate || currentApp.legal?.latestDeedDate, extracted.latestDeedDate);
+    compareField('repaymentSource', 'Sumber Pengembalian', currentApp.repaymentSource, extracted.repaymentSource);
+    compareField('locationStatus', 'Status Lokasi Usaha', currentApp.locationStatus, extracted.locationStatus);
     compareField('picName', 'Nama PIC', currentApp.pic?.picName || currentApp.pic?.name, extracted.picName);
     compareField('picPosition', 'Jabatan PIC', currentApp.pic?.position, extracted.picPosition);
     compareField('picPhone', 'No. HP / Telepon PIC', currentApp.pic?.phone || currentApp.pic?.mobilePhone, extracted.picPhone);
     compareField('picEmail', 'Email PIC', currentApp.pic?.email, extracted.picEmail);
+    compareField('picAddress', 'Alamat Domisili PIC', currentApp.pic?.currentAddress || currentApp.pic?.address, extracted.picAddress);
+    compareField('picCity', 'Kota PIC', currentApp.pic?.city, extracted.picCity);
+    compareField('picProvince', 'Provinsi PIC', currentApp.pic?.province, extracted.picProvince);
+    compareField('picPostalCode', 'Kode Pos PIC', currentApp.pic?.postalCode, extracted.picPostalCode);
     compareField('financingValue', 'Nilai Pembiayaan', currentApp.proposal?.financingValue, extracted.financingValue, true);
     compareField('downPaymentValue', 'Uang Muka (DP)', currentApp.proposal?.downPaymentValue, extracted.downPaymentValue, true);
     compareField('tenorMonths', 'Tenor (Bulan)', currentApp.proposal?.tenorMonths, extracted.tenorMonths, true);
@@ -739,14 +750,39 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
   if (shouldApply('email')) {
     profileUpdates.email = bodyData.email;
   }
+  if (shouldApply('website')) {
+    profileUpdates.website = bodyData.website;
+  }
   if (shouldApply('mainBusiness')) {
     profileUpdates.mainBusiness = bodyData.mainBusiness;
+  }
+  if (shouldApply('repaymentSource')) {
+    profileUpdates.repaymentSource = bodyData.repaymentSource;
+  }
+  if (shouldApply('locationStatus')) {
+    profileUpdates.locationStatus = bodyData.locationStatus;
+  }
+  if (shouldApply('establishmentActNo')) {
+    profileUpdates.establishmentActNo = bodyData.establishmentActNo;
+  }
+  if (shouldApply('establishmentDate')) {
+    profileUpdates.establishmentDate = bodyData.establishmentDate;
+  }
+  if (shouldApply('latestDeedNo')) {
+    profileUpdates.latestDeedNo = bodyData.latestDeedNo;
+  }
+  if (shouldApply('latestDeedDate')) {
+    profileUpdates.latestDeedDate = bodyData.latestDeedDate;
   }
 
   if (shouldApply('picName')) picUpdates.picName = bodyData.picName;
   if (shouldApply('picPosition')) picUpdates.position = bodyData.picPosition;
   if (shouldApply('picPhone')) picUpdates.phone = bodyData.picPhone;
   if (shouldApply('picEmail')) picUpdates.email = bodyData.picEmail;
+  if (shouldApply('picAddress')) picUpdates.currentAddress = bodyData.picAddress;
+  if (shouldApply('picCity')) picUpdates.city = bodyData.picCity;
+  if (shouldApply('picProvince')) picUpdates.province = bodyData.picProvince;
+  if (shouldApply('picPostalCode')) picUpdates.postalCode = bodyData.picPostalCode;
 
   let hasProposalUpdates = false;
   if (shouldApply('financingValue')) {

@@ -143,6 +143,8 @@ export async function syncSubmitLock(applicationId:string){
   `,[applicationId]);
   const hasUploaded=Number(rows[0]?.file_count||0)>0;
   const isLocked=hasUploaded?0:1;
+  const [appCheck] = await pool.execute<any[]>('SELECT application_id FROM all_applications WHERE application_id = ?', [applicationId]);
+  if (!appCheck.length) return {isLocked, fapDocUploaded: hasUploaded ? 1 : 0, ocrComparison: null};
   await pool.execute(`
    INSERT INTO application_submit_lock (application_id, is_locked, stage, fap_doc_uploaded, unlocked_at)
    VALUES (?, ?, 'FAP_STAGE', ?, ?)
@@ -163,6 +165,8 @@ export async function saveFapComparison(applicationId:string,comparison:any){
  if(!pool)return;
  const jsonStr=comparison?JSON.stringify(comparison):null;
  try{
+  const [appCheck]=await pool.execute<any[]>('SELECT application_id FROM all_applications WHERE application_id=?',[applicationId]);
+  if(!appCheck.length)return;
   await pool.execute('UPDATE application_submit_lock SET ocr_comparison_json=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[jsonStr,applicationId]);
  }catch(e){console.warn('saveFapComparison error:',e);}
 }
