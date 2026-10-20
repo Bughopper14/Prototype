@@ -479,10 +479,50 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
   }
 }
 
-app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async(req,res)=>{permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);const id=String(req.params.id);const file=req.file;ensure(file,'Choose a file');const actual=file.buffer.subarray(0,8);const valid=(file.mimetype==='application/pdf'&&actual.subarray(0,5).toString()==='%PDF-')||(file.mimetype==='image/png'&&actual.equals(Buffer.from([137,80,78,71,13,10,26,10])))||(file.mimetype==='image/jpeg'&&actual[0]===255&&actual[1]===216&&actual[2]===255);ensure(valid,'Upload a valid PDF, PNG or JPEG file');
- if(await intakeDetail(id)){const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:path.basename(file.originalname)},req.actor.id,async key=>{if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);
-    const docCopyPath = path.join(documentsDir, path.basename(file.originalname));
-    await fs.writeFile(docCopyPath, file.buffer).catch(() => {});}});return res.status(201).json(result);}
+app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async(req,res)=>{
+  permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);
+  const id=String(req.params.id);
+  const file=req.file;
+  ensure(file,'Choose a file');
+  const actual=file.buffer.subarray(0,8);
+  const valid=(file.mimetype==='application/pdf'&&actual.subarray(0,5).toString()==='%PDF-')||(file.mimetype==='image/png'&&actual.equals(Buffer.from([137,80,78,71,13,10,26,10])))||(file.mimetype==='image/jpeg'&&actual[0]===255&&actual[1]===216&&actual[2]===255);
+  ensure(valid,'Upload a valid PDF, PNG or JPEG file');
+
+  const ext = path.extname(file.originalname) || (file.mimetype === 'application/pdf' ? '.pdf' : '.png');
+  const rawBase = path.basename(file.originalname, ext);
+  const appHash = id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase();
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+  const cleanBase = rawBase.replace(/_[A-Z0-9]{6}_\d{8}_\d{4}$/i, '');
+  const formattedFileName = `${cleanBase}_${appHash}_${dateStamp}${ext}`;
+
+  if(await intakeDetail(id)){
+    const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:formattedFileName},req.actor.id,async key=>{
+      if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));
+      else{
+        await fs.mkdir(path.join(dataDir,'files'),{recursive:true});
+        await fs.writeFile(path.join(dataDir,'files',key),file.buffer);
+        const docCopyPath = path.join(documentsDir, formattedFileName);
+        await fs.writeFile(docCopyPath, file.buffer).catch(() => {});
+        try {
+          const crmDocPath = path.resolve('../LiugongApps_Clean/CRM_Dashboard/Documents', formattedFileName);
+          await fs.mkdir(path.dirname(crmDocPath), { recursive: true }).catch(() => {});
+          await fs.writeFile(crmDocPath, file.buffer).catch(() => {});
+        } catch {}
+      }
+    });
+
+    const isFap = String(req.body.checklistId || '').toUpperCase().includes('FAP') || 
+                  String(req.body.documentCode || '').toUpperCase() === 'FAP';
+    let fapComparison = null;
+    if (isFap) {
+      const currentApp = await intakeDetail(id);
+      fapComparison = await compareFapDocumentOcr(id, formattedFileName, currentApp);
+    }
+
+    return res.status(201).json({ ...result, fileName: formattedFileName, fapComparison });
+  }
  const result=await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q);ensure(!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(a.status),'Documents are locked at this stage',409);const d=(await all('DocumentChecklist',{id:req.body.checklistId,applicationId:id},q))[0];ensure(d,'Checklist item not found',404);const key=crypto.randomUUID();if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));else{await fs.mkdir(path.join(dataDir,'files'),{recursive:true});await fs.writeFile(path.join(dataDir,'files',key),file.buffer);
     const docCopyPath = path.join(documentsDir, path.basename(file.originalname));
     await fs.writeFile(docCopyPath, file.buffer).catch(() => {});}
@@ -627,6 +667,19 @@ app.get('/api/v1/applications/:id/fap-comparison', async (req, res) => {
   const id = String(req.params.id);
   const lock = await getSubmitLock(id);
   res.json({ status: 'success', comparison: lock.ocrComparison || null });
+});
+
+app.post('/api/v1/applications/:id/fap-comparison/run', async (req, res) => {
+  permit(req, ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE']);
+  const id = String(req.params.id);
+  const currentApp = await intakeDetail(id);
+  if (!currentApp) return res.status(404).json({ error: 'Application not found' });
+  const docs = await readApplicationDocuments(id);
+  const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
+  const file = fapCheck?.files?.[fapCheck.files.length - 1];
+  if (!file) return res.status(400).json({ error: 'Belum ada dokumen FAP yang diunggah' });
+  const comparison = await compareFapDocumentOcr(id, file.fileName, currentApp);
+  res.json({ success: true, comparison });
 });
 
 app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {

@@ -4,7 +4,7 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
+import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {FapSheetPreview, printFapDocument, type FapSheetData} from './FapSheetPreview';
 import {
@@ -1383,6 +1383,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     else if (filterStage === 'ICLF') setSelectedCode('ICLF');
     else if (filterStage === 'FAP Stage') setSelectedCode('FAP');
   }, [filterStage]);
+
   const [activeFileUrl, setActiveFileUrl] = useState<string>('');
   const [activeFile, setActiveFile] = useState<any>(null);
   const [zoom, setZoom] = useState(1);
@@ -1392,6 +1393,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const [pdfZoom, setPdfZoom] = useState<string>('FitH');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
+
+  const [fapComparison, setFapComparison] = useState<any>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
 
   const items = evidenceDefs.map(def => {
     const chk = (a.documentChecks || []).find((d: any) => 
@@ -1411,6 +1415,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const totalFilesCount = items.reduce((sum, item) => sum + (item.chk.files?.length || 0), 0);
   const activeItem = items.find(x => x.code === selectedCode) || items[0];
   const activeFiles = activeItem.chk.files || [];
+
   const pdfViewerSrc = useMemo(() => {
     if (!activeFileUrl || activeFile?.mimeType !== 'application/pdf') return activeFileUrl;
     const base = activeFileUrl.split('#')[0];
@@ -1419,7 +1424,77 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   }, [activeFileUrl, activeFile?.mimeType, pdfZoom]);
 
   const canUpload = ['MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'].includes(user.role);
-  const [docFapModal, setDocFapModal] = useState<any>(null);
+
+  // Automatically preview latest file if available and none selected
+  useEffect(() => {
+    if (activeFiles.length > 0) {
+      if (!activeFile || !activeFiles.some((f: any) => f.id === activeFile.id)) {
+        previewFile(activeFiles[activeFiles.length - 1]);
+      }
+    } else {
+      setActiveFile(null);
+      setActiveFileUrl('');
+    }
+  }, [selectedCode, activeFiles.length]);
+
+  // Load existing FAP comparison from backend on stage switch
+  useEffect(() => {
+    if (selectedCode === 'FAP') {
+      api(`/applications/${a.id}/fap-comparison`).then(res => {
+        if (res?.comparison) setFapComparison(res.comparison);
+      }).catch(() => {});
+    }
+  }, [selectedCode, a.id]);
+
+  const liveFapData: FapSheetData = useMemo(() => ({
+    fapNumber: a.fapNumber || '-',
+    applicationDate: a.applicationDate || new Date().toISOString(),
+    branchCode: a.branchCode || a.profile?.branchCode || '',
+    customerStatus: a.customerCategory || a.profile?.customerStatus || 'EXISTING',
+    companyName: a.customer?.companyName || a.companyName || '',
+    companyType: a.customer?.companyType || a.companyType || 'PT',
+    nib: a.customer?.nib || a.nib || '',
+    nibDate: a.customer?.nibDate || a.nibDate || '',
+    npwp: a.customer?.npwp || a.npwp || '',
+    establishmentActNo: a.customer?.establishmentActNo || a.establishmentActNo || '',
+    establishmentDate: a.customer?.establishmentDate || a.establishmentDate || '',
+    companyAddress: a.customer?.companyAddress || a.companyAddress || '',
+    city: a.customer?.city || a.city || '',
+    province: a.customer?.province || a.province || '',
+    postalCode: a.customer?.postalCode || a.postalCode || '',
+    experienceYears: a.customer?.experienceYears ?? a.experienceYears ?? '',
+    experienceMonths: a.customer?.experienceMonths ?? a.experienceMonths ?? '',
+    mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
+    latestDeedNo: a.latestDeedNo || '',
+    latestDeedDate: a.latestDeedDate || '',
+    phoneFax: a.phoneFax || '',
+    website: a.website || '',
+    email: a.email || '',
+    repaymentSource: a.repaymentSource || '',
+    locationStatus: a.locationStatus || '',
+    picName: a.pic?.picName || '',
+    position: a.pic?.position || '',
+    phone: a.pic?.phone || '',
+    currentAddress: a.pic?.currentAddress || '',
+    picCity: a.pic?.city || '',
+    picProvince: a.pic?.province || '',
+    picPostalCode: a.pic?.postalCode || '',
+    selectedDeedNo: a.selectedDeedNo || a.customer?.establishmentActNo || '',
+    stakeholders: a.stakeholders || [],
+    facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || '',
+    financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
+    financingValue: a.proposal?.financingValue || a.financingValue || '',
+    downPaymentValue: a.proposal?.downPaymentValue || a.downPaymentValue || '',
+    interestRate: a.proposal?.interestRate || a.interestRate || '',
+    tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
+    paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
+    industrySegment: a.industrySegment || '',
+    businessRole: a.businessRole || '',
+    proposal: a.proposal || {},
+    projects: a.projects || [],
+    bankReferences: a.bankReferences || [],
+    financialStatements: a.financialStatements || []
+  }), [a]);
 
   async function previewFile(f: any) {
     try {
@@ -1460,8 +1535,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       onChange(updated);
       notify(`Evidence ${item.title} berhasil diunggah.`);
       if (res?.fapComparison?.isFap) {
+        setFapComparison(res.fapComparison);
         if (res.fapComparison.hasDifferences) {
-          setDocFapModal(res.fapComparison);
+          notify(`Verifikasi OCR Dokumen FAP: Terdeteksi ${res.fapComparison.diffs?.length || 0} perbedaan data.`);
         } else {
           notify('Verifikasi OCR Dokumen FAP: Data cocok dengan sistem, tidak ada perbedaan terdeteksi.');
         }
@@ -1499,6 +1575,60 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       notify('File evidence berhasil dihapus.');
     } catch (e: any) {
       setError(e.message || 'Gagal menghapus file evidence.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleApproveFapChanges(extractedData: any) {
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
+        approvedData: extractedData
+      });
+      const updated = await api(`/applications/${a.id}`);
+      onChange(updated);
+      setFapComparison(null);
+      notify('Perubahan data hasil OCR berhasil disetujui dan diperbarui ke database.');
+    } catch (err: any) {
+      setError('Gagal menyetujui perubahan data: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDismissFapChanges() {
+    setBusy(true);
+    setError('');
+    try {
+      await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST');
+      setFapComparison(null);
+      notify('Perubahan data OCR diabaikan. Sistem tetap mempertahankan data saat ini.');
+    } catch (err: any) {
+      setError('Gagal mengabaikan perubahan data: ' + err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRunFapComparison() {
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api(`/applications/${a.id}/fap-comparison/run`, 'POST');
+      if (res?.comparison) {
+        setFapComparison(res.comparison);
+        if (res.comparison.hasDifferences) {
+          notify(`Pemindaian OCR selesai: Ditemukan ${res.comparison.diffs?.length || 0} perbedaan data.`);
+        } else {
+          notify('Pemindaian OCR selesai: Data dokumen fisik cocok 100% dengan database sistem.');
+        }
+      } else {
+        notify('Pemindaian OCR selesai.');
+      }
+    } catch (err: any) {
+      setError('Gagal menjalankan verifikasi OCR: ' + (err.message || ''));
     } finally {
       setBusy(false);
     }
@@ -1547,36 +1677,45 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
 
       {error && <div className="error" role="alert" style={{ marginBottom: '14px' }}>{error}</div>}
 
-      {/* Main Studio Split Layout */}
-      <div className={`evidence-studio-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
-        
-        {/* Left Column: Stage Inspector & File Deck */}
-        <div className="evidence-studio-sidebar">
-          {/* Active Stage Card */}
-          <div className="evidence-stage-card">
-            <div className="evidence-stage-card-header">
-              <div>
-                <span className={`evidence-stage-badge ${activeItem.badgeClass}`}>
-                  {activeItem.stage} · {activeItem.role}
-                </span>
-                <h3 className="evidence-stage-title">{activeItem.title}</h3>
-                <p className="evidence-stage-desc">{activeItem.desc}</p>
+      {/* When FAP is selected: Full-Width Top Uploader + 50/50 Split Preview + Bottom Diff Panel */}
+      {selectedCode === 'FAP' ? (
+        <div className="fap-studio-fap-view">
+          {/* Top Section: Full-Width Upload Banner with History Pop-up Button */}
+          <div className="fap-evidence-full-top">
+            <div className="fap-evidence-top-header">
+              <div className="fap-evidence-top-title-area">
+                <div className="fap-evidence-top-icon">
+                  <UploadCloud size={20} />
+                </div>
+                <div className="fap-evidence-top-text">
+                  <h3>Unggah Evidence Formulir FAP Bertanda Tangan (Customer Signed)</h3>
+                  <p>Unggah berkas pindaian atau PDF formulir FAP fisik bertandatangan debitur untuk verifikasi OCR otomatis.</p>
+                </div>
               </div>
-              <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+              <div className="fap-evidence-top-actions">
+                <button
+                  type="button"
+                  className="fap-history-popup-btn"
+                  onClick={() => setShowHistoryModal(true)}
+                  title="Buka daftar riwayat dokumen FAP yang telah diunggah"
+                >
+                  <Files size={15} color="#002060" />
+                  <span>Riwayat Berkas Terunggah ({activeFiles.length})</span>
+                </button>
+                <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+              </div>
             </div>
 
-            {/* Upload Dropzone */}
+            {/* Full-width Dropzone */}
             {canUpload && (
-              <label className="evidence-dropzone-studio" onClick={e => e.stopPropagation()}>
-                <div className="evidence-dropzone-icon-wrap">
-                  <Upload size={20} />
+              <label className="fap-dropzone-full" onClick={e => e.stopPropagation()}>
+                <div className="fap-dropzone-full-icon">
+                  {busy ? <Loader2 size={22} className="spin" /> : <UploadCloud size={22} />}
                 </div>
-                <div className="evidence-dropzone-text">
-                  <strong>{busy ? 'Mengunggah berkas...' : `Unggah Evidence ${activeItem.name}`}</strong>
-                  <span>Tarik berkas ke sini atau klik untuk memilih</span>
-                </div>
-                <span className="evidence-dropzone-hint">
-                  PDF, PNG, JPEG · Maks. 20 MB
+                <strong>{busy ? 'Sedang mengunggah dan memproses OCR berkas...' : 'Tarik & letakkan berkas PDF/Gambar FAP di sini, atau klik untuk memilih file'}</strong>
+                <span>Berkas otomatis diberi penamaan hash aplikasi dan stempel tanggal</span>
+                <span className="fap-dropzone-full-hint">
+                  Format didukung: PDF, PNG, JPEG · Maksimal 20 MB · Perbandingan data sistem vs OCR otomatis
                 </span>
                 <input
                   type="file"
@@ -1590,319 +1729,667 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 />
               </label>
             )}
+          </div>
 
-            {/* Stage Files Deck */}
-            <div className="evidence-files-section">
-              <div className="evidence-files-header">
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%'}}>
-                  <h4>Daftar Berkas Terunggah ({activeFiles.length})</h4>
-                  <span className="evidence-files-summary">
-                    {activeFiles.length > 0 ? 'Pilih untuk pratinjau' : 'Belum ada berkas'}
-                  </span>
+          {/* 50 / 50 Comparison Split Grid */}
+          <div className="fap-comparison-grid-5050">
+            {/* Left Pane (50%): Dokumen Terakhir yang di-generate oleh sistem */}
+            <div className="fap-pane-card">
+              <div className="fap-pane-head">
+                <div className="fap-pane-head-left">
+                  <h4>
+                    <FileSpreadsheet size={16} color="#002060" />
+                    Dokumen FAP Sistem (Terakhir Di-generate)
+                  </h4>
+                  <span>Data live database saat ini · FAP No: {a.fapNumber || '-'}</span>
                 </div>
-                {activeItem.code === 'FAP' && activeFiles.length > 0 && (
+                <div className="fap-pane-head-right">
                   <button
                     type="button"
                     className="button small"
-                    onClick={async () => {
-                      try {
-                        setBusy(true);
-                        const compRes = await api(`/applications/${a.id}/fap-comparison`);
-                        if (compRes?.comparison?.diffs?.length) {
-                          setDocFapModal(compRes.comparison);
-                        } else {
-                          notify('Dokumen FAP telah diverifikasi: Tidak ada perbedaan data dengan sistem saat ini.');
-                        }
-                      } catch (err: any) {
-                        notify('Gagal memuat hasil perbandingan OCR: ' + err.message);
-                      } finally {
-                        setBusy(false);
-                      }
-                    }}
-                    title="Buka hasil perbandingan OCR data dokumen FAP"
-                    style={{
-                      display:'flex', alignItems:'center', justifyContent:'center', gap:'6px',
-                      fontSize:'12px', padding:'6px 12px', width:'100%',
-                      background: '#f0fdf4', color: '#166534', border: '1px solid #86efac', fontWeight: 600,
-                      borderRadius: '6px'
-                    }}
+                    onClick={() => printFapDocument(a.fapNumber)}
+                    title="Cetak formulir FAP sistem"
+                    style={{display:'inline-flex', alignItems:'center', gap:'5px', fontSize:'12px'}}
                   >
-                    <Sparkles size={14} color="#16a34a" /> Bandingkan OCR Dokumen FAP
+                    <Printer size={13} /> Cetak Formulir
+                  </button>
+                </div>
+              </div>
+              <div className="fap-pane-body fap-pane-body-system">
+                <FapSheetPreview data={liveFapData} onPrint={() => printFapDocument(a.fapNumber)} />
+              </div>
+            </div>
+
+            {/* Right Pane (50%): Preview Dokumen Fisik yang diunggah customer */}
+            <div className="fap-pane-card">
+              <div className="fap-pane-head">
+                <div className="fap-pane-head-left">
+                  <h4>
+                    <FileText size={16} color="#002060" />
+                    Pratinjau Dokumen Fisik Terunggah
+                  </h4>
+                  <span style={{maxWidth:'260px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
+                    {activeFile ? activeFile.fileName : 'Belum ada dokumen fisik diunggah'}
+                  </span>
+                </div>
+                <div className="fap-pane-head-right">
+                  {activeFile && (
+                    <>
+                      <span className="studio-file-tag" style={{padding:'3px 8px', fontSize:'11px', background:'#e2e8f0', borderRadius:'4px', fontWeight:600}}>
+                        {activeFile.mimeType === 'application/pdf' ? 'PDF' : 'IMG'}
+                      </span>
+                      {activeFileUrl && (
+                        <a
+                          href={activeFileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="button small"
+                          style={{display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'11px', textDecoration:'none'}}
+                          title="Buka dokumen di tab baru"
+                        >
+                          <ExternalLink size={12} /> Buka Tab
+                        </a>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="fap-pane-body fap-pane-body-physical">
+                {activeFileUrl ? (
+                  activeFile?.mimeType === 'application/pdf' ? (
+                    <iframe
+                      src={pdfViewerSrc}
+                      title="Dokumen Fisik Signed FAP"
+                      style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff' }}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'auto', padding: '16px' }}>
+                      <img
+                        src={activeFileUrl}
+                        alt="Dokumen Fisik Signed FAP"
+                        style={{ maxWidth: `${zoom * 100}%`, transform: `rotate(${rotation}deg)`, transition: 'transform 0.2s', objectFit: 'contain' }}
+                      />
+                    </div>
+                  )
+                ) : (
+                  <div className="fap-physical-empty">
+                    <FileText size={48} strokeWidth={1.5} />
+                    <h5>Belum Ada Berkas Fisik Terunggah</h5>
+                    <p>Silakan unggah dokumen formulir FAP fisik bertandatangan pada area unggah di atas untuk melihat perbandingan berdampingan.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Section: Differences Comparison Panel */}
+          <div className="fap-diff-panel">
+            <div className="fap-diff-panel-head">
+              <div>
+                <h3>
+                  <Sparkles size={18} color="#2563eb" />
+                  Analisis Perbedaan Data (Sistem vs Hasil OCR Dokumen Fisik)
+                </h3>
+                <p>Hasil komparasi otomatis antara nilai database sistem dengan data yang terbaca pada dokumen fisik FAP bertandatangan debitur.</p>
+              </div>
+              <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                {activeFiles.length > 0 && (
+                  <button
+                    type="button"
+                    className="button small"
+                    disabled={busy}
+                    onClick={handleRunFapComparison}
+                    style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
+                    title="Pindai ulang dokumen fisik dan bandingkan dengan data sistem terbaru"
+                  >
+                    {busy ? <Loader2 size={13} className="spin" /> : <RefreshCw size={13} />}
+                    Analisis Ulang OCR
                   </button>
                 )}
               </div>
+            </div>
 
-              {activeFiles.length === 0 ? (
-                <div className="evidence-files-empty">
-                  <FileText size={28} className="evidence-empty-icon" />
-                  <p>Belum ada berkas pada tahapan {activeItem.stage}</p>
-                  <small>Silakan unggah dokumen pendukung melalui area unggah di atas.</small>
+            {/* Notice Alert Banner */}
+            {fapComparison ? (
+              fapComparison.hasDifferences ? (
+                <div className="fap-diff-banner warning">
+                  <AlertTriangle size={18} style={{flexShrink:0, marginTop:1}} />
+                  <div>
+                    <strong>Pemberitahuan Non-Blocking:</strong> Terdeteksi <strong>{fapComparison.diffs?.length || 0} perbedaan data</strong> antara dokumen fisik bertandatangan dengan database sistem. Tombol submit telah dibuka. Anda dapat menyetujui perubahan data agar sistem terupdate otomatis, atau mempertahankan data yang sudah ada di sistem.
+                  </div>
                 </div>
               ) : (
-                <div className="evidence-files-list">
-                  {activeFiles.map((f: any) => {
-                    const isPreviewed = activeFile?.id === f.id;
-                    const isPdf = f.mimeType === 'application/pdf' || f.fileName?.toLowerCase().endsWith('.pdf');
-                    const sizeNum = Number(f.fileSize || 0);
-                    const sizeStr = sizeNum > 1024 * 1024
-                      ? `${(sizeNum / (1024 * 1024)).toFixed(1)} MB`
-                      : `${Math.max(1, Math.round(sizeNum / 1024))} KB`;
-                    const dateStr = f.createdAt ? new Date(f.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
-
-                    return (
-                      <div
-                        key={f.id}
-                        className={`evidence-deck-card ${isPreviewed ? 'active' : ''}`}
-                        onClick={() => previewFile(f)}
-                        title="Klik untuk membuka pratinjau dokumen"
-                      >
-                        <div className={`evidence-file-icon-box ${isPdf ? 'pdf' : 'img'}`}>
-                          <FileText size={16} />
-                          <span className="evidence-file-format-tag">{isPdf ? 'PDF' : 'IMG'}</span>
-                        </div>
-                        <div className="evidence-deck-card-info">
-                          <div className="evidence-deck-filename" title={f.fileName}>
-                            {f.fileName}
-                          </div>
-                          <div className="evidence-deck-meta">
-                            <span>{sizeStr}</span>
-                            {dateStr && (
-                              <>
-                                <span>•</span>
-                                <span>{dateStr}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="evidence-deck-actions" onClick={e => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            className={`evidence-action-btn ${isPreviewed ? 'active' : ''}`}
-                            onClick={() => previewFile(f)}
-                            title="Pratinjau dokumen"
-                          >
-                            <Eye size={13} />
-                          </button>
-                          {canUpload && (
-                            <button
-                              type="button"
-                              className="evidence-action-btn danger"
-                              onClick={() => handleDeleteFile(activeItem, f.id)}
-                              title="Hapus berkas ini"
-                            >
-                              <Trash2 size={13} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Studio Document Previewer */}
-        <section className={`panel document-viewer-studio ${isMaximized ? 'maximized' : ''}`}>
-          {/* Studio Top Context Bar */}
-          <div className="document-viewer-studio-head">
-            <div className="document-viewer-head-info">
-              {sidebarCollapsed && (
-                <button
-                  type="button"
-                  className="button small studio-expand-btn"
-                  onClick={() => setSidebarCollapsed(false)}
-                  title="Tampilkan kembali sidebar berkas"
-                >
-                  <Columns size={13} /> Buka Sidebar
-                </button>
-              )}
-              <div>
-                <h3 className="document-viewer-title">
-                  {activeFile ? activeFile.fileName : `Preview Dokumen · ${activeItem.title}`}
-                </h3>
-                <span className="document-viewer-subtitle">
-                  Tahapan: <strong>{activeItem.stage}</strong> · Role: <strong>{activeItem.role}</strong>
-                </span>
-              </div>
-            </div>
-            <div className="document-viewer-head-status">
-              <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
-            </div>
-          </div>
-
-          {/* Translucent Glass Toolbar */}
-          <div className="studio-glass-toolbar">
-            <div className="studio-toolbar-left">
-              <button
-                type="button"
-                className="studio-toolbar-toggle-btn"
-                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                title={sidebarCollapsed ? "Tampilkan daftar berkas (Split View)" : "Lebarkan Pratinjau (Full Canvas)"}
-              >
-                <Columns size={14} />
-                <span>{sidebarCollapsed ? "Split View" : "Full Canvas"}</span>
-              </button>
-              {activeFile && (
-                <span className="studio-file-chip">
-                  <span className="studio-file-tag">{activeFile.mimeType === 'application/pdf' ? 'PDF' : 'IMG'}</span>
-                  <span className="studio-file-name">{activeFile.fileName}</span>
-                  {activeFile.fileSize && (
-                    <span className="studio-file-size">({(activeFile.fileSize / 1024).toFixed(0)} KB)</span>
-                  )}
-                </span>
-              )}
-            </div>
-
-            <div className="studio-toolbar-center">
-              {activeFile?.mimeType === 'application/pdf' && (
-                <div className="studio-pdf-zoom-group">
-                  <button
-                    type="button"
-                    className={`evidence-zoom-pill ${pdfZoom === 'FitH' ? 'active' : ''}`}
-                    onClick={() => setPdfZoom('FitH')}
-                    title="Pas Lebar (Fit Width)"
-                  >
-                    Fit Width
-                  </button>
-                  <button
-                    type="button"
-                    className={`evidence-zoom-pill ${pdfZoom === '100' ? 'active' : ''}`}
-                    onClick={() => setPdfZoom('100')}
-                    title="Skala 100%"
-                  >
-                    100%
-                  </button>
-                  <button
-                    type="button"
-                    className={`evidence-zoom-pill ${pdfZoom === '125' ? 'active' : ''}`}
-                    onClick={() => setPdfZoom('125')}
-                    title="Skala 125%"
-                  >
-                    125%
-                  </button>
-                  <button
-                    type="button"
-                    className={`evidence-zoom-pill ${pdfZoom === 'Fit' ? 'active' : ''}`}
-                    onClick={() => setPdfZoom('Fit')}
-                    title="Pas Halaman (Fit Page)"
-                  >
-                    Fit Page
-                  </button>
-                </div>
-              )}
-
-              {activeFile?.mimeType?.startsWith('image/') && (
-                <div className="studio-image-controls">
-                  <button
-                    type="button"
-                    className="studio-tool-btn"
-                    onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
-                    title="Perkecil"
-                  >
-                    <ZoomOut size={14} />
-                  </button>
-                  <span className="studio-zoom-val">{Math.round(zoom * 100)}%</span>
-                  <button
-                    type="button"
-                    className="studio-tool-btn"
-                    onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-                    title="Perbesar"
-                  >
-                    <ZoomIn size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    className="studio-tool-btn"
-                    onClick={() => setRotation(rotation + 90)}
-                    title="Putar 90 Derajat"
-                  >
-                    <RotateCw size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="studio-toolbar-right">
-              {activeFileUrl && (
-                <>
-                  <a
-                    className="studio-action-icon-link"
-                    href={activeFileUrl}
-                    download={activeFile?.fileName || 'document.pdf'}
-                    title="Unduh Berkas Asli"
-                  >
-                    <Download size={14} />
-                    <span>Unduh</span>
-                  </a>
-                  <a
-                    className="studio-action-icon-link"
-                    href={activeFileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    title="Buka Dokumen di Tab Baru"
-                  >
-                    <ExternalLink size={14} />
-                  </a>
-                </>
-              )}
-
-              <button
-                type="button"
-                className={`studio-action-icon-btn ${isMaximized ? 'active' : ''}`}
-                onClick={() => setIsMaximized(!isMaximized)}
-                title={isMaximized ? "Perkecil (Normal View)" : "Layar Penuh (Fullscreen)"}
-              >
-                {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Viewport Canvas */}
-          <div className="studio-viewport-canvas">
-            {activeFileUrl ? (
-              activeFile?.mimeType === 'application/pdf' ? (
-                <iframe
-                  key={`${activeFile.id}-${pdfZoom}`}
-                  title={activeFile.fileName}
-                  src={pdfViewerSrc}
-                  className="studio-pdf-iframe"
-                />
-              ) : (
-                <div className="studio-image-wrapper">
-                  <img
-                    alt={activeFile?.fileName}
-                    src={activeFileUrl}
-                    style={{
-                      transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain',
-                      transition: 'transform 0.15s ease'
-                    }}
-                  />
+                <div className="fap-diff-banner success">
+                  <CheckCircle size={18} style={{flexShrink:0, marginTop:1}} />
+                  <div>
+                    <strong>Verifikasi Sempurna:</strong> Seluruh data pada dokumen fisik yang terbaca OCR cocok 100% dengan database sistem. Tidak ditemukan inkonsistensi.
+                  </div>
                 </div>
               )
-            ) : (
-              <div className="studio-empty-canvas">
-                <div className="studio-empty-icon-wrap">
-                  <FileText size={44} />
+            ) : activeFiles.length > 0 ? (
+              <div className="fap-diff-banner warning">
+                <AlertCircle size={18} style={{flexShrink:0, marginTop:1}} />
+                <div>
+                  Dokumen fisik telah diunggah. Klik <strong>"Analisis Ulang OCR"</strong> di atas jika hasil perbandingan belum muncul atau ingin melakukan pemindaian ulang.
                 </div>
-                <h3>Pilih Dokumen untuk Pratinjau Langsung</h3>
-                <p>
-                  Pilih salah satu berkas dari daftar di sisi kiri untuk melihat pratinjau lengkap di kanvas studio ini.
-                </p>
-                <div className="studio-empty-features">
-                  <span>✓ Pratinjau PDF & Gambar resolusi tinggi</span>
-                  <span>✓ Kontrol skala Zoom Fit Width & Fit Page</span>
-                  <span>✓ Mode Fullscreen untuk evaluasi komite</span>
+              </div>
+            ) : (
+              <div className="fap-diff-banner" style={{background:'#f8fafc', border:'1px solid #e2e8f0', color:'#64748b'}}>
+                <AlertCircle size={18} style={{flexShrink:0, marginTop:1}} />
+                <div>
+                  Belum ada dokumen fisik FAP yang diunggah. Unggah dokumen pada area di atas untuk melihat analisis perbedaan data.
                 </div>
               </div>
             )}
+
+            {/* Differences Table */}
+            {fapComparison && fapComparison.diffs && (
+              <>
+                <div className="fap-diff-table-wrap">
+                  <table className="fap-diff-table">
+                    <thead>
+                      <tr>
+                        <th style={{width:'25%'}}>Nama Kolom (Field)</th>
+                        <th style={{width:'32%'}}>Data di Sistem Saat Ini</th>
+                        <th style={{width:'32%'}}>Data Terdeteksi OCR (Dokumen Fisik)</th>
+                        <th style={{width:'11%', textAlign:'center'}}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fapComparison.diffs.map((d: any, idx: number) => (
+                        <tr key={d.field || idx} className="is-different">
+                          <td>
+                            <strong>{d.label}</strong>
+                            <div style={{fontSize:'11px', color:'#94a3b8', fontFamily:'monospace'}}>{d.field}</div>
+                          </td>
+                          <td>
+                            <span style={{background:'#f1f5f9', padding:'3px 8px', borderRadius:'4px', border:'1px solid #e2e8f0', display:'inline-block'}}>
+                              {d.oldValue || '—'}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{background:'#fef3c7', color:'#92400e', fontWeight:600, padding:'3px 8px', borderRadius:'4px', border:'1px solid #fde68a', display:'inline-block'}}>
+                              {d.newValue}
+                            </span>
+                          </td>
+                          <td style={{textAlign:'center'}}>
+                            <span className="fap-diff-badge different">
+                              <AlertTriangle size={11} /> Berbeda
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {fapComparison.diffs.length === 0 && (
+                        <tr>
+                          <td colSpan={4} style={{textAlign:'center', padding:'24px', color:'#059669'}}>
+                            <CheckCircle size={20} style={{verticalAlign:'middle', marginRight:'8px'}} />
+                            Semua kolom data yang diuji cocok dengan data sistem!
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Bottom Actions Bar */}
+                {fapComparison.diffs.length > 0 && (
+                  <div className="fap-diff-actions-bar">
+                    <span style={{fontSize:'12px', color:'#64748b'}}>
+                      Pilih <strong>Approve Changes</strong> untuk memperbarui data sistem, atau <strong>Correct Data</strong> untuk mempertahankan data sistem saat ini.
+                    </span>
+                    <div className="fap-diff-actions-right">
+                      <button
+                        type="button"
+                        className="button"
+                        disabled={busy}
+                        onClick={handleDismissFapChanges}
+                        style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
+                      >
+                        <Pencil size={14} /> Correct Data (Pertahankan Sistem)
+                      </button>
+                      <button
+                        type="button"
+                        className="button primary"
+                        disabled={busy}
+                        onClick={() => handleApproveFapChanges(fapComparison.extractedData)}
+                        style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
+                      >
+                        {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
+                        Approve Changes (Gunakan Data OCR)
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </section>
-      </div>
+        </div>
+      ) : (
+        /* Non-FAP Stages: Standard Studio Layout */
+        <div className={`evidence-studio-layout ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+          {/* Left Column: Stage Inspector & File Deck */}
+          <div className="evidence-studio-sidebar">
+            <div className="evidence-stage-card">
+              <div className="evidence-stage-card-header">
+                <div>
+                  <span className={`evidence-stage-badge ${activeItem.badgeClass}`}>
+                    {activeItem.stage} · {activeItem.role}
+                  </span>
+                  <h3 className="evidence-stage-title">{activeItem.title}</h3>
+                  <p className="evidence-stage-desc">{activeItem.desc}</p>
+                </div>
+                <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+              </div>
+
+              {/* Upload Dropzone */}
+              {canUpload && (
+                <label className="evidence-dropzone-studio" onClick={e => e.stopPropagation()}>
+                  <div className="evidence-dropzone-icon-wrap">
+                    <Upload size={20} />
+                  </div>
+                  <div className="evidence-dropzone-text">
+                    <strong>{busy ? 'Mengunggah berkas...' : `Unggah Evidence ${activeItem.name}`}</strong>
+                    <span>Tarik berkas ke sini atau klik untuk memilih</span>
+                  </div>
+                  <span className="evidence-dropzone-hint">
+                    PDF, PNG, JPEG · Maks. 20 MB
+                  </span>
+                  <input
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg"
+                    disabled={busy}
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) handleFileUpload(activeItem, f);
+                      e.target.value = '';
+                    }}
+                  />
+                </label>
+              )}
+
+              {/* Stage Files Deck */}
+              <div className="evidence-files-section">
+                <div className="evidence-files-header">
+                  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%'}}>
+                    <h4>Daftar Berkas Terunggah ({activeFiles.length})</h4>
+                    <span className="evidence-files-summary">
+                      {activeFiles.length > 0 ? 'Pilih untuk pratinjau' : 'Belum ada berkas'}
+                    </span>
+                  </div>
+                </div>
+
+                {activeFiles.length === 0 ? (
+                  <div className="evidence-files-empty">
+                    <FileText size={28} className="evidence-empty-icon" />
+                    <p>Belum ada berkas pada tahapan {activeItem.stage}</p>
+                    <small>Silakan unggah dokumen pendukung melalui area unggah di atas.</small>
+                  </div>
+                ) : (
+                  <div className="evidence-files-list">
+                    {activeFiles.map((f: any) => {
+                      const isPreviewed = activeFile?.id === f.id;
+                      const isPdf = f.mimeType === 'application/pdf' || f.fileName?.toLowerCase().endsWith('.pdf');
+                      const sizeNum = Number(f.fileSize || 0);
+                      const sizeStr = sizeNum > 1024 * 1024
+                        ? `${(sizeNum / (1024 * 1024)).toFixed(1)} MB`
+                        : `${Math.max(1, Math.round(sizeNum / 1024))} KB`;
+                      const dateStr = f.createdAt ? new Date(f.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}) : '';
+
+                      return (
+                        <div
+                          key={f.id}
+                          className={`evidence-deck-card ${isPreviewed ? 'active' : ''}`}
+                          onClick={() => previewFile(f)}
+                          title="Klik untuk membuka pratinjau dokumen"
+                        >
+                          <div className={`evidence-file-icon-box ${isPdf ? 'pdf' : 'img'}`}>
+                            <FileText size={16} />
+                            <span className="evidence-file-format-tag">{isPdf ? 'PDF' : 'IMG'}</span>
+                          </div>
+                          <div className="evidence-deck-card-info">
+                            <div className="evidence-deck-filename" title={f.fileName}>
+                              {f.fileName}
+                            </div>
+                            <div className="evidence-deck-meta">
+                              <span>{sizeStr}</span>
+                              {dateStr && (
+                                <>
+                                  <span>•</span>
+                                  <span>{dateStr}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="evidence-deck-actions" onClick={e => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              className={`evidence-action-btn ${isPreviewed ? 'active' : ''}`}
+                              onClick={() => previewFile(f)}
+                              title="Pratinjau dokumen"
+                            >
+                              <Eye size={13} />
+                            </button>
+                            {canUpload && (
+                              <button
+                                type="button"
+                                className="evidence-action-btn danger"
+                                onClick={() => handleDeleteFile(activeItem, f.id)}
+                                title="Hapus berkas ini"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Studio Document Previewer */}
+          <section className={`panel document-viewer-studio ${isMaximized ? 'maximized' : ''}`}>
+            {/* Studio Top Context Bar */}
+            <div className="document-viewer-studio-head">
+              <div className="document-viewer-head-info">
+                {sidebarCollapsed && (
+                  <button
+                    type="button"
+                    className="button small studio-expand-btn"
+                    onClick={() => setSidebarCollapsed(false)}
+                    title="Tampilkan kembali sidebar berkas"
+                  >
+                    <Columns size={13} /> Buka Sidebar
+                  </button>
+                )}
+                <div>
+                  <h3 className="document-viewer-title">
+                    {activeFile ? activeFile.fileName : `Preview Dokumen · ${activeItem.title}`}
+                  </h3>
+                  <span className="document-viewer-subtitle">
+                    Tahapan: <strong>{activeItem.stage}</strong> · Role: <strong>{activeItem.role}</strong>
+                  </span>
+                </div>
+              </div>
+              <div className="document-viewer-head-status">
+                <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+              </div>
+            </div>
+
+            {/* Translucent Glass Toolbar */}
+            <div className="studio-glass-toolbar">
+              <div className="studio-toolbar-left">
+                <button
+                  type="button"
+                  className="studio-toolbar-toggle-btn"
+                  onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                  title={sidebarCollapsed ? "Tampilkan daftar berkas (Split View)" : "Lebarkan Pratinjau (Full Canvas)"}
+                >
+                  <Columns size={14} />
+                  <span>{sidebarCollapsed ? "Split View" : "Full Canvas"}</span>
+                </button>
+                {activeFile && (
+                  <span className="studio-file-chip">
+                    <span className="studio-file-tag">{activeFile.mimeType === 'application/pdf' ? 'PDF' : 'IMG'}</span>
+                    <span className="studio-file-name">{activeFile.fileName}</span>
+                    {activeFile.fileSize && (
+                      <span className="studio-file-size">({(activeFile.fileSize / 1024).toFixed(0)} KB)</span>
+                    )}
+                  </span>
+                )}
+              </div>
+
+              <div className="studio-toolbar-center">
+                {activeFile?.mimeType === 'application/pdf' && (
+                  <div className="studio-pdf-zoom-group">
+                    <button
+                      type="button"
+                      className={`evidence-zoom-pill ${pdfZoom === 'FitH' ? 'active' : ''}`}
+                      onClick={() => setPdfZoom('FitH')}
+                      title="Pas Lebar (Fit Width)"
+                    >
+                      Fit Width
+                    </button>
+                    <button
+                      type="button"
+                      className={`evidence-zoom-pill ${pdfZoom === '100' ? 'active' : ''}`}
+                      onClick={() => setPdfZoom('100')}
+                      title="Skala 100%"
+                    >
+                      100%
+                    </button>
+                    <button
+                      type="button"
+                      className={`evidence-zoom-pill ${pdfZoom === '125' ? 'active' : ''}`}
+                      onClick={() => setPdfZoom('125')}
+                      title="Skala 125%"
+                    >
+                      125%
+                    </button>
+                    <button
+                      type="button"
+                      className={`evidence-zoom-pill ${pdfZoom === 'Fit' ? 'active' : ''}`}
+                      onClick={() => setPdfZoom('Fit')}
+                      title="Pas Halaman (Fit Page)"
+                    >
+                      Fit Page
+                    </button>
+                  </div>
+                )}
+
+                {activeFile?.mimeType?.startsWith('image/') && (
+                  <div className="studio-image-controls">
+                    <button
+                      type="button"
+                      className="studio-tool-btn"
+                      onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
+                      title="Perkecil"
+                    >
+                      <ZoomOut size={14} />
+                    </button>
+                    <span className="studio-zoom-val">{Math.round(zoom * 100)}%</span>
+                    <button
+                      type="button"
+                      className="studio-tool-btn"
+                      onClick={() => setZoom(Math.min(3, zoom + 0.25))}
+                      title="Perbesar"
+                    >
+                      <ZoomIn size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      className="studio-tool-btn"
+                      onClick={() => setRotation(rotation + 90)}
+                      title="Putar 90 Derajat"
+                    >
+                      <RotateCw size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="studio-toolbar-right">
+                {activeFileUrl && (
+                  <>
+                    <a
+                      href={activeFileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="studio-tool-btn"
+                      title="Buka dokumen di tab baru"
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                    <a
+                      href={`/api/v1/files/${activeFile?.id}/download`}
+                      download={activeFile?.fileName || 'document'}
+                      className="studio-tool-btn"
+                      title="Unduh dokumen"
+                    >
+                      <Download size={14} />
+                    </a>
+                  </>
+                )}
+                <button
+                  type="button"
+                  className="studio-tool-btn"
+                  onClick={() => setIsMaximized(!isMaximized)}
+                  title={isMaximized ? "Perkecil kanvas" : "Maksimalkan kanvas"}
+                >
+                  {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Viewport Canvas */}
+            <div className="studio-viewport-canvas">
+              {activeFileUrl ? (
+                activeFile?.mimeType === 'application/pdf' ? (
+                  <iframe
+                    key={`${activeFile.id}-${pdfZoom}`}
+                    title={activeFile.fileName}
+                    src={pdfViewerSrc}
+                    className="studio-pdf-iframe"
+                  />
+                ) : (
+                  <div className="studio-image-wrapper">
+                    <img
+                      alt={activeFile?.fileName}
+                      src={activeFileUrl}
+                      style={{
+                        transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                        maxWidth: '100%',
+                        maxHeight: '100%',
+                        objectFit: 'contain',
+                        transition: 'transform 0.15s ease'
+                      }}
+                    />
+                  </div>
+                )
+              ) : (
+                <div className="studio-empty-canvas">
+                  <div className="studio-empty-icon-wrap">
+                    <FileText size={44} />
+                  </div>
+                  <h3>Pilih Dokumen untuk Pratinjau Langsung</h3>
+                  <p>
+                    Pilih salah satu berkas dari daftar di sisi kiri untuk melihat pratinjau lengkap di kanvas studio ini.
+                  </p>
+                  <div className="studio-empty-features">
+                    <span>✓ Pratinjau PDF & Gambar resolusi tinggi</span>
+                    <span>✓ Kontrol skala Zoom Fit Width & Fit Page</span>
+                    <span>✓ Mode Fullscreen untuk evaluasi komite</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* Pop-up Modal: Riwayat Berkas Terunggah */}
+      {showHistoryModal && (
+        <Modal title={`Riwayat Berkas Terunggah · ${activeItem.title}`} onClose={() => setShowHistoryModal(false)}>
+          <div className="modal-body" style={{maxHeight:'70vh', overflowY:'auto'}}>
+            <p className="muted" style={{marginBottom:'14px'}}>
+              Debitur: <strong>{a.customer?.companyName || 'Debitur'}</strong> · No. FAP: <strong>{a.fapNumber || '-'}</strong> · Total <strong>{activeFiles.length} berkas</strong>
+            </p>
+            {activeFiles.length === 0 ? (
+              <div style={{textAlign:'center', padding:'32px 16px', color:'#94a3b8'}}>
+                <FileText size={36} style={{margin:'0 auto 10px auto', display:'block'}} />
+                <p>Belum ada berkas terunggah pada tahapan ini.</p>
+              </div>
+            ) : (
+              <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
+                {activeFiles.map((f: any) => {
+                  const isPreviewed = activeFile?.id === f.id;
+                  const isPdf = f.mimeType === 'application/pdf' || f.fileName?.toLowerCase().endsWith('.pdf');
+                  const sizeNum = Number(f.fileSize || 0);
+                  const sizeStr = sizeNum > 1024 * 1024
+                    ? `${(sizeNum / (1024 * 1024)).toFixed(1)} MB`
+                    : `${Math.max(1, Math.round(sizeNum / 1024))} KB`;
+                  const dateStr = f.createdAt ? new Date(f.createdAt).toLocaleDateString('id-ID', {
+                    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                  }) : '';
+
+                  return (
+                    <div
+                      key={f.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        border: isPreviewed ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                        background: isPreviewed ? '#eff6ff' : '#ffffff',
+                        borderRadius: '8px',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{display:'flex', alignItems:'center', gap:'12px', minWidth:0, flex:1}}>
+                        <div className={`evidence-file-icon-box ${isPdf ? 'pdf' : 'img'}`} style={{flexShrink:0}}>
+                          <FileText size={18} />
+                          <span className="evidence-file-format-tag">{isPdf ? 'PDF' : 'IMG'}</span>
+                        </div>
+                        <div style={{minWidth:0, flex:1}}>
+                          <div style={{fontWeight:600, fontSize:'13px', color:'#0f172a', wordBreak:'break-all'}} title={f.fileName}>
+                            {f.fileName}
+                          </div>
+                          <div style={{fontSize:'11.5px', color:'#64748b', marginTop:'2px', display:'flex', gap:'8px', flexWrap:'wrap'}}>
+                            <span>{sizeStr}</span>
+                            {dateStr && <span>• {dateStr}</span>}
+                            {f.uploadedBy && <span>• Pengunggah: {f.uploadedBy}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{display:'flex', alignItems:'center', gap:'6px', flexShrink:0}}>
+                        <button
+                          type="button"
+                          className={`button small ${isPreviewed ? 'primary' : ''}`}
+                          onClick={() => {
+                            previewFile(f);
+                            setShowHistoryModal(false);
+                          }}
+                          title="Tampilkan di layar pratinjau"
+                        >
+                          <Eye size={13} /> {isPreviewed ? 'Aktif' : 'Pratinjau'}
+                        </button>
+                        <a
+                          href={`/api/v1/files/${f.id}/download`}
+                          download={f.fileName}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="button small"
+                          title="Unduh berkas"
+                          style={{display:'inline-flex', alignItems:'center'}}
+                        >
+                          <Download size={13} />
+                        </a>
+                        {canUpload && (
+                          <button
+                            type="button"
+                            className="button small"
+                            onClick={() => handleDeleteFile(activeItem, f.id)}
+                            title="Hapus berkas"
+                            style={{color:'#dc2626', borderColor:'#fecaca', background:'#fef2f2'}}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="modal-actions">
+            <button className="button" onClick={() => setShowHistoryModal(false)}>Tutup</button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
