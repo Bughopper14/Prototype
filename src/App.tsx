@@ -1396,9 +1396,18 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
 
   const [fapComparison, setFapComparison] = useState<any>(null);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
-  const [showOcrOverlay, setShowOcrOverlay] = useState<boolean>(false);
+  const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
   const [systemZoom, setSystemZoom] = useState<number>(0.72);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
+
+  // Reset state when switching application to prevent cross-application data leakage
+  useEffect(() => {
+    setActiveFile(null);
+    setActiveFileUrl('');
+    setFapComparison(null);
+    setShowHistoryModal(false);
+    setRightViewMode('ocr');
+  }, [a.id]);
 
   const scrollToFapField = (fieldKey: string) => {
     const el = document.getElementById(`fap-diff-cell-${fieldKey}`);
@@ -1464,8 +1473,12 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   useEffect(() => {
     if (selectedCode === 'FAP') {
       api(`/applications/${a.id}/fap-comparison`).then(res => {
-        if (res?.comparison) setFapComparison(res.comparison);
-      }).catch(() => {});
+        setFapComparison(res?.comparison || null);
+      }).catch(() => {
+        setFapComparison(null);
+      });
+    } else {
+      setFapComparison(null);
     }
   }, [selectedCode, a.id]);
 
@@ -1518,6 +1531,52 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     bankReferences: a.bankReferences || [],
     financialStatements: a.financialStatements || []
   }), [a]);
+
+  const ocrFapData: FapSheetData = useMemo(() => {
+    if (!fapComparison?.extractedData) return liveFapData;
+    const ext = fapComparison.extractedData;
+    return {
+      ...liveFapData,
+      fapNumber: ext.fapNumber || liveFapData.fapNumber,
+      companyName: ext.companyName || liveFapData.companyName,
+      companyType: ext.companyType || liveFapData.companyType,
+      nib: ext.nib || liveFapData.nib,
+      npwp: ext.npwp || liveFapData.npwp,
+      establishmentActNo: ext.establishmentActNo || liveFapData.establishmentActNo,
+      establishmentDate: ext.establishmentDate || liveFapData.establishmentDate,
+      latestDeedNo: ext.latestDeedNo || liveFapData.latestDeedNo,
+      latestDeedDate: ext.latestDeedDate || liveFapData.latestDeedDate,
+      companyAddress: ext.companyAddress || liveFapData.companyAddress,
+      city: ext.city || liveFapData.city,
+      postalCode: ext.postalCode || liveFapData.postalCode,
+      phoneFax: ext.phoneFax || liveFapData.phoneFax,
+      email: ext.email || liveFapData.email,
+      website: ext.website || liveFapData.website,
+      repaymentSource: ext.repaymentSource || liveFapData.repaymentSource,
+      locationStatus: ext.locationStatus || liveFapData.locationStatus,
+      picName: ext.picName || liveFapData.picName,
+      position: ext.position || liveFapData.position,
+      phone: ext.phone || liveFapData.phone,
+      currentAddress: ext.currentAddress || liveFapData.currentAddress,
+      facilityPurpose: ext.facilityPurpose || liveFapData.facilityPurpose,
+      financingMethod: ext.financingMethod || liveFapData.financingMethod,
+      financingValue: ext.financingValue != null ? ext.financingValue : liveFapData.financingValue,
+      downPaymentValue: ext.downPaymentValue != null ? ext.downPaymentValue : liveFapData.downPaymentValue,
+      interestRate: ext.interestRate != null ? ext.interestRate : liveFapData.interestRate,
+      tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : liveFapData.tenorMonths,
+      paymentMethod: ext.paymentMethod || liveFapData.paymentMethod,
+      proposal: {
+        ...(liveFapData.proposal || {}),
+        facilityPurpose: ext.facilityPurpose || liveFapData.facilityPurpose,
+        financingMethod: ext.financingMethod || liveFapData.financingMethod,
+        financingValue: ext.financingValue != null ? ext.financingValue : liveFapData.financingValue,
+        downPaymentValue: ext.downPaymentValue != null ? ext.downPaymentValue : liveFapData.downPaymentValue,
+        interestRate: ext.interestRate != null ? ext.interestRate : liveFapData.interestRate,
+        tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : liveFapData.tenorMonths,
+        paymentMethod: ext.paymentMethod || liveFapData.paymentMethod
+      }
+    };
+  }, [liveFapData, fapComparison]);
 
   async function previewFile(f: any) {
     try {
@@ -1766,9 +1825,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-facility')}>4. Fasilitas & Fixed Assets</button>
               <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-proposal')}>5. Nilai Pembiayaan</button>
             </div>
-            {fapComparison?.diffs && fapComparison.diffs.length > 0 && (
+            {activeFiles.length > 0 && fapComparison?.diffs && fapComparison.diffs.length > 0 && (
               <div className="fap-nav-right">
-                <span className="fap-nav-diff-counter" title="Klik bar sorotan di bawah untuk melompat langsung ke perbedaan">
+                <span className="fap-nav-diff-counter" title="Perbedaan data terdeteksi antara sistem dan hasil OCR dokumen fisik">
                   <AlertTriangle size={12} color="#b45309" />
                   <strong>{fapComparison.diffs.length}</strong> Perbedaan Terdeteksi OCR
                 </span>
@@ -1814,36 +1873,48 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   data={liveFapData}
                   isComparison={true}
                   hideToolbar={true}
-                  diffs={fapComparison?.diffs || []}
+                  diffSide="system"
+                  diffs={activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : []}
                   externalZoom={systemZoom}
                   onPrint={() => printFapDocument(a.fapNumber)}
                 />
               </div>
             </div>
 
-            {/* Right Pane (50%): Preview Dokumen Fisik yang diunggah customer */}
+            {/* Right Pane (50%): Dokumen Hasil OCR (Fisik Terunggah) */}
             <div className="fap-pane-card">
               <div className="fap-pane-head">
                 <div className="fap-pane-head-left">
                   <h4>
                     <FileText size={16} color="#002060" />
-                    Pratinjau Dokumen Fisik Terunggah
+                    Dokumen Hasil OCR (Fisik Terunggah)
                   </h4>
                   <span style={{maxWidth:'240px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
                     {activeFile ? activeFile.fileName : 'Belum ada dokumen fisik diunggah'}
                   </span>
                 </div>
                 <div className="fap-pane-head-right">
-                  {fapComparison?.diffs && fapComparison.diffs.length > 0 && (
-                    <button
-                      type="button"
-                      className={`button small ${showOcrOverlay ? 'primary' : ''}`}
-                      onClick={() => setShowOcrOverlay(!showOcrOverlay)}
-                      style={{display:'inline-flex', alignItems:'center', gap:'5px', fontSize:'11.5px'}}
-                      title="Buka / tutup panel sorotan OCR"
-                    >
-                      <Sparkles size={12} /> Sorotan OCR ({fapComparison.diffs.length})
-                    </button>
+                  {activeFile && (
+                    <div style={{display:'inline-flex', background:'#f1f5f9', padding:'2px', borderRadius:'6px', border:'1px solid #cbd5e1', marginRight:'4px'}}>
+                      <button
+                        type="button"
+                        className={`button small ${rightViewMode === 'ocr' ? 'primary' : ''}`}
+                        onClick={() => setRightViewMode('ocr')}
+                        style={{fontSize:'11px', padding:'2px 8px', height:'24px', borderRadius:'4px'}}
+                        title="Tampilkan formulir FAP hasil ekstraksi OCR dengan sorotan perbedaan"
+                      >
+                        <FileSpreadsheet size={12} style={{marginRight:3}} /> Formulir OCR
+                      </button>
+                      <button
+                        type="button"
+                        className={`button small ${rightViewMode === 'pdf' ? 'primary' : ''}`}
+                        onClick={() => setRightViewMode('pdf')}
+                        style={{fontSize:'11px', padding:'2px 8px', height:'24px', borderRadius:'4px'}}
+                        title="Tampilkan berkas PDF fisik asli"
+                      >
+                        <Eye size={12} style={{marginRight:3}} /> Berkas Asli
+                      </button>
+                    </div>
                   )}
                   {activeFile && (
                     <>
@@ -1867,69 +1938,18 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 </div>
               </div>
               <div className="fap-pane-body fap-pane-body-physical">
-                {/* Diff Inspector Strip on Right Pane */}
-                {fapComparison?.diffs && fapComparison.diffs.length > 0 && (
-                  <div className="fap-diff-inspector-bar">
-                    <div className="fap-diff-inspector-title">
-                      <AlertTriangle size={13} className="fap-diff-pulse-icon" />
-                      <span>{fapComparison.diffs.length} Perbedaan Terdeteksi OCR Dokumen Fisik:</span>
-                    </div>
-                    <div className="fap-diff-chips-row">
-                      {fapComparison.diffs.map((d: any) => (
-                        <button
-                          key={d.field}
-                          type="button"
-                          className="fap-diff-chip-btn"
-                          onClick={() => scrollToFapField(d.field)}
-                          title={`Klik untuk melompat & menyorot kolom "${d.label}" pada dokumen sistem`}
-                        >
-                          <span className="diff-chip-label">{d.label}:</span>
-                          <span className="diff-chip-val">"{d.newValue}"</span>
-                          <span className="diff-chip-arrow">↗</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Floating OCR Difference Cards Overlay */}
-                {showOcrOverlay && fapComparison?.diffs && (
-                  <div className="fap-ocr-overlay-card">
-                    <div className="fap-ocr-overlay-header">
-                      <h5><Sparkles size={14} color="#f59e0b" /> Hasil OCR Dokumen Fisik</h5>
-                      <button type="button" onClick={() => setShowOcrOverlay(false)} className="close-btn">✕</button>
-                    </div>
-                    <div className="fap-ocr-overlay-list">
-                      {fapComparison.diffs.map((d: any) => (
-                        <div
-                          key={d.field}
-                          className="fap-ocr-overlay-item"
-                          onClick={() => scrollToFapField(d.field)}
-                          title="Klik untuk fokus ke kolom ini di formulir sistem"
-                        >
-                          <div className="fap-ocr-item-label">{d.label}</div>
-                          <div className="fap-ocr-item-vals">
-                            <div className="fap-ocr-val-phys">
-                              <span className="val-tag">Dokumen Fisik (OCR):</span>
-                              <strong>{d.newValue}</strong>
-                            </div>
-                            <div className="fap-ocr-val-sys">
-                              <span className="val-tag">Sistem:</span>
-                              <span>{d.oldValue || '—'}</span>
-                            </div>
-                          </div>
-                          <div className="fap-ocr-jump-hint">
-                            Klik untuk sorot di formulir sistem ↗
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Main Physical Preview Viewer */}
-                {activeFileUrl ? (
-                  activeFile?.mimeType === 'application/pdf' ? (
+                {activeFiles.length > 0 && activeFileUrl ? (
+                  rightViewMode === 'ocr' ? (
+                    <FapSheetPreview
+                      data={ocrFapData}
+                      isComparison={true}
+                      hideToolbar={true}
+                      diffSide="ocr"
+                      diffs={fapComparison?.diffs || []}
+                      externalZoom={systemZoom}
+                      onPrint={() => printFapDocument(a.fapNumber)}
+                    />
+                  ) : activeFile?.mimeType === 'application/pdf' ? (
                     <iframe
                       src={pdfViewerSrc}
                       title="Dokumen Fisik Signed FAP"

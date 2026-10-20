@@ -3877,6 +3877,13 @@ button:focus-visible, a:focus-visible {
   transition: all 0.25s ease-in-out !important;
 }
 
+.fap-diff-cell-highlight.fap-diff-cell-ocr {
+  background-color: #dbeafe !important; /* blue-100 / clear soft blue */
+  border: 1.5px solid #2563eb !important; /* blue-600 */
+  color: #1e3a8a !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25), 0 2px 5px rgba(37, 99, 235, 0.15) !important;
+}
+
 @keyframes fapCellPulseAnim {
   0% {
     transform: scale(1);
@@ -3919,6 +3926,25 @@ button:focus-visible, a:focus-visible {
   white-space: nowrap;
 }
 
+.fap-diff-tag-ocr {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #1d4ed8;
+  color: #ffffff;
+  font-size: 8.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+  line-height: 1.2;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+  white-space: nowrap;
+}
+
 .fap-diff-tag-dot {
   width: 5px;
   height: 5px;
@@ -3926,6 +3952,10 @@ button:focus-visible, a:focus-visible {
   background: #fde047;
   display: inline-block;
   animation: pulseDot 1.5s infinite;
+}
+
+.fap-diff-tag-dot-ocr {
+  background: #93c5fd !important;
 }
 
 @keyframes pulseDot {

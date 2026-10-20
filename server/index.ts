@@ -676,6 +676,11 @@ async function removeStoredDocument(key:string){
 
 app.get('/api/v1/applications/:id/fap-comparison', async (req, res) => {
   const id = String(req.params.id);
+  const docs = await readApplicationDocuments(id);
+  const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
+  if (!fapCheck || !fapCheck.files || fapCheck.files.length === 0) {
+    return res.json({ status: 'success', comparison: null });
+  }
   const lock = await getSubmitLock(id);
   res.json({ status: 'success', comparison: lock.ocrComparison || null });
 });

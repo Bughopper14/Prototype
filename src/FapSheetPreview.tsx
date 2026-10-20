@@ -82,6 +82,7 @@ export interface FapSheetPreviewProps {
   hideToolbar?: boolean;
   isComparison?: boolean;
   diffs?: Array<{ field: string; label: string; oldValue: string; newValue: string }>;
+  diffSide?: 'system' | 'ocr';
   onDiffClick?: (field: string) => void;
   externalZoom?: number;
   onZoomChange?: (z: number) => void;
@@ -351,12 +352,24 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const getDiffClass = (key: string, baseClass = 'exact-fap-box highlight-dynamic') => {
     const diff = getDiff(key);
     if (!diff) return baseClass;
-    return `${baseClass} fap-diff-cell-highlight`;
+    const sideClass = props.diffSide === 'ocr' ? 'fap-diff-cell-ocr' : 'fap-diff-cell-system';
+    return `${baseClass} fap-diff-cell-highlight ${sideClass}`;
   };
 
   const renderDiffBadge = (key: string) => {
     const diff = getDiff(key);
     if (!diff) return null;
+    if (props.diffSide === 'ocr') {
+      return (
+        <span
+          className="fap-diff-tag-ocr"
+          title={`Nilai Dokumen Fisik (OCR): "${diff.newValue}"\nNilai di Database Sistem: "${diff.oldValue || '—'}"`}
+        >
+          <span className="fap-diff-tag-dot fap-diff-tag-dot-ocr" />
+          Sistem: {diff.oldValue || '—'}
+        </span>
+      );
+    }
     return (
       <span
         className="fap-diff-tag-system"

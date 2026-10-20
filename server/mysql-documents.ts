@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import path from 'node:path';
 import type {PoolConnection} from 'mysql2/promise';
 import {pool} from './mysql-store';
 import {auditTable} from './mysql-users';
@@ -86,11 +87,16 @@ export async function uploadApplicationDocument(id:string,checklistId:string,fil
   ensure(docs.length,'Checklist item not found',404);
   const targetChecklistId = docs[0].id;
   const key=crypto.randomUUID(),fileId=crypto.randomUUID();await store(key);
-  await c.execute('INSERT INTO application_document_file (id,checklist_id,file_name,file_key,file_size,mime_type,uploaded_by) VALUES (?,?,?,?,?,?,?)',[fileId,targetChecklistId,file.originalname,key,file.size,file.mimetype,actorId]);
+  const ext = path.extname(file.originalname);
+  const base = path.basename(file.originalname, ext);
+  const appHash = crypto.createHash('md5').update(id).digest('hex').substring(0, 6).toUpperCase();
+  const nowStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const storedFileName = file.originalname.includes(appHash) ? file.originalname : `${base}_[${appHash}]_${nowStr}${ext}`;
+  await c.execute('INSERT INTO application_document_file (id,checklist_id,file_name,file_key,file_size,mime_type,uploaded_by) VALUES (?,?,?,?,?,?,?)',[fileId,targetChecklistId,storedFileName,key,file.size,file.mimetype,actorId]);
   await c.execute("UPDATE application_document_checklist SET status='UPLOADED',checked_by_mkt=1,checked_by_bs=0,checked_by_ca=0,checked_by_legal=0,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?",[targetChecklistId]);
   await c.commit();
   try{await syncSubmitLock(id);}catch{}
-  return {id:fileId,checklistId:targetChecklistId,fileName:file.originalname,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
+  return {id:fileId,checklistId:targetChecklistId,fileName:storedFileName,fileKey:key,fileSize:file.size,mimeType:file.mimetype,uploadedBy:actorId};
  }catch(e){await c.rollback();throw e;}finally{c.release();}
 }
 export async function deleteApplicationDocumentFile(id:string,fileId:string,removeStoredFile:(key:string)=>Promise<void>){
@@ -151,6 +157,7 @@ export async function syncSubmitLock(applicationId:string){
    ON DUPLICATE KEY UPDATE
      is_locked = VALUES(is_locked),
      fap_doc_uploaded = VALUES(fap_doc_uploaded),
+     ocr_comparison_json = IF(VALUES(fap_doc_uploaded) = 0, NULL, ocr_comparison_json),
      unlocked_at = IF(VALUES(is_locked) = 0, COALESCE(unlocked_at, CURRENT_TIMESTAMP(3)), NULL),
      updated_at = CURRENT_TIMESTAMP(3)
   `,[applicationId,isLocked,hasUploaded?1:0,hasUploaded?new Date():null]);
