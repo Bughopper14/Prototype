@@ -120,28 +120,30 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         const newPhone = String(d.phone || d.phoneFax || '').trim();
         const newTanggal = String(d.tanggal_terbit || d.establishmentDate || '').trim();
 
-        // OVERWRITE fields on the right panel
-        setFormData({
-          nib: newNib,
-          companyName: newCompanyName,
-          alamat: rawAddress,
-          province: newProvince,
-          city: newCity,
-          district: newDistrict,
-          village: newVillage,
-          postalCode: newPostal,
-          email: newEmail,
-          phone: newPhone,
-          tanggalTerbit: newTanggal,
-          rt: newRt,
-          rw: newRw
-        });
-        setRawText(rawAddress || JSON.stringify(d, null, 2));
-        if (notify) {
-          notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
+        if (newNib || newCompanyName || rawAddress || newEmail || newPhone || newTanggal) {
+          // OVERWRITE fields on the right panel
+          setFormData({
+            nib: newNib,
+            companyName: newCompanyName,
+            alamat: rawAddress,
+            province: newProvince,
+            city: newCity,
+            district: newDistrict,
+            village: newVillage,
+            postalCode: newPostal,
+            email: newEmail,
+            phone: newPhone,
+            tanggalTerbit: newTanggal,
+            rt: newRt,
+            rw: newRw
+          });
+          setRawText(rawAddress || JSON.stringify(d, null, 2));
+          if (notify) {
+            notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
+          }
+          setOcrLoading(false);
+          return;
         }
-        setOcrLoading(false);
-        return;
       }
     } catch (backendErr: any) {
       console.warn('Backend OCR scan failed, attempting client-side fallback:', backendErr);
@@ -257,7 +259,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
+        padding: '24px',
         boxSizing: 'border-box'
       }}
     >
@@ -265,15 +267,16 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
         style={{
-          width: '960px',
-          maxWidth: '96vw',
-          maxHeight: '92vh',
+          width: 'min(1040px, 90vw)',
+          maxWidth: '90vw',
+          maxHeight: '86vh',
+          height: 'auto',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
           background: '#ffffff',
-          borderRadius: '12px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
+          borderRadius: '14px',
+          boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.45)',
           overflow: 'hidden',
           position: 'relative',
           zIndex: 100000
@@ -281,12 +284,13 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
       >
         {/* MODAL HEADER */}
         <div style={{
-          padding: '16px 20px',
+          padding: '14px 20px',
           borderBottom: '1px solid #e2e8f0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: '#f8fafc'
+          background: '#f8fafc',
+          flexShrink: 0
         }}>
           <div style={{display:'flex', alignItems:'center', gap: 10}}>
             <div style={{
@@ -317,11 +321,14 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
 
         {/* MODAL BODY */}
         <div style={{
-          padding: '20px',
+          padding: '16px 20px',
           overflowY: 'auto',
+          maxHeight: 'calc(86vh - 130px)',
           display: 'grid',
-          gridTemplateColumns: 'minmax(280px, 1fr) minmax(420px, 1.4fr)',
-          gap: 20
+          gridTemplateColumns: 'minmax(280px, 1fr) minmax(400px, 1.35fr)',
+          gap: 18,
+          flex: '1 1 auto',
+          minHeight: 0
         }}>
           {/* LEFT: UPLOAD & FILE ZONE */}
           <div style={{display:'flex', flexDirection:'column', gap: 14}}>
