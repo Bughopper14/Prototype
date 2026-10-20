@@ -1840,14 +1840,6 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-facility')}>4. Fasilitas & Fixed Assets</button>
               <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-proposal')}>5. Nilai Pembiayaan</button>
             </div>
-            {activeFiles.length > 0 && fapComparison?.diffs && fapComparison.diffs.length > 0 && (
-              <div className="fap-nav-right">
-                <span className="fap-nav-diff-counter" title="Perbedaan data terdeteksi antara sistem dan hasil OCR dokumen fisik">
-                  <AlertTriangle size={12} color="#b45309" />
-                  <strong>{fapComparison.diffs.length}</strong> Perbedaan Terdeteksi OCR
-                </span>
-              </div>
-            )}
           </div>
 
           {/* 50 / 50 Comparison Split Grid */}
