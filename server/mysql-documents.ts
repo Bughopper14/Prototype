@@ -150,7 +150,7 @@ export async function syncSubmitLock(applicationId:string){
   const hasUploaded=Number(rows[0]?.file_count||0)>0;
   const isLocked=hasUploaded?0:1;
   const [appCheck] = await pool.execute<any[]>('SELECT application_id FROM all_applications WHERE application_id = ?', [applicationId]);
-  if (!appCheck.length) return {isLocked, fapDocUploaded: hasUploaded ? 1 : 0, ocrComparison: null};
+  if (!appCheck.length) return {isLocked, fapDocUploaded: hasUploaded ? 1 : 0, stage: 'FAP_STAGE', ocrComparison: null};
   await pool.execute(`
    INSERT INTO application_submit_lock (application_id, is_locked, stage, fap_doc_uploaded, unlocked_at)
    VALUES (?, ?, 'FAP_STAGE', ?, ?)
@@ -161,10 +161,10 @@ export async function syncSubmitLock(applicationId:string){
      unlocked_at = IF(VALUES(is_locked) = 0, COALESCE(unlocked_at, CURRENT_TIMESTAMP(3)), NULL),
      updated_at = CURRENT_TIMESTAMP(3)
   `,[applicationId,isLocked,hasUploaded?1:0,hasUploaded?new Date():null]);
-  return {isLocked,fapDocUploaded:hasUploaded?1:0,ocrComparison:null};
+  return {isLocked,fapDocUploaded:hasUploaded?1:0,stage:'FAP_STAGE',ocrComparison:null};
  }catch(err){
   console.warn('syncSubmitLock error:',err);
-  return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
+  return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null};
  }
 }
 
@@ -179,15 +179,20 @@ export async function saveFapComparison(applicationId:string,comparison:any){
 }
 
 export async function getSubmitLock(applicationId:string){
- if(!pool)return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
+ if(!pool)return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null};
  try{
   const [rows]=await pool.execute<any[]>('SELECT * FROM application_submit_lock WHERE application_id=?',[applicationId]);
   if(!rows.length)return await syncSubmitLock(applicationId);
   let ocrComparison=null;
   if(rows[0].ocr_comparison_json){try{ocrComparison=JSON.parse(rows[0].ocr_comparison_json);}catch{}}
-  return {isLocked:Number(rows[0].is_locked),fapDocUploaded:Number(rows[0].fap_doc_uploaded),ocrComparison};
+  return {
+    isLocked:Number(rows[0].is_locked),
+    fapDocUploaded:Number(rows[0].fap_doc_uploaded),
+    stage:rows[0].stage||'FAP_STAGE',
+    ocrComparison
+  };
  }catch{
-  return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
+  return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null};
  }
 }
 

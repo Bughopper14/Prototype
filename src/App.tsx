@@ -681,7 +681,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
  const hasSignedFap = Boolean(fapChk && Array.isArray(fapChk.files) && fapChk.files.length > 0);
  const isDbLocked = a.submitLock !== undefined ? (Number(a.submitLock.isLocked) === 1) : !hasSignedFap;
   const isSubmitLocked = !draft.isNew && isDbLocked;
- const isPreAnalysisReached = hasSignedFap || a.stage === 'Pre-analysis' || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
+ const isPreAnalysisReached = (a.stage === 'Pre-analysis' || draft.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
  const currentAppStage = isPreAnalysisReached ? 'Pre-analysis' : 'FAP Stage';
 
  const tabs=['Customer & PIC','Stakeholders','Business & banks','Financing & units','Financial statements','Legal','Documents','Activity'];

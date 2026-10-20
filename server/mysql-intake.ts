@@ -145,9 +145,18 @@ export async function migrateCustomerPicLocations(){
 }
 
 function listSelect(){
- return `SELECT a.application_id AS id,f.customer_id,f.customer_category,f.application_date,COALESCE(f.fap_registration_number, 'DRAFT') AS fap_number,COALESCE(f.company_name, 'No Company Name') AS company_name,f.company_type,f.nib,f.nib_date,f.npwp,f.establishment_act_no,f.establishment_date,f.branch_code,f.company_address,f.city,f.province,f.postal_code,f.experience_years,f.experience_months,COALESCE(p.application_status, 'DRAFT') AS status,p.skt_no,p.sppkp_no,p.phone_fax,p.email,p.website,p.main_business,p.location_status,p.repayment_source,p.latest_deed_no,p.latest_deed_date,p.industry_segment,p.business_role,p.asset_summary_he_liu_gong,p.asset_summary_truck_liu_gong,p.asset_summary_he_non_liu_gong,p.asset_summary_truck_non_liu_gong,fd.financing_value,fd.tenor_months,fd.financing_method,(SELECT COUNT(*) FROM application_document_checklist d WHERE d.application_id=a.application_id AND d.status='VERIFIED') AS verified_docs,(SELECT COUNT(*) FROM application_document_checklist d WHERE d.application_id=a.application_id) AS total_docs,a.created_at FROM all_applications a LEFT JOIN new_application_fap_stage f ON f.id_fap_stage=a.id_fap_stage LEFT JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis LEFT JOIN financing_detail fd ON fd.application_id=a.application_id AND fd.deleted_at IS NULL ORDER BY a.created_at DESC,a.application_id`;
+ return `SELECT a.application_id AS id,f.customer_id,f.customer_category,f.application_date,COALESCE(f.fap_registration_number, 'DRAFT') AS fap_number,COALESCE(f.company_name, 'No Company Name') AS company_name,f.company_type,f.nib,f.nib_date,f.npwp,f.establishment_act_no,f.establishment_date,f.branch_code,f.company_address,f.city,f.province,f.postal_code,f.experience_years,f.experience_months,COALESCE(p.application_status, 'DRAFT') AS status,COALESCE(l.stage, 'FAP_STAGE') AS lock_stage,p.skt_no,p.sppkp_no,p.phone_fax,p.email,p.website,p.main_business,p.location_status,p.repayment_source,p.latest_deed_no,p.latest_deed_date,p.industry_segment,p.business_role,p.asset_summary_he_liu_gong,p.asset_summary_truck_liu_gong,p.asset_summary_he_non_liu_gong,p.asset_summary_truck_non_liu_gong,fd.financing_value,fd.tenor_months,fd.financing_method,(SELECT COUNT(*) FROM application_document_checklist d WHERE d.application_id=a.application_id AND d.status='VERIFIED') AS verified_docs,(SELECT COUNT(*) FROM application_document_checklist d WHERE d.application_id=a.application_id) AS total_docs,a.created_at FROM all_applications a LEFT JOIN new_application_fap_stage f ON f.id_fap_stage=a.id_fap_stage LEFT JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis LEFT JOIN application_submit_lock l ON l.application_id=a.application_id LEFT JOIN financing_detail fd ON fd.application_id=a.application_id AND fd.deleted_at IS NULL ORDER BY a.created_at DESC,a.application_id`;
 }
-export async function listIntake(){if(!pool)return [];const [rows]=await pool.query<any[]>(listSelect());return rows;}
+export async function listIntake(){
+ if(!pool)return [];
+ const [rows]=await pool.query<any[]>(listSelect());
+ return rows.map(r => ({
+  ...r,
+  stage: (r.lock_stage === 'PRE_ANALYSIS' || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(r.status))
+    ? 'Pre-analysis'
+    : 'FAP Stage'
+ }));
+}
 
 export async function intakeDetail(id:string){
  if(!pool)return null;
@@ -175,7 +184,11 @@ export async function intakeDetail(id:string){
    legal:mandatoryList.some(r=>r.section==='Legal'&&Boolean(r.mandatory)),
    documents:Boolean(docRows[0]?.is_doc_mandatory)
  };
- return {...profile,id:row.application_id,companyName:customer.companyName,customerId:row.customer_id,customer,establishmentActNo:customer.establishmentActNo,establishmentDate:customer.establishmentDate,nibDate:customer.nibDate,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||legal.deeds[0]?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),mandatoryConfig,submitLock:await getSubmitLock(id),approvalLogs:[],signoffs:[]};
+ const submitLock = await getSubmitLock(id);
+ const stage = (submitLock.stage === 'PRE_ANALYSIS' || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(row.application_status))
+   ? 'Pre-analysis'
+   : 'FAP Stage';
+ return {...profile,id:row.application_id,companyName:customer.companyName,customerId:row.customer_id,customer,establishmentActNo:customer.establishmentActNo,establishmentDate:customer.establishmentDate,nibDate:customer.nibDate,fapNumber:row.fap_registration_number,applicationDate:databaseValue(row.application_date,'date'),createdAt:row.app_created_at,updatedAt:row.app_updated_at||row.updated_at,status:row.application_status,stage,legal,pic,stakeholders:legal.deeds.find((d:any)=>d.id===legal.selectedDeedId)?.stakeholders||legal.deeds[0]?.stakeholders||[],...await readBusiness(id),...await readFinancialStatements(id),documentChecks:await readApplicationDocuments(id),mandatoryConfig,submitLock,approvalLogs:[],signoffs:[]};
 }
 
 export async function intakeCustomers(){
