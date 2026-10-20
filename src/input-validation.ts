@@ -45,7 +45,23 @@ export function validateInput(value:any,now=new Date(),requireCompleteOwnership=
   if(Array.isArray(node.projects))node.projects.forEach((r:any)=>required(r,['projectOwner','projectLocation','projectRole','contractStatus'],'Project contract'));
   if(Array.isArray(node.bankReferences))node.bankReferences.forEach((r:any)=>required(r,['bankOrFinInstitution','currency','creditFacility','monthlyInstallment','yearStarted','interestRate','paymentRecord','facilityStatus'],'Bank facility'));
   if(Array.isArray(node.units))node.units.forEach((r:any)=>required(r,['quantity','unitCategory','brand','modelName'],'Equipment unit'));
-  if(node.idNumber){const id=String(node.idNumber);const idType=String(node.idType||(node.stakeholderType==='CORPORATE'?'NPWP':node.nationalityType==='WNA'||node.citizenship==='FOREIGN'?'PASSPORT':'KTP')).toUpperCase();if(idType==='NPWP'){if(!/^\d{15,16}$/.test(id.replace(/[.\-\s]/g,'')))throw Error('NPWP stakeholder must be 15 or 16 digits.');}else if(idType==='PASSPORT'){if(!/^[A-Za-z0-9]{5,20}$/.test(id))throw Error('Passport number must be 5–20 alphanumeric characters.');}else if(idType==='KITAS'){if(!/^[A-Za-z0-9]{5,25}$/.test(id.replace(/\s/g,'')))throw Error('KITAS number must be 5–25 alphanumeric characters.');}else if(idType==='KTP'){if(!/^\d{16}$/.test(id))throw Error('KTP stakeholder must be exactly 16 digits.');}}
+  if(node.idNumber){
+    const id=String(node.idNumber).trim();
+    const rawType=String(node.idType||'').toUpperCase();
+    const idType = rawType === 'PASSPORT_KITAS' ? 'PASSPORT' : (rawType === 'KTP_NPWP' ? 'KTP' : rawType);
+    if(idType==='NPWP'){if(!/^\d{15,16}$/.test(id.replace(/[.\-\s]/g,'')))throw Error('NPWP stakeholder must be 15 or 16 digits.');}
+    else if(idType==='PASSPORT'){if(!/^[A-Za-z0-9]{5,20}$/.test(id))throw Error('Passport number must be 5–20 alphanumeric characters.');}
+    else if(idType==='KITAS'){if(!/^[A-Za-z0-9]{5,25}$/.test(id.replace(/\s/g,'')))throw Error('KITAS number must be 5–25 alphanumeric characters.');}
+    else if(idType==='KTP'){if(!/^\d{16}$/.test(id.replace(/\D/g,'')))throw Error('KTP stakeholder must be exactly 16 digits.');}
+  }
+  if(node.idNumberSecondary){
+    const secId=String(node.idNumberSecondary).trim();
+    const rawType=String(node.idType||'').toUpperCase();
+    if(rawType==='KTP_NPWP'||rawType==='NPWP'){
+      const cleanDigits=secId.replace(/\D/g,'');
+      if(cleanDigits.length>0&&cleanDigits.length<15)throw Error('NPWP stakeholder must be 15 or 16 digits.');
+    }
+  }
   if(node.deedDate&&node.ministerialDecreeDate&&String(node.ministerialDecreeDate).slice(0,10)<String(node.deedDate).slice(0,10))throw Error('Ministerial Decree date cannot be earlier than the deed date.');
     if(node.registrationDate&&node.expiredDate&&String(node.expiredDate).slice(0,10)<String(node.registrationDate).slice(0,10))throw Error('Expiry date cannot be earlier than the registration date.');
     if(node.financingValue!==undefined&&node.downPaymentValue!==undefined&&Number(node.financingValue)>0&&Number(node.downPaymentValue)>=Number(node.financingValue))throw Error('Down payment must be less than the financing value.');

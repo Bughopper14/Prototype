@@ -252,7 +252,29 @@ function stakeholderEditorValues(s:any){
   const idNumberSecondary = s.idNumberSecondary || s.taxId || s.npwp || s.permitNumber || s.niora || '';
   return {...s,representativeType:s.representativeType||'NONE',signatory:s.signatory||'NONE',idType:resolvedIdType,idNumberSecondary,title:s.title||'NONE',firstName:s.firstName||parts[0]||'',middleName:s.middleName||parts.slice(1,-1).join(' '),lastName:s.lastName|| (parts.length>1?parts.at(-1):''),maritalStatus:s.maritalStatus||'NONE',designation:s.designation||s.position||'NONE',email:s.email||'',mobilePhone:s.mobilePhone||'',gender:s.gender||'NONE',sharePercentage:s.sharePercentage??0,depositedCapital:s.depositedCapital??s.shareAmount??0,primaryCapital:s.primaryCapital??0,citizenship:s.citizenship||(s.nationalityType==='WNA'?'FOREIGN':'INDONESIAN'),country:s.country||'Indonesia'};
 }
-function stakeholderForSave(s:any){const first=s.firstName||'',last=s.lastName||'',name=[first,s.middleName,last].map((x:string)=>String(x||'').trim()).filter(Boolean).join(' ')||s.name||'';return {...s,name,position:s.designation&&s.designation!=='NONE'?s.designation:s.position||'Shareholder',nationalityType:s.citizenship==='INDONESIAN'?'WNI':'WNA',shareAmount:s.depositedCapital??0,sharePercentage:s.sharePercentage??0,taxNumber:null};}
+function stakeholderForSave(s:any){
+  const first=s.firstName||'',last=s.lastName||'',name=[first,s.middleName,last].map((x:string)=>String(x||'').trim()).filter(Boolean).join(' ')||s.name||'';
+  const rawIdType = String(s.idType || '').toUpperCase().trim();
+  const idType = rawIdType === 'PASSPORT_KITAS' || ['PASSPORT', 'KITAS'].includes(rawIdType)
+    ? 'PASSPORT_KITAS'
+    : rawIdType === 'KTP_NPWP' || ['KTP', 'NPWP'].includes(rawIdType)
+    ? 'KTP_NPWP'
+    : rawIdType === 'NONE'
+    ? 'NONE'
+    : 'NONE';
+  return {
+    ...s,
+    name,
+    position:s.designation&&s.designation!=='NONE'?s.designation:s.position||'Shareholder',
+    nationalityType:s.citizenship==='FOREIGN'?'WNA':'WNI',
+    idType,
+    idNumber: s.idNumber || s.nik || s.passportNumber || '',
+    idNumberSecondary: s.idNumberSecondary || s.taxId || s.npwp || s.permitNumber || '',
+    taxNumber: s.idNumberSecondary || s.taxId || s.npwp || null,
+    shareAmount:s.depositedCapital??0,
+    sharePercentage:s.sharePercentage??0
+  };
+}
 function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustomerCreated,notify}:{value:any,user:any,customers?:any[],initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,onCustomerCreated?:(c:any)=>void,notify:(s:string)=>void}){
   const master=useMasterData();
   const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(a.isNew?'NEW':(a.customerId?'EXISTING':'NEW')));
@@ -2102,21 +2124,40 @@ function StakeholderDetailDialog({
 
             <div className="detail-key-value-list">
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Tipe & No. Identitas</span>
+                <span className="detail-kv-lbl">ID Utama ({item.idType === 'PASSPORT_KITAS' ? 'PASSPORT' : 'KTP'})</span>
                 <div className="detail-kv-val-with-copy">
-                  <span className="detail-id-number">{item.idType || 'KTP'} : {item.idNumber || '—'}</span>
+                  <span className="detail-id-number">{item.idType === 'PASSPORT_KITAS' ? 'Passport' : 'KTP'} : {item.idNumber || '—'}</span>
                   {item.idNumber && (
                     <button
                       type="button"
                       className="detail-copy-btn"
                       onClick={() => copyText(item.idNumber, 'idNumber')}
-                      title="Salin No. Identitas"
+                      title="Salin No. Identitas Utama"
                     >
                       {copied === 'idNumber' ? <Check size={12} color="#2563eb" /> : <Copy size={12} />}
                     </button>
                   )}
                 </div>
               </div>
+
+              {(item.idNumberSecondary || item.taxId || item.npwp) && (
+                <div className="detail-kv-item">
+                  <span className="detail-kv-lbl">ID Sekunder ({item.idType === 'PASSPORT_KITAS' ? 'KITAS' : 'NPWP'})</span>
+                  <div className="detail-kv-val-with-copy">
+                    <span className="detail-id-number">{item.idType === 'PASSPORT_KITAS' ? 'KITAS' : 'NPWP'} : {item.idNumberSecondary || item.taxId || item.npwp || '—'}</span>
+                    {(item.idNumberSecondary || item.taxId || item.npwp) && (
+                      <button
+                        type="button"
+                        className="detail-copy-btn"
+                        onClick={() => copyText(item.idNumberSecondary || item.taxId || item.npwp, 'idNumberSec')}
+                        title="Salin No. Identitas Sekunder"
+                      >
+                        {copied === 'idNumberSec' ? <Check size={12} color="#2563eb" /> : <Copy size={12} />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div className="detail-kv-item">
                 <span className="detail-kv-lbl">Tempat & Tanggal Lahir</span>
@@ -2256,11 +2297,33 @@ function StakeholderModalDialog({
   const curVal = modal.value || {};
   const isNewStakeholder = modal.index < 0;
 
+  const rawIdType = String(curVal.idType || '').toUpperCase().trim();
+  const activeIdGroup: 'KTP_NPWP' | 'PASSPORT_KITAS' | 'NONE' = 
+    rawIdType === 'NONE'
+      ? 'NONE'
+      : rawIdType === 'PASSPORT_KITAS' || ['PASSPORT', 'KITAS'].includes(rawIdType)
+      ? 'PASSPORT_KITAS'
+      : rawIdType === 'KTP_NPWP' || ['KTP', 'NPWP'].includes(rawIdType)
+      ? 'KTP_NPWP'
+      : curVal.passportUrl || curVal.kitasUrl || curVal.nationalityType === 'WNA' || curVal.citizenship === 'FOREIGN'
+      ? 'PASSPORT_KITAS'
+      : curVal.ktpUrl || curVal.npwpUrl
+      ? 'KTP_NPWP'
+      : 'NONE';
+
+  const formValue = useMemo(() => {
+    if (activeIdGroup !== 'NONE' && curVal.idType !== activeIdGroup) {
+      return { ...curVal, idType: activeIdGroup };
+    }
+    return curVal;
+  }, [curVal, activeIdGroup]);
+
   const [docType, setDocType] = useState<StakeholderDocType>(() => {
-    const v = modal.value || {};
-    if (v.idType === 'PASSPORT' || v.passportUrl) return 'PASSPORT';
-    if (v.idType === 'NPWP' || v.npwpUrl) return 'NPWP';
-    if (v.idType === 'KITAS' || v.kitasUrl) return 'KITAS';
+    if (activeIdGroup === 'PASSPORT_KITAS') {
+      if (curVal.kitasUrl && !curVal.passportUrl) return 'KITAS';
+      return 'PASSPORT';
+    }
+    if (curVal.npwpUrl && !curVal.ktpUrl) return 'NPWP';
     return 'KTP';
   });
 
@@ -2269,44 +2332,55 @@ function StakeholderModalDialog({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
 
-  // Check if stakeholder already has documents / OCR uploaded
-  const hasExistingDocs = Boolean(
-    curVal.ktpUrl || curVal.passportUrl || curVal.npwpUrl || curVal.kitasUrl ||
-    curVal.ktpOcrText || curVal.passportOcrText || curVal.npwpOcrText || curVal.kitasOcrText
-  );
+  // Right pane is visible only when an ID document group (KTP - NPWP or PASSPORT - KITAS) is active
+  const isRightPaneVisible = activeIdGroup === 'KTP_NPWP' || activeIdGroup === 'PASSPORT_KITAS';
 
-  // Check if an ID type other than NONE is selected in the dropdown
-  const hasSelectedIdDoc = Boolean(curVal.idType && String(curVal.idType).toUpperCase() !== 'NONE');
+  // Determine allowed document tabs based on ID Group (only 2 tabs per group)
+  const allowedDocTypes: StakeholderDocType[] = activeIdGroup === 'PASSPORT_KITAS'
+    ? ['PASSPORT', 'KITAS']
+    : activeIdGroup === 'KTP_NPWP'
+    ? ['KTP', 'NPWP']
+    : [];
 
-  // For New Stakeholder: right menu does NOT appear initially unless an ID document is selected or docs exist.
-  // For Edit Stakeholder: right menu appears if docs exist or if an ID doc is selected.
-  const isRightPaneVisible = (!isNewStakeholder && hasExistingDocs) || hasSelectedIdDoc;
-
-  // Sync docType tab whenever curVal.idType changes (e.g. from dropdown)
+  // Sync docType tab whenever activeIdGroup changes (e.g. from dropdown)
   useEffect(() => {
-    if (curVal.idType) {
-      const upper = String(curVal.idType).toUpperCase();
-      if (['KTP', 'PASSPORT', 'NPWP', 'KITAS'].includes(upper)) {
-        setDocType(upper as StakeholderDocType);
+    if (activeIdGroup === 'PASSPORT_KITAS') {
+      if (docType !== 'PASSPORT' && docType !== 'KITAS') {
+        setDocType('PASSPORT');
+      }
+    } else if (activeIdGroup === 'KTP_NPWP') {
+      if (docType !== 'KTP' && docType !== 'NPWP') {
+        setDocType('KTP');
       }
     }
-  }, [curVal.idType]);
+  }, [activeIdGroup]);
 
   const handleSelectOption = (key: string, val: string) => {
     if (key === 'idType') {
       const upper = String(val).toUpperCase();
-      if (['KTP', 'PASSPORT', 'NPWP', 'KITAS'].includes(upper)) {
-        setDocType(upper as StakeholderDocType);
+      if (upper === 'PASSPORT_KITAS') {
+        setDocType('PASSPORT');
+        onChangeValue({
+          ...curVal,
+          idType: 'PASSPORT_KITAS'
+        });
+      } else if (upper === 'KTP_NPWP') {
+        setDocType('KTP');
+        onChangeValue({
+          ...curVal,
+          idType: 'KTP_NPWP'
+        });
+      } else {
+        onChangeValue({
+          ...curVal,
+          idType: 'NONE'
+        });
       }
     }
   };
 
   const handleSelectDocTypeTab = (t: StakeholderDocType) => {
     setDocType(t);
-    onChangeValue({
-      ...curVal,
-      idType: t
-    });
   };
 
   // Auto-synchronize age whenever dateOfBirth changes
@@ -2396,7 +2470,8 @@ function StakeholderModalDialog({
             ktpOcrText: extracted.rawText || '',
             ktpData: extracted
           };
-          if (extracted.nik) { nextVal.idNumber = extracted.nik; nextVal.idType = 'KTP'; }
+          if (extracted.nik) { nextVal.idNumber = extracted.nik; }
+          nextVal.idType = 'KTP_NPWP';
           if (extracted.nama) {
             nextVal.name = extracted.nama;
             nextVal.firstName = extracted.firstName || '';
@@ -2441,8 +2516,8 @@ function StakeholderModalDialog({
           };
           if (extracted.passportNumber) {
             nextVal.idNumber = extracted.passportNumber;
-            nextVal.idType = 'PASSPORT';
           }
+          nextVal.idType = 'PASSPORT_KITAS';
           if (extracted.fullName || extracted.surname || extracted.givenNames) {
             nextVal.name = extracted.fullName || [extracted.givenNames, extracted.surname].filter(Boolean).join(' ');
             nextVal.firstName = extracted.givenNames || '';
@@ -2472,13 +2547,14 @@ function StakeholderModalDialog({
             npwpData: extracted
           };
           if (extracted.npwpNumber || extracted.rawNpwp) {
+            nextVal.idNumberSecondary = extracted.npwpNumber || extracted.rawNpwp;
             nextVal.taxId = extracted.npwpNumber || extracted.rawNpwp;
             nextVal.npwp = extracted.npwpNumber || extracted.rawNpwp;
           }
           if (extracted.nik && !nextVal.idNumber) {
             nextVal.idNumber = extracted.nik;
-            nextVal.idType = 'KTP';
           }
+          nextVal.idType = 'KTP_NPWP';
           if (extracted.nama && !nextVal.name) {
             nextVal.name = extracted.nama;
             const sn = splitPersonName(extracted.nama);
@@ -2499,9 +2575,9 @@ function StakeholderModalDialog({
             kitasData: extracted
           };
           if (extracted.permitNumber || extracted.niora) {
-            nextVal.idNumber = extracted.permitNumber || extracted.niora;
-            nextVal.idType = 'KITAS';
+            nextVal.idNumberSecondary = extracted.permitNumber || extracted.niora;
           }
+          nextVal.idType = 'PASSPORT_KITAS';
           if (extracted.nama) {
             nextVal.name = extracted.nama;
             const sn = splitPersonName(extracted.nama);
@@ -2536,7 +2612,8 @@ function StakeholderModalDialog({
     let nextVal = { ...curVal };
     if (docType === 'KTP') {
       const p = ktpParsed;
-      if (p.nik) { nextVal.idNumber = p.nik; nextVal.idType = 'KTP'; }
+      if (p.nik) { nextVal.idNumber = p.nik; }
+      nextVal.idType = 'KTP_NPWP';
       if (p.nama) {
         nextVal.name = p.nama;
         nextVal.firstName = p.firstName || '';
@@ -2573,8 +2650,8 @@ function StakeholderModalDialog({
       const p = passportParsed;
       if (p.passportNumber) {
         nextVal.idNumber = p.passportNumber;
-        nextVal.idType = 'PASSPORT';
       }
+      nextVal.idType = 'PASSPORT_KITAS';
       if (p.fullName || p.surname || p.givenNames) {
         nextVal.name = p.fullName || [p.givenNames, p.surname].filter(Boolean).join(' ');
         nextVal.firstName = p.givenNames || '';
@@ -2596,13 +2673,14 @@ function StakeholderModalDialog({
     } else if (docType === 'NPWP') {
       const p = npwpParsed;
       if (p.npwpNumber || p.rawNpwp) {
+        nextVal.idNumberSecondary = p.npwpNumber || p.rawNpwp;
         nextVal.taxId = p.npwpNumber || p.rawNpwp;
         nextVal.npwp = p.npwpNumber || p.rawNpwp;
       }
       if (p.nik && !nextVal.idNumber) {
         nextVal.idNumber = p.nik;
-        nextVal.idType = 'KTP';
       }
+      nextVal.idType = 'KTP_NPWP';
       if (p.nama && !nextVal.name) {
         nextVal.name = p.nama;
         const sn = splitPersonName(p.nama);
@@ -2615,9 +2693,9 @@ function StakeholderModalDialog({
     } else if (docType === 'KITAS') {
       const p = kitasParsed;
       if (p.permitNumber || p.niora) {
-        nextVal.idNumber = p.permitNumber || p.niora;
-        nextVal.idType = 'KITAS';
+        nextVal.idNumberSecondary = p.permitNumber || p.niora;
       }
+      nextVal.idType = 'PASSPORT_KITAS';
       if (p.nama) {
         nextVal.name = p.nama;
         const sn = splitPersonName(p.nama);
@@ -2689,8 +2767,41 @@ function StakeholderModalDialog({
 
           {formError && <div className="error" role="alert">{formError}</div>}
           <Fields
-            fields={fields}
-            value={curVal}
+            fields={fields.map(f => {
+              if (f.key === 'idType') {
+                return {
+                  ...f,
+                  options: ['NONE', 'KTP_NPWP', 'PASSPORT_KITAS'],
+                  optionLabels: {
+                    NONE: 'None',
+                    KTP_NPWP: 'KTP - NPWP',
+                    PASSPORT_KITAS: 'PASSPORT - KITAS'
+                  }
+                };
+              }
+              if (f.key === 'idNumber') {
+                return {
+                  ...f,
+                  label: activeIdGroup === 'KTP_NPWP'
+                    ? 'ID Number - KTP'
+                    : activeIdGroup === 'PASSPORT_KITAS'
+                    ? 'ID Number - PASSPORT'
+                    : 'ID Number - [KTP or PASSPORT]'
+                };
+              }
+              if (f.key === 'idNumberSecondary') {
+                return {
+                  ...f,
+                  label: activeIdGroup === 'KTP_NPWP'
+                    ? 'ID Number - NPWP'
+                    : activeIdGroup === 'PASSPORT_KITAS'
+                    ? 'ID Number - KITAS'
+                    : 'ID Number - [NPWP or KITAS]'
+                };
+              }
+              return f;
+            })}
+            value={formValue}
             disabled={editorLocked}
             onChange={onChangeValue}
             onSelectOption={handleSelectOption}
@@ -2702,7 +2813,7 @@ function StakeholderModalDialog({
           <div className="modal-side-preview-pane stakeholder-ktp-pane">
             {/* DOCUMENT TYPE SELECTOR TABS */}
             <div className="doc-type-tabs">
-              {(['KTP', 'PASSPORT', 'NPWP', 'KITAS'] as StakeholderDocType[]).map(t => {
+              {allowedDocTypes.map(t => {
                 const hasDoc = Boolean(docAssets[t].url);
                 return (
                   <button
@@ -3285,7 +3396,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
           };
           if (parsed.nik && (!currentVal.idNumber || currentVal.idNumber === '')) {
             nextVal.idNumber = parsed.nik;
-            nextVal.idType = 'KTP';
+            nextVal.idType = 'KTP_NPWP';
           }
           if (parsed.nama && (!currentVal.firstName || currentVal.firstName === '')) {
             nextVal.name = parsed.nama;
