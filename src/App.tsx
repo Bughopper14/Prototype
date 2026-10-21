@@ -1599,12 +1599,12 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     const el = document.getElementById(`fap-diff-cell-${fieldKey}`);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      el.classList.remove('fap-cell-diff-pulse');
+      el.classList.remove('fap-preview-sync-highlight');
       void el.offsetWidth;
-      el.classList.add('fap-cell-diff-pulse');
+      el.classList.add('fap-preview-sync-highlight');
       setTimeout(() => {
-        el.classList.remove('fap-cell-diff-pulse');
-      }, 5000);
+        el.classList.remove('fap-preview-sync-highlight');
+      }, 2500);
     }
   };
 
@@ -1625,10 +1625,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
           behavior: 'smooth'
         });
 
-        target.classList.remove('fap-cell-diff-pulse');
+        target.classList.remove('fap-preview-sync-highlight');
         void target.offsetWidth;
-        target.classList.add('fap-cell-diff-pulse');
-        setTimeout(() => target.classList.remove('fap-cell-diff-pulse'), 3500);
+        target.classList.add('fap-preview-sync-highlight');
+        setTimeout(() => target.classList.remove('fap-preview-sync-highlight'), 2500);
         scrolled = true;
       }
     });
@@ -1637,6 +1637,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       const el = document.getElementById(secId);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        el.classList.remove('fap-preview-sync-highlight');
+        void el.offsetWidth;
+        el.classList.add('fap-preview-sync-highlight');
+        setTimeout(() => el.classList.remove('fap-preview-sync-highlight'), 2500);
       }
     }
   };
@@ -3237,6 +3241,16 @@ function StakeholderDetailDialog({
                     item.postalCode || null
                   ].filter(Boolean).join(', ') || 'No address data recorded yet.'}
                 </p>
+                {(item.province || item.cityRegency || item.city || item.district || item.village || item.postalCode || item.rt || item.rw) && (
+                  <div style={{display:'flex',flexWrap:'wrap',gap:'6px 12px',marginTop:'6px',fontSize:'11.5px',color:'#475569'}}>
+                    {item.province && <span><b>Provinsi:</b> {item.province}</span>}
+                    {(item.cityRegency || item.city) && <span><b>Kab/Kota:</b> {item.cityRegency || item.city}</span>}
+                    {item.district && <span><b>Kecamatan:</b> {item.district}</span>}
+                    {item.village && <span><b>Kelurahan:</b> {item.village}</span>}
+                    {(item.rt || item.rw) && <span><b>RT/RW:</b> {item.rt || '-'}/{item.rw || '-'}</span>}
+                    {item.postalCode && <span><b>Kode Pos:</b> {item.postalCode}</span>}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -3440,6 +3454,27 @@ function StakeholderModalDialog({
     ktpParsed.maritalStatus = curVal.maritalStatus;
     ktpParsed.status = curVal.maritalStatus;
   }
+  if (curVal.address && (!ktpParsed.alamat || ktpParsed.alamat === '')) ktpParsed.alamat = curVal.address;
+  if (curVal.province && (!ktpParsed.province || ktpParsed.province === '')) ktpParsed.province = curVal.province;
+  if (curVal.cityRegency && (!ktpParsed.cityRegency || ktpParsed.cityRegency === '')) ktpParsed.cityRegency = curVal.cityRegency;
+  if (curVal.district && (!ktpParsed.kecamatan || ktpParsed.kecamatan === '')) {
+    ktpParsed.kecamatan = curVal.district;
+    ktpParsed.district = curVal.district;
+  }
+  if (curVal.village && (!ktpParsed.kelDesa || ktpParsed.kelDesa === '')) {
+    ktpParsed.kelDesa = curVal.village;
+    ktpParsed.village = curVal.village;
+  }
+  if (curVal.rt && (!ktpParsed.rt || ktpParsed.rt === '')) ktpParsed.rt = curVal.rt;
+  if (curVal.rw && (!ktpParsed.rw || ktpParsed.rw === '')) ktpParsed.rw = curVal.rw;
+  if ((ktpParsed.rt || ktpParsed.rw) && !ktpParsed.rtRw) {
+    ktpParsed.rtRw = `${ktpParsed.rt || ''}/${ktpParsed.rw || ''}`.replace(/^\/|\/$/g, '');
+  }
+  if (curVal.postalCode && (!ktpParsed.kodePos || ktpParsed.kodePos === '')) {
+    ktpParsed.kodePos = curVal.postalCode;
+    ktpParsed.postalCode = curVal.postalCode;
+  }
+  if (curVal.occupation && (!ktpParsed.pekerjaan || ktpParsed.pekerjaan === '')) ktpParsed.pekerjaan = curVal.occupation;
 
   const passportParsed: ParsedPassportData = {
     ...(curVal.passportData || {}),
@@ -4029,19 +4064,123 @@ function StakeholderModalDialog({
                   <span className="ktp-field-val">{ktpParsed.pekerjaan || '—'}</span>
                 </div>
 
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">AGAMA</span>
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.agama || '—'}</span>
+                </div>
+
                 <div className="ktp-field-tile full-width">
                   <div className="ktp-field-meta">
                     <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
-                    {ktpParsed.alamat && (
-                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('alamat', ktpParsed.alamat!)}>
+                    {(ktpParsed.alamat || ktpParsed.province) && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>{
+                        const full = [
+                          ktpParsed.alamat,
+                          ktpParsed.rtRw ? `RT/RW ${ktpParsed.rtRw}` : (ktpParsed.rt && ktpParsed.rw ? `RT ${ktpParsed.rt}/RW ${ktpParsed.rw}` : ''),
+                          ktpParsed.kelDesa || ktpParsed.village ? `Kel. ${ktpParsed.kelDesa || ktpParsed.village}` : '',
+                          ktpParsed.kecamatan || ktpParsed.district ? `Kec. ${ktpParsed.kecamatan || ktpParsed.district}` : '',
+                          ktpParsed.cityRegency || ktpParsed.city,
+                          ktpParsed.province,
+                          ktpParsed.kodePos || ktpParsed.postalCode
+                        ].filter(Boolean).join(', ');
+                        copyToClipboard('alamat', full || ktpParsed.alamat || '');
+                      }}>
                         {copiedKey==='alamat' ? <Check size={11}/> : <Copy size={11}/>}
                         {copiedKey==='alamat' ? 'Tersalin' : 'Salin'}
                       </button>
                     )}
                   </div>
                   <span className="ktp-field-val address-val">
-                    {[ktpParsed.alamat, ktpParsed.rtRw ? `RT/RW ${ktpParsed.rtRw}` : '', ktpParsed.kelDesa ? `Kel. ${ktpParsed.kelDesa}` : '', ktpParsed.kecamatan ? `Kec. ${ktpParsed.kecamatan}` : '', ktpParsed.cityRegency, ktpParsed.province].filter(Boolean).join(', ') || '—'}
+                    {[
+                      ktpParsed.alamat,
+                      ktpParsed.rtRw ? `RT/RW ${ktpParsed.rtRw}` : (ktpParsed.rt && ktpParsed.rw ? `RT ${ktpParsed.rt}/RW ${ktpParsed.rw}` : ''),
+                      ktpParsed.kelDesa || ktpParsed.village ? `Kel. ${ktpParsed.kelDesa || ktpParsed.village}` : '',
+                      ktpParsed.kecamatan || ktpParsed.district ? `Kec. ${ktpParsed.kecamatan || ktpParsed.district}` : '',
+                      ktpParsed.cityRegency || ktpParsed.city,
+                      ktpParsed.province,
+                      ktpParsed.kodePos || ktpParsed.postalCode
+                    ].filter(Boolean).join(', ') || '—'}
                   </span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">PROVINSI</span>
+                    {ktpParsed.province && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('prov', ktpParsed.province!)}>
+                        {copiedKey==='prov' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='prov' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.province || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KABUPATEN / KOTA</span>
+                    {(ktpParsed.cityRegency || ktpParsed.city) && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('city', (ktpParsed.cityRegency || ktpParsed.city)!)}>
+                        {copiedKey==='city' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='city' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.cityRegency || ktpParsed.city || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KECAMATAN</span>
+                    {(ktpParsed.kecamatan || ktpParsed.district) && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('kec', (ktpParsed.kecamatan || ktpParsed.district)!)}>
+                        {copiedKey==='kec' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='kec' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.kecamatan || ktpParsed.district || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KELURAHAN / DESA</span>
+                    {(ktpParsed.kelDesa || ktpParsed.village) && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('kel', (ktpParsed.kelDesa || ktpParsed.village)!)}>
+                        {copiedKey==='kel' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='kel' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.kelDesa || ktpParsed.village || '—'}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">RT / RW</span>
+                    {(ktpParsed.rtRw || (ktpParsed.rt && ktpParsed.rw)) && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('rtrw', (ktpParsed.rtRw || `${ktpParsed.rt}/${ktpParsed.rw}`)!)}>
+                        {copiedKey==='rtrw' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='rtrw' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.rtRw || (ktpParsed.rt && ktpParsed.rw ? `${ktpParsed.rt}/${ktpParsed.rw}` : (ktpParsed.rt ? `RT ${ktpParsed.rt}` : (ktpParsed.rw ? `RW ${ktpParsed.rw}` : '—')))}</span>
+                </div>
+
+                <div className="ktp-field-tile">
+                  <div className="ktp-field-meta">
+                    <span className="ktp-field-key">KODE POS</span>
+                    {(ktpParsed.kodePos || ktpParsed.postalCode) && (
+                      <button type="button" className="ktp-tile-copy" onClick={()=>copyToClipboard('kodepos', (ktpParsed.kodePos || ktpParsed.postalCode)!)}>
+                        {copiedKey==='kodepos' ? <Check size={11}/> : <Copy size={11}/>}
+                        {copiedKey==='kodepos' ? 'Tersalin' : 'Salin'}
+                      </button>
+                    )}
+                  </div>
+                  <span className="ktp-field-val">{ktpParsed.kodePos || ktpParsed.postalCode || '—'}</span>
                 </div>
               </div>
             )}

@@ -3936,24 +3936,25 @@ button:focus-visible, a:focus-visible {
 
 @keyframes fapCellPulseAnim {
   0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.8), 0 0 10px rgba(234, 179, 8, 0.8);
-    background-color: #fef08a;
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.5);
+    background-color: rgba(37, 99, 235, 0.12);
   }
-  50% {
-    transform: scale(1.04);
-    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0), 0 0 20px rgba(234, 179, 8, 0.9);
-    background-color: #fed7aa;
+  40% {
+    box-shadow: 0 0 0 10px rgba(37, 99, 235, 0.28);
+    background-color: rgba(37, 99, 235, 0.18);
   }
   100% {
-    transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0), 0 0 10px rgba(234, 179, 8, 0.4);
-    background-color: #fef08a;
+    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    background-color: transparent;
   }
 }
 
 .fap-cell-diff-pulse {
-  animation: fapCellPulseAnim 1.4s ease-in-out 3;
+  animation: fapPreviewPulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  outline: 2px solid #2563eb !important;
+  outline-offset: 3px !important;
+  border-radius: 4px !important;
+  transition: all 0.3s ease !important;
   z-index: 30 !important;
 }
 

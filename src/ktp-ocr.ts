@@ -328,6 +328,13 @@ export function parseKtpText(text: string): ParsedKtpData {
     result.district = result.kecamatan;
   }
 
+  // 9b. Kode Pos
+  const kpMatch = text.match(/(?:KODE\s*POS|KODEPOS|POSTAL\s*CODE)\s*[:.\-–—=~]*\s*(\d{5})\b/i);
+  if (kpMatch) {
+    result.kodePos = kpMatch[1];
+    result.postalCode = result.kodePos;
+  }
+
   // 10. Agama
   const rels = ['ISLAM', 'KRISTEN', 'KATHOLIK', 'KATOLIK', 'HINDU', 'BUDDHA', 'BUDHA', 'KHONGHUCU'];
   for (const r of rels) {
