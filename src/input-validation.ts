@@ -10,29 +10,29 @@ export function fieldInputError(key:string,value:any,now=new Date()):string{
  if(value===undefined||value===null||String(value).trim()==='')return '';
  if(key==='dateOfBirth')return '';
  const name=names[key]||key,text=String(value).trim();
- if(key==='repaymentSource'&&/\d/.test(text))return `${name} must only contain letters (no numbers).`;
+ if(key==='repaymentSource'&&/\d/.test(text))return 'Letters only (no numbers)';
  if(key==='projectLocation'){
-   if(text.length>1&&text===text.toUpperCase()&&/[A-Z]/.test(text))return `${name} must be in Title Case (e.g. "Jakarta", not all uppercase).`;
-   if(/^[a-z]/.test(text))return `${name} must start with a capital letter (e.g. "Jakarta").`;
+   if(text.length>1&&text===text.toUpperCase()&&/[A-Z]/.test(text))return 'Must be Title Case (e.g. "Jakarta")';
+   if(/^[a-z]/.test(text))return 'Must start with a capital letter';
  }
  if(historicalDateKeys.has(key)||key==='expiredDate'){
   const raw=text.slice(0,10),match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(raw),date=new Date(raw+'T00:00:00Z');
-  if(!match||Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==raw||raw<'1900-01-01')return `${name}: invalid date (minimum year 1900).`;
-  if(historicalDateKeys.has(key)&&raw>businessToday(now))return `${name} cannot be a future date.`;
+  if(!match||Number.isNaN(date.getTime())||date.toISOString().slice(0,10)!==raw||raw<'1900-01-01')return `${name}: invalid date (min 1900)`;
+  if(historicalDateKeys.has(key)&&raw>businessToday(now))return `${name} cannot be future date`;
  }
  if(yearKeys.has(key)||integerKeys.has(key)||moneyKeys.has(key)||['interestRate','sharePercentage','classTon'].includes(key)){
-  const number=Number(text),limits=inputLimits(key,now);if(!Number.isFinite(number)||Math.abs(number)>=1e16)return `${name}: invalid number or value too large.`;
-  if((yearKeys.has(key)||integerKeys.has(key))&&!Number.isInteger(number))return `${name} must be a whole number.`;
-    if(limits.min!==undefined&&number<Number(limits.min))return `${name} minimum is ${limits.min}.`;
-    if(limits.max!==undefined&&number>Number(limits.max))return `${name} maximum is ${limits.max}.`;
-    if(moneyKeys.has(key)&&!/^[-]?\d{1,16}(\.\d{1,2})?$/.test(text))return `${name}: use a number with at most 2 decimal places.`;
-    if(!Number.isInteger(number)&&Math.abs(number*100-Math.round(number*100))>0.0001)return `${name} allows at most 2 decimal places.`;
+  const number=Number(text),limits=inputLimits(key,now);if(!Number.isFinite(number)||Math.abs(number)>=1e16)return 'Invalid number';
+  if((yearKeys.has(key)||integerKeys.has(key))&&!Number.isInteger(number))return 'Must be a whole number';
+    if(limits.min!==undefined&&number<Number(limits.min))return `Min: ${limits.min}`;
+    if(limits.max!==undefined&&number>Number(limits.max))return `Max: ${limits.max}`;
+    if(moneyKeys.has(key)&&!/^[-]?\d{1,16}(\.\d{1,2})?$/.test(text))return 'Max 2 decimal places';
+    if(!Number.isInteger(number)&&Math.abs(number*100-Math.round(number*100))>0.0001)return 'Max 2 decimal places';
  }
- if(['email'].includes(key)&&! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text))return `${name} is not valid.`;
-  if(['phone','mobilePhone','phoneFax'].includes(key)&&(!/^\+?[\d\s().-]+$/.test(text)||text.replace(/\D/g,'').length<7||text.replace(/\D/g,'').length>15))return `${name}: use 7–15 digit phone number.`;
-  if(['rt','rw'].includes(key)&&!/^\d{1,3}$/.test(text))return `${name} must be 1–3 digits.`;
-  if(key==='nib'&&!/^\d{13}$/.test(text))return 'NIB must be exactly 13 digits.';
-  if(key==='npwp'&&!/^\d{15,16}$/.test(text.replace(/[.\-\s]/g,'')))return 'NPWP must be 15 or 16 digits.';
+ if(['email'].includes(key)&&! /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text))return 'Email is not valid.';
+  if(['phone','mobilePhone','phoneFax'].includes(key)&&(!/^\+?[\d\s().-]+$/.test(text)||text.replace(/\D/g,'').length<7||text.replace(/\D/g,'').length>15))return 'Use 7-15 digits';
+  if(['rt','rw'].includes(key)&&!/^\d{1,3}$/.test(text))return 'Must be 1–3 digits';
+  if(key==='nib'&&!/^\d{13}$/.test(text))return 'Must be 13 digits';
+  if(key==='npwp'&&!/^\d{15,16}$/.test(text.replace(/[.\-\s]/g,'')))return 'Must be 15 or 16 digits';
  return '';
 }
 export function validateInput(value:any,now=new Date(),requireCompleteOwnership=false):void{
