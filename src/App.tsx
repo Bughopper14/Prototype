@@ -1431,7 +1431,6 @@ function FapRemarksTinyMCE({
           branding: false,
           promotion: false,
           statusbar: true,
-          placeholder: 'Tuliskan catatan atau remarks bebas terkait hasil perbandingan FAP di sini (misal: klarifikasi kesalahan bacaan OCR, alasan data tetap dipertahankan atau berubah, catatan komite, dsb.)...',
           setup: (ed: any) => {
             ed.on('init', () => {
               if (!disabled) {
