@@ -353,10 +353,11 @@ export async function transitionIntake(id:string,action:string,actor:{name:strin
  const detail=await intakeDetail(id);
  if(!detail)throw mysqlError('Application not found',404);
 
+ const isAdmin = actor.role === 'ADMIN' || Boolean((actor as any).isAdmin);
  let currentStatus=detail.status||'DRAFT';
 
  if(action==='SUBMIT_TO_BS'){
-  if(!['MKT'].includes(actor.role)){
+  if(!isAdmin && !['MKT'].includes(actor.role)){
    throw mysqlError('Hanya tim Marketing yang dapat mengajukan ke Branch Support',403);
   }
   if(!['DRAFT','RETURNED'].includes(currentStatus)){
@@ -417,17 +418,17 @@ export async function transitionIntake(id:string,action:string,actor:{name:strin
   // All mandatory checks passed (or optional if is_mandatory=0)
   currentStatus='SUBMITTED_TO_BS';
  } else if(action==='VERIFY_BS'){
-  if(!['BS'].includes(actor.role))throw mysqlError('Hanya Branch Support yang dapat memverifikasi berkas',403);
+  if(!isAdmin && !['BS'].includes(actor.role))throw mysqlError('Hanya Branch Support yang dapat memverifikasi berkas',403);
   currentStatus='BS_VERIFIED';
  } else if(action==='START_REVIEW'){
-  if(!['BS'].includes(actor.role))throw mysqlError('Hanya Branch Support yang dapat memulai review',403);
+  if(!isAdmin && !['BS'].includes(actor.role))throw mysqlError('Hanya Branch Support yang dapat memulai review',403);
   currentStatus='IN_CA_LEGAL_REVIEW';
  } else if(action==='RECOMMEND_CA'||action==='RECOMMEND_LEGAL'){
   const role=action==='RECOMMEND_CA'?'CA':'LEGAL';
-  if(![role].includes(actor.role))throw mysqlError(`Hanya ${role} yang dapat melakukan sign-off ini`,403);
+  if(!isAdmin && ![role].includes(actor.role))throw mysqlError(`Hanya ${role} yang dapat melakukan sign-off ini`,403);
   currentStatus='CREDIT_COMMITTEE_REVIEW';
  } else if(action==='APPROVE_COMMITTEE'||action==='REJECT_COMMITTEE'){
-  if(!['COMMITTEE'].includes(actor.role))throw mysqlError('Hanya Komite Kredit yang dapat memutuskan',403);
+  if(!isAdmin && !['COMMITTEE'].includes(actor.role))throw mysqlError('Hanya Komite Kredit yang dapat memutuskan',403);
   currentStatus=action==='APPROVE_COMMITTEE'?'APPROVED':'REJECTED';
  } else if(action==='RETURN'){
   currentStatus='RETURNED';

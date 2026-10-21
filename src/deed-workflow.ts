@@ -20,13 +20,13 @@ export function mergeLegal(previous:any,incoming:any){
  if(est?.deedDate){for(const d of deeds){if(d.type==='amendment'&&d.deedDate)assert(String(d.deedDate).slice(0,10)>=String(est.deedDate).slice(0,10),`Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`);}}
  const {establishment,amendment,...current}=incoming;return {...current,deeds};
  }
- export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string},options:{revision:number,documentId?:string,comments?:string,beforeSnapshot?:any},now=new Date()){
+export function deedTransition(deed:any,action:string,actor:{id:string,name:string,role:string,isAdmin?:boolean},options:{revision:number,documentId?:string,comments?:string,beforeSnapshot?:any},now=new Date()){
  assert(deed,'Akta tidak ditemukan.',404);assert(options.revision===(deed.review?.revision||1),'Akta telah berubah. Buka ulang sebelum melanjutkan.',409);
  const status=reviewStatus(deed),comments=String(options.comments||'').trim(),date=now.toISOString(),revision=(deed.review?.revision||1)+1;
  assert(comments.length<=10000,'Catatan maksimal 10.000 karakter.');
  let next='';
  if(action==='SUBMIT'){
-  assert(actor.role==='MKT','Hanya MKT yang dapat mengajukan akta.',403);assert(['DRAFT','REJECTED'].includes(status),'Akta sudah diajukan atau disetujui.',409);
+  assert(actor.isAdmin||actor.role==='ADMIN'||actor.role==='MKT','Hanya MKT yang dapat mengajukan akta.',403);assert(['DRAFT','REJECTED'].includes(status),'Akta sudah diajukan atau disetujui.',409);
   for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])assert(String(deed[key]||'').trim(),`${key} wajib diisi sebelum mengajukan akta.`);
   assert(['establishment','amendment'].includes(deed.type),'Pilih jenis akta.');if(deed.type==='amendment')assert(deed.remarkCategoryId||(Array.isArray(deed.remarkCategoryIds)&&deed.remarkCategoryIds.length),'Kategori akta perubahan wajib dipilih.');
 
@@ -35,11 +35,11 @@ export function mergeLegal(previous:any,incoming:any){
   for(const r of deed.stakeholders){validateInput({...r,nationalityType:r.citizenship==='FOREIGN'?'WNA':r.nationalityType||'WNI'},now);assert([r.firstName,r.lastName,r.name].some(x=>String(x||'').trim()),'Nama stakeholder wajib diisi.');for(const key of ['email','mobilePhone','primaryCapital','idNumber'])assert(String(r[key]??'').trim(),`${key} stakeholder wajib diisi.`);}
   next='PENDING_CHECK';
  }else if(action==='CHECK'){
-  assert(actor.role==='BS','Pemeriksaan akta dilakukan oleh Arianti / BS.',403);assert(status==='PENDING_CHECK','Akta belum menunggu pemeriksaan.',409);assert(deed.review.submittedById!==actor.id,'Pengaju dan pemeriksa harus berbeda.',403);next='PENDING_APPROVAL';
+  assert(actor.isAdmin||actor.role==='ADMIN'||actor.role==='BS','Pemeriksaan akta dilakukan oleh Arianti / BS.',403);assert(status==='PENDING_CHECK','Akta belum menunggu pemeriksaan.',409);if(!actor.isAdmin&&actor.role!=='ADMIN')assert(deed.review.submittedById!==actor.id,'Pengaju dan pemeriksa harus berbeda.',403);next='PENDING_APPROVAL';
  }else if(action==='APPROVE'){
-  assert(actor.role==='HEAD_BS','Approval akta dilakukan oleh Dellatra / Head BS.',403);assert(status==='PENDING_APPROVAL','Akta harus lolos pemeriksaan Arianti terlebih dahulu.',409);assert(deed.review.checkedById!==actor.id,'Pemeriksa dan approver harus berbeda.',403);next='APPROVED';
+  assert(actor.isAdmin||actor.role==='ADMIN'||actor.role==='HEAD_BS','Approval akta dilakukan oleh Dellatra / Head BS.',403);assert(status==='PENDING_APPROVAL','Akta harus lolos pemeriksaan Arianti terlebih dahulu.',409);if(!actor.isAdmin&&actor.role!=='ADMIN')assert(deed.review.checkedById!==actor.id,'Pemeriksa dan approver harus berbeda.',403);next='APPROVED';
  }else if(action==='REJECT'){
-  assert(actor.role==='BS'&&status==='PENDING_CHECK'||actor.role==='HEAD_BS'&&status==='PENDING_APPROVAL','Penolakan tidak tersedia untuk akun/status ini.',403);assert(comments,'Alasan penolakan wajib diisi.');next='REJECTED';
+  assert(actor.isAdmin||actor.role==='ADMIN'||(actor.role==='BS'&&status==='PENDING_CHECK')||(actor.role==='HEAD_BS'&&status==='PENDING_APPROVAL'),'Penolakan tidak tersedia untuk akun/status ini.',403);assert(comments,'Alasan penolakan wajib diisi.');next='REJECTED';
  }else throw new DeedWorkflowError('Aksi approval tidak valid.');
  const review:any={...deed.review,status:next,revision};
  if(action==='SUBMIT')Object.assign(review,{comparisonBefore:options.beforeSnapshot?structuredClone(options.beforeSnapshot):null,documentId:options.documentId,submittedById:actor.id,submittedBy:actor.name,submittedAt:date,checkedById:null,checkedBy:null,checkedAt:null,approvedBy:null,rejectedBy:null,rejectionReason:null});
@@ -49,7 +49,7 @@ export function mergeLegal(previous:any,incoming:any){
  return {...deed,review,reviewHistory:[...(deed.reviewHistory||[]),{action,status:next,actor:actor.name,role:actor.role,at:date,comments,documentId:review.documentId,revision}],...(next==='APPROVED'?{approvedSnapshot:deedData(deed),approvedAt:date}:{})};
 }
 
-export function canEditLegal(actor:any,application:any){return (actor.isAdmin||actor.role==='ADMIN'||actor.role==='MKT')&&(['DRAFT','RETURNED'].includes(application.status)||!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(application.status)&&(application.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'));}
+export function canEditLegal(actor:any,application:any){return (actor.isAdmin||actor.role==='ADMIN')||((actor.role==='MKT')&&(['DRAFT','RETURNED'].includes(application.status)||!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(application.status)&&(application.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED')));}
 
 export function saveSingleDeed(previous:any,deedId:string,input:any){assert(input?.id===deedId,'ID akta tidak sesuai.');const data=deedData(input);try{validateInput({deeds:[data]});}catch(e){};const prior=Array.isArray(previous?.deeds)?previous.deeds:['establishment','amendment'].filter(type=>previous?.[type]&&Object.values(previous[type]).some(Boolean)).map(type=>({id:`legacy-${type}`,type,...previous[type]}));const target=mergeLegal({deeds:prior.filter((d:any)=>d.id===deedId)},{deeds:[data]}).deeds[0];return {...previous,deeds:prior.some((d:any)=>d.id===deedId)?prior.map((d:any)=>d.id===deedId?target:d):[...prior,target],selectedDeedId:deedId};}
 

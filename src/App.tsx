@@ -197,8 +197,9 @@ export default function App(){
  if(!user)return <Login onLogin={setUser}/>;
  const navigate=(p:string)=>{setPage(p);setSelected(null);setMobile(false);};
   function startNewApplication(preselectedCustomerId?: string) {
-    if (user?.role !== 'MKT') {
-      notify('Application creation is available for Marketing (MKT) accounts. Please sign in with an MKT account.');
+    const isAdminUser = Boolean(user?.isAdmin || user?.role === 'ADMIN');
+    if (!isAdminUser && user?.role !== 'MKT') {
+      notify('Application creation is available for Marketing (MKT) and Administrator accounts.');
       return;
     }
     const defaultCategory = preselectedCustomerId ? 'EXISTING' : 'NEW';
@@ -713,10 +714,11 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
    : [6, 7];
  const tabOrder = stageTabOrder;
 
- const isFapLocked = isPreAnalysisReached && activeStage === 'FAP Stage';
- const canLegal = !isFapLocked && (user.isAdmin || user.role === 'ADMIN' || canEditLegal(user, a));
- const canEdit = !isFapLocked && (user.isAdmin || user.role === 'ADMIN' || (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status))));
- const canFinance = (user.isAdmin || user.role === 'ADMIN') || (user.role === 'MKT' && ['DRAFT', 'RETURNED'].includes(a.status)) || (user.role === 'CA' && a.status === 'IN_CA_LEGAL_REVIEW');
+ const isAdminUser = Boolean(user?.isAdmin || user?.role === 'ADMIN');
+ const isFapLocked = !isAdminUser && isPreAnalysisReached && activeStage === 'FAP Stage';
+ const canLegal = isAdminUser || (!isFapLocked && canEditLegal(user, a));
+ const canEdit = isAdminUser || (!isFapLocked && (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status))));
+ const canFinance = isAdminUser || (user.role === 'MKT' && ['DRAFT', 'RETURNED'].includes(a.status)) || (user.role === 'CA' && a.status === 'IN_CA_LEGAL_REVIEW');
  
  async function submitFapStage(){
    setBusy(true);setError('');
@@ -4638,11 +4640,11 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                           onReview(x.id);
                         }}
                       >
-                        {user.role === 'MKT' && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
+                        {(user.isAdmin || user.role === 'ADMIN' || user.role === 'MKT') && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
                           ? 'Submit deed'
-                          : user.role === 'BS' && reviewStatus(x) === 'PENDING_CHECK'
+                          : (user.isAdmin || user.role === 'ADMIN' || user.role === 'BS') && reviewStatus(x) === 'PENDING_CHECK'
                           ? 'Review deed'
-                          : user.role === 'HEAD_BS' && reviewStatus(x) === 'PENDING_APPROVAL'
+                          : (user.isAdmin || user.role === 'ADMIN' || user.role === 'HEAD_BS') && reviewStatus(x) === 'PENDING_APPROVAL'
                           ? 'Approve deed'
                           : 'View approval'}
                       </button>
