@@ -1982,14 +1982,17 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
             {/* Left Pane (50%): Dokumen Terakhir yang di-generate oleh sistem */}
             <div className="fap-pane-card">
               <div className="fap-pane-head">
-                <div className="fap-pane-head-row">
-                  <div className="fap-pane-head-left">
+                <div className="fap-pane-head-top">
+                  <div className="fap-pane-head-info">
                     <h4>
                       <FileSpreadsheet size={16} color="#002060" />
                       System FAP Document (Last Generated)
                     </h4>
+                    <span className="fap-pane-head-sub">
+                      Current live database data · FAP No: {a.fapNumber || '-'}
+                    </span>
                   </div>
-                  <div className="fap-pane-head-right">
+                  <div className="fap-pane-head-actions">
                     <button
                       type="button"
                       className="button small"
@@ -2001,17 +2004,15 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     </button>
                   </div>
                 </div>
-                <div className="fap-pane-head-row">
-                  <span className="fap-pane-head-sub">
-                    Current live database data · FAP No: {a.fapNumber || '-'}
-                  </span>
-                  <div className="fap-pane-head-right">
+                <div className="fap-pane-head-bottom">
+                  <div style={{display:'flex', alignItems:'center', gap:'6px', marginLeft:'auto'}}>
+                    <span style={{fontSize:'11px', color:'#64748b', fontWeight:500}}>Zoom:</span>
                     <div className="excel-zoom-controls compact" style={{display:'inline-flex', alignItems:'center', gap:'3px', background:'#f1f5f9', padding:'2px 6px', borderRadius:'6px', border:'1px solid #cbd5e1', height:'26px', boxSizing:'border-box'}}>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.4, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'22px'}} title="Zoom Out (-)">
+                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.4, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom Out (-)">
                         <ZoomOut size={12} />
                       </button>
                       <span style={{fontSize:'11px', fontWeight:600, minWidth:'36px', textAlign:'center'}}>{Math.round(systemZoom * 100)}%</span>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.4, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'22px'}} title="Zoom In (+)">
+                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.4, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom In (+)">
                         <ZoomIn size={12} />
                       </button>
                     </div>
@@ -2034,14 +2035,17 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
             {/* Right Pane (50%): Dokumen Hasil OCR (Fisik Terunggah) */}
             <div className="fap-pane-card">
               <div className="fap-pane-head">
-                <div className="fap-pane-head-row">
-                  <div className="fap-pane-head-left">
+                <div className="fap-pane-head-top">
+                  <div className="fap-pane-head-info">
                     <h4>
                       <FileSpreadsheet size={16} color="#002060" />
                       OCR Physical Signed FAP
                     </h4>
+                    <span className="fap-pane-head-sub" title={activeFile ? activeFile.fileName : ''}>
+                      {activeFile ? activeFile.fileName : 'No physical document uploaded yet'}
+                    </span>
                   </div>
-                  <div className="fap-pane-head-right">
+                  <div className="fap-pane-head-actions">
                     {activeFile && (
                       <>
                         <span className="studio-file-tag" style={{padding:'2px 8px', fontSize:'11px', background:'#e2e8f0', borderRadius:'4px', fontWeight:600, height:'24px', display:'inline-flex', alignItems:'center'}}>
@@ -2063,47 +2067,42 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     )}
                   </div>
                 </div>
-                <div className="fap-pane-head-row">
-                  <span className="fap-pane-head-sub" style={{maxWidth:'240px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}} title={activeFile ? activeFile.fileName : ''}>
-                    {activeFile ? activeFile.fileName : 'No physical document uploaded yet'}
-                  </span>
-                  <div className="fap-pane-head-right">
-                    {activeFile && (
-                      <>
+                <div className="fap-pane-head-bottom">
+                  {activeFile && (
+                    <div style={{display:'flex', alignItems:'center', gap:'8px'}}>
+                      <button
+                        type="button"
+                        className="button small"
+                        disabled={busy}
+                        onClick={handleRunFapComparison}
+                        style={{display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'11px', height:'26px', padding:'2px 10px'}}
+                        title="Re-scan the physical document and compare with the latest system data"
+                      >
+                        {busy ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />}
+                        Re-scan OCR
+                      </button>
+                      <div style={{display:'inline-flex', background:'#f1f5f9', padding:'2px', borderRadius:'6px', border:'1px solid #cbd5e1'}}>
                         <button
                           type="button"
-                          className="button small"
-                          disabled={busy}
-                          onClick={handleRunFapComparison}
-                          style={{display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'11px', height:'26px', padding:'2px 8px'}}
-                          title="Re-scan the physical document and compare with the latest system data"
+                          className={`button small ${rightViewMode === 'ocr' ? 'primary' : ''}`}
+                          onClick={() => setRightViewMode('ocr')}
+                          style={{fontSize:'11px', padding:'2px 10px', height:'22px', borderRadius:'4px'}}
+                          title="Show OCR-extracted FAP form with difference highlights"
                         >
-                          {busy ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />}
-                          Re-scan OCR
+                          <FileSpreadsheet size={12} style={{marginRight:4}} /> OCR Form
                         </button>
-                        <div style={{display:'inline-flex', background:'#f1f5f9', padding:'2px', borderRadius:'6px', border:'1px solid #cbd5e1'}}>
-                          <button
-                            type="button"
-                            className={`button small ${rightViewMode === 'ocr' ? 'primary' : ''}`}
-                            onClick={() => setRightViewMode('ocr')}
-                            style={{fontSize:'11px', padding:'2px 8px', height:'22px', borderRadius:'4px'}}
-                            title="Show OCR-extracted FAP form with difference highlights"
-                          >
-                            <FileSpreadsheet size={12} style={{marginRight:3}} /> OCR Form
-                          </button>
-                          <button
-                            type="button"
-                            className={`button small ${rightViewMode === 'pdf' ? 'primary' : ''}`}
-                            onClick={() => setRightViewMode('pdf')}
-                            style={{fontSize:'11px', padding:'2px 8px', height:'22px', borderRadius:'4px'}}
-                            title="Show original physical PDF file"
-                          >
-                            <Eye size={12} style={{marginRight:3}} /> Original File
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                        <button
+                          type="button"
+                          className={`button small ${rightViewMode === 'pdf' ? 'primary' : ''}`}
+                          onClick={() => setRightViewMode('pdf')}
+                          style={{fontSize:'11px', padding:'2px 10px', height:'22px', borderRadius:'4px'}}
+                          title="Show original physical PDF file"
+                        >
+                          <Eye size={12} style={{marginRight:4}} /> Original File
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="fap-pane-body fap-pane-body-physical">
