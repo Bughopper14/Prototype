@@ -1802,10 +1802,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     try {
       await api(`/applications/${a.id}/fap-comparison/remarks`, 'POST', { remarks: fapRemarks });
       setRemarksSaveStatus('saved');
-      notify('Catatan verifikasi FAP berhasil disimpan.');
+      notify('FAP verification remarks saved successfully.');
     } catch (err: any) {
       setRemarksSaveStatus('unsaved');
-      setError('Gagal menyimpan catatan verifikasi: ' + (err.message || ''));
+      setError('Failed to save verification remarks: ' + (err.message || ''));
     }
   }
 
@@ -1820,9 +1820,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       const updated = await api(`/applications/${a.id}`);
       onChange(updated);
       setFapComparison(null);
-      notify('Perubahan data hasil OCR berhasil disetujui dan diperbarui ke database.');
+      notify('OCR data changes approved and updated in database.');
     } catch (err: any) {
-      setError('Gagal menyetujui perubahan data: ' + err.message);
+      setError('Failed to approve data changes: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -1836,9 +1836,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         remarks: fapRemarks
       });
       setFapComparison(null);
-      notify('Perubahan data OCR diabaikan. Sistem tetap mempertahankan data saat ini.');
+      notify('OCR changes dismissed. Current system data retained.');
     } catch (err: any) {
-      setError('Gagal mengabaikan perubahan data: ' + err.message);
+      setError('Failed to dismiss data changes: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -2230,21 +2230,21 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           <FileText size={16} />
                         </div>
                         <div className="fap-diff-remarks-title-text">
-                          <h4>Catatan & Remarks Verifikasi Dokumen FAP</h4>
+                          <h4>FAP Document Verification Notes & Remarks</h4>
                           <p>
-                            Gunakan kolom ini untuk menambah catatan bebas (contoh: jika hasil pembacaan OCR keliru, data berubah sesuai kesepakatan/adendum, atau justifikasi verifikasi lainnya).
+                            Use this section to add verification notes (e.g. clarifying OCR discrepancies, documenting approved changes or addendums, or other verification justifications).
                           </p>
                         </div>
                       </div>
                       <div className="fap-diff-remarks-actions">
                         {remarksSaveStatus === 'saved' && (
                           <span style={{ fontSize: '11.5px', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-                            <CheckCircle size={13} /> Tersimpan
+                            <CheckCircle size={13} /> Saved
                           </span>
                         )}
                         {remarksSaveStatus === 'saving' && (
                           <span style={{ fontSize: '11.5px', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            <Loader2 size={13} className="spin" /> Menyimpan...
+                            <Loader2 size={13} className="spin" /> Saving...
                           </span>
                         )}
                         <button
@@ -2253,9 +2253,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           disabled={busy || remarksSaveStatus === 'saving'}
                           onClick={handleSaveFapRemarks}
                           style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', padding: '4px 12px', height: '28px' }}
-                          title="Simpan catatan verifikasi"
+                          title="Save verification remarks"
                         >
-                          <Save size={13} /> Simpan Catatan
+                          <Save size={13} /> Save Remarks
                         </button>
                       </div>
                     </div>
@@ -2295,7 +2295,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
                         >
                           {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-                          Approve Changes (Gunakan Data OCR)
+                          Approve Changes (Use OCR Data)
                         </button>
                       </div>
                     </div>
