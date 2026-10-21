@@ -304,6 +304,9 @@ function stakeholderForSave(s:any){
     idNumber: s.idNumber || s.nik || s.passportNumber || '',
     idNumberSecondary: s.idNumberSecondary || s.taxId || s.npwp || s.permitNumber || '',
     taxNumber: s.idNumberSecondary || s.taxId || s.npwp || null,
+    email: s.email || 'shareholder@liugong.local',
+    mobilePhone: s.mobilePhone || '08123456789',
+    primaryCapital: s.primaryCapital !== undefined && s.primaryCapital !== null && s.primaryCapital !== '' ? s.primaryCapital : (s.depositedCapital ?? s.shareAmount ?? 0),
     shareAmount:s.depositedCapital??0,
     sharePercentage:s.sharePercentage??0
   };
@@ -381,22 +384,35 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
  async function saveNewApplication(){
   setBusy(true);setError('');
   try{
-   let id=customerId;
-   if(customerCategory==='EXISTING'){
-    if(!selectedCustomer)throw new Error('Please select an existing customer first.');
-    id=selectedCustomer.id;
-   }else{
-    const nib=String(customerDraft.nib||'').replace(/\D/g,'');
-    const npwp=String(customerDraft.npwp||'').replace(/\D/g,'');
-    if(!String(customerDraft.companyName||'').trim())throw new Error('Company name of the new debtor is required.');
-    if(nib.length!==13)throw new Error('NIB must consist of 13 digits.');
-    if(npwp.length<15||npwp.length>16)throw new Error('NPWP must consist of 15 or 16 digits.');
-    validateInput(customerDraft);
-    const createdCust=await api('/customers','POST',customerDraft);
-    id=createdCust.id;
-    setCustomerId(id);
-    if(onCustomerCreated)onCustomerCreated(createdCust);
-   }
+    let id=customerId;
+    const nibClean=String(customerDraft?.nib||draft?.nib||'').replace(/\D/g,'');
+    const npwpClean=String(customerDraft?.npwp||draft?.npwp||'').replace(/\D/g,'');
+    const matchedExisting=customers.find((c:any)=>{
+      const cNib=String(c.nib||'').replace(/\D/g,'');
+      const cNpwp=String(c.npwp||'').replace(/\D/g,'');
+      return (nibClean&&cNib===nibClean)||(npwpClean&&cNpwp===npwpClean);
+    });
+
+    if(customerCategory==='EXISTING'){
+      if(!selectedCustomer&&!matchedExisting)throw new Error('Please select an existing customer first.');
+      id=selectedCustomer?.id||matchedExisting?.id;
+    }else{
+      if(matchedExisting){
+        id=matchedExisting.id;
+        setCustomerId(id);
+      }else{
+        const nib=nibClean;
+        const npwp=npwpClean;
+        if(!String(customerDraft?.companyName||'').trim())throw new Error('Company name of the new debtor is required.');
+        if(nib.length!==13)throw new Error('NIB must consist of 13 digits.');
+        if(npwp.length<15||npwp.length>16)throw new Error('NPWP must consist of 15 or 16 digits.');
+        validateInput(customerDraft);
+        const createdCust=await api('/customers','POST',customerDraft);
+        id=createdCust.id;
+        setCustomerId(id);
+        if(onCustomerCreated)onCustomerCreated(createdCust);
+      }
+    }
    const {isNew,customer,id:_draftId,...profileData}=draft;
    const safePayload = {
      branchCode: profileData.branchCode || 'JKT01',
@@ -418,10 +434,19 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
    };
    const application=await api('/applications','POST',safePayload);
    notify(`Application created successfully with number ${application.fapNumber}`);
-   const fullApp=await api(`/applications/${application.id}`);
+   let fullApp: any;
+   try {
+     fullApp = await api(`/applications/${application.id}`);
+   } catch {
+     fullApp = application;
+   }
    setDraft(structuredClone(fullApp));
    onChange(fullApp);
-   setTab(0);
+   if (onBack) {
+     onBack();
+   } else {
+     setTab(0);
+   }
   }catch(e:any){setError(e.message||'Failed to create new application. Please try again.');}
   finally{setBusy(false);}
  }
@@ -549,7 +574,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           establishmentDate: (customerDraft?.establishmentDate || draft.customer?.establishmentDate || null) || null,
           nibDate: (customerDraft?.nibDate || draft.customer?.nibDate || null) || null
         }
-      : { ...(draft.customer || {}), ...(selectedCustomer || {}) };
+      : { ...(selectedCustomer || {}), ...(draft.customer || {}), ...(customerDraft || {}), companyName: liveCompanyName };
     const body = {
       profile: { ...updatedDraft, companyName: liveCompanyName },
       customer: customerPayload,
@@ -794,6 +819,16 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
        nibDate: (liveNibDate || customerDraft?.nibDate || draft.customer?.nibDate || null) || null
      };
 
+     const deedsWithStakeholders = (draft.legal?.deeds || []).map((d: any) => ({
+       ...d,
+       stakeholders: (d.id === (draft.legal.selectedDeedId || draft.legal?.deeds?.[0]?.id))
+         ? (draft.stakeholders || d.stakeholders || [])
+         : (d.stakeholders || [])
+     }));
+     const legalPayload = {
+       ...(draft.legal || {}),
+       deeds: deedsWithStakeholders
+     };
      const body=tab===0?{
        profile:{
          ...safeProfileData,
@@ -813,8 +848,8 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
      }:tab===4?{
        financialStatements:draft.financialStatements
      }:{
-       legal:draft.legal||{},
-       ...(stakeholdersChanged?{stakeholders:draft.stakeholders.map(stakeholderForSave)}:{})
+       legal:legalPayload,
+       stakeholders:(draft.stakeholders||[]).map(stakeholderForSave)
      };
 
      const currentStage=activeStage||draft.stage||a.stage||'FAP Stage';
@@ -4310,28 +4345,54 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const deeds=legalDeedList(value,application),selectedId=value.selectedDeedId||deeds.find(x=>x.type===(value.selectedDeed||'establishment'))?.id||deeds[0]?.id,parties=editing?.parties||{};
  const locked=(d:any)=>!checkIsAdmin(user)&&(disabled||deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED');const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
  const rowsFor=(x:any):any[]=>Array.isArray(x.stakeholders)?x.stakeholders:x.id===selectedId?stakeholders:[];
- const updateRows=(deedId:string,rows:any[])=>{
+ const updateRows=async(deedId:string,rows:any[])=>{
    const hydrated=deeds.map(x=>x.id===selectedId&&!Array.isArray(x.stakeholders)?{...x,stakeholders}:x);
    const updated=hydrated.map(x=>x.id===deedId?{...x,stakeholders:rows}:x);
    const nextLegal = {...value,deeds:updated,selectedDeedId:deedId};
    onStakeholdersChange(nextLegal,rows);
    if(application?.id && !application.isNew){
-     api(`/applications/${application.id}/page-legal`,'PUT',{legal:nextLegal,stakeholders:rows}).catch(e=>console.warn('Auto-save legal stakeholders error:',e));
+     try{
+       const res = await api(`/applications/${application.id}/page-legal`,'PUT',{legal:nextLegal,stakeholders:rows});
+       if(res && res.legal){
+         onChange(res.legal);
+         const currentDeed = res.legal.deeds?.find((d:any)=>d.id===deedId) || res.legal.deeds?.[0];
+         if(currentDeed && currentDeed.stakeholders){
+           onStakeholdersChange(res.legal, currentDeed.stakeholders);
+         }
+       }
+     }catch(e:any){
+       console.error('Save legal stakeholders error:',e);
+       setFormError(e.message || 'Failed to save stakeholders to database.');
+     }
    }
  };
  const safeUUID=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():'deed-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
  const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
- const saveDeed=()=>{
+ const saveDeed=async()=>{
    if(!editing||editorLocked)return;
    setFormError('');
    const catsToSave=getDeedCategoryIds(editing);
    const cleanRemarks=(editing.remarks||'').replace(/<\/ol>\s*<ol[^>]*>/gi,'').replace(/<\/ul>\s*<ul[^>]*>/gi,'');
-   const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||''};
+   const currentStakeholders=rowsFor(editing);
+   const saved={...editing,remarks:cleanRemarks,remarkCategoryIds:catsToSave,remarkCategoryId:catsToSave[0]||'',stakeholders:currentStakeholders};
    const updatedDeeds = deeds.some(x=>x.id===editing.id)?deeds.map(x=>x.id===editing.id?saved:x):[...deeds,saved];
    const nextLegal = {...value,deeds:updatedDeeds,selectedDeedId:editing.id};
    onChange(nextLegal);
    if(application?.id && !application.isNew){
-     api(`/applications/${application.id}/page-legal`,'PUT',{legal:nextLegal}).catch(e=>console.warn('Auto-save legal deed error:',e));
+     try{
+       const res = await api(`/applications/${application.id}/page-legal`,'PUT',{legal:nextLegal});
+       if(res && res.legal){
+         onChange(res.legal);
+         const currentDeed = res.legal.deeds?.find((d:any)=>d.id===editing.id) || res.legal.deeds?.[0];
+         if(currentDeed && currentDeed.stakeholders){
+           onStakeholdersChange(res.legal, currentDeed.stakeholders);
+         }
+       }
+     }catch(e:any){
+       console.error('Save legal deed error:',e);
+       setFormError(e.message || 'Failed to save deed to database.');
+       return;
+     }
    }
    setEditing(null);
  };
@@ -4473,6 +4534,9 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       valToSave.ageYears=years;
       valToSave.ageMonths=months;
     }
+    const fullName = [valToSave.firstName, valToSave.middleName, valToSave.lastName].map((x:any)=>String(x||'').trim()).filter(Boolean).join(' ');
+    valToSave.name = fullName || valToSave.name || 'New Stakeholder';
+    valToSave.id = valToSave.id || safeUUID();
     const next=stakeholderModal.index<0?[...rows,valToSave]:rows.map((r,i)=>i===stakeholderModal.index?valToSave:r);
     updateRows(x.id,next);
     setStakeholderModal(null);
@@ -4729,8 +4793,8 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
 
   {renderDeedTable(historicalDeeds, true, 'No previous deed history. All deeds are recorded in the active reference table.')}
 
-  {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Deed action" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing(structuredClone(target));setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'View details':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Approved deeds cannot be deleted':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
- {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Establishment deed',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Deed Details':'Edit Deed':'Add Deed'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}<label className="legal-deed-select">Deed type<select aria-label="Deed type" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment">Establishment Deed</option><option value="amendment">Amendment Deed</option></select></label><Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Amendment deed date (${date(dDate)}) cannot be before the establishment deed date (${date(estDate)}).`);}else if(formError&&formError.includes('cannot be before the establishment deed date')){setFormError('');}}}/><><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-unified-remarks-box">
+  {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Deed action" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing({...structuredClone(target),stakeholders:rowsFor(target)});setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'View details':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Approved deeds cannot be deleted':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
+ {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Establishment deed',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Deed Details':'Edit Deed':'Add Deed'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}{(()=>{const hasExistingEstablishment=deeds.some((x:any)=>x.type==='establishment'&&x.id!==editing.id);return <label className="legal-deed-select">Deed type<select aria-label="Deed type" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment" disabled={hasExistingEstablishment} style={hasExistingEstablishment?{color:'#94a3b8',backgroundColor:'#f1f5f9',cursor:'not-allowed'}:undefined}>Establishment Deed{hasExistingEstablishment?' (Already exists)':''}</option><option value="amendment">Amendment Deed</option></select></label>;})()}<Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Amendment deed date (${date(dDate)}) cannot be before the establishment deed date (${date(estDate)}).`);}else if(formError&&formError.includes('cannot be before the establishment deed date')){setFormError('');}}}/><><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-unified-remarks-box">
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
     <div>
       <span className="field-label" style={{fontSize:'13px',fontWeight:700,color:'#002060'}}>
@@ -4762,7 +4826,10 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       formError={formError}
       onClose={() => setStakeholderModal(null)}
       onSave={saveStakeholder}
-      onChangeValue={(val) => setStakeholderModal({ ...stakeholderModal, value: val })}
+      onChangeValue={(val) => {
+        const fullName = [val.firstName, val.middleName, val.lastName].map((x:any)=>String(x||'').trim()).filter(Boolean).join(' ');
+        setStakeholderModal({ ...stakeholderModal, value: { ...val, name: fullName || val.name } });
+      }}
       fields={stakeholderFields}
     />
   )}

@@ -12,10 +12,11 @@ const pidFile=path.join(dbPath,'postmaster.pid');
 if(fs.existsSync(pidFile)){try{fs.unlinkSync(pidFile);}catch{}}
 const engine=process.env.DATABASE_URL?new pg.Pool({connectionString:process.env.DATABASE_URL}):new PGlite(dbPath);
 export type Query=(sql:string,args?:any[])=>Promise<Result>;
-export const query:Query=async(sql,args=[])=>engine instanceof pg.Pool?engine.query(sql,args):args.length?engine.query(sql,args):(await engine.exec(sql)).at(-1)||{rows:[]};
+export const query:Query=async(sql,args=[])=>{if(engine instanceof pg.Pool)return engine.query(sql,args);await (engine as any).waitReady;return args.length?engine.query(sql,args):(await engine.exec(sql)).at(-1)||{rows:[]};};
 let tail=Promise.resolve();
 export async function transaction<T>(fn:(q:Query)=>Promise<T>):Promise<T>{
  if(engine instanceof pg.Pool){const client=await engine.connect();try{await client.query('BEGIN');const out=await fn((s,a)=>client.query(s,a));await client.query('COMMIT');return out;}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}}
+ await (engine as any).waitReady;
  let release!:()=>void;const prev=tail;tail=new Promise(r=>release=r);await prev;
  try{return await engine.transaction(tx=>fn(async(s,a=[])=>a.length?tx.query(s,a):(await tx.exec(s)).at(-1)||{rows:[]}));}finally{release();}
 }

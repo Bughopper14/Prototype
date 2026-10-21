@@ -107,6 +107,7 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
     for(const key of ['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'])if(!d[key])throw Object.assign(Error(key+' wajib diisi sebelum submit'),{status:422});
     validateInput({...d,stakeholders:undefined});
   }
+  d._stakeholdersPassed = d.stakeholders !== undefined && d.stakeholders !== null;
   d.stakeholders=d.stakeholders||[];
   let total=new Decimal(0);const stakeholderIds=new Set<string>();
   for(const s of d.stakeholders){
@@ -127,6 +128,10 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
  try{
   await c.beginTransaction();await c.execute('SELECT application_id FROM all_applications WHERE application_id=? FOR UPDATE',[applicationId]);
   for(const d of deeds){
+   if (!d._stakeholdersPassed) {
+     const [existingRows] = await c.execute<any[]>('SELECT s.*,d.id AS district_master_id,v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN master_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id', [d.id]);
+     if (existingRows.length > 0) d.stakeholders = existingRows.map(mapStakeholder);
+   }
    const deedDateStr=d.deedDate?(String(d.deedDate).slice(0,10).trim() || null):null;
    const skDateStr=d.ministerialDecreeDate?(String(d.ministerialDecreeDate).slice(0,10).trim() || null):null;
    const expiry=deedDateStr?new Date(deedDateStr+'T00:00:00Z'):null;
@@ -168,6 +173,12 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
      if(s.dateOfBirth){
        Object.assign(s,ageFromDateOfBirth(s.dateOfBirth));
      }
+     if(!s.firstName && (s.name || s.fullName)) {
+       const parts = String(s.name || s.fullName || '').trim().split(/\s+/);
+       s.firstName = parts[0] || '';
+       s.middleName = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
+       s.lastName = parts.length > 1 ? parts.slice(-1)[0] : '';
+     }
      const stored=await stakeholderLocationNames(c,s);
      const value=Object.fromEntries(stakeholderFields.map(f=>{
        let val = stored[f.key];
@@ -185,7 +196,9 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
      await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});
    }
    const stakeholderIds=d.stakeholders.map((s:any)=>s.id);
-   await c.execute(`UPDATE legal_stakeholder SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL ${stakeholderIds.length?'AND id NOT IN ('+stakeholderIds.map(()=>'?').join(',')+')':''}`,[d.id,...stakeholderIds]);
+   if(d._stakeholdersPassed){
+     await c.execute(`UPDATE legal_stakeholder SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL ${stakeholderIds.length?'AND id NOT IN ('+stakeholderIds.map(()=>'?').join(',')+')':''}`,[d.id,...stakeholderIds]);
+   }
   }
   const savedIds=deeds.map((d:any)=>d.id);for(const table of ['legal_stakeholder','akta_pendirian','akta_perubahan','daftar_akta'])await c.execute(`UPDATE ${table} SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=? AND deleted_at IS NULL ${savedIds.length?'AND '+(table==='daftar_akta'?'id':'akta_id')+' NOT IN ('+savedIds.map(()=>'?').join(',')+')':''}`,[applicationId,...savedIds]);
   const estDeed = deeds.find((d: any) => d.type === 'establishment');

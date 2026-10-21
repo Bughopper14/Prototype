@@ -49,7 +49,13 @@ export function deedTransition(deed:any,action:string,actor:{id:string,name:stri
  return {...deed,review,reviewHistory:[...(deed.reviewHistory||[]),{action,status:next,actor:actor.name,role:actor.role,at:date,comments,documentId:review.documentId,revision}],...(next==='APPROVED'?{approvedSnapshot:deedData(deed),approvedAt:date}:{})};
 }
 
-export function canEditLegal(actor:any,application:any){return (actor.isAdmin||actor.role==='ADMIN')||((actor.role==='MKT')&&(['DRAFT','RETURNED'].includes(application.status)||!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(application.status)&&(application.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED')));}
+export function canEditLegal(actor:any,application:any){
+  if(!actor)return false;
+  if(actor.isAdmin||actor.role==='ADMIN')return true;
+  if(actor.role==='LEGAL')return true;
+  if(actor.role==='MKT'&&(['DRAFT','RETURNED'].includes(application?.status)||!['APPROVED','REJECTED','CREDIT_COMMITTEE_REVIEW'].includes(application?.status)&&(application?.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED')))return true;
+  return false;
+}
 
 export function saveSingleDeed(previous:any,deedId:string,input:any){assert(input?.id===deedId,'ID akta tidak sesuai.');const data=deedData(input);try{validateInput({deeds:[data]});}catch(e){};const prior=Array.isArray(previous?.deeds)?previous.deeds:['establishment','amendment'].filter(type=>previous?.[type]&&Object.values(previous[type]).some(Boolean)).map(type=>({id:`legacy-${type}`,type,...previous[type]}));const target=mergeLegal({deeds:prior.filter((d:any)=>d.id===deedId)},{deeds:[data]}).deeds[0];return {...previous,deeds:prior.some((d:any)=>d.id===deedId)?prior.map((d:any)=>d.id===deedId?target:d):[...prior,target],selectedDeedId:deedId};}
 
