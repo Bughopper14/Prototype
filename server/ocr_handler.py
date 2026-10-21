@@ -1370,7 +1370,34 @@ def extract_nib(boxes: list) -> tuple:
 
 def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tuple:
     import re
-    import os
+    texts = []
+    if pdf_path and os.path.exists(pdf_path) and pdf_path.lower().endswith('.pdf'):
+        try:
+            import pymupdf as fitz
+            doc = fitz.open(pdf_path)
+            for page in doc:
+                t = page.get_text()
+                if t and t.strip():
+                    texts.append(t.strip())
+        except Exception as pe:
+            print(f"[OCR] PyMuPDF FAP extraction notice: {pe}")
+
+    for b in boxes:
+        t = (b.get("text") or "").strip()
+        if t:
+            texts.append(t)
+
+    if full_text:
+        texts.insert(0, full_text.strip())
+
+    combined_full_text = "\n".join(texts)
+    lines = [l.strip() for l in combined_full_text.splitlines() if l.strip()]
+
+    def parse_num(val):
+        if not val:
+            return None
+        clean = re.sub(r'[^\d]', '', str(val))
+        return int(clean) if clean else None
 
     data = {
         "companyName": "",
@@ -1380,361 +1407,144 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         "npwp": "",
         "establishmentActNo": "",
         "establishmentDate": "",
-        "latestDeedNo": "",
-        "latestDeedDate": "",
         "companyAddress": "",
         "rt": "",
         "rw": "",
         "city": "",
-        "district": "",
-        "village": "",
         "province": "",
         "postalCode": "",
         "phoneFax": "",
-        "website": "",
         "email": "",
         "mainBusiness": "",
         "picName": "",
         "picPosition": "",
         "picPhone": "",
         "picEmail": "",
-        "picAddress": "",
-        "picCity": "",
-        "picProvince": "",
-        "picPostalCode": "",
         "financingValue": None,
         "downPaymentValue": None,
-        "interestRate": None,
         "tenorMonths": None,
         "facilityPurpose": "",
         "financingMethod": "",
-        "customerStatus": "",
-        "repaymentSource": "",
-        "locationStatus": "",
-        "raw_text": ""
+        "raw_text": combined_full_text
     }
 
-    # Helper to parse numbers from currency strings (e.g. "Rp 40.000.000.000,00" or "40,000,000,000.00")
-    def parse_num(val):
-        if not val:
-            return None
-        s = str(val).replace('IDR', '').replace('Rp', '').replace('rp', '').strip()
-        if ',' in s and '.' in s:
-            if s.rfind(',') > s.rfind('.'):  # Indonesian style: 40.000.000.000,00
-                s = s[:s.rfind(',')]
-                s = re.sub(r'[^\d]', '', s)
-            else:  # US style: 40,000,000,000.00
-                s = s[:s.rfind('.')]
-                s = re.sub(r'[^\d]', '', s)
-        else:
-            s = re.sub(r'[^\d]', '', s)
-        return int(s) if s else None
+    # 1. Company Name
+    m = re.search(r'(?:nama\s+perusahaan|company\s+name|nama\s+debitur)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["companyName"] = m.group(1).strip()
+    else:
+        for line in lines:
+            if re.match(r'^(?:PT|CV|UD|PO)\b', line, re.IGNORECASE):
+                data["companyName"] = line.strip()
+                break
 
-    # Helper to get bounding box top-left coordinates
-    def get_coords(b):
-        raw_b = b.get("box", [0, 0, 0, 0])
-        if isinstance(raw_b, (list, tuple)) and len(raw_b) > 0:
-            if isinstance(raw_b[0], (list, tuple)):
-                bx = min(pt[0] for pt in raw_b)
-                by = min(pt[1] for pt in raw_b)
-                return bx, by
-            elif len(raw_b) >= 2:
-                return raw_b[0], raw_b[1]
-        return 0, 0
+    # 2. NIB (13 digits)
+    m = re.search(r'\bnib\s*[:=]?\s*([0-9\s]{13,20})', combined_full_text, re.IGNORECASE)
+    if m:
+        digits = re.sub(r'\D', '', m.group(1))
+        data["nib"] = digits[:13]
+    else:
+        m13 = re.findall(r'\b\d{13}\b', combined_full_text)
+        if m13:
+            data["nib"] = m13[0]
 
-    all_texts = [(b.get("text") or "").strip() for b in boxes if (b.get("text") or "").strip()]
-    if full_text:
-        all_texts.insert(0, full_text.strip())
-    combined_full = "\n".join(all_texts)
-    data["raw_text"] = combined_full
+    # 3. NPWP (15 or 16 digits)
+    m = re.search(r'\bnpwp\s*[:=]?\s*([0-9.\-\s]{15,25})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["npwp"] = re.sub(r'[.\-\s]', '', m.group(1))
+    else:
+        m_npwp = re.findall(r'\b\d{2}[.\s]?\d{3}[.\s]?\d{3}[.\s]?\d{1}[.\s\-]?\d{3}[.\s]?\d{3}\b', combined_full_text)
+        if m_npwp:
+            data["npwp"] = re.sub(r'[.\-\s]', '', m_npwp[0])
 
-    page1_boxes = [b for b in boxes if b.get('page', 1) == 1]
-    page2_boxes = [b for b in boxes if b.get('page', 1) == 2]
+    # 4. Company Address
+    m = re.search(r'(?:alamat\s+perusahaan|company\s+address|alamat\s+domisili|alamat\s+kantor)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["companyAddress"] = m.group(1).strip()
 
-    img_w = page1_boxes[0].get('page_width', 2550) if page1_boxes else 2550
-    img_h = page1_boxes[0].get('page_height', 3300) if page1_boxes else 3300
-    mid_x = img_w * 0.48
+    # 5. RT / RW
+    m = re.search(r'\brt\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["rt"] = m.group(1).zfill(3)
+    m = re.search(r'\brw\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["rw"] = m.group(1).zfill(3)
 
-    company_boxes = []
-    pic_boxes = []
+    # 6. City / Kota
+    m = re.search(r'(?:kota\s*/\s*kabupaten|kota|kabupaten|city)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:provinsi|kode\s+pos|\n|$))', combined_full_text, re.IGNORECASE)
+    if m:
+        data["city"] = m.group(1).strip()
 
-    for b in page1_boxes:
-        bx, by = get_coords(b)
-        t = (b.get("text") or "").strip()
-        if not t:
-            continue
-        # Split section 2: below header (by >= 0.10 * img_h) and above fixed assets (by <= 0.65 * img_h)
-        if (0.10 * img_h) <= by <= (0.65 * img_h):
-            if bx < mid_x:
-                company_boxes.append((by, bx, t))
-            elif by <= (0.32 * img_h):  # PIC section is strictly above the Shareholder table
-                pic_boxes.append((by, bx, t))
-        else:
-            if bx < mid_x:
-                company_boxes.append((by, bx, t))
+    # 7. Province
+    m = re.search(r'(?:provinsi|province)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:kode\s+pos|negara|\n|$))', combined_full_text, re.IGNORECASE)
+    if m:
+        data["province"] = m.group(1).strip()
 
-    company_boxes.sort(key=lambda x: (x[0], x[1]))
-    pic_boxes.sort(key=lambda x: (x[0], x[1]))
+    # 8. Postal Code (5 digits)
+    m = re.search(r'(?:kode\s+pos|postal\s+code|zip\s+code)\s*[:=]?\s*(\d{5})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["postalCode"] = m.group(1)
 
-    comp_texts = [c[2] for c in company_boxes]
-    pic_texts = [p[2] for p in pic_boxes]
+    # 9. Phone / Fax
+    m = re.search(r'(?:telepon\s*/\s*fax|phone\s*/\s*fax|telepon\s+perusahaan|no\.?\s*telp)\s*[:=]?\s*([+0-9\s().\-]{7,20})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["phoneFax"] = m.group(1).strip()
 
-    # --- 1. Company Information (from Left Column) ---
-    for i, (by, bx, t) in enumerate(company_boxes):
-        # Company Name
-        if re.search(r'company\s+name|nama\s+perusahaan', t, re.I) and not data.get("companyName"):
-            for nxt in comp_texts[i+1:i+3]:
-                if not re.search(r'company\s+address|person|pic|phone|branch|date|corporate', nxt, re.I):
-                    data["companyName"] = nxt
-                    break
+    # 10. Email (Company Email)
+    m_emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', combined_full_text)
+    if m_emails:
+        data["email"] = m_emails[0]
 
-        # Company Address
-        if re.search(r'company\s+address|alamat\s+perusahaan', t, re.I) and not data.get("companyAddress"):
-            for nxt in comp_texts[i+1:i+3]:
-                if not re.search(r'city|kota|district|village|rt|rw|province', nxt, re.I):
-                    data["companyAddress"] = nxt
-                    break
+    # 11. Main Business
+    m = re.search(r'(?:bidang\s+usaha|main\s+business|kegiatan\s+usaha)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["mainBusiness"] = m.group(1).strip()
 
-        # City (Company)
-        if re.match(r'^city$|^kota$', t, re.I) and not data.get("city"):
-            for nxt in comp_texts[i+1:i+3]:
-                if not re.search(r'district|village|rt|rw|province|postal', nxt, re.I):
-                    data["city"] = nxt
-                    break
+    # 12. Establishment Deed No & Date
+    m = re.search(r'(?:no\.?\s*(?:akta\s+)?pendirian|akta\s+pendirian)\s*[:=]?\s*([^\n\r,]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["establishmentActNo"] = m.group(1).strip()
+    m = re.search(r'(?:tanggal\s+akta(?:\s+pendirian)?|establishment\s+date)\s*[:=]?\s*(\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["establishmentDate"] = m.group(1).strip()
 
-        # Province (Company)
-        if re.match(r'^province$|^provinsi$', t, re.I) and not data.get("province"):
-            for nxt in comp_texts[i+1:i+3]:
-                if not re.search(r'postal|main\s+business|establishment|deed', nxt, re.I):
-                    data["province"] = nxt
-                    break
+    # 13. PIC Information
+    m = re.search(r'(?:nama\s+pic|contact\s+person|penanggung\s+jawab|pic\s+name)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picName"] = m.group(1).strip()
+    m = re.search(r'(?:jabatan\s+pic|jabatan|position)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picPosition"] = m.group(1).strip()
+    m = re.search(r'(?:no\.?\s*hp\s+pic|telepon\s+pic|phone\s+pic|no\.?\s*hp|mobile\s+pic)\s*[:=]?\s*([+0-9\s().\-]{9,16})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picPhone"] = re.sub(r'[^\d+]', '', m.group(1))
+    m = re.search(r'(?:email\s+pic|pic\s+email)\s*[:=]?\s*([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["picEmail"] = m.group(1).strip()
+    elif len(m_emails) > 1:
+        data["picEmail"] = m_emails[1]
 
-        # Postal code (Company)
-        if re.search(r'postal\s+code|kode\s+pos', t, re.I) and not data.get("postalCode"):
-            for nxt in comp_texts[i+1:i+3]:
-                clean_num = re.sub(r'\D', '', nxt)
-                if len(clean_num) == 5:
-                    data["postalCode"] = clean_num
-                    break
+    # 14. Financing Values & Terms
+    m = re.search(r'(?:total\s+equipment\s+value|nilai\s+pembiayaan|financing\s+value|total\s+fasilitas)\s*[:=]?\s*(?:idr|rp\.?)?\s*([0-9.,\s]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["financingValue"] = parse_num(m.group(1))
+    m = re.search(r'(?:down\s+payment|uang\s+muka|dp)\s*[:=]?\s*(?:idr|rp\.?)?\s*([0-9.,\s]+)', combined_full_text, re.IGNORECASE)
+    if m:
+        data["downPaymentValue"] = parse_num(m.group(1))
+    m = re.search(r'(?:tenor|jangka\s+waktu)\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
+    if m:
+        data["tenorMonths"] = int(m.group(1))
 
-        # Main Business
-        if re.search(r'^main\s+business$|^bidang\s+usaha$', t, re.I) and not data.get("mainBusiness"):
-            for nxt in comp_texts[i+1:i+3]:
-                if not re.search(r'establishment|experience|deed|name|position|share', nxt, re.I):
-                    data["mainBusiness"] = nxt
-                    break
-
-        # Establishment Deed No
-        if re.search(r'establishment\s+deed\s+no|akta\s+pendirian', t, re.I) and not data.get("establishmentActNo"):
-            for nxt in comp_texts[i+1:i+5]:
-                clean_d = re.sub(r'[^\w\/-]', '', nxt)
-                if len(clean_d) >= 4 and not re.search(r'^\d{2}\/\d{2}\/\d{4}$', clean_d) and not re.search(r'date|tanggal', nxt, re.I):
-                    data["establishmentActNo"] = clean_d
-                    break
-
-        # Latest Deed No
-        if re.search(r'latest\s+(?:amendment\s+)?deed\s+no|akta\s+perubahan\s+terakhir', t, re.I) and not data.get("latestDeedNo"):
-            for nxt in comp_texts[i+1:i+5]:
-                clean_d = re.sub(r'[^\w\/-]', '', nxt)
-                if len(clean_d) >= 4 and not re.search(r'^\d{2}\/\d{2}\/\d{4}$', clean_d) and not re.search(r'date|nib|npwp', nxt, re.I):
-                    data["latestDeedNo"] = clean_d
-                    break
-
-        # Dates for Establishment and Latest Deed
-        m_dt = re.search(r'\b\d{1,2}[\/\.-]\d{1,2}[\/\.-]\d{2,4}\b', t)
-        if m_dt:
-            if (0.35 * img_h) <= by <= (0.40 * img_h) and not data.get("establishmentDate"):
-                data["establishmentDate"] = m_dt.group(0)
-            elif (0.40 * img_h) < by <= (0.45 * img_h) and not data.get("latestDeedDate"):
-                data["latestDeedDate"] = m_dt.group(0)
-
-        # NIB
-        if re.search(r'\bnib\b', t, re.I) and not data.get("nib"):
-            for nxt in comp_texts[i+1:i+3]:
-                digits = re.sub(r'\D', '', nxt)
-                if len(digits) >= 12:
-                    data["nib"] = digits[:13]
-                    break
-
-        # NPWP
-        if re.search(r'npwp|no\.?\s*tax', t, re.I) and not data.get("npwp"):
-            for nxt in comp_texts[i+1:i+3]:
-                digits = re.sub(r'\D', '', nxt)
-                if len(digits) >= 15:
-                    data["npwp"] = digits[:16]
-                    break
-
-        # Phone / Fax
-        if re.search(r'phone\s*\/\s*fax|telepon\s*\/\s*fax', t, re.I) and not data.get("phoneFax"):
-            for nxt in comp_texts[i+1:i+3]:
-                clean_phone = re.sub(r'[^\d+]', '', nxt)
-                if len(clean_phone) >= 7:
-                    data["phoneFax"] = clean_phone
-                    break
-
-        # Website
-        if re.search(r'^website$', t, re.I) and not data.get("website"):
-            for nxt in comp_texts[i+1:i+3]:
-                if '.' in nxt and '@' not in nxt:
-                    data["website"] = nxt
-                    break
-
-        # Company Email
-        if re.search(r'^email$', t, re.I) and not data.get("email"):
-            for nxt in comp_texts[i+1:i+3]:
-                if '@' in nxt:
-                    data["email"] = nxt
-                    break
-
-        # Repayment Source
-        if re.search(r'repayment\s+source|sumber\s+pembayaran', t, re.I) and not data.get("repaymentSource"):
-            for nxt in comp_texts[i+1:i+3]:
-                if not re.search(r'business|location|status', nxt, re.I):
-                    data["repaymentSource"] = nxt
-                    break
-
-        # Business Location Status
-        if re.search(r'business\s+location\s+status|status\s+lokasi', t, re.I) and not data.get("locationStatus"):
-            for nxt in comp_texts[i+1:i+3]:
-                if re.search(r'owned|milik\s+sendiri', nxt, re.I):
-                    data["locationStatus"] = "OWNED"
-                    break
-                elif re.search(r'rent|sewa', nxt, re.I):
-                    data["locationStatus"] = "RENT"
-                    break
-
-    # Fallback for company name if still empty
-    if not data["companyName"]:
-        m_co = re.search(r'(?:nama\s+perusahaan|company\s+name)\s*[:=]?\s*([^\n\r]+)', combined_full, re.I)
-        if m_co:
-            data["companyName"] = m_co.group(1).strip()
-
-    # --- 2. PIC Information (from Right Column) ---
-    for i, (by, bx, t) in enumerate(pic_boxes):
-        # PIC Name
-        if not data.get("picName") and re.search(r'person\s+in\s+charge|^pic\b', t, re.I) and '@' not in t:
-            for nxt in pic_texts[i+1:i+3]:
-                if not re.search(r'phone|email|position|address|city', nxt, re.I) and '@' not in nxt:
-                    data["picName"] = nxt
-                    break
-
-        # PIC Phone
-        if re.search(r'phone\s*:', t, re.I) and not data.get("picPhone"):
-            for nxt in pic_texts[i+1:i+3]:
-                clean_phone = re.sub(r'[^\d+]', '', nxt)
-                if len(clean_phone) >= 9:
-                    data["picPhone"] = clean_phone
-                    break
-
-        # PIC Position
-        if re.search(r'^position$|^jabatan$', t, re.I) and not data.get("picPosition"):
-            parts = []
-            for nxt in pic_texts[i+1:i+6]:
-                if re.search(r'current\s+address|city|phone', nxt, re.I):
-                    break
-                if '@' in nxt or re.search(r'email', nxt, re.I):
-                    continue
-                parts.append(nxt)
-            if parts:
-                data["picPosition"] = " ".join(parts)
-
-        # PIC Email
-        if '@' in t and not data.get("picEmail"):
-            data["picEmail"] = t
-
-        # PIC Current Address
-        if re.search(r'current\s+address|alamat\s+sekarang', t, re.I) and not data.get("picAddress"):
-            for nxt in pic_texts[i+1:i+3]:
-                if not re.search(r'city|province|postal|position', nxt, re.I):
-                    data["picAddress"] = nxt
-                    break
-
-        # PIC City
-        if re.match(r'^city$|^kota$', t, re.I) and not data.get("picCity"):
-            for nxt in pic_texts[i+1:i+3]:
-                if not re.search(r'province|postal|position', nxt, re.I):
-                    data["picCity"] = nxt
-                    break
-
-        # PIC Province
-        if re.match(r'^province$|^provinsi$', t, re.I) and not data.get("picProvince"):
-            for nxt in pic_texts[i+1:i+3]:
-                if not re.search(r'postal|shareholder|position', nxt, re.I):
-                    data["picProvince"] = nxt
-                    break
-
-        # PIC Postal Code
-        if re.search(r'postal\s+code|kode\s+pos', t, re.I) and not data.get("picPostalCode"):
-            for nxt in pic_texts[i+1:i+3]:
-                clean_num = re.sub(r'\D', '', nxt)
-                if len(clean_num) == 5:
-                    data["picPostalCode"] = clean_num
-                    break
-
-    # --- 3. Financing Facility Details (Page 2 or Full Text) ---
-    p2_texts = [b.get("text", "").strip() for b in page2_boxes if (b.get("text") or "").strip()]
-
-    # Financing Method
-    for t in (p2_texts or all_texts):
-        if re.search(r'financial\s+lease\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', t, re.I):
-            data["financingMethod"] = "FINANCIAL_LEASE"
-            break
-        elif re.search(r'sale\s+and\s+lease\s+back\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', t, re.I):
-            data["financingMethod"] = "SALE_AND_LEASE_BACK"
-            break
-        elif re.search(r'installment\s+purchase\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', t, re.I):
-            data["financingMethod"] = "INSTALLMENT_PURCHASE"
-            break
-
-    # Financing Value & Terms
-    for i, t in enumerate(p2_texts):
-        if re.search(r'financing\s+value|nilai\s+pembiayaan', t, re.I):
-            for nxt in p2_texts[i+1:i+4]:
-                val = parse_num(nxt)
-                if val and val > 1000000:
-                    data["financingValue"] = val
-                    break
-
-        if re.search(r'down\s+payment|uang\s+muka', t, re.I):
-            for nxt in p2_texts[i+1:i+4]:
-                val = parse_num(nxt)
-                if val and val > 1000000:
-                    data["downPaymentValue"] = val
-                    break
-
-        if re.search(r'rate\s*:', t, re.I):
-            for nxt in p2_texts[i+1:i+3]:
-                m_rt = re.search(r'([\d.,]+)\s*%', nxt)
-                if m_rt:
-                    data["interestRate"] = float(m_rt.group(1).replace(',', '.'))
-                    break
-
-        if re.search(r'tenor|duration', t, re.I):
-            for nxt in p2_texts[i+1:i+4]:
-                m_tn = re.search(r'(\d+)(?:\.\d+)?\s*(?:months|bulan)', nxt, re.I)
-                if m_tn:
-                    data["tenorMonths"] = int(m_tn.group(1))
-                    break
-
-    # Financing Purpose Checkmark
-    if re.search(r'investment\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', combined_full, re.I):
-        data["facilityPurpose"] = "INVESTMENT"
-    elif re.search(r'working\s+capital\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', combined_full, re.I):
-        data["facilityPurpose"] = "WORKING_CAPITAL"
-
-    # Customer Status Checkmark
-    if re.search(r'existing\s+customer\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]|\bEXISTING\b', combined_full, re.I):
+    # 15. Customer Status & Facility Purpose
+    if re.search(r'\bEXISTING\b', combined_full_text, re.IGNORECASE):
         data["customerStatus"] = "EXISTING"
-    elif re.search(r'new\s+customer\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]|\bNEW\b', combined_full, re.I):
+    elif re.search(r'\bNEW\b', combined_full_text, re.IGNORECASE):
         data["customerStatus"] = "NEW"
 
-    # Customer Category Checkmark
-    if re.search(r'corporate\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', combined_full, re.I):
-        data["customerCategory"] = "Corporate"
-    elif re.search(r'commercial\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', combined_full, re.I):
-        data["customerCategory"] = "Commercial"
-    elif re.search(r'micro\s*[\(\[\{]?\s*[vV√xX\u2713\u2714]', combined_full, re.I):
-        data["customerCategory"] = "Micro"
+    if re.search(r'\bWORKING[\s_-]*CAPITAL\b', combined_full_text, re.IGNORECASE):
+        data["facilityPurpose"] = "WORKING_CAPITAL"
+    elif re.search(r'\bINVESTMENT\b', combined_full_text, re.IGNORECASE):
+        data["facilityPurpose"] = "INVESTMENT"
 
     return data, boxes
 
@@ -1836,11 +1646,14 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
         elif dtype_clean == "nib":
             extracted, tagged = extract_nib(boxes)
             detected_type = "nib"
+        elif dtype_clean == "fap":
+            extracted, tagged = extract_fap(boxes, pdf_path=str(temp_path) if temp_path.suffix.lower() == '.pdf' else None)
+            detected_type = "fap"
         else:
             obj, tagged = InformationExtractor.extract_generic(boxes)
             detected_type = "generic"
 
-        if dtype_clean != "nib":
+        if dtype_clean not in ["nib", "fap"]:
             extracted = obj.model_dump() if hasattr(obj, "model_dump") else dict(obj)
 
         # Robust Indonesian Birth Place and Date Adjuster and Administrative Upward Search

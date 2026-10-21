@@ -3503,6 +3503,25 @@ button:focus-visible, a:focus-visible {
   position: relative !important;
 }
 
+.modal.nib-ocr-modal,
+.nib-ocr-modal {
+  width: min(1840px, 98vw) !important;
+  max-width: 98vw !important;
+  height: 94vh !important;
+  max-height: 94vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 14px !important;
+  padding: 0 !important;
+  margin: auto !important;
+  overflow: hidden !important;
+}
+
+.nib-ocr-modal-overlay {
+  padding: 12px !important;
+  box-sizing: border-box !important;
+}
+
 .modal-head {
   display: flex !important;
   align-items: center !important;
