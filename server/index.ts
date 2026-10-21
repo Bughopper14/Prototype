@@ -503,6 +503,16 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
     const extracted = ocrRes.data || {};
 
+    const toIsoDate = (val: string) => {
+      if (!val) return null;
+      const s = String(val).trim();
+      const mIso = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
+      const mDmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+      if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
+      return null;
+    };
+
     const diffs: Array<{ field: string; label: string; oldValue: string; newValue: string }> = [];
     const compareField = (key: string, label: string, oldVal: any, newVal: any, isNumber = false) => {
       if (newVal === undefined || newVal === null || String(newVal).trim() === '') return;
@@ -517,10 +527,38 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
         const cleanNew = sNew.replace(/\s+/g, ' ').toUpperCase();
         const cleanOld = sOld.replace(/\s+/g, ' ').toUpperCase();
         if (cleanNew === cleanOld) return;
+
+        // Date normalization (DD/MM/YYYY vs YYYY-MM-DD)
+        if (key.toLowerCase().includes('date') || key.toLowerCase().includes('tanggal')) {
+          const dNew = toIsoDate(sNew);
+          const dOld = toIsoDate(sOld);
+          if (dNew && dOld && dNew === dOld) return;
+        }
+
+        // NIB / NPWP digit comparison
         if (key === 'nib' || key === 'npwp') {
           const dNew = sNew.replace(/\D/g, '');
           const dOld = sOld.replace(/\D/g, '');
           if (dNew && dOld && dNew === dOld) return;
+        }
+
+        // Phone numbers digit comparison (e.g. 021-52998877 vs 02152998877)
+        if (key === 'phoneFax' || key === 'picPhone' || key.toLowerCase().includes('phone')) {
+          const dNew = sNew.replace(/\D/g, '');
+          const dOld = sOld.replace(/\D/g, '');
+          if (dNew && dOld && (dNew === dOld || dNew.endsWith(dOld) || dOld.endsWith(dNew))) return;
+        }
+
+        // Address normalization (Jl. vs JI. vs J1., whitespace, punctuation)
+        if (key.toLowerCase().includes('address') || key.toLowerCase().includes('alamat')) {
+          const normAddr = (s: string) => s.replace(/\bJ[I1L]\.?\s*/gi, 'JL. ').replace(/[\s,.-]+/g, ' ').trim().toUpperCase();
+          if (normAddr(sNew) === normAddr(sOld)) return;
+        }
+
+        // Deed numbers (ignore spaces & hyphens differences)
+        if (key.toLowerCase().includes('deed') || key.toLowerCase().includes('act')) {
+          const normDeed = (s: string) => s.replace(/[\s\-_/.]/g, '').toUpperCase();
+          if (normDeed(sNew) === normDeed(sOld)) return;
         }
       }
 
