@@ -881,7 +881,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
  }
  const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
- async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Deed not found.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Deed not found.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:draft.stakeholders||[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  useEffect(()=>{if(tab!==1)return;const timer=setInterval(()=>api('/applications/'+a.id).then(onChange).catch(()=>{}),15000);return()=>clearInterval(timer);},[tab,a.id]);
    const renderCustomerDetailSections = () => (
     <div className="fap-accordion-group">
@@ -2937,7 +2937,47 @@ function ActivityPage({rows,open}:{rows:any[],open:(id:string)=>void}){const [lo
 function DocumentDesk({rows,open,user}:{rows:any[],open:(id:string,tab?:number)=>void,user:any}){const [items,setItems]=useState<any[]>([]),[search,setSearch]=useState(''),[department,setDepartment]=useState(['BS','CA','LEGAL'].includes(user.role)?user.role:'ALL'),[status,setStatus]=useState('OPEN'),[error,setError]=useState('');useEffect(()=>{api('/document-desk').then(setItems).catch(e=>setError(e.message));},[rows]);const visible=items.filter(d=>(status==='ALL'||(status==='OPEN'?d.status!=='VERIFIED':d.status==='VERIFIED'))&&(department==='ALL'||d.assigned_role===department)&&(d.company_name+' '+d.fap_number+' '+d.document_name).toLowerCase().includes(search.toLowerCase()));const openCount=items.filter(d=>d.status!=='VERIFIED').length;return <><div className="stats-grid"><div className="stat-card"><div className="stat-top">Documents to review</div><strong>{openCount}</strong><small>Checklist items awaiting completion or verification</small></div><div className="stat-card"><div className="stat-top">Verified documents</div><strong>{items.length-openCount}</strong><small>Checklist items marked verified</small></div><div className="stat-card"><div className="stat-top">Applications</div><strong>{new Set(items.map(d=>d.application_id)).size}</strong><small>Applications with document checklists</small></div></div><section className="panel applications-panel"><div className="panel-head"><h2>Document checklist queue <span>{visible.length}</span></h2><span className="subtle-chip">Open an item to review its documents</span></div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search documents" placeholder="Search company, FAP, or document..." value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter document status" value={status} onChange={e=>setStatus(e.target.value)}><option value="OPEN">Needs action</option><option value="VERIFIED">Verified</option><option value="ALL">All documents</option></select><select aria-label="Filter assigned department" value={department} onChange={e=>setDepartment(e.target.value)}><option value="ALL">All departments</option>{['BS','CA','LEGAL'].map(r=><option value={r} key={r}>{label(r)}</option>)}</select></div></div>{error&&<div className="error">{error}</div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>DOCUMENT</th><th>COMPANY / FAP</th><th>OWNER</th><th>REQUIRED</th><th>FILES</th><th>STATUS</th><th/></tr></thead><tbody>{visible.map(d=><tr key={d.checklist_id} onClick={()=>open(d.application_id,6)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')open(d.application_id,6);}}><td><b>{d.document_name}</b><small>{d.document_code}</small></td><td><div className="company-cell"><div><b>{d.company_name}</b><small>{d.fap_number}</small></div></div></td><td><span className="branch">{label(d.assigned_role)}</span></td><td>{d.is_mandatory?'Yes':'No'}</td><td>{d.file_count||0}</td><td><Badge status={d.status}/></td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><FolderCheck size={26}/><h3>No checklist items found</h3><p>Try another filter or search.</p></div>}</div></section></>;}
 
 const deedNames:Record<string,string>={establishment:'Establishment Deed',amendment:'Amendment Deed'};
-function legalDeedList(legal:any,application:any){const appId=application?.id||'app';const saved:any[]=Array.isArray(legal.deeds)?legal.deeds:[],legacy=['establishment','amendment'].filter(type=>legal[type]&&Object.values(legal[type]).some(Boolean)).map(type=>({id:`legacy-${type}-${appId}`,type,...legal[type]}));const entered=Array.isArray(legal.deeds)?saved:legacy;const system:any[]=[];if(application?.customer?.establishmentActNo)system.push({id:`system-establishment-${appId}`,type:'establishment',deedNumber:application.customer.establishmentActNo,deedDate:String(application.customer.establishmentDate||'').slice(0,10),source:'Sistem'});if(application?.latestDeedNo)system.push({id:`system-amendment-${appId}`,type:'amendment',deedNumber:application.latestDeedNo,deedDate:String(application.latestDeedDate||'').slice(0,10),source:'Sistem'});return [...system.filter(x=>!entered.some(y=>y.id===x.id||y.type===x.type&&y.deedNumber===x.deedNumber)),...entered].filter(x=>!legal.hiddenDeedIds?.includes(x.id));}
+function legalDeedList(legal:any,application:any){
+  const appId=application?.id||'app';
+  const saved:any[]=Array.isArray(legal.deeds)?legal.deeds:[];
+  const legacy=['establishment','amendment'].filter(type=>legal[type]&&Object.values(legal[type]).some(Boolean)).map(type=>({id:`legacy-${type}-${appId}`,type,...legal[type]}));
+  const entered=Array.isArray(legal.deeds)?saved:legacy;
+  const system:any[]=[];
+  const estNo = String(application?.customer?.establishmentActNo || '').trim().toLowerCase();
+  const latestNo = String(application?.latestDeedNo || '').trim().toLowerCase();
+  const appStakeholders = Array.isArray(application?.stakeholders) ? application.stakeholders : [];
+
+  if(application?.customer?.establishmentActNo) {
+    system.push({
+      id:`system-establishment-${appId}`,
+      type:'establishment',
+      deedNumber:application.customer.establishmentActNo,
+      deedDate:String(application.customer.establishmentDate||'').slice(0,10),
+      source:'Sistem',
+      stakeholders: appStakeholders
+    });
+  }
+
+  // Only generate system-amendment if latestDeedNo exists and is distinct from establishmentActNo
+  if(application?.latestDeedNo && latestNo && latestNo !== estNo) {
+    system.push({
+      id:`system-amendment-${appId}`,
+      type:'amendment',
+      deedNumber:application.latestDeedNo,
+      deedDate:String(application.latestDeedDate||'').slice(0,10),
+      source:'Sistem',
+      stakeholders: appStakeholders
+    });
+  }
+
+  // Filter out any system deed that already exists in entered (by ID or same deedNumber)
+  const filteredSystem = system.filter(x => {
+    const xNo = String(x.deedNumber || '').trim().toLowerCase();
+    return !entered.some(y => y.id === x.id || (xNo && String(y.deedNumber || '').trim().toLowerCase() === xNo));
+  });
+
+  return [...filteredSystem, ...entered].filter(x => !legal.hiddenDeedIds?.includes(x.id));
+}
 function selectedLegalStakeholders(legal:any,application:any,fallback:any[]){const deeds=legalDeedList(legal,application),selected=deeds.find(x=>x.id===legal.selectedDeedId)||deeds[0];return selected&&Array.isArray(selected.stakeholders)?selected.stakeholders:fallback;}
 function shareholderNames(parties:any):string[]{return Array.isArray(parties?.shareholders)?parties.shareholders:parties?.shareholder?[parties.shareholder]:[];}
 function StakeholderDeedView({legal,application,fallbackRows}:{legal:any,application:any,fallbackRows:any[]}){
@@ -4487,9 +4527,9 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const getDeedCategoryIds=(d:any):string[]=>{if(Array.isArray(d?.remarkCategoryIds)&&d.remarkCategoryIds.length>0)return d.remarkCategoryIds;if(d?.remarkCategoryId)return [d.remarkCategoryId];return d?.type==='establishment'?['establishment-deed']:[];};
  const deeds=legalDeedList(value,application),selectedId=value.selectedDeedId||deeds.find(x=>x.type===(value.selectedDeed||'establishment'))?.id||deeds[0]?.id,parties=editing?.parties||{};
  const locked=(d:any)=>!checkIsAdmin(user)&&(disabled||deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED');const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
- const rowsFor=(x:any):any[]=>Array.isArray(x.stakeholders)?x.stakeholders:x.id===selectedId?stakeholders:[];
+ const rowsFor=(x:any):any[]=>Array.isArray(x?.stakeholders)?x.stakeholders:Array.isArray(stakeholders)?stakeholders:[];
  const updateRows=async(deedId:string,rows:any[])=>{
-   const hydrated=deeds.map(x=>x.id===selectedId&&!Array.isArray(x.stakeholders)?{...x,stakeholders}:x);
+   const hydrated=deeds.map(x=>({...x,stakeholders:Array.isArray(x.stakeholders)?x.stakeholders:stakeholders}));
    const updated=hydrated.map(x=>x.id===deedId?{...x,stakeholders:rows}:x);
    const nextLegal = {...value,deeds:updated,selectedDeedId:deedId};
    onStakeholdersChange(nextLegal,rows);
