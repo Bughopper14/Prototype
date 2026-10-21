@@ -273,10 +273,10 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
         className="modal nib-ocr-modal" 
         onClick={e => e.stopPropagation()}
         style={{
-          width: 'min(1600px, 96vw)',
-          maxWidth: '96vw',
-          maxHeight: '94vh',
-          height: 'min(920px, 94vh)',
+          width: 'min(1760px, 98vw)',
+          maxWidth: '98vw',
+          maxHeight: '96vh',
+          height: 'min(940px, 96vh)',
           display: 'flex',
           flexDirection: 'column',
           padding: 0,
@@ -330,13 +330,13 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
           padding: '16px 20px',
           overflow: 'hidden',
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
           gap: 20,
           flex: '1 1 auto',
           minHeight: 0
         }}>
           {/* LEFT: UPLOAD & FILE ZONE (50% VIEW) */}
-          <div style={{display:'flex', flexDirection:'column', gap: 12, height: '100%', minHeight: 0}}>
+          <div style={{display:'flex', flexDirection:'column', gap: 12, height: '100%', minHeight: 0, minWidth: 0}}>
             {fileUrl ? (
               <div style={{
                 background: '#0f172a',
@@ -367,20 +367,20 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <button
                       type="button"
-                      onClick={() => setZoom(z => Math.max(0.5, z - 0.2))}
+                      onClick={() => setZoom(z => Math.max(0.5, Number((z - 0.15).toFixed(2))))}
                       title="Zoom Out"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                       <ZoomOut size={13} />
                     </button>
-                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', minWidth: 32, textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.74rem', color: '#94a3b8', minWidth: 38, textAlign: 'center', fontWeight: 600 }}>
                       {Math.round(zoom * 100)}%
                     </span>
                     <button
                       type="button"
-                      onClick={() => setZoom(z => Math.min(3, z + 0.2))}
+                      onClick={() => setZoom(z => Math.min(3, Number((z + 0.15).toFixed(2))))}
                       title="Zoom In"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                       <ZoomIn size={13} />
                     </button>
@@ -388,15 +388,15 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                       type="button"
                       onClick={() => setRotation(r => (r + 90) % 360)}
                       title="Rotate 90°"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                       <RotateCw size={13} />
                     </button>
                     <button
                       type="button"
                       onClick={() => { setZoom(1); setRotation(0); }}
-                      title="Reset"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '3px 6px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      title="Reset Zoom"
+                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '4px 8px', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                     >
                       <Maximize2 size={13} />
                     </button>
@@ -406,33 +406,45 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 {/* PREVIEW CANVAS */}
                 <div style={{
                   flex: '1 1 0',
-                  minHeight: '480px',
+                  minHeight: 0,
                   height: '100%',
                   overflow: 'auto',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   background: '#090d16',
-                  padding: '8px'
+                  padding: '8px',
+                  position: 'relative'
                 }}>
                   {fileType === 'pdf' ? (
                     <iframe
-                      src={`${fileUrl}#toolbar=0`}
-                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff', minHeight: '480px' }}
+                      key={`${fileUrl}-${Math.round(zoom * 100)}`}
+                      src={`${fileUrl}#toolbar=1&navpanes=0&zoom=${Math.round(zoom * 100)}`}
+                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff', minHeight: '100%' }}
                       title="NIB PDF Preview"
                     />
                   ) : (
-                    <img
-                      src={fileUrl}
-                      alt="NIB Preview"
-                      style={{
-                        maxWidth: '100%',
-                        maxHeight: '100%',
-                        objectFit: 'contain',
-                        transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                        transition: 'transform 0.15s ease'
-                      }}
-                    />
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      minWidth: '100%',
+                      minHeight: '100%',
+                      margin: 'auto'
+                    }}>
+                      <img
+                        src={fileUrl}
+                        alt="NIB Preview"
+                        style={{
+                          maxWidth: zoom <= 1 ? '100%' : 'none',
+                          maxHeight: zoom <= 1 ? '100%' : 'none',
+                          width: zoom > 1 ? `${Math.round(zoom * 100)}%` : 'auto',
+                          objectFit: 'contain',
+                          transform: `rotate(${rotation}deg)`,
+                          transition: 'width 0.15s ease, transform 0.15s ease'
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
 
@@ -682,19 +694,19 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               />
             </div>
 
-            {/* WILAYAH: PROVINSI, KABUPATEN/KOTA, KECAMATAN, KELURAHAN, KODE POS */}
+            {/* ADMINISTRATIVE REGIONS */}
             <div style={{
               background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
-              padding: '10px', display: 'flex', flexDirection: 'column', gap: 8
+              padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10
             }}>
-              <span style={{fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.04em'}}>
-                Administrative Regions (Wilayah)
+              <span style={{fontSize: '0.74rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em'}}>
+                Administrative Regions
               </span>
 
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 8}}>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 10}}>
                 <div>
-                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
-                    Province (Provinsi)
+                  <label style={{fontSize: '0.74rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    Province
                   </label>
                   <input 
                     type="text" 
@@ -702,7 +714,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     placeholder="e.g. DKI Jakarta"
                     onChange={e => setFormData({...formData, province: e.target.value})}
                     style={{
-                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      width: '100%', padding: '6px 9px', fontSize: '0.8rem',
                       borderRadius: 6, border: '1px solid #cbd5e1',
                       background: formData.province ? '#f0f7ff' : '#ffffff'
                     }}
@@ -710,8 +722,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 </div>
 
                 <div>
-                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
-                    City / Regency (Kabupaten/Kota)
+                  <label style={{fontSize: '0.74rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    City / Regency
                   </label>
                   <input 
                     type="text" 
@@ -719,7 +731,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     placeholder="e.g. Jakarta Selatan"
                     onChange={e => setFormData({...formData, city: e.target.value})}
                     style={{
-                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      width: '100%', padding: '6px 9px', fontSize: '0.8rem',
                       borderRadius: 6, border: '1px solid #cbd5e1',
                       background: formData.city ? '#f0f7ff' : '#ffffff'
                     }}
@@ -727,8 +739,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 </div>
 
                 <div>
-                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
-                    District (Kecamatan)
+                  <label style={{fontSize: '0.74rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    District
                   </label>
                   <input 
                     type="text" 
@@ -736,7 +748,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     placeholder="e.g. Setiabudi"
                     onChange={e => setFormData({...formData, district: e.target.value})}
                     style={{
-                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      width: '100%', padding: '6px 9px', fontSize: '0.8rem',
                       borderRadius: 6, border: '1px solid #cbd5e1',
                       background: formData.district ? '#f0f7ff' : '#ffffff'
                     }}
@@ -744,8 +756,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                 </div>
 
                 <div>
-                  <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
-                    Village / Sub-district (Kelurahan)
+                  <label style={{fontSize: '0.74rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    Village / Sub-district
                   </label>
                   <input 
                     type="text" 
@@ -753,7 +765,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                     placeholder="e.g. Karet Semanggi"
                     onChange={e => setFormData({...formData, village: e.target.value})}
                     style={{
-                      width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                      width: '100%', padding: '6px 9px', fontSize: '0.8rem',
                       borderRadius: 6, border: '1px solid #cbd5e1',
                       background: formData.village ? '#f0f7ff' : '#ffffff'
                     }}
@@ -762,8 +774,8 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
               </div>
 
               <div>
-                <label style={{fontSize: '0.72rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 2}}>
-                  Postal / Zip Code (Kode Pos)
+                <label style={{fontSize: '0.74rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                  Postal / Zip Code
                 </label>
                 <input 
                   type="text" 
@@ -771,7 +783,7 @@ export function NibOcrModal({ open, onClose, onApply, notify }: NibOcrModalProps
                   placeholder="e.g. 12930"
                   onChange={e => setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})}
                   style={{
-                    width: '100%', padding: '5px 8px', fontSize: '0.78rem',
+                    width: '100%', padding: '6px 9px', fontSize: '0.8rem',
                     borderRadius: 6, border: '1px solid #cbd5e1',
                     background: formData.postalCode ? '#f0f7ff' : '#ffffff'
                   }}
