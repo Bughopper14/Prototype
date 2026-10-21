@@ -73,7 +73,7 @@ async function getTableColumns(c: any, table: string): Promise<Set<string>> {
  return cols;
 }
 
-async function upsert(c:any,table:string,id:string,rawValues:Record<string,any>){
+async function upsert(c:any,table:string,id:string,rawValues:Record<string,any>): Promise<string>{
  const validCols = await getTableColumns(c, table);
  const values: Record<string, any> = {};
  for (const [k, v] of Object.entries(rawValues)) {
@@ -81,20 +81,37 @@ async function upsert(c:any,table:string,id:string,rawValues:Record<string,any>)
    values[k] = (v === '' || v === undefined) ? null : v;
   }
  }
- const [rows]=await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`,[id]) as any;
- if(rows[0]&&rows[0].application_id!==values.application_id)throw Object.assign(Error('Record belongs to another application'),{status:409});
- if(rows[0]&&values.akta_id&&rows[0].akta_id!==values.akta_id)throw Object.assign(Error('Stakeholder belongs to another deed'),{status:409});
+ let targetId = id;
+ let [rows] = await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`,[targetId]) as any;
+ if (rows[0] && values.application_id && rows[0].application_id !== values.application_id) {
+  targetId = crypto.randomUUID();
+  [rows] = await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`,[targetId]) as any;
+ } else if (rows[0] && values.akta_id && rows[0].akta_id && rows[0].akta_id !== values.akta_id) {
+  targetId = crypto.randomUUID();
+  [rows] = await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`,[targetId]) as any;
+ }
  const keys=Object.keys(values),old=rows[0];
  const changed=!old||Boolean(old.deleted_at)||keys.some(k=>comparable(k,old[k])!==comparable(k,values[k]));
- if(!changed)return;
- if(old)await c.execute(`UPDATE \`${table}\` SET ${keys.map(k=>'`'+k+'`=?').join(',')},deleted_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[...Object.values(values),id]);
- else await c.execute(`INSERT INTO \`${table}\` (id,${keys.map(k=>'`'+k+'`').join(',')}) VALUES (${Array(keys.length+1).fill('?').join(',')})`,[id,...Object.values(values)]);
+ if(!changed)return targetId;
+ if(old)await c.execute(`UPDATE \`${table}\` SET ${keys.map(k=>'`'+k+'`=?').join(',')},deleted_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,[...Object.values(values),targetId]);
+ else await c.execute(`INSERT INTO \`${table}\` (id,${keys.map(k=>'`'+k+'`').join(',')}) VALUES (${Array(keys.length+1).fill('?').join(',')})`,[targetId,...Object.values(values)]);
+ return targetId;
 }
 export async function saveLegal(applicationId:string,incoming:any,final=false){
  if(!pool)throw Error('MySQL is not configured');
  const rawList = Array.isArray(incoming) ? incoming : Array.isArray(incoming?.deeds) ? incoming.deeds : incoming ? [incoming] : [];
  if(!Array.isArray(rawList))throw Object.assign(Error('Daftar akta tidak valid'),{status:422});
  const deeds=structuredClone(rawList),ids=new Set<string>();
+ const seenDeedNumbers = new Map<string, string>();
+ for (const d of deeds) {
+  const rawNo = String(d.deedNumber || '').trim().toLowerCase();
+  if (rawNo) {
+   if (seenDeedNumbers.has(rawNo)) {
+    throw Object.assign(Error('This deed number has already been entered in this application.'), { status: 422 });
+   }
+   seenDeedNumbers.set(rawNo, d.id || '');
+  }
+ }
  for(let i=0; i<deeds.length; i++){
   const d = deeds[i];
   d.id=d.id||crypto.randomUUID();
@@ -138,7 +155,7 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
    if(expiry) expiry.setUTCFullYear(expiry.getUTCFullYear()+5);
    const until=expiry?expiry.toISOString().slice(0,10):null;
    const active=until?until>=new Date().toISOString().slice(0,10):true;
-   await upsert(c,'daftar_akta',d.id,{
+   const assignedDeedId = await upsert(c,'daftar_akta',d.id,{
      application_id:applicationId,
      akta:d.type==='establishment'?'Akta pendirian':'Akta perubahan',
      nomor_akta:d.deedNumber||'',
@@ -154,6 +171,7 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
      total_kepemilikan:d.stakeholders.reduce((v:Decimal,s:any)=>v.plus(s.sharePercentage||0),new Decimal(0)).toFixed(2),
      is_selected:Boolean(d.id===incoming.selectedDeedId)
    });
+   d.id = assignedDeedId;
    const table=d.type==='establishment'?'akta_pendirian':'akta_perubahan',other=d.type==='establishment'?'akta_perubahan':'akta_pendirian';
    const [typed]=await c.execute<any[]>(`SELECT id FROM ${table} WHERE akta_id=?`,[d.id]);
    await upsert(c,table,typed[0]?.id||crypto.randomUUID(),{
@@ -192,8 +210,9 @@ export async function saveLegal(applicationId:string,incoming:any,final=false){
        }
        return [col(f.key), val];
      }));
-     const [old]=await c.execute<any[]>('SELECT id FROM legal_stakeholder WHERE id=?',[s.id]);
-     await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});
+     const [old]=await c.execute<any[]>('SELECT id FROM legal_stakeholder WHERE id=? AND akta_id=? AND application_id=?',[s.id, d.id, applicationId]);
+     const assignedStakeholderId = await upsert(c,'legal_stakeholder',old[0]?.id||s.id,{akta_id:d.id,application_id:applicationId,...value});
+     s.id = assignedStakeholderId;
    }
    const stakeholderIds=d.stakeholders.map((s:any)=>s.id);
    if(d._stakeholdersPassed){
