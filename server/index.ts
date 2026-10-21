@@ -353,7 +353,7 @@ app.post('/api/v1/applications',async(req,res)=>{
         },
         profile: {
           ...body,
-          companyName: cust.company_name || req.body.companyName
+          companyName: cust.company_name || req.body.companyName || safeInput.companyName
         }
       }, {
         id: a.id,

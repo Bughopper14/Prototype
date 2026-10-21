@@ -401,21 +401,26 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
         id=matchedExisting.id;
         setCustomerId(id);
       }else{
-        const nib=nibClean;
-        const npwp=npwpClean;
-        if(!String(customerDraft?.companyName||'').trim())throw new Error('Company name of the new debtor is required.');
-        if(nib.length!==13)throw new Error('NIB must consist of 13 digits.');
-        if(npwp.length<15||npwp.length>16)throw new Error('NPWP must consist of 15 or 16 digits.');
-        validateInput(customerDraft);
-        const createdCust=await api('/customers','POST',customerDraft);
+        const resolvedName = liveCompanyName || customerDraft?.companyName || draft?.customer?.companyName || draft?.companyName || '';
+        if(!resolvedName.trim())throw new Error('Company name of the new debtor is required.');
+        const customerToSave = {
+          ...customerDraft,
+          companyName: resolvedName,
+          nib: nibClean,
+          npwp: npwpClean
+        };
+        validateInput(customerToSave);
+        const createdCust=await api('/customers','POST',customerToSave);
         id=createdCust.id;
         setCustomerId(id);
         if(onCustomerCreated)onCustomerCreated(createdCust);
       }
     }
    const {isNew,customer,id:_draftId,...profileData}=draft;
+   const finalCompanyName = liveCompanyName || customerDraft?.companyName || draft?.customer?.companyName || draft?.companyName || '';
    const safePayload = {
      branchCode: profileData.branchCode || 'JKT01',
+     companyName: finalCompanyName,
      companyAddress: profileData.companyAddress || '-',
      city: profileData.city || '-',
      province: profileData.province || '-',
@@ -4317,7 +4322,6 @@ function DeedRemarksTinyMCE({
           branding: false,
           promotion: false,
           statusbar: true,
-          placeholder: 'Write deed change notes here...',
           setup: (ed: any) => {
             ed.on('init', () => {
               if (!disabled) {
