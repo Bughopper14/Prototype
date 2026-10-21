@@ -86,12 +86,14 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
     const isRequired=isFieldMandatory(mandatoryRules,section,f.key,f.required);
     const fieldValue=f.type==='date'?String(value?.[f.key]||'').slice(0,10):value?.[f.key]??'';
     const isDigitsOnly=['phone','mobilePhone','phoneFax','rt','rw'].includes(f.key);
+    const isLettersOnly=['repaymentSource'].includes(f.key);
+    const isTitleCaseField=['projectLocation'].includes(f.key);
     const isAgeField=['ageYears','ageMonths','experienceYears','experienceMonths'].includes(f.key);
     const isFieldDisabled=disabled||isAgeField;
     const ageStyle=isAgeField?{backgroundColor:'#f1f5f9',cursor:'not-allowed',color:'#64748b'}:undefined;
     const update=(raw:string)=>{
       if(isAgeField)return;
-      const clean=isDigitsOnly?raw.replace(/\D/g,''):raw;
+      const clean=isDigitsOnly?raw.replace(/\D/g,''):isLettersOnly?raw.replace(/\d/g,''):raw;
       const sanitized=['rt','rw'].includes(f.key)?clean.slice(0,3):clean;
       let next=resetMasterChildren(f.key,{...value,[f.key]:f.type==='number'?sanitized:f.type==='date'?(sanitized||null):sanitized},fields.map(x=>x.key));
       if(f.key==='village'&&fields.some(x=>x.key==='postalCode'))next.postalCode=master.village.find(x=>x.value===sanitized)?.zipCode||'';
@@ -110,6 +112,9 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
     const handleKeyDown=isDigitsOnly?(e:React.KeyboardEvent<HTMLInputElement>)=>{
       if(e.ctrlKey||e.metaKey||['Backspace','Tab','Enter','Escape','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Delete','Home','End'].includes(e.key))return;
       if(!/^\d$/.test(e.key))e.preventDefault();
+    }:isLettersOnly?(e:React.KeyboardEvent<HTMLInputElement>)=>{
+      if(e.ctrlKey||e.metaKey||['Backspace','Tab','Enter','Escape','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Delete','Home','End'].includes(e.key))return;
+      if(/^\d$/.test(e.key))e.preventDefault();
     }:undefined;
     const handleInputChange=(e:React.ChangeEvent<HTMLInputElement>)=>{
       if(isAgeField)return;
@@ -118,18 +123,32 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
         if(['rt','rw'].includes(f.key))v=v.slice(0,3);
         e.target.value=v;
         update(v);
+      }else if(isLettersOnly){
+        const v=e.target.value.replace(/\d/g,'');
+        e.target.value=v;
+        update(v);
+      }else if(isTitleCaseField){
+        let v=e.target.value;
+        if(/^[a-z]/.test(v)||/\s[a-z]/.test(v)){
+          v=v.replace(/(^|\s|-)[a-z]/g,c=>c.toUpperCase());
+          e.target.value=v;
+        }
+        update(v);
       }else{
         update(e.target.value);
       }
     };
-    const handlePaste=isDigitsOnly?(e:React.ClipboardEvent<HTMLInputElement>)=>{
+    const handlePaste=(isDigitsOnly||isLettersOnly)?(e:React.ClipboardEvent<HTMLInputElement>)=>{
       if(isAgeField)return;
       e.preventDefault();
-      const pasted=(e.clipboardData.getData('text')||'').replace(/\D/g,'');
+      const rawPasted=(e.clipboardData.getData('text')||'');
+      const pasted=isDigitsOnly?rawPasted.replace(/\D/g,''):rawPasted.replace(/\d/g,'');
       if(!pasted)return;
       const input=e.currentTarget;
       const start=input.selectionStart??0,end=input.selectionEnd??0,curr=String(fieldValue);
-      let nextVal=(curr.slice(0,start)+pasted+curr.slice(end)).replace(/\D/g,'');
+      let nextVal=isDigitsOnly
+        ?(curr.slice(0,start)+pasted+curr.slice(end)).replace(/\D/g,'')
+        :(curr.slice(0,start)+pasted+curr.slice(end)).replace(/\d/g,'');
       if(['rt','rw'].includes(f.key))nextVal=nextVal.slice(0,3);
       input.value=nextVal;
       update(nextVal);
@@ -1484,6 +1503,30 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
   const [systemZoom, setSystemZoom] = useState<number>(0.72);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
+  const [fapNavFilter, setFapNavFilter] = useState<string>('all');
+
+  const sectionFieldMap: Record<string, string[]> = {
+    'fap-preview-sec-header': ['fapNumber', 'branchCode', 'customerStatus', 'companyType', 'applicationDate'],
+    'fap-preview-sec-company': ['companyName', 'companyAddress', 'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw', 'nib', 'npwp', 'sktNo', 'sppkpNo', 'phoneFax', 'email', 'website', 'mainBusiness'],
+    'fap-preview-sec-pic': ['picName', 'position', 'phone', 'email', 'picAddress', 'currentAddress', 'picCity', 'picProvince', 'picPostalCode', 'shareholders', 'representativeType', 'stakeholderType', 'idNumber'],
+    'fap-preview-sec-facility': ['creditFacility', 'monthlyInstallment', 'bankOrFinInstitution', 'units', 'assetSummary', 'years', 'brand', 'modelName', 'quantity'],
+    'fap-preview-sec-proposal': ['financingValue', 'downPaymentValue', 'securityDeposit', 'tenorMonths', 'interestRate', 'purposeDetail', 'financingMethod', 'paymentMethod', 'termsNotes']
+  };
+
+  const fapSectionTitles: Record<string, string> = {
+    'fap-preview-sec-header': '1. Header & Register',
+    'fap-preview-sec-company': '2. Company Profile',
+    'fap-preview-sec-pic': '3. PIC & Shareholders',
+    'fap-preview-sec-facility': '4. Facilities & Fixed Assets',
+    'fap-preview-sec-proposal': '5. Financing Value'
+  };
+
+  const filteredDiffs = useMemo(() => {
+    if (!fapComparison?.diffs) return [];
+    if (fapNavFilter === 'all') return fapComparison.diffs;
+    const allowed = sectionFieldMap[fapNavFilter] || [];
+    return fapComparison.diffs.filter((d: any) => allowed.includes(d.field));
+  }, [fapComparison, fapNavFilter]);
 
   // Reset state when switching application to prevent cross-application data leakage
   useEffect(() => {
@@ -1494,6 +1537,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     setRemarksSaveStatus('idle');
     setShowHistoryModal(false);
     setRightViewMode('ocr');
+    setFapNavFilter('all');
   }, [a.id]);
 
   const scrollToFapField = (fieldKey: string) => {
@@ -1510,9 +1554,35 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   };
 
   const scrollToFapSection = (secId: string) => {
-    const el = document.getElementById(secId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setFapNavFilter(secId);
+    const viewports = document.querySelectorAll('.excel-fap-viewport');
+    let scrolled = false;
+
+    viewports.forEach(vp => {
+      const target = vp.querySelector(`[id="${secId}"]`) as HTMLElement;
+      if (target) {
+        const vpRect = vp.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const delta = targetRect.top - vpRect.top;
+        
+        vp.scrollTo({
+          top: vp.scrollTop + delta - 14,
+          behavior: 'smooth'
+        });
+
+        target.classList.remove('fap-cell-diff-pulse');
+        void target.offsetWidth;
+        target.classList.add('fap-cell-diff-pulse');
+        setTimeout(() => target.classList.remove('fap-cell-diff-pulse'), 3500);
+        scrolled = true;
+      }
+    });
+
+    if (!scrolled) {
+      const el = document.getElementById(secId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     }
   };
 
@@ -1977,11 +2047,48 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               <span className="fap-nav-label">
                 <Files size={14} color="#002060" /> Form Navigation:
               </span>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-header')}>1. Header & Register</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-company')}>2. Company Profile</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-pic')}>3. PIC & Shareholders</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-facility')}>4. Facilities & Fixed Assets</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-proposal')}>5. Financing Value</button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'all' ? 'active' : ''} 
+                onClick={() => { setFapNavFilter('all'); scrollToFapSection('fap-preview-sec-header'); }}
+              >
+                All Sections
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-header' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-header')}
+              >
+                1. Header & Register
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-company' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-company')}
+              >
+                2. Company Profile
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-pic' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-pic')}
+              >
+                3. PIC & Shareholders
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-facility' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-facility')}
+              >
+                4. Facilities & Fixed Assets
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-proposal' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-proposal')}
+              >
+                5. Financing Value
+              </button>
             </div>
           </div>
 
@@ -2197,6 +2304,14 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               {/* Differences Table */}
               {fapComparison.diffs && (
                 <>
+                  {fapNavFilter !== 'all' && (
+                    <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 14px', background:'#eff6ff', border:'1px solid #bfdbfe', borderRadius:'6px', marginBottom:'12px', fontSize:'12px', color:'#1e40af'}}>
+                      <span>Showing differences for: <strong>{fapSectionTitles[fapNavFilter] || fapNavFilter}</strong> ({filteredDiffs.length} differences)</span>
+                      <button type="button" className="button small" onClick={() => setFapNavFilter('all')} style={{fontSize:'11px', padding:'2px 10px', height:'24px', background:'#ffffff'}}>
+                        Show All Differences ({fapComparison.diffs.length})
+                      </button>
+                    </div>
+                  )}
                   <div className="fap-diff-table-wrap">
                     <table className="fap-diff-table">
                       <thead>
@@ -2208,7 +2323,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                         </tr>
                       </thead>
                       <tbody>
-                        {fapComparison.diffs.map((d: any, idx: number) => (
+                        {filteredDiffs.map((d: any, idx: number) => (
                           <tr key={d.field || idx} className="is-different">
                             <td>
                               <strong>{d.label}</strong>
@@ -2231,11 +2346,13 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             </td>
                           </tr>
                         ))}
-                        {fapComparison.diffs.length === 0 && (
+                        {filteredDiffs.length === 0 && (
                           <tr>
                             <td colSpan={4} style={{textAlign:'center', padding:'24px', color:'#059669'}}>
                               <CheckCircle size={20} style={{verticalAlign:'middle', marginRight:'8px'}} />
-                              All tested data fields match the system data!
+                              {fapNavFilter === 'all' 
+                                ? 'All tested data fields match the system data!' 
+                                : `No differences found in ${fapSectionTitles[fapNavFilter] || 'this section'}.`}
                             </td>
                           </tr>
                         )}

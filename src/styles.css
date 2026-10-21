@@ -75,7 +75,7 @@ nav button{min-height:46px;font-size:13px;font-weight:600}
 .button,.icon-button{min-height:40px}
 .badge,.status-badge{font-weight:650}
 .panel-head{min-height:64px}
-.detail-tabs{position:sticky;top:64px;z-index:8;background:#fff}
+.detail-tabs{position:static;z-index:1;background:#fff}
 .error{line-height:1.55}
 @media(max-width:760px){
  
@@ -86,7 +86,7 @@ nav button{min-height:46px;font-size:13px;font-weight:600}
  .table-toolbar{gap:10px}
  .search{min-height:42px}
  .filters{gap:8px}
- .detail-tabs{top:58px;overflow-x:auto;white-space:nowrap}
+ .detail-tabs{position:static;overflow-x:auto;white-space:nowrap}
  .detail-tabs button{flex:0 0 auto;min-height:44px}
  .modal{width:min(100%,620px)}
 }
@@ -326,6 +326,8 @@ nav button{min-height:46px;font-size:13px;font-weight:600}
 }
 
 .detail-tabs {
+  position: static !important;
+  top: auto !important;
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
@@ -3865,6 +3867,14 @@ button:focus-visible, a:focus-visible {
   color: #ffffff;
   border-color: #002060;
   transform: translateY(-1px);
+}
+
+.fap-unified-section-nav button.active {
+  background: #002060 !important;
+  color: #ffffff !important;
+  border-color: #002060 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 4px rgba(0, 32, 96, 0.3) !important;
 }
 
 
