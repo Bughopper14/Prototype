@@ -44,9 +44,9 @@ export function calculateAgeYearsMonths(dobString?:string|null):{years:number,mo
   return{years:Math.max(0,years),months:Math.max(0,months)};
 }
 /** Derive synced deed fields from legal.deeds list.
- *  - establishmentActNo / establishmentDate  → dari akta pendirian (type='establishment')
- *  - latestDeedNo / latestDeedDate           → dari akta terbaru (amendment terbaru, atau pendirian jika tidak ada amendment)
- *  - experienceYears / experienceMonths       → hari ini - establishmentDate
+ *  - establishmentActNo / establishmentDate  → from establishment deed (type='establishment')
+ *  - latestDeedNo / latestDeedDate           → from latest deed (most recent amendment, or establishment if no amendment)
+ *  - experienceYears / experienceMonths       → today - establishmentDate
  */
 export function deriveDeedSync(legal:any, application?:any):{
   establishmentActNo:string, establishmentDate:string,
@@ -54,18 +54,18 @@ export function deriveDeedSync(legal:any, application?:any):{
   experienceYears:number, experienceMonths:number
 }{
   const deeds:any[] = Array.isArray(legal?.deeds) ? legal.deeds : [];
-  // akta pendirian
+  // establishment deed
   const estDeed = deeds.find((d:any)=>d.type==='establishment');
   const estActNo   = estDeed?.deedNumber  || application?.customer?.establishmentActNo || '';
   const estDateRaw = estDeed?.deedDate    || application?.customer?.establishmentDate  || '';
   const estDate    = String(estDateRaw||'').slice(0,10);
-  // akta terbaru: amendment terbaru berdasarkan deedDate, fallback ke pendirian
+  // latest deed: most recent amendment by deedDate, fallback to establishment
   const amendments = deeds.filter((d:any)=>d.type==='amendment' && d.deedDate);
   const latestAmendment = amendments.sort((a:any,b:any)=>String(b.deedDate).localeCompare(String(a.deedDate)))[0];
   const latestDeed = latestAmendment || estDeed;
   const latestNo   = latestDeed?.deedNumber || application?.latestDeedNo || '';
   const latestDate = String(latestDeed?.deedDate||'').slice(0,10) || application?.latestDeedDate || '';
-  // pengalaman dari establishment date
+  // experience from establishment date
   const {years, months} = calculateAgeYearsMonths(estDate);
   return {
     establishmentActNo: estActNo,
@@ -76,7 +76,7 @@ export function deriveDeedSync(legal:any, application?:any):{
     experienceMonths: months,
   };
 }
-function deedValidity(deedDate:any){if(!deedDate)return {status:'Tanggal belum diisi',active:null,expiry:null};const parts=String(deedDate).slice(0,10).split('-').map(Number);if(parts.length!==3||parts.some(x=>!x))return {status:'Tanggal belum diisi',active:null,expiry:null};const expiry=new Date(parts[0],parts[1]-1,parts[2]);if(Number.isNaN(expiry.getTime()))return {status:'Tanggal belum diisi',active:null,expiry:null};expiry.setFullYear(expiry.getFullYear()+5);const today=new Date();today.setHours(0,0,0,0);expiry.setHours(0,0,0,0);const active=today<=expiry;return {status:active?'Aktif':'Tidak aktif',active,expiry};}
+function deedValidity(deedDate:any){if(!deedDate)return {status:'Date not filled',active:null,expiry:null};const parts=String(deedDate).slice(0,10).split('-').map(Number);if(parts.length!==3||parts.some(x=>!x))return {status:'Date not filled',active:null,expiry:null};const expiry=new Date(parts[0],parts[1]-1,parts[2]);if(Number.isNaN(expiry.getTime()))return {status:'Date not filled',active:null,expiry:null};expiry.setFullYear(expiry.getFullYear()+5);const today=new Date();today.setHours(0,0,0,0);expiry.setHours(0,0,0,0);const active=today<=expiry;return {status:active?'Active':'Inactive',active,expiry};}
 function Badge({status}:{status:string}){return <span className={'badge '+status?.toLowerCase()}><i/>{statusLabel[status]||label(status)}</span>;}
 function IconBox({children}:{children:ReactNode}){return <span className="iconbox">{children}</span>;}
 function Fields({fields,value,onChange,disabled=false,className,section,onSelectOption,onFieldFocus,onNibOcr}:{fields:Field[],value:any,onChange:(v:any)=>void,disabled?:boolean,className?:string,section?:string,onSelectOption?:(k:string,v:string)=>void,onFieldFocus?:(k:string)=>void,onNibOcr?:()=>void}){
@@ -157,15 +157,15 @@ export default function App(){
      .then(u=>{
        if(!u || (!u.username && !u.name && !u.id && !u.email)){
          if(window.location.pathname.startsWith('/crm-dashboard')){
-           window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Sesi Anda telah berakhir. Silakan login kembali.'));
-         }
-       } else {
-         setUser(u);
-       }
-     })
-     .catch(()=>{
-       if(window.location.pathname.startsWith('/crm-dashboard')){
-         window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Sesi Anda telah berakhir. Silakan login kembali.'));
+           window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
+                   }
+                 } else {
+                   setUser(u);
+                 }
+               })
+               .catch(()=>{
+                 if(window.location.pathname.startsWith('/crm-dashboard')){
+                   window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
        }
      })
      .finally(()=>setReady(true));
@@ -179,7 +179,7 @@ export default function App(){
  const navigate=(p:string)=>{setPage(p);setSelected(null);setMobile(false);};
   function startNewApplication(preselectedCustomerId?: string) {
     if (user?.role !== 'MKT') {
-      notify('Pembuatan aplikasi tersedia untuk akun Marketing (MKT). Silakan masuk dengan akun MKT.');
+      notify('Application creation is available for Marketing (MKT) accounts. Please sign in with an MKT account.');
       return;
     }
     const defaultCategory = preselectedCustomerId ? 'EXISTING' : 'NEW';
@@ -228,9 +228,9 @@ export default function App(){
     setSelected(newAppDraft);
   }
 
- return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Tutup navigasi"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Tutup menu"><X size={20}/></button></div><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name==='Notifications'?'Notifikasi':name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}</button>)}</nav><div className="sidebar-bottom"><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.role==='MKT'?'Marketing':label(user.role)} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : user.role}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Hasil pemeriksaan dan approval akta yang perlu ditindaklanjuti.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>user.role==='MKT'?startNewApplication():notify('Pembuatan aplikasi tersedia untuk akun Marketing (MKT). Silakan masuk dengan akun MKT.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<section className="panel"><div className="panel-head"><h2>Customer directory <span>{customers.length}</span></h2><Users size={19}/></div><div className="customer-grid">{customers.map(c=><button className="customer-card" key={c.id} onClick={()=>{const a=rows.find(r=>r.customer_id===c.id);if(a)open(a.id);else if(user.role==='MKT')startNewApplication(c.id);else notify('This customer has no applications yet. Use New application to create one.');}}><IconBox><Building2 size={21}/></IconBox><h3>{c.companyName}</h3><span className="muted">{label(c.companyType)}</span><dl><dt>NIB</dt><dd>{c.nib}</dd><dt>NPWP</dt><dd>{c.npwp}</dd></dl><span className="text-link">{rows.filter(r=>r.customer_id===c.id).length} applications <ArrowUpRight size={15}/></span></button>)}</div></section>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
+ return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}</button>)}</nav><div className="sidebar-bottom"><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.role==='MKT'?'Marketing':label(user.role)} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : user.role}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Deed review and approval results that need follow-up.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>user.role==='MKT'?startNewApplication():notify('Application creation is available for Marketing (MKT) accounts. Please sign in with an MKT account.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<section className="panel"><div className="panel-head"><h2>Customer directory <span>{customers.length}</span></h2><Users size={19}/></div><div className="customer-grid">{customers.map(c=><button className="customer-card" key={c.id} onClick={()=>{const a=rows.find(r=>r.customer_id===c.id);if(a)open(a.id);else if(user.role==='MKT')startNewApplication(c.id);else notify('This customer has no applications yet. Use New application to create one.');}}><IconBox><Building2 size={21}/></IconBox><h3>{c.companyName}</h3><span className="muted">{label(c.companyType)}</span><dl><dt>NIB</dt><dd>{c.nib}</dd><dt>NPWP</dt><dd>{c.npwp}</dd></dl><span className="text-link">{rows.filter(r=>r.customer_id===c.id).length} applications <ArrowUpRight size={15}/></span></button>)}</div></section>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
 }
-function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-brand"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Periksa dokumen akta':user.role==='HEAD_BS'?'Approve dokumen akta':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Perbaiki akta yang ditolak':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
+function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-brand"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Review deed document':user.role==='HEAD_BS'?'Approve deed document':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Fix the rejected deed':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
 // Note: New application process has been merged directly into Detail view (Tab 0 FAP Intake).
 function normalizeStakeholderIdType(rawType: string | undefined, s?: any): 'NONE' | 'KTP_NPWP' | 'PASSPORT_KITAS' {
@@ -350,14 +350,14 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
   try{
    let id=customerId;
    if(customerCategory==='EXISTING'){
-    if(!selectedCustomer)throw new Error('Pilih existing customer terlebih dahulu.');
+    if(!selectedCustomer)throw new Error('Please select an existing customer first.');
     id=selectedCustomer.id;
    }else{
     const nib=String(customerDraft.nib||'').replace(/\D/g,'');
     const npwp=String(customerDraft.npwp||'').replace(/\D/g,'');
-    if(!String(customerDraft.companyName||'').trim())throw new Error('Nama perusahaan calon debitur wajib diisi.');
-    if(nib.length!==13)throw new Error('NIB wajib terdiri dari 13 digit angka.');
-    if(npwp.length<15||npwp.length>16)throw new Error('NPWP wajib terdiri dari 15 atau 16 digit angka.');
+    if(!String(customerDraft.companyName||'').trim())throw new Error('Company name of the new debtor is required.');
+    if(nib.length!==13)throw new Error('NIB must consist of 13 digits.');
+    if(npwp.length<15||npwp.length>16)throw new Error('NPWP must consist of 15 or 16 digits.');
     validateInput(customerDraft);
     const createdCust=await api('/customers','POST',customerDraft);
     id=createdCust.id;
@@ -384,12 +384,12 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
      stage: 'FAP Stage'
    };
    const application=await api('/applications','POST',safePayload);
-   notify(`Aplikasi berhasil dibuat dengan nomor ${application.fapNumber}`);
+   notify(`Application created successfully with number ${application.fapNumber}`);
    const fullApp=await api(`/applications/${application.id}`);
    setDraft(structuredClone(fullApp));
    onChange(fullApp);
    setTab(0);
-  }catch(e:any){setError(e.message||'Gagal membuat aplikasi baru. Silakan coba lagi.');}
+  }catch(e:any){setError(e.message||'Failed to create new application. Please try again.');}
   finally{setBusy(false);}
  }
 const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));const [submitFapConfirm,setSubmitFapConfirm]=useState(false);useEffect(()=>{if(a.stage)setActiveStage(a.stage);else if(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status))setActiveStage('Pre-analysis');else setActiveStage('FAP Stage');},[a.id,a.stage,a.status]);const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);const [tab,setTab]=useState(initialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
@@ -431,17 +431,17 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
 
   const handlePrintFap = async () => {
     if (draft.isNew) {
-      notify('Harap simpan aplikasi baru terlebih dahulu sebelum mencetak dokumen FAP.');
+      notify('Please save the new application before printing the FAP document.');
       return;
     }
     setBusy(true);
     try {
       await save();
-      notify('Seluruh data FAP berhasil disimpan ke database. Membuka formulir cetak...');
+      notify('All FAP data saved to database. Opening print form...');
       printFapDocument(a.fapNumber || draft.fapNumber);
     } catch (err: any) {
       console.error('Auto-save before print error:', err);
-      notify('Gagal menyimpan data ke database sebelum cetak: ' + (err.message || ''));
+      notify('Failed to save data to database before printing: ' + (err.message || ''));
     } finally {
       setBusy(false);
     }
@@ -458,9 +458,9 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
         setDraft(structuredClone(res.application));
       }
       setFapComparisonModal(null);
-      notify('Perubahan data dokumen FAP berhasil disetujui dan diperbarui ke database.');
+      notify('FAP document data changes approved and updated to database.');
     } catch (err: any) {
-      notify('Gagal memperbarui data: ' + err.message);
+      notify('Failed to update data: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -471,26 +471,26 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST');
     } catch {}
     setFapComparisonModal(null);
-    notify('Perbedaan data dicatat. Anda dapat memeriksa dan memperbaiki data di form FAP secara manual.');
+    notify('Data differences noted. You can review and correct the data in the FAP form manually.');
   };
 
 const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
  async function submitCustomerDetail(){
   setError('');
   const missing: string[] = [];
-  if (!draft.companyAddress?.trim()) missing.push('Alamat Perusahaan');
-  if (!draft.province?.trim()) missing.push('Provinsi');
-  if (!draft.city?.trim()) missing.push('Kota/Kabupaten');
-  if (!draft.postalCode?.trim()) missing.push('Kode Pos');
-  if (!draft.mainBusiness?.trim()) missing.push('Bidang Usaha Utama');
+  if (!draft.companyAddress?.trim()) missing.push('Company Address');
+  if (!draft.province?.trim()) missing.push('Province');
+  if (!draft.city?.trim()) missing.push('City/Regency');
+  if (!draft.postalCode?.trim()) missing.push('Postal Code');
+  if (!draft.mainBusiness?.trim()) missing.push('Main Business Sector');
 
   const pic = draft.pic || {};
-  if (!pic.picName?.trim() && !pic.name?.trim()) missing.push('Nama PIC');
-  if (!pic.phone?.trim() && !pic.mobilePhone?.trim()) missing.push('Nomor Telepon PIC');
-  if (!pic.position?.trim()) missing.push('Jabatan PIC');
+  if (!pic.picName?.trim() && !pic.name?.trim()) missing.push('PIC Name');
+  if (!pic.phone?.trim() && !pic.mobilePhone?.trim()) missing.push('PIC Phone Number');
+  if (!pic.position?.trim()) missing.push('PIC Position');
 
   if (missing.length > 0) {
-    setError(`Harap lengkapi field wajib Customer Detail & PIC sebelum submit: ${missing.join(', ')}.`);
+    setError(`Please complete the required Customer Detail & PIC fields before submitting: ${missing.join(', ')}.`);
     return;
   }
 
@@ -529,10 +529,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
     setCustomerDetailLocked(true);
     localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
     onChange(nextApp);
-    notify('Customer detail berhasil divalidasi dan dikunci. Beralih ke halaman Legal.');
+    notify('Customer details validated and locked. Switching to the Legal tab.');
     setTab(5);
   } catch (e: any) {
-    setError(e.message || 'Gagal menyimpan dan mengunci Customer detail.');
+    setError(e.message || 'Failed to save and lock customer details.');
   } finally {
     setBusy(false);
   }
@@ -574,7 +574,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       a.customer?.npwp || 
       ''
     ).trim();
-    // Jika hanya berisi angka nol (misal '000000000000000'), anggap kosong
+    // If it contains only zeros (e.g. '000000000000000'), treat as empty
     return /^0+$/.test(raw) ? '' : raw;
   })();
 
@@ -660,7 +660,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
 
  useEffect(()=>{
   const base = structuredClone(a);
-  // Sync deed fields dari legal saat load data existing
+  // Sync deed fields from legal when loading existing data
   if(a.legal){
     const sync = deriveDeedSync(a.legal, a);
     if(sync.establishmentActNo) base.latestDeedNo = base.latestDeedNo || sync.latestDeedNo;
@@ -708,10 +708,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
      setActiveStage('Pre-analysis');
      setTab(2);
      setSubmitFapConfirm(false);
-     notify('FAP Stage submitted. Tahap Pre-analysis aktif.');
+     notify('FAP Stage submitted. Pre-analysis stage is now active.');
      if(onChange)onChange(updated);
    }catch(e:any){
-     setError(e.message||'Gagal submit FAP stage.');
+     setError(e.message||'Failed to submit FAP stage.');
    }finally{
      setBusy(false);
    }
@@ -739,7 +739,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
        safeProfileData.latestDeedNo = null;
      }
      
-     const resolvedName = liveCompanyName || customerDraft?.companyName || draft.customer?.companyName || draft.companyName || 'Perusahaan Baru (Draft)';
+     const resolvedName = liveCompanyName || customerDraft?.companyName || draft.customer?.companyName || draft.companyName || 'New Company (Draft)';
      const customerPayload = {
        ...(draft.customer||{}),
        ...(customerDraft||{}),
@@ -790,20 +790,20 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
      setDraft((prev:any)=>({...prev,...nextApp}));
      setCustomerDraft((prev:any)=>({...prev,...customerPayload}));
      onChange(nextApp);
-     notify('Perubahan berhasil disimpan');
+     notify('Changes saved successfully');
    }catch(e:any){
-     setError(e.message||'Gagal menyimpan perubahan.');
+     setError(e.message||'Failed to save changes.');
    }finally{
      setBusy(false);
    }
  }
  const p=draft.proposal||{...blank(proposalFields),units:[]};const principal=Number(p.financingValue)-Number(p.downPaymentValue),r=Number(p.interestRate)/1200,monthly=p.tenorMonths?(r?principal*r/(1-Math.pow(1+r,-Number(p.tenorMonths))):principal/Number(p.tenorMonths))/(master.paymentMethod.find(x=>x.value===p.paymentMethod)?.timing==='advance'?1+r:1):0;
 
- async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Akta tidak ditemukan.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ async function beginDeedReview(id:string){setError('');setBusy(true);try{if(canLegal){const list=legalDeedList(draft.legal||{},a),selected=draft.legal?.selectedDeedId||list.find(x=>x.type===(draft.legal?.selectedDeed||'establishment'))?.id||list[0]?.id,target=list.find(d=>d.id===id);if(!target)throw Error('Deed not found.');const deed=deedData({...target,stakeholders:Array.isArray(target.stakeholders)?target.stakeholders:target.id===selected?draft.stakeholders:[]});const v=await api(`/applications/${a.id}/deeds/${id}/draft`,'PUT',{deed});onChange(v);setDraft(structuredClone(v));}setReviewDeedId(id);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
  useEffect(()=>{if(tab!==1)return;const timer=setInterval(()=>api('/applications/'+a.id).then(onChange).catch(()=>{}),15000);return()=>clearInterval(timer);},[tab,a.id]);
    const renderCustomerDetailSections = () => (
     <div className="fap-accordion-group">
-      {/* 01: Identitas & Klasifikasi Debitur */}
+      {/* 01: Debtor Identity & Classification */}
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-header'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-header"
@@ -817,19 +817,19 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             <span className="fap-acc-step-badge">01</span>
             <div className="fap-acc-titles">
               <div className="fap-acc-title-row">
-                <h4 className="fap-acc-title">Identitas & Klasifikasi Debitur</h4>
+                <h4 className="fap-acc-title">Debtor Identity & Classification</h4>
                 <span className={`fap-acc-badge ${liveCompanyName ? 'success' : ''}`}>
-                  {customerCategory === 'EXISTING' ? (selectedCustomer ? selectedCustomer.companyName : 'Pilih Debitur') : (liveCompanyName || 'Debitur Baru')}
+                  {customerCategory === 'EXISTING' ? (selectedCustomer ? selectedCustomer.companyName : 'Select Debtor') : (liveCompanyName || 'New Debtor')}
                 </span>
               </div>
-              <p className="fap-acc-subtitle">Kategori debitur (Existing / Baru), Nomor Registrasi FAP, NIB, dan NPWP</p>
+              <p className="fap-acc-subtitle">Customer category (Existing / New), FAP registration number, NIB, and NPWP</p>
             </div>
           </div>
           <div className="fap-acc-header-right">
             <button 
               type="button" 
               className="fap-acc-sync-btn"
-              title="Sinkronkan dokumen preview ke bagian ini"
+              title="Sync preview document to this section"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerSync('fap-preview-sec-header');
@@ -913,7 +913,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
               <div className="new-customer-fields-block" style={{marginTop:12}}>
                 <div style={{marginBottom:12}}>
                   <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company details</h4>
-                  <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Identitas badan usaha baru (Nama PT/CV, tipe usaha, NIB 13 digit, NPWP 15-16 digit, dan akta pendirian).</p>
+                  <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>New company identity (Company Name PT/CV, business type, NIB 13 digits, NPWP 15-16 digits, and establishment deed).</p>
                 </div>
                 <Fields 
                   fields={fapCustomerFields} 
@@ -922,7 +922,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                   disabled={!canEdit} 
                   onChange={c => {
                     setCustomerDraft(c);
-                    // Sync establishment deed ke latestDeed dan experience jika belum ada akta di legal
+                    // Sync establishment deed to latestDeed and experience if no deeds in legal yet
                     const legalDeeds:any[] = Array.isArray(draft.legal?.deeds) ? draft.legal.deeds : [];
                     const hasLegalEstablishment = legalDeeds.some((d:any)=>d.type==='establishment');
                     const hasLegalAmendment = legalDeeds.some((d:any)=>d.type==='amendment');
@@ -931,12 +931,12 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                     setDraft((prev: any) => ({
                       ...prev,
                       customer: c,
-                      // Jika belum ada akta pendirian di legal, gunakan input manual sebagai latest
+                      // If no establishment deed in legal yet, use manual input as latest
                       ...(!hasLegalAmendment && !hasLegalEstablishment ? {
                         latestDeedNo: c.establishmentActNo || prev.latestDeedNo || '',
                         latestDeedDate: estDate || prev.latestDeedDate || '',
                       } : {}),
-                      // Experience selalu dihitung dari establishmentDate
+                      // Experience always calculated from establishmentDate
                       ...(estDate ? {experienceYears: exp.years, experienceMonths: exp.months} : {}),
                     }));
                   }} 
@@ -947,7 +947,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         )}
       </div>
 
-      {/* 02: Kantor Registrasi & Domisili */}
+      {/* 02: Registration Office & Domicile */}
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-company'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-company"
@@ -961,19 +961,19 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             <span className="fap-acc-step-badge">02</span>
             <div className="fap-acc-titles">
               <div className="fap-acc-title-row">
-                <h4 className="fap-acc-title">Kantor Registrasi & Domisili Perusahaan</h4>
+                <h4 className="fap-acc-title">Registration Office & Company Domicile</h4>
                 <span className={`fap-acc-badge ${draft.city && draft.companyAddress ? 'success' : ''}`}>
-                  {draft.city ? `${draft.city} (${draft.branchCode || 'Cabang'})` : 'Belum diisi'}
+                  {draft.city ? `${draft.city} (${draft.branchCode || 'Branch'})` : 'Not filled'}
                 </span>
               </div>
-              <p className="fap-acc-subtitle">Cabang pengajuan, kepemilikan domisili, alamat lengkap, dan kontak resmi</p>
+              <p className="fap-acc-subtitle">Application branch, domicile ownership, full address, and official contact</p>
             </div>
           </div>
           <div className="fap-acc-header-right">
             <button 
               type="button" 
               className="fap-acc-sync-btn"
-              title="Sinkronkan dokumen preview ke bagian ini"
+              title="Sync preview document to this section"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerSync('fap-preview-sec-company');
@@ -990,18 +990,18 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         {openSections['fap-preview-sec-company'] && (
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
-              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Status Kantor & Cabang</h5>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office & Branch Status</h5>
               <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
-              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Alamat Kantor & Kontak Resmi</h5>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office Address & Official Contact</h5>
               <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
             </div>
           </div>
         )}
       </div>
 
-      {/* 03: Profil Usaha & Legalitas Akta */}
+      {/* 03: Business Profile & Deed Legality */}
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-business'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-business"
@@ -1015,19 +1015,19 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             <span className="fap-acc-step-badge">03</span>
             <div className="fap-acc-titles">
               <div className="fap-acc-title-row">
-                <h4 className="fap-acc-title">Profil Usaha & Legalitas Akta</h4>
+                <h4 className="fap-acc-title">Business Profile & Deed Legality</h4>
                 <span className={`fap-acc-badge ${draft.mainBusiness ? 'success' : ''}`}>
-                  {draft.mainBusiness || 'Belum diisi'}
+                  {draft.mainBusiness || 'Not filled'}
                 </span>
               </div>
-              <p className="fap-acc-subtitle">Bidang bisnis utama, pengalaman operasional, sumber dana, dan nomor akta terbaru</p>
+              <p className="fap-acc-subtitle">Main business sector, operational experience, source of funds, and latest deed number</p>
             </div>
           </div>
           <div className="fap-acc-header-right">
             <button 
               type="button" 
               className="fap-acc-sync-btn"
-              title="Sinkronkan dokumen preview ke bagian ini"
+              title="Sync preview document to this section"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerSync('fap-preview-sec-business');
@@ -1044,7 +1044,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         {openSections['fap-preview-sec-business'] && (
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
-              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Pengalaman & Operasional Usaha</h5>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Business Experience & Operations</h5>
               {(() => {
                 const calculatedExp = liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate) : null;
                 const operationalValues = {
@@ -1076,22 +1076,22 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                       }}
                     />
                     <small style={{color:'#64748b',fontSize:'0.72rem',display:'block',marginTop:6}}>
-                      * Experience years & months dihitung otomatis dari Tanggal Akta Pendirian (Establishment Deed Date)
+                      * Experience years & months are calculated automatically from the Establishment Deed Date
                     </small>
                   </>
                 );
               })()}
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
-              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Ringkasan Legalitas Akta Perubahan</h5>
+              <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Amendment Deed Legal Summary</h5>
               <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
-              {liveEstablishmentDate&&<small style={{color:'#94a3b8',fontSize:'0.72rem',display:'block',marginTop:4}}>Akta terbaru disinkronkan otomatis dari tab Legal.</small>}
+              {liveEstablishmentDate&&<small style={{color:'#94a3b8',fontSize:'0.72rem',display:'block',marginTop:4}}>Latest deed synced automatically from the Legal tab.</small>}
             </div>
           </div>
         )}
       </div>
 
-      {/* 04: Kontak Utama / PIC */}
+      {/* 04: Primary Contact / PIC */}
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-pic'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-pic"
@@ -1105,19 +1105,19 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             <span className="fap-acc-step-badge">04</span>
             <div className="fap-acc-titles">
               <div className="fap-acc-title-row">
-                <h4 className="fap-acc-title">Kontak Utama / Penanggung Jawab (PIC)</h4>
+                <h4 className="fap-acc-title">Primary Contact / Person in Charge (PIC)</h4>
                 <span className={`fap-acc-badge ${draft.pic?.picName ? 'success' : ''}`}>
-                  {draft.pic?.picName ? `${draft.pic.picName} (${draft.pic.position || 'PIC'})` : 'Belum diisi'}
+                  {draft.pic?.picName ? `${draft.pic.picName} (${draft.pic.position || 'PIC'})` : 'Not filled'}
                 </span>
               </div>
-              <p className="fap-acc-subtitle">Data personal PIC, posisi/jabatan, nomor seluler, dan alamat domisili PIC</p>
+              <p className="fap-acc-subtitle">PIC personal data, position/title, mobile number, and PIC domicile address</p>
             </div>
           </div>
           <div className="fap-acc-header-right">
             <button 
               type="button" 
               className="fap-acc-sync-btn"
-              title="Sinkronkan dokumen preview ke bagian ini"
+              title="Sync preview document to this section"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerSync('fap-preview-sec-pic');
@@ -1138,7 +1138,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         )}
       </div>
 
-      {/* 05: Segmentasi & Proyek Berjalan */}
+      {/* 05: Segmentation & Active Projects */}
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-projects'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-projects"
@@ -1152,19 +1152,19 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             <span className="fap-acc-step-badge">05</span>
             <div className="fap-acc-titles">
               <div className="fap-acc-title-row">
-                <h4 className="fap-acc-title">Segmentasi Industri & Proyek Berjalan</h4>
+                <h4 className="fap-acc-title">Industry Segmentation & Active Projects</h4>
                 <span className={`fap-acc-badge ${(draft.projects?.length || 0) > 0 ? 'success' : ''}`}>
-                  {draft.projects?.length || 0} Proyek
+                  {draft.projects?.length || 0} Projects
                 </span>
               </div>
-              <p className="fap-acc-subtitle">Kontrak proyek dan aktivitas bisnis debitur yang sedang berjalan</p>
+              <p className="fap-acc-subtitle">Debtor's active project contracts and business activities</p>
             </div>
           </div>
           <div className="fap-acc-header-right">
             <button 
               type="button" 
               className="fap-acc-sync-btn"
-              title="Sinkronkan dokumen preview ke bagian ini"
+              title="Sync preview document to this section"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTriggerSync('fap-preview-sec-projects');
@@ -1180,23 +1180,23 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         </div>
         {openSections['fap-preview-sec-projects'] && (
           <div className="fap-accordion-content">
-            <Repeater title="Project contracts" description="Kontrak proyek dan aktivitas bisnis yang sedang berjalan (diisi oleh Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/>
+            <Repeater title="Project contracts" description="Active project contracts and business activities (filled by Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/>
           </div>
         )}
       </div>
     </div>
   );
 
-  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "Aplikasi Pembiayaan Baru" : "Aplikasi Pembiayaan")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Tahap Aktif: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Harap simpan aplikasi terlebih dahulu':`Beralih ke tab tampilan ${st}`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu untuk membuka tahap berikutnya.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(2);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Harap simpan aplikasi (FAP Stage) terlebih dahulu sebelum membuka tab lain.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Simpan aplikasi terlebih dahulu':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Akta, pihak terkait, dan struktur kepemilikan.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked&&<div className="stage-readonly-banner"><Lock size={16}/><span><strong>Tahap FAP Stage telah dikunci:</strong> Berkas formulir FAP Stage telah ditandatangani dan aplikasi telah berada pada tahap <strong>Pre-analysis</strong>. Seluruh data pada tahap FAP Stage hanya dapat dilihat (read-only) dan tidak dapat diubah kembali.</span></div>}{tab===0&&<>
+  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(2);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer category</span><b>{customerCategory==='EXISTING'?'Existing customer':customerCategory==='NEW'?'New customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked&&<div className="stage-readonly-banner"><Lock size={16}/><span><strong>FAP Stage has been locked:</strong> The FAP Stage form has been signed and the application has advanced to the <strong>Pre-analysis</strong> stage. All FAP Stage data is read-only and cannot be modified.</span></div>}{tab===0&&<>
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <Building2 size={18}/>
-      <span><b>{customerCategory==='EXISTING'?(selectedCustomer?.companyName||'Belum memilih debitur'):(liveCompanyName||'Calon Debitur Baru')}</b> · NIB {customerCategory==='EXISTING'?(selectedCustomer?.nib||'—'):(liveNib||'—')} · NPWP {customerCategory==='EXISTING'?(selectedCustomer?.npwp||'—'):(liveNpwp||'—')}</span>
+      <span><b>{customerCategory==='EXISTING'?(selectedCustomer?.companyName||'No debtor selected'):(liveCompanyName||'New Applicant')}</b> · NIB {customerCategory==='EXISTING'?(selectedCustomer?.nib||'—'):(liveNib||'—')} · NPWP {customerCategory==='EXISTING'?(selectedCustomer?.npwp||'—'):(liveNpwp||'—')}</span>
       {customerDetailLocked&&<span className="subtle-chip locked-chip" style={{display:'inline-flex',alignItems:'center',gap:'4px',color:'#047857',background:'#ecfdf5',borderColor:'#a7f3d0',fontWeight:600}}><Lock size={13}/> Locked</span>}
     </div>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <div className="fap-tab-layout-toggle" style={{margin:0}}>
-        <button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Tutup Side-by-side":"Buka Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Aktif)":"Buka Side-by-side FAP"}</button>
+        <button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Close Side-by-side":"Open Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Active)":"Open Side-by-side FAP"}</button>
       </div>
     </div>
   </div>
@@ -1221,7 +1221,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank facilities" description="Fasilitas kredit dan pinjaman yang sudah dimiliki perusahaan." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Atur nilai, tenor, dan ketentuan pembiayaan.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Daftarkan detail setiap unit alat yang dibiayai." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Batal / Kembali ke Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Simpan & Buat Aplikasi</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Harap unggah dokumen FAP Stage di tab Dokumen terlebih dahulu.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Harap unggah dokumen FAP Stage di tab Dokumen terlebih dahulu.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Simpan perubahan Legal" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Simpan perubahan akta dan Stakeholders pada aplikasi ini?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Batal</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Simpan perubahan</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Tombol Submit Terkunci:</b> Dokumen formulir FAP Stage belum diunggah di tab Documents (is_locked = 1). Silakan unggah dokumen pada tab Documents terlebih dahulu untuk membuka kunci submit.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Batal</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
     {fapComparisonModal && (
       <FapComparisonModal
         comparison={fapComparisonModal}
@@ -1232,7 +1232,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       />
     )}</>;
 }
-function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:any[])=>void,disabled:boolean}){const total=rows.reduce((sum,x)=>sum+Number(x.sharePercentage||0),0),isExceeded=total>100.01;return <><div className={'ownership '+(isExceeded?'unbalanced':'balanced')}><div><strong>{total.toFixed(2)}%</strong><span>Total ownership · maks 100% (tidak wajib 100%)</span></div><div className="ownership-bar"><i style={{width:Math.min(100,total)+'%',background:isExceeded?'#dc2626':'#002c5f'}}/></div></div>{isExceeded&&<p style={{color:'#dc2626',fontSize:'12px',marginTop:'6px',fontWeight:600}}>⚠ Total kepemilikan saham melebihi 100%. Mohon sesuaikan kembali porsi saham masing-masing pihak.</p>}<Repeater title="Stakeholders" fields={stakeholderFields} rows={rows.map(stakeholderEditorValues)} disabled={disabled} onChange={onChange}/></>;}
+function StakeholderEditor({rows,onChange,disabled}:{rows:any[],onChange:(rows:any[])=>void,disabled:boolean}){const total=rows.reduce((sum,x)=>sum+Number(x.sharePercentage||0),0),isExceeded=total>100.01;return <><div className={'ownership '+(isExceeded?'unbalanced':'balanced')}><div><strong>{total.toFixed(2)}%</strong><span>Total ownership · max 100% (not required to be 100%)</span></div><div className="ownership-bar"><i style={{width:Math.min(100,total)+'%',background:isExceeded?'#dc2626':'#002c5f'}}/></div></div>{isExceeded&&<p style={{color:'#dc2626',fontSize:'12px',marginTop:'6px',fontWeight:600}}>⚠ Total share ownership exceeds 100%. Please readjust each party's share portion.</p>}<Repeater title="Stakeholders" fields={stakeholderFields} rows={rows.map(stakeholderEditorValues)} disabled={disabled} onChange={onChange}/></>;}
 function FinancialEditor({rows,onChange,disabled}:{rows:any[],onChange:(r:any[])=>void,disabled:boolean}){const change=(i:number,k:string,v:any)=>onChange(rows.map((r,j)=>j===i?{...r,[k]:v}:r));return <><div className="section-title"><span className="muted">Enter exact values; totals are checked when saved.</span>{!disabled&&rows.length<3&&<button className="button small" onClick={()=>onChange([...rows,{...blank(financialFields),fiscalYear:new Date().getFullYear()-3+rows.length,isAudited:false}])}><Plus size={15}/>Add fiscal year</button>}</div><div className="table-scroll"><table className="financial-table"><thead><tr><th>FINANCIAL METRIC</th>{rows.map((r,i)=><th key={i}><div className="year-input"><input aria-label="Fiscal year" type="number" {...inputLimits('fiscalYear')} disabled={disabled} value={r.fiscalYear} onChange={e=>change(i,'fiscalYear',e.target.value)}/>{!disabled&&<button className="icon-button" onClick={()=>onChange(rows.filter((_,j)=>j!==i))}><X size={14}/></button>}</div><label className="checkbox"><input type="checkbox" disabled={disabled} checked={r.isAudited} onChange={e=>change(i,'isAudited',e.target.checked)}/>Audited</label></th>)}</tr></thead><tbody>{financialFields.map(f=><tr key={f.key} className={f.key.startsWith('total')||f.key==='netIncome'?'total-row':''}><td>{f.label}</td>{rows.map((r,i)=><td key={i}><input aria-label={`${r.fiscalYear} ${f.label}`} type="number" step="0.01" disabled={disabled} value={r[f.key]} onChange={e=>change(i,f.key,e.target.value)}/></td>)}</tr>)}<tr className="balance-row"><td>Balance check</td>{rows.map((r,i)=>{const ok=Number(r.currentAssets)+Number(r.nonCurrentAssets)===Number(r.totalAssets)&&Number(r.currentLiabilities)+Number(r.nonCurrentLiabilities)===Number(r.totalLiabilities)&&Number(r.totalAssets)===Number(r.totalLiabilities)+Number(r.equity)&&Number(r.totalAssets)===Number(r.totalLiabAndEquity);return <td key={i}><span className={ok?'text-brand':'text-red'}>{ok?'✓ Balanced':'! Unbalanced'}</span></td>;})}</tr>{[['Current ratio','currentAssets','currentLiabilities'],['Debt / equity','totalLiabilities','equity'],['Net profit margin','netIncome','revenue']].map(([name,n,d])=><tr key={name}><td>{name}</td>{rows.map((r,i)=><td key={i} className="ratio">{Number(r[d])?((Number(r[n])/Number(r[d]))*(name==='Net profit margin'?100:1)).toFixed(2)+(name==='Net profit margin'?'%':'×'):'N/A'}</td>)}</tr>)}</tbody></table></div>{!rows.length&&<div className="empty-small">Add three fiscal years to begin financial spreading.</div>}<p className="field-note">DSCR is unavailable because the specification does not capture depreciation. Zero-denominator ratios are shown as N/A.</p></>;}
 
 function FapComparisonModal({
@@ -1274,8 +1274,8 @@ function FapComparisonModal({
               <AlertTriangle size={20} />
             </div>
             <div>
-              <h3 style={{margin:0, fontSize:'16px', fontWeight:600, color:'#0f172a'}}>Verifikasi OCR Formulir FAP Bertanda Tangan</h3>
-              <p style={{margin:0, fontSize:'12px', color:'#64748b'}}>Terdeteksi perbedaan antara data awal di sistem dan hasil OCR dokumen fisik</p>
+              <h3 style={{margin:0, fontSize:'16px', fontWeight:600, color:'#0f172a'}}>Signed FAP Form OCR Verification</h3>
+              <p style={{margin:0, fontSize:'12px', color:'#64748b'}}>Differences detected between initial system data and physical document OCR results</p>
             </div>
           </div>
           <button type="button" className="icon-button" onClick={onClose} style={{border:'none', background:'transparent', cursor:'pointer', padding:'4px'}}>
@@ -1298,7 +1298,7 @@ function FapComparisonModal({
           }}>
             <AlertCircle size={18} style={{flexShrink:0, marginTop:'2px'}} />
             <div>
-              <strong>Pemberitahuan Non-Blocking:</strong> Dokumen formulir FAP yang ditandatangani customer telah berhasil diunggah dan tombol submit telah terbuka. Di bawah ini adalah rincian field yang mengalami perbedaan data antara database sistem dengan data yang terbaca dari dokumen fisik:
+              <strong>Non-Blocking Notice:</strong> The signed FAP form has been uploaded and the submit button is now unlocked. Below are the fields where data differences were detected between the system database and the physical document:
             </div>
           </div>
 
@@ -1306,9 +1306,9 @@ function FapComparisonModal({
             <table style={{width:'100%', borderCollapse:'collapse', fontSize:'13px'}}>
               <thead>
                 <tr style={{background:'#f1f5f9', borderBottom:'1px solid #cbd5e1', textAlign:'left'}}>
-                  <th style={{padding:'10px 14px', fontWeight:600, color:'#334155', width:'30%'}}>Nama Kolom (Field)</th>
-                  <th style={{padding:'10px 14px', fontWeight:600, color:'#334155', width:'35%'}}>Data Awal di Sistem (Sebelumnya)</th>
-                  <th style={{padding:'10px 14px', fontWeight:600, color:'#047857', width:'35%'}}>Data Dokumen FAP (Terdeteksi OCR)</th>
+                  <th style={{padding:'10px 14px', fontWeight:600, color:'#334155', width:'30%'}}>Field Name</th>
+                  <th style={{padding:'10px 14px', fontWeight:600, color:'#334155', width:'35%'}}>Current System Data (Previous)</th>
+                  <th style={{padding:'10px 14px', fontWeight:600, color:'#047857', width:'35%'}}>FAP Document Data (OCR Detected)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1335,10 +1335,10 @@ function FapComparisonModal({
           </div>
 
           <div style={{fontSize:'12px', color:'#64748b', lineHeight:1.5}}>
-            Pilih tindakan selanjutnya:
+            Choose the next action:
             <ul style={{margin:'6px 0 0 18px', padding:0}}>
-              <li><strong>Approve Changes:</strong> Memperbarui nilai di database dengan data terbaru dari dokumen fisik FAP dan melanjutkan proses.</li>
-              <li><strong>Correct Data:</strong> Menutup dialog ini dan mempertahankan data yang ada saat ini, memungkinkan Anda untuk meninjau atau memperbaiki data di formulir secara manual.</li>
+              <li><strong>Approve Changes:</strong> Updates the database values with the latest data from the physical FAP document and continues the process.</li>
+              <li><strong>Correct Data:</strong> Closes this dialog and keeps the current data, allowing you to review or correct the data in the form manually.</li>
             </ul>
           </div>
         </div>
@@ -1369,11 +1369,87 @@ function FapComparisonModal({
   );
 }
 
+function FapRemarksTinyMCE({
+  initialContent,
+  disabled,
+  onChange,
+}: {
+  initialContent: string;
+  disabled?: boolean;
+  onChange: (html: string) => void;
+}) {
+  const [initialValue] = useState(() => initialContent);
+
+  return (
+    <div className="legal-tinymce-wrapper" style={{ width: '100%' }}>
+      <Editor
+        licenseKey="gpl"
+        tinymceScriptSrc="/crm/tinymce/tinymce.min.js"
+        initialValue={initialValue}
+        disabled={disabled}
+        onEditorChange={onChange}
+        init={{
+          height: 220,
+          menubar: false,
+          plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'charmap',
+            'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'table', 'help', 'wordcount'
+          ],
+          toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
+          content_style: `
+            body { 
+              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              font-size: 13px; 
+              line-height: 1.6; 
+              color: #0f172a; 
+              padding: 10px 14px; 
+            }
+            ol {
+              margin: 0 0 8px 0;
+              padding-left: 24px;
+              list-style-type: decimal !important;
+            }
+            ol li {
+              margin-bottom: 4px;
+              line-height: 1.6;
+            }
+            ul {
+              margin: 0 0 8px 0;
+              padding-left: 24px;
+              list-style-type: disc !important;
+            }
+            ul li {
+              margin-bottom: 4px;
+              line-height: 1.6;
+            }
+            p {
+              margin: 0 0 6px 0;
+              line-height: 1.6;
+            }
+          `,
+          branding: false,
+          promotion: false,
+          statusbar: true,
+          placeholder: 'Tuliskan catatan atau remarks bebas terkait hasil perbandingan FAP di sini (misal: klarifikasi kesalahan bacaan OCR, alasan data tetap dipertahankan atau berubah, catatan komite, dsb.)...',
+          setup: (ed: any) => {
+            ed.on('init', () => {
+              if (!disabled) {
+                ed.mode.set('design');
+              }
+            });
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void,filterStage?:string}){
   const evidenceDefs = [
-    { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT', desc: 'Formulir aplikasi pembiayaan resmi bertandatangan debitur' },
-    { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA', desc: 'Kajian awal dan analisis kelayakan kredit oleh Credit Analyst' },
-    { code: 'ICLF', name: 'Iclf', title: 'ICLF (Credit Committee Review)', stage: 'Credit Committee', badgeClass: 'stage-badge-iclf', role: 'COMMITTEE', desc: 'Rekomendasi persetujuan dan risalah rapat komite pembiayaan' },
+    { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT', desc: 'Official signed financing application form from debtor' },
+    { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA', desc: 'Initial review and credit feasibility analysis by Credit Analyst' },
+    { code: 'ICLF', name: 'Iclf', title: 'ICLF (Credit Committee Review)', stage: 'Credit Committee', badgeClass: 'stage-badge-iclf', role: 'COMMITTEE', desc: 'Approval recommendation and minutes of the financing committee meeting' },
   ];
 
   const defaultCode = filterStage === 'Pre-analysis' ? 'PREANALYSIS' : filterStage === 'ICLF' ? 'ICLF' : 'FAP';
@@ -1395,6 +1471,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
 
   const [fapComparison, setFapComparison] = useState<any>(null);
+  const [fapRemarks, setFapRemarks] = useState<string>('');
+  const [remarksSaveStatus, setRemarksSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
   const [systemZoom, setSystemZoom] = useState<number>(0.72);
@@ -1405,6 +1483,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     setActiveFile(null);
     setActiveFileUrl('');
     setFapComparison(null);
+    setFapRemarks('');
+    setRemarksSaveStatus('idle');
     setShowHistoryModal(false);
     setRightViewMode('ocr');
   }, [a.id]);
@@ -1474,11 +1554,22 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     if (selectedCode === 'FAP' && activeFiles.length > 0) {
       api(`/applications/${a.id}/fap-comparison`).then(res => {
         setFapComparison(res?.comparison || null);
+        if (res?.comparison?.remarks) {
+          setFapRemarks(res.comparison.remarks);
+          setRemarksSaveStatus('saved');
+        } else {
+          setFapRemarks('');
+          setRemarksSaveStatus('idle');
+        }
       }).catch(() => {
         setFapComparison(null);
+        setFapRemarks('');
+        setRemarksSaveStatus('idle');
       });
     } else {
       setFapComparison(null);
+      setFapRemarks('');
+      setRemarksSaveStatus('idle');
     }
   }, [selectedCode, a.id, activeFiles.length]);
 
@@ -1614,7 +1705,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         setZoom(1);
         setRotation(0);
       } else {
-        setError(e.message || 'Gagal memuat preview dokumen.');
+        setError(e.message || 'Failed to load document preview.');
       }
     }
   }
@@ -1630,13 +1721,13 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       const res = await api(`/applications/${a.id}/documents/upload`, 'POST', body);
       const updated = await api(`/applications/${a.id}`);
       onChange(updated);
-      notify(`Evidence ${item.title} berhasil diunggah.`);
+      notify(`Evidence ${item.title} uploaded successfully.`);
       if (res?.fapComparison?.isFap) {
         setFapComparison(res.fapComparison);
         if (res.fapComparison.hasDifferences) {
-          notify(`Verifikasi OCR Dokumen FAP: Terdeteksi ${res.fapComparison.diffs?.length || 0} perbedaan data.`);
+          notify(`FAP Document OCR Verification: ${res.fapComparison.diffs?.length || 0} data differences detected.`);
         } else {
-          notify('Verifikasi OCR Dokumen FAP: Data cocok dengan sistem, tidak ada perbedaan terdeteksi.');
+          notify('FAP Document OCR Verification: Data matches the system, no differences detected.');
         }
       }
       const updatedChk = (updated.documentChecks || []).find((d: any) => 
@@ -1647,14 +1738,14 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         previewFile(updatedChk.files[updatedChk.files.length - 1]);
       }
     } catch (e: any) {
-      setError(e.message || 'Gagal mengunggah evidence: ' + e.message);
+      setError(e.message || 'Failed to upload evidence: ' + e.message);
     } finally {
       setBusy(false);
     }
   }
 
   async function handleDeleteFile(item: any, fileId: string) {
-    if (!confirm('Hapus file evidence ini?')) return;
+    if (!confirm('Delete this evidence file?')) return;
     setBusy(true);
     setError('');
     try {
@@ -1699,11 +1790,23 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
           setActiveFile(null);
         }
       }
-      notify('File evidence berhasil dihapus.');
+      notify('Evidence file deleted successfully.');
     } catch (e: any) {
-      setError(e.message || 'Gagal menghapus file evidence.');
+      setError(e.message || 'Failed to delete evidence file.');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleSaveFapRemarks() {
+    setRemarksSaveStatus('saving');
+    try {
+      await api(`/applications/${a.id}/fap-comparison/remarks`, 'POST', { remarks: fapRemarks });
+      setRemarksSaveStatus('saved');
+      notify('Catatan verifikasi FAP berhasil disimpan.');
+    } catch (err: any) {
+      setRemarksSaveStatus('unsaved');
+      setError('Gagal menyimpan catatan verifikasi: ' + (err.message || ''));
     }
   }
 
@@ -1712,7 +1815,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     setError('');
     try {
       await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
-        approvedData: extractedData
+        approvedData: extractedData,
+        remarks: fapRemarks
       });
       const updated = await api(`/applications/${a.id}`);
       onChange(updated);
@@ -1729,7 +1833,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     setBusy(true);
     setError('');
     try {
-      await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST');
+      await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST', {
+        remarks: fapRemarks
+      });
       setFapComparison(null);
       notify('Perubahan data OCR diabaikan. Sistem tetap mempertahankan data saat ini.');
     } catch (err: any) {
@@ -1747,15 +1853,15 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       if (res?.comparison) {
         setFapComparison(res.comparison);
         if (res.comparison.hasDifferences) {
-          notify(`Pemindaian OCR selesai: Ditemukan ${res.comparison.diffs?.length || 0} perbedaan data.`);
+          notify(`OCR scan complete: ${res.comparison.diffs?.length || 0} data differences found.`);
         } else {
-          notify('Pemindaian OCR selesai: Data dokumen fisik cocok 100% dengan database sistem.');
+          notify('OCR scan complete: Physical document data matches 100% with the system database.');
         }
       } else {
-        notify('Pemindaian OCR selesai.');
+        notify('OCR scan complete.');
       }
     } catch (err: any) {
-      setError('Gagal menjalankan verifikasi OCR: ' + (err.message || ''));
+      setError('Failed to run OCR verification: ' + (err.message || ''));
     } finally {
       setBusy(false);
     }
@@ -1769,14 +1875,14 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
           <div className="evidence-studio-badge">
             <FolderCheck size={14} /> Studio Evidence
           </div>
-          <h2>Berkas Evidence & Live Document Studio</h2>
+          <h2>Evidence Files & Live Document Studio</h2>
           <p>
-            Manajemen dokumen digital permohonan pembiayaan debitur <strong>{a.customer?.companyName || 'Debitur'}</strong> ({a.fapNumber || 'FAP'}) · <strong>{totalFilesCount} Berkas Terunggah</strong>
+            Digital document management for financing application of debtor <strong>{a.customer?.companyName || 'Debtor'}</strong> ({a.fapNumber || 'FAP'}) · <strong>{totalFilesCount} Files Uploaded</strong>
           </p>
         </div>
 
         {/* Linear/Prolab Segmented Pill Navigation */}
-        <div className="evidence-pill-nav" role="tablist" aria-label="Navigasi Tahapan Dokumen">
+        <div className="evidence-pill-nav" role="tablist" aria-label="Document Stage Navigation">
           {items.map(item => {
             const isSelected = item.code === selectedCode;
             const count = item.chk.files?.length || 0;
@@ -1815,8 +1921,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   <UploadCloud size={20} />
                 </div>
                 <div className="fap-evidence-top-text">
-                  <h3>Unggah Evidence Formulir FAP Bertanda Tangan (Customer Signed)</h3>
-                  <p>Unggah berkas pindaian atau PDF formulir FAP fisik bertandatangan debitur untuk verifikasi OCR otomatis.</p>
+                  <h3>Upload Signed FAP Form Evidence (Customer Signed)</h3>
+                  <p>Upload a scanned file or PDF of the physically signed FAP form for automatic OCR verification.</p>
                 </div>
               </div>
               <div className="fap-evidence-top-actions">
@@ -1824,10 +1930,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   type="button"
                   className="fap-history-popup-btn"
                   onClick={() => setShowHistoryModal(true)}
-                  title="Buka daftar riwayat dokumen FAP yang telah diunggah"
+                  title="Open the list of uploaded FAP document history"
                 >
                   <Files size={15} color="#002060" />
-                  <span>Riwayat Berkas Terunggah ({activeFiles.length})</span>
+                  <span>Upload History ({activeFiles.length})</span>
                 </button>
                 <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
               </div>
@@ -1839,10 +1945,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 <div className="fap-dropzone-full-icon">
                   {busy ? <Loader2 size={22} className="spin" /> : <UploadCloud size={22} />}
                 </div>
-                <strong>{busy ? 'Sedang mengunggah dan memproses OCR berkas...' : 'Tarik & letakkan berkas PDF/Gambar FAP di sini, atau klik untuk memilih file'}</strong>
-                <span>Berkas otomatis diberi penamaan hash aplikasi dan stempel tanggal</span>
+                <strong>{busy ? 'Uploading and processing OCR...' : 'Drag & drop FAP PDF/Image file here, or click to select a file'}</strong>
+                <span>Files are automatically named with application hash and date stamp</span>
                 <span className="fap-dropzone-full-hint">
-                  Format didukung: PDF, PNG, JPEG · Maksimal 20 MB · Perbandingan data sistem vs OCR otomatis
+                  Supported formats: PDF, PNG, JPEG · Max 20 MB · Automatic system data vs OCR comparison
                 </span>
                 <input
                   type="file"
@@ -1862,13 +1968,13 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
           <div className="fap-unified-section-nav">
             <div className="fap-nav-left">
               <span className="fap-nav-label">
-                <Files size={14} color="#002060" /> Navigasi Formulir:
+                <Files size={14} color="#002060" /> Form Navigation:
               </span>
               <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-header')}>1. Header & Register</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-company')}>2. Profil Perusahaan</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-pic')}>3. PIC & Pemegang Saham</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-facility')}>4. Fasilitas & Fixed Assets</button>
-              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-proposal')}>5. Nilai Pembiayaan</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-company')}>2. Company Profile</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-pic')}>3. PIC & Shareholders</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-facility')}>4. Facilities & Fixed Assets</button>
+              <button type="button" onClick={() => scrollToFapSection('fap-preview-sec-proposal')}>5. Financing Value</button>
             </div>
           </div>
 
@@ -1880,9 +1986,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 <div className="fap-pane-head-left">
                   <h4>
                     <FileSpreadsheet size={16} color="#002060" />
-                    Dokumen FAP Sistem (Terakhir Di-generate)
+                    System FAP Document (Last Generated)
                   </h4>
-                  <span>Data live database saat ini · FAP No: {a.fapNumber || '-'}</span>
+                  <span>Current live database data · FAP No: {a.fapNumber || '-'}</span>
                 </div>
                 <div className="fap-pane-head-right">
                   <div className="excel-zoom-controls compact" style={{display:'inline-flex', alignItems:'center', gap:'3px', background:'#f1f5f9', padding:'2px 6px', borderRadius:'6px', border:'1px solid #cbd5e1'}}>
@@ -1898,10 +2004,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     type="button"
                     className="button small"
                     onClick={() => printFapDocument(a.fapNumber)}
-                    title="Cetak formulir FAP sistem"
+                    title="Print system FAP form"
                     style={{display:'inline-flex', alignItems:'center', gap:'5px', fontSize:'12px'}}
                   >
-                    <Printer size={13} /> Cetak Formulir
+                    <Printer size={13} /> Print Form
                   </button>
                 </div>
               </div>
@@ -1924,10 +2030,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 <div className="fap-pane-head-left">
                   <h4>
                     <FileText size={16} color="#002060" />
-                    Dokumen FAP Fisik (Hasil OCR)
+                    Physical FAP Document (OCR Result)
                   </h4>
                   <span style={{maxWidth:'220px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', display:'inline-block'}} title={activeFile ? activeFile.fileName : ''}>
-                    {activeFile ? activeFile.fileName : 'Belum ada dokumen fisik diunggah'}
+                    {activeFile ? activeFile.fileName : 'No physical document uploaded yet'}
                   </span>
                 </div>
                 <div className="fap-pane-head-right">
@@ -1939,10 +2045,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                         disabled={busy}
                         onClick={handleRunFapComparison}
                         style={{display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'11px', height:'24px', padding:'2px 8px', marginRight:'4px'}}
-                        title="Pindai ulang dokumen fisik dan bandingkan dengan data sistem terbaru"
+                        title="Re-scan the physical document and compare with the latest system data"
                       >
                         {busy ? <Loader2 size={12} className="spin" /> : <RefreshCw size={12} />}
-                        Pindai Ulang OCR
+                        Re-scan OCR
                       </button>
                       <div style={{display:'inline-flex', background:'#f1f5f9', padding:'2px', borderRadius:'6px', border:'1px solid #cbd5e1', marginRight:'4px'}}>
                         <button
@@ -1950,18 +2056,18 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           className={`button small ${rightViewMode === 'ocr' ? 'primary' : ''}`}
                           onClick={() => setRightViewMode('ocr')}
                           style={{fontSize:'11px', padding:'2px 8px', height:'24px', borderRadius:'4px'}}
-                          title="Tampilkan formulir FAP hasil ekstraksi OCR dengan sorotan perbedaan"
+                          title="Show OCR-extracted FAP form with difference highlights"
                         >
-                          <FileSpreadsheet size={12} style={{marginRight:3}} /> Formulir OCR
+                          <FileSpreadsheet size={12} style={{marginRight:3}} /> OCR Form
                         </button>
                         <button
                           type="button"
                           className={`button small ${rightViewMode === 'pdf' ? 'primary' : ''}`}
                           onClick={() => setRightViewMode('pdf')}
                           style={{fontSize:'11px', padding:'2px 8px', height:'24px', borderRadius:'4px'}}
-                          title="Tampilkan berkas PDF fisik asli"
+                          title="Show original physical PDF file"
                         >
-                          <Eye size={12} style={{marginRight:3}} /> Berkas Asli
+                          <Eye size={12} style={{marginRight:3}} /> Original File
                         </button>
                       </div>
                     </>
@@ -1978,9 +2084,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           rel="noopener noreferrer"
                           className="button small"
                           style={{display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'11px', textDecoration:'none'}}
-                          title="Buka dokumen di tab baru"
+                          title="Open document in new tab"
                         >
-                          <ExternalLink size={12} /> Buka Tab
+                          <ExternalLink size={12} /> Open Tab
                         </a>
                       )}
                     </>
@@ -2017,8 +2123,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 ) : (
                   <div className="fap-physical-empty">
                     <FileText size={48} strokeWidth={1.5} />
-                    <h5>Belum Ada Berkas Fisik Terunggah</h5>
-                    <p>Silakan unggah dokumen formulir FAP fisik bertandatangan pada area unggah di atas untuk melihat perbandingan berdampingan.</p>
+                    <h5>No Physical File Uploaded Yet</h5>
+                    <p>Please upload the physically signed FAP form document in the upload area above to see the side-by-side comparison.</p>
                   </div>
                 )}
               </div>
@@ -2032,9 +2138,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 <div>
                   <h3>
                     <Sparkles size={18} color="#2563eb" />
-                    Analisis Perbedaan Data (Sistem vs Hasil OCR Dokumen Fisik)
+                    Data Difference Analysis (System vs Physical Document OCR)
                   </h3>
-                  <p>Hasil komparasi otomatis antara nilai database sistem dengan data yang terbaca pada dokumen fisik FAP bertandatangan debitur.</p>
+                  <p>Automatic comparison results between system database values and data read from the physically signed FAP document.</p>
                 </div>
                 <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
                   <button
@@ -2043,10 +2149,10 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     disabled={busy}
                     onClick={handleRunFapComparison}
                     style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
-                    title="Pindai ulang dokumen fisik dan bandingkan dengan data sistem terbaru"
+                    title="Re-scan the physical document and compare with the latest system data"
                   >
                     {busy ? <Loader2 size={13} className="spin" /> : <RefreshCw size={13} />}
-                    Analisis Ulang OCR
+                    Re-analyze OCR
                   </button>
                 </div>
               </div>
@@ -2056,14 +2162,14 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 <div className="fap-diff-banner warning">
                   <AlertTriangle size={18} style={{flexShrink:0, marginTop:1}} />
                   <div>
-                    <strong>Pemberitahuan Non-Blocking:</strong> Terdeteksi <strong>{fapComparison.diffs?.length || 0} perbedaan data</strong> antara dokumen fisik bertandatangan dengan database sistem. Tombol submit telah dibuka. Anda dapat menyetujui perubahan data agar sistem terupdate otomatis, atau mempertahankan data yang sudah ada di sistem.
+                    <strong>Non-Blocking Notice:</strong> <strong>{fapComparison.diffs?.length || 0} data differences</strong> detected between the signed physical document and the system database. The submit button is now unlocked. You may approve the data changes to update the system automatically, or keep the existing system data.
                   </div>
                 </div>
               ) : (
                 <div className="fap-diff-banner success">
                   <CheckCircle size={18} style={{flexShrink:0, marginTop:1}} />
                   <div>
-                    <strong>Verifikasi Sempurna:</strong> Seluruh data pada dokumen fisik yang terbaca OCR cocok 100% dengan database sistem. Tidak ditemukan inkonsistensi.
+                    <strong>Perfect Verification:</strong> All data on the physical document read by OCR matches 100% with the system database. No inconsistencies found.
                   </div>
                 </div>
               )}
@@ -2075,9 +2181,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     <table className="fap-diff-table">
                       <thead>
                         <tr>
-                          <th style={{width:'24%'}}>Nama Kolom (Field)</th>
-                          <th style={{width:'30%'}}>Data di Sistem Saat Ini</th>
-                          <th style={{width:'30%'}}>Data Terdeteksi OCR (Dokumen Fisik)</th>
+                          <th style={{width:'24%'}}>Field Name</th>
+                          <th style={{width:'30%'}}>Current System Data</th>
+                          <th style={{width:'30%'}}>OCR Detected Data (Physical Document)</th>
                           <th style={{width:'16%', textAlign:'center'}}>Status</th>
                         </tr>
                       </thead>
@@ -2100,7 +2206,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             </td>
                             <td style={{textAlign:'center'}}>
                               <span className="fap-diff-badge different">
-                                <AlertTriangle size={11} /> Berbeda
+                                <AlertTriangle size={11} /> Different
                               </span>
                             </td>
                           </tr>
@@ -2109,7 +2215,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           <tr>
                             <td colSpan={4} style={{textAlign:'center', padding:'24px', color:'#059669'}}>
                               <CheckCircle size={20} style={{verticalAlign:'middle', marginRight:'8px'}} />
-                              Semua kolom data yang diuji cocok dengan data sistem!
+                              All tested data fields match the system data!
                             </td>
                           </tr>
                         )}
@@ -2117,11 +2223,60 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     </table>
                   </div>
 
+                  {/* FAP Verification Remarks Rich Text Editor */}
+                  <div className="fap-diff-remarks-card">
+                    <div className="fap-diff-remarks-head">
+                      <div className="fap-diff-remarks-title">
+                        <div className="fap-diff-remarks-title-icon">
+                          <FileText size={16} />
+                        </div>
+                        <div className="fap-diff-remarks-title-text">
+                          <h4>Catatan & Remarks Verifikasi Dokumen FAP</h4>
+                          <p>
+                            Gunakan kolom ini untuk menambah catatan bebas (contoh: jika hasil pembacaan OCR keliru, data berubah sesuai kesepakatan/adendum, atau justifikasi verifikasi lainnya).
+                          </p>
+                        </div>
+                      </div>
+                      <div className="fap-diff-remarks-actions">
+                        {remarksSaveStatus === 'saved' && (
+                          <span style={{ fontSize: '11.5px', color: '#059669', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                            <CheckCircle size={13} /> Tersimpan
+                          </span>
+                        )}
+                        {remarksSaveStatus === 'saving' && (
+                          <span style={{ fontSize: '11.5px', color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Loader2 size={13} className="spin" /> Menyimpan...
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className="button small"
+                          disabled={busy || remarksSaveStatus === 'saving'}
+                          onClick={handleSaveFapRemarks}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', padding: '4px 12px', height: '28px' }}
+                          title="Simpan catatan verifikasi"
+                        >
+                          <Save size={13} /> Simpan Catatan
+                        </button>
+                      </div>
+                    </div>
+
+                    <FapRemarksTinyMCE
+                      key={`${a.id}-${fapComparison?.fileName || 'fap'}`}
+                      initialContent={fapRemarks}
+                      disabled={busy}
+                      onChange={(content) => {
+                        setFapRemarks(content);
+                        setRemarksSaveStatus('unsaved');
+                      }}
+                    />
+                  </div>
+
                   {/* Bottom Actions Bar */}
                   {fapComparison.diffs.length > 0 && (
                     <div className="fap-diff-actions-bar">
                       <span style={{fontSize:'12px', color:'#64748b'}}>
-                        Pilih <strong>Approve Changes</strong> untuk memperbarui data sistem, atau <strong>Correct Data</strong> untuk mempertahankan data sistem saat ini.
+                        Choose <strong>Approve Changes</strong> to update the system data, or <strong>Correct Data</strong> to keep the current system data.
                       </span>
                       <div className="fap-diff-actions-right">
                         <button
@@ -2131,7 +2286,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           onClick={handleDismissFapChanges}
                           style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
                         >
-                          <Pencil size={14} /> Correct Data (Pertahankan Sistem)
+                          <Pencil size={14} /> Correct Data (Keep System)
                         </button>
                         <button
                           type="button"
@@ -2175,11 +2330,11 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     <Upload size={20} />
                   </div>
                   <div className="evidence-dropzone-text">
-                    <strong>{busy ? 'Mengunggah berkas...' : `Unggah Evidence ${activeItem.name}`}</strong>
-                    <span>Tarik berkas ke sini atau klik untuk memilih</span>
+                    <strong>{busy ? 'Uploading file...' : `Upload Evidence ${activeItem.name}`}</strong>
+                    <span>Drag file here or click to select</span>
                   </div>
                   <span className="evidence-dropzone-hint">
-                    PDF, PNG, JPEG · Maks. 20 MB
+                    PDF, PNG, JPEG · Max. 20 MB
                   </span>
                   <input
                     type="file"
@@ -2198,9 +2353,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               <div className="evidence-files-section">
                 <div className="evidence-files-header">
                   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', width:'100%'}}>
-                    <h4>Daftar Berkas Terunggah ({activeFiles.length})</h4>
+                    <h4>Uploaded Files ({activeFiles.length})</h4>
                     <span className="evidence-files-summary">
-                      {activeFiles.length > 0 ? 'Pilih untuk pratinjau' : 'Belum ada berkas'}
+                      {activeFiles.length > 0 ? 'Select to preview' : 'No files yet'}
                     </span>
                   </div>
                 </div>
@@ -2208,8 +2363,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 {activeFiles.length === 0 ? (
                   <div className="evidence-files-empty">
                     <FileText size={28} className="evidence-empty-icon" />
-                    <p>Belum ada berkas pada tahapan {activeItem.stage}</p>
-                    <small>Silakan unggah dokumen pendukung melalui area unggah di atas.</small>
+                    <p>No files for the {activeItem.stage} stage</p>
+                    <small>Please upload supporting documents via the upload area above.</small>
                   </div>
                 ) : (
                   <div className="evidence-files-list">
@@ -2227,7 +2382,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           key={f.id}
                           className={`evidence-deck-card ${isPreviewed ? 'active' : ''}`}
                           onClick={() => previewFile(f)}
-                          title="Klik untuk membuka pratinjau dokumen"
+                          title="Click to open document preview"
                         >
                           <div className={`evidence-file-icon-box ${isPdf ? 'pdf' : 'img'}`}>
                             <FileText size={16} />
@@ -2252,7 +2407,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                               type="button"
                               className={`evidence-action-btn ${isPreviewed ? 'active' : ''}`}
                               onClick={() => previewFile(f)}
-                              title="Pratinjau dokumen"
+                              title="Preview document"
                             >
                               <Eye size={13} />
                             </button>
@@ -2261,7 +2416,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                                 type="button"
                                 className="evidence-action-btn danger"
                                 onClick={() => handleDeleteFile(activeItem, f.id)}
-                                title="Hapus berkas ini"
+                                title="Delete this file"
                               >
                                 <Trash2 size={13} />
                               </button>
@@ -2286,17 +2441,17 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                     type="button"
                     className="button small studio-expand-btn"
                     onClick={() => setSidebarCollapsed(false)}
-                    title="Tampilkan kembali sidebar berkas"
+                    title="Show file sidebar again"
                   >
-                    <Columns size={13} /> Buka Sidebar
+                    <Columns size={13} /> Open Sidebar
                   </button>
                 )}
                 <div>
                   <h3 className="document-viewer-title">
-                    {activeFile ? activeFile.fileName : `Preview Dokumen · ${activeItem.title}`}
+                    {activeFile ? activeFile.fileName : `Document Preview · ${activeItem.title}`}
                   </h3>
                   <span className="document-viewer-subtitle">
-                    Tahapan: <strong>{activeItem.stage}</strong> · Role: <strong>{activeItem.role}</strong>
+                    Stage: <strong>{activeItem.stage}</strong> · Role: <strong>{activeItem.role}</strong>
                   </span>
                 </div>
               </div>
@@ -2312,7 +2467,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   type="button"
                   className="studio-toolbar-toggle-btn"
                   onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                  title={sidebarCollapsed ? "Tampilkan daftar berkas (Split View)" : "Lebarkan Pratinjau (Full Canvas)"}
+                  title={sidebarCollapsed ? "Show file list (Split View)" : "Expand Preview (Full Canvas)"}
                 >
                   <Columns size={14} />
                   <span>{sidebarCollapsed ? "Split View" : "Full Canvas"}</span>
@@ -2372,7 +2527,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       type="button"
                       className="studio-tool-btn"
                       onClick={() => setZoom(Math.max(0.25, zoom - 0.25))}
-                      title="Perkecil"
+                      title="Zoom Out"
                     >
                       <ZoomOut size={14} />
                     </button>
@@ -2381,7 +2536,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       type="button"
                       className="studio-tool-btn"
                       onClick={() => setZoom(Math.min(3, zoom + 0.25))}
-                      title="Perbesar"
+                      title="Zoom In"
                     >
                       <ZoomIn size={14} />
                     </button>
@@ -2389,7 +2544,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       type="button"
                       className="studio-tool-btn"
                       onClick={() => setRotation(rotation + 90)}
-                      title="Putar 90 Derajat"
+                      title="Rotate 90 Degrees"
                     >
                       <RotateCw size={14} />
                     </button>
@@ -2405,7 +2560,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       target="_blank"
                       rel="noopener noreferrer"
                       className="studio-tool-btn"
-                      title="Buka dokumen di tab baru"
+                      title="Open document in new tab"
                     >
                       <ExternalLink size={14} />
                     </a>
@@ -2413,7 +2568,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       href={`/api/v1/files/${activeFile?.id}/download`}
                       download={activeFile?.fileName || 'document'}
                       className="studio-tool-btn"
-                      title="Unduh dokumen"
+                      title="Download document"
                     >
                       <Download size={14} />
                     </a>
@@ -2423,7 +2578,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   type="button"
                   className="studio-tool-btn"
                   onClick={() => setIsMaximized(!isMaximized)}
-                  title={isMaximized ? "Perkecil kanvas" : "Maksimalkan kanvas"}
+                  title={isMaximized ? "Minimize canvas" : "Maximize canvas"}
                 >
                   {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
@@ -2460,14 +2615,14 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   <div className="studio-empty-icon-wrap">
                     <FileText size={44} />
                   </div>
-                  <h3>Pilih Dokumen untuk Pratinjau Langsung</h3>
+                  <h3>Select a Document for Live Preview</h3>
                   <p>
-                    Pilih salah satu berkas dari daftar di sisi kiri untuk melihat pratinjau lengkap di kanvas studio ini.
+                    Select a file from the list on the left to view the full preview in this studio canvas.
                   </p>
                   <div className="studio-empty-features">
-                    <span>✓ Pratinjau PDF & Gambar resolusi tinggi</span>
-                    <span>✓ Kontrol skala Zoom Fit Width & Fit Page</span>
-                    <span>✓ Mode Fullscreen untuk evaluasi komite</span>
+                    <span>✓ High-resolution PDF & Image preview</span>
+                    <span>✓ Zoom Fit Width & Fit Page scale controls</span>
+                    <span>✓ Fullscreen mode for committee evaluation</span>
                   </div>
                 </div>
               )}
@@ -2476,17 +2631,17 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         </div>
       )}
 
-      {/* Pop-up Modal: Riwayat Berkas Terunggah */}
+      {/* Pop-up Modal: Upload History */}
       {showHistoryModal && (
-        <Modal title={`Riwayat Berkas Terunggah · ${activeItem.title}`} onClose={() => setShowHistoryModal(false)}>
+        <Modal title={`Upload History · ${activeItem.title}`} onClose={() => setShowHistoryModal(false)}>
           <div className="modal-body" style={{maxHeight:'70vh', overflowY:'auto'}}>
             <p className="muted" style={{marginBottom:'14px'}}>
-              Debitur: <strong>{a.customer?.companyName || 'Debitur'}</strong> · No. FAP: <strong>{a.fapNumber || '-'}</strong> · Total <strong>{activeFiles.length} berkas</strong>
+              Debtor: <strong>{a.customer?.companyName || 'Debtor'}</strong> · FAP No: <strong>{a.fapNumber || '-'}</strong> · Total <strong>{activeFiles.length} files</strong>
             </p>
             {activeFiles.length === 0 ? (
               <div style={{textAlign:'center', padding:'32px 16px', color:'#94a3b8'}}>
                 <FileText size={36} style={{margin:'0 auto 10px auto', display:'block'}} />
-                <p>Belum ada berkas terunggah pada tahapan ini.</p>
+                <p>No files uploaded for this stage yet.</p>
               </div>
             ) : (
               <div style={{display:'flex', flexDirection:'column', gap:'10px'}}>
@@ -2527,7 +2682,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           <div style={{fontSize:'11.5px', color:'#64748b', marginTop:'2px', display:'flex', gap:'8px', flexWrap:'wrap'}}>
                             <span>{sizeStr}</span>
                             {dateStr && <span>• {dateStr}</span>}
-                            {f.uploadedBy && <span>• Pengunggah: {f.uploadedBy}</span>}
+                            {f.uploadedBy && <span>• Uploaded by: {f.uploadedBy}</span>}
                           </div>
                         </div>
                       </div>
@@ -2539,9 +2694,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             previewFile(f);
                             setShowHistoryModal(false);
                           }}
-                          title="Tampilkan di layar pratinjau"
+                          title="Show in preview screen"
                         >
-                          <Eye size={13} /> {isPreviewed ? 'Aktif' : 'Pratinjau'}
+                          <Eye size={13} /> {isPreviewed ? 'Active' : 'Preview'}
                         </button>
                         <a
                           href={`/api/v1/files/${f.id}/download`}
@@ -2549,7 +2704,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                           target="_blank"
                           rel="noopener noreferrer"
                           className="button small"
-                          title="Unduh berkas"
+                          title="Download file"
                           style={{display:'inline-flex', alignItems:'center'}}
                         >
                           <Download size={13} />
@@ -2559,7 +2714,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                             type="button"
                             className="button small"
                             onClick={() => handleDeleteFile(activeItem, f.id)}
-                            title="Hapus berkas"
+                            title="Delete file"
                             style={{color:'#dc2626', borderColor:'#fecaca', background:'#fef2f2'}}
                           >
                             <Trash2 size={13} />
@@ -2573,7 +2728,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
             )}
           </div>
           <div className="modal-actions">
-            <button className="button" onClick={() => setShowHistoryModal(false)}>Tutup</button>
+            <button className="button" onClick={() => setShowHistoryModal(false)}>Close</button>
           </div>
         </Modal>
       )}
@@ -2585,7 +2740,7 @@ function ActivityPage({rows,open}:{rows:any[],open:(id:string)=>void}){const [lo
 
 function DocumentDesk({rows,open,user}:{rows:any[],open:(id:string,tab?:number)=>void,user:any}){const [items,setItems]=useState<any[]>([]),[search,setSearch]=useState(''),[department,setDepartment]=useState(['BS','CA','LEGAL'].includes(user.role)?user.role:'ALL'),[status,setStatus]=useState('OPEN'),[error,setError]=useState('');useEffect(()=>{api('/document-desk').then(setItems).catch(e=>setError(e.message));},[rows]);const visible=items.filter(d=>(status==='ALL'||(status==='OPEN'?d.status!=='VERIFIED':d.status==='VERIFIED'))&&(department==='ALL'||d.assigned_role===department)&&(d.company_name+' '+d.fap_number+' '+d.document_name).toLowerCase().includes(search.toLowerCase()));const openCount=items.filter(d=>d.status!=='VERIFIED').length;return <><div className="stats-grid"><div className="stat-card"><div className="stat-top">Documents to review</div><strong>{openCount}</strong><small>Checklist items awaiting completion or verification</small></div><div className="stat-card"><div className="stat-top">Verified documents</div><strong>{items.length-openCount}</strong><small>Checklist items marked verified</small></div><div className="stat-card"><div className="stat-top">Applications</div><strong>{new Set(items.map(d=>d.application_id)).size}</strong><small>Applications with document checklists</small></div></div><section className="panel applications-panel"><div className="panel-head"><h2>Document checklist queue <span>{visible.length}</span></h2><span className="subtle-chip">Open an item to review its documents</span></div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search documents" placeholder="Search company, FAP, or document..." value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter document status" value={status} onChange={e=>setStatus(e.target.value)}><option value="OPEN">Needs action</option><option value="VERIFIED">Verified</option><option value="ALL">All documents</option></select><select aria-label="Filter assigned department" value={department} onChange={e=>setDepartment(e.target.value)}><option value="ALL">All departments</option>{['BS','CA','LEGAL'].map(r=><option value={r} key={r}>{label(r)}</option>)}</select></div></div>{error&&<div className="error">{error}</div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>DOCUMENT</th><th>COMPANY / FAP</th><th>OWNER</th><th>REQUIRED</th><th>FILES</th><th>STATUS</th><th/></tr></thead><tbody>{visible.map(d=><tr key={d.checklist_id} onClick={()=>open(d.application_id,6)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')open(d.application_id,6);}}><td><b>{d.document_name}</b><small>{d.document_code}</small></td><td><div className="company-cell"><div><b>{d.company_name}</b><small>{d.fap_number}</small></div></div></td><td><span className="branch">{label(d.assigned_role)}</span></td><td>{d.is_mandatory?'Yes':'No'}</td><td>{d.file_count||0}</td><td><Badge status={d.status}/></td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><FolderCheck size={26}/><h3>No checklist items found</h3><p>Try another filter or search.</p></div>}</div></section></>;}
 
-const deedNames:Record<string,string>={establishment:'Akta pendirian',amendment:'Akta perubahan'};
+const deedNames:Record<string,string>={establishment:'Establishment Deed',amendment:'Amendment Deed'};
 function legalDeedList(legal:any,application:any){const saved:any[]=Array.isArray(legal.deeds)?legal.deeds:[],legacy=['establishment','amendment'].filter(type=>legal[type]&&Object.values(legal[type]).some(Boolean)).map(type=>({id:`legacy-${type}`,type,...legal[type]}));const entered=Array.isArray(legal.deeds)?saved:legacy;const system:any[]=[];if(application.customer?.establishmentActNo)system.push({id:'system-establishment',type:'establishment',deedNumber:application.customer.establishmentActNo,deedDate:String(application.customer.establishmentDate||'').slice(0,10),source:'Sistem'});if(application.latestDeedNo)system.push({id:'system-amendment',type:'amendment',deedNumber:application.latestDeedNo,deedDate:String(application.latestDeedDate||'').slice(0,10),source:'Sistem'});return [...system.filter(x=>!entered.some(y=>y.id===x.id||y.type===x.type&&y.deedNumber===x.deedNumber)),...entered].filter(x=>!legal.hiddenDeedIds?.includes(x.id));}
 function selectedLegalStakeholders(legal:any,application:any,fallback:any[]){const deeds=legalDeedList(legal,application),selected=deeds.find(x=>x.id===legal.selectedDeedId)||deeds[0];return selected&&Array.isArray(selected.stakeholders)?selected.stakeholders:fallback;}
 function shareholderNames(parties:any):string[]{return Array.isArray(parties?.shareholders)?parties.shareholders:parties?.shareholder?[parties.shareholder]:[];}
@@ -2594,14 +2749,14 @@ function StakeholderDeedView({legal,application,fallbackRows}:{legal:any,applica
  const allDeeds = legalDeedList(legal, application);
  const deedSource = (published && published.length > 0) ? published : allDeeds;
  const deeds=[...deedSource].sort((a,b)=>{const ad=Date.parse(String(a.deedDate||a.createdAt||''))||0,bd=Date.parse(String(b.deedDate||b.createdAt||''))||0;return bd-ad||String(b.createdAt||'').localeCompare(String(a.createdAt||''));});
- return <div className="stakeholder-card-view"><div className="section-title"><div><h3>Akta & kepemilikan saham</h3><p className="muted">Akta terbaru ditampilkan terlebih dahulu. Data dikelola melalui tab Legal.</p></div><span className="subtle-chip">{deeds.length} akta</span></div><div className="stakeholder-deed-cards">{deeds.map((d,index)=>{
+ return <div className="stakeholder-card-view"><div className="section-title"><div><h3>Deeds & Share Ownership</h3><p className="muted">Most recent deed shown first. Data is managed through the Legal tab.</p></div><span className="subtle-chip">{deeds.length} deed(s)</span></div><div className="stakeholder-deed-cards">{deeds.map((d,index)=>{
    const rawRows=Array.isArray(d.stakeholders)&&d.stakeholders.length>0?d.stakeholders:(d.id===legal.selectedDeedId||!legal.selectedDeedId&&d.id===deeds[0]?.id)?fallbackRows||[]:[];
    const displayRows = rawRows.length > 0 ? rawRows : (Array.isArray(fallbackRows) && fallbackRows.length > 0 ? fallbackRows : []);
    const total=displayRows.reduce((sum:number,r:any)=>sum+Number(r.sharePercentage||0),0),validity=deedValidity(d.deedDate);
-   return <div className={index===0?"stakeholder-latest-section":"stakeholder-history-item"} key={d.id}>{index===0?<div className="stakeholder-group-heading"><h3>Akta terbaru</h3><p>Akta dengan tanggal paling baru.</p></div>:index===1?<div className="stakeholder-group-heading history"><h3>Riwayat akta lama</h3><p>Akta sebelumnya, diurutkan dari yang paling baru.</p></div>:null}<article className="stakeholder-deed-card"><header><div><div className="stakeholder-card-badges"><span className="legal-type-badge">{deedNames[d.type]||'Akta Notaris'}</span>{index===0&&<span className="stakeholder-latest">Terbaru</span>}</div><h3>Akta {d.deedNumber||'Belum diisi'}</h3></div><span className={'deed-validity '+(validity.active===null?'unknown':validity.active?'active':'inactive')}>{validity.status}</span></header><dl className="stakeholder-deed-meta"><div><dt>Tanggal akta</dt><dd>{date(d.deedDate)}</dd></div><div><dt>Nomor SK Menteri</dt><dd>{d.ministerialDecreeNumber||'—'}</dd></div><div><dt>Berlaku sampai</dt><dd>{date(validity.expiry)}</dd></div></dl><div className="stakeholder-share-heading"><h4>Stakeholders & Shareholders <span>{displayRows.length}</span></h4><span>Total kepemilikan <b>{total.toFixed(2)}%</b></span></div><div className="shareholder-cards">{displayRows.map((r:any,i:number)=>{const name=[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Stakeholder ${i+1}`,percentage=Number(r.sharePercentage||0),roleLabel=r.position||(r.stakeholderType==='CORPORATE'?'Perusahaan':'Perorangan');return <div className="shareholder-card" key={r.id||i}><div className="shareholder-card-person"><span className="shareholder-avatar">{name.split(/\s+/).slice(0,2).map((part:string)=>part[0]).join('').toUpperCase()}</span><div><b>{name}</b><small>{roleLabel}</small></div></div><div className="shareholder-card-value"><strong>{percentage>0?`${percentage.toFixed(2)}%`:(r.position||'—')}</strong><span>{percentage>0?'Kepemilikan saham':'Jabatan'}</span></div>{percentage>0&&<div className="shareholder-card-track"><i style={{width:`${Math.max(0,Math.min(100,percentage))}%`}}/></div>}</div>;})}</div>{!displayRows.length&&<div className="stakeholder-card-empty"><Users size={23}/><b>Belum ada stakeholder / shareholder</b><span>Tambahkan data stakeholder pada akta ini melalui tab Legal.</span></div>}</article></div>;
- })}</div>{!deeds.length&&<div className="empty-small">Belum ada akta yang terdaftar. Silakan tambahkan akta dan stakeholder melalui tab Legal.</div>}</div>;
+   return <div className={index===0?"stakeholder-latest-section":"stakeholder-history-item"} key={d.id}>{index===0?<div className="stakeholder-group-heading"><h3>Latest Deed</h3><p>Most recent deed by date.</p></div>:index===1?<div className="stakeholder-group-heading history"><h3>Previous Deed History</h3><p>Previous deeds, sorted from most recent.</p></div>:null}<article className="stakeholder-deed-card"><header><div><div className="stakeholder-card-badges"><span className="legal-type-badge">{deedNames[d.type]||'Notarial Deed'}</span>{index===0&&<span className="stakeholder-latest">Latest</span>}</div><h3>Deed {d.deedNumber||'Not filled'}</h3></div><span className={'deed-validity '+(validity.active===null?'unknown':validity.active?'active':'inactive')}>{validity.status}</span></header><dl className="stakeholder-deed-meta"><div><dt>Deed date</dt><dd>{date(d.deedDate)}</dd></div><div><dt>Ministerial Decree Number</dt><dd>{d.ministerialDecreeNumber||'—'}</dd></div><div><dt>Valid until</dt><dd>{date(validity.expiry)}</dd></div></dl><div className="stakeholder-share-heading"><h4>Stakeholders & Shareholders <span>{displayRows.length}</span></h4><span>Total ownership <b>{total.toFixed(2)}%</b></span></div><div className="shareholder-cards">{displayRows.map((r:any,i:number)=>{const name=[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Stakeholder ${i+1}`,percentage=Number(r.sharePercentage||0),roleLabel=r.position||(r.stakeholderType==='CORPORATE'?'Company':'Perorangan');return <div className="shareholder-card" key={r.id||i}><div className="shareholder-card-person"><span className="shareholder-avatar">{name.split(/\s+/).slice(0,2).map((part:string)=>part[0]).join('').toUpperCase()}</span><div><b>{name}</b><small>{roleLabel}</small></div></div><div className="shareholder-card-value"><strong>{percentage>0?`${percentage.toFixed(2)}%`:(r.position||'—')}</strong><span>{percentage>0?'Share ownership':'Position'}</span></div>{percentage>0&&<div className="shareholder-card-track"><i style={{width:`${Math.max(0,Math.min(100,percentage))}%`}}/></div>}</div>;})}</div>{!displayRows.length&&<div className="stakeholder-card-empty"><Users size={23}/><b>No stakeholders / shareholders yet</b><span>Add data stakeholder pada akta ini melalui tab Legal.</span></div>}</article></div>;
+ })}</div>{!deeds.length&&<div className="empty-small">No deeds registered yet. Please add deeds and stakeholders through the Legal tab.</div>}</div>;
 }
-function LegalStakeholderSummary({legal,application}:{legal:any,application:any}){const deeds=legalDeedList(legal,application),deed=deeds.find(x=>x.id===legal.selectedDeedId)||deeds.find(x=>x.type===(legal.selectedDeed||'establishment'))||deeds[0],parties=deed?.parties||{};if(!deed?.deedNumber)return null;return <div className="legal-stakeholder-summary"><div className="section-title"><h3>Data akta terpilih</h3><span className="subtle-chip">{deedNames[deed.type]}</span></div><div className="legal-summary-grid">{legalDeedFields.map(f=><div key={f.key}><small>{f.label}</small><strong>{f.type==='date'?date(deed[f.key]):deed[f.key]||'â€”'}</strong></div>)}{deed.infoAdded&&<><div><small>Shareholders</small><strong>{shareholderNames(parties).filter(Boolean).join(', ')||'â€”'}</strong></div></>}</div></div>;}
+function LegalStakeholderSummary({legal,application}:{legal:any,application:any}){const deeds=legalDeedList(legal,application),deed=deeds.find(x=>x.id===legal.selectedDeedId)||deeds.find(x=>x.type===(legal.selectedDeed||'establishment'))||deeds[0],parties=deed?.parties||{};if(!deed?.deedNumber)return null;return <div className="legal-stakeholder-summary"><div className="section-title"><h3>Selected deed data</h3><span className="subtle-chip">{deedNames[deed.type]}</span></div><div className="legal-summary-grid">{legalDeedFields.map(f=><div key={f.key}><small>{f.label}</small><strong>{f.type==='date'?date(deed[f.key]):deed[f.key]||'â€”'}</strong></div>)}{deed.infoAdded&&<><div><small>Shareholders</small><strong>{shareholderNames(parties).filter(Boolean).join(', ')||'â€”'}</strong></div></>}</div></div>;}
 function AutoNumberedTextarea({value,onChange,disabled,rows=3,placeholder,ariaLabel,className}:{value:string,onChange:(v:string)=>void,disabled?:boolean,rows?:number,placeholder?:string,ariaLabel?:string,className?:string}){
   const textareaRef=useRef<HTMLTextAreaElement>(null);
   const handleKeyDown=(e:React.KeyboardEvent<HTMLTextAreaElement>)=>{
@@ -2705,7 +2860,7 @@ function StakeholderDetailDialog({
 
   return (
     <Modal
-      title="Detail Stakeholder"
+      title="Stakeholder Details"
       onClose={onClose}
       className="modal-stakeholder-detail-view"
     >
@@ -2730,25 +2885,25 @@ function StakeholderDetailDialog({
             </div>
             <h2 className="stakeholder-detail-name">{fullName}</h2>
             <p className="stakeholder-detail-deed-ref">
-              Akta: <strong>{deed ? (deed.deedNumber || 'Akta ' + (deed.type === 'amendment' ? 'Perubahan' : 'Pendirian')) : 'Akta Perseroan'}</strong>
+              Deed: <strong>{deed ? (deed.deedNumber || 'Deed ' + (deed.type === 'amendment' ? 'Amendment' : 'Establishment')) : 'Company Deed'}</strong>
             </p>
           </div>
         </div>
 
         {/* Bento Grid Layout */}
         <div className="stakeholder-detail-grid">
-          {/* Card 1: Kepemilikan Saham & Modal Legal */}
+          {/* Card 1: Share Ownership & Legal Capital */}
           <div className="detail-bento-card shareholding-card">
             <div className="bento-card-head">
               <div className="bento-card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
                 <Wallet size={16} />
               </div>
-              <h4>Kepemilikan Saham & Modal</h4>
+              <h4>Share Ownership & Capital</h4>
             </div>
 
             <div className="detail-share-progress-box">
               <div className="detail-share-progress-labels">
-                <span className="lbl">Porsi Kepemilikan Saham</span>
+                <span className="lbl">Share Ownership Percentage</span>
                 <span className="val">{sharePct.toFixed(2)}%</span>
               </div>
               <div className="detail-share-progress-track">
@@ -2761,39 +2916,39 @@ function StakeholderDetailDialog({
 
             <div className="detail-key-value-list">
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Modal Disetor (Deposited)</span>
+                <span className="detail-kv-lbl">Deposited Capital</span>
                 <span className="detail-kv-val highlight">
                   {depositedCap > 0 ? `Rp ${depositedCap.toLocaleString('id-ID')}` : 'Rp 0'}
                 </span>
               </div>
               {item.primaryCapital && (
                 <div className="detail-kv-item">
-                  <span className="detail-kv-lbl">Modal Ditempatkan (Primary)</span>
+                  <span className="detail-kv-lbl">Placed Capital (Primary)</span>
                   <span className="detail-kv-val">
                     Rp {Number(item.primaryCapital).toLocaleString('id-ID')}
                   </span>
                 </div>
               )}
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Jabatan Perseroan</span>
+                <span className="detail-kv-lbl">Company Position</span>
                 <span className="detail-kv-val">{label(item.designation || item.position || 'Shareholder')}</span>
               </div>
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Hak Tanda Tangan</span>
+                <span className="detail-kv-lbl">Signing Rights</span>
                 <span className="detail-kv-val">
-                  {item.signatory === 'YES' ? '✓ Ya (Signatory)' : 'Bukan Penandatangan'}
+                  {item.signatory === 'YES' ? '✓ Yes (Signatory)' : 'Not a Signatory'}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Identitas Diri & Dokumen Legal */}
+          {/* Card 2: Personal Identity & Legal Documents */}
           <div className="detail-bento-card identity-card">
             <div className="bento-card-head">
               <div className="bento-card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
                 <ShieldCheck size={16} />
               </div>
-              <h4>Identitas Legal Pribadi</h4>
+              <h4>Personal Legal Identity</h4>
             </div>
 
             <div className="detail-key-value-list">
@@ -2806,7 +2961,7 @@ function StakeholderDetailDialog({
                       type="button"
                       className="detail-copy-btn"
                       onClick={() => copyText(item.idNumber, 'idNumber')}
-                      title="Salin No. Identitas Utama"
+                      title="Copy Primary ID Number"
                     >
                       {copied === 'idNumber' ? <Check size={12} color="#2563eb" /> : <Copy size={12} />}
                     </button>
@@ -2824,7 +2979,7 @@ function StakeholderDetailDialog({
                         type="button"
                         className="detail-copy-btn"
                         onClick={() => copyText(item.idNumberSecondary || item.taxId || item.npwp, 'idNumberSec')}
-                        title="Salin No. Identitas Sekunder"
+                        title="Copy Secondary ID Number"
                       >
                         {copied === 'idNumberSec' ? <Check size={12} color="#2563eb" /> : <Copy size={12} />}
                       </button>
@@ -2834,7 +2989,7 @@ function StakeholderDetailDialog({
               )}
 
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Tempat & Tanggal Lahir</span>
+                <span className="detail-kv-lbl">Place & Date of Birth</span>
                 <span className="detail-kv-val">
                   {item.placeOfBirth || item.birthPlace || (item.name?.includes('GUOHUI CHEN') ? 'Fujian' : '—')}
                   {item.dateOfBirth ? `, ${item.dateOfBirth}` : (item.name?.includes('GUOHUI CHEN') ? ', 25-03-1977' : '')}
@@ -2842,32 +2997,32 @@ function StakeholderDetailDialog({
               </div>
 
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Jenis Kelamin</span>
+                <span className="detail-kv-lbl">Gender</span>
                 <span className="detail-kv-val">{label(item.gender || (item.name?.includes('GUOHUI CHEN') ? 'MALE' : '—'))}</span>
               </div>
 
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Status Pernikahan</span>
+                <span className="detail-kv-lbl">Marital Status</span>
                 <span className="detail-kv-val">{label(item.maritalStatus || 'SINGLE')}</span>
               </div>
 
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">Kewarganegaraan</span>
+                <span className="detail-kv-lbl">Citizenship</span>
                 <span className="detail-kv-val">
-                  {item.citizenship === 'FOREIGN' || item.nationalityType === 'WNA' ? 'WNA (Asing)' : 'WNI (Indonesia)'}
+                  {item.citizenship === 'FOREIGN' || item.nationalityType === 'WNA' ? 'WNA (Foreign)' : 'WNI (Indonesian)'}
                   {item.country && item.country !== 'Indonesia' ? ` · ${item.country}` : ''}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Card 3: Kontak & Alamat Domisili */}
+          {/* Card 3: Contact & Domicile Address */}
           <div className="detail-bento-card contact-card">
             <div className="bento-card-head">
               <div className="bento-card-icon" style={{ background: '#faf5ff', color: '#9333ea' }}>
                 <BriefcaseBusiness size={16} />
               </div>
-              <h4>Kontak & Domisili</h4>
+              <h4>Contact & Domicile</h4>
             </div>
 
             <div className="detail-key-value-list">
@@ -2876,11 +3031,11 @@ function StakeholderDetailDialog({
                 <span className="detail-kv-val">{item.email || '—'}</span>
               </div>
               <div className="detail-kv-item">
-                <span className="detail-kv-lbl">No. Handphone / Telepon</span>
+                <span className="detail-kv-lbl">Mobile / Phone Number</span>
                 <span className="detail-kv-val">{item.mobilePhone || item.phone || '—'}</span>
               </div>
               <div className="detail-kv-item full-width">
-                <span className="detail-kv-lbl">Alamat Domisili</span>
+                <span className="detail-kv-lbl">Domicile Address</span>
                 <p className="detail-address-box">
                   {item.address || item.currentAddress || [
                     item.village ? `Kel. ${item.village}` : null,
@@ -2888,19 +3043,19 @@ function StakeholderDetailDialog({
                     item.cityRegency || item.city || null,
                     item.province || null,
                     item.postalCode || null
-                  ].filter(Boolean).join(', ') || 'Belum ada data alamat tercatat.'}
+                  ].filter(Boolean).join(', ') || 'No address data recorded yet.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Card 4: Dokumen Fisik Identitas & KTP */}
+          {/* Card 4: Physical Identity Document & KTP */}
           <div className="detail-bento-card ktp-card">
             <div className="bento-card-head">
               <div className="bento-card-icon" style={{ background: '#eff6ff', color: '#2563eb' }}>
                 <FileText size={16} />
               </div>
-              <h4>Dokumen Fisik KTP</h4>
+              <h4>Physical ID Document (KTP)</h4>
             </div>
 
             {ktpPreview ? (
@@ -2914,14 +3069,14 @@ function StakeholderDetailDialog({
                   }}
                 />
                 <div className="detail-ktp-status-pill">
-                  <CheckCircle size={13} color="#2563eb" /> Terverifikasi
+                  <CheckCircle size={13} color="#2563eb" /> Verified
                 </div>
               </div>
             ) : (
               <div className="detail-ktp-empty">
                 <FileText size={28} style={{ color: '#cbd5e1', marginBottom: '6px' }} />
-                <span>Belum ada scan / foto KTP diunggah</span>
-                <small className="muted">Upload foto KTP melalui menu Edit Stakeholder</small>
+                <span>No KTP scan / photo uploaded yet</span>
+                <small className="muted">Upload KTP photo via the Edit Stakeholder menu</small>
               </div>
             )}
           </div>
@@ -2930,7 +3085,7 @@ function StakeholderDetailDialog({
 
       <div className="modal-actions">
         <button type="button" className="button" onClick={onClose}>
-          Tutup
+          Close
         </button>
         {!locked && (
           <button 
@@ -2941,7 +3096,7 @@ function StakeholderDetailDialog({
               onEdit();
             }}
           >
-            <Pencil size={14} style={{ marginRight: '6px' }} /> Ubah Data Stakeholder
+            <Pencil size={14} style={{ marginRight: '6px' }} /> Edit Stakeholder Data
           </button>
         )}
       </div>
@@ -3410,7 +3565,7 @@ function StakeholderModalDialog({
   const docTitles: Record<StakeholderDocType, string> = {
     KTP: 'e-KTP (Kependudukan)',
     PASSPORT: 'Paspor (Passport Internasional)',
-    NPWP: 'NPWP (Nomor Pokok Wajib Pajak)',
+    NPWP: 'NPWP (Tax Identification Number)',
     KITAS: 'KITAS / ITAS (Izin Tinggal Terbatas)'
   };
 
@@ -3418,8 +3573,8 @@ function StakeholderModalDialog({
     <Modal
       title={
         !isRightPaneVisible
-          ? (isNewStakeholder ? 'Tambah Stakeholder' : editorLocked ? 'Detail Stakeholder' : 'Edit Stakeholder')
-          : (isNewStakeholder ? 'Tambah Stakeholder · Dokumen Identitas & OCR' : editorLocked ? 'Detail Stakeholder' : 'Edit Stakeholder · Dokumen Identitas & OCR')
+          ? (isNewStakeholder ? 'Add Stakeholder' : editorLocked ? 'Stakeholder Details' : 'Edit Stakeholder')
+          : (isNewStakeholder ? 'Add Stakeholder · Identity Document & OCR' : editorLocked ? 'Stakeholder Details' : 'Edit Stakeholder · Identity Document & OCR')
       }
       onClose={onClose}
       className={isRightPaneVisible ? "modal-side-by-side modal-stakeholder-ktp" : "modal-stakeholder-form-only"}
@@ -3429,12 +3584,12 @@ function StakeholderModalDialog({
         <div className="modal-side-form-pane">
           <div className="ktp-form-header-bar">
             <div>
-              <span className="eyebrow" style={{color:'#002060',fontWeight:700,letterSpacing:'0.5px'}}>FORMULIR STAKEHOLDER</span>
-              <h3 style={{margin:'2px 0 0 0',fontSize:'15px',color:'#0f172a'}}>Data Pemegang Saham & Pengurus</h3>
+              <span className="eyebrow" style={{color:'#002060',fontWeight:700,letterSpacing:'0.5px'}}>STAKEHOLDER FORM</span>
+              <h3 style={{margin:'2px 0 0 0',fontSize:'15px',color:'#0f172a'}}>Shareholders & Directors Data</h3>
             </div>
             {copiedKey === 'applied_all' && (
               <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',fontWeight:600,fontSize:'11px'}}>
-                ✓ Data Dokumen Terisi ke Form!
+                ✓ Document Data Applied to Form!
               </span>
             )}
           </div>
@@ -3496,7 +3651,7 @@ function StakeholderModalDialog({
                     className={`doc-type-tab ${docType === t ? 'active' : ''}`}
                     onClick={() => handleSelectDocTypeTab(t)}
                   >
-                    {hasDoc && <span className="doc-type-tab-indicator" title="Berkas terunggah" />}
+                    {hasDoc && <span className="doc-type-tab-indicator" title="File uploaded" />}
                     {t === 'KTP' ? 'e-KTP' : t === 'PASSPORT' ? 'Passport' : t === 'NPWP' ? 'NPWP' : 'KITAS'}
                   </button>
                 );
@@ -3510,21 +3665,21 @@ function StakeholderModalDialog({
                 <h4 style={{margin:0,fontSize:'14.5px',color:'#002060',fontWeight:700}}>{docTitles[docType]}</h4>
                 {currentAsset.url && (
                   <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',fontSize:'10.5px',fontWeight:600}}>
-                    ✓ Terpasang
+                    ✓ Attached
                   </span>
                 )}
               </div>
-              <span style={{fontSize:'11px',color:'#64748b'}}>Pratinjau fisik berkas identitas & ekstraksi data cerdas (OCR)</span>
+              <span style={{fontSize:'11px',color:'#64748b'}}>Physical ID document preview & smart data extraction (OCR)</span>
             </div>
 
             {currentAsset.url && !editorLocked && (
               <div style={{display:'flex',alignItems:'center',gap:'6px'}}>
                 <label className="button small button-secondary" style={{padding:'4px 10px',cursor:'pointer',display:'inline-flex',alignItems:'center',gap:'4px'}}>
-                  <Upload size={13}/> Ganti Berkas
+                  <Upload size={13}/> Replace File
                   <input type="file" accept="image/*,application/pdf" style={{display:'none'}} onChange={e => handleUploadDoc(e, docType)}/>
                 </label>
                 <button type="button" className="button small legal-delete-button" style={{padding:'4px 8px'}} onClick={handleRemoveDoc}>
-                  <Trash2 size={13}/> Hapus
+                  <Trash2 size={13}/> Delete
                 </button>
               </div>
             )}
@@ -3536,12 +3691,12 @@ function StakeholderModalDialog({
               <div className="ktp-viewer-controls">
                 <span className="ktp-viewer-filename">{currentAsset.fileName || `${docType} File`}</span>
                 <div style={{display:'flex',alignItems:'center',gap:'4px'}}>
-                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.max(0.75, z-0.25))} title="Perkecil"><ZoomOut size={13}/></button>
+                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.max(0.75, z-0.25))} title="Zoom Out"><ZoomOut size={13}/></button>
                   <span style={{fontSize:'10px',color:'#475569',minWidth:'28px',textAlign:'center'}}>{Math.round(zoom*100)}%</span>
-                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.min(2.5, z+0.25))} title="Perbesar"><ZoomIn size={13}/></button>
+                  <button type="button" className="ktp-ctrl-btn" onClick={()=>setZoom(z=>Math.min(2.5, z+0.25))} title="Zoom In"><ZoomIn size={13}/></button>
                   <button type="button" className="ktp-ctrl-btn" onClick={()=>setRotation(r=>(r+90)%360)} title="Putar 90°"><RotateCw size={13}/></button>
                   {(zoom!==1 || rotation!==0) && (
-                    <button type="button" className="ktp-ctrl-btn reset" onClick={()=>{setZoom(1);setRotation(0);}} title="Reset Tampilan">Reset</button>
+                    <button type="button" className="ktp-ctrl-btn reset" onClick={()=>{setZoom(1);setRotation(0);}} title="Reset View">Reset</button>
                   )}
                 </div>
               </div>
@@ -3570,12 +3725,12 @@ function StakeholderModalDialog({
                 <Upload size={28}/>
               </div>
               <div style={{textAlign:'center'}}>
-                <b style={{fontSize:'14.5px',color:'#0f172a',display:'block'}}>Unggah Berkas Scan / Foto {docTitles[docType]}</b>
-                <span style={{fontSize:'12px',color:'#64748b',display:'block',marginTop:'4px'}}>Pilih file format gambar (JPG, PNG) atau PDF dokumen</span>
+                <b style={{fontSize:'14.5px',color:'#0f172a',display:'block'}}>Upload Scan / Photo {docTitles[docType]}</b>
+                <span style={{fontSize:'12px',color:'#64748b',display:'block',marginTop:'4px'}}>Select image format (JPG, PNG) or PDF document</span>
               </div>
               <div className="ktp-upload-tip">
                 <Sparkles size={14} style={{color:'#002060',flexShrink:0}}/>
-                <span>Data identitas pada dokumen akan otomatis dipindai secara terstruktur sesuai format {docType} untuk mempermudah verifikasi.</span>
+                <span>Identity data on the document will be automatically scanned in a structured format according to the {docType} format to facilitate verification.</span>
               </div>
               <input type="file" accept="image/*,application/pdf" style={{display:'none'}} disabled={editorLocked} onChange={e => handleUploadDoc(e, docType)}/>
             </label>
@@ -3591,11 +3746,11 @@ function StakeholderModalDialog({
                   <h5 style={{margin:0,fontSize:'13.5px',color:'#002060',fontWeight:700}}>Hasil Pembacaan Dokumen ({docType} OCR)</h5>
                   <div style={{display:'flex',alignItems:'center',gap:'6px',marginTop:'2px'}}>
                     {ocrLoading ? (
-                      <span className="ktp-ocr-status loading">⏳ Sedang memindai gambar {docType}...</span>
+                      <span className="ktp-ocr-status loading">⏳ Scanning {docType} image...</span>
                     ) : currentAsset.ocrText ? (
-                      <span className="ktp-ocr-status ready">✓ Data Siap Disinkronkan</span>
+                      <span className="ktp-ocr-status ready">✓ Data Ready to Sync</span>
                     ) : (
-                      <span className="ktp-ocr-status empty">Menunggu unggahan berkas</span>
+                      <span className="ktp-ocr-status empty">Awaiting file upload</span>
                     )}
                   </div>
                 </div>
@@ -3606,9 +3761,9 @@ function StakeholderModalDialog({
                   type="button"
                   className="button primary small ktp-autofill-btn"
                   onClick={applyDocOcrToForm}
-                  title={`Salin dan sinkronkan data hasil pembacaan ${docType} ke formulir sebelah kiri`}
+                  title={`Copy and sync ${docType} OCR data to the left form`}
                 >
-                  <Sparkles size={13}/> Isi Otomatis ke Form Kiri
+                  <Sparkles size={13}/> Auto-fill to Left Form
                 </button>
               )}
             </div>
@@ -3649,7 +3804,7 @@ function StakeholderModalDialog({
                   <span className="ktp-field-val">{ktpParsed.tempatTglLahir || (ktpParsed.tempatLahir ? `${ktpParsed.tempatLahir}, ${ktpParsed.dateOfBirth||''}` : '—')}</span>
                   {ktpParsed.dateOfBirth && (
                     <small className="ktp-field-sub">
-                      ISO: {ktpParsed.dateOfBirth} · Usia: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} Thn {calculateAgeYearsMonths(ktpParsed.dateOfBirth).months} Bln
+                      ISO: {ktpParsed.dateOfBirth} · Age: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} yr {calculateAgeYearsMonths(ktpParsed.dateOfBirth).months} mo
                     </small>
                   )}
                 </div>
@@ -3742,7 +3897,7 @@ function StakeholderModalDialog({
                   <span className="ktp-field-val">{passportParsed.dateOfBirth || '—'}</span>
                   {passportParsed.dateOfBirth && (
                     <small className="ktp-field-sub">
-                      Usia: {calculateAgeYearsMonths(passportParsed.dateOfBirth).years} Thn {calculateAgeYearsMonths(passportParsed.dateOfBirth).months} Bln
+                      Age: {calculateAgeYearsMonths(passportParsed.dateOfBirth).years} yr {calculateAgeYearsMonths(passportParsed.dateOfBirth).months} mo
                     </small>
                   )}
                 </div>
@@ -3853,7 +4008,7 @@ function StakeholderModalDialog({
                   <span className="ktp-field-val">{kitasParsed.tanggalLahir || '—'}</span>
                   {kitasParsed.tanggalLahir && (
                     <small className="ktp-field-sub">
-                      Usia: {calculateAgeYearsMonths(kitasParsed.tanggalLahir).years} Thn {calculateAgeYearsMonths(kitasParsed.tanggalLahir).months} Bln
+                      Age: {calculateAgeYearsMonths(kitasParsed.tanggalLahir).years} yr {calculateAgeYearsMonths(kitasParsed.tanggalLahir).months} mo
                     </small>
                   )}
                 </div>
@@ -3879,10 +4034,10 @@ function StakeholderModalDialog({
       </div>
 
       <div className="modal-actions">
-        <button type="button" className="button" onClick={onClose}>{editorLocked ? 'Tutup' : 'Batal'}</button>
+        <button type="button" className="button" onClick={onClose}>{editorLocked ? 'Close' : 'Cancel'}</button>
         {!editorLocked && (
           <button type="button" className="button primary" onClick={onSave} style={{display:'inline-flex',alignItems:'center',gap:'6px'}}>
-            <Save size={15}/> Simpan Shareholder
+            <Save size={15}/> Save Shareholder
           </button>
         )}
       </div>
@@ -3975,7 +4130,7 @@ function DeedRemarksTinyMCE({
           branding: false,
           promotion: false,
           statusbar: true,
-          placeholder: 'Tuliskan rincian catatan perubahan akta di sini...',
+          placeholder: 'Write deed change notes here...',
           setup: (ed: any) => {
             ed.on('init', () => {
               if (!disabled) {
@@ -3995,10 +4150,10 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const [ocrLoading,setOcrLoading]=useState(false);
  const [editing,setEditing]=useState<any>(null),[deleting,setDeleting]=useState<any>(null),[stakeholderModal,setStakeholderModal]=useState<any>(null),[stakeholderList,setStakeholderList]=useState<any>(null),[viewStakeholderDetail,setViewStakeholderDetail]=useState<any>(null),[deleteStakeholder,setDeleteStakeholder]=useState<any>(null),[shareholderCountDeed,setShareholderCountDeed]=useState<any>(null),[viewRemarkDeed,setViewRemarkDeed]=useState<any>(null),[legacyRemarkCategories]=useState<any[]>(()=>{try{const stored=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');return Array.isArray(stored)?stored:[];}catch{return [];}});
  useEffect(()=>setFormError(''),[editing?.id,stakeholderModal?.deedId,stakeholderModal?.index]);
- const defaultRemarkCategories=[{id:'establishment-deed',name:'Pendirian akta',remarks:''},{id:'amendment-share-change',name:'Saham',remarks:''},{id:'amendment-management-change',name:'Kepengurusan',remarks:''},{id:'amendment-business-activity-change',name:'Kegiatan Usaha',remarks:''},{id:'amendment-articles-change',name:'Anggaran Dasar',remarks:''},{id:'amendment-other',name:'Lainnya',remarks:''}];
+ const defaultRemarkCategories=[{id:'establishment-deed',name:'Establishment deed',remarks:''},{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''}];
  const master=useMasterData(),masterCats=master.remarkCategoryId.map(x=>({id:x.value,name:x.name,remarks:''}));
  const remarkCategories=[...defaultRemarkCategories,...masterCats.filter(x=>!defaultRemarkCategories.some(d=>d.id===x.id)),...legacyRemarkCategories];
- const amendmentRemarkCategories=[{id:'amendment-share-change',name:'Saham',remarks:''},{id:'amendment-management-change',name:'Kepengurusan',remarks:''},{id:'amendment-business-activity-change',name:'Kegiatan Usaha',remarks:''},{id:'amendment-articles-change',name:'Anggaran Dasar',remarks:''},{id:'amendment-other',name:'Lainnya',remarks:''},...masterCats.filter(x=>!['establishment-deed','amendment-share-change','amendment-management-change','amendment-business-activity-change','amendment-articles-change','amendment-other'].includes(x.id))];
+ const amendmentRemarkCategories=[{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''},...masterCats.filter(x=>!['establishment-deed','amendment-share-change','amendment-management-change','amendment-business-activity-change','amendment-articles-change','amendment-other'].includes(x.id))];
  const getDeedCategoryIds=(d:any):string[]=>{if(Array.isArray(d?.remarkCategoryIds)&&d.remarkCategoryIds.length>0)return d.remarkCategoryIds;if(d?.remarkCategoryId)return [d.remarkCategoryId];return d?.type==='establishment'?['establishment-deed']:[];};
  const deeds=legalDeedList(value,application),selectedId=value.selectedDeedId||deeds.find(x=>x.type===(value.selectedDeed||'establishment'))?.id||deeds[0]?.id,parties=editing?.parties||{};
  const locked=(d:any)=>disabled||deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED';const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
@@ -4172,11 +4327,11 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   };
   const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const complete=editing&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
 
-  // Klasifikasi Akta Aktif (Strict Legal) vs Akta Historical (Riwayat)
+  // Active Deed Classification (Strict Legal) vs Historical Deed (History)
   const establishmentDeeds = deeds.filter((d: any) => d.type === 'establishment');
   const amendmentDeeds = deeds.filter((d: any) => d.type === 'amendment');
 
-  // 1. Akta pendirian utama: yang cocok dengan nomor di customer profile, atau yang tertua
+  // 1. Primary establishment deed: matches number in customer profile, or the oldest
   const matchedEst = establishmentDeeds.find((d: any) => 
     (application.customer?.establishmentActNo && d.deedNumber === application.customer.establishmentActNo) ||
     (application.establishmentActNo && d.deedNumber === application.establishmentActNo)
@@ -4187,7 +4342,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     return ad - bd;
   })[0] || null;
 
-  // 2. Akta perubahan terakhir (Latest Amendment): urutkan tanggal terbaru
+  // 2. Latest amendment deed: sorted by most recent date
   const sortedAmendments = amendmentDeeds.slice().sort((a: any, b: any) => {
     const ad = Date.parse(String(a.deedDate || a.createdAt || '')) || 0;
     const bd = Date.parse(String(b.deedDate || b.createdAt || '')) || 0;
@@ -4195,7 +4350,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   });
   const latestAmendmentDeed = sortedAmendments[0] || null;
 
-  // 3. Akta Aktif (Tabel Atas): 1 Akta Pendirian Utama + 1 Akta Perubahan Terakhir (yang aktif)
+  // 3. Active Deeds (Top Table): 1 Primary Establishment Deed + 1 Latest Amendment Deed (active)
   const activeDeeds: any[] = [];
   if (primaryEstablishmentDeed) {
     activeDeeds.push(primaryEstablishmentDeed);
@@ -4207,7 +4362,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     }
   }
 
-  // 4. Akta Historical (Tabel Bawah): Seluruh akta selain yang aktif
+  // 4. Historical Deeds (Bottom Table): All deeds other than active ones
   const activeIdSet = new Set(activeDeeds.map((d: any) => d.id));
   const historicalDeeds = deeds.filter((d: any) => !activeIdSet.has(d.id)).sort((a: any, b: any) => {
     const ad = Date.parse(String(a.deedDate || a.createdAt || '')) || 0;
@@ -4230,14 +4385,14 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
         <table className="data-table legal-deed-table">
           <thead>
             <tr>
-              <th>AKTA</th>
-              <th>TANGGAL</th>
+              <th>DEED</th>
+              <th>DATE</th>
               <th>STATUS</th>
-              <th>BERLAKU SAMPAI</th>
-              <th>SK MENTERI</th>
-              <th>KATEGORI REMARKS</th>
+              <th>VALID UNTIL</th>
+              <th>MINISTERIAL DECREE</th>
+              <th>REMARKS CATEGORY</th>
               <th>STAKEHOLDERS</th>
-              <th>AKSI</th>
+              <th>ACTION</th>
             </tr>
           </thead>
           <tbody>
@@ -4247,32 +4402,32 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
               const isExceeded = total > 100.01;
               const isComplete = Math.abs(total - 100) < 0.01;
               const ownershipClass = isExceeded ? 'exceeded' : isComplete ? 'complete' : total > 0 ? 'partial' : 'incomplete';
-              const ownershipLabel = isExceeded ? `⚠ ${total.toFixed(2)}% · Melebihi 100%` : isComplete ? '✓ 100%' : total > 0 ? `✓ ${total.toFixed(2)}%` : '0.00% · Belum ada data';
+              const ownershipLabel = isExceeded ? `⚠ ${total.toFixed(2)}% · Exceeds 100%` : isComplete ? '✓ 100%' : total > 0 ? `✓ ${total.toFixed(2)}%` : '0.00% · No data yet';
               const val = deedValidity(x.deedDate);
               const isPrimaryEst = primaryEstablishmentDeed?.id === x.id;
               const isLatestAmend = latestAmendmentDeed?.id === x.id;
               return (
                 <tr key={x.id} className={selectedId === x.id ? 'selected' : ''} aria-selected={selectedId === x.id}>
-                  <td data-label="Akta">
+                  <td data-label="Deed">
                     <div className="legal-deed-primary">
                       <span className="legal-type-badge">{deedNames[x.type]}</span>
-                      {selectedId === x.id && <span className="legal-current">Dipilih</span>}
+                      {selectedId === x.id && <span className="legal-current">Selected</span>}
                       {isHistory ? (
                         <span className="legal-history-badge">Historical</span>
                       ) : isPrimaryEst ? (
-                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Utama</span>
+                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Primary</span>
                       ) : isLatestAmend ? (
-                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Terbaru</span>
+                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Latest</span>
                       ) : null}
                     </div>
-                    <b className="legal-deed-number">{x.deedNumber || 'Nomor belum diisi'}</b>
+                    <b className="legal-deed-number">{x.deedNumber || 'Number not filled'}</b>
                     <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
                       {deedReviewLabels[reviewStatus(x)]}
                     </span>
                     {x.review?.rejectionReason && <small className="text-red">{x.review.rejectionReason}</small>}
-                    <small>{x.source === 'Sistem' ? 'Data awal sistem' : 'Input Legal'}</small>
+                    <small>{x.source === 'Sistem' ? 'Initial system data' : 'Legal Input'}</small>
                   </td>
-                  <td data-label="Tanggal">
+                  <td data-label="Date">
                     <span className="legal-cell-main">{date(x.deedDate)}</span>
                   </td>
                   <td data-label="Status">
@@ -4280,14 +4435,14 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                       {val.status}
                     </span>
                   </td>
-                  <td data-label="Berlaku sampai">
+                  <td data-label="Valid Until">
                     <span className="legal-cell-main">{date(val.expiry)}</span>
                   </td>
-                  <td data-label="SK Menteri">
+                  <td data-label="Ministerial Decree">
                     <span className="legal-cell-main">{x.ministerialDecreeNumber || '—'}</span>
                     <small>{date(x.ministerialDecreeDate)}</small>
                   </td>
-                  <td data-label="Kategori Remarks">
+                  <td data-label="Remarks Category">
                     {(() => {
                       const rawIds = getDeedCategoryIds(x);
                       if (!rawIds.length) return <span className="legal-category-label">—</span>;
@@ -4305,7 +4460,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                                   e.stopPropagation();
                                   setViewRemarkDeed({ deed: x, activeCatId: id });
                                 }}
-                                title={`Klik untuk melihat rincian remarks ${name}`}
+                                title={`Click to view ${name} remarks details`}
                               >
                                 {name}
                               </button>
@@ -4324,7 +4479,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                         setStakeholderList(x.id);
                       }}
                     >
-                      {rowsFor(x).length} stakeholder · Kelola
+                      {rowsFor(x).length} stakeholder(s) · Manage
                     </button>
                     <button
                       className={'legal-ownership-summary ' + ownershipClass}
@@ -4332,7 +4487,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                         e.stopPropagation();
                         setShareholderCountDeed(x.id);
                       }}
-                      title="Lihat rincian kepemilikan saham"
+                      title="View share ownership details"
                     >
                       {ownershipLabel}
                     </button>
@@ -4347,16 +4502,16 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                         }}
                       >
                         {user.role === 'MKT' && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
-                          ? 'Ajukan akta'
+                          ? 'Submit deed'
                           : user.role === 'BS' && reviewStatus(x) === 'PENDING_CHECK'
-                          ? 'Periksa akta'
+                          ? 'Review deed'
                           : user.role === 'HEAD_BS' && reviewStatus(x) === 'PENDING_APPROVAL'
-                          ? 'Approval akta'
-                          : 'Lihat approval'}
+                          ? 'Approve deed'
+                          : 'View approval'}
                       </button>
                       <button
                         className="button small legal-kebab"
-                        aria-label={`Aksi akta ${x.deedNumber || 'tanpa nomor'}`}
+                        aria-label={`Deed action ${x.deedNumber || 'no number'}`}
                         aria-haspopup="menu"
                         aria-expanded={actionMenu?.id === x.id}
                         onClick={e => {
@@ -4383,54 +4538,54 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   };
 
  return <>
-  {/* 1. TABEL ATAS: AKTA AKTIF & RUJUKAN TERKINI */}
+  {/* 1. TOP TABLE: ACTIVE DEEDS & CURRENT REFERENCE */}
   <div className="section-title legal-table-title">
     <div>
       <div className="legal-list-heading">
         <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <CheckCircle size={17} style={{color:'#2563eb'}}/> Akta aktif &amp; rujukan terkini
+          <CheckCircle size={17} style={{color:'#2563eb'}}/> Active deeds &amp; current reference
         </h3>
         <span className="legal-count active-count">{activeDeeds.length}</span>
       </div>
       <p className="muted">
-        Menampilkan 1 akta pendirian utama dan 1 akta perubahan terakhir yang berlaku efektif sebagai rujukan legalitas yuridis saat ini.
+        Showing 1 primary establishment deed and 1 latest effective amendment deed as the current legal reference.
       </p>
     </div>
     {!disabled&&['DRAFT','RETURNED'].includes(application.status)&&(
       <div className="legal-table-actions">
-        <button className="button small" onClick={openAdd}><Plus size={15}/>Tambah akta</button>
+        <button className="button small" onClick={openAdd}><Plus size={15}/>Add deed</button>
       </div>
     )}
   </div>
 
-  {renderDeedTable(activeDeeds, false, 'Belum ada akta aktif yang tercatat.')}
+  {renderDeedTable(activeDeeds, false, 'No active deeds recorded.')}
 
-  {/* 2. TABEL BAWAH: RIWAYAT AKTA LAMA (HISTORICAL DATA) */}
+  {/* 2. BOTTOM TABLE: PREVIOUS DEED HISTORY (HISTORICAL DATA) */}
   <div className="section-title legal-table-title" style={{marginTop:'34px'}}>
     <div>
       <div className="legal-list-heading">
         <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <Clock size={17} style={{color:'#64748b'}}/> Riwayat akta lama (historical data)
+          <Clock size={17} style={{color:'#64748b'}}/> Previous Deed History (historical data)
         </h3>
         <span className="legal-count history-count">{historicalDeeds.length}</span>
       </div>
       <p className="muted">
-        Arsip kronologis akta perubahan terdahulu dan akta yang sudah tidak aktif / kedaluwarsa.
+        Chronological archive of previous amendment deeds and deeds that are no longer active / expired.
       </p>
     </div>
   </div>
 
-  {renderDeedTable(historicalDeeds, true, 'Tidak ada riwayat akta lama. Seluruh akta tercatat pada tabel rujukan aktif.')}
+  {renderDeedTable(historicalDeeds, true, 'No previous deed history. All deeds are recorded in the active reference table.')}
 
-  {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Aksi akta" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing(structuredClone(target));setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'Lihat detail':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Akta yang sudah disetujui tidak boleh dihapus':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
- {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Pendirian akta',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Detail akta':'Edit akta':'Tambah akta'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}<label className="legal-deed-select">Jenis akta<select aria-label="Jenis akta" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment">Akta pendirian</option><option value="amendment">Akta perubahan</option></select></label><Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Tanggal akta perubahan (${date(dDate)}) tidak boleh sebelum tanggal akta pendirian (${date(estDate)}).`);}else if(formError&&formError.includes('tidak boleh sebelum tanggal akta pendirian')){setFormError('');}}}/><><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-unified-remarks-box">
+  {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Deed action" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing(structuredClone(target));setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'View details':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Approved deeds cannot be deleted':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
+ {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Establishment deed',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Deed Details':'Edit Deed':'Add Deed'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}<label className="legal-deed-select">Deed type<select aria-label="Deed type" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment">Establishment Deed</option><option value="amendment">Amendment Deed</option></select></label><Fields fields={legalDeedFields} value={editing} disabled={editorLocked} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Amendment deed date (${date(dDate)}) cannot be before the establishment deed date (${date(estDate)}).`);}else if(formError&&formError.includes('cannot be before the establishment deed date')){setFormError('');}}}/><><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-unified-remarks-box">
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
     <div>
       <span className="field-label" style={{fontSize:'13px',fontWeight:700,color:'#002060'}}>
-        Catatan / Remarks Akta {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}
+        Notes / Deed Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}
       </span>
       <p className="legal-remarks-hint" style={{fontSize:'11px',color:'#64748b',margin:'2px 0 0 0'}}>
-        Tuliskan catatan dan rincian perubahan akta di bawah ini (didukung format teks kaya TinyMCE):
+        Write notes and details of deed changes below (rich text TinyMCE format supported):
       </p>
     </div>
     <span className="subtle-chip" style={{background:'#eff6ff',color:'#1d4ed8',fontSize:'10.5px',fontWeight:600}}>
@@ -4445,9 +4600,9 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       setEditing((prev: any) => prev ? { ...prev, remarks: newContent } : prev);
     }}
   />
-</div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Tutup':'Batal'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Simpan akta</button>}</div></Modal>;})()}
- {shareholderCountDeed&&<Modal title="Jumlah shareholder" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Tutup</button></div></Modal>}
- {stakeholderList&&<Modal title="Stakeholders pada akta" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% saham · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Lihat detail lengkap stakeholder"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'Lihat':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">Belum ada stakeholder pada akta ini.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Tutup</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER",idType:'NONE'}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
+</div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Close':'Cancel'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete}><Save size={15}/>Save deed</button>}</div></Modal>;})()}
+ {shareholderCountDeed&&<Modal title="Shareholder Count" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Close</button></div></Modal>}
+ {stakeholderList&&<Modal title="Stakeholders on this deed" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% shares · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="View full stakeholder details"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'View':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">No stakeholders on this deed yet.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Close</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER",idType:'NONE'}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
  {stakeholderModal && (
     <StakeholderModalDialog
       modal={stakeholderModal}
@@ -4479,9 +4634,9 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       locked={listLocked}
     />
   )}
- {deleteStakeholder&&<Modal title="Hapus stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Hapus stakeholder dari akta ini?</p><p className="muted legal-delete-note">Klik Save changes di Legal agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Batal</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Hapus stakeholder</button></div></Modal>}
- {deleting&&<Modal title="Hapus akta" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Hapus {deedNames[deleting.type]} <strong>{deleting.deedNumber||'tanpa nomor'}</strong> dari daftar Legal?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Data asal di Customer atau profil tetap ada; akta ini akan disembunyikan dari daftar Legal.</p>}<p className="muted legal-delete-note">Klik Save changes setelah menghapus agar perubahan tetap tersimpan.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Batal</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Hapus akta</button></div></Modal>}
-  {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);return <Modal title={`Rincian Remarks · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Kategori Perubahan ({rawIds.length} Kategori Terpilih):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Catatan / Remarks Akta:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',minHeight:'80px'}} dangerouslySetInnerHTML={{ __html: deed.remarks || 'Belum ada catatan remarks untuk akta ini.' }} /></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Tutup</button></div></Modal>;})()}</>;
+ {deleteStakeholder&&<Modal title="Delete Stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Delete this stakeholder from the deed?</p><p className="muted legal-delete-note">Click Save changes in Legal to keep changes saved.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Cancel</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Delete stakeholder</button></div></Modal>}
+ {deleting&&<Modal title="Delete Deed" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Delete {deedNames[deleting.type]} <strong>{deleting.deedNumber||'no number'}</strong> from the Legal list?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Original data in Customer or profile remains; this deed will be hidden from the Legal list.</p>}<p className="muted legal-delete-note">Click Save changes after deleting to keep changes saved.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Cancel</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Delete deed</button></div></Modal>}
+  {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);return <Modal title={`Remarks Details · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Change Categories ({rawIds.length} Selected):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Deed Notes / Remarks:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',minHeight:'80px'}} dangerouslySetInnerHTML={{ __html: deed.remarks || 'No remarks notes for this deed yet.' }} /></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Close</button></div></Modal>;})()}</>;
 }
 
-function ShareholderCountContent({rows}:{rows:any[]}){const owners=rows.filter(r=>Number(r.sharePercentage)>0),total=owners.reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),name=(r:any,i:number)=>[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Shareholder ${i+1}`;return <div className="modal-body shareholder-count-modal"><div className="shareholder-count-top"><div><small>JUMLAH SHAREHOLDER</small><strong>{owners.length}</strong><span>Dihitung dari Percentage share &gt; 0</span></div><div><small>TOTAL KEPEMILIKAN</small><strong className={total>100.01?'text-red':'text-brand'}>{total.toFixed(2)}%</strong><span>{total>100.01?'Melebihi batas maksimal 100%':'Maksimal 100% (tidak wajib 100%)'}</span></div></div>{owners.length?<div className="shareholder-count-list">{owners.map((r,i)=><div key={r.id||i}><span><b>{String(i+1).padStart(2,'0')}</b>{name(r,i)}</span><strong>{Number(r.sharePercentage).toFixed(2)}%</strong></div>)}</div>:<div className="empty-small">Belum ada Stakeholder dengan Percentage share lebih dari 0 pada akta ini.</div>}<p className="legal-ownership-rule">Total Percentage share pada akta tidak boleh melebihi 100%. Data stakeholder tidak wajib mencapai 100% (dapat mencatat porsi kepemilikan utama atau sebagian).</p><p className="field-note">Jumlah dan persentase mengikuti data Stakeholders pada akta ini. Ubah Percentage share melalui tombol Stakeholders pada baris akta.</p></div>;}
+function ShareholderCountContent({rows}:{rows:any[]}){const owners=rows.filter(r=>Number(r.sharePercentage)>0),total=owners.reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),name=(r:any,i:number)=>[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Shareholder ${i+1}`;return <div className="modal-body shareholder-count-modal"><div className="shareholder-count-top"><div><small>SHAREHOLDER COUNT</small><strong>{owners.length}</strong><span>Dihitung dari Percentage share &gt; 0</span></div><div><small>TOTAL OWNERSHIP</small><strong className={total>100.01?'text-red':'text-brand'}>{total.toFixed(2)}%</strong><span>{total>100.01?'Exceeds maximum limit of 100%':'Maximum 100% (not required to be 100%)'}</span></div></div>{owners.length?<div className="shareholder-count-list">{owners.map((r,i)=><div key={r.id||i}><span><b>{String(i+1).padStart(2,'0')}</b>{name(r,i)}</span><strong>{Number(r.sharePercentage).toFixed(2)}%</strong></div>)}</div>:<div className="empty-small">No stakeholders with share percentage greater than 0 on this deed.</div>}<p className="legal-ownership-rule">Total share percentage on the deed must not exceed 100%. Stakeholder data does not need to reach 100% (partial ownership portions may be recorded).</p><p className="field-note">Count and percentage follow Stakeholder data on this deed. Change share percentage via the Stakeholders button on the deed row.</p></div>;}

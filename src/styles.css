@@ -4108,6 +4108,66 @@ button:focus-visible, a:focus-visible {
   gap: 10px;
 }
 
+/* FAP Remarks Card */
+.fap-diff-remarks-card {
+  margin-top: 18px;
+  margin-bottom: 18px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.fap-diff-remarks-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fap-diff-remarks-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fap-diff-remarks-title-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.fap-diff-remarks-title-text h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.fap-diff-remarks-title-text p {
+  margin: 2px 0 0 0;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.fap-diff-remarks-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+
 
 
 

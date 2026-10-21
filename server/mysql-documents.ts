@@ -56,6 +56,8 @@ export async function initializeApplicationDocuments(){
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
  const [hasOcrCol]=await pool.query<any[]>(`SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='application_submit_lock' AND column_name='ocr_comparison_json'`);
  if(!hasOcrCol.length)await pool.query(`ALTER TABLE application_submit_lock ADD COLUMN ocr_comparison_json LONGTEXT NULL`);
+ const [hasRemarksCol]=await pool.query<any[]>(`SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='application_submit_lock' AND column_name='remarks'`);
+ if(!hasRemarksCol.length)await pool.query(`ALTER TABLE application_submit_lock ADD COLUMN remarks LONGTEXT NULL`);
  await auditTable('application_document_checklist');await auditTable('application_document_file');
  await syncApplicationDocuments();
 }
@@ -150,7 +152,7 @@ export async function verifyApplicationDocument(id:string,checklistId:string,bod
 }
 
 export async function syncSubmitLock(applicationId:string){
- if(!pool)return {isLocked:1,fapDocUploaded:0,ocrComparison:null};
+ if(!pool)return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null,remarks:null};
  try{
   const [rows]=await pool.execute<any[]>(`
    SELECT COUNT(f.id) AS file_count
@@ -162,7 +164,7 @@ export async function syncSubmitLock(applicationId:string){
   const hasUploaded=Number(rows[0]?.file_count||0)>0;
   const isLocked=hasUploaded?0:1;
   const [appCheck] = await pool.execute<any[]>('SELECT application_id FROM all_applications WHERE application_id = ?', [applicationId]);
-  if (!appCheck.length) return {isLocked, fapDocUploaded: hasUploaded ? 1 : 0, stage: 'FAP_STAGE', ocrComparison: null};
+  if (!appCheck.length) return {isLocked, fapDocUploaded: hasUploaded ? 1 : 0, stage: 'FAP_STAGE', ocrComparison: null, remarks: null};
   await pool.execute(`
    INSERT INTO application_submit_lock (application_id, is_locked, stage, fap_doc_uploaded, unlocked_at)
    VALUES (?, ?, 'FAP_STAGE', ?, ?)
@@ -173,38 +175,70 @@ export async function syncSubmitLock(applicationId:string){
      unlocked_at = IF(VALUES(is_locked) = 0, COALESCE(unlocked_at, CURRENT_TIMESTAMP(3)), NULL),
      updated_at = CURRENT_TIMESTAMP(3)
   `,[applicationId,isLocked,hasUploaded?1:0,hasUploaded?new Date():null]);
-  return {isLocked,fapDocUploaded:hasUploaded?1:0,stage:'FAP_STAGE',ocrComparison:null};
+  return {isLocked,fapDocUploaded:hasUploaded?1:0,stage:'FAP_STAGE',ocrComparison:null,remarks:null};
  }catch(err){
   console.warn('syncSubmitLock error:',err);
-  return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null};
+  return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null,remarks:null};
  }
 }
 
 export async function saveFapComparison(applicationId:string,comparison:any){
  if(!pool)return;
  const jsonStr=comparison?JSON.stringify(comparison):null;
+ const remarks=comparison?.remarks !== undefined ? comparison.remarks : null;
  try{
   const [appCheck]=await pool.execute<any[]>('SELECT application_id FROM all_applications WHERE application_id=?',[applicationId]);
   if(!appCheck.length)return;
-  await pool.execute('UPDATE application_submit_lock SET ocr_comparison_json=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[jsonStr,applicationId]);
+  if (remarks !== null) {
+    await pool.execute('UPDATE application_submit_lock SET ocr_comparison_json=?, remarks=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[jsonStr,remarks,applicationId]);
+  } else {
+    await pool.execute('UPDATE application_submit_lock SET ocr_comparison_json=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[jsonStr,applicationId]);
+  }
  }catch(e){console.warn('saveFapComparison error:',e);}
 }
 
+export async function saveFapRemarks(applicationId:string, remarks:string){
+ if(!pool)return;
+ try{
+  const [appCheck]=await pool.execute<any[]>('SELECT application_id FROM all_applications WHERE application_id=?',[applicationId]);
+  if(!appCheck.length)return;
+  await pool.execute('UPDATE application_submit_lock SET remarks=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[remarks,applicationId]);
+  const [rows]=await pool.execute<any[]>('SELECT ocr_comparison_json FROM application_submit_lock WHERE application_id=?',[applicationId]);
+  if(rows[0]?.ocr_comparison_json){
+    try{
+      const comp=JSON.parse(rows[0].ocr_comparison_json);
+      comp.remarks=remarks;
+      await pool.execute('UPDATE application_submit_lock SET ocr_comparison_json=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[JSON.stringify(comp),applicationId]);
+    }catch{}
+  }
+  await pool.execute(`
+    UPDATE application_document_checklist 
+    SET notes = ?, updated_at = CURRENT_TIMESTAMP(3) 
+    WHERE application_id = ? AND (UPPER(document_code) = 'FAP' OR LOWER(document_name) LIKE '%fap%')
+  `, [remarks, applicationId]);
+ }catch(e){console.warn('saveFapRemarks error:',e);}
+}
+
 export async function getSubmitLock(applicationId:string){
- if(!pool)return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null};
+ if(!pool)return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null,remarks:null};
  try{
   const [rows]=await pool.execute<any[]>('SELECT * FROM application_submit_lock WHERE application_id=?',[applicationId]);
   if(!rows.length)return await syncSubmitLock(applicationId);
   let ocrComparison=null;
   if(rows[0].ocr_comparison_json){try{ocrComparison=JSON.parse(rows[0].ocr_comparison_json);}catch{}}
+  const remarks=rows[0].remarks||ocrComparison?.remarks||null;
+  if(ocrComparison){
+    ocrComparison.remarks=remarks||'';
+  }
   return {
     isLocked:Number(rows[0].is_locked),
     fapDocUploaded:Number(rows[0].fap_doc_uploaded),
     stage:rows[0].stage||'FAP_STAGE',
-    ocrComparison
+    ocrComparison,
+    remarks
   };
  }catch{
-  return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null};
+  return {isLocked:1,fapDocUploaded:0,stage:'FAP_STAGE',ocrComparison:null,remarks:null};
  }
 }
 

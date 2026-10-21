@@ -1,4 +1,4 @@
-import {initializeApplicationDocuments,syncApplicationDocuments,readApplicationDocuments,readDocumentFile,uploadApplicationDocument,deleteApplicationDocumentFile,verifyApplicationDocument,getSubmitLock,saveFapComparison,syncSubmitLock} from './mysql-documents';
+import {initializeApplicationDocuments,syncApplicationDocuments,readApplicationDocuments,readDocumentFile,uploadApplicationDocument,deleteApplicationDocumentFile,verifyApplicationDocument,getSubmitLock,saveFapComparison,syncSubmitLock,saveFapRemarks} from './mysql-documents';
 import {syncLegacyDocumentChecklists,syncLegacyDocumentCatalog} from './legacy-document-sync';
 import {initializeUsers,initializeAudit,findUser,publicUser,userCount,createUser} from './mysql-users';
 import {mysqlActor} from './mysql-audit-context';
@@ -682,7 +682,18 @@ app.get('/api/v1/applications/:id/fap-comparison', async (req, res) => {
     return res.json({ status: 'success', comparison: null });
   }
   const lock = await getSubmitLock(id);
-  res.json({ status: 'success', comparison: lock.ocrComparison || null });
+  const comp = lock.ocrComparison || { isFap: true, hasDifferences: false, diffs: [] };
+  comp.remarks = lock.remarks || comp.remarks || fapCheck.notes || '';
+  res.json({ status: 'success', comparison: comp });
+});
+
+app.post('/api/v1/applications/:id/fap-comparison/remarks', async (req, res) => {
+  permit(req, ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE']);
+  const id = String(req.params.id);
+  const remarks = String(req.body.remarks || '');
+  await saveFapRemarks(id, remarks);
+  const lock = await getSubmitLock(id);
+  res.json({ success: true, remarks, comparison: lock.ocrComparison });
 });
 
 app.post('/api/v1/applications/:id/fap-comparison/run', async (req, res) => {
@@ -825,6 +836,9 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
     }
   }
 
+  if (req.body?.remarks !== undefined) {
+    await saveFapRemarks(id, String(req.body.remarks || ''));
+  }
   await saveFapComparison(id, null);
   await syncSubmitLock(id);
 
@@ -834,6 +848,9 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
 
 app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
   const id = String(req.params.id);
+  if (req.body?.remarks !== undefined) {
+    await saveFapRemarks(id, String(req.body.remarks || ''));
+  }
   await saveFapComparison(id, null);
   await syncSubmitLock(id);
   res.json({ success: true });
