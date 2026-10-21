@@ -6,13 +6,13 @@ export async function seed(){
  if(!(await query('SELECT id FROM users LIMIT 1')).rows.length){
   if(process.env.NODE_ENV==='production'&&!process.env.BOOTSTRAP_PASSWORD)throw new Error('Set BOOTSTRAP_PASSWORD before starting production.');
   const hash=await bcrypt.hash(process.env.BOOTSTRAP_PASSWORD||demoPassword,12);
-  for(const [role,name] of [['MKT','Anisa Putri'],['BS','Budi Santoso'],['CA','Dimas Pratama'],['LEGAL','Rina Wijaya'],['COMMITTEE','Hendra Kusuma']])await query('INSERT INTO users(name,email,password_hash,role) VALUES($1,$2,$3,$4)',[name,`${role.toLowerCase()}@liugong.local`,hash,role]);
+  for(const [role,name] of [['ADMIN','Administrator'],['MKT','Anisa Putri'],['BS','Budi Santoso'],['CA','Dimas Pratama'],['LEGAL','Rina Wijaya'],['COMMITTEE','Hendra Kusuma']])await query('INSERT INTO users(name,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO UPDATE SET role=$4',[name,`${role.toLowerCase()}@liugong.local`,hash,role]);
  }
  if(process.env.NODE_ENV!=='production'){
-  const hasDemoUsers = (await query("SELECT id FROM users WHERE email='arianti@liugong.local' LIMIT 1")).rows.length > 0;
+  const hasDemoUsers = (await query("SELECT id FROM users WHERE email='admin@liugong.local' LIMIT 1")).rows.length > 0;
   if (!hasDemoUsers) {
     const hash=await bcrypt.hash(process.env.BOOTSTRAP_PASSWORD||demoPassword,12);
-    for(const [name,email,role] of [['Arianti','arianti@liugong.local','BS'],['Dellatra','dellatra@liugong.local','HEAD_BS'],['Head BS Demo','head_bs@liugong.local','HEAD_BS']])await query('INSERT INTO users(name,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO NOTHING',[name,email,hash,role]);
+    for(const [name,email,role] of [['Administrator','admin@liugong.local','ADMIN'],['Axel Admin','axel@liugongfinance.com','ADMIN'],['Arianti','arianti@liugong.local','BS'],['Dellatra','dellatra@liugong.local','HEAD_BS'],['Head BS Demo','head_bs@liugong.local','HEAD_BS']])await query('INSERT INTO users(name,email,password_hash,role) VALUES($1,$2,$3,$4) ON CONFLICT(email) DO UPDATE SET role=$4',[name,email,hash,role]);
   }
  }
  if(process.env.NODE_ENV==='production'||(await all('Customer')).length)return;
