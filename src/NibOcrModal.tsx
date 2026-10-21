@@ -44,7 +44,6 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
   const [rotation, setRotation] = useState(0);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [rawText, setRawText] = useState<string>('');
-  const [showRaw, setShowRaw] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -328,9 +327,45 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
           </button>
         </div>
 
+        {/* STATUS NOTIFICATION BAR (ABOVE DOCUMENT VIEWER & OCR RESULTS) */}
+        <div style={{
+          padding: '12px 24px 0 24px',
+          flexShrink: 0
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '9px 16px',
+            borderRadius: 8,
+            fontSize: '0.82rem',
+            fontWeight: 500,
+            background: ocrLoading ? '#eff6ff' : hasData ? '#f0fdf4' : '#f1f5f9',
+            border: `1px solid ${ocrLoading ? '#bfdbfe' : hasData ? '#bbf7d0' : '#e2e8f0'}`,
+            color: ocrLoading ? '#2563eb' : hasData ? '#166534' : '#64748b'
+          }}>
+            {ocrLoading ? (
+              <>
+                <Loader2 size={16} className="spin" />
+                <span>Scanning and reading NIB document via OCR Engine...</span>
+              </>
+            ) : hasData ? (
+              <>
+                <CheckCircle2 size={16} color="#16a34a" />
+                <span>{filledCount} fields detected and ready to sync to form</span>
+              </>
+            ) : (
+              <>
+                <FileSearch size={16} />
+                <span>Please upload or drop a NIB document to start OCR processing</span>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* MODAL BODY (50% LEFT VIEWER, 50% RIGHT FORM) */}
         <div style={{
-          padding: '18px 24px',
+          padding: '12px 24px 18px 24px',
           overflow: 'hidden',
           display: 'grid',
           gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
@@ -419,19 +454,19 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                   flex: '1 1 0',
                   minHeight: 0,
                   height: '100%',
-                  overflow: 'auto',
+                  overflow: fileType === 'pdf' ? 'hidden' : 'auto',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  alignItems: 'stretch',
+                  justifyContent: 'stretch',
                   background: '#090d16',
-                  padding: '8px',
+                  padding: 0,
                   position: 'relative'
                 }}>
                   {fileType === 'pdf' ? (
                     <iframe
                       key={`${fileUrl}-${Math.round(zoom * 100)}`}
-                      src={`${fileUrl}#toolbar=1&navpanes=0&zoom=${Math.round(zoom * 100)}`}
-                      style={{ width: '100%', height: '100%', border: 'none', borderRadius: 4, background: '#ffffff', minHeight: '100%' }}
+                      src={`${fileUrl}#toolbar=0&navpanes=0&zoom=${Math.round(zoom * 100)}`}
+                      style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff', minHeight: '100%', display: 'block' }}
                       title="NIB PDF Preview"
                     />
                   ) : (
@@ -541,62 +576,6 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
               style={{ display: 'none' }}
             />
 
-            {/* STATUS NOTIFICATION BAR */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 14px',
-              borderRadius: 8,
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              background: ocrLoading ? '#eff6ff' : hasData ? '#f0fdf4' : '#f1f5f9',
-              border: `1px solid ${ocrLoading ? '#bfdbfe' : hasData ? '#bbf7d0' : '#e2e8f0'}`,
-              color: ocrLoading ? '#2563eb' : hasData ? '#166534' : '#64748b',
-              flexShrink: 0
-            }}>
-              {ocrLoading ? (
-                <>
-                  <Loader2 size={16} className="spin" />
-                  <span>Scanning and reading NIB document via OCR Engine...</span>
-                </>
-              ) : hasData ? (
-                <>
-                  <CheckCircle2 size={16} color="#16a34a" />
-                  <span>{filledCount} fields detected and ready to sync to form</span>
-                </>
-              ) : (
-                <>
-                  <FileSearch size={16} />
-                  <span>Please upload or drop a NIB document to start OCR processing</span>
-                </>
-              )}
-            </div>
-
-            {rawText && (
-              <div style={{display:'flex', justifyContent:'flex-end', alignItems:'center', flexShrink: 0}}>
-                <button
-                  type="button"
-                  onClick={() => setShowRaw(!showRaw)}
-                  style={{
-                    background: 'none', border: 'none', color: '#64748b',
-                    fontSize: '0.74rem', cursor: 'pointer', textDecoration: 'underline'
-                  }}
-                >
-                  {showRaw ? 'Hide Raw OCR Text' : 'View Raw OCR Text'}
-                </button>
-              </div>
-            )}
-
-            {showRaw && rawText && (
-              <div style={{
-                background: '#0f172a', color: '#f8fafc', padding: '10px 14px',
-                borderRadius: 8, fontSize: '0.74rem', maxHeight: '120px', overflowY: 'auto',
-                fontFamily: 'monospace', whiteSpace: 'pre-wrap', flexShrink: 0
-              }}>
-                {rawText}
-              </div>
-            )}
           </div>
 
           {/* RIGHT: EXTRACTED FORM FIELDS PREVIEW */}
