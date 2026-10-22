@@ -47,7 +47,7 @@ export const customerFields=[
   f('npwp','NPWP'),
   f('sktNo','SKT Number'),
   f('sppkpNo','SPPKP Number'),
-  f('establishmentActNo','Establishment Deed No'),
+  f('establishmentActNo','Establishment Deed Number'),
   f('establishmentDate','Establishment Deed Date','date')
 ];
 
@@ -60,7 +60,7 @@ export const picFields=[
   f('province','Province'),
   f('city','City / Regency'),
   f('district','District'),
-  f('village','Village / Sub-district'),
+  f('village','Village / Sub-District'),
   f('rt','RT'),
   f('rw','RW'),
   f('postalCode','ZIP Code'),
@@ -95,7 +95,7 @@ export const stakeholderFields=[
   f('province','Province'),
   f('cityRegency','City / Regency'),
   f('district','District'),
-  f('village','Village / Sub-district'),
+  f('village','Village / Sub-District'),
   f('rw','RW'),
   f('rt','RT'),
   f('address','Address'),

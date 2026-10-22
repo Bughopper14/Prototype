@@ -309,16 +309,94 @@ app.post('/api/v1/customers',async(req,res)=>{
   ensure(/^\d{13}$/.test(data.nib),'NIB must contain 13 digits');
   ensure(/^\d{15,16}$/.test(data.npwp.replace(/\D/g,'')),'NPWP must contain 15 or 16 digits');
   const existingRows = (await query(`SELECT * FROM "business_partner" WHERE "nib" = $1 OR "npwp" = $2`, [data.nib, data.npwp])).rows;
+  let cust: any;
   if(existingRows.length > 0) {
     const existing = decode('Customer', existingRows[0]);
-    const updated = await update('Customer', existing.id, data);
-    return res.status(200).json(updated);
+    cust = await update('Customer', existing.id, data);
+  } else {
+    cust = await insert('Customer',data);
   }
-  res.status(201).json(await insert('Customer',data));
+  if (pool) {
+    try {
+      await pool.execute(`
+        INSERT INTO business_partner (id, company_name, company_type, nib, npwp)
+        VALUES (?, ?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE company_name=VALUES(company_name), company_type=VALUES(company_type), nib=VALUES(nib), npwp=VALUES(npwp)
+      `, [cust.id, cust.companyName, cust.companyType, cust.nib, cust.npwp]);
+    } catch (e) {
+      console.warn('MySQL business_partner sync error:', e);
+    }
+  }
+  res.status(200).json(cust);
 });
 app.get('/api/v1/applications',async(_req,res)=>{const current=await listIntake(),original=(await query(`SELECT a.*,c.company_name,c.company_type,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id AND d.status='VERIFIED') AS verified_docs,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id) AS total_docs,p.financing_value,p.tenor_months,p.financing_method FROM applications a JOIN business_partner c ON c.id=a.customer_id LEFT JOIN financing_proposals p ON p.application_id=a.id ORDER BY a.created_at DESC`)).rows;res.json([...current,...original.filter((row:any)=>!current.some((saved:any)=>saved.id===row.id))].sort((a:any,b:any)=>new Date(b.created_at||b.createdAt||0).getTime()-new Date(a.created_at||a.createdAt||0).getTime()));});
 const appRequired=['branchCode','customerStatus','companyAddress','city','province','postalCode','phoneFax','email','mainBusiness','locationStatus','repaymentSource','industrySegment','businessRole'];
 const defaultAppFields:Record<string,string>={branchCode:'JKT01',customerStatus:'NEW',companyAddress:'-',city:'-',province:'-',postalCode:'00000',phoneFax:'-',email:'draft@liugong.local',mainBusiness:'-',locationStatus:'OWNED',repaymentSource:'Operating Cash Flow',industrySegment:'MINING',businessRole:'CONTRACTOR'};
+
+async function getNextFapNumber(date = new Date()): Promise<string> {
+  const year = date.getUTCFullYear();
+  const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+  const romanMonth = romanMonths[date.getUTCMonth()];
+  let maxN = 0;
+
+  // 1. Scan PostgreSQL applications table
+  try {
+    const pgRows = (await query(`SELECT fap_number FROM applications WHERE fap_number LIKE $1`, [`%/AF/%/${year}`])).rows;
+    for (const r of pgRows) {
+      const match = /^(\d+)\/AF\//.exec(r.fap_number || '');
+      if (match) {
+        const val = parseInt(match[1], 10);
+        if (val > maxN) maxN = val;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading Postgres fap_numbers:', e);
+  }
+
+  // 2. Scan MySQL new_application_fap_stage table
+  if (pool) {
+    try {
+      const [myRows]: any = await pool.query(
+        `SELECT fap_registration_number FROM new_application_fap_stage WHERE fap_registration_number LIKE ?`,
+        [`%/AF/%/${year}`]
+      );
+      for (const r of myRows) {
+        const match = /^(\d+)\/AF\//.exec(r.fap_registration_number || '');
+        if (match) {
+          const val = parseInt(match[1], 10);
+          if (val > maxN) maxN = val;
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading MySQL fap numbers:', e);
+    }
+  }
+
+  // 3. Scan PostgreSQL fap_sequences table
+  try {
+    const seqRow = (await query(`SELECT value FROM fap_sequences WHERE year=$1`, [year])).rows[0];
+    if (seqRow && Number(seqRow.value) > maxN) {
+      maxN = Number(seqRow.value);
+    }
+  } catch (e) {
+    console.warn('Error reading fap_sequences:', e);
+  }
+
+  const nextVal = maxN + 1;
+
+  // 4. Sync PostgreSQL fap_sequences
+  try {
+    await query(`
+      INSERT INTO fap_sequences (year, value) VALUES ($1, $2)
+      ON CONFLICT (year) DO UPDATE SET value = GREATEST(fap_sequences.value, EXCLUDED.value)
+    `, [year, nextVal]);
+  } catch (e) {
+    console.warn('Error updating fap_sequences:', e);
+  }
+
+  return `${String(nextVal).padStart(3, '0')}/AF/${romanMonth}/${year}`;
+}
+
 app.post('/api/v1/applications',async(req,res)=>{
   permit(req,['MKT']);
   const safeInput={...defaultAppFields,...req.body};
@@ -327,11 +405,50 @@ app.post('/api/v1/applications',async(req,res)=>{
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email||'').trim()))body.email='draft@liugong.local';
   z.string().email().parse(body.email);
   const customerId=z.string().uuid().parse(req.body.customerId);
-  ensure((await all('Customer',{id:customerId})).length,'Customer not found',404);
+
+  // Sync customer from MySQL to PostgreSQL if missing in PostgreSQL
+  let existingCust = (await all('Customer',{id:customerId}))[0];
+  if(!existingCust && pool){
+    let custData: any = null;
+    const [bpRows]: any = await pool.query('SELECT * FROM business_partner WHERE id=?', [customerId]);
+    if (bpRows && bpRows.length > 0) {
+      custData = bpRows[0];
+    } else {
+      const [fapRows]: any = await pool.query('SELECT * FROM new_application_fap_stage WHERE customer_id=?', [customerId]);
+      if (fapRows && fapRows.length > 0) custData = fapRows[0];
+    }
+    if (custData) {
+      const cType = String(custData.company_type || req.body.companyType || 'CORPORATE').toUpperCase();
+      const safeType = ['CORPORATE','COMMERCIAL','MICRO','LIUGONG_USER'].includes(cType) ? cType : 'CORPORATE';
+      const cNib = String(custData.nib || req.body.nib || '0000000000000').replace(/\D/g,'').slice(0, 13).padEnd(13, '0');
+      const cNpwp = String(custData.npwp || req.body.npwp || '000000000000000').replace(/\D/g,'').slice(0, 20).padEnd(15, '0');
+      await query(`
+        INSERT INTO business_partner (id, company_name, company_type, nib, npwp, establishment_act_no, establishment_date)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (id) DO UPDATE SET
+          company_name = EXCLUDED.company_name,
+          company_type = EXCLUDED.company_type,
+          nib = EXCLUDED.nib,
+          npwp = EXCLUDED.npwp,
+          establishment_act_no = EXCLUDED.establishment_act_no,
+          establishment_date = EXCLUDED.establishment_date
+      `, [
+        customerId,
+        custData.company_name || req.body.companyName || 'Existing Customer',
+        safeType,
+        cNib,
+        cNpwp,
+        custData.establishment_act_no || req.body.establishmentActNo || null,
+        custData.establishment_date ? new Date(custData.establishment_date).toISOString().slice(0, 10) : null
+      ]);
+      existingCust = (await all('Customer',{id:customerId}))[0];
+    }
+  }
+  ensure(Boolean(existingCust),'Customer not found',404);
+
+  const nextFapNo = await getNextFapNumber();
   const a=await transaction(async q=>{
-    const year=new Date().getUTCFullYear();
-    const n=(await q('INSERT INTO fap_sequences(year,value) VALUES($1,1) ON CONFLICT(year) DO UPDATE SET value=fap_sequences.value+1 RETURNING value',[year])).rows[0].value;
-    const a=await insert('Application',{...body,customerId,fapNumber:fapNumber(n)},q);
+    const a=await insert('Application',{...body,customerId,fapNumber:nextFapNo},q);
     for(const doc of (await masterData(q)).catalog.documents.filter((x:any)=>x.active))await insert('DocumentChecklist',{applicationId:a.id,documentCode:doc.value,documentName:doc.name,assignedRole:doc.role,isMandatory:doc.required},q);
     await insert('ApprovalLog',{applicationId:a.id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:'DRAFT',newStatus:'DRAFT',comments:'Application created'},q);
     return a;
@@ -349,7 +466,8 @@ app.post('/api/v1/applications',async(req,res)=>{
           nib: cust.nib || req.body.nib,
           npwp: cust.npwp || req.body.npwp,
           establishmentActNo: cust.establishment_act_no || req.body.establishmentActNo,
-          establishmentDate: cust.establishment_date || req.body.establishmentDate
+          establishmentDate: cust.establishment_date || req.body.establishmentDate,
+          nibDate: cust.nib_date || req.body.nibDate
         },
         profile: {
           ...body,
@@ -360,8 +478,9 @@ app.post('/api/v1/applications',async(req,res)=>{
         fapNumber: a.fapNumber,
         status: a.status
       });
-    }catch(err){
-      console.warn('createIntake sync warning:', err);
+    }catch(err: any){
+      console.error('CRITICAL: createIntake sync error:', err);
+      throw new Problem(500, `Failed to save application to MySQL intake: ${err?.message || String(err)}`);
     }
   }
   res.status(201).json(a);

@@ -59,9 +59,13 @@ def main():
                 if len(digital_boxes) >= 15 and dtype_hint not in ['ktp']:
                     boxes.extend(digital_boxes)
                 else:
-                    # Render all pages at 300 DPI and run RapidOCR / Tesseract
-                    mat = fitz.Matrix(300 / 72.0, 300 / 72.0)
-                    for p_idx in range(page_count):
+                    # Render pages and run RapidOCR / Tesseract
+                    is_nib_doc = (dtype_hint == 'nib' or 'nib' in p.name.lower())
+                    dpi = 200.0 if is_nib_doc else 300.0
+                    mat = fitz.Matrix(dpi / 72.0, dpi / 72.0)
+                    pages_to_process = min(page_count, 2) if is_nib_doc else page_count
+
+                    for p_idx in range(pages_to_process):
                         page = doc[p_idx]
                         pix = page.get_pixmap(matrix=mat, alpha=False)
                         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)

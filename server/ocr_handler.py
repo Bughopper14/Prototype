@@ -1200,11 +1200,69 @@ def extract_nib(boxes: list) -> tuple:
             else:
                 break
 
+    def format_company_name(name: str) -> str:
+        if not name:
+            return ""
+        name = re.sub(r'^[:\s.\-–—=]+', '', name).strip()
+        name = re.sub(r'\s+', ' ', name).strip()
+        vocab = [
+            'JASA', 'PEMERIKSAAN', 'INSTALASI', 'KELISTRIKAN', 'INDONESIA', 'TEKNIK', 'KARYA',
+            'KONTRAKTOR', 'MANDIRI', 'SEJAHTERA', 'UTAMA', 'PERSADA', 'JAYA', 'ABADI', 'SUMBER',
+            'ALAM', 'LESTARI', 'PRIMA', 'CIPTA', 'SARANA', 'BANGUN', 'NUSANTARA', 'INTERNASIONAL',
+            'GLOBAL', 'MAKMUR', 'SENTOSA', 'BERKAH', 'AGUNG', 'MITRA', 'ENERGI', 'MINING', 'TAMBANG',
+            'BATUBARA', 'LOGISTIK', 'TRANS', 'TRANSPORT', 'SOLUSI', 'SUKSES', 'MEGAH', 'BERSAMA',
+            'DAYA', 'ELEKTRIKAL', 'MEKANIKAL', 'KONSTRUKSI', 'SEJATI', 'ANUGERAH'
+        ]
+        m = re.match(r'^(PT|CV|UD|YAYASAN)\.?\s*(.*)', name, re.IGNORECASE)
+        if m:
+            prefix = m.group(1).upper()
+            rest = m.group(2).strip()
+            if ' ' not in rest and len(rest) > 8:
+                segmented = []
+                rem = rest
+                while rem:
+                    found = False
+                    for w in vocab:
+                        if rem.upper().startswith(w):
+                            segmented.append(w)
+                            rem = rem[len(w):]
+                            found = True
+                            break
+                    if not found:
+                        segmented.append(rem)
+                        break
+                return f"{prefix} {' '.join(segmented)}"
+            elif ' ' in rest:
+                parts = rest.split()
+                new_parts = []
+                for p in parts:
+                    if len(p) > 10:
+                        seg = []
+                        rem = p
+                        while rem:
+                            found = False
+                            for w in vocab:
+                                if rem.upper().startswith(w):
+                                    seg.append(w)
+                                    rem = rem[len(w):]
+                                    found = True
+                                    break
+                            if not found:
+                                seg.append(rem)
+                                break
+                        new_parts.append(' '.join(seg))
+                    else:
+                        new_parts.append(p)
+                return f"{prefix} {' '.join(new_parts)}"
+            return f"{prefix} {rest}"
+        return name
+
     alamat_full = ""
     if addr_lines:
         alamat_full = " ".join(addr_lines)
         alamat_full = re.sub(r'\s+', ' ', alamat_full).strip()
         alamat_full = re.sub(r'^[:,\s.\-–—]+', '', alamat_full).strip()
+        alamat_full = re.sub(r'^(?:kantor|perusahaan|usaha|domisili)?[\s:.\-–—=]+', '', alamat_full, flags=re.IGNORECASE).strip()
 
     # Ekstraksi nama jalan spesifik (sebelum Desa/Kelurahan, Kelurahan, Kecamatan, RT/RW)
     street_part = ""
@@ -1244,35 +1302,41 @@ def extract_nib(boxes: list) -> tuple:
     if pos_match:
         kode_pos = pos_match.group(1)
 
-    kec_match = re.search(r'(?:kecamatan|kec\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kabupaten|kota|kelurahan|kode\s*pos)', full_text, re.IGNORECASE)
+    kec_match = re.search(r'\b(?:kecamatan|kec\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kabupaten|kota|kelurahan|kode\s*pos)', full_text, re.IGNORECASE)
     if kec_match:
         kecamatan = re.sub(r'[^A-Za-z\s]', '', kec_match.group(1)).strip().upper()
 
-    kel_match = re.search(r'(?:kelurahan|kel\.?|desa)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kecamatan|kode\s*pos)', full_text, re.IGNORECASE)
+    kel_match = re.search(r'\b(?:desa[/\s]*kelurahan|kelurahan|kel\.?|desa)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kecamatan|kode\s*pos)', full_text, re.IGNORECASE)
     if kel_match:
         kelurahan = re.sub(r'[^A-Za-z\s]', '', kel_match.group(1)).strip().upper()
 
-    for line in lines:
-        m_c = re.search(r'^(?:\d+[\.\)]\s*)?(?:nama\s+perusahaan|nama\s+pelaku\s+usaha|nama\s+perseroan)[\s:.\-–—=]+(.*)$', line.strip(), re.IGNORECASE)
+    for idx, line in enumerate(lines):
+        m_c = re.search(r'^(?:\d+[\.\)]\s*)?(?:nama\s+perusahaan|nama\s+pelaku\s+usaha|nama\s+perseroan)[\s:.\-–—=]*(.*)$', line.strip(), re.IGNORECASE)
         if m_c:
             cand_name = m_c.group(1).strip()
-            if len(cand_name) > 3 and not re.search(r'republik|indonesia|pemerintah', cand_name, re.IGNORECASE):
-                company_name = cand_name
+            if not cand_name and idx + 1 < len(lines):
+                next_cand = lines[idx + 1].strip()
+                if not re.search(r'^\d+[\.\)]', next_cand) and not re.search(r'alamat|telepon|email', next_cand, re.IGNORECASE):
+                    cand_name = next_cand
+            cand_name = re.sub(r'^[:\s.\-–—=]+', '', cand_name).strip()
+            if len(cand_name) > 3 and not re.search(r'pemerintah\s+republik|kementerian|badan\s+koordinasi', cand_name, re.IGNORECASE):
+                company_name = format_company_name(cand_name)
                 break
 
     if not company_name:
         comp_match = re.search(r'(?:nama\s+perusahaan|nama\s+pelaku\s+usaha|nama\s+perseroan)[\s:.\-–—]*([A-Za-z0-9\.,\s\(\)]+?)(?:$|\n|nomor\s+induk|nib|alamat)', full_text, re.IGNORECASE)
         if comp_match:
             cand_name = comp_match.group(1).strip()
-            if len(cand_name) > 3 and not re.search(r'republik|indonesia|pemerintah', cand_name, re.IGNORECASE):
-                company_name = cand_name
+            cand_name = re.sub(r'^[:\s.\-–—=]+', '', cand_name).strip()
+            if len(cand_name) > 3 and not re.search(r'pemerintah\s+republik|kementerian|badan\s+koordinasi', cand_name, re.IGNORECASE):
+                company_name = format_company_name(cand_name)
 
     if not company_name:
-        pt_match = re.search(r'\b(PT\.?\s+[A-Z0-9\s\.\-]{3,40}|CV\.?\s+[A-Z0-9\s\.\-]{3,40})\b', full_text)
+        pt_match = re.search(r'\b(PT\.?\s*[A-Z0-9\s\.\-]{3,60}|CV\.?\s*[A-Z0-9\s\.\-]{3,60})\b', full_text)
         if pt_match:
             cand_name = pt_match.group(1).strip()
             if not re.search(r'pemerintah|kementerian|bkpm', cand_name, re.IGNORECASE):
-                company_name = cand_name
+                company_name = format_company_name(cand_name)
 
     data = {
         "nib": nib_number,

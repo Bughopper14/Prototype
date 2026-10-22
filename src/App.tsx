@@ -87,7 +87,32 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
     const fieldValue=f.type==='date'?String(value?.[f.key]||'').slice(0,10):value?.[f.key]??'';
     const isDigitsOnly=['phone','mobilePhone','phoneFax','rt','rw'].includes(f.key);
     const isLettersOnly=['repaymentSource'].includes(f.key);
-    const isTitleCaseField=['projectLocation','projectOwner','picName'].includes(f.key);
+    const isTitleCaseField=[
+      'mainBusiness',
+      'picName',
+      'projectOwner',
+      'projectLocation',
+      'projectRole',
+      'position',
+      'companyName',
+      'repaymentSource',
+      'name',
+      'firstName',
+      'middleName',
+      'lastName',
+      'occupation',
+      'designation',
+      'bankOrFinInstitution',
+      'paymentRecord',
+      'assetName',
+      'brand',
+      'modelName',
+      'purposeDetail',
+      'termsNotes',
+      'companyAddress',
+      'currentAddress',
+      'address'
+    ].includes(f.key);
     const isAgeField=['ageYears','ageMonths','experienceYears','experienceMonths'].includes(f.key);
     const isFieldDisabled=disabled||isAgeField;
     const ageStyle=isAgeField?{backgroundColor:'#f1f5f9',cursor:'not-allowed',color:'#64748b'}:undefined;
@@ -123,46 +148,56 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
         if(['rt','rw'].includes(f.key))v=v.slice(0,3);
         e.target.value=v;
         update(v);
+      }else if(isTitleCaseField){
+        let v=e.target.value;
+        if(isLettersOnly) v=v.replace(/\d/g,'');
+        v=toTitleCase(v);
+        e.target.value=v;
+        update(v);
       }else if(isLettersOnly){
         const v=e.target.value.replace(/\d/g,'');
         e.target.value=v;
-        update(v);
-      }else if(isTitleCaseField){
-        let v=e.target.value;
-        if(/^[a-z]/.test(v)||/\s[a-z]/.test(v)){
-          v=toTitleCase(v);
-          e.target.value=v;
-        }
         update(v);
       }else{
         update(e.target.value);
       }
     };
-    const handlePaste=(isDigitsOnly||isLettersOnly)?(e:React.ClipboardEvent<HTMLInputElement>)=>{
+    const handlePaste=(isDigitsOnly||isLettersOnly||isTitleCaseField)?(e:React.ClipboardEvent<HTMLInputElement>)=>{
       if(isAgeField)return;
       e.preventDefault();
       const rawPasted=(e.clipboardData.getData('text')||'');
-      const pasted=isDigitsOnly?rawPasted.replace(/\D/g,''):rawPasted.replace(/\d/g,'');
+      let pasted=isDigitsOnly?rawPasted.replace(/\D/g,''):isLettersOnly?rawPasted.replace(/\d/g,''):rawPasted;
+      if(isTitleCaseField) pasted=toTitleCase(pasted);
       if(!pasted)return;
       const input=e.currentTarget;
       const start=input.selectionStart??0,end=input.selectionEnd??0,curr=String(fieldValue);
-      let nextVal=isDigitsOnly
-        ?(curr.slice(0,start)+pasted+curr.slice(end)).replace(/\D/g,'')
-        :(curr.slice(0,start)+pasted+curr.slice(end)).replace(/\d/g,'');
+      let nextVal=(curr.slice(0,start)+pasted+curr.slice(end));
+      if(isDigitsOnly) nextVal=nextVal.replace(/\D/g,'');
+      if(isLettersOnly) nextVal=nextVal.replace(/\d/g,'');
       if(['rt','rw'].includes(f.key))nextVal=nextVal.slice(0,3);
+      if(isTitleCaseField) nextVal=toTitleCase(nextVal);
       input.value=nextVal;
       update(nextVal);
     }:undefined;
+    const handleBlur=(e:React.FocusEvent<HTMLInputElement|HTMLTextAreaElement>)=>{
+      if(isTitleCaseField && e.target.value){
+        const v=toTitleCase(e.target.value);
+        if(v!==e.target.value){
+          e.target.value=v;
+          update(v);
+        }
+      }
+    };
     return <label key={f.key} className={f.wide?'field-wide':undefined}>
       <div className="field-label-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:22,marginBottom:4,gap:6}}>
-        <span className="field-label" title={f.label} style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>{f.label}{isRequired&&<span className="field-required" aria-label="Required">*</span>}</span>
+        <span className="field-label" title={toTitleCase(f.label)} style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>{toTitleCase(f.label)}{isRequired&&<span className="field-required" aria-label="Required">*</span>}</span>
         {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn" style={{flexShrink:0}}><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
       </div>
-      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??label(o)}</option>)}</select>:f.type==='textarea'?<textarea aria-label={f.label} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onChange={e=>update(e.target.value)}/>:f.unit?<div className="input-with-unit"><input aria-label={f.label} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={f.label} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
+      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onBlur={handleBlur} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
     </label>;
   })}</div>;
 }
-function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{title}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{title} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
+function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{toTitleCase(title)}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{toTitleCase(title)} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
 function Modal({title,children,onClose,className=""}:{title:string,children:ReactNode,onClose:()=>void,className?:string}){return <div className="modal-scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className={`modal ${className}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>{children}</section></div>;}
 function Login({onLogin}:{onLogin:(u:any)=>void}){const [email,setEmail]=useState('mkt@liugong.local'),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);return <div className="login"><div className="login-story"><Brand/><div><span className="eyebrow">LIUGONG FINANCE INDONESIA</span><h1>Moving business.<br/>Building possibilities.</h1><p>A single workspace for equipment financing,<br/>from the first application to the final decision.</p><div className="login-lines"><span/><span/><span/></div></div><small>Loan origination & document management</small></div><div className="login-form"><span className="eyebrow">YOUR ORIGINATION WORKSPACE</span><h2>Welcome back</h2><p>Sign in to keep business moving.</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{onLogin(await api('/auth/login','POST',{email,password}));}catch(e:any){setError(e.message);}finally{setBusy(false);}}}><label>Email address<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button className="button primary" disabled={busy}>{busy?<Loader2 className="spin" size={16}/>:null}Sign in <ArrowRight size={17}/></button></form><div className="demo-note"><strong>Public interactive demo · synthetic data</strong><p>Choose a department. Changes are saved only in this browser.</p><div className="role-pills">{['MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'].map(r=><button key={r} onClick={()=>{setEmail(r==='BS'?'arianti@liugong.local':r==='HEAD_BS'?'dellatra@liugong.local':r.toLowerCase()+'@liugong.local');setPassword('LiuGong2026!');}}>{r==='BS'?'Arianti / BS':r==='HEAD_BS'?'Dellatra / Head BS':r}</button>)}</div><small>Demo password: LiuGong2026! · Use synthetic information only.</small></div></div></div>;}
 function Brand(){return <div className="brand"><div className="brand-mark">L<span>G</span></div><div><strong>LIUGONG</strong><small>FINANCE INDONESIA</small></div></div>;}
@@ -964,32 +999,46 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                         setError('');
                         const cust = customers.find((c: any) => c.id === cid);
                         if (cust) {
+                          setCustomerDraft(cust);
                           setDraft((prev: any) => ({
                             ...prev,
                             customerId: cid,
                             customer: cust,
+                            companyName: cust.companyName || prev.companyName,
+                            companyType: cust.companyType || prev.companyType,
+                            nib: cust.nib || prev.nib,
+                            npwp: cust.npwp || prev.npwp,
+                            establishmentActNo: cust.establishmentActNo || prev.establishmentActNo,
+                            establishmentDate: cust.establishmentDate || prev.establishmentDate,
+                            nibDate: cust.nibDate || prev.nibDate,
+                          }));
+                        } else {
+                          setCustomerDraft(blank(customerFields));
+                          setDraft((prev: any) => ({
+                            ...prev,
+                            customerId: '',
+                            customer: null,
                           }));
                         }
                       }}
                     >
-                      <option value="">Select an existing customer</option>
+                      <option value="">Select an Existing Customer</option>
                       {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
                     </select>
                   </label>
                 </div>
-                {selectedCustomer && (
-                  <section className="existing-customer-summary" aria-label="FAP customer details">
-                    <div>
-                      <h3>{selectedCustomer.companyName}</h3>
-                      <span>{label(selectedCustomer.companyType)} customer</span>
-                    </div>
-                    <dl>
-                      <div><dt>NIB</dt><dd style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><span>{selectedCustomer.nib || '—'}</span><button type="button" onClick={()=>setNibOcrOpen(true)} title="Scan & Verifikasi Dokumen NIB via OCR" className="nib-header-ocr-btn"><ScanLine size={11}/><span>Scan OCR NIB</span></button></dd></div>
-                      <div><dt>NPWP</dt><dd>{selectedCustomer.npwp || '—'}</dd></div>
-                      <div><dt>Establishment Deed No</dt><dd>{selectedCustomer.establishmentActNo || '—'}</dd></div>
-                    </dl>
-                  </section>
-                )}
+                <div className="new-customer-fields-block" style={{marginTop:12}}>
+                  <div style={{marginBottom:12}}>
+                    <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company Details</h4>
+                    <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Company identity from master customer record (read-only for Existing Customer).</p>
+                  </div>
+                  <Fields 
+                    fields={fapCustomerFields} 
+                    value={selectedCustomer || customerDraft || blank(customerFields)} 
+                    disabled={true} 
+                    onChange={() => {}} 
+                  />
+                </div>
               </>
             ) : (
               <div className="new-customer-fields-block" style={{marginTop:12}}>
@@ -4520,10 +4569,10 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const [ocrLoading,setOcrLoading]=useState(false);
  const [editing,setEditing]=useState<any>(null),[deleting,setDeleting]=useState<any>(null),[stakeholderModal,setStakeholderModal]=useState<any>(null),[stakeholderList,setStakeholderList]=useState<any>(null),[viewStakeholderDetail,setViewStakeholderDetail]=useState<any>(null),[deleteStakeholder,setDeleteStakeholder]=useState<any>(null),[shareholderCountDeed,setShareholderCountDeed]=useState<any>(null),[viewRemarkDeed,setViewRemarkDeed]=useState<any>(null),[legacyRemarkCategories]=useState<any[]>(()=>{try{const stored=JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1')||'[]');return Array.isArray(stored)?stored:[];}catch{return [];}});
  useEffect(()=>setFormError(''),[editing?.id,stakeholderModal?.deedId,stakeholderModal?.index]);
- const defaultRemarkCategories=[{id:'establishment-deed',name:'Establishment deed',remarks:''},{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''}];
+ const defaultRemarkCategories=[{id:'establishment-deed',name:'Establishment Deed',remarks:''},{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles Of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''}];
  const master=useMasterData(),masterCats=master.remarkCategoryId.map(x=>({id:x.value,name:x.name,remarks:''}));
  const remarkCategories=[...defaultRemarkCategories,...masterCats.filter(x=>!defaultRemarkCategories.some(d=>d.id===x.id)),...legacyRemarkCategories];
- const amendmentRemarkCategories=[{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''},...masterCats.filter(x=>!['establishment-deed','amendment-share-change','amendment-management-change','amendment-business-activity-change','amendment-articles-change','amendment-other'].includes(x.id))];
+ const amendmentRemarkCategories=[{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles Of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''},...masterCats.filter(x=>!['establishment-deed','amendment-share-change','amendment-management-change','amendment-business-activity-change','amendment-articles-change','amendment-other'].includes(x.id))];
  const getDeedCategoryIds=(d:any):string[]=>{if(Array.isArray(d?.remarkCategoryIds)&&d.remarkCategoryIds.length>0)return d.remarkCategoryIds;if(d?.remarkCategoryId)return [d.remarkCategoryId];return d?.type==='establishment'?['establishment-deed']:[];};
  const deeds=legalDeedList(value,application),selectedId=value.selectedDeedId||deeds.find(x=>x.type===(value.selectedDeed||'establishment'))?.id||deeds[0]?.id,parties=editing?.parties||{};
  const locked=(d:any)=>!checkIsAdmin(user)&&(disabled||deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED');const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
@@ -4797,7 +4846,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
               <th>STATUS</th>
               <th>VALID UNTIL</th>
               <th>MINISTERIAL DECREE</th>
-              <th>REMARKS CATEGORY</th>
+              <th>REMARKS CATEGORIES</th>
               <th>STAKEHOLDERS</th>
               <th>ACTION</th>
             </tr>
@@ -4849,7 +4898,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                     <span className="legal-cell-main">{x.ministerialDecreeNumber || '—'}</span>
                     <small>{date(x.ministerialDecreeDate)}</small>
                   </td>
-                  <td data-label="Remarks Category">
+                  <td data-label="Remarks Categories">
                     {(() => {
                       const rawIds = getDeedCategoryIds(x);
                       if (!rawIds.length) return <span className="legal-category-label">—</span>;
@@ -4909,12 +4958,12 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
                         }}
                       >
                         {(user.isAdmin || user.role === 'ADMIN' || user.role === 'MKT') && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
-                          ? 'Submit deed'
+                          ? 'Submit Deed'
                           : (user.isAdmin || user.role === 'ADMIN' || user.role === 'BS') && reviewStatus(x) === 'PENDING_CHECK'
-                          ? 'Review deed'
+                          ? 'Review Deed'
                           : (user.isAdmin || user.role === 'ADMIN' || user.role === 'HEAD_BS') && reviewStatus(x) === 'PENDING_APPROVAL'
-                          ? 'Approve deed'
-                          : 'View approval'}
+                          ? 'Approve Deed'
+                          : 'View Approval'}
                       </button>
                       <button
                         className="button small legal-kebab"
@@ -4950,7 +4999,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     <div>
       <div className="legal-list-heading">
         <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <CheckCircle size={17} style={{color:'#2563eb'}}/> Active deeds &amp; current reference
+          <CheckCircle size={17} style={{color:'#2563eb'}}/> Active Deeds &amp; Current Reference
         </h3>
         <span className="legal-count active-count">{activeDeeds.length}</span>
       </div>
@@ -4960,7 +5009,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     </div>
     {!disabled&&['DRAFT','RETURNED'].includes(application.status)&&(
       <div className="legal-table-actions">
-        <button className="button small" onClick={openAdd}><Plus size={15}/>Add deed</button>
+        <button className="button small" onClick={openAdd}><Plus size={15}/>Add Deed</button>
       </div>
     )}
   </div>
@@ -4972,7 +5021,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
     <div>
       <div className="legal-list-heading">
         <h3 style={{display:'flex',alignItems:'center',gap:'8px'}}>
-          <Clock size={17} style={{color:'#64748b'}}/> Previous Deed History (historical data)
+          <Clock size={17} style={{color:'#64748b'}}/> Previous Deed History (Historical Data)
         </h3>
         <span className="legal-count history-count">{historicalDeeds.length}</span>
       </div>
@@ -4985,7 +5034,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   {renderDeedTable(historicalDeeds, true, 'No previous deed history. All deeds are recorded in the active reference table.')}
 
   {actionMenu&&createPortal(<div className="legal-menu-layer" onClick={()=>setActionMenu(null)} onKeyDown={e=>{if(e.key==='Escape')setActionMenu(null);}}><div className="legal-action-menu" role="menu" aria-label="Deed action" style={{left:actionMenu.left,top:actionMenu.top}} onClick={e=>e.stopPropagation()}>{(()=>{const target=deeds.find(x=>x.id===actionMenu.id);if(!target)return null;return <><button role="menuitem" autoFocus onClick={()=>{setEditing({...structuredClone(target),stakeholders:rowsFor(target)});setActionMenu(null);}}><Pencil size={15}/>{locked(target)?'View details':'Edit'}</button><button role="menuitem" className="legal-delete-button" disabled={locked(target)||!!target.approvedSnapshot} title={target.approvedSnapshot?'Approved deeds cannot be deleted':undefined} onClick={()=>{setDeleting(target);setActionMenu(null);}}><Trash2 size={15}/>Delete</button></>;})()}</div></div>,document.body)}
- {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Establishment deed',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Deed Details':'Edit Deed':'Add Deed'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}{(()=>{const hasExistingEstablishment=deeds.some((x:any)=>x.type==='establishment'&&x.id!==editing.id);return <label className="legal-deed-select">Deed type<select aria-label="Deed type" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment" disabled={hasExistingEstablishment} style={hasExistingEstablishment?{color:'#94a3b8',backgroundColor:'#f1f5f9',cursor:'not-allowed'}:undefined}>Establishment Deed{hasExistingEstablishment?' (Already exists)':''}</option><option value="amendment">Amendment Deed</option></select></label>;})()}<Fields fields={legalDeedFields} value={editing} disabled={editorLocked} customErrors={isDuplicateDeedNumber ? { deedNumber: 'This deed number has already been entered in this application.' } : undefined} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Amendment deed date (${date(dDate)}) cannot be before the establishment deed date (${date(estDate)}).`);}else if(formError&&formError.includes('cannot be before the establishment deed date')){setFormError('');}}}/><><div className="legal-remarks-category-group"><span className="field-label">Kategori Remarks {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Kategori Remarks">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Pilih minimal satu kategori remarks.</small>}</div><div className="legal-unified-remarks-box">
+ {editing&&(()=>{const availableChips=editing.type==='amendment'?amendmentRemarkCategories:[{id:'establishment-deed',name:'Establishment deed',remarks:''},...amendmentRemarkCategories];const currentSelectedCategoryIds=getDeedCategoryIds(editing);const toggleCategory=(catId:string)=>{if(editorLocked)return;setEditing((prev:any)=>{if(!prev)return prev;const currentCats=getDeedCategoryIds(prev);const isSelected=currentCats.includes(catId);const next=isSelected?currentCats.filter(id=>id!==catId):[...currentCats,catId];return {...prev,remarkCategoryIds:next,remarkCategoryId:next[0]||''};});};return <Modal title={deeds.some(x=>x.id===editing.id)?editorLocked?'Deed Details':'Edit Deed':'Add Deed'} onClose={()=>setEditing(null)} className="modal-legal-deed-wide"><div className="modal-body legal-deed-modal">{formError&&<div className="error" role="alert">{formError}</div>}{(()=>{const hasExistingEstablishment=deeds.some((x:any)=>x.type==='establishment'&&x.id!==editing.id);return <label className="legal-deed-select">Deed type<select aria-label="Deed type" disabled={editorLocked} value={editing.type} onChange={e=>{const newType=e.target.value;const nextCats=newType==='establishment'?['establishment-deed']:(editing.remarkCategoryIds?.filter((x:string)=>x!=='establishment-deed')||[]);setEditing({...editing,type:newType,remarkCategoryIds:nextCats,remarkCategoryId:nextCats[0]||''});}}><option value="establishment" disabled={hasExistingEstablishment} style={hasExistingEstablishment?{color:'#94a3b8',backgroundColor:'#f1f5f9',cursor:'not-allowed'}:undefined}>Establishment Deed{hasExistingEstablishment?' (Already exists)':''}</option><option value="amendment">Amendment Deed</option></select></label>;})()}<Fields fields={legalDeedFields} value={editing} disabled={editorLocked} customErrors={isDuplicateDeedNumber ? { deedNumber: 'This deed number has already been entered in this application.' } : undefined} onChange={next=>{setEditing({...editing,...next});const estDeed=deeds.find((x:any)=>x.type==='establishment'&&x.id!==editing.id);const estDate=estDeed?.deedDate||value.establishmentDate||application.customer?.establishmentDate;const dDate=next.deedDate||editing.deedDate;if(editing.type==='amendment'&&dDate&&estDate&&String(dDate).slice(0,10)<String(estDate).slice(0,10)){setFormError(`Amendment deed date (${date(dDate)}) cannot be before the establishment deed date (${date(estDate)}).`);}else if(formError&&formError.includes('cannot be before the establishment deed date')){setFormError('');}}}/><><div className="legal-remarks-category-group"><span className="field-label">Remarks Categories {editing.type==='amendment'&&<span className="field-required" aria-label="Required">*</span>}</span><div className="legal-remarks-chips" role="group" aria-label="Remarks Categories">{availableChips.map(cat=>{const isSelected=currentSelectedCategoryIds.includes(cat.id);return <button key={cat.id} type="button" role="checkbox" aria-checked={isSelected} disabled={editorLocked} className={`legal-remark-chip ${isSelected?'selected':''}`} onClick={()=>toggleCategory(cat.id)}><span className="legal-chip-check">{isSelected?'✓':'+'}</span><span>{cat.name}</span></button>;})}</div>{editing.type==='amendment'&&currentSelectedCategoryIds.length===0&&<small className="input-validation-error" role="alert">Please select at least one remarks category.</small>}</div><div className="legal-unified-remarks-box">
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'8px'}}>
     <div>
       <span className="field-label" style={{fontSize:'13px',fontWeight:700,color:'#002060'}}>
@@ -5007,7 +5056,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
       setEditing((prev: any) => prev ? { ...prev, remarks: newContent } : prev);
     }}
   />
-</div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Close':'Cancel'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete || isDuplicateDeedNumber}><Save size={15}/>Save deed</button>}</div></Modal>;})()}
+</div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Close':'Cancel'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete || isDuplicateDeedNumber}><Save size={15}/>Save Deed</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Shareholder Count" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Close</button></div></Modal>}
  {stakeholderList&&<Modal title="Stakeholders on this deed" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% shares · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="View full stakeholder details"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'View':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">No stakeholders on this deed yet.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Close</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER",idType:'NONE'}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
  {stakeholderModal && (

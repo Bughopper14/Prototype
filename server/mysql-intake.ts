@@ -193,7 +193,7 @@ export async function intakeDetail(id:string){
 
 export async function intakeCustomers(){
  const rows=await listIntake(),seen=new Set<string>();
- return rows.filter(r=>{if(seen.has(r.customer_id))return false;seen.add(r.customer_id);return true;}).map(r=>({id:r.customer_id,companyName:r.company_name,companyType:r.company_type,nib:r.nib,npwp:r.npwp,establishmentActNo:r.establishment_act_no,establishmentDate:databaseValue(r.establishment_date,'date')}));
+ return rows.filter(r=>{if(seen.has(r.customer_id))return false;seen.add(r.customer_id);return true;}).map(r=>({id:r.customer_id,companyName:r.company_name,companyType:r.company_type,nib:r.nib,nibDate:databaseValue(r.nib_date,'date'),npwp:r.npwp,establishmentActNo:r.establishment_act_no,establishmentDate:databaseValue(r.establishment_date,'date')}));
 }
 
 export async function createIntake(body:any,identity?:{id:string,fapNumber?:string,status?:string}){
