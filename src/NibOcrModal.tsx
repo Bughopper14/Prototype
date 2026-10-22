@@ -130,7 +130,17 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
 
         const newEmail = String(d.email || '').trim();
         const newPhone = String(d.phone || d.phoneFax || '').trim();
-        const newTanggal = String(d.tanggal_terbit || d.establishmentDate || '').trim();
+        const rawTanggal = String(d.tanggal_terbit || d.establishmentDate || d.nibIssuedDate || d.issueDate || d.tanggalTerbit || '').trim();
+        let newTanggal = rawTanggal;
+        const isoMatch = rawTanggal.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+        if (isoMatch) {
+          newTanggal = `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
+        } else {
+          const dmMatch = rawTanggal.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+          if (dmMatch) {
+            newTanggal = `${dmMatch[3]}-${dmMatch[2].padStart(2, '0')}-${dmMatch[1].padStart(2, '0')}`;
+          }
+        }
 
         setFormData({
           nib: newNib,
