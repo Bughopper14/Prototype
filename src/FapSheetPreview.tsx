@@ -124,7 +124,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     return <FapSheetPreviewClassic {...props} onSwitchToApproved={handleSwitchToApproved} />;
   }
 
-  return <FapSheetPreviewApproved2025 {...props} onSwitchToClassic={handleSwitchToClassic} />;
+  return <FapSheetPreviewApproved2025 {...props} />;
 }
 
 export function printFapDocument(fapNumber?: string) {

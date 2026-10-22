@@ -5,7 +5,6 @@ import {
   ZoomOut,
   Printer,
   Eye,
-  History,
   CheckCircle2,
 } from 'lucide-react';
 import { LIUGONG_LOGO_B64 } from './liugong-logo-b64';
@@ -13,7 +12,7 @@ import { useMasterData } from './master-data';
 import type { FapSheetData, FapSheetPreviewProps } from './FapSheetPreview';
 import { printFapDocument } from './FapSheetPreview';
 
-export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps & { onSwitchToClassic?: () => void }) {
+export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
   const master = useMasterData();
   const [autoFit, setAutoFit] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(props.compact ? 0.85 : 1.0);
@@ -330,32 +329,6 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps & { onSw
             </div>
           </div>
           <div className="excel-ribbon-right">
-            {/* Rollback to classic toggle button */}
-            {props.onSwitchToClassic && (
-              <button
-                type="button"
-                className="excel-rollback-btn"
-                onClick={props.onSwitchToClassic}
-                title="Rollback / Beralih ke template FAP sebelumnya"
-                style={{
-                  background: '#fef3c7',
-                  border: '1px solid #f59e0b',
-                  color: '#92400e',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  marginRight: '6px'
-                }}
-              >
-                <History size={12} /> Rollback Template
-              </button>
-            )}
-
             <div className="excel-zoom-controls">
               <button
                 type="button"
