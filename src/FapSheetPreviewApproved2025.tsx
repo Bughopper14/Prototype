@@ -1052,7 +1052,7 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps & { onSw
                         Jual dan Sewa kembali/<br />Sale and Lease Back {isSaleAndLease ? '☑' : '☐'}
                       </th>
                       <th style={{ textAlign: 'center', width: '31%', background: isInstallment ? '#dbeafe' : '#f1f5f9' }}>
-                        Pembelian dgn angsuran/<br />Installment Financing {isInstallment ? '☑' : '☐'}
+                        Pembelian dengan pembayaran angsuran/<br />Installment Financing {isInstallment ? '☑' : '☐'}
                       </th>
                     </tr>
                   </thead>
@@ -1064,13 +1064,13 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps & { onSw
                       <td className="center" style={{ fontSize: '8.5px' }}>working capital / Investment</td>
                     </tr>
                     <tr>
-                      <td style={{ fontWeight: 600 }}>Cara Pembiayaan / Method</td>
+                      <td style={{ fontWeight: 600 }}>Cara Pembiayaan / financing method</td>
                       <td className="center highlight-dynamic">{isLease ? 'Financial Lease' : '—'}</td>
                       <td className="center highlight-dynamic">{isSaleAndLease ? 'Sale & Lease Back' : '—'}</td>
                       <td className="center highlight-dynamic">{isInstallment ? 'Installment' : '—'}</td>
                     </tr>
                     <tr>
-                      <td style={{ fontWeight: 600 }}>Nilai Pembiayaan / Value</td>
+                      <td style={{ fontWeight: 600 }}>Nilai Pembiayaan / financing value : (IDR/USD)</td>
                       <td colSpan={3} className="center highlight-dynamic" style={{ fontWeight: 700, fontSize: '10.5px' }}>
                         {formatCurrency(d.financingValue)} (IDR)
                       </td>
@@ -1234,13 +1234,13 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps & { onSw
                       ))}
                     </tr>
                     <tr>
-                      <td>Total Liabilitas Jk Pendek/Current Liabilities</td>
+                      <td>Total Liabilitas Jangka Pendek/Total Current Liabilities</td>
                       {fsList.map((fs: any, i: number) => (
                         <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentLiabilities)}</td>
                       ))}
                     </tr>
                     <tr>
-                      <td>Total Liabilitas Jk Panjang/Non Current Liab.</td>
+                      <td>Total Liabilitas Jangka Panjang/Total Non Current Liabilities</td>
                       {fsList.map((fs: any, i: number) => (
                         <td key={i} className="right highlight-dynamic">{formatNumber(fs.longTermLiabilities || fs.nonCurrentLiabilities)}</td>
                       ))}
@@ -1363,8 +1363,11 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps & { onSw
                 <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontSize: '10px', fontWeight: 700 }}>
                   [                                                               ]
                 </div>
-                <div style={{ fontSize: '9px', fontWeight: 700, color: '#002060', marginTop: '2px' }}>
-                  Marketing · PT. LIUGONG FINANCE INDONESIA
+                <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', marginTop: '3px' }}>
+                  Marketing
+                </div>
+                <div style={{ fontSize: '9px', fontWeight: 700, color: '#002060', marginTop: '1px' }}>
+                  PT. LIUGONG FINANCE INDONESIA
                 </div>
               </div>
             </div>
