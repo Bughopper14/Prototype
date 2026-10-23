@@ -6,12 +6,17 @@ import path from 'node:path';
 import metadata from './metadata.json';
 export const dataDir=path.resolve(process.env.DATA_DIR||'.data');fs.mkdirSync(dataDir,{recursive:true});
 type Result={rows:any[]};
-const engine=process.env.DATABASE_URL?new pg.Pool({connectionString:process.env.DATABASE_URL}):new PGlite(path.join(dataDir,'db'));
+const dbPath=path.join(dataDir,'db');
+fs.mkdirSync(dbPath,{recursive:true});
+const pidFile=path.join(dbPath,'postmaster.pid');
+if(fs.existsSync(pidFile)){try{fs.unlinkSync(pidFile);}catch{}}
+const engine=process.env.DATABASE_URL?new pg.Pool({connectionString:process.env.DATABASE_URL}):new PGlite(dbPath);
 export type Query=(sql:string,args?:any[])=>Promise<Result>;
-export const query:Query=async(sql,args=[])=>engine instanceof pg.Pool?engine.query(sql,args):args.length?engine.query(sql,args):(await engine.exec(sql)).at(-1)||{rows:[]};
+export const query:Query=async(sql,args=[])=>{if(engine instanceof pg.Pool)return engine.query(sql,args);await (engine as any).waitReady;return args.length?engine.query(sql,args):(await engine.exec(sql)).at(-1)||{rows:[]};};
 let tail=Promise.resolve();
 export async function transaction<T>(fn:(q:Query)=>Promise<T>):Promise<T>{
  if(engine instanceof pg.Pool){const client=await engine.connect();try{await client.query('BEGIN');const out=await fn((s,a)=>client.query(s,a));await client.query('COMMIT');return out;}catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}}
+ await (engine as any).waitReady;
  let release!:()=>void;const prev=tail;tail=new Promise(r=>release=r);await prev;
  try{return await engine.transaction(tx=>fn(async(s,a=[])=>a.length?tx.query(s,a):(await tx.exec(s)).at(-1)||{rows:[]}));}finally{release();}
 }
@@ -72,7 +77,8 @@ export async function initialize(){
  });
  if(!(await query('SELECT * FROM schema_migrations WHERE version=4')).rows.length)await transaction(async q=>{
   await q("CREATE TABLE master_data (id INTEGER PRIMARY KEY CHECK(id=1), catalog JSONB NOT NULL, revision INTEGER NOT NULL DEFAULT 0)");
-  for(const [table,column] of [['customers','company_type'],['applications','industry_segment'],['applications','business_role'],['financing_proposals','facility_purpose'],['financing_proposals','financing_method'],['financing_unit_items','unit_category']])await q(`ALTER TABLE "${table}" DROP CONSTRAINT IF EXISTS "${table}_${column}_check"`);
+  const customerTable=(await q("SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='customers'")).rows.length?'customers':'business_partner';
+  for(const [table,column] of [[customerTable,'company_type'],['applications','industry_segment'],['applications','business_role'],['financing_proposals','facility_purpose'],['financing_proposals','financing_method'],['financing_unit_items','unit_category']])await q(`ALTER TABLE "${table}" DROP CONSTRAINT IF EXISTS "${table}_${column}_check"`);
   await q('INSERT INTO schema_migrations VALUES(4)');
  });
 
@@ -81,12 +87,20 @@ export async function initialize(){
   await q('INSERT INTO schema_migrations VALUES(5)');
  });
  if(!(await query('SELECT * FROM schema_migrations WHERE version=6')).rows.length)await transaction(async q=>{
-  await q("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check; ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
+  await q("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check; ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE','ADMIN'))");
   await q('CREATE TABLE notifications (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), recipient_user_id UUID NOT NULL REFERENCES users(id), application_id TEXT NOT NULL REFERENCES applications(id), deed_id TEXT NOT NULL, title TEXT NOT NULL, message TEXT NOT NULL, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now())');
   await q('CREATE INDEX notifications_recipient_idx ON notifications(recipient_user_id, created_at DESC)');
   await q('INSERT INTO schema_migrations VALUES(6)');
  });
  if(!(await query('SELECT * FROM schema_migrations WHERE version=7')).rows.length)await transaction(async q=>{
+  const old=(await q("SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='customers'")).rows.length>0;
+  const renamed=(await q("SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename='business_partner'")).rows.length>0;
+  if(old&&renamed)throw new Error('Both customers and business_partner exist in the legacy database.');
+  if(old)await q('ALTER TABLE customers RENAME TO business_partner');
+  await q("ALTER TABLE business_partner ADD COLUMN IF NOT EXISTS business_partner_type TEXT NOT NULL DEFAULT 'Prorpect Customer'");
+  await q('INSERT INTO schema_migrations VALUES(7)');
+ });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=8')).rows.length)await transaction(async q=>{
   await q(`
     CREATE TABLE IF NOT EXISTS master_groups (
       key VARCHAR(50) PRIMARY KEY,
@@ -117,15 +131,19 @@ export async function initialize(){
     CREATE INDEX IF NOT EXISTS idx_master_items_group ON master_items(group_key);
     CREATE INDEX IF NOT EXISTS idx_master_items_active ON master_items(group_key, active);
   `);
-  await q('INSERT INTO schema_migrations VALUES(7)');
- });
- if(!(await query('SELECT * FROM schema_migrations WHERE version=8')).rows.length)await transaction(async q=>{
-  await q("ALTER TABLE document_checklists DROP CONSTRAINT IF EXISTS document_checklists_assigned_role_check; ALTER TABLE document_checklists ADD CONSTRAINT document_checklists_assigned_role_check CHECK(assigned_role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
   await q('INSERT INTO schema_migrations VALUES(8)');
  });
  if(!(await query('SELECT * FROM schema_migrations WHERE version=9')).rows.length)await transaction(async q=>{
-  await q('ALTER TABLE applications ADD COLUMN IF NOT EXISTS district TEXT, ADD COLUMN IF NOT EXISTS village TEXT, ADD COLUMN IF NOT EXISTS rt TEXT, ADD COLUMN IF NOT EXISTS rw TEXT');
+  await q("ALTER TABLE document_checklists DROP CONSTRAINT IF EXISTS document_checklists_assigned_role_check; ALTER TABLE document_checklists ADD CONSTRAINT document_checklists_assigned_role_check CHECK(assigned_role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'))");
   await q('INSERT INTO schema_migrations VALUES(9)');
+ });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=10')).rows.length)await transaction(async q=>{
+  await q('ALTER TABLE applications ADD COLUMN IF NOT EXISTS district TEXT, ADD COLUMN IF NOT EXISTS village TEXT, ADD COLUMN IF NOT EXISTS rt TEXT, ADD COLUMN IF NOT EXISTS rw TEXT');
+  await q('INSERT INTO schema_migrations VALUES(10)');
+ });
+ if(!(await query('SELECT * FROM schema_migrations WHERE version=11')).rows.length)await transaction(async q=>{
+  await q("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check; ALTER TABLE users ADD CONSTRAINT users_role_check CHECK(role IN ('MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE','ADMIN'))");
+  await q('INSERT INTO schema_migrations VALUES(11)');
  });
 }
 export async function close(){if(engine instanceof pg.Pool)await engine.end();else await engine.close();}

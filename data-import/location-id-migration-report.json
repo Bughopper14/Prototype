@@ -1,0 +1,34 @@
+{
+  "updatedRows": 3,
+  "preservedCustomLocations": [
+    {
+      "table": "master_kabupaten_kota",
+      "id": "aec3ab2c-28c4-4440-afa9-a1dd2b103cb1",
+      "name": "Jakarta"
+    },
+    {
+      "table": "master_kecamatan",
+      "id": "22fa3fd4-60fb-4337-b84b-6d07b7995034",
+      "name": "kecamatan1test"
+    },
+    {
+      "table": "master_kecamatan",
+      "id": "0b51ec55-8933-4980-8f23-5545301d8809",
+      "name": "Tanah Abang"
+    },
+    {
+      "table": "master_kelurahan_desa",
+      "id": "4cc3e4fe-6f6c-4ae6-82c5-ce542f8816b2",
+      "name": "Kebon Melati"
+    }
+  ],
+  "removedColumns": [
+    "code",
+    "area_code"
+  ],
+  "masterRelations": "id-based",
+  "completedAt": "2026-10-02T01:44:37.715Z",
+  "aliasMappings": {
+    "DKI Jakarta": "40a810d1-0c72-44eb-b262-f0bfa35427f3"
+  }
+}

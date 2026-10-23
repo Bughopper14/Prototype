@@ -9,7 +9,7 @@ export function modelInput(model:string,body:any,required:string[]=[]){
  const fields:Record<string,z.ZodTypeAny>={};
  for(const [k,v] of Object.entries(meta[model].fields)){
   if(v.generated||['applicationId','proposalId','customerId','checklistId','fapNumber','status'].includes(k))continue;
-  let s:z.ZodTypeAny=v.type==='Int'?z.coerce.number().int().min(0).max(2147483647):v.type==='Decimal'?z.union([z.string().regex(/^-?\d{1,16}(\.\d{1,2})?$/),z.number().finite()]).transform(x=>money(x).toFixed(2)):v.type==='Boolean'?z.boolean():v.type==='DateTime'?z.string().regex(/^\d{4}-\d{2}-\d{2}/):z.string().trim().max(20000);
+  let s:z.ZodTypeAny=v.type==='Int'?z.coerce.number().int().min(0).max(2147483647):v.type==='Decimal'?z.union([z.string().regex(/^-?\d{1,16}(\.\d{1,2})?$/),z.number().finite()]).transform(x=>money(x).toFixed(2)):v.type==='Boolean'?z.boolean():v.type==='DateTime'?z.preprocess((val)=>{if(!val||String(val).trim()===''||String(val)==='null'||String(val)==='undefined')return null;const str=String(val).trim();return str.length>=10?str.slice(0,10):str;},z.string().regex(/^\d{4}-\d{2}-\d{2}/).nullable().optional()):z.string().trim().max(20000);
   if(v.type==='String'&&required.includes(k))s=z.string().trim().min(1).max(1000);
   fields[k]=required.includes(k)?s:s.nullable().optional();
  }
@@ -22,6 +22,7 @@ export function validateStakeholders(rows:any[],requireCompleteOwnership=true){
   ensure(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s.email||'')),'A valid email is required for each stakeholder');ensure(String(s.mobilePhone||'').trim().length>0,'Mobile phone is required for each stakeholder');ensure(s.primaryCapital!==undefined&&s.primaryCapital!==null&&s.primaryCapital!=='','Primary capital is required for each stakeholder');ensure(money(s.primaryCapital).gte(0),'Primary capital cannot be negative');
   const idType=String(s.idType||(s.stakeholderType==='CORPORATE'?'NPWP':s.nationalityType==='WNA'?'PASSPORT':'KTP')).toUpperCase();if(idType==='NPWP'){ensure(/^\d{15,16}$/.test(s.idNumber.replace(/\D/g,'')),'Corporate stakeholders require a 15 or 16 digit NPWP');}
   else if(idType==='PASSPORT')ensure(/^[A-Za-z0-9]{5,20}$/.test(s.idNumber),'Foreign stakeholders require a passport number');
+  else if(idType==='KITAS')ensure(/^[A-Za-z0-9]{5,25}$/.test(s.idNumber),'Foreign stakeholders with KITAS require a valid KITAS number');
   else ensure(/^\d{16}$/.test(s.idNumber),'Indonesian stakeholders require a 16 digit KTP');
  }
 }

@@ -1,0 +1,2090 @@
+{
+  "database": "internaltest1",
+  "columns": [
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "akta_id",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "nomor_akta",
+      "COLUMN_TYPE": "varchar(1000)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "tanggal_akta",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "nomor_sk_menteri",
+      "COLUMN_TYPE": "varchar(1000)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "tanggal_sk_menteri",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "representative",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "pemegang_saham_perusahaan",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "kategori_remarks",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "remarks",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "akta_id",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "nomor_akta",
+      "COLUMN_TYPE": "varchar(1000)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "tanggal_akta",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "nomor_sk_menteri",
+      "COLUMN_TYPE": "varchar(1000)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "tanggal_sk_menteri",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "representative",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "pemegang_saham_perusahaan",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "kategori_remarks",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "remarks",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "sequence_id",
+      "COLUMN_TYPE": "bigint unsigned",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": "auto_increment"
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "customer_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "company_name",
+      "COLUMN_TYPE": "varchar(255)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "company_type",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "fap_number",
+      "COLUMN_TYPE": "varchar(80)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "branch_code",
+      "COLUMN_TYPE": "varchar(80)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "financing_value",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "tenor_months",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "varchar(50)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "verified_docs",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "total_docs",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "application_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "row_position",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "bank_or_fin_institution",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "currency",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "credit_facility",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "monthly_installment",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "year_started",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "interest_rate",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "payment_record",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "facility_status",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "customer_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "pic_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "position",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "phone",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "country",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "province",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "city",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "district",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "village",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "rt",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "rw",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "current_address",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "postal_code",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "akta",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "nomor_akta",
+      "COLUMN_TYPE": "varchar(1000)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "tanggal",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "status",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "berlaku_sampai",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "sk_menteri",
+      "COLUMN_TYPE": "varchar(1000)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "tanggal_sk_menteri",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "kategori_remarks",
+      "COLUMN_TYPE": "varchar(150)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "stakeholders",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "jumlah_shareholder",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "total_kepemilikan",
+      "COLUMN_TYPE": "decimal(7,2)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "is_selected",
+      "COLUMN_TYPE": "tinyint(1)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "financing_detail_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "row_position",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "asset_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "unit_category",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "brand",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "unit_type",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "model_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "class_ton",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "quantity",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "years",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "specifications",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "row_position",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "facility_purpose",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "purpose_detail",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "financing_method",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "currency",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "financing_value",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "down_payment_value",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "security_deposit",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "interest_rate",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "tenor_months",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "payment_method",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "application_source",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "terms_notes",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "estimated_monthly_installment",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "akta_id",
+      "COLUMN_TYPE": "varchar(100)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "representative_type",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "stakeholder_type",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "signatory",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "id_type",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "id_number",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "title",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "first_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "middle_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "last_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "date_of_birth",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "age_years",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "age_months",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "marital_status",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "designation",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "mobile_phone",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "gender",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "share_percentage",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "deposited_capital",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "primary_capital",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "citizenship",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "country",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "province",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "city_regency",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "district",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "village",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "rw",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "rt",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "address",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "postal_code",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "customer_category",
+      "COLUMN_TYPE": "varchar(30)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "existing_customer_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "application_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "fap_registration_number",
+      "COLUMN_TYPE": "varchar(80)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "company_name",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "company_type",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "nib",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "npwp",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "establishment_act_no",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "establishment_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "branch_code",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "company_address",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "city",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "province",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "postal_code",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "experience_years",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "experience_months",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "UNI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "skt_no",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "sppkp_no",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "phone_fax",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "email",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "website",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "main_business",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "location_status",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "repayment_source",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "latest_deed_no",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "latest_deed_date",
+      "COLUMN_TYPE": "date",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "industry_segment",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "business_role",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "asset_summary_he_liu_gong",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "asset_summary_truck_liu_gong",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "asset_summary_he_non_liu_gong",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "asset_summary_truck_non_liu_gong",
+      "COLUMN_TYPE": "decimal(20,2)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "application_id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "row_position",
+      "COLUMN_TYPE": "int",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "project_owner",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "project_location",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "project_role",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "contract_status",
+      "COLUMN_TYPE": "text",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": "DEFAULT_GENERATED"
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "updated_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "deleted_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "YES",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "ui_master_data",
+      "COLUMN_NAME": "id",
+      "COLUMN_TYPE": "char(36)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "PRI",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "ui_master_data",
+      "COLUMN_NAME": "payload",
+      "COLUMN_TYPE": "json",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "",
+      "EXTRA": ""
+    },
+    {
+      "TABLE_NAME": "ui_master_data",
+      "COLUMN_NAME": "created_at",
+      "COLUMN_TYPE": "timestamp(3)",
+      "IS_NULLABLE": "NO",
+      "COLUMN_KEY": "MUL",
+      "EXTRA": "DEFAULT_GENERATED"
+    }
+  ],
+  "keys": [
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "akta_id",
+      "CONSTRAINT_NAME": "akta_id",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "akta_id",
+      "CONSTRAINT_NAME": "fk_akta_pendirian_akta",
+      "REFERENCED_TABLE_NAME": "daftar_akta",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_akta_pendirian_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "akta_pendirian",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "akta_id",
+      "CONSTRAINT_NAME": "akta_id",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "akta_id",
+      "CONSTRAINT_NAME": "fk_akta_perubahan_akta",
+      "REFERENCED_TABLE_NAME": "daftar_akta",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_akta_perubahan_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "akta_perubahan",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "fap_number",
+      "CONSTRAINT_NAME": "fap_number",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "id",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "sequence_id",
+      "CONSTRAINT_NAME": "legacy_key",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "all_applications",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_bank_facilities_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "bank_facilities",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "application_id",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_customer_pic_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "customer_pic",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_daftar_akta_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "daftar_akta",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "financing_detail_id",
+      "CONSTRAINT_NAME": "fk_equipment_financing",
+      "REFERENCED_TABLE_NAME": "financing_detail",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_equipment_units_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "equipment_units",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "application_id",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_financing_detail_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "financing_detail",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "akta_id",
+      "CONSTRAINT_NAME": "fk_legal_stakeholder_akta",
+      "REFERENCED_TABLE_NAME": "daftar_akta",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_legal_stakeholder_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "legal_stakeholder",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_new_application_fap_stage",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "legacy_key",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "new_application_fap_stage",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_new_application_pre_analisis",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "legacy_key",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "new_application_pre_analisis",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "application_id",
+      "CONSTRAINT_NAME": "fk_project_contract_application",
+      "REFERENCED_TABLE_NAME": "all_applications",
+      "REFERENCED_COLUMN_NAME": "id"
+    },
+    {
+      "TABLE_NAME": "project_contract",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    },
+    {
+      "TABLE_NAME": "ui_master_data",
+      "COLUMN_NAME": "id",
+      "CONSTRAINT_NAME": "PRIMARY",
+      "REFERENCED_TABLE_NAME": null,
+      "REFERENCED_COLUMN_NAME": null
+    }
+  ]
+}

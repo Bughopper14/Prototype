@@ -1,0 +1,24 @@
+{
+  "importedAt": "2026-10-02T01:37:25.595Z",
+  "sources": [
+    "https://github.com/cahyadsn/wilayah/blob/master/db/wilayah.sql",
+    "https://github.com/cahyadsn/wilayah_kodepos/blob/main/db/wilayah_kodepos.sql"
+  ],
+  "reference": "Kepmendagri No 300.2.2-2138 Tahun 2025 (file headers)",
+  "sha256": {
+    "wilayah.sql": "c4c3396d9380d4edee072af1d9dff83573b574d7cd00a6562cf82e200e954031",
+    "kodepos.sql": "d921ac1efcfeb982ec22b1c0be56eecc0be6c73a11358ead10e79e905b72ba34"
+  },
+  "counts": [
+    38,
+    514,
+    7285,
+    83762
+  ],
+  "validation": {
+    "duplicateCodes": 0,
+    "orphanRegions": 0,
+    "missingPostalCodes": 0
+  },
+  "notes": "Community maintained dataset; structural validation is not independent certification of every postal code. Existing custom rows retained."
+}
