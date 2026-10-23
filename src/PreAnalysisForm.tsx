@@ -93,7 +93,7 @@ export interface PreAnalysisData {
 }
 
 const defaultInitialData: PreAnalysisData = {
-  preAnalysisNo: '047/PREANA/MKT/IX/2026',
+  preAnalysisNo: '001/PREANA/MKT/IX/2026',
   preAnalysisDate: '07-Sep-2026',
   customerProjectName: 'PT Handalan Putramas Santosa (HPS)',
   taxId: '27.817.616.9-041.000',
@@ -207,7 +207,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   });
 
   const [viewMode, setViewMode] = useState<'digital-twin' | 'original-pdf'>('digital-twin');
-  const [zoomLevel, setZoomLevel] = useState<number>(0.85);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.75);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
@@ -368,11 +368,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             {openSections.sec1 && (
               <div style={{ padding: '14px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pre-Analysis No</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Pre-Analysis No</span>
+                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 400 }}>000/PREANA/MKT/IX/YYYY</span>
+                  </label>
                   <input
                     type="text"
                     value={data.preAnalysisNo}
                     onChange={e => updateField('preAnalysisNo', e.target.value)}
+                    placeholder="001/PREANA/MKT/IX/2026"
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
@@ -1038,9 +1042,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(0.85)}
+                  onClick={() => setZoomLevel(0.75)}
                   style={{ background: 'rgba(255,255,255,0.15)', border: 'none', color: '#ffffff', borderRadius: '4px', padding: '3px 6px', cursor: 'pointer' }}
-                  title="Reset Zoom"
+                  title="Reset Zoom (75%)"
                 >
                   <RotateCcw size={12} />
                 </button>
