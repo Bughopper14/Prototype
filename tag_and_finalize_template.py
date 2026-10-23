@@ -57,6 +57,10 @@ def main():
         box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
         text-align: left !important;
         display: table !important;
+        border-collapse: collapse !important;
+        border-left: 1.0pt solid black !important;
+        border-right: 1.0pt solid black !important;
+        border-top: 1.0pt solid black !important;
     }
     .xl74, .xl75, .xl76 {
         background-color: #002060 !important;
@@ -94,11 +98,13 @@ def main():
         line-height: 1 !important;
     }
     .fap-address-box {
-        vertical-align: top !important;
-        text-align: left !important;
-        padding: 6px 8px !important;
-        line-height: 1.25 !important;
-        font-size: 16pt !important;
+        vertical-align: middle !important;
+        text-align: center !important;
+        padding: 4px 8px !important;
+        line-height: 1.2 !important;
+        font-size: 24pt !important;
+        font-weight: 700 !important;
+        color: #002060 !important;
     }
     @keyframes fapCellPulse {
         0% { box-shadow: inset 0 0 0 3px #2563eb, 0 0 16px rgba(37, 99, 235, 0.6); background-color: #dbeafe !important; }
@@ -148,6 +154,13 @@ def main():
         .fap-page-break {
             page-break-before: always !important;
             break-before: page !important;
+        }
+        #fap-main-table {
+            border-collapse: collapse !important;
+            border-left: 1.0pt solid black !important;
+            border-right: 1.0pt solid black !important;
+            border-top: 1.0pt solid black !important;
+            box-shadow: none !important;
         }
         .fap-page-end-line td {
             border-bottom: 2.5pt solid black !important;
@@ -237,18 +250,37 @@ def main():
         r9_tds[13]['id'] = 'fap-cell-liugongUser'
         r9_tds[13]['class'] = r9_tds[13].get('class', []) + ['fap-chk-val']
 
+    # Row 10: gap row before orange line
+    r10_tds = rows[10].find_all('td')
+    if len(r10_tds) > 0:
+        r10_tds[0]['class'] = ['xl71']
+
+    # Row 11: orange divider line
+    r11_tds = rows[11].find_all('td')
+    if len(r11_tds) > 0:
+        r11_tds[0]['colspan'] = '24'
+        r11_tds[0]['class'] = ['xl94']
+
     # Row 13: Nama Perusahaan, Penanggung Jawab/PIC, Telepon/Phone
     rows[13]['id'] = 'fap-preview-sec-company'
     r13_tds = rows[13].find_all('td')
-    if len(r13_tds) > 4:
-        r13_tds[4]['id'] = 'fap-cell-companyName'
-        r13_tds[4]['class'] = r13_tds[4].get('class', []) + ['fap-autofill-val']
-    if len(r13_tds) > 7:
-        r13_tds[7]['id'] = 'fap-cell-picName'
-        r13_tds[7]['class'] = r13_tds[7].get('class', []) + ['fap-autofill-val']
-    if len(r13_tds) > 10:
-        r13_tds[10]['id'] = 'fap-cell-phone'
-        r13_tds[10]['class'] = r13_tds[10].get('class', []) + ['fap-autofill-val']
+    if len(r13_tds) == 15:
+        # Excel artifact: duplicate td in Column A causes 105px offset and jagged left border!
+        r13_tds[1].decompose()
+        r13_tds = rows[13].find_all('td')
+
+    if len(r13_tds) > 0:
+        r13_tds[0]['class'] = ['xl71']
+        r13_tds[0]['style'] = 'height:142.95pt;width:79pt;'
+    if len(r13_tds) > 3:
+        r13_tds[3]['id'] = 'fap-cell-companyName'
+        r13_tds[3]['class'] = r13_tds[3].get('class', []) + ['fap-autofill-val']
+    if len(r13_tds) > 6:
+        r13_tds[6]['id'] = 'fap-cell-picName'
+        r13_tds[6]['class'] = r13_tds[6].get('class', []) + ['fap-autofill-val']
+    if len(r13_tds) > 9:
+        r13_tds[9]['id'] = 'fap-cell-phone'
+        r13_tds[9]['class'] = r13_tds[9].get('class', []) + ['fap-autofill-val']
 
     # Row 16: Alamat Perusahaan, Jabatan/Position, Email
     r16_tds = rows[16].find_all('td')
@@ -274,16 +306,9 @@ def main():
     # Row 20: Provinsi/Province (Company)
     r20_tds = rows[20].find_all('td')
     if len(r20_tds) > 3:
-        colon_td = soup.new_tag('td')
-        colon_td['class'] = ['xl96']
-        colon_td.string = ':'
-        r20_tds[1].insert_after(colon_td)
-        r20_tds[2]['colspan'] = '2'
-        r20_tds_updated = rows[20].find_all('td')
-        if len(r20_tds_updated) > 4:
-            r20_tds_updated[4]['id'] = 'fap-cell-province'
-            r20_tds_updated[4]['class'] = r20_tds_updated[4].get('class', []) + ['fap-autofill-val']
-            r20_tds_updated[4]['style'] = 'border:.5pt solid black !important;'
+        r20_tds[3]['id'] = 'fap-cell-province'
+        r20_tds[3]['class'] = r20_tds[3].get('class', []) + ['fap-autofill-val']
+        r20_tds[3]['style'] = 'border:.5pt solid black !important;'
 
     # Row 22: Postal code (Company), Kota/City (PIC)
     r22_tds = rows[22].find_all('td')

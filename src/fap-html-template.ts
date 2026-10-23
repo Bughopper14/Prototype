@@ -1727,6 +1727,10 @@ td
         box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
         text-align: left !important;
         display: table !important;
+        border-collapse: collapse !important;
+        border-left: 1.0pt solid black !important;
+        border-right: 1.0pt solid black !important;
+        border-top: 1.0pt solid black !important;
     }
     .xl74, .xl75, .xl76 {
         background-color: #002060 !important;
@@ -1764,11 +1768,13 @@ td
         line-height: 1 !important;
     }
     .fap-address-box {
-        vertical-align: top !important;
-        text-align: left !important;
-        padding: 6px 8px !important;
-        line-height: 1.25 !important;
-        font-size: 16pt !important;
+        vertical-align: middle !important;
+        text-align: center !important;
+        padding: 4px 8px !important;
+        line-height: 1.2 !important;
+        font-size: 24pt !important;
+        font-weight: 700 !important;
+        color: #002060 !important;
     }
     @keyframes fapCellPulse {
         0% { box-shadow: inset 0 0 0 3px #2563eb, 0 0 16px rgba(37, 99, 235, 0.6); background-color: #dbeafe !important; }
@@ -1818,6 +1824,13 @@ td
         .fap-page-break {
             page-break-before: always !important;
             break-before: page !important;
+        }
+        #fap-main-table {
+            border-collapse: collapse !important;
+            border-left: 1.0pt solid black !important;
+            border-right: 1.0pt solid black !important;
+            border-top: 1.0pt solid black !important;
+            box-shadow: none !important;
         }
         .fap-page-end-line td {
             border-bottom: 2.5pt solid black !important;
@@ -2554,7 +2567,7 @@ hAEAAGdeAAAAAA==
 <td class="xl70"></td>
 </tr>
 <tr height="38" style="height:28.8pt">
-<td align="left" height="38" style="height:28.8pt" valign="top"><!--[if gte vml 1]><v:shape
+<td align="left" class="xl71" height="38" style="height:28.8pt" valign="top"><!--[if gte vml 1]><v:shape
    id="Rectangle_x0020_4" o:spid="_x0000_s1028" type="#_x0000_t75" style='position:absolute;
    margin-left:0;margin-top:12pt;width:2469pt;height:4.2pt;z-index:4;
    visibility:visible;mso-wrap-style:square;v-text-anchor:top' o:gfxdata="UEsDBBQABgAIAAAAIQDw94q7/QAAAOIBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbJSRzUrEMBDH
@@ -2603,7 +2616,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
   height:6px"><img height="6" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAADAAAAAAFCAYAAABhXH9mAAAAAXNSR0ICQMB9xQAAAAlwSFlzAAANxwAADccBCzyLsgAAABl0RVh0U29mdHdhcmUATWljcm9zb2Z0IE9mZmljZX/tNXEAAABxSURBVHja7dtBEcAgDAAwLBUlM1QOJxhcNWw26F0ekZHxZjy15gYAAAAAAAAAAAAAAO41KuepjA8AAAAAAAAAAAAAALiXAAAAAAAAAAAAAAAAAA0IAAAAAAAAAAAAAAAA0IAAAAAAAAAAAAAAAAAADfwHNEMcRKmOAAAAAABJRU5ErkJggg==" v:shapes="Rectangle_x0020_4" width="3292"/></span><?endif?><span style="mso-ignore:vglayout2">
 <table cellpadding="0" cellspacing="0">
 <tr>
-<td class="xl94" height="38" style="height:28.8pt;width:79pt" width="105"> </td>
+<td class="xl94" colspan="24" height="38" style="height:28.8pt;width:79pt" width="105"> </td>
 </tr>
 </table>
 </span></td>
@@ -2657,7 +2670,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl70"></td>
 </tr>
 <tr height="190" id="fap-preview-sec-company" style="mso-height-source:userset;height:142.95pt">
-<td align="left" height="190" style="height:142.95pt" valign="top"><!--[if gte vml 1]><v:shape
+<td align="left" class="xl71" height="190" style="height:142.95pt;width:79pt;" valign="top"><!--[if gte vml 1]><v:shape
    id="TextBox_x0020_2" o:spid="_x0000_s1026" type="#_x0000_t75" style='position:absolute;
    margin-left:13.2pt;margin-top:.6pt;width:53.4pt;height:1647.6pt;z-index:2;
    visibility:visible;mso-wrap-style:square;v-text-anchor:top' o:gfxdata="UEsDBBQABgAIAAAAIQDw94q7/QAAAOIBAAATAAAAW0NvbnRlbnRfVHlwZXNdLnhtbJSRzUrEMBDH
@@ -2704,7 +2717,7 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
   </v:shape><![endif]--><?if !vml?><?endif?><span style="mso-ignore:vglayout2">
 <table cellpadding="0" cellspacing="0">
 <tr>
-<td class="xl71" height="190" style="height:142.95pt;width:79pt" width="105"> </td>
+
 </tr>
 </table>
 </span></td>
@@ -2825,8 +2838,8 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 </tr>
 <tr height="166" style="mso-height-source:userset;height:124.5pt">
 <td class="xl71" height="166" style="height:124.5pt"> </td>
-<td class="xl108" style="width:123pt" width="164"></td><td class="xl96">:</td>
-<td class="xl106" colspan="2" style="border-right:.5pt solid black">Provinsi/<font class="font18">Province</font></td>
+<td class="xl108" style="width:123pt" width="164"></td>
+<td class="xl106" colspan="3" style="border-right:.5pt solid black">Provinsi/<font class="font18">Province</font></td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-province" style="border:.5pt solid black !important;"> </td>
 <td class="xl97"></td>
 <td class="xl72"> </td>
