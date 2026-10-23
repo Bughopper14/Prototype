@@ -346,6 +346,23 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       }
     });
 
+    // Ensure closing boundary lines at end of Page 1 and Page 2
+    const tableEl = doc.getElementById('fap-main-table') as HTMLTableElement | null;
+    if (tableEl && tableEl.rows) {
+      const r76 = tableEl.rows[76];
+      if (r76) {
+        for (let i = 0; i < r76.cells.length; i++) {
+          r76.cells[i].style.borderBottom = '2.5pt solid black';
+        }
+      }
+      const rEnd = tableEl.rows[131] || tableEl.rows[tableEl.rows.length - 1];
+      if (rEnd) {
+        for (let i = 0; i < rEnd.cells.length; i++) {
+          rEnd.cells[i].style.borderBottom = '2.5pt solid black';
+        }
+      }
+    }
+
     // Shareholders up to 8
     const shList = d.stakeholders || [];
     for (let i = 0; i < 8; i++) {

@@ -115,7 +115,7 @@ def main():
     @media print {
         @page {
             size: A4 portrait;
-            margin: 4mm 3mm;
+            margin: 6mm 10mm;
         }
         *, *::before, *::after {
             -webkit-print-color-adjust: exact !important;
@@ -141,6 +141,9 @@ def main():
         .fap-page-break {
             page-break-before: always !important;
             break-before: page !important;
+        }
+        .fap-page-end-line td {
+            border-bottom: 2.5pt solid black !important;
         }
         .xl74, .xl75, .xl76 {
             background-color: #002060 !important;
@@ -390,11 +393,23 @@ def main():
             if ref_span:
                 ref_span['style'] = (str(ref_span.get('style', '')) + ';margin-top:16px !important;').strip(';')
 
+    # Row 76: End of Page 1 - Add Closing Boundary Line
+    if len(rows) > 76:
+        rows[76]['class'] = (str(rows[76].get('class', '')) + ' fap-page-end-line').strip()
+        for c in rows[76].find_all('td'):
+            c['style'] = (str(c.get('style', '')) + ';border-bottom:2.5pt solid black !important;').strip(';')
+
     # Row 77: Exact Official Boundary between Page 1 and Page 2
     if len(rows) > 77:
         rows[77]['class'] = (str(rows[77].get('class', '')) + ' fap-page-break').strip()
         rows[77]['id'] = 'fap-preview-page-2'
         rows[77]['style'] = (str(rows[77].get('style', '')) + ';page-break-before:always !important;break-before:page !important;').strip(';')
+
+    # Row 131/133: End of Page 2 - Add Closing Boundary Line
+    if len(rows) > 131:
+        rows[131]['class'] = (str(rows[131].get('class', '')) + ' fap-page-end-line').strip()
+        for c in rows[131].find_all('td'):
+            c['style'] = (str(c.get('style', '')) + ';border-bottom:2.5pt solid black !important;').strip(';')
 
     # Convert back to string
     final_html = str(soup)

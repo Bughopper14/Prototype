@@ -1785,7 +1785,7 @@ td
     @media print {
         @page {
             size: A4 portrait;
-            margin: 4mm 3mm;
+            margin: 6mm 10mm;
         }
         *, *::before, *::after {
             -webkit-print-color-adjust: exact !important;
@@ -1811,6 +1811,9 @@ td
         .fap-page-break {
             page-break-before: always !important;
             break-before: page !important;
+        }
+        .fap-page-end-line td {
+            border-bottom: 2.5pt solid black !important;
         }
         .xl74, .xl75, .xl76 {
             background-color: #002060 !important;
@@ -4082,22 +4085,22 @@ AAAABAAEAPUAAABfBgAAAAA=
 <td class="xl70"></td>
 <td class="xl70"></td>
 </tr>
-<tr height="106" style="mso-height-source:userset;height:79.95pt">
-<td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl97"></td>
-<td class="xl131" style="border-top:none"> </td>
-<td class="xl131" style="border-top:none"> </td>
-<td class="xl131" style="border-top:none"> </td>
-<td class="xl131" style="border-top:none"> </td>
-<td class="xl100"></td>
-<td class="xl100">TOTAL</td>
-<td class="xl172" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl100">Comments :</td>
-<td class="xl99" colspan="8"> </td>
-<td class="xl80"> </td>
-<td class="xl70"></td>
-<td class="xl70"></td>
-<td class="xl70"></td>
+<tr class="fap-page-end-line" height="106" style="mso-height-source:userset;height:79.95pt">
+<td class="xl71" height="106" style="height:79.95pt;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl131" style="border-top:none;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl131" style="border-top:none;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl131" style="border-top:none;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl131" style="border-top:none;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl100" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl100" style="border-bottom:2.5pt solid black !important">TOTAL</td>
+<td class="xl172" colspan="3" style="border-right:.5pt solid black;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl100" style="border-bottom:2.5pt solid black !important">Comments :</td>
+<td class="xl99" colspan="8" style="border-bottom:2.5pt solid black !important"> </td>
+<td class="xl80" style="border-bottom:2.5pt solid black !important"> </td>
+<td class="xl70" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl70" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl70" style="border-bottom:2.5pt solid black !important"></td>
 </tr>
 <tr class="fap-page-break" height="42" id="fap-preview-page-2" style="height:31.2pt;page-break-before:always !important;break-before:page !important">
 <td align="left" height="42" style="height:31.2pt" valign="top"><!--[if gte vml 1]><v:shape
@@ -5457,25 +5460,25 @@ AAAEAAQA9QAAACUGAAAAAA==
 <td class="xl70"></td>
 <td class="xl70"></td>
 </tr>
-<tr height="62" style="mso-height-source:userset;height:46.5pt">
-<td class="xl71" height="62" style="height:46.5pt"> </td>
-<td class="xl147"><span style="mso-spacerun:yes">               
+<tr class="fap-page-end-line" height="62" style="mso-height-source:userset;height:46.5pt">
+<td class="xl71" height="62" style="height:46.5pt;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl147" style="border-bottom:2.5pt solid black !important"><span style="mso-spacerun:yes">               
   </span>PT.<span style="mso-spacerun:yes"> </span></td>
-<td class="xl150" colspan="5" style="border-right:1.0pt solid black"> </td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl149" colspan="5" style="border-right:1.0pt solid black">PT. LIUGONG
+<td class="xl150" colspan="5" style="border-right:1.0pt solid black;border-bottom:2.5pt solid black !important"> </td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl97" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl149" colspan="5" style="border-right:1.0pt solid black;border-bottom:2.5pt solid black !important">PT. LIUGONG
   FINANCE INDONESIA</td>
-<td class="xl77"></td>
-<td class="xl82"> </td>
-<td class="xl70"></td>
-<td class="xl70"></td>
-<td class="xl70"></td>
+<td class="xl77" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl82" style="border-bottom:2.5pt solid black !important"> </td>
+<td class="xl70" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl70" style="border-bottom:2.5pt solid black !important"></td>
+<td class="xl70" style="border-bottom:2.5pt solid black !important"></td>
 </tr>
 <tr height="31" style="height:23.4pt">
 <td class="xl71" height="31" style="height:23.4pt"> </td>
