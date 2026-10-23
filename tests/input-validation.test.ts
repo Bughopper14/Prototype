@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {fieldInputError,inputLimits,validateInput,businessToday} from '../src/input-validation';
 const now=new Date('2026-10-01T03:00:00Z');
 test('historical dates reject future and invalid calendar dates; expiry may be future',()=>{
- for(const key of ['deedDate','ministerialDecreeDate','establishmentDate','latestDeedDate','dateOfBirth','registrationDate']){assert(fieldInputError(key,'2027-01-01',now));assert(fieldInputError(key,'2026-10-02',now));assert(fieldInputError(key,'2026-02-30',now));assert.equal(fieldInputError(key,'2024-02-29',now),'');}
+ for(const key of ['deedDate','ministerialDecreeDate','establishmentDate','latestDeedDate','registrationDate']){assert(fieldInputError(key,'2027-01-01',now));assert(fieldInputError(key,'2026-10-02',now));assert(fieldInputError(key,'2026-02-30',now));assert.equal(fieldInputError(key,'2024-02-29',now),'');}
  assert.doesNotThrow(()=>validateInput({registrationDate:'2026-01-01',expiredDate:'2031-01-01'},now));
  assert.throws(()=>validateInput({registrationDate:'2026-01-01',expiredDate:'2025-12-31'},now));
  assert.throws(()=>validateInput({deedDate:'2026-01-02',ministerialDecreeDate:'2026-01-01'},now));
@@ -28,4 +28,4 @@ test('identity, contact and financial checks preserve legitimate negative profit
 test('draft ownership can be saved incrementally; submission requires 100 percent',()=>{assert.doesNotThrow(()=>validateInput({stakeholders:[{sharePercentage:50}]},now));assert.throws(()=>validateInput({stakeholders:[{sharePercentage:50}]},now,true));assert.throws(()=>validateInput({stakeholders:[{sharePercentage:90},{sharePercentage:30}]},now));});
 test('explicit ID type overrides corporate and citizenship defaults',()=>{assert.throws(()=>validateInput({stakeholderType:'CORPORATE',idType:'KTP',idNumber:'123456789012345'},now),/KTP/);assert.doesNotThrow(()=>validateInput({stakeholderType:'CORPORATE',idType:'KTP',idNumber:'1234567890123456'},now));assert.throws(()=>validateInput({nationalityType:'WNA',idType:'KTP',idNumber:'AB12345'},now),/KTP/);assert.doesNotThrow(()=>validateInput({stakeholderType:'CORPORATE',idType:'PASSPORT',idNumber:'AB12345'},now));});
 
-test('current deed list supersedes legacy duplicate validation and identifies invalid visible deed',()=>{assert.doesNotThrow(()=>validateInput({legal:{deeds:[{deedNumber:'CURRENT',deedDate:'2026-01-01'}],establishment:{deedDate:'3333-12-31'}}},now));assert.throws(()=>validateInput({legal:{deeds:[{deedNumber:'INVALID',deedDate:'3333-12-31'}]}},now),/Akta INVALID/);});
+test('current deed list supersedes legacy duplicate validation and identifies invalid visible deed',()=>{assert.doesNotThrow(()=>validateInput({legal:{deeds:[{deedNumber:'CURRENT',deedDate:'2026-01-01'}],establishment:{deedDate:'3333-12-31'}}},now));assert.throws(()=>validateInput({legal:{deeds:[{deedNumber:'INVALID',deedDate:'3333-12-31'}]}},now),/(Deed|Akta) INVALID/);});

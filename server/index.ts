@@ -87,6 +87,7 @@ for (const sub of ['ktp', 'npwp', 'nib', 'passport', 'kitas', 'akta', 'id_types'
   fs.mkdir(path.join(documentsDir, sub), { recursive: true }).catch(() => {});
 }
 app.use('/documents', express.static(documentsDir));
+app.use('/excel_template', express.static(path.resolve('public/excel_template')));
 
 function getPaddedDateParts(d = new Date()) {
   const yyyy = d.getFullYear();
@@ -507,7 +508,7 @@ app.put('/api/v1/applications/:id/page-1',async(req,res)=>{const id=String(req.p
     const d=(await all('DocumentChecklist',{applicationId:id,documentCode:'EKITAS'},q))[0];
     await update('DocumentChecklist',d.id,{isMandatory:rows.some(s=>s.stakeholderType==='INDIVIDUAL'&&s.nationalityType==='WNA')},q);
   }
- for(const [key,model,required] of [['projects','ProjectContract',['projectOwner','projectLocation','projectRole','contractStatus']],['bankReferences','BankReference',['bankOrFinInstitution','currency','creditFacility','monthlyInstallment','yearStarted','interestRate','paymentRecord','facilityStatus']]] as const)if(body[key])await replace(model,'applicationId',id,z.array(z.any()).max(100).parse(body[key]).map(x=>modelInput(model,x,[...required])),q);
+ for(const [key,model,required] of [['projects','ProjectContract',['projectOwner','projectLocation','projectRole','contractStatus']],['bankReferences','BankReference',['bankOrFinInstitution','currency','creditFacility','monthlyInstallment','yearStarted','interestRate','paymentRecord','facilityStatus']]] as const)if(body[key]){const parsedRows=z.array(z.any()).max(100).parse(body[key]).map(x=>modelInput(model,x,[...required]));if(key==='bankReferences'){const maxYear=new Date().getFullYear();for(const b of parsedRows)if(Number(b.yearStarted)>maxYear)throw new Problem(422,'Tahun mulai fasilitas tidak boleh di masa depan.');}await replace(model,'applicationId',id,parsedRows,q);}
  await insert('ApprovalLog',{applicationId:id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:a.status,newStatus:a.status,comments:'Profile and business information updated'},q);
  });res.json(await detail(id));});
 app.put('/api/v1/applications/:id/page-2',async(req,res,next)=>{if(!req.body.financialStatements)return next();const id=String(req.params.id);const existing=await intakeDetail(id);if(!existing)return next();await saveFinancialStatements(id,req.body.financialStatements,req.actor.role);res.json(await intakeDetail(id));});

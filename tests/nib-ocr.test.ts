@@ -9,7 +9,7 @@ test('NIB OCR parsing extracts all 5 mandatory fields from sample OSS text', () 
   assert.equal(result.nib, '1209260000012');
 
   // 2. Alamat
-  assert.equal(result.alamat, 'JL. JENDERAL SUDIRMAN KAV. 52-53, KARET SEMANGGI, SETIABUDI, JAKARTA SELATAN');
+  assert.equal(result.alamat, 'JL. JENDERAL SUDIRMAN KAV. 52-53, RT 005 / RW 003, KEL. KARET SEMANGGI, KEC. SETIABUDI, KOTA ADM. JAKARTA SELATAN, DKI JAKARTA 12930');
 
   // 3. Email
   assert.equal(result.email, 'legal@nusantaraminers.co.id');

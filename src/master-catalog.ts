@@ -174,12 +174,12 @@ export function defaultMasterCatalog():MasterCatalog{
  bankOrFinInstitution:options(['Bank Mandiri','Bank BCA','Bank BRI','Bank BNI']),projectRole:options(['Main Contractor','Subcontractor','Project Owner']),applicationSource:options(['Direct','Dealer','Referral']),
  unitCategory:options(['HE','TRUCK']),brand:options(['LiuGong']),unitType:options(['Hydraulic Excavator']),modelName:options(['936E']),assetName:options(['Excavator']),
  facilityPurpose:options(['INVESTMENT','WORKING_CAPITAL']),financingMethod:options(['FINANCIAL_LEASE','SALE_AND_LEASE_BACK','INSTALLMENT_FINANCING']),currency:options(['IDR']),paymentMethod:[{value:'In Arrear',name:'In Arrear',active:true,timing:'arrear'},{value:'In Advance',name:'In Advance',active:true,timing:'advance'}],
- remarkCategoryId:[['amendment-share-change','Shares'],['amendment-management-change','Management'],['amendment-business-activity-change','Business Activity'],['amendment-articles-change','Articles of Association'],['amendment-other','Other'],['establishment-deed','Establishment deed'],['akta-pendirian','Establishment Deed'],['akta-perubahan','Amendment Deed']].map(([value,name])=>({value,name,active:true})),
+ remarkCategoryId:[['amendment-share-change','Shares'],['amendment-management-change','Management'],['amendment-business-activity-change','Business Activity'],['amendment-articles-change','Articles of Association'],['amendment-other','Other'],['establishment-deed','Establishment deed'],['akta-pendirian','Akta Pendirian'],['akta-perubahan','Akta Perubahan']].map(([value,name])=>({value,name,active:true})),
  documents:[['FAP','fap','MKT',true],['PREANALYSIS','Preanalysis','CA',true],['ICLF','Iclf','COMMITTEE',true],['NIB','Business registration (NIB)','BS',true],['NPWP','Company tax registration (NPWP)','BS',true],['DEED','Establishment & latest deed','LEGAL',true],['KTP','Directors’ identification','BS',true],['FINANCIALS','Financial statements · 3 years','CA',true],['BANK','Bank statements · 6 months','CA',true],['CONTRACT','Project contracts / purchase orders','CA',false],['QUOTATION','Equipment quotation','BS',true],['LEGAL_OPINION','Legal opinion','LEGAL',true],['EKITAS','E-KITAS for foreign shareholders','LEGAL',false]].map(([value,name,role,required])=>({value:String(value),name:String(name),role:String(role),required:Boolean(required),active:true}))
  };
  result.province.forEach(x=>x.parentValue='Indonesia');
  const cityParents:Record<string,string>={'Jakarta Selatan':'DKI Jakarta',Jakarta:'DKI Jakarta',Balikpapan:'Kalimantan Timur',Samarinda:'Kalimantan Timur',Palembang:'Sumatera Selatan',Medan:'Sumatera Utara',Surabaya:'Jawa Timur'};result.city.forEach(x=>x.parentValue=cityParents[x.value]);
- result.unitType[0].parentValue='LiuGong';result.modelName[0].parentValue='Hydraulic excavator';result.assetName[0].parentValue='936E';
+ result.unitType[0].parentValue='LiuGong';result.modelName[0].parentValue='Hydraulic Excavator';result.assetName[0].parentValue='936E';
  for(const key of ['branchCode','currency','unitCategory'])result[key].forEach(x=>x.name=x.value);
  return result;
 }
@@ -209,7 +209,7 @@ export function validateMasterCatalog(input:unknown):MasterCatalog{
   for(const row of result[group.key]){
    const nameKey=(row.parentValue||'')+'|'+row.name.toLocaleLowerCase();
    if(seenNames.has(nameKey)&&!['province','city','district','village'].includes(group.key))throw Error(`Duplicate name in ${group.name}.`);seenNames.add(nameKey);
-   if(group.key==='village'&&row.zipCode){const district=lookup.district.get(row.parentValue||''),zipRows=result.postalCode.filter(zip=>zip.value===row.zipCode);if(!zipRows.length)throw Error('ZIP code is not available in master data.');if(!district||!zipRows.some(zip=>zip.parentValue===district.parentValue))throw Error('ZIP code must belong to the same city/regency as the village.');}
+   if(group.key==='village'&&row.zipCode){const district=lookup.district.get(row.parentValue||''),zipRows=result.postalCode.filter(zip=>zip.value===row.zipCode);if(!zipRows.length)throw Error('ZIP code is not available in master data.');if(!district||!zipRows.some(zip=>zip.parentValue===district.parentValue))throw Error('ZIP code must belong to the same city/regency as the village (kota/kabupaten).');}
    if(group.parent&&row.parentValue&&!lookup[group.parent].has(row.parentValue))throw Error(`Parent data not available for ${group.name}.`);
   }
  }

@@ -28,7 +28,11 @@ async function remoteApi(path:string,method='GET',body?:any){
   }
 
   if(response.status===401){
-    window.location.replace('/login?timeout=1&reason='+encodeURIComponent('Sesi Anda telah berakhir. Silakan login kembali.'));
+    if(path==='/auth/me'||path.startsWith('/auth/')){
+      return null;
+    }
+    const loginPath = window.location.pathname.startsWith('/crm-dashboard') ? '/crm-dashboard/' : (window.location.pathname.startsWith('/crm') ? '/crm/' : '/login');
+    window.location.replace(loginPath+'?timeout=1&reason='+encodeURIComponent('Sesi Anda telah berakhir. Silakan login kembali.'));
     throw new Error('Sesi Anda telah berakhir. Mengalihkan ke login...');
   }
 
@@ -37,7 +41,8 @@ async function remoteApi(path:string,method='GET',body?:any){
   try{data=JSON.parse(text);}catch{throw new Error('The server is temporarily unavailable. Please try again.');}
   if(!response.ok){
     if(data?.code==='SESSION_TIMEOUT'||data?.code==='NO_SESSION'||data?.code==='SESSION_EXPIRED'){
-      window.location.replace('/login?timeout=1&reason='+encodeURIComponent(data.error||'Sesi Anda telah berakhir. Silakan login kembali.'));
+      const loginPath = window.location.pathname.startsWith('/crm-dashboard') ? '/crm-dashboard/' : (window.location.pathname.startsWith('/crm') ? '/crm/' : '/login');
+      window.location.replace(loginPath+'?timeout=1&reason='+encodeURIComponent(data.error||'Sesi Anda telah berakhir. Silakan login kembali.'));
       throw new Error(data.error||'Sesi berakhir');
     }
     throw new Error(data.errors?.length?data.errors.map((x:any)=>`${x.field}: ${x.detail}`).join('\n'):data.message||data.error||'Request failed');

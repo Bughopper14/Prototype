@@ -193,7 +193,7 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
         <span className="field-label" title={toTitleCase(f.label)} style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>{toTitleCase(f.label)}{isRequired&&<span className="field-required" aria-label="Required">*</span>}</span>
         {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn" style={{flexShrink:0}}><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
       </div>
-      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onBlur={handleBlur} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
+      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onBlur={handleBlur} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
     </label>;
   })}</div>;
 }
@@ -499,10 +499,18 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
    'fap-preview-sec-projects': true,
  });
  const [activeSyncSection, setActiveSyncSection] = useState<string>('fap-preview-sec-header');
+ const [activeSyncField, setActiveSyncField] = useState<string>('');
  const [syncTick, setSyncTick] = useState<number>(() => Date.now());
 
- const handleTriggerSync = (secId: string) => {
+ const handleTriggerSync = (secId: string, fieldKey?: string) => {
    setActiveSyncSection(secId);
+   setActiveSyncField(fieldKey || '');
+   setSyncTick(Date.now());
+ };
+
+ const handleTriggerFieldSync = (fieldKey: string, secId?: string) => {
+   setActiveSyncField(fieldKey);
+   if (secId) setActiveSyncSection(secId);
    setSyncTick(Date.now());
  };
 
@@ -522,6 +530,23 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
    const formTarget = document.getElementById('acc-' + secId);
    if (formTarget) {
      formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+   }
+ };
+
+ const handlePreviewCellClick = (fieldKey: string, secId?: string) => {
+   if (secId) {
+     setOpenSections(prev => ({ ...prev, [secId]: true }));
+     const formTarget = document.getElementById('acc-' + secId);
+     if (formTarget) {
+       formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+     }
+   }
+   if (fieldKey) {
+     handleTriggerFieldSync(fieldKey, secId);
+     const targetInput = document.querySelector(`input[name="${fieldKey}"], [aria-label*="${fieldKey}" i], textarea[aria-label*="${fieldKey}" i]`) as HTMLElement;
+     if (targetInput) {
+       targetInput.focus();
+     }
    }
  };
  
@@ -736,6 +761,14 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
   industrySegment: draft.industrySegment || a.industrySegment,
   businessRole: draft.businessRole || a.businessRole,
   pic: draft.pic,
+  picName: draft.pic?.picName || a.pic?.name || a.pic?.picName,
+  position: draft.pic?.position || a.pic?.position,
+  phone: draft.pic?.phone || a.pic?.phone,
+  picEmail: draft.pic?.email || a.pic?.email,
+  currentAddress: draft.pic?.currentAddress || a.pic?.currentAddress,
+  picCity: master.city?.find(x => x.value === draft.pic?.city || x.name.toLowerCase() === String(draft.pic?.city || '').toLowerCase())?.name || draft.pic?.city,
+  picProvince: master.province?.find(x => x.value === draft.pic?.province || x.name.toLowerCase() === String(draft.pic?.province || '').toLowerCase())?.name || draft.pic?.province,
+  picPostalCode: draft.pic?.postalCode || a.pic?.postalCode,
   stakeholders: draft.stakeholders || a.stakeholders,
   selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo,
   proposal: draft.proposal || a.proposal,
@@ -1036,6 +1069,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                     fields={fapCustomerFields} 
                     value={selectedCustomer || customerDraft || blank(customerFields)} 
                     disabled={true} 
+                    onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-header')}
                     onChange={() => {}} 
                   />
                 </div>
@@ -1051,6 +1085,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                   onNibOcr={()=>setNibOcrOpen(true)}
                   value={customerDraft} 
                   disabled={!canEdit} 
+                  onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-header')}
                   onChange={c => {
                     setCustomerDraft(c);
                     // Sync establishment deed to latestDeed and experience if no deeds in legal yet
@@ -1122,11 +1157,11 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office & Branch Status</h5>
-              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-company')} onChange={setDraft}/>
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office Address & Official Contact</h5>
-              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-company')} onChange={setDraft}/>
             </div>
           </div>
         )}
@@ -1197,6 +1232,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                       fields={opFields} 
                       value={operationalValues} 
                       disabled={!canEdit} 
+                      onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-business')}
                       onChange={v => {
                         const exp = liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate) : null;
                         setDraft({
@@ -1215,7 +1251,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Amendment Deed Legal Summary</h5>
-              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
+              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-business')} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
               {liveEstablishmentDate&&<small style={{color:'#94a3b8',fontSize:'0.72rem',display:'block',marginTop:4}}>Latest deed synced automatically from the Legal tab.</small>}
             </div>
           </div>
@@ -1264,7 +1300,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         </div>
         {openSections['fap-preview-sec-pic'] && (
           <div className="fap-accordion-content">
-            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/>
+            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-pic')} onChange={pic=>setDraft({...draft,pic})}/>
           </div>
         )}
       </div>
@@ -1341,8 +1377,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         <FapSheetPreview 
           data={liveDetailFapData} 
           activeSection={activeSyncSection} 
+          activeField={activeSyncField}
           syncTick={syncTick} 
           onSectionClick={handlePreviewSectionClick} 
+          onPreviewCellClick={handlePreviewCellClick}
           onPrint={handlePrintFap} 
         />
       </div>
