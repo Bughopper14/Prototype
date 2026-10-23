@@ -2652,7 +2652,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl70"></td>
 </tr>
 <tr height="190" id="fap-preview-sec-company" style="mso-height-source:userset;height:142.95pt">
-<td class="xl71" align="left" height="190" style="height:142.95pt;border-left:1.0pt solid windowtext;" valign="top"><span style="mso-ignore:vglayout;position:absolute;z-index:2;margin-left:18px;margin-top:1px;width:71px;height:2436px;border:1.0pt solid windowtext;box-sizing:border-box;background:#ffffff;"></span><span style="mso-ignore:vglayout2">
+<td class="xl71" align="left" height="190" style="height:142.95pt;border-left:1.0pt solid windowtext;" valign="top"><span id="fap-customer-data-box" style="mso-ignore:vglayout;position:absolute;z-index:2;margin-left:18px;margin-top:1px;width:71px;height:2560px;border:1.0pt solid windowtext;box-sizing:border-box;background:#ffffff;"></span><span style="mso-ignore:vglayout2">
 <table cellpadding="0" cellspacing="0">
 <tr>
 <td class="xl71" height="190" style="height:142.95pt;width:79pt" width="105"> </td>
@@ -3207,7 +3207,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl100">Email</td>
+<td class="xl100" id="fap-email-label">Email</td>
 <td class="xl100"></td>
 <td class="xl96">:</td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-email" style="border-right:.5pt solid black"> </td>
@@ -5500,6 +5500,29 @@ AAAEAAQA9QAAACUGAAAAAA==
 </tr>
 <?endif?>
 </table>
+<script>
+function syncCustomerBox() {
+  try {
+    var box = document.getElementById('fap-customer-data-box');
+    var comp = document.getElementById('fap-preview-sec-company');
+    var emailTd = document.getElementById('fap-email-label');
+    if (box && comp && emailTd) {
+      var emailTr = emailTd.closest('tr');
+      if (emailTr) {
+        var h = (emailTr.offsetTop - comp.offsetTop) - 4;
+        if (h > 1000) {
+          box.style.height = h + 'px';
+        }
+      }
+    }
+  } catch (e) {}
+}
+window.addEventListener('DOMContentLoaded', syncCustomerBox);
+window.addEventListener('load', syncCustomerBox);
+window.addEventListener('resize', syncCustomerBox);
+window.onbeforeprint = syncCustomerBox;
+syncCustomerBox();
+</script>
 </body>
 </html>
 `;
