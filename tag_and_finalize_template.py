@@ -188,7 +188,7 @@ def main():
                 img.parent['style'] = "position:absolute;z-index:10;left:24px;top:14px;width:420px;height:auto;margin:0;"
             if img.parent and img.parent.parent and img.parent.parent.name == 'td':
                 td = img.parent.parent
-                td['class'] = (str(td.get('class', '')) + ' fap-logo-cell').strip()
+                td['class'] = (str(td.get('class', '')) + ' fap-logo-cell xl67').strip()
                 td['style'] = (str(td.get('style', '')) + ';position:relative !important;overflow:visible !important;').strip()
 
     table = soup.find('table')
@@ -201,6 +201,11 @@ def main():
 
     rows = table.find_all('tr')
     print(f"Total rows in table: {len(rows)}")
+
+    # Row 0: Remove duplicate column A cell that caused floating L-corner!
+    r0_tds = rows[0].find_all('td')
+    if len(r0_tds) > 1 and 'xl67' in r0_tds[1].get('class', []):
+        r0_tds[1].decompose()
 
     # Row 4: No. Register
     r4_tds = rows[4].find_all('td')
