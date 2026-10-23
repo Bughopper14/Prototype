@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { FapSheetPreviewApproved2025 } from './FapSheetPreviewApproved2025';
-import { FapSheetPreviewClassic } from './FapSheetPreviewClassic';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer } from 'lucide-react';
+import { FAP_EXCEL_HTML_TEMPLATE } from './fap-html-template';
+import { useMasterData } from './master-data';
 
 export interface FapSheetData {
   fapNumber?: string;
@@ -17,10 +18,6 @@ export interface FapSheetData {
   companyAddress?: string;
   city?: string;
   province?: string;
-  district?: string;
-  village?: string;
-  rt?: string;
-  rw?: string;
   postalCode?: string;
   experienceYears?: string | number;
   experienceMonths?: string | number;
@@ -35,34 +32,12 @@ export interface FapSheetData {
   picName?: string;
   position?: string;
   phone?: string;
-  picEmail?: string;
   currentAddress?: string;
   picCity?: string;
   picProvince?: string;
   picPostalCode?: string;
   selectedDeedNo?: string;
   stakeholders?: any[];
-  // Extended FAP data
-  facilityPurpose?: string;
-  financingMethod?: string;
-  financingValue?: number | string;
-  downPaymentValue?: number | string;
-  interestRate?: number | string;
-  tenorMonths?: number | string;
-  paymentMethod?: string;
-  industrySegment?: string;
-  businessRole?: string;
-  proposal?: any;
-  projects?: any[];
-  bankReferences?: any[];
-  financialStatements?: any[];
-  units?: any[];
-  assetSummaryHeLiuGong?: number | string;
-  assetSummaryTruckLiuGong?: number | string;
-  assetSummaryHeNonLiuGong?: number | string;
-  assetSummaryTruckNonLiuGong?: number | string;
-  documentChecks?: any[];
-  applicationSource?: string;
   [key: string]: any;
 }
 
@@ -76,370 +51,493 @@ export interface FapSheetPreviewProps {
   compact?: boolean;
   readOnly?: boolean;
   activeSection?: string;
+  activeField?: string;
   syncTick?: number;
   onSectionClick?: (sectionId: string) => void;
+  onPreviewCellClick?: (fieldKey: string, sectionId?: string) => void;
   onPrint?: () => void | Promise<void>;
   hideToolbar?: boolean;
   isComparison?: boolean;
-  diffs?: Array<{ field: string; label: string; oldValue: string; newValue: string }>;
+  diffs?: any[];
   diffSide?: 'system' | 'ocr';
   onDiffClick?: (field: string) => void;
   externalZoom?: number;
   onZoomChange?: (z: number) => void;
-  templateVersion?: 'approved_2025' | 'classic';
 }
+
+export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
+  // Application / Header
+  applicationDate: 'fap-cell-applicationDate',
+  branchCode: 'fap-cell-branchCode',
+  fapNumber: 'fap-cell-fapNumber',
+  customerStatus: 'fap-cell-custNew',
+  companyType: 'fap-cell-corporate',
+  industrySegment: 'fap-cell-corporate',
+
+  // Company Information
+  companyName: 'fap-cell-companyName',
+  address: 'fap-cell-companyAddress',
+  companyAddress: 'fap-cell-companyAddress',
+  city: 'fap-cell-city',
+  province: 'fap-cell-province',
+  postalCode: 'fap-cell-postalCode',
+  district: 'fap-cell-city',
+  village: 'fap-cell-city',
+  rt: 'fap-cell-city',
+  rw: 'fap-cell-city',
+  phoneFax: 'fap-cell-phoneFax',
+  website: 'fap-cell-website',
+  email: 'fap-cell-email',
+  repaymentSource: 'fap-cell-repaymentSource',
+  locationStatus: 'fap-cell-locationStatus',
+
+  // Line of Business & Legal Deeds
+  mainBusiness: 'fap-cell-mainBusiness',
+  establishmentActNo: 'fap-cell-establishmentActNo',
+  establishmentDate: 'fap-cell-establishmentDate',
+  experienceYears: 'fap-cell-experienceYears',
+  experienceMonths: 'fap-cell-experienceMonths',
+  latestDeedNo: 'fap-cell-latestDeedNo',
+  latestDeedDate: 'fap-cell-latestDeedDate',
+  nib: 'fap-cell-nib',
+  nibDate: 'fap-cell-nib',
+  npwp: 'fap-cell-npwp',
+  sktNo: 'fap-cell-npwp',
+  sppkpNo: 'fap-cell-npwp',
+
+  // PIC Information
+  picName: 'fap-cell-picName',
+  name: 'fap-cell-picName',
+  phone: 'fap-cell-phone',
+  mobilePhone: 'fap-cell-phone',
+  position: 'fap-cell-position',
+  picEmail: 'fap-cell-picEmail',
+  currentAddress: 'fap-cell-currentAddress',
+  picCity: 'fap-cell-picCity',
+  picProvince: 'fap-cell-picProvince',
+  picPostalCode: 'fap-cell-picPostalCode',
+
+  // Shareholders
+  shareholders: 'fap-cell-sh-0-name',
+  sharePercentage: 'fap-cell-sh-0-pct',
+  primaryCapital: 'fap-cell-sh-0-shares',
+  depositedCapital: 'fap-cell-sh-0-shares',
+};
+
+export const SECTION_TO_CELL_ID_MAP: Record<string, string> = {
+  'fap-preview-sec-header': 'fap-cell-applicationDate',
+  'fap-preview-sec-company': 'fap-cell-companyName',
+  'fap-preview-sec-business': 'fap-cell-mainBusiness',
+  'fap-preview-sec-pic': 'fap-cell-picName',
+  'fap-preview-sec-projects': 'fap-cell-sh-0-name',
+};
+
+export const CELL_ID_TO_SECTION_MAP: Record<string, string> = {
+  'fap-cell-fapNumber': 'fap-preview-sec-header',
+  'fap-cell-applicationDate': 'fap-preview-sec-header',
+  'fap-cell-branchCode': 'fap-preview-sec-header',
+  'fap-cell-custNew': 'fap-preview-sec-header',
+  'fap-cell-custExisting': 'fap-preview-sec-header',
+  'fap-cell-corporate': 'fap-preview-sec-header',
+  'fap-cell-commercial': 'fap-preview-sec-header',
+  'fap-cell-micro': 'fap-preview-sec-header',
+  'fap-cell-liugongUser': 'fap-preview-sec-header',
+
+  'fap-cell-companyName': 'fap-preview-sec-company',
+  'fap-cell-companyAddress': 'fap-preview-sec-company',
+  'fap-cell-city': 'fap-preview-sec-company',
+  'fap-cell-province': 'fap-preview-sec-company',
+  'fap-cell-postalCode': 'fap-preview-sec-company',
+  'fap-cell-phoneFax': 'fap-preview-sec-company',
+  'fap-cell-website': 'fap-preview-sec-company',
+  'fap-cell-email': 'fap-preview-sec-company',
+  'fap-cell-repaymentSource': 'fap-preview-sec-company',
+  'fap-cell-locationStatus': 'fap-preview-sec-company',
+
+  'fap-cell-mainBusiness': 'fap-preview-sec-business',
+  'fap-cell-establishmentActNo': 'fap-preview-sec-business',
+  'fap-cell-establishmentDate': 'fap-preview-sec-business',
+  'fap-cell-experienceYears': 'fap-preview-sec-business',
+  'fap-cell-experienceMonths': 'fap-preview-sec-business',
+  'fap-cell-latestDeedNo': 'fap-preview-sec-business',
+  'fap-cell-latestDeedDate': 'fap-preview-sec-business',
+  'fap-cell-nib': 'fap-preview-sec-business',
+  'fap-cell-npwp': 'fap-preview-sec-business',
+
+  'fap-cell-picName': 'fap-preview-sec-pic',
+  'fap-cell-phone': 'fap-preview-sec-pic',
+  'fap-cell-position': 'fap-preview-sec-pic',
+  'fap-cell-picEmail': 'fap-preview-sec-pic',
+  'fap-cell-currentAddress': 'fap-preview-sec-pic',
+  'fap-cell-picCity': 'fap-preview-sec-pic',
+  'fap-cell-picProvince': 'fap-preview-sec-pic',
+  'fap-cell-picPostalCode': 'fap-preview-sec-pic',
+
+  'fap-cell-sh-0-name': 'fap-preview-sec-projects',
+};
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
-  // Rollback logic: allows switching between new approved 2025 template and previous classic template
-  const [version, setVersion] = useState<'approved_2025' | 'classic'>(() => {
-    if (props.templateVersion) return props.templateVersion;
-    try {
-      const saved = localStorage.getItem('fap_sheet_template_version');
-      if (saved === 'classic' || saved === 'approved_2025') return saved;
-    } catch {}
-    return 'approved_2025';
-  });
+  const master = useMasterData();
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.44);
+
+  // Compute normalized values from props
+  const d = useMemo(() => {
+    const raw = props.data || {};
+    const app = props.application || {};
+    const cust = props.customer || app.customer || {};
+    const prof = props.profile || app.profile || {};
+    const p = props.pic || app.pic || raw.pic || {};
+    const sh = props.stakeholders || app.stakeholders || raw.stakeholders || [];
+
+    const pick = (vA: any, vB: any, vC?: any, fallback = '') => {
+      if (vA !== undefined && vA !== null && vA !== '') return vA;
+      if (vB !== undefined && vB !== null && vB !== '') return vB;
+      if (vC !== undefined && vC !== null && vC !== '') return vC;
+      return fallback;
+    };
+
+    const resolveLoc = (grp: 'province' | 'city' | 'district' | 'village', val: any) => {
+      if (!val) return '';
+      const str = String(val).trim();
+      const items = (master as any)?.[grp] || [];
+      const found = items.find((x: any) => x.value === str || x.name.toLowerCase() === str.toLowerCase());
+      if (found) return found.name;
+      if (/^[0-9a-f-]{32,36}$/i.test(str)) return '';
+      return str;
+    };
+
+    const formatDate = (val: any) => {
+      if (!val) return '';
+      try {
+        const dt = new Date(val);
+        if (isNaN(dt.getTime())) return String(val).slice(0, 10);
+        const day = String(dt.getDate()).padStart(2, '0');
+        const month = String(dt.getMonth() + 1).padStart(2, '0');
+        const year = dt.getFullYear();
+        return `${day}/${month}/${year}`;
+      } catch {
+        return String(val).slice(0, 10);
+      }
+    };
+
+    return {
+      fapNumber: pick(raw.fapNumber, app.fapNumber, '0006/AF/03/2026'),
+      applicationDate: formatDate(pick(raw.applicationDate, app.applicationDate, new Date().toISOString())),
+      branchCode: pick(raw.branchCode, app.branchCode, 'JKT01'),
+      customerStatus: pick(raw.customerStatus, app.customerStatus, 'EXISTING').toUpperCase(),
+      companyType: pick(raw.companyType, cust.companyType, '').toUpperCase(),
+      companyName: pick(raw.companyName, cust.companyName, ''),
+      companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
+      city: resolveLoc('city', pick(raw.city, prof.city, '')),
+      province: resolveLoc('province', pick(raw.province, prof.province, '')),
+      postalCode: pick(raw.postalCode, prof.postalCode, ''),
+      mainBusiness: pick(raw.mainBusiness, prof.mainBusiness, ''),
+      establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
+      establishmentDate: formatDate(pick(raw.establishmentDate, cust.establishmentDate, '')),
+      experienceYears: pick(raw.experienceYears, prof.experienceYears, ''),
+      experienceMonths: pick(raw.experienceMonths, prof.experienceMonths, ''),
+      latestDeedNo: pick(raw.latestDeedNo, prof.latestDeedNo, ''),
+      latestDeedDate: formatDate(pick(raw.latestDeedDate, prof.latestDeedDate, '')),
+      nib: pick(raw.nib, cust.nib, ''),
+      npwp: pick(raw.npwp, cust.npwp, ''),
+      phoneFax: pick(raw.phoneFax, prof.phoneFax, ''),
+      website: pick(raw.website, prof.website, ''),
+      email: pick(raw.email, prof.email, ''),
+      repaymentSource: pick(raw.repaymentSource, prof.repaymentSource, ''),
+      locationStatus: pick(raw.locationStatus, prof.locationStatus, ''),
+      picName: pick(raw.picName, p.picName, p.name, ''),
+      position: pick(raw.position, p.position, ''),
+      phone: pick(raw.phone, p.phone, p.mobilePhone, ''),
+      picEmail: pick(raw.picEmail, p.email, ''),
+      currentAddress: pick(raw.currentAddress, p.currentAddress, ''),
+      picCity: resolveLoc('city', pick(raw.picCity, p.city, '')),
+      picProvince: resolveLoc('province', pick(raw.picProvince, p.province, '')),
+      picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
+      stakeholders: sh,
+    };
+  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, master]);
+
+  // Push values into iframe DOM
+  const syncIframeValues = () => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentDocument) return;
+    const doc = iframe.contentDocument;
+
+    // Apply zoom
+    if (doc.body) {
+      doc.body.style.zoom = String(zoomLevel);
+      doc.body.style.background = '#ffffff';
+    }
+
+    if (iframe.contentWindow) {
+      iframe.contentWindow.onbeforeprint = () => {
+        if (doc.body) doc.body.style.zoom = '0.166';
+      };
+      iframe.contentWindow.onafterprint = () => {
+        if (doc.body) doc.body.style.zoom = String(zoomLevel);
+      };
+    }
+
+    const setText = (id: string, text: any) => {
+      const el = doc.getElementById(id);
+      if (el) {
+        el.textContent = text !== undefined && text !== null && String(text).trim() !== '' ? String(text) : '';
+      }
+    };
+
+    setText('fap-cell-fapNumber', d.fapNumber);
+    setText('fap-cell-applicationDate', d.applicationDate);
+    setText('fap-cell-branchCode', d.branchCode);
+
+    const isNew = d.customerStatus.includes('NEW') || (!d.customerStatus.includes('EXISTING') && !d.customerStatus.includes('LAMA'));
+    setText('fap-cell-custNew', isNew ? '✓' : '');
+    setText('fap-cell-custExisting', !isNew ? '✓' : '');
+
+    const isCorp = d.companyType.includes('CORPORATE') || d.companyType.includes('PT') || d.companyType.includes('PERSEROAN');
+    const isComm = d.companyType.includes('COMMERCIAL') || d.companyType.includes('CV') || d.companyType.includes('FIRMA');
+    const isMicro = d.companyType.includes('MICRO') || d.companyType.includes('MIKRO');
+    const isLiuGongUser = d.companyType.includes('LIUGONG') || d.companyType.includes('USER');
+
+    setText('fap-cell-corporate', isCorp ? '✓' : '');
+    setText('fap-cell-commercial', isComm ? '✓' : '');
+    setText('fap-cell-micro', isMicro ? '✓' : '');
+    setText('fap-cell-liugongUser', isLiuGongUser ? '✓' : '');
+
+    setText('fap-cell-companyName', d.companyName);
+    setText('fap-cell-picName', d.picName);
+    setText('fap-cell-phone', d.phone);
+    setText('fap-cell-companyAddress', d.companyAddress);
+    setText('fap-cell-position', d.position);
+    setText('fap-cell-picEmail', d.picEmail);
+    setText('fap-cell-city', d.city);
+    setText('fap-cell-currentAddress', d.currentAddress);
+    setText('fap-cell-province', d.province);
+    setText('fap-cell-postalCode', d.postalCode);
+    setText('fap-cell-picCity', d.picCity);
+    setText('fap-cell-mainBusiness', d.mainBusiness);
+    setText('fap-cell-picProvince', d.picProvince);
+    setText('fap-cell-picPostalCode', d.picPostalCode);
+    setText('fap-cell-establishmentActNo', d.establishmentActNo);
+    setText('fap-cell-establishmentDate', d.establishmentDate);
+    setText('fap-cell-experienceYears', d.experienceYears);
+    setText('fap-cell-experienceMonths', d.experienceMonths);
+    setText('fap-cell-latestDeedNo', d.latestDeedNo);
+    setText('fap-cell-latestDeedDate', d.latestDeedDate);
+    setText('fap-cell-nib', d.nib);
+    setText('fap-cell-npwp', d.npwp);
+    setText('fap-cell-phoneFax', d.phoneFax);
+    setText('fap-cell-website', d.website);
+    setText('fap-cell-email', d.email);
+    setText('fap-cell-repaymentSource', d.repaymentSource);
+    setText('fap-cell-locationStatus', d.locationStatus);
+
+    // Shareholders up to 8
+    const shList = d.stakeholders || [];
+    for (let i = 0; i < 8; i++) {
+      const item = shList[i] || {};
+      const shName = item.name || [item.firstName, item.middleName, item.lastName].filter(Boolean).join(' ');
+      setText(`fap-cell-sh-${i}-name`, shName || '');
+      setText(`fap-cell-sh-${i}-pos`, item.position || item.representativeType || '');
+      setText(`fap-cell-sh-${i}-shares`, item.shares ? Number(item.shares).toLocaleString('id-ID') : '');
+      setText(`fap-cell-sh-${i}-pct`, item.sharePercentage ? `${item.sharePercentage}%` : '');
+    }
+
+    // Attach click listeners to all data cells
+    const cells = doc.querySelectorAll('[id^="fap-cell-"]');
+    cells.forEach((cell) => {
+      (cell as HTMLElement).style.cursor = 'pointer';
+      (cell as HTMLElement).title = 'Click to focus this field in form';
+      (cell as HTMLElement).onclick = (e) => {
+        e.stopPropagation();
+        const id = (cell as HTMLElement).id;
+        const matchedField = Object.entries(FIELD_TO_CELL_ID_MAP).find(([_, v]) => v === id)?.[0] || '';
+        const matchedSection = CELL_ID_TO_SECTION_MAP[id] || '';
+        if (props.onPreviewCellClick) {
+          props.onPreviewCellClick(matchedField, matchedSection);
+        } else if (matchedSection && props.onSectionClick) {
+          props.onSectionClick(matchedSection);
+        }
+      };
+    });
+  };
 
   useEffect(() => {
-    if (props.templateVersion) {
-      setVersion(props.templateVersion);
-    }
-  }, [props.templateVersion]);
+    syncIframeValues();
+    const timer = setTimeout(syncIframeValues, 150);
+    return () => clearTimeout(timer);
+  }, [d, zoomLevel]);
 
-  const handleSwitchToClassic = () => {
-    setVersion('classic');
-    try {
-      localStorage.setItem('fap_sheet_template_version', 'classic');
-    } catch {}
+  // Handle field/section focus and scroll sync
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentDocument || !iframe.contentWindow) return;
+    const doc = iframe.contentDocument;
+    const win = iframe.contentWindow;
+
+    const targetCellId = (props.activeField && FIELD_TO_CELL_ID_MAP[props.activeField]) ||
+                         (props.activeSection && (SECTION_TO_CELL_ID_MAP[props.activeSection] || props.activeSection)) ||
+                         (props.activeSection && FIELD_TO_CELL_ID_MAP[props.activeSection]);
+
+    if (!targetCellId) return;
+
+    const el = doc.getElementById(targetCellId);
+    if (el) {
+      // Clear old highlights
+      doc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(h => {
+        h.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+      });
+
+      // Highlight target with blue theme
+      const isSection = targetCellId.startsWith('fap-preview-sec-') || el.tagName === 'TR';
+      el.classList.add(isSection ? 'fap-section-highlight' : 'fap-cell-highlight');
+
+      // Robust pixel-level scroll calculation inside iframe
+      const rect = el.getBoundingClientRect();
+      const currentScrollY = win.scrollY || doc.documentElement.scrollTop || doc.body.scrollTop || 0;
+      const targetY = Math.max(0, currentScrollY + rect.top - 60);
+
+      win.scrollTo({ top: targetY, behavior: 'smooth' });
+      doc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+      doc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+
+      const timer = setTimeout(() => {
+        el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+      }, 3500);
+      return () => clearTimeout(timer);
+    }
+  }, [props.activeSection, props.activeField, props.syncTick]);
+
+  useEffect(() => {
+    if (props.externalZoom !== undefined && props.externalZoom > 0) {
+      setZoomLevel(props.externalZoom);
+    }
+  }, [props.externalZoom]);
+
+  // Auto-fit initial zoom based on container width
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const w = containerRef.current.clientWidth;
+        // Native Excel table width in sheet001.htm is 3443px
+        const targetZoom = Math.min(0.5, Math.max(0.18, (w - 24) / 3443));
+        setZoomLevel(Number(targetZoom.toFixed(2)));
+      }
+    };
+    updateWidth();
+    const observer = new ResizeObserver(updateWidth);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.15, Number((z - 0.05).toFixed(2))));
+  const handleZoomIn = () => setZoomLevel((z) => Math.min(1.0, Number((z + 0.05).toFixed(2))));
+  const handleResetZoom = () => {
+    if (containerRef.current) {
+      const w = containerRef.current.clientWidth;
+      const targetZoom = Math.min(0.5, Math.max(0.18, (w - 24) / 3443));
+      setZoomLevel(Number(targetZoom.toFixed(2)));
+    }
   };
 
-  const handleSwitchToApproved = () => {
-    setVersion('approved_2025');
-    try {
-      localStorage.setItem('fap_sheet_template_version', 'approved_2025');
-    } catch {}
-  };
+  const handlePrint = () => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow && iframe.contentDocument) {
+      const doc = iframe.contentDocument;
+      const prevZoom = doc.body.style.zoom;
 
-  if (version === 'classic') {
-    return <FapSheetPreviewClassic {...props} onSwitchToApproved={handleSwitchToApproved} />;
-  }
+      const restoreZoom = () => {
+        if (doc.body) {
+          doc.body.style.zoom = prevZoom || String(zoomLevel);
+        }
+        iframe.contentWindow?.removeEventListener('afterprint', restoreZoom);
+      };
 
-  return <FapSheetPreviewApproved2025 {...props} />;
-}
+      iframe.contentWindow.addEventListener('afterprint', restoreZoom);
+      doc.body.style.zoom = '0.166';
+      iframe.contentWindow.print();
 
-export function printFapDocument(fapNumber?: string) {
-  const el = document.getElementById('fap-excel-printable-doc');
-  if (!el) {
-    window.print();
-    return;
-  }
-
-  // Remove existing print iframe if any
-  const existingIframe = document.getElementById('fap-print-iframe');
-  if (existingIframe) {
-    existingIframe.remove();
-  }
-
-  // Create an invisible iframe for isolated printing
-  const iframe = document.createElement('iframe');
-  iframe.id = 'fap-print-iframe';
-  iframe.style.position = 'fixed';
-  iframe.style.right = '0';
-  iframe.style.bottom = '0';
-  iframe.style.width = '0';
-  iframe.style.height = '0';
-  iframe.style.border = '0';
-  iframe.style.visibility = 'hidden';
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow?.document;
-  if (!doc) {
-    window.print();
-    return;
-  }
-
-  // Deep clone the printable sheet and strip screen zoom/transforms
-  const clone = el.cloneNode(true) as HTMLElement;
-  clone.id = 'fap-excel-printable-doc-cloned';
-  clone.removeAttribute('style');
-  clone.className = 'excel-fap-paper fap-print-sheet';
-
-  doc.open();
-  doc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Application Form - ${fapNumber || 'Print'}</title>
-  <style>
-    @page {
-      size: A4 portrait;
-      margin: 6mm 6mm 6mm 6mm;
-    }
-    *, *::before, *::after {
-      box-sizing: border-box !important;
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      visibility: visible !important;
-    }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
-      width: 100% !important;
-      height: auto !important;
-      background: #ffffff !important;
-      color: #000000 !important;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-      font-size: 8.5pt !important;
-      line-height: 1.25 !important;
-    }
-    .fap-print-sheet {
-      width: 100% !important;
-      min-width: 100% !important;
-      max-width: 100% !important;
-      transform: none !important;
-      position: static !important;
-      box-shadow: none !important;
-      border: none !important;
-      margin: 0 auto !important;
-      padding: 0 !important;
-      background: #ffffff !important;
-    }
-    .exact-header-top {
-      display: flex !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      margin-bottom: 5px !important;
-    }
-    .exact-header-logo img {
-      height: 38px !important;
-      width: auto !important;
-      display: block !important;
-    }
-    .exact-header-title {
-      font-size: 19px !important;
-      font-weight: 900 !important;
-      color: #002060 !important;
-      letter-spacing: 0.8px !important;
-      text-align: center !important;
-    }
-    .exact-header-reg {
-      border: 1px solid #000000 !important;
-      padding: 3px 8px !important;
-      font-size: 11px !important;
-      font-weight: 700 !important;
-      display: flex !important;
-      align-items: center !important;
-      gap: 6px !important;
-      background: #ffffff !important;
-    }
-    .exact-header-reg .reg-val {
-      color: #002060 !important;
-      font-family: monospace !important;
-    }
-    .exact-navy-bar {
-      background: #002060 !important;
-      height: 5px !important;
-      width: 100% !important;
-      margin: 4px 0 8px 0 !important;
-    }
-    .exact-matrix-grid {
-      display: grid !important;
-      grid-template-columns: 1.15fr 1.35fr 1.05fr 1fr !important;
-      gap: 8px !important;
-      margin-bottom: 8px !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
-    .exact-matrix-box {
-      border: 1px solid #000000 !important;
-      background: #ffffff !important;
-    }
-    .exact-matrix-row {
-      display: flex !important;
-      justify-content: space-between !important;
-      align-items: center !important;
-      padding: 2.5px 6px !important;
-      border-bottom: 1px solid #000000 !important;
-      font-size: 9.5px !important;
-      min-height: 22px !important;
-    }
-    .exact-matrix-row:last-child {
-      border-bottom: none !important;
-    }
-    .exact-matrix-lbl {
-      font-weight: 600 !important;
-      color: #000000 !important;
-    }
-    .exact-matrix-val {
-      font-weight: 700 !important;
-      color: #002060 !important;
-    }
-    .exact-matrix-chk {
-      font-size: 13px !important;
-      font-weight: bold !important;
-      color: #002060 !important;
-    }
-    .exact-orange-bar {
-      background: #2563eb !important;
-      height: 2.5px !important;
-      width: 100% !important;
-      margin: 4px 0 10px 0 !important;
-    }
-    .exact-fap-body {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr !important;
-      gap: 16px !important;
-    }
-    .exact-fap-col {
-      display: flex !important;
-      flex-direction: column !important;
-      gap: 7px !important;
-    }
-    .exact-fap-row {
-      display: flex !important;
-      align-items: flex-start !important;
-      font-size: 9.5px !important;
-      gap: 4px !important;
-    }
-    .exact-fap-lbl {
-      width: 155px !important;
-      flex-shrink: 0 !important;
-      font-weight: 500 !important;
-      line-height: 1.25 !important;
-      color: #000000 !important;
-    }
-    .exact-fap-colon {
-      width: 8px !important;
-      flex-shrink: 0 !important;
-      font-weight: 600 !important;
-      text-align: center !important;
-    }
-    .exact-fap-box {
-      flex: 1 !important;
-      border: 1px solid #000000 !important;
-      background: #ffffff !important;
-      min-height: 21px !important;
-      padding: 2px 6px !important;
-      display: flex !important;
-      align-items: center !important;
-      font-size: 9.5px !important;
-      font-weight: 600 !important;
-      color: #002060 !important;
-    }
-    .exact-fap-box.multiline {
-      min-height: 44px !important;
-      align-items: flex-start !important;
-      line-height: 1.3 !important;
-    }
-    .exact-sub-row {
-      display: flex !important;
-      align-items: center !important;
-      font-size: 9.5px !important;
-      margin-left: 20px !important;
-      gap: 4px !important;
-    }
-    .exact-sub-lbl {
-      width: 135px !important;
-      flex-shrink: 0 !important;
-      font-weight: 500 !important;
-    }
-    .exact-dual-row {
-      display: flex !important;
-      gap: 6px !important;
-      flex: 1 !important;
-    }
-    .exact-inline-group {
-      display: flex !important;
-      align-items: center !important;
-      gap: 4px !important;
-      flex: 1 !important;
-    }
-    .exact-inline-lbl {
-      font-size: 9px !important;
-      font-weight: 500 !important;
-      white-space: nowrap !important;
-    }
-    .exact-sh-section {
-      margin-top: 4px !important;
-      border-top: 1px solid #cbd5e1 !important;
-      padding-top: 6px !important;
-    }
-    .exact-sh-title {
-      font-size: 10px !important;
-      font-weight: 700 !important;
-      color: #002060 !important;
-      line-height: 1.2 !important;
-    }
-    .exact-sh-subtitle {
-      font-size: 8.5px !important;
-      font-style: italic !important;
-      color: #475569 !important;
-      margin: 2px 0 5px 0 !important;
-    }
-    .exact-sh-table {
-      width: 100% !important;
-      border-collapse: collapse !important;
-      font-size: 8.5px !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
-    .exact-sh-table th, .exact-sh-table td {
-      border: 1px solid #000000 !important;
-      padding: 2px 4px !important;
-    }
-    .exact-sh-table th {
-      background: #f1f5f9 !important;
-      font-weight: 700 !important;
-      text-align: center !important;
-      color: #000000 !important;
-    }
-    .exact-sh-table td {
-      background: #ffffff !important;
-    }
-    .exact-sh-table td.center {
-      text-align: center !important;
-    }
-    .exact-sh-table td.right {
-      text-align: right !important;
-      font-family: monospace !important;
-    }
-    .exact-section-divider {
-      margin-top: 10px !important;
-      margin-bottom: 5px !important;
-      page-break-inside: avoid !important;
-      break-inside: avoid !important;
-    }
-    .exact-section-header {
-      background: #002060 !important;
-      color: #ffffff !important;
-      font-size: 9.5px !important;
-      font-weight: 700 !important;
-      padding: 3px 8px !important;
-      letter-spacing: 0.5px !important;
-    }
-    .highlight-dynamic {
-      color: #002060 !important;
-    }
-  </style>
-</head>
-<body>
-  ${clone.outerHTML}
-</body>
-</html>`);
-  doc.close();
-
-  setTimeout(() => {
-    try {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-    } catch (e) {
-      console.warn('iframe print failed, using window.print()', e);
+      setTimeout(restoreZoom, 30000);
+    } else {
       window.print();
     }
-    setTimeout(() => {
-      try {
-        if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
-      } catch {}
-    }, 4000);
-  }, 250);
+  };
+
+  return (
+    <div className="excel-fap-viewer" ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+      {!props.hideToolbar && (
+        <div className="excel-fap-ribbon">
+          {/* Top Utility Tier: Document Info, Zoom, Print */}
+          <div className="excel-ribbon-top-tier">
+            <div className="excel-ribbon-left">
+              <FileSpreadsheet size={16} className="excel-brand-icon" />
+              <div className="excel-file-badge">
+                <span className="excel-file-name">Application Form APPROVED.xlsx</span>
+                <span className="excel-tab-badge">Sheet: APPROVED v01.2025</span>
+              </div>
+              <span className="excel-live-tag">
+                <i className="excel-live-dot" />
+                LIVE AUTOFILLED
+              </span>
+            </div>
+
+            <div className="excel-ribbon-right">
+              <div className="excel-zoom-controls">
+                <button onClick={handleZoomOut} title="Zoom Out"><ZoomOut size={13} /></button>
+                <span className="excel-zoom-btn-label">{Math.round(zoomLevel * 100)}%</span>
+                <button onClick={handleZoomIn} title="Zoom In"><ZoomIn size={13} /></button>
+                <button onClick={handleResetZoom} title="Reset Zoom"><RotateCcw size={13} /></button>
+              </div>
+              <button className="excel-print-btn" onClick={handlePrint} title="Print Document">
+                <Printer size={13} />
+                <span>Print</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sub Tier: Harmonious Section Quick-Jump Tabs */}
+          <div className="excel-ribbon-sub-tier">
+            <div className="excel-section-chips">
+              {[
+                { id: 'fap-preview-sec-header', label: '1. Identity' },
+                { id: 'fap-preview-sec-company', label: '2. Domicile' },
+                { id: 'fap-preview-sec-business', label: '3. Profile' },
+                { id: 'fap-preview-sec-pic', label: '4. PIC' },
+                { id: 'fap-preview-sec-projects', label: '5. Projects' },
+              ].map(chip => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  className={`excel-chip-btn ${props.activeSection === chip.id ? 'active' : ''}`}
+                  onClick={() => props.onSectionClick?.(chip.id)}
+                  title={`Jump to ${chip.label}`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Embedded Native HTML Template Frame */}
+      <div style={{ flex: 1, width: '100%', height: 'calc(100% - 40px)', background: '#ffffff', overflow: 'hidden' }}>
+        <iframe
+          ref={iframeRef}
+          srcDoc={FAP_EXCEL_HTML_TEMPLATE}
+          title="Application Form APPROVED"
+          onLoad={syncIframeValues}
+          style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff', display: 'block' }}
+        />
+      </div>
+    </div>
+  );
 }
+
+export function printFapDocument(_fapNumber?: string) {
+  window.print();
+}
+
+export default FapSheetPreview;

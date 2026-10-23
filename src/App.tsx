@@ -4,7 +4,7 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
+import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {FapSheetPreview, printFapDocument, type FapSheetData} from './FapSheetPreview';
 import {
@@ -25,6 +25,13 @@ import {api} from './api';
 import {MasterDataPage,MasterSelect,useMasterData,setMasterData,resetMasterChildren,useMandatoryRules,isFieldMandatory,resolveWilayahUpwards} from './master-data';
 import {masterGroups,masterKey} from './master-catalog';
 import {type Field,profileFields,customerFields,picFields,stakeholderFields,projectFields,bankFields,proposalFields,unitFields,financialFields,legalDeedFields,legalPartyFields,blank,label,toTitleCase} from './fields';
+export function getGalleryUrl(): string {
+  if (typeof window === 'undefined') return '/gallery';
+  if (window.location.port === '5173') {
+    return `http://${window.location.hostname}:8086/gallery`;
+  }
+  return '/gallery';
+}
 const statusLabel:Record<string,string>={DRAFT:'Draft',SUBMITTED_TO_BS:'BS verification',BS_VERIFIED:'BS verified',IN_CA_LEGAL_REVIEW:'CA & Legal review',CREDIT_COMMITTEE_REVIEW:'Committee review',APPROVED:'Approved',REJECTED:'Rejected',RETURNED:'Returned'};
 const money=(n:any,compact=false)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'IDR',maximumFractionDigits:0,...(compact?{notation:'compact' as const}:{})}).format(Number(n)||0).replace('IDR','Rp');
 const date=(d:any)=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
@@ -84,7 +91,11 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
   const mandatoryRules=useMandatoryRules();
   return <div className={`formgrid ${className||''}`}>{fields.map(f=>{
     const isRequired=isFieldMandatory(mandatoryRules,section,f.key,f.required);
-    const fieldValue=f.type==='date'?String(value?.[f.key]||'').slice(0,10):value?.[f.key]??'';
+    const rawVal=value?.[f.key];
+    const isPlaceholderDash=String(rawVal??'').trim()==='-';
+    const isPlaceholderZip=f.key==='postalCode'&&String(rawVal??'').trim()==='00000';
+    const cleanVal=(isPlaceholderDash||isPlaceholderZip)?'':(rawVal??'');
+    const fieldValue=f.type==='date'?String(cleanVal||'').slice(0,10):cleanVal;
     const isDigitsOnly=['phone','mobilePhone','phoneFax','rt','rw'].includes(f.key);
     const isLettersOnly=['repaymentSource'].includes(f.key);
     const isTitleCaseField=[
@@ -296,7 +307,7 @@ export default function App(){
     setSelected(newAppDraft);
   }
 
-  return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}{name==='Customers'&&<em>{customers.length}</em>}</button>)}</nav><div className="sidebar-bottom"><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.displayRole || (checkIsAdmin(user) ? 'Administrator' : user.role === 'MKT' ? 'Marketing' : label(user.role))} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : (checkIsAdmin(user) ? 'ADMIN' : (user.roleBadge || user.displayRole || user.role))}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Deed review and approval results that need follow-up.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>(user.role==='MKT'||checkIsAdmin(user))?startNewApplication():notify('Application creation is available for Marketing (MKT) and Administrator accounts.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<CustomerDirectory customers={customers} rows={rows} user={user} open={open} startNewApplication={startNewApplication} notify={notify}/>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
+  return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><a href={getGalleryUrl()} className="sidebar-gallery-btn" title="Kembali ke Gallery Aplikasi"><ArrowLeft size={16}/><span>Kembali ke Gallery</span></a><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}{name==='Customers'&&<em>{customers.length}</em>}</button>)}</nav><div className="sidebar-bottom"><a href={getGalleryUrl()} className="sidebar-gallery-btn-bottom" title="Kembali ke Gallery Aplikasi"><LayoutGrid size={15}/><span>Kembali ke Gallery</span></a><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.displayRole || (checkIsAdmin(user) ? 'Administrator' : user.role === 'MKT' ? 'Marketing' : label(user.role))} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : (checkIsAdmin(user) ? 'ADMIN' : (user.roleBadge || user.displayRole || user.role))}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Deed review and approval results that need follow-up.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>(user.role==='MKT'||checkIsAdmin(user))?startNewApplication():notify('Application creation is available for Marketing (MKT) and Administrator accounts.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<CustomerDirectory customers={customers} rows={rows} user={user} open={open} startNewApplication={startNewApplication} notify={notify}/>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
 }
 function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-brand"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Review deed document':user.role==='HEAD_BS'?'Approve deed document':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Fix the rejected deed':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
@@ -654,13 +665,13 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
    const safePayload = {
      branchCode: profileData.branchCode || 'JKT01',
      companyName: finalCompanyName,
-     companyAddress: profileData.companyAddress || '-',
-     city: profileData.city || '-',
-     province: profileData.province || '-',
-     postalCode: profileData.postalCode || '00000',
-     phoneFax: profileData.phoneFax || '-',
-     email: profileData.email || (customerDraft.email || 'draft@liugong.local'),
-     mainBusiness: profileData.mainBusiness || '-',
+     companyAddress: profileData.companyAddress || '',
+     city: profileData.city || '',
+     province: profileData.province || '',
+     postalCode: profileData.postalCode || '',
+     phoneFax: profileData.phoneFax || '',
+     email: profileData.email || (customerDraft.email || ''),
+     mainBusiness: profileData.mainBusiness || '',
      locationStatus: profileData.locationStatus || 'OWNED',
      repaymentSource: profileData.repaymentSource || 'Operating Cash Flow',
      industrySegment: profileData.industrySegment || 'MINING',
@@ -752,9 +763,12 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       if (res.application) {
         onChange(res.application);
         setDraft(structuredClone(res.application));
+        setActiveStage(res.application.stage || 'Pre-analysis');
+      } else {
+        setActiveStage('Pre-analysis');
       }
       setFapComparisonModal(null);
-      notify('FAP document data changes approved and updated to database.');
+      notify('FAP document data changes approved. Stage advanced to Pre-analysis.');
     } catch (err: any) {
       notify('Failed to update data: ' + err.message);
     } finally {
@@ -932,9 +946,15 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
   repaymentSource: draft.repaymentSource,
   locationStatus: draft.locationStatus,
   industrySegment: draft.industrySegment || a.industrySegment,
-  businessRole: draft.businessRole || a.businessRole,
-  pic: draft.pic,
-  stakeholders: draft.stakeholders || a.stakeholders,
+  pic: draft.pic || a.pic,
+  picName: draft.pic?.picName || draft.pic?.name || a.pic?.picName || a.pic?.name || a.picName || '',
+  position: draft.pic?.position || a.pic?.position || a.position || '',
+  phone: draft.pic?.phone || draft.pic?.mobilePhone || a.pic?.phone || a.phone || '',
+  picEmail: draft.pic?.email || draft.pic?.picEmail || a.pic?.email || a.picEmail || '',
+  currentAddress: draft.pic?.currentAddress || draft.pic?.address || a.pic?.currentAddress || a.currentAddress || '',
+  picCity: master.city?.find(x => x.value === (draft.pic?.city || a.pic?.city) || x.name?.toLowerCase() === String(draft.pic?.city || a.pic?.city || '').toLowerCase())?.name || draft.pic?.city || a.pic?.city || '',
+  picProvince: master.province?.find(x => x.value === (draft.pic?.province || a.pic?.province) || x.name?.toLowerCase() === String(draft.pic?.province || a.pic?.province || '').toLowerCase())?.name || draft.pic?.province || a.pic?.province || '',
+  picPostalCode: draft.pic?.postalCode || a.pic?.postalCode || a.picPostalCode || '',
   selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo,
   proposal: draft.proposal || a.proposal,
   projects: draft.projects || a.projects,
@@ -1529,7 +1549,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       </div>
     </div>
   </div>
-  {!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData} onPrint={handlePrintFap}/></div>}
+  {!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData} application={a} customer={draft.customer||a.customer} profile={draft} pic={draft.pic||a.pic} onPrint={handlePrintFap}/></div>}
   {sideBySide ? (
     <div className="fap-detail-split-container">
       <div className="fap-detail-form-col">
@@ -1538,6 +1558,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div className="fap-detail-preview-col">
         <FapSheetPreview 
           data={liveDetailFapData} 
+          application={a}
+          customer={draft.customer || a.customer}
+          profile={draft}
+          pic={draft.pic || a.pic}
           activeSection={activeSyncSection} 
           syncTick={syncTick} 
           onSectionClick={handlePreviewSectionClick} 
@@ -1806,6 +1830,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const [systemZoom, setSystemZoom] = useState<number>(0.72);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
   const [fapNavFilter, setFapNavFilter] = useState<string>('all');
+  const master = useMasterData();
 
   const sectionFieldMap: Record<string, string[]> = {
     'fap-preview-sec-header': ['fapNumber', 'branchCode', 'customerStatus', 'companyType', 'applicationDate'],
@@ -1956,55 +1981,60 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     }
   }, [selectedCode, a.id, activeFiles.length]);
 
-  const liveFapData: FapSheetData = useMemo(() => ({
-    fapNumber: a.fapNumber || '-',
-    applicationDate: a.applicationDate || new Date().toISOString(),
-    branchCode: a.branchCode || a.profile?.branchCode || '',
-    customerStatus: a.customerCategory || a.profile?.customerStatus || 'EXISTING',
-    companyName: a.customer?.companyName || a.companyName || '',
-    companyType: a.customer?.companyType || a.companyType || 'PT',
-    nib: a.customer?.nib || a.nib || '',
-    nibDate: a.customer?.nibDate || a.nibDate || '',
-    npwp: a.customer?.npwp || a.npwp || '',
-    establishmentActNo: a.customer?.establishmentActNo || a.establishmentActNo || '',
-    establishmentDate: a.customer?.establishmentDate || a.establishmentDate || '',
-    companyAddress: a.customer?.companyAddress || a.companyAddress || '',
-    city: a.customer?.city || a.city || '',
-    province: a.customer?.province || a.province || '',
-    postalCode: a.customer?.postalCode || a.postalCode || '',
-    experienceYears: a.customer?.experienceYears ?? a.experienceYears ?? '',
-    experienceMonths: a.customer?.experienceMonths ?? a.experienceMonths ?? '',
-    mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
-    latestDeedNo: a.latestDeedNo || '',
-    latestDeedDate: a.latestDeedDate || '',
-    phoneFax: a.phoneFax || '',
-    website: a.website || '',
-    email: a.email || '',
-    repaymentSource: a.repaymentSource || '',
-    locationStatus: a.locationStatus || '',
-    picName: a.pic?.picName || '',
-    position: a.pic?.position || '',
-    phone: a.pic?.phone || '',
-    currentAddress: a.pic?.currentAddress || '',
-    picCity: a.pic?.city || '',
-    picProvince: a.pic?.province || '',
-    picPostalCode: a.pic?.postalCode || '',
-    selectedDeedNo: a.selectedDeedNo || a.customer?.establishmentActNo || '',
-    stakeholders: a.stakeholders || [],
-    facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || '',
-    financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
-    financingValue: a.proposal?.financingValue || a.financingValue || '',
-    downPaymentValue: a.proposal?.downPaymentValue || a.downPaymentValue || '',
-    interestRate: a.proposal?.interestRate || a.interestRate || '',
-    tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
-    paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
-    industrySegment: a.industrySegment || '',
-    businessRole: a.businessRole || '',
-    proposal: a.proposal || {},
-    projects: a.projects || [],
-    bankReferences: a.bankReferences || [],
-    financialStatements: a.financialStatements || []
-  }), [a]);
+  const liveFapData: FapSheetData = useMemo(() => {
+    const docPic = a.pic || a.customer?.pic || {};
+    return {
+      fapNumber: a.fapNumber || '-',
+      applicationDate: a.applicationDate || new Date().toISOString(),
+      branchCode: a.branchCode || a.profile?.branchCode || '',
+      customerStatus: a.customerCategory || a.profile?.customerStatus || 'EXISTING',
+      companyName: a.customer?.companyName || a.companyName || '',
+      companyType: a.customer?.companyType || a.companyType || 'PT',
+      nib: a.customer?.nib || a.nib || '',
+      nibDate: a.customer?.nibDate || a.nibDate || '',
+      npwp: a.customer?.npwp || a.npwp || '',
+      establishmentActNo: a.customer?.establishmentActNo || a.establishmentActNo || '',
+      establishmentDate: a.customer?.establishmentDate || a.establishmentDate || '',
+      companyAddress: a.customer?.companyAddress || a.companyAddress || '',
+      city: a.customer?.city || a.city || '',
+      province: a.customer?.province || a.province || '',
+      postalCode: a.customer?.postalCode || a.postalCode || '',
+      experienceYears: a.customer?.experienceYears ?? a.experienceYears ?? '',
+      experienceMonths: a.customer?.experienceMonths ?? a.experienceMonths ?? '',
+      mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
+      latestDeedNo: a.latestDeedNo || '',
+      latestDeedDate: a.latestDeedDate || '',
+      phoneFax: a.phoneFax || '',
+      website: a.website || '',
+      email: a.email || '',
+      repaymentSource: a.repaymentSource || '',
+      locationStatus: a.locationStatus || '',
+      pic: docPic,
+      picName: docPic.picName || docPic.name || a.picName || '',
+      position: docPic.position || a.position || '',
+      phone: docPic.phone || docPic.mobilePhone || a.phone || '',
+      picEmail: docPic.email || docPic.picEmail || a.picEmail || '',
+      currentAddress: docPic.currentAddress || docPic.address || a.currentAddress || '',
+      picCity: master.city?.find(x => x.value === docPic.city || x.name?.toLowerCase() === String(docPic.city || '').toLowerCase())?.name || docPic.city || a.picCity || '',
+      picProvince: master.province?.find(x => x.value === docPic.province || x.name?.toLowerCase() === String(docPic.province || '').toLowerCase())?.name || docPic.province || a.picProvince || '',
+      picPostalCode: docPic.postalCode || a.picPostalCode || '',
+      selectedDeedNo: a.selectedDeedNo || a.customer?.establishmentActNo || '',
+      stakeholders: a.stakeholders || [],
+      facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || '',
+      financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
+      financingValue: a.proposal?.financingValue || a.financingValue || '',
+      downPaymentValue: a.proposal?.downPaymentValue || a.downPaymentValue || '',
+      interestRate: a.proposal?.interestRate || a.interestRate || '',
+      tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
+      paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
+      industrySegment: a.industrySegment || '',
+      businessRole: a.businessRole || '',
+      proposal: a.proposal || {},
+      projects: a.projects || [],
+      bankReferences: a.bankReferences || [],
+      financialStatements: a.financialStatements || []
+    };
+  }, [a, master]);
 
   const ocrFapData: FapSheetData = useMemo(() => {
     const ext = fapComparison?.extractedData || {};
@@ -2204,7 +2234,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
       const updated = await api(`/applications/${a.id}`);
       onChange(updated);
       setFapComparison(null);
-      notify('OCR data changes approved and updated in database.');
+      notify('OCR data changes approved. Stage advanced to Pre-analysis.');
     } catch (err: any) {
       setError('Failed to approve data changes: ' + err.message);
     } finally {
@@ -4979,7 +5009,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   };
   const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const cleanEditingDeedNumber=String(editing?.deedNumber||'').trim().toLowerCase();
   const isDuplicateDeedNumber=Boolean(cleanEditingDeedNumber&&deeds.some((d:any)=>d.id!==editing?.id&&String(d.deedNumber||'').trim().toLowerCase()===cleanEditingDeedNumber));
-  const complete=editing&&!isDuplicateDeedNumber&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
+  const complete=Boolean(editing&&!isDuplicateDeedNumber&&String(editing.deedNumber||'').trim()&&String(editing.deedDate||'').trim()&&(editing.type!=='amendment'||editingCategoryIds.length>0));
 
   // Active Deed Classification (Strict Legal) vs Historical Deed (History)
   const establishmentDeeds = deeds.filter((d: any) => d.type === 'establishment');
@@ -5060,18 +5090,16 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
               const val = deedValidity(x.deedDate);
               const isPrimaryEst = primaryEstablishmentDeed?.id === x.id;
               const isLatestAmend = latestAmendmentDeed?.id === x.id;
+              const typeLabel = (x.type === 'amendment' && isLatestAmend) ? 'Latest Amendment Deed' : deedNames[x.type];
               return (
                 <tr key={x.id} className={selectedId === x.id ? 'selected' : ''} aria-selected={selectedId === x.id}>
                   <td data-label="Deed">
                     <div className="legal-deed-primary">
-                      <span className="legal-type-badge">{deedNames[x.type]}</span>
-                      {selectedId === x.id && <span className="legal-current">Selected</span>}
+                      <span className="legal-type-badge">{typeLabel}</span>
                       {isHistory ? (
                         <span className="legal-history-badge">Historical</span>
                       ) : isPrimaryEst ? (
                         <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Primary</span>
-                      ) : isLatestAmend ? (
-                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Latest</span>
                       ) : null}
                     </div>
                     <b className="legal-deed-number">{x.deedNumber || 'Number not filled'}</b>
@@ -5293,7 +5321,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   )}
  {deleteStakeholder&&<Modal title="Delete Stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Delete this stakeholder from the deed?</p><p className="muted legal-delete-note">Click Save changes in Legal to keep changes saved.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Cancel</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Delete stakeholder</button></div></Modal>}
  {deleting&&<Modal title="Delete Deed" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Delete {deedNames[deleting.type]} <strong>{deleting.deedNumber||'no number'}</strong> from the Legal list?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Original data in Customer or profile remains; this deed will be hidden from the Legal list.</p>}<p className="muted legal-delete-note">Click Save changes after deleting to keep changes saved.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Cancel</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Delete deed</button></div></Modal>}
-  {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);return <Modal title={`Remarks Details · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Change Categories ({rawIds.length} Selected):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Deed Notes / Remarks:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',minHeight:'80px'}} dangerouslySetInnerHTML={{ __html: deed.remarks || 'No remarks notes for this deed yet.' }} /></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Close</button></div></Modal>;})()}</>;
+  {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);const isLatest=deed.id===latestAmendmentDeed?.id&&deed.type==='amendment';const deedTitle=isLatest?'Latest Amendment Deed':deedNames[deed.type];return <Modal title={`Remarks Details · ${deedTitle}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedTitle}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Change Categories ({rawIds.length} Selected):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Deed Notes / Remarks:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',minHeight:'80px'}} dangerouslySetInnerHTML={{ __html: deed.remarks || 'No remarks notes for this deed yet.' }} /></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Close</button></div></Modal>;})()}</>;
 }
 
 function ShareholderCountContent({rows}:{rows:any[]}){const owners=rows.filter(r=>Number(r.sharePercentage)>0),total=owners.reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),name=(r:any,i:number)=>[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Shareholder ${i+1}`;return <div className="modal-body shareholder-count-modal"><div className="shareholder-count-top"><div><small>SHAREHOLDER COUNT</small><strong>{owners.length}</strong><span>Dihitung dari Percentage share &gt; 0</span></div><div><small>TOTAL OWNERSHIP</small><strong className={total>100.01?'text-red':'text-brand'}>{total.toFixed(2)}%</strong><span>{total>100.01?'Exceeds maximum limit of 100%':'Maximum 100% (not required to be 100%)'}</span></div></div>{owners.length?<div className="shareholder-count-list">{owners.map((r,i)=><div key={r.id||i}><span><b>{String(i+1).padStart(2,'0')}</b>{name(r,i)}</span><strong>{Number(r.sharePercentage).toFixed(2)}%</strong></div>)}</div>:<div className="empty-small">No stakeholders with share percentage greater than 0 on this deed.</div>}<p className="legal-ownership-rule">Total share percentage on the deed must not exceed 100%. Stakeholder data does not need to reach 100% (partial ownership portions may be recorded).</p><p className="field-note">Count and percentage follow Stakeholder data on this deed. Change share percentage via the Stakeholders button on the deed row.</p></div>;}

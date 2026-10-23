@@ -19,6 +19,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
@@ -331,7 +332,7 @@ app.post('/api/v1/customers',async(req,res)=>{
 });
 app.get('/api/v1/applications',async(_req,res)=>{const current=await listIntake(),original=(await query(`SELECT a.*,c.company_name,c.company_type,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id AND d.status='VERIFIED') AS verified_docs,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id) AS total_docs,p.financing_value,p.tenor_months,p.financing_method FROM applications a JOIN business_partner c ON c.id=a.customer_id LEFT JOIN financing_proposals p ON p.application_id=a.id ORDER BY a.created_at DESC`)).rows;res.json([...current,...original.filter((row:any)=>!current.some((saved:any)=>saved.id===row.id))].sort((a:any,b:any)=>new Date(b.created_at||b.createdAt||0).getTime()-new Date(a.created_at||a.createdAt||0).getTime()));});
 const appRequired=['branchCode','customerStatus','companyAddress','city','province','postalCode','phoneFax','email','mainBusiness','locationStatus','repaymentSource','industrySegment','businessRole'];
-const defaultAppFields:Record<string,string>={branchCode:'JKT01',customerStatus:'NEW',companyAddress:'-',city:'-',province:'-',postalCode:'00000',phoneFax:'-',email:'draft@liugong.local',mainBusiness:'-',locationStatus:'OWNED',repaymentSource:'Operating Cash Flow',industrySegment:'MINING',businessRole:'CONTRACTOR'};
+const defaultAppFields:Record<string,string>={branchCode:'JKT01',customerStatus:'NEW',companyAddress:'',city:'',province:'',postalCode:'',phoneFax:'',email:'',mainBusiness:'',locationStatus:'OWNED',repaymentSource:'Operating Cash Flow',industrySegment:'MINING',businessRole:'CONTRACTOR'};
 
 async function getNextFapNumber(date = new Date()): Promise<string> {
   const year = date.getUTCFullYear();
@@ -400,7 +401,16 @@ async function getNextFapNumber(date = new Date()): Promise<string> {
 app.post('/api/v1/applications',async(req,res)=>{
   permit(req,['MKT']);
   const safeInput={...defaultAppFields,...req.body};
-  for(const k of appRequired)if(safeInput[k]===undefined||safeInput[k]===null||String(safeInput[k]).trim()==='')safeInput[k]=defaultAppFields[k]||'-';
+  for(const k of appRequired){
+    if(!safeInput[k] || String(safeInput[k]).trim()===''){
+      safeInput[k]=defaultAppFields[k]||'';
+    }
+  }
+  if (!safeInput.locationStatus || safeInput.locationStatus === '') safeInput.locationStatus = 'OWNED';
+  if (!safeInput.repaymentSource || safeInput.repaymentSource === '') safeInput.repaymentSource = 'Operating Cash Flow';
+  if (!safeInput.industrySegment || safeInput.industrySegment === '') safeInput.industrySegment = 'MINING';
+  if (!safeInput.businessRole || safeInput.businessRole === '') safeInput.businessRole = 'CONTRACTOR';
+  if (!safeInput.branchCode || safeInput.branchCode === '') safeInput.branchCode = 'JKT01';
   const body=modelInput('Application',safeInput,appRequired);
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email||'').trim()))body.email='draft@liugong.local';
   z.string().email().parse(body.email);
@@ -489,9 +499,9 @@ app.get('/api/v1/document-desk',async(_req,res)=>{const rows=await query("SELECT
 app.get('/api/v1/applications/:id',async(req,res)=>res.json(await detail(String(req.params.id))));
 const editable=(a:any,req:Request,ca=false)=>{if(req.actor?.isAdmin||req.actor?.role==='ADMIN')return;permit(req,ca?['MKT','CA']:['MKT']);ensure(req.actor.role==='CA'?a.status==='IN_CA_LEGAL_REVIEW':['DRAFT','RETURNED'].includes(a.status),'This application is locked at its current workflow stage',409);};
 app.put('/api/v1/applications/:id/page-1',async(req,res)=>{const id=String(req.params.id);await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q);editable(a,req);const body=req.body;
- if(body.profile){const safeProfile={...body.profile};for(const k of appRequired)if(safeProfile[k]===undefined||safeProfile[k]===null||String(safeProfile[k]).trim()==='')safeProfile[k]=a[k]||defaultAppFields[k]||'-';if(!safeProfile.latestDeedDate||String(safeProfile.latestDeedDate).trim()===''||String(safeProfile.latestDeedDate)==='null')safeProfile.latestDeedDate=null;if(!safeProfile.latestDeedNo||String(safeProfile.latestDeedNo).trim()==='')safeProfile.latestDeedNo=null;const data=modelInput('Application',safeProfile,appRequired);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email||'').trim()))data.email=a.email||'draft@liugong.local';z.string().email().parse(data.email);await update('Application',id,data,q);}
+ if(body.profile){const safeProfile={...body.profile};for(const k of appRequired)if(safeProfile[k]===undefined||safeProfile[k]===null)safeProfile[k]=a[k]||defaultAppFields[k]||'';if(!safeProfile.latestDeedDate||String(safeProfile.latestDeedDate).trim()===''||String(safeProfile.latestDeedDate)==='null')safeProfile.latestDeedDate=null;if(!safeProfile.latestDeedNo||String(safeProfile.latestDeedNo).trim()==='')safeProfile.latestDeedNo=null;const data=modelInput('Application',safeProfile,appRequired);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email||'').trim()))data.email=a.email||'draft@liugong.local';z.string().email().parse(data.email);await update('Application',id,data,q);}
  if(body.customer&&a.customerId){const safeCust={...body.customer};if(!safeCust.establishmentDate||String(safeCust.establishmentDate).trim()===''||String(safeCust.establishmentDate)==='null')safeCust.establishmentDate=null;if(!safeCust.establishmentActNo||String(safeCust.establishmentActNo).trim()==='')safeCust.establishmentActNo=null;try{const custData=modelInput('Customer',safeCust,[]);await update('Customer',a.customerId,custData,q);}catch{}}
- if(body.pic){const hasPicContent=Object.values(body.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');if(hasPicContent){const safePic={picName:'-',position:'-',phone:'-',email:'pic.draft@liugong.local',currentAddress:'-',city:'-',province:'-',postalCode:'00000',...body.pic};for(const k of ['picName','position','phone','email','currentAddress','city','province','postalCode'])if(!safePic[k]||!String(safePic[k]).trim())safePic[k]=(safePic as any)[k]||'-';if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(safePic.email||'').trim()))safePic.email='pic.draft@liugong.local';const p=modelInput('ApplicationPic',safePic,['picName','position','phone','email','currentAddress','city','province','postalCode']);z.string().email().parse(p.email);await replace('ApplicationPic','applicationId',id,[p],q);}}
+ if(body.pic){const hasPicContent=Object.values(body.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');if(hasPicContent){const safePic={picName:'',position:'',phone:'',email:'',currentAddress:'',city:'',province:'',postalCode:'',...body.pic};for(const k of ['picName','position','phone','email','currentAddress','city','province','postalCode'])if(safePic[k]===undefined||safePic[k]===null)safePic[k]=(safePic as any)[k]||'';if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(safePic.email||'').trim()))safePic.email='pic.draft@liugong.local';const p=modelInput('ApplicationPic',safePic,['picName','position','phone','email','currentAddress','city','province','postalCode']);z.string().email().parse(p.email);await replace('ApplicationPic','applicationId',id,[p],q);}}
   if(body.stakeholders){
     const rows=z.array(z.any()).max(100).parse(body.stakeholders).map(x=>{
       const safe = {
@@ -608,6 +618,7 @@ const s3=process.env.S3_BUCKET?new S3Client({region:process.env.S3_REGION||'ap-s
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1}});
 
 async function compareFapDocumentOcr(id: string, fileName: string, currentApp: any) {
+  console.log('>>> compareFapDocumentOcr called:', { id, fileName });
   try {
     const cliScript = path.resolve('server/ocr_cli.py');
     const pyExe = [
@@ -615,8 +626,16 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
       'C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/python.exe',
       'python'
     ].find(p => p && p.trim().length > 0) || 'python';
-    const docFilePath = path.join(documentsDir, path.basename(fileName));
-    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 60000 });
+    let docFilePath = path.join(documentsDir, path.basename(fileName));
+    if (!fsSync.existsSync(docFilePath) || fsSync.statSync(docFilePath).isDirectory()) {
+      const clean = path.basename(fileName).split('_[')[0];
+      try {
+        const files = await fs.readdir(documentsDir);
+        const match = files.find(f => f.startsWith(clean) && fsSync.statSync(path.join(documentsDir, f)).isFile());
+        if (match) docFilePath = path.join(documentsDir, match);
+      } catch {}
+    }
+    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 300000 });
     const jsonStart = stdout.indexOf('{');
     const jsonEnd = stdout.lastIndexOf('}');
     const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
@@ -946,6 +965,7 @@ app.post('/api/v1/applications/:id/fap-comparison/remarks', async (req, res) => 
 });
 
 app.post('/api/v1/applications/:id/fap-comparison/run', async (req, res) => {
+  console.log('>>> Route /api/v1/applications/:id/fap-comparison/run hit for id:', req.params.id);
   permit(req, ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE']);
   const id = String(req.params.id);
   const currentApp = await intakeDetail(id);
@@ -1090,6 +1110,13 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
   }
   await saveFapComparison(id, null);
   await syncSubmitLock(id);
+  if (pool) {
+    try {
+      await pool.query("UPDATE application_submit_lock SET stage='PRE_ANALYSIS', is_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?", [id]);
+    } catch (e) {
+      console.warn('Update stage to PRE_ANALYSIS error:', e);
+    }
+  }
 
   const updated = await intakeDetail(id);
   res.json({ success: true, application: updated });
@@ -1160,7 +1187,9 @@ app.post('/api/v1/applications/:id/transition',async(req,res)=>{const id=String(
 app.use('/api',(_req,_res,next)=>next(new Problem(404,'Endpoint not found')));
 app.use('/crm-dashboard',express.static(path.resolve('dist-dashboard')));app.get('/crm-dashboard/{*path}',(_req,res)=>res.sendFile(path.resolve('dist-dashboard/index.html')));
 app.use('/crm',express.static(path.resolve('dist')));app.use(express.static(path.resolve('dist')));app.get('/crm/{*path}',(_req,res)=>res.sendFile(path.resolve('dist/index.html')));app.get('/{*path}',(_req,res)=>res.sendFile(path.resolve('dist/index.html')));
-app.use((error:any,req:Request,res:Response,_next:NextFunction)=>{let status=error.status||500,message=error.message,errors=error.errors||[];if(error instanceof z.ZodError){status=422;message='Validation failed';errors=error.issues.map(x=>({field:x.path.join('.'),detail:x.message}));}else if(error.code==='ER_DUP_ENTRY'){status=409;message='Username/email atau data unik sudah digunakan';}else if(error.code==='23505'){status=409;message='A record with these unique details already exists';}else if(['23514','23502','22001','22003','22007','22P02'].includes(error.code)){status=422;message='One or more fields contain an invalid value';}else if(error.code==='23503'){status=422;message='Referenced record was not found';}else if(error instanceof multer.MulterError){status=422;message=error.code==='LIMIT_FILE_SIZE'?'File exceeds the 20 MB limit':error.message;}if(status>=500){console.error(error);message='An unexpected server error occurred';}res.status(status).type('application/problem+json').json({type:'about:blank',title:message,status,statusCode:status,error:status===422?'Unprocessable Entity':message,message,errors,timestamp:new Date().toISOString()});});
+app.use((error:any,req:Request,res:Response,_next:NextFunction)=>{
+  console.error('API Handled Error:', error.code, error.message, error.detail, error);
+  let status=error.status||500,message=error.message,errors=error.errors||[];if(error instanceof z.ZodError){status=422;message='Validation failed';errors=error.issues.map(x=>({field:x.path.join('.'),detail:x.message}));}else if(error.code==='ER_DUP_ENTRY'){status=409;message='Username/email atau data unik sudah digunakan';}else if(error.code==='23505'){status=409;message='A record with these unique details already exists';}else if(['23514','23502','22001','22003','22007','22P02'].includes(error.code)){status=422;message='One or more fields contain an invalid value';}else if(error.code==='23503'){status=422;message='Referenced record was not found';}else if(error instanceof multer.MulterError){status=422;message=error.code==='LIMIT_FILE_SIZE'?'File exceeds the 20 MB limit':error.message;}if(status>=500){console.error(error);message='An unexpected server error occurred';}res.status(status).type('application/problem+json').json({type:'about:blank',title:message,status,statusCode:status,error:status===422?'Unprocessable Entity':message,message,errors,timestamp:new Date().toISOString()});});
 const port=Number(process.env.PORT||3001);app.listen(port,'0.0.0.0',()=>console.log(`LiuGong API running at http://0.0.0.0:${port}`));
 
 

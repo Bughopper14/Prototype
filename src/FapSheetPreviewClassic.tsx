@@ -367,34 +367,10 @@ export function FapSheetPreviewClassic(props: FapSheetPreviewProps & { onSwitchT
             <FileSpreadsheet size={16} className="excel-brand-icon" />
             <div className="excel-file-badge">
               <span className="excel-file-name">FAP-Document_APPROVED_v01.2025.xlsx</span>
-              <span className="excel-tab-badge">Classic Previous Template (Legacy)</span>
+              <span className="excel-tab-badge">Sheet1 · Official Bilingual Format</span>
             </div>
           </div>
           <div className="excel-ribbon-right">
-            {props.onSwitchToApproved && (
-              <button
-                type="button"
-                className="excel-rollback-btn"
-                onClick={props.onSwitchToApproved}
-                title="Beralih ke Template Approved v01/2025 yang baru"
-                style={{
-                  background: '#d1fae5',
-                  border: '1px solid #10b981',
-                  color: '#065f46',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '3px 8px',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  marginRight: '6px'
-                }}
-              >
-                Switch to Approved Template (New)
-              </button>
-            )}
             <div className="excel-zoom-controls">
               <button
                 type="button"

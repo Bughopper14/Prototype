@@ -279,7 +279,7 @@ export function MasterItemDialog({groupKey,item,onClose,onSaved,parentValue}:{gr
 }
 
 export function MasterSelect({fieldKey,value,record,disabled,required,onChange,placeholder}:{fieldKey:string,value:string,record:any,disabled:boolean,required?:boolean,onChange:(v:string)=>void,placeholder?:string}){
- const data=useMasterData(),entries=masterEntries(data,fieldKey,record)||[],group=masterGroups.find(g=>g.key===masterKey(fieldKey))!,existing=data[group.key]?.find(x=>matchesMasterItem(x, value)),selectedValue=existing?.value||value,storeName=group.key==='province'||group.key==='city'||group.key==='district'||group.key==='village';
+ const data=useMasterData(),entries=masterEntries(data,fieldKey,record)||[],group=masterGroups.find(g=>g.key===masterKey(fieldKey))!,cleanVal=(value==='-'||(fieldKey==='postalCode'&&value==='00000'))?'':value,existing=data[group.key]?.find(x=>matchesMasterItem(x, cleanVal)),selectedValue=existing?.value||cleanVal,storeName=group.key==='province'||group.key==='city'||group.key==='district'||group.key==='village';
  const select=(id:string)=>{const item=entries.find(x=>x.value===id)||data[group.key]?.find(x=>x.value===id);onChange(storeName&&item?item.name:id);};
  const emptyLabel = placeholder || (group.key === 'remarkCategoryId' ? 'Pilih Kategori' : `Pilih ${group.name}`);
  return <select required={required} disabled={disabled} value={selectedValue} onChange={e=>select(e.target.value)}><option value="">{emptyLabel}</option>{selectedValue&&!entries.some(x=>x.value===selectedValue)&&<option value={selectedValue}>{existing?.name||value}{existing&&!existing.active?' · Tidak aktif':''}</option>}{entries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select>;

@@ -166,8 +166,8 @@ export const financialFields=[
 export const blank=(fields:Field[])=>Object.fromEntries(fields.map(f=>[f.key,f.options?.[0]??(f.type==='number'?0:f.type==='date'?null:'')]));
 export const label=(s:string)=>s ? toTitleCase(s.replaceAll('_',' ')) : '—';
 export const legalDeedFields=[
-  f('deedNumber','Deed Number'),
-  f('deedDate','Deed Date','date'),
+  {...f('deedNumber','Deed Number'),required:true},
+  {...f('deedDate','Deed Date','date'),required:true},
   f('ministerialDecreeNumber','Ministerial Decree Number'),
   f('ministerialDecreeDate','Ministerial Decree Date','date')
 ];

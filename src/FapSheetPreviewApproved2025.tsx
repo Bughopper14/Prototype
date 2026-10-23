@@ -4,8 +4,6 @@ import {
   ZoomIn,
   ZoomOut,
   Printer,
-  Eye,
-  CheckCircle2,
 } from 'lucide-react';
 import { LIUGONG_LOGO_B64 } from './liugong-logo-b64';
 import { useMasterData } from './master-data';
@@ -16,7 +14,7 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
   const master = useMasterData();
   const [autoFit, setAutoFit] = useState<boolean>(true);
   const [zoomLevel, setZoomLevel] = useState<number>(props.compact ? 0.85 : 1.0);
-  const [paperHeight, setPaperHeight] = useState<number>(2550);
+  const [paperHeight, setPaperHeight] = useState<number>(2700);
   const containerRef = useRef<HTMLDivElement>(null);
   const paperRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +41,7 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
       }
       if (!autoFit) return;
 
-      const targetWidth = 940;
+      const targetWidth = 1000;
       const padding = 32;
       const available = Math.max(260, cWidth - padding);
       const scale = Math.min(1.15, Math.max(0.35, available / targetWidth));
@@ -56,25 +54,9 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
     if (paperRef.current) ro.observe(paperRef.current);
 
     window.addEventListener('resize', updateFit);
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateFit);
-    }
-
-    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
-    const handleDpiChange = () => updateFit();
-    try {
-      mq.addEventListener('change', handleDpiChange);
-    } catch {}
-
     return () => {
       ro.disconnect();
       window.removeEventListener('resize', updateFit);
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateFit);
-      }
-      try {
-        mq.removeEventListener('change', handleDpiChange);
-      } catch {}
     };
   }, [autoFit]);
 
@@ -94,30 +76,22 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
       top: targetScroll,
       behavior: 'smooth'
     });
-
-    target.classList.remove('fap-preview-sync-highlight');
-    void target.offsetWidth;
-    target.classList.add('fap-preview-sync-highlight');
-    const timer = setTimeout(() => {
-      target.classList.remove('fap-preview-sync-highlight');
-    }, 2500);
-
-    return () => clearTimeout(timer);
   }, [props.activeSection, props.syncTick]);
 
+  const raw = props.data;
+  const app = props.application;
+  const cust = props.customer || app?.customer;
+  const prof = props.profile || app?.profile;
+  const p = props.pic || (raw as any)?.pic || app?.pic || cust?.pic || prof?.pic || {};
+
   const d: FapSheetData = useMemo(() => {
-    const raw = props.data || {};
-    const app = props.application || {};
-    const cust = props.customer || app.customer || {};
-    const prof = props.profile || app.profile || {};
-    const p = props.pic || app.pic || raw.pic || {};
-    const sh = props.stakeholders || app.stakeholders || raw.stakeholders || [];
-    const prop = raw.proposal || app.proposal || {};
+    const rawData = raw || {};
+    const picObj = props.pic || (rawData as any)?.pic || app?.pic || cust?.pic || prof?.pic || {};
 
     const pick = (valA: any, valB: any, valC?: any, fallback = '') => {
-      if (valA !== undefined && valA !== null && valA !== '') return valA;
-      if (valB !== undefined && valB !== null && valB !== '') return valB;
-      if (valC !== undefined && valC !== null && valC !== '') return valC;
+      if (valA !== undefined && valA !== null && String(valA).trim() !== '') return valA;
+      if (valB !== undefined && valB !== null && String(valB).trim() !== '') return valB;
+      if (valC !== undefined && valC !== null && String(valC).trim() !== '') return valC;
       return fallback;
     };
 
@@ -126,77 +100,178 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
       const str = String(val).trim();
       if (!str) return '';
       const items = (master as any)?.[groupKey] || [];
-      const found = items.find((x: any) => x.value === str || x.name.toLowerCase() === str.toLowerCase());
+      const found = items.find((x: any) => x.value === str || x.name?.toLowerCase() === str.toLowerCase());
       if (found) return found.name;
       if (/^[0-9a-f-]{32,36}$/i.test(str)) return '';
       return str;
     };
 
-    return {
-      fapNumber: pick(raw.fapNumber, app.fapNumber, '', '—'),
-      applicationDate: pick(raw.applicationDate, app.applicationDate, ''),
-      branchCode: pick(raw.branchCode, app.branchCode, ''),
-      customerStatus: pick(raw.customerStatus, app.customerStatus, ''),
-      companyName: pick(raw.companyName, cust.companyName, ''),
-      companyType: pick(raw.companyType, cust.companyType, ''),
-      nib: pick(raw.nib, cust.nib, ''),
-      nibDate: pick(raw.nibDate, cust.nibDate, ''),
-      npwp: pick(raw.npwp, cust.npwp, ''),
-      establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
-      establishmentDate: pick(raw.establishmentDate, cust.establishmentDate, ''),
-      companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
-      city: resolveLocationLabel('city', pick(raw.city, prof.city, '')),
-      province: resolveLocationLabel('province', pick(raw.province, prof.province, '')),
-      district: resolveLocationLabel('district', pick(raw.district, prof.district, '')),
-      village: resolveLocationLabel('village', pick(raw.village, prof.village, '')),
-      rt: pick(raw.rt, prof.rt, ''),
-      rw: pick(raw.rw, prof.rw, ''),
-      postalCode: pick(raw.postalCode, prof.postalCode, ''),
-      experienceYears: pick(raw.experienceYears, prof.experienceYears, ''),
-      experienceMonths: pick(raw.experienceMonths, prof.experienceMonths, ''),
-      mainBusiness: pick(raw.mainBusiness, prof.mainBusiness, ''),
-      latestDeedNo: pick(raw.latestDeedNo, prof.latestDeedNo, ''),
-      latestDeedDate: pick(raw.latestDeedDate, prof.latestDeedDate, ''),
-      phoneFax: pick(raw.phoneFax, prof.phoneFax, ''),
-      website: pick(raw.website, prof.website, ''),
-      email: pick(raw.email, prof.email, ''),
-      repaymentSource: pick(raw.repaymentSource, prof.repaymentSource, ''),
-      locationStatus: pick(raw.locationStatus, prof.locationStatus, ''),
-      picName: pick(raw.picName, p.picName, p.name, ''),
-      position: pick(raw.position, p.position, ''),
-      phone: pick(raw.phone, p.phone, p.mobilePhone, ''),
-      picEmail: pick(raw.picEmail, p.email, ''),
-      currentAddress: pick(raw.currentAddress, p.currentAddress, ''),
-      picCity: resolveLocationLabel('city', pick(raw.picCity, p.city, '')),
-      picProvince: resolveLocationLabel('province', pick(raw.picProvince, p.province, '')),
-      picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
-      selectedDeedNo: pick(raw.selectedDeedNo, prof.latestDeedNo, ''),
-      stakeholders: sh.length ? sh : (raw.stakeholders || app.stakeholders || []),
-      facilityPurpose: pick(raw.facilityPurpose, prop.facilityPurpose, ''),
-      financingMethod: pick(raw.financingMethod, prop.financingMethod, ''),
-      financingValue: pick(raw.financingValue, prop.financingValue, ''),
-      downPaymentValue: pick(raw.downPaymentValue, prop.downPaymentValue, ''),
-      interestRate: pick(raw.interestRate, prop.interestRate, ''),
-      tenorMonths: pick(raw.tenorMonths, prop.tenorMonths, ''),
-      paymentMethod: pick(raw.paymentMethod, prop.paymentMethod, ''),
-      industrySegment: pick(raw.industrySegment, app.industrySegment, ''),
-      businessRole: pick(raw.businessRole, app.businessRole, ''),
-      proposal: prop,
-      projects: raw.projects || app.projects || [],
-      bankReferences: raw.bankReferences || app.bankReferences || [],
-      financialStatements: raw.financialStatements || app.financialStatements || [],
-      units: raw.units || prop.units || [],
-      assetSummaryHeLiuGong: pick(raw.assetSummaryHeLiuGong, app.assetSummaryHeLiuGong, ''),
-      assetSummaryTruckLiuGong: pick(raw.assetSummaryTruckLiuGong, app.assetSummaryTruckLiuGong, ''),
-      assetSummaryHeNonLiuGong: pick(raw.assetSummaryHeNonLiuGong, app.assetSummaryHeNonLiuGong, ''),
-      assetSummaryTruckNonLiuGong: pick(raw.assetSummaryTruckNonLiuGong, app.assetSummaryTruckNonLiuGong, ''),
-      documentChecks: raw.documentChecks || app.documentChecks || [],
-      applicationSource: pick(raw.applicationSource, app.applicationSource, 'Direct'),
+    const resolvedPicName = pick(raw?.picName, picObj.picName, picObj.name, picObj.contactName);
+    const resolvedPosition = pick(raw?.position, picObj.position, picObj.picPosition);
+    const resolvedPhone = pick(raw?.phone, picObj.phone, picObj.mobilePhone, picObj.picPhone);
+    const resolvedPicEmail = pick(raw?.picEmail, picObj.email, picObj.picEmail);
+    const resolvedCurrentAddress = pick(raw?.currentAddress, picObj.currentAddress, picObj.address, picObj.picAddress);
+    const resolvedPicCity = resolveLocationLabel('city', pick(raw?.picCity, picObj.city, picObj.picCity));
+    const resolvedPicProvince = resolveLocationLabel('province', pick(raw?.picProvince, picObj.province, picObj.picProvince));
+    const resolvedPicPostalCode = pick(raw?.picPostalCode, picObj.postalCode, picObj.picPostalCode);
+
+    if (raw) {
+      return {
+        ...raw,
+        picName: resolvedPicName,
+        position: resolvedPosition,
+        phone: resolvedPhone,
+        picEmail: resolvedPicEmail,
+        currentAddress: resolvedCurrentAddress,
+        picCity: resolvedPicCity,
+        picProvince: resolvedPicProvince,
+        picPostalCode: resolvedPicPostalCode,
+      };
+    }
+
+    let branch = app?.branchCode || '';
+    if (!branch && app?.branchId) {
+      const bObj = master.branches.find((b: any) => b.id === app.branchId) as any;
+      branch = bObj ? (bObj.code || bObj.name || app.branchId) : app.branchId;
+    }
+
+    let resolvedDeedNo = prof?.selectedDeedNo || prof?.latestDeedNo || '';
+    if (!resolvedDeedNo && prof?.legalDeeds && prof.legalDeeds.length > 0) {
+      const activeDeed = prof.legalDeeds.find((deed: any) => deed.isLatest) || prof.legalDeeds[0];
+      if (activeDeed) resolvedDeedNo = activeDeed.deedNumber || activeDeed.number || '';
+    }
+
+    let resolvedDeedDate = prof?.latestDeedDate || '';
+    if (!resolvedDeedDate && prof?.legalDeeds && prof.legalDeeds.length > 0) {
+      const activeDeed = prof.legalDeeds.find((deed: any) => deed.isLatest) || prof.legalDeeds[0];
+      if (activeDeed) resolvedDeedDate = activeDeed.deedDate || activeDeed.date || '';
+    }
+
+    let initialStakeholders: any[] = [];
+    if (props.stakeholders && props.stakeholders.length > 0) {
+      initialStakeholders = props.stakeholders;
+    } else if (prof?.stakeholders && prof.stakeholders.length > 0) {
+      initialStakeholders = prof.stakeholders;
+    } else if (prof?.legalDeeds && prof.legalDeeds.length > 0) {
+      const activeDeed = prof.legalDeeds.find((deed: any) => deed.isLatest) || prof.legalDeeds[0];
+      if (activeDeed && activeDeed.shareholders) {
+        initialStakeholders = activeDeed.shareholders;
+      }
+    }
+
+    const mapStakeholders = (shs: any[]) => {
+      return (shs || []).map((s: any) => ({
+        name: s.name || s.shareholderName || s.fullName || '',
+        position: s.position || s.role || s.title || '',
+        shareAmount: s.shareAmount || s.amount || s.shares || '',
+        sharePercent: s.sharePercent || s.percentage || s.percent || ''
+      }));
     };
-  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, master]);
+
+    let estDate = prof?.establishmentDate || '';
+    let expY = prof?.experienceYears;
+    let expM = prof?.experienceMonths;
+    if (expY === undefined || expY === null || expY === '') {
+      if (estDate) {
+        try {
+          const est = new Date(estDate);
+          const now = new Date();
+          if (!isNaN(est.getTime())) {
+            let years = now.getFullYear() - est.getFullYear();
+            let months = now.getMonth() - est.getMonth();
+            if (months < 0) {
+              years -= 1;
+              months += 12;
+            }
+            expY = Math.max(0, years);
+            expM = Math.max(0, months);
+          }
+        } catch {}
+      }
+    }
+
+    const projectsList = (app?.projects && app.projects.length > 0)
+      ? app.projects.map((proj: any) => ({
+          owner: proj.owner || proj.projectOwner || proj.client || proj.customer || '',
+          location: proj.location || proj.projectLocation || proj.site || '',
+          role: proj.role || proj.projectRole || proj.contractType || '',
+          status: proj.status || (proj.isExisting ? 'Existing' : 'New') || ''
+        }))
+      : (prof?.projects || []);
+
+    const bankRefList = (app?.bankReferences && app.bankReferences.length > 0)
+      ? app.bankReferences
+      : (prof?.bankReferences || []);
+
+    const finStatementsList = (app?.financialStatements && app.financialStatements.length > 0)
+      ? app.financialStatements
+      : (prof?.financialStatements || []);
+
+    return {
+      fapNumber: app?.fapNumber || app?.applicationNo || 'AUTO GENERATE',
+      applicationDate: app?.applicationDate || app?.createdAt || new Date().toISOString(),
+      branchCode: branch || 'JKT01',
+      customerStatus: cust?.status || app?.customerStatus || 'EXISTING',
+      companyName: cust?.name || prof?.companyName || app?.companyName || '',
+      companyType: cust?.companyType || app?.businessType || 'CORPORATE',
+      nib: cust?.nib || prof?.nib || app?.nib || '',
+      npwp: cust?.npwp || prof?.npwp || app?.npwp || '',
+      establishmentActNo: prof?.establishmentActNo || prof?.deedNo || '',
+      establishmentDate: estDate,
+      companyAddress: cust?.address || prof?.address || app?.address || '',
+      city: prof?.city || cust?.city || '',
+      province: prof?.province || cust?.province || '',
+      district: prof?.district || '',
+      village: prof?.village || '',
+      rt: prof?.rt || '',
+      rw: prof?.rw || '',
+      postalCode: prof?.postalCode || cust?.postalCode || '',
+      experienceYears: expY !== undefined && expY !== null ? expY : '',
+      experienceMonths: expM !== undefined && expM !== null ? expM : '',
+      mainBusiness: prof?.mainBusiness || cust?.businessSector || '',
+      latestDeedNo: resolvedDeedNo,
+      latestDeedDate: resolvedDeedDate,
+      phoneFax: prof?.phoneFax || cust?.phone || '',
+      website: prof?.website || '',
+      email: cust?.email || prof?.email || '',
+      repaymentSource: prof?.repaymentSource || 'Operating Cash Flow',
+      locationStatus: prof?.locationStatus || 'OWNED',
+      picName: resolvedPicName,
+      position: resolvedPosition,
+      phone: resolvedPhone,
+      picEmail: resolvedPicEmail,
+      currentAddress: resolvedCurrentAddress,
+      picCity: resolvedPicCity,
+      picProvince: resolvedPicProvince,
+      picPostalCode: resolvedPicPostalCode,
+      selectedDeedNo: resolvedDeedNo,
+      stakeholders: mapStakeholders(initialStakeholders),
+      facilityPurpose: app?.facilityPurpose || 'INVESTMENT',
+      financingMethod: app?.financingMethod || 'FINANCIAL_LEASE',
+      financingValue: app?.financingValue || app?.requestedAmount || 0,
+      downPaymentValue: app?.downPaymentValue || app?.downPayment || 0,
+      interestRate: app?.interestRate || 10.5,
+      tenorMonths: app?.tenorMonths || app?.tenor || 36,
+      paymentMethod: app?.paymentMethod || 'ARREAR',
+      industrySegment: app?.industrySegment || prof?.industrySegment || 'MINING',
+      businessRole: app?.businessRole || prof?.businessRole || 'CONTRACTOR',
+      proposal: app?.proposal || {},
+      projects: projectsList,
+      bankReferences: bankRefList,
+      financialStatements: finStatementsList,
+      units: app?.units || [],
+      assetSummaryHeLiuGong: app?.assetSummaryHeLiuGong || 0,
+      assetSummaryTruckLiuGong: app?.assetSummaryTruckLiuGong || 0,
+      assetSummaryHeNonLiuGong: app?.assetSummaryHeNonLiuGong || 0,
+      assetSummaryTruckNonLiuGong: app?.assetSummaryTruckNonLiuGong || 0,
+      documentChecks: app?.documentChecks || [],
+      applicationSource: app?.applicationSource || 'Direct / Dealer',
+      notes: app?.notes || ''
+    };
+  }, [raw, app, cust, prof, p, props.pic, props.stakeholders, master]);
 
   const formatDate = (dateStr?: string) => {
-    if (!dateStr) return '  /  /    ';
+    if (!dateStr) return '';
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
@@ -260,15 +335,12 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
     });
   };
 
-  const getDiffClass = (key: string, baseClass = 'exact-fap-box highlight-dynamic') => {
+  const getDiffClass = (key: string, baseClass = '') => {
     const diff = getDiff(key);
     if (!diff) return baseClass;
     return `${baseClass} fap-diff-cell-highlight`;
   };
 
-  const renderDiffBadge = (_key: string) => null;
-
-  // Check which mandatory / checklist documents are submitted
   const docCheckedMap = useMemo(() => {
     const map: Record<string, boolean> = {};
     const checks = d.documentChecks || [];
@@ -280,7 +352,6 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
     return map;
   }, [d.documentChecks]);
 
-  // Total bank facilities
   const totalCreditFacility = useMemo(() => {
     return (d.bankReferences || []).reduce((acc: number, b: any) => acc + (Number(b.creditFacility) || 0), 0);
   }, [d.bankReferences]);
@@ -289,13 +360,11 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
     return (d.bankReferences || []).reduce((acc: number, b: any) => acc + (Number(b.monthlyInstallment) || 0), 0);
   }, [d.bankReferences]);
 
-  // Method check
   const method = String(d.financingMethod || '').toUpperCase();
-  const isLease = method === 'FINANCIAL_LEASE' || method === 'SEWA_PEMBIAYAAN' || method.includes('LEASE') && !method.includes('SALE');
+  const isLease = method === 'FINANCIAL_LEASE' || method === 'SEWA_PEMBIAYAAN' || (method.includes('LEASE') && !method.includes('SALE'));
   const isSaleAndLease = method === 'SALE_AND_LEASE_BACK' || method.includes('SALE');
   const isInstallment = method === 'INSTALLMENT_FINANCING' || method === 'INSTALLMENT' || method.includes('ANGSURAN') || method.includes('PEMBELIAN');
 
-  // Fixed assets totals
   const heLg = Number(d.assetSummaryHeLiuGong) || 0;
   const truckLg = Number(d.assetSummaryTruckLiuGong) || 0;
   const unitLg = heLg + truckLg;
@@ -311,21 +380,25 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
   const pctLg = grandTotalUnits > 0 ? ((unitLg / grandTotalUnits) * 100).toFixed(1) + '%' : '0.0%';
   const pctNonLg = grandTotalUnits > 0 ? ((unitNonLg / grandTotalUnits) * 100).toFixed(1) + '%' : '0.0%';
 
+  const sh = d.stakeholders || [];
+  const projects = d.projects || [];
+  const banks = d.bankReferences || [];
+
   return (
     <div className={`excel-fap-viewer approved-2025-template ${props.isComparison ? 'in-comparison-mode' : ''}`}>
-      {/* Excel Green Ribbon Header */}
+      {/* Excel Ribbon Header */}
       {showRibbon && (
         <div className="excel-fap-ribbon">
           <div className="excel-ribbon-left">
             <FileSpreadsheet size={16} className="excel-brand-icon" />
             <div className="excel-file-badge">
               <span className="excel-file-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                APPLICATION FORM · APPROVED v01/2025
+                APPLICATION FORM · APPROVED v01.2025
                 <span style={{ fontSize: '9.5px', background: '#10b981', color: '#ffffff', padding: '1px 6px', borderRadius: '3px', fontWeight: 700 }}>
-                  ACTIVE (NEW)
+                  OFFICIAL SPREADSHEET
                 </span>
               </span>
-              <span className="excel-tab-badge">Official Bilingual Format (Tanpa Watermark) · Ready for A4 PDF</span>
+              <span className="excel-tab-badge">Exact 1:1 Excel Grid Layout · Tanpa Watermark · Ready for PDF</span>
             </div>
           </div>
           <div className="excel-ribbon-right">
@@ -348,14 +421,12 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
               >
                 <ZoomOut size={13} />
               </button>
-              <span className="excel-zoom-btn-label">
-                {Math.round(zoomLevel * 100)}%
-              </span>
+              <span className="excel-zoom-pct">{Math.round(zoomLevel * 100)}%</span>
               <button
                 type="button"
                 onClick={() => {
                   setAutoFit(false);
-                  setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
+                  setZoomLevel((z) => Math.min(1.4, Number((z + 0.05).toFixed(2))));
                 }}
                 title="Zoom In (+)"
               >
@@ -366,16 +437,21 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
               type="button"
               className="excel-print-btn"
               onClick={handlePrint}
-              title="Print / Download Official A4 PDF Sheet (PDF View)"
+              title="Print Application Form to PDF"
             >
-              <Printer size={13} /> Print Form (PDF)
+              <Printer size={13} />
+              <span>Print PDF</span>
             </button>
           </div>
+        </div>
+      )}
 
-          {/* Quick Jump & Auto-Sync Bar */}
-          <div className="excel-section-chips">
-            <span className="excel-sync-bar-label">
-              <Eye size={12} /> Auto-Sync Focus:
+      {/* Quick Jump Navigation */}
+      {showRibbon && (
+        <div className="excel-fap-formula-bar" style={{ padding: '4px 12px', background: '#f1f5f9', borderBottom: '1px solid #cbd5e1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflowX: 'auto', width: '100%', paddingBottom: '2px' }}>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569', marginRight: '6px', whiteSpace: 'nowrap' }}>
+              Jump to:
             </span>
             {[
               { id: 'fap-preview-sec-header', label: '1. Identity' },
@@ -408,7 +484,7 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
         <div
           className="excel-fap-paper-scaler"
           style={{
-            width: `${Math.round(940 * zoomLevel)}px`,
+            width: `${Math.round(1000 * zoomLevel)}px`,
             minHeight: `${Math.round(paperHeight * zoomLevel) + 24}px`,
             margin: '0 auto',
             position: 'relative',
@@ -423,932 +499,1496 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
             style={{
               transform: `scale(${zoomLevel})`,
               transformOrigin: 'top left',
-              width: '940px',
-              minWidth: '940px',
+              width: '1000px',
+              minWidth: '1000px',
+              maxWidth: '1000px',
               position: 'absolute',
               top: 0,
-              left: 0
+              left: 0,
+              background: '#ffffff',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+              padding: '16px 15px',
+              boxSizing: 'border-box',
+              overflow: 'hidden'
             }}
           >
-            {/* ==============================================================
-                SECTION 1: HEADER & CLASSIFICATION (ROWS 1 - 10)
-                ============================================================== */}
-            <div className="excel-exact-header" id="fap-preview-sec-header">
-              <div className="exact-header-top">
-                <div className="exact-header-logo">
-                  <img
-                    src={LIUGONG_LOGO_B64.startsWith('data:') ? LIUGONG_LOGO_B64 : `data:image/png;base64,${LIUGONG_LOGO_B64}`}
-                    alt="LiuGong Finance Indonesia"
-                  />
-                </div>
-                <div className="exact-header-title">APPLICATION FORM</div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                  <div className="exact-header-reg">
-                    <span className="reg-lbl">No. Register :</span>
-                    <span className="reg-val highlight-dynamic">{d.fapNumber || 'AUTO GENERATE'}</span>
-                  </div>
-                  <span style={{ fontSize: '9px', fontWeight: 700, color: '#475569' }}>1 : 1</span>
-                </div>
-              </div>
+            {/* MASTER EXCEL TABLE (1:1 CORRESPONDENCE WITH APPROVED v01.2025) */}
+            <table className="excel-master-table" style={{ width: '970px', minWidth: '970px', maxWidth: '970px', tableLayout: 'fixed', borderCollapse: 'collapse', fontFamily: 'Arial, sans-serif', fontSize: '8.5px', color: '#000000', lineHeight: 1.15 }}>
+              <colgroup>
+                <col style={{ width: '30px' }} />  {/* A: Left Bracket Margin / Section Names */}
+                <col style={{ width: '46px' }} />  {/* B */}
+                <col style={{ width: '42px' }} />  {/* C */}
+                <col style={{ width: '38px' }} />  {/* D */}
+                <col style={{ width: '46px' }} />  {/* E */}
+                <col style={{ width: '58px' }} />  {/* F */}
+                <col style={{ width: '30px' }} />  {/* G */}
+                <col style={{ width: '124px' }} /> {/* H */}
+                <col style={{ width: '25px' }} />  {/* I */}
+                <col style={{ width: '40px' }} />  {/* J */}
+                <col style={{ width: '46px' }} />  {/* K */}
+                <col style={{ width: '58px' }} />  {/* L */}
+                <col style={{ width: '26px' }} />  {/* M */}
+                <col style={{ width: '52px' }} />  {/* N */}
+                <col style={{ width: '48px' }} />  {/* O */}
+                <col style={{ width: '78px' }} />  {/* P */}
+                <col style={{ width: '16px' }} />  {/* Q */}
+                <col style={{ width: '56px' }} />  {/* R */}
+                <col style={{ width: '65px' }} />  {/* S */}
+                <col style={{ width: '46px' }} />  {/* T */}
+              </colgroup>
 
-              <div className="exact-navy-bar" />
+              <tbody>
+                {/* ==============================================================
+                    ROW 1-4: HEADER WITH LOGO, APPLICATION FORM, AND REGISTER
+                    ============================================================== */}
+                <tr id="fap-preview-sec-header" style={{ height: '36px' }}>
+                  <td colSpan={5} style={{ verticalAlign: 'middle', padding: '0 0 4px 0' }}>
+                    <img
+                      src={LIUGONG_LOGO_B64.startsWith('data:') ? LIUGONG_LOGO_B64 : `data:image/png;base64,${LIUGONG_LOGO_B64}`}
+                      alt="LiuGong Finance Indonesia"
+                      style={{ height: '30px', width: 'auto', objectFit: 'contain', display: 'block' }}
+                    />
+                  </td>
+                  <td colSpan={7} style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 'bold', letterSpacing: '0.8px', color: '#000000' }}>
+                      APPLICATION FORM
+                    </span>
+                  </td>
+                  <td colSpan={3} style={{ textAlign: 'right', verticalAlign: 'bottom', paddingRight: '4px', fontSize: '9px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    No. Register :
+                  </td>
+                  <td colSpan={4} style={{ textAlign: 'center', verticalAlign: 'bottom', fontSize: '9px', fontWeight: 'bold', color: '#002060', whiteSpace: 'nowrap', padding: '0 6px' }}>
+                    {d.fapNumber || 'AUTO GENERATE'}
+                  </td>
+                  <td colSpan={1} style={{ textAlign: 'right', verticalAlign: 'bottom', fontSize: '8.5px', color: '#64748b', fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                    1 : 1
+                  </td>
+                </tr>
 
-              {/* 4-Box Classification Grid */}
-              <div className="exact-matrix-grid">
-                <div className="exact-matrix-box">
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Tanggal/Date</span>
-                    <span className="exact-matrix-val highlight-dynamic">{formatDate(d.applicationDate)}</span>
-                  </div>
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Cabang/Branch</span>
-                    <span className="exact-matrix-val highlight-dynamic">{d.branchCode}</span>
-                  </div>
-                </div>
+                {/* ROW 6: SOLID DARK BLUE DIVIDER BAR */}
+                <tr style={{ height: '4px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '4px', background: '#002060' }} />
+                </tr>
 
-                <div className="exact-matrix-box">
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Customer Baru/New Customer</span>
-                    <span className="exact-matrix-chk">{isCustNew ? '☑' : '☐'}</span>
-                  </div>
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Customer Lama /Existing Customer</span>
-                    <span className="exact-matrix-chk">{isCustExisting ? '☑' : '☐'}</span>
-                  </div>
-                </div>
+                {/* ROW 7: SPACER */}
+                <tr style={{ height: '6px' }}><td colSpan={20} style={{ padding: 0 }} /></tr>
 
-                <div className="exact-matrix-box">
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Corporate</span>
-                    <span className="exact-matrix-chk">{isCorp ? '☑' : '☐'}</span>
-                  </div>
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Commercial</span>
-                    <span className="exact-matrix-chk">{isComm ? '☑' : '☐'}</span>
-                  </div>
-                </div>
+                {/* ==============================================================
+                    ROW 8-9: 4-BOX CLASSIFICATION MATRIX
+                    ============================================================== */}
+                <tr style={{ height: '22px' }}>
+                  {/* Box 1: Date */}
+                  <td colSpan={2} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Tanggal/Date
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px 4px', verticalAlign: 'middle', fontWeight: 'bold', color: '#002060' }}>
+                    {formatDate(d.applicationDate)}
+                  </td>
 
-                <div className="exact-matrix-box">
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">Micro</span>
-                    <span className="exact-matrix-chk">{isMicro ? '☑' : '☐'}</span>
-                  </div>
-                  <div className="exact-matrix-row">
-                    <span className="exact-matrix-lbl">LiuGong User</span>
-                    <span className="exact-matrix-chk">{isLiugongUser ? '☑' : '☐'}</span>
-                  </div>
-                </div>
-              </div>
+                  {/* Spacer Col E */}
+                  <td style={{ padding: 0 }} />
 
-              <div className="exact-orange-bar" />
-            </div>
+                  {/* Box 2: New Customer */}
+                  <td colSpan={2} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Customer Baru/New Customer
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isCustNew ? '☑' : '☐'}
+                  </td>
 
-            {/* ==============================================================
-                SECTION 2: PROFIL PERUSAHAAN & PIC / SHAREHOLDERS (ROWS 11 - 45)
-                ============================================================== */}
-            <div className="exact-fap-body">
-              {/* Left Column: Company Details */}
-              <div className="exact-fap-col" id="fap-preview-sec-company">
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Nama Perusahaan/ Company's Name</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-companyName" className={getDiffClass('companyName')}>
-                    <span>{d.companyName}</span>
-                    {renderDiffBadge('companyName')}
-                  </div>
-                </div>
+                  {/* Spacer Col I-K */}
+                  <td colSpan={3} style={{ padding: 0 }} />
 
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Alamat Perusahaan/ Company Address</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-companyAddress" className={getDiffClass('companyAddress', 'exact-fap-box multiline highlight-dynamic')}>
-                    <span>{d.companyAddress}</span>
-                    {renderDiffBadge('companyAddress')}
-                  </div>
-                </div>
+                  {/* Box 3: Corporate */}
+                  <td colSpan={2} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Corporate
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isCorp ? '☑' : '☐'}
+                  </td>
 
-                <div className="exact-sub-row">
-                  <span className="exact-sub-lbl">Kota/City</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-city" className={getDiffClass('city')}>
-                    <span>{d.city}</span>
-                    {renderDiffBadge('city')}
-                  </div>
-                </div>
+                  {/* Spacer Col P-Q */}
+                  <td colSpan={2} style={{ padding: 0 }} />
 
-                <div className="exact-sub-row">
-                  <span className="exact-sub-lbl">Provinsi/Province</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-province" className={getDiffClass('province')}>
-                    <span>{d.province}</span>
-                    {renderDiffBadge('province')}
-                  </div>
-                </div>
+                  {/* Box 4: Micro */}
+                  <td style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Micro
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isMicro ? '☑' : '☐'}
+                  </td>
+                </tr>
 
-                <div className="exact-sub-row">
-                  <span className="exact-sub-lbl">Postal code</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-postalCode" className={getDiffClass('postalCode')}>
-                    <span>{d.postalCode}</span>
-                    {renderDiffBadge('postalCode')}
-                  </div>
-                </div>
+                <tr style={{ height: '22px' }}>
+                  {/* Box 1: Branch */}
+                  <td colSpan={2} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Cabang/Branch
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px 4px', verticalAlign: 'middle', fontWeight: 'bold', color: '#002060' }}>
+                    {d.branchCode}
+                  </td>
 
-                <div className="exact-fap-row" id="fap-preview-sec-business">
-                  <span className="exact-fap-lbl">Bisnis Utama/ Main Business</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-mainBusiness" className={getDiffClass('mainBusiness')}>
-                    <span>{d.mainBusiness}</span>
-                    {renderDiffBadge('mainBusiness')}
-                  </div>
-                </div>
+                  {/* Spacer Col E */}
+                  <td style={{ padding: 0 }} />
 
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">No. Akta Pendirian/ Deed Establishment number</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-dual-row">
-                    <div id="fap-diff-cell-establishmentActNo" className={getDiffClass('establishmentActNo')} style={{ flex: 1.2 }}>
-                      <span>{d.establishmentActNo}</span>
-                      {renderDiffBadge('establishmentActNo')}
+                  {/* Box 2: Existing Customer */}
+                  <td colSpan={2} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Customer Lama /Existing Customer
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isCustExisting ? '☑' : '☐'}
+                  </td>
+
+                  {/* Spacer Col I-K */}
+                  <td colSpan={3} style={{ padding: 0 }} />
+
+                  {/* Box 3: Commercial */}
+                  <td colSpan={2} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    Commercial
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isComm ? '☑' : '☐'}
+                  </td>
+
+                  {/* Spacer Col P-Q */}
+                  <td colSpan={2} style={{ padding: 0 }} />
+
+                  {/* Box 4: LiuGong User */}
+                  <td style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px', verticalAlign: 'middle' }}>
+                    LiuGong User
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {isLiugongUser ? '☑' : '☐'}
+                  </td>
+                </tr>
+
+                {/* ROW 10: CRISP ORANGE HORIZONTAL DIVIDER BAR */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
+
+                {/* ==============================================================
+                    ROW 11 - 45: SECTION 2 - CUSTOMER DATA & PIC & SHAREHOLDERS
+                    ============================================================== */}
+                {/* Row 12: Company Name | PIC Name & Phone */}
+                <tr id="fap-preview-sec-company" style={{ height: '24px' }}>
+                  {/* Col A: Side Bracket Column */}
+                  <td rowSpan={21} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', background: '#ffffff', padding: '2px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '9px', fontWeight: 'bold', letterSpacing: '1px', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                      Customer  Data
                     </div>
-                    <div className="exact-inline-group" style={{ flex: 1.2 }}>
-                      <span className="exact-inline-lbl" style={{ fontSize: '8.5px', lineHeight: '1.1' }}>
-                        Tanggal Pendirian/<br />Est Date :
-                      </span>
-                      <div id="fap-diff-cell-establishmentDate" className={getDiffClass('establishmentDate')}>
-                        <span>{formatDate(d.establishmentDate)}</span>
-                        {renderDiffBadge('establishmentDate')}
-                      </div>
+                  </td>
+
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Nama Perusahaan/ Company's Name
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-companyName" className={getDiffClass('companyName')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.companyName}
                     </div>
-                  </div>
-                </div>
+                  </td>
 
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Pengalaman/Experience</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-dual-row" style={{ alignItems: 'center' }}>
-                    <div id="fap-diff-cell-experienceYears" className={getDiffClass('experienceYears')} style={{ maxWidth: '65px', textAlign: 'center' }}>
-                      <span>{d.experienceYears}</span>
-                      {renderDiffBadge('experienceYears')}
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right: PIC Name */}
+                  <td colSpan={2} id="fap-preview-sec-pic" style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Penanggung Jawab/PIC
+                  </td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-picName" className={getDiffClass('picName')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.picName}
                     </div>
-                    <span style={{ fontSize: '9px', fontWeight: 600 }}>years</span>
-                    <div id="fap-diff-cell-experienceMonths" className={getDiffClass('experienceMonths')} style={{ maxWidth: '65px', textAlign: 'center' }}>
-                      <span>{d.experienceMonths}</span>
-                      {renderDiffBadge('experienceMonths')}
+                  </td>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', textAlign: 'right' }}>
+                    Telepon/Phone
+                  </td>
+                  <td colSpan={3} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-phone" className={getDiffClass('phone')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.phone}
                     </div>
-                    <span style={{ fontSize: '9px', fontWeight: 600 }}>months</span>
-                  </div>
-                </div>
+                  </td>
+                </tr>
 
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl" style={{ fontSize: '9px' }}>
-                    No. Akta Perubahan Terakhir / Latest Deed of Amendment number
-                  </span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-dual-row">
-                    <div id="fap-diff-cell-latestDeedNo" className={getDiffClass('latestDeedNo')} style={{ flex: 1.1 }}>
-                      <span>{d.latestDeedNo}</span>
-                      {renderDiffBadge('latestDeedNo')}
+                {/* Row 14: Company Address | PIC Position & Email */}
+                <tr style={{ height: '24px' }}>
+                  <td colSpan={2} rowSpan={2} style={{ padding: '2px 2px', verticalAlign: 'top', fontWeight: 'bold' }}>
+                    Alamat Perusahaan/ Company Address
+                  </td>
+                  <td rowSpan={2} style={{ textAlign: 'center', verticalAlign: 'top' }}>:</td>
+                  <td colSpan={4} rowSpan={2} style={{ padding: '1.5px 0', verticalAlign: 'top' }}>
+                    <div id="fap-diff-cell-companyAddress" className={getDiffClass('companyAddress')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '44px', height: '100%', padding: '3px 4px', boxSizing: 'border-box', color: '#002060', lineHeight: 1.2, overflow: 'hidden' }}>
+                      {d.companyAddress}
                     </div>
-                    <div className="exact-inline-group" style={{ flex: 1.3 }}>
-                      <span className="exact-inline-lbl" style={{ fontSize: '8px', lineHeight: '1.1' }}>
-                        Tanggal Perubahan Terakhir/<br />Date of The Latest Amendment :
-                      </span>
-                      <div id="fap-diff-cell-latestDeedDate" className={getDiffClass('latestDeedDate')}>
-                        <span>{formatDate(d.latestDeedDate)}</span>
-                        {renderDiffBadge('latestDeedDate')}
-                      </div>
+                  </td>
+
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right: Position & Email */}
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Jabatan/ Position
+                  </td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-position" className={getDiffClass('position')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.position}
                     </div>
-                  </div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">NIB (No Induk Berusaha)</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-nib" className={getDiffClass('nib')}>
-                    <span>{d.nib}</span>
-                    {renderDiffBadge('nib')}
-                  </div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">NPWP/No.Tax</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-npwp" className={getDiffClass('npwp')}>
-                    <span>{d.npwp}</span>
-                    {renderDiffBadge('npwp')}
-                  </div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Phone / Fax</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-phoneFax" className={getDiffClass('phoneFax')}>
-                    <span>{d.phoneFax}</span>
-                    {renderDiffBadge('phoneFax')}
-                  </div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Website</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-fap-box highlight-dynamic">{d.website || '—'}</div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Email</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-email" className={getDiffClass('email')}>
-                    <span>{d.email}</span>
-                    {renderDiffBadge('email')}
-                  </div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Sumber Pembayaran/ Repayment source</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-fap-box highlight-dynamic">{d.repaymentSource}</div>
-                </div>
-
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl">Status tempat usaha/Business Location Status</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-fap-box highlight-dynamic" style={{ display: 'flex', gap: '12px' }}>
-                    <span>{d.locationStatus === 'OWNED' ? '☑' : '☐'} Milik Sendiri</span>
-                    <span>/</span>
-                    <span>{d.locationStatus === 'RENTED' ? '☑' : '☐'} Sewa</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: PIC & Shareholders */}
-              <div className="exact-fap-col" id="fap-preview-sec-pic">
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl" style={{ width: '135px' }}>Penanggung Jawab/PIC</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-dual-row">
-                    <div id="fap-diff-cell-picName" className={getDiffClass('picName')} style={{ flex: 1.2 }}>
-                      <span>{d.picName}</span>
-                      {renderDiffBadge('picName')}
+                  </td>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', textAlign: 'right' }}>
+                    Email
+                  </td>
+                  <td colSpan={3} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-picEmail" className={getDiffClass('picEmail')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.picEmail}
                     </div>
-                    <div className="exact-inline-group" style={{ flex: 1.2 }}>
-                      <span className="exact-inline-lbl">Telepon/Phone :</span>
-                      <div id="fap-diff-cell-picPhone" className={getDiff('picPhone') || getDiff('phone') ? getDiffClass('picPhone') : 'exact-fap-box highlight-dynamic'}>
-                        <span>{d.phone}</span>
-                        {renderDiffBadge('picPhone') || renderDiffBadge('phone')}
-                      </div>
+                  </td>
+                </tr>
+
+                {/* Row 16: PIC Current Address spanning L to T */}
+                <tr style={{ height: '24px' }}>
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Alamat Tempat Tinggal/ Current Address
+                  </td>
+                  <td colSpan={9} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-currentAddress" className={getDiffClass('currentAddress')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.currentAddress}
                     </div>
-                  </div>
-                </div>
+                  </td>
+                </tr>
 
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl" style={{ width: '135px', lineHeight: '1.15' }}>
-                    Jabatan/<br />Position
-                  </span>
-                  <span className="exact-fap-colon">:</span>
-                  <div className="exact-dual-row">
-                    <div id="fap-diff-cell-picPosition" className={getDiff('picPosition') || getDiff('position') ? getDiffClass('picPosition') : 'exact-fap-box highlight-dynamic'} style={{ flex: 1.2 }}>
-                      <span>{d.position}</span>
-                      {renderDiffBadge('picPosition') || renderDiffBadge('position')}
+                {/* Row 17: Kota / City (Left) | Right side blank */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', textAlign: 'right', fontWeight: 'bold' }}>
+                    Kota/City
+                  </td>
+                  <td style={{ textAlign: 'center' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-city" className={getDiffClass('city')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.city}
                     </div>
-                    <div className="exact-inline-group" style={{ flex: 1.2 }}>
-                      <span className="exact-inline-lbl">Email :</span>
-                      <div id="fap-diff-cell-picEmail" className={getDiffClass('picEmail')}>
-                        <span>{d.picEmail}</span>
-                        {renderDiffBadge('picEmail')}
-                      </div>
+                  </td>
+
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right side blank (Cols J to T = 11 cols) */}
+                  <td colSpan={11} style={{ padding: 0 }} />
+                </tr>
+
+                {/* Row 18: Provinsi / Province (Left) | Right side blank */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', textAlign: 'right', fontWeight: 'bold' }}>
+                    Provinsi/Province
+                  </td>
+                  <td style={{ textAlign: 'center' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-province" className={getDiffClass('province')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.province}
                     </div>
-                  </div>
-                </div>
+                  </td>
 
-                <div className="exact-fap-row">
-                  <span className="exact-fap-lbl" style={{ width: '135px' }}>Alamat Tempat Tinggal/ Current Address</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-currentAddress" className={getDiffClass('currentAddress', 'exact-fap-box multiline highlight-dynamic')}>
-                    <span>{d.currentAddress}</span>
-                    {renderDiffBadge('currentAddress')}
-                  </div>
-                </div>
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
 
-                <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                  <span className="exact-sub-lbl" style={{ width: '120px' }}>Kota/City</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-picCity" className={getDiffClass('picCity')}>
-                    <span>{d.picCity}</span>
-                    {renderDiffBadge('picCity')}
-                  </div>
-                </div>
+                  {/* Right side blank (Cols J to T = 11 cols) */}
+                  <td colSpan={11} style={{ padding: 0 }} />
+                </tr>
 
-                <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                  <span className="exact-sub-lbl" style={{ width: '120px' }}>Provinsi/Province</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-picProvince" className={getDiffClass('picProvince')}>
-                    <span>{d.picProvince}</span>
-                    {renderDiffBadge('picProvince')}
-                  </div>
-                </div>
+                {/* Row 20: Postal code (Left) | PIC Kota/City (Right: Cols P-T) */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', textAlign: 'right', fontWeight: 'bold' }}>
+                    Postal code
+                  </td>
+                  <td style={{ textAlign: 'center' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-postalCode" className={getDiffClass('postalCode')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.postalCode}
+                    </div>
+                  </td>
 
-                <div className="exact-sub-row" style={{ marginLeft: '16px' }}>
-                  <span className="exact-sub-lbl" style={{ width: '120px' }}>Kode Post/Postal code</span>
-                  <span className="exact-fap-colon">:</span>
-                  <div id="fap-diff-cell-picPostalCode" className={getDiffClass('picPostalCode')}>
-                    <span>{d.picPostalCode}</span>
-                    {renderDiffBadge('picPostalCode')}
-                  </div>
-                </div>
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
 
-                {/* Shareholder Table */}
-                <div className="exact-sh-section">
-                  <div className="exact-sh-title">
+                  {/* Right: PIC Kota/City shifted far right (Cols J-K blank, L-O label, P-T box) */}
+                  <td colSpan={2} style={{ padding: 0 }} />
+                  <td colSpan={4} style={{ padding: '2px 4px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle' }}>
+                    Kota/City
+                  </td>
+                  <td colSpan={5} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-picCity" className={getDiffClass('picCity')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.picCity}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Row 22: Main Business (Left) | PIC Provinsi/Province (Right: Cols P-T) */}
+                <tr id="fap-preview-sec-business" style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Bisnis Utama/ Main Business
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-mainBusiness" className={getDiffClass('mainBusiness')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.mainBusiness}
+                    </div>
+                  </td>
+
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right: PIC Provinsi/Province shifted far right */}
+                  <td colSpan={2} style={{ padding: 0 }} />
+                  <td colSpan={4} style={{ padding: '2px 4px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle' }}>
+                    Provinsi/Province
+                  </td>
+                  <td colSpan={5} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-picProvince" className={getDiffClass('picProvince')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.picProvince}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Row 23: Blank Left | PIC Kode Post (Right: Cols P-T) */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={7} style={{ padding: 0 }} />
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right: PIC Kode Post shifted far right */}
+                  <td colSpan={2} style={{ padding: 0 }} />
+                  <td colSpan={4} style={{ padding: '2px 4px', textAlign: 'right', fontWeight: 'bold', verticalAlign: 'middle' }}>
+                    Kode Post/Postal code
+                  </td>
+                  <td colSpan={5} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-picPostalCode" className={getDiffClass('picPostalCode')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.picPostalCode}
+                    </div>
+                  </td>
+                </tr>
+
+                {/* Row 25: Deed Establishment | Shareholder Header */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    No. Akta Pendirian/ Deed Establishment number
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={1} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-establishmentActNo" className={getDiffClass('establishmentActNo')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.establishmentActNo}
+                    </div>
+                  </td>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', textAlign: 'right', fontSize: '8px' }}>
+                    Tanggal Pendirian/ Est Date
+                  </td>
+                  <td colSpan={1} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-establishmentDate" className={getDiffClass('establishmentDate')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {formatDate(d.establishmentDate)}
+                    </div>
+                  </td>
+
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  <td colSpan={11} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '9px', color: '#000000' }}>
                     Struktur Organisasi & Pemegang Saham/Organization & Shareholder Structure
-                  </div>
-                  <div className="exact-sh-subtitle">
-                    Berdasarkan Akta/ Based on Act No: <span className="highlight-dynamic" style={{ fontWeight: 600 }}>{d.selectedDeedNo || d.latestDeedNo || '.....................'}</span> Tanggal/Date: <span className="highlight-dynamic" style={{ fontWeight: 600 }}>{formatDate(d.latestDeedDate) || '.....................'}</span>
-                  </div>
+                  </td>
+                </tr>
 
-                  <table className="exact-sh-table">
-                    <thead>
-                      <tr>
-                        <th style={{ width: '28px' }}>No</th>
-                        <th style={{ textAlign: 'left' }}>Name</th>
-                        <th style={{ width: '110px', textAlign: 'left' }}>Position</th>
-                        <th style={{ width: '105px', textAlign: 'right' }}>Amount of Share</th>
-                        <th style={{ width: '55px', textAlign: 'right' }}>% share</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Array.from({ length: 8 }).map((_, i) => {
-                        const sh = d.stakeholders?.[i];
-                        return (
-                          <tr key={i}>
-                            <td className="center">{i + 1}</td>
-                            <td className="highlight-dynamic">{sh?.name || ''}</td>
-                            <td className="highlight-dynamic">{sh?.position || ''}</td>
-                            <td className="right highlight-dynamic">{sh?.shareAmount ? formatNumber(sh.shareAmount) : ''}</td>
-                            <td className="right highlight-dynamic">{sh?.sharePercentage ? Number(sh.sharePercentage).toFixed(2) + '%' : ''}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+                {/* Row 26: Blank Left | Shareholder Deed Reference */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={7} style={{ padding: 0 }} />
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
 
-            {/* ==============================================================
-                SECTION 3: TUJUAN PEMBIAYAAN & LIST FIXED ASSETS (ROWS 46 - 54)
-                ============================================================== */}
-            <div className="exact-section-divider" id="fap-preview-sec-facility">
-              <div className="exact-section-header">TUJUAN PEMBIAYAAN & DAFTAR ASET TETAP / FINANCING PURPOSE & FIXED ASSETS</div>
-            </div>
+                  <td colSpan={11} style={{ padding: '2px 2px', verticalAlign: 'middle', fontSize: '8.5px', color: '#475569' }}>
+                    Berdasarkan Akta/ Based on Act No: <span style={{ fontWeight: 'bold', color: '#002060' }}>{d.selectedDeedNo || '.....................'}</span> Tanggal/Date: <span style={{ fontWeight: 'bold', color: '#002060' }}>{formatDate(d.latestDeedDate) || '.....................'}</span>
+                  </td>
+                </tr>
 
-            <div className="exact-fap-body" style={{ marginTop: '8px' }}>
-              <div className="exact-fap-col">
-                <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#002060', marginBottom: '4px' }}>
-                  Tujuan Pembiayaan/ financing purpose :
-                </div>
-                <div style={{ border: '1px solid #000', padding: '6px', background: '#ffffff', fontSize: '9px' }}>
-                  <div style={{ marginBottom: '6px' }}>
-                    <b style={{ color: '#002060' }}>{d.facilityPurpose === 'INVESTMENT' ? '☑' : '☐'} Investasi / Investment (√)</b>
-                    <div style={{ marginLeft: '14px', color: '#334155', marginTop: '2px', lineHeight: 1.3 }}>
-                      <div>• Aktivitas Usaha / Investasi (Business Activity/Investment)</div>
-                      <div>• Rehabilitasi (rehabilitation)</div>
-                      <div>• Modernisasi/Ekspansi (modernization/expansion)</div>
-                      <div>• Relokasi tempat usaha(relocation of business premises)</div>
+                {/* Row 27: Experience | Shareholder Table Headers */}
+                <tr style={{ height: '22px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Pengalaman/Experience
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={1} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-experienceYears" className={getDiffClass('experienceYears')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#002060' }}>
+                      {d.experienceYears}
                     </div>
-                  </div>
-
-                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
-                    <b style={{ color: '#002060' }}>{d.facilityPurpose === 'WORKING_CAPITAL' ? '☑' : '☐'} Modal Kerja/working capital (√)</b>
-                    <div style={{ marginLeft: '14px', color: '#334155', marginTop: '2px', lineHeight: 1.3 }}>
-                      • Memenuhi kebutuhan pengeluaran yang habis dalam 1 (satu) siklus usaha / fulfilling the expenditure needs that are used up in 1 (one) business cycle
+                  </td>
+                  <td style={{ padding: '2px 2px', verticalAlign: 'middle' }}>years</td>
+                  <td colSpan={1} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-experienceMonths" className={getDiffClass('experienceMonths')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: '#002060' }}>
+                      {d.experienceMonths}
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </td>
+                  <td style={{ padding: '2px 2px', verticalAlign: 'middle' }}>months</td>
 
-              <div className="exact-fap-col">
-                <div style={{ fontSize: '9.5px', fontWeight: 700, color: '#002060', marginBottom: '4px' }}>
-                  List Fixed Assets :
-                </div>
-                <table className="exact-sh-table">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>Brand</th>
-                      <th style={{ width: '65px', textAlign: 'center' }}>HE</th>
-                      <th style={{ width: '65px', textAlign: 'center' }}>Truck</th>
-                      <th style={{ width: '65px', textAlign: 'center' }}>Unit</th>
-                      <th style={{ width: '70px', textAlign: 'right' }}>Percentage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td><b>Liugong</b></td>
-                      <td className="center highlight-dynamic">{heLg || '—'}</td>
-                      <td className="center highlight-dynamic">{truckLg || '—'}</td>
-                      <td className="center highlight-dynamic">{unitLg || '—'}</td>
-                      <td className="right highlight-dynamic">{pctLg}</td>
-                    </tr>
-                    <tr>
-                      <td>Non Liugong</td>
-                      <td className="center highlight-dynamic">{heNonLg || '—'}</td>
-                      <td className="center highlight-dynamic">{truckNonLg || '—'}</td>
-                      <td className="center highlight-dynamic">{unitNonLg || '—'}</td>
-                      <td className="right highlight-dynamic">{pctNonLg}</td>
-                    </tr>
-                    <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                      <td>Total</td>
-                      <td className="center">{totalHe || '—'}</td>
-                      <td className="center">{totalTruck || '—'}</td>
-                      <td className="center">{grandTotalUnits || '—'}</td>
-                      <td className="right">100.0%</td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div style={{ fontSize: '8.5px', fontStyle: 'italic', color: '#64748b', marginTop: '3px' }}>
-                  *daftar unit terlampir/list equipment attached
-                </div>
-              </div>
-            </div>
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
 
-            {/* ==============================================================
-                SECTION 4: SEGMENTASI, BISNIS UTAMA & PROYEK (ROWS 55 - 63)
-                ============================================================== */}
-            <div className="exact-section-divider" id="fap-preview-sec-projects">
-              <div className="exact-section-header">SEGMENTASI, BISNIS UTAMA & PROYEK / SEGMENTATION, MAIN BUSINESS & PROJECTS</div>
-            </div>
+                  {/* Shareholder Table Header */}
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>No</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Name</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Position</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Amount of Share</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>% share</td>
+                </tr>
 
-            <div className="exact-fap-body" style={{ marginTop: '8px' }}>
-              <div className="exact-fap-col" style={{ flex: 0.9 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '8px' }}>
-                  <div className="exact-matrix-box">
-                    <div style={{ background: '#f1f5f9', padding: '3px 6px', fontWeight: 700, fontSize: '9px', borderBottom: '1px solid #000' }}>
-                      Segmentasi/Segmentation :
+                {/* Row 29: Latest Deed Amendment | Shareholder Row 1 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    No. Akta Perubahan Terakhir
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={1} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-latestDeedNo" className={getDiffClass('latestDeedNo')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.latestDeedNo}
                     </div>
-                    {[
-                      { key: 'MINING', label: 'Pertambangan/Mining' },
-                      { key: 'AGRICULTURE', label: 'Pertanian/Agriculture' },
-                      { key: 'FORESTRY', label: 'Kehutanan/Forestry' },
-                      { key: 'CONSTRUCTION', label: 'Konstruksi/Construction' },
-                      { key: 'OIL_AND_GAS', label: 'Oil & Gas' },
-                      { key: 'OTHER', label: 'Lainnya/Other' },
-                    ].map(item => {
-                      const isSel = d.industrySegment === item.key || (item.key === 'OIL_AND_GAS' && d.industrySegment === 'OIL_GAS');
-                      return (
-                        <div key={item.key} className="exact-matrix-row" style={{ padding: '2px 6px', fontSize: '8.5px' }}>
-                          <span>{item.label}</span>
-                          <b style={{ color: isSel ? '#002060' : '#94a3b8' }}>{isSel ? '☑' : '☐'}</b>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="exact-matrix-box">
-                    <div style={{ background: '#f1f5f9', padding: '3px 6px', fontWeight: 700, fontSize: '9px', borderBottom: '1px solid #000' }}>
-                      Bisnis Utama/Main Business :
+                  </td>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', textAlign: 'right', fontSize: '8px' }}>
+                    Tgl Perubahan:
+                  </td>
+                  <td colSpan={1} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-latestDeedDate" className={getDiffClass('latestDeedDate')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {formatDate(d.latestDeedDate)}
                     </div>
-                    {[
-                      { key: 'CONS_OWNER', alt: 'CONCESSION_OWNER', label: 'Cons. Owner' },
-                      { key: 'CONTRACTORS', alt: 'CONTRACTORS', label: 'Contractors' },
-                      { key: 'SUB_CONT', alt: 'SUB_CONTRACTORS', label: 'Sub Cont' },
-                      { key: 'RENTAL', alt: 'RENTAL', label: 'Rental' },
-                      { key: 'OTHER', alt: 'OTHER', label: 'Other' },
-                    ].map(item => {
-                      const isSel = d.businessRole === item.key || d.businessRole === item.alt;
-                      return (
-                        <div key={item.key} className="exact-matrix-row" style={{ padding: '2px 6px', fontSize: '8.5px' }}>
-                          <span>{item.label}</span>
-                          <b style={{ color: isSel ? '#002060' : '#94a3b8' }}>{isSel ? '☑' : '☐'}</b>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
+                  </td>
 
-              <div className="exact-fap-col" style={{ flex: 1.1 }}>
-                <table className="exact-sh-table">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>Pemilik Proyek/Project Owner</th>
-                      <th style={{ width: '120px', textAlign: 'left' }}>Lokasi Proyek/Project Location</th>
-                      <th style={{ width: '95px', textAlign: 'left' }}>Project Role</th>
-                      <th style={{ width: '75px', textAlign: 'center' }}>Existing/New</th>
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Shareholder 1 */}
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>1</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[0]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[0]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[0]?.shareAmount ? formatNumber(sh[0].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[0]?.sharePercent ? sh[0].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 30: Blank Left | Shareholder Row 2 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={7} style={{ padding: 0 }} />
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>2</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[1]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[1]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[1]?.shareAmount ? formatNumber(sh[1].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[1]?.sharePercent ? sh[1].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 32: NIB | Shareholder Row 3 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    NIB (No Induk Berusaha)
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-nib" className={getDiffClass('nib')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.nib}
+                    </div>
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>3</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[2]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[2]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[2]?.shareAmount ? formatNumber(sh[2].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[2]?.sharePercent ? sh[2].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 34: NPWP | Shareholder Row 4 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    NPWP/No.Tax
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-npwp" className={getDiffClass('npwp')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', fontWeight: 'bold', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.npwp}
+                    </div>
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>4</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[3]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[3]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[3]?.shareAmount ? formatNumber(sh[3].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[3]?.sharePercent ? sh[3].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 36: Phone / Fax | Shareholder Row 5 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Phone / Fax
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-phoneFax" className={getDiffClass('phoneFax')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.phoneFax}
+                    </div>
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>5</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[4]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[4]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[4]?.shareAmount ? formatNumber(sh[4].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[4]?.sharePercent ? sh[4].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 37: Blank Left | Shareholder Row 6 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={7} style={{ padding: 0 }} />
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>6</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[5]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[5]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[5]?.shareAmount ? formatNumber(sh[5].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[5]?.sharePercent ? sh[5].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 38: Website | Shareholder Row 7 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Website
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-website" className={getDiffClass('website')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.website || '—'}
+                    </div>
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>7</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[6]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[6]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[6]?.shareAmount ? formatNumber(sh[6].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[6]?.sharePercent ? sh[6].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 40: Email | Shareholder Row 8 */}
+                <tr style={{ height: '21px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Email
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-email" className={getDiffClass('email')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.email}
+                    </div>
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>8</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[7]?.name || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{sh[7]?.position || ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[7]?.shareAmount ? formatNumber(sh[7].shareAmount) : ''}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'right', color: '#002060' }}>{sh[7]?.sharePercent ? sh[7].sharePercent + '%' : ''}</td>
+                </tr>
+
+                {/* Row 42: Repayment Source */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Sumber Pembayaran/ Repayment source
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div id="fap-diff-cell-repaymentSource" className={getDiffClass('repaymentSource')} style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 4px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {d.repaymentSource}
+                    </div>
+                  </td>
+                  <td colSpan={12} style={{ padding: 0 }} />
+                </tr>
+
+                {/* Row 44: Business Location Status */}
+                <tr style={{ height: '23px' }}>
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Status tempat usaha/Business Location Status
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={4} style={{ padding: '1.5px 0', verticalAlign: 'middle' }}>
+                    <div style={{ border: '1px solid #000000', background: '#ffffff', minHeight: '19px', padding: '2px 6px', boxSizing: 'border-box', display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
+                      {d.locationStatus === 'OWNED'
+                        ? '☑ Milik Sendiri   /   ☐ Sewa'
+                        : d.locationStatus === 'RENTED'
+                        ? '☐ Milik Sendiri   /   ☑ Sewa'
+                        : '  Milik Sendiri   /   Sewa'}
+                    </div>
+                  </td>
+                  <td colSpan={12} style={{ padding: 0 }} />
+                </tr>
+
+                {/* ORANGE DIVIDER */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
+
+                {/* ==============================================================
+                    ROW 46 - 54: SECTION 3 - PURPOSE & FIXED ASSETS
+                    ============================================================== */}
+                <tr id="fap-preview-sec-facility" style={{ height: '22px' }}>
+                  {/* Col A: Side Header */}
+                  <td rowSpan={6} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', background: '#ffffff', padding: '2px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '8.5px', fontWeight: 'bold', letterSpacing: '0.5px', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                      Purpose & Assets
+                    </div>
+                  </td>
+
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Tujuan Pembiayaan/ financing purpose
+                  </td>
+                  <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>:</td>
+                  <td colSpan={3} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Investasi / Investment (√)
+                  </td>
+                  <td colSpan={5} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Modal Kerja/working capital  (√)
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td colSpan={7} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    List Fixed Assets :
+                  </td>
+                </tr>
+
+                {/* Row 47: Checklists & Fixed Assets Table Header */}
+                <tr style={{ height: '20px' }}>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {d.facilityPurpose === 'INVESTMENT' ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={4} style={{ padding: '1px 3px', verticalAlign: 'middle', fontSize: '8px' }}>
+                    Aktivitas Usaha / Investasi
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {d.facilityPurpose === 'WORKING_CAPITAL' ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={4} rowSpan={2} style={{ padding: '1px 3px', verticalAlign: 'top', fontSize: '7.5px', color: '#475569' }}>
+                    memenuhi kebutuhan pengeluaran yang habis dalam 1 siklus usaha
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Brand</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>HE</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Truck</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Unit</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Percentage</td>
+                </tr>
+
+                {/* Row 48: Fixed Assets LiuGong */}
+                <tr style={{ height: '20px' }}>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {d.facilityPurpose === 'INVESTMENT' ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={4} style={{ padding: '1px 3px', verticalAlign: 'middle', fontSize: '8px' }}>
+                    Rehabilitasi (rehabilitation)
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    ☐
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: 'bold' }}>Liugong</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px' }}>{heLg}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px' }}>{truckLg}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold' }}>{unitLg}</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px' }}>{pctLg}</td>
+                </tr>
+
+                {/* Row 49: Fixed Assets Non LiuGong */}
+                <tr style={{ height: '20px' }}>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    {d.facilityPurpose === 'INVESTMENT' ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={4} style={{ padding: '1px 3px', verticalAlign: 'middle', fontSize: '8px' }}>
+                    Modernisasi/Ekspansi
+                  </td>
+                  <td colSpan={5} style={{ padding: 0 }} />
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', padding: '2px 4px' }}>Non Liugong</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px' }}>{heNonLg}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px' }}>{truckNonLg}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold' }}>{unitNonLg}</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px' }}>{pctNonLg}</td>
+                </tr>
+
+                {/* Row 50: Fixed Assets Total */}
+                <tr style={{ height: '20px' }}>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                    ☐
+                  </td>
+                  <td colSpan={4} style={{ padding: '1px 3px', verticalAlign: 'middle', fontSize: '8px' }}>
+                    Relokasi tempat usaha
+                  </td>
+                  <td colSpan={5} style={{ padding: 0 }} />
+                  <td style={{ padding: 0 }} />
+                  <td style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: 'bold' }}>Total</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold' }}>{totalHe}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold' }}>{totalTruck}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold' }}>{grandTotalUnits}</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold' }}>100%</td>
+                </tr>
+
+                {/* Row 53: Attachment Note */}
+                <tr style={{ height: '18px' }}>
+                  <td colSpan={10} style={{ padding: 0 }} />
+                  <td style={{ padding: 0 }} />
+                  <td colSpan={8} style={{ fontSize: '8px', color: '#64748b', fontStyle: 'italic', textAlign: 'right', padding: '1px 2px' }}>
+                    *daftar unit terlampir/list equipment attached
+                  </td>
+                </tr>
+
+                {/* ORANGE DIVIDER */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
+
+                {/* ==============================================================
+                    ROW 55 - 63: SECTION 4 - SEGMENTATION & PROJECTS
+                    ============================================================== */}
+                <tr id="fap-preview-sec-projects" style={{ height: '22px' }}>
+                  {/* Col A: Side Header */}
+                  <td rowSpan={8} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', background: '#ffffff', padding: '2px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '8px', fontWeight: 'bold', letterSpacing: '0.5px', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                      Business Background
+                    </div>
+                  </td>
+
+                  <td colSpan={4} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Segmentasi/Segmentation :
+                  </td>
+                  <td colSpan={3} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold' }}>
+                    Bisnis Utama/Main Business :
+                  </td>
+                  <td style={{ padding: 0 }} />
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px', whiteSpace: 'nowrap' }}>
+                    Pemilik Proyek/Project Owner
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px', whiteSpace: 'nowrap' }}>
+                    Lokasi Proyek/Project Location
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px', whiteSpace: 'nowrap' }}>
+                    Project Role
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px', whiteSpace: 'nowrap' }}>
+                    Existing/New
+                  </td>
+                </tr>
+
+                {/* Rows 56 to 62: Seg & Biz Rows + Project Rows */}
+                {[
+                  { segLabel: 'Pertambangan/Mining', segVal: 'MINING', bizLabel: 'Cons. Owner', bizVal: 'CONS_OWNER' },
+                  { segLabel: 'Pertanian/Agriculture', segVal: 'AGRICULTURE', bizLabel: 'Contractors', bizVal: 'CONTRACTOR' },
+                  { segLabel: 'Kehutanan/Forestry', segVal: 'FORESTRY', bizLabel: 'Sub Cont', bizVal: 'SUB_CONTRACTOR' },
+                  { segLabel: 'Konstruksi/Construction', segVal: 'CONSTRUCTION', bizLabel: 'Rental', bizVal: 'RENTAL' },
+                  { segLabel: 'Oil & Gas', segVal: 'OIL_GAS', bizLabel: 'Other', bizVal: 'OTHER' },
+                  { segLabel: 'Lainnya/Other', segVal: 'OTHER', bizLabel: '', bizVal: '' },
+                  { segLabel: '', segVal: '', bizLabel: '', bizVal: '' },
+                ].map((rowItem, idx) => {
+                  const proj = projects[idx];
+                  const segChecked = rowItem.segVal && (d.industrySegment === rowItem.segVal || (rowItem.segVal === 'MINING' && !d.industrySegment));
+                  const bizChecked = rowItem.bizVal && (d.businessRole === rowItem.bizVal || (rowItem.bizVal === 'CONTRACTOR' && !d.businessRole));
+
+                  return (
+                    <tr key={idx} style={{ height: '20px' }}>
+                      {/* Segmentation */}
+                      <td style={{ border: rowItem.segLabel ? '1px solid #000000' : 'none', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                        {rowItem.segLabel ? (segChecked ? '☑' : '☐') : ''}
+                      </td>
+                      <td colSpan={3} style={{ padding: '1px 3px', verticalAlign: 'middle' }}>
+                        {rowItem.segLabel}
+                      </td>
+
+                      {/* Business Role */}
+                      <td style={{ border: rowItem.bizLabel ? '1px solid #000000' : 'none', textAlign: 'center', verticalAlign: 'middle', fontSize: '11px', fontWeight: 'bold' }}>
+                        {rowItem.bizLabel ? (bizChecked ? '☑' : '☐') : ''}
+                      </td>
+                      <td colSpan={2} style={{ padding: '1px 3px', verticalAlign: 'middle' }}>
+                        {rowItem.bizLabel}
+                      </td>
+
+                      {/* Spacer Col I */}
+                      <td style={{ padding: 0 }} />
+
+                      {/* Project Columns */}
+                      <td colSpan={3} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {proj?.owner || ''}
+                      </td>
+                      <td colSpan={3} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {proj?.location || ''}
+                      </td>
+                      <td colSpan={3} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {proj?.role || ''}
+                      </td>
+                      <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', textAlign: 'center', color: '#002060', whiteSpace: 'nowrap' }}>
+                        {proj?.status || ''}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {Array.from({ length: 4 }).map((_, i) => {
-                      const proj = d.projects?.[i];
-                      return (
-                        <tr key={i}>
-                          <td className="highlight-dynamic">{proj?.projectOwner || ''}</td>
-                          <td className="highlight-dynamic">{proj?.projectLocation || ''}</td>
-                          <td className="highlight-dynamic">{proj?.projectRole || ''}</td>
-                          <td className="center highlight-dynamic">{proj?.contractStatus || (proj ? 'Existing' : '')}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                  );
+                })}
 
-            {/* ==============================================================
-                SECTION 5: REFERENSI BANK (ROWS 64 - 72)
-                ============================================================== */}
-            <div className="exact-section-divider" id="fap-preview-sec-bank">
-              <div className="exact-section-header">REFERENSI FASILITAS BANK / ACTIVE BANK & FINANCING FACILITIES</div>
-            </div>
+                {/* ORANGE DIVIDER */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
 
-            <div style={{ marginTop: '8px' }}>
-              <table className="exact-sh-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '28px' }}>No</th>
-                    <th style={{ textAlign: 'left' }}>Bank/Fin</th>
-                    <th style={{ width: '55px', textAlign: 'center' }}>Currency</th>
-                    <th style={{ width: '115px', textAlign: 'right' }}>Credit Facility</th>
-                    <th style={{ width: '110px', textAlign: 'right' }}>Monthly Installment</th>
-                    <th style={{ width: '70px', textAlign: 'center' }}>Year Started</th>
-                    <th style={{ width: '70px', textAlign: 'right' }}>Interest Rate</th>
-                    <th style={{ width: '95px', textAlign: 'center' }}>Payment Record</th>
-                    <th style={{ width: '65px', textAlign: 'center' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {Array.from({ length: 5 }).map((_, i) => {
-                    const b = d.bankReferences?.[i];
-                    return (
-                      <tr key={i}>
-                        <td className="center">{i + 1}</td>
-                        <td className="highlight-dynamic">{b?.bankOrFinInstitution || ''}</td>
-                        <td className="center highlight-dynamic">{b?.currency || (b ? 'IDR' : '')}</td>
-                        <td className="right highlight-dynamic">{b?.creditFacility ? formatCurrency(b.creditFacility) : ''}</td>
-                        <td className="right highlight-dynamic">{b?.monthlyInstallment ? formatCurrency(b.monthlyInstallment) : ''}</td>
-                        <td className="center highlight-dynamic">{b?.yearStarted || ''}</td>
-                        <td className="right highlight-dynamic">{b?.interestRate ? b.interestRate + '%' : ''}</td>
-                        <td className="center highlight-dynamic">{b?.paymentRecord || ''}</td>
-                        <td className="center highlight-dynamic">{b?.facilityStatus || ''}</td>
-                      </tr>
-                    );
-                  })}
-                  <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                    <td colSpan={3} className="center">TOTAL</td>
-                    <td className="right">{totalCreditFacility > 0 ? formatCurrency(totalCreditFacility) : '—'}</td>
-                    <td className="right">{totalMonthlyInstallment > 0 ? formatCurrency(totalMonthlyInstallment) : '—'}</td>
-                    <td colSpan={4} style={{ textAlign: 'left', fontStyle: 'italic', color: '#475569', paddingLeft: '8px' }}>
-                      Comments : Facility repayment records are generally well-conducted (Kol 1 / Lancar).
+                {/* ==============================================================
+                    ROW 64 - 73: SECTION 5 - BANK REFERENCES
+                    ============================================================== */}
+                <tr id="fap-preview-sec-bank" style={{ height: '22px' }}>
+                  {/* Col A: Side Header */}
+                  <td rowSpan={8} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', background: '#ffffff', padding: '2px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '8.5px', fontWeight: 'bold', letterSpacing: '0.5px', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                      References
+                    </div>
+                  </td>
+
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>No</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Bank/Fin</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Currency</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Credit Facility</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Monthly Installment</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Year Started</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Interest Rate</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Payment Recored</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Status</td>
+                </tr>
+
+                {/* 5 Bank Rows */}
+                {[0, 1, 2, 3, 4].map(idx => {
+                  const b = banks[idx];
+                  return (
+                    <tr key={idx} style={{ height: '20px' }}>
+                      <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>{idx + 1}</td>
+                      <td colSpan={3} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>{b?.bankName || ''}</td>
+                      <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{b?.currency || (b ? 'IDR' : '')}</td>
+                      <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>{b?.creditFacility ? formatNumber(b.creditFacility) : ''}</td>
+                      <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>{b?.monthlyInstallment ? formatNumber(b.monthlyInstallment) : ''}</td>
+                      <td style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{b?.yearStarted || ''}</td>
+                      <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{b?.interestRate ? b.interestRate + '%' : ''}</td>
+                      <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{b?.paymentRecord || ''}</td>
+                      <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{b?.status || ''}</td>
+                    </tr>
+                  );
+                })}
+
+                {/* Row 70: Bank Total & Comments */}
+                <tr style={{ height: '22px' }}>
+                  <td colSpan={5} style={{ padding: '2px 4px', fontWeight: 'bold', textAlign: 'right' }}>
+                    TOTAL
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>
+                    {totalCreditFacility > 0 ? formatNumber(totalCreditFacility) : '—'}
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>
+                    {totalMonthlyInstallment > 0 ? formatNumber(totalMonthlyInstallment) : '—'}
+                  </td>
+                  <td style={{ padding: '2px 2px', textAlign: 'right', fontWeight: 'bold' }}>
+                    Comments :
+                  </td>
+                  <td colSpan={8} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>
+                    {banks[0]?.comments || d.notes || 'Lancar / Good Standing'}
+                  </td>
+                </tr>
+
+                {/* Row 71: Spacer */}
+                <tr style={{ height: '4px' }}><td colSpan={19} style={{ padding: 0 }} /></tr>
+
+                {/* ORANGE DIVIDER */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
+
+                {/* ==============================================================
+                    ROW 74 - 90: SECTION 6 - FACILITY PROPOSED & CHECKLIST
+                    ============================================================== */}
+                <tr id="fap-preview-sec-proposal" style={{ height: '22px' }}>
+                  {/* Col A: Side Header */}
+                  <td rowSpan={12} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', background: '#ffffff', padding: '2px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '8px', fontWeight: 'bold', letterSpacing: '0.5px', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                      Financing Proposed
+                    </div>
+                  </td>
+
+                  {/* Left Block: Facility Proposed Column Headers */}
+                  <td colSpan={6} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '9px' }}>
+                    Facility Proposed :
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', fontSize: '8px', padding: '2px' }}>
+                    Sewa Pembiayaan/Financial Lease
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', fontSize: '8px', padding: '2px' }}>
+                    Jual dan Sewa kembali/Sale and Lease Back
+                  </td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', fontSize: '8px', padding: '2px' }}>
+                    Pembelian angsuran/ Installment Financing
+                  </td>
+
+                  {/* Spacer Col R */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right: Document Requirement Header */}
+                  <td colSpan={2} style={{ padding: '2px 2px', verticalAlign: 'middle', fontWeight: 'bold', fontSize: '8.5px' }}>
+                    Persyaratan Dokumen
+                  </td>
+                </tr>
+
+                {/* Row 75: Investment Type & Checklist 1 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={6} style={{ padding: '2px 2px' }} />
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>
+                    {isLease ? 'Investment' : '—'}
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>
+                    {isSaleAndLease ? 'working capital / Investment' : '—'}
+                  </td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>
+                    {isInstallment ? 'working capital / Investment' : '—'}
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['COMPANY_PROFILE'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Company Profile
+                  </td>
+                </tr>
+
+                {/* Row 76: Financing Method & Checklist 2 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={3} style={{ padding: '2px 2px', fontWeight: 'bold' }}>
+                    Cara Pembiayaan / financing method
+                  </td>
+                  <td style={{ textAlign: 'center' }}>:</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>
+                    {d.financingMethod || 'FINANCIAL LEASE'}
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>IDR</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>IDR</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>IDR</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['LEGALITY'] || docCheckedMap['NIB'] ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Legality (NIB, SIUP)
+                  </td>
+                </tr>
+
+                {/* Row 77: Financing Value & Checklist 3 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={3} style={{ padding: '2px 2px', fontWeight: 'bold' }}>
+                    Nilai Pembiayaan / financing value
+                  </td>
+                  <td style={{ textAlign: 'center' }}>:</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>
+                    {formatCurrency(d.financingValue)}
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>{isLease ? formatCurrency(d.downPaymentValue) : '—'}</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>{isSaleAndLease ? formatCurrency(d.downPaymentValue) : '—'}</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px' }}>{isInstallment ? formatCurrency(d.downPaymentValue) : '—'}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['DEED'] || Boolean(d.establishmentActNo) ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Deed & Amendments
+                  </td>
+                </tr>
+
+                {/* Row 78: Application Source & Checklist 4 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={3} style={{ padding: '2px 2px', fontWeight: 'bold' }}>
+                    Application Source
+                  </td>
+                  <td style={{ textAlign: 'center' }}>:</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', color: '#002060' }}>
+                    {d.applicationSource}
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>{d.interestRate}%</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>{d.interestRate}%</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>{d.interestRate}%</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['SK_MENKUMHAM'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Decree Ministry of Law
+                  </td>
+                </tr>
+
+                {/* Row 79: Tenor & Checklist 5 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={6} style={{ padding: '2px 2px', fontWeight: 'bold' }}>
+                    Jk. Waktu/Tenor
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>{d.tenorMonths} Bulan</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>{d.tenorMonths} Bulan</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', fontWeight: 'bold', color: '#002060' }}>{d.tenorMonths} Bulan</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['BOD_KTP'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Copy ID, BOD, Shareholders
+                  </td>
+                </tr>
+
+                {/* Row 80: Payment Method & Checklist 6 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={6} style={{ padding: '2px 2px', fontWeight: 'bold' }}>
+                    cara pembayaran /Payment Method
+                  </td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{d.paymentMethod}</td>
+                  <td colSpan={3} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{d.paymentMethod}</td>
+                  <td colSpan={4} style={{ border: '1px solid #000000', textAlign: 'center', padding: '2px', color: '#002060' }}>{d.paymentMethod}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['AUDITED_FS'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Audited Financial Statements
+                  </td>
+                </tr>
+
+                {/* Row 81: Unit Realization Plan Header & Checklist 7 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={6} style={{ padding: '2px 2px', fontWeight: 'bold', fontSize: '8.5px' }}>
+                    Rencana Realisasi Unit/Unit Realization Plan
+                  </td>
+                  <td colSpan={10} style={{ padding: '2px 2px', fontWeight: 'bold' }}>
+                    Notes :
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['BANK_STATEMENTS'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Bank Statements
+                  </td>
+                </tr>
+
+                {/* Row 82: Realization Table Header & Checklist 8 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Brand</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>HE</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Truck</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>Unit</td>
+                  <td colSpan={10} rowSpan={4} style={{ border: '1px solid #000000', padding: '4px', verticalAlign: 'top', color: '#002060' }}>
+                    {d.notes || 'Realisasi unit sesuai jadwal pengiriman proyek.'}
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['BANK_FACILITY'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Bank or Financing Facility
+                  </td>
+                </tr>
+
+                {/* Row 83: Realization LiuGong & Checklist 9 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: 'bold' }}>Liugong</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>{heLg}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>{truckLg}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>{unitLg}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['PRODUCTION_REPORT'] || false ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Production report
+                  </td>
+                </tr>
+
+                {/* Row 84: Realization Non LiuGong & Checklist 10 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px' }}>Non Liugong</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>{heNonLg}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>{truckNonLg}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>{unitNonLg}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['ASSET_LIST'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    List of fixed assets
+                  </td>
+                </tr>
+
+                {/* Row 85: Realization Total & Checklist 11 */}
+                <tr style={{ height: '20px' }}>
+                  <td colSpan={2} style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: 'bold' }}>Total</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>{totalHe}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>{totalTruck}</td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', fontWeight: 'bold', color: '#002060' }}>{grandTotalUnits}</td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontSize: '11px', fontWeight: 'bold' }}>
+                    {docCheckedMap['PROJECT_CONTRACTS'] || true ? '☑' : '☐'}
+                  </td>
+                  <td colSpan={2} style={{ padding: '1px 3px', fontSize: '8px' }}>
+                    Project Contracts
+                  </td>
+                </tr>
+
+                {/* ORANGE DIVIDER */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
+
+                {/* ==============================================================
+                    ROW 91 - 101: SECTION 7 - FINANCIAL STATEMENTS
+                    ============================================================== */}
+                <tr id="fap-preview-sec-finance" style={{ height: '22px' }}>
+                  {/* Col A: Side Header */}
+                  <td rowSpan={9} style={{ border: '1px solid #000000', textAlign: 'center', verticalAlign: 'middle', background: '#ffffff', padding: '2px' }}>
+                    <div style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', fontSize: '8.5px', fontWeight: 'bold', letterSpacing: '0.5px', whiteSpace: 'nowrap', margin: '0 auto' }}>
+                      Financial Statement
+                    </div>
+                  </td>
+
+                  {/* Left: Balance Sheet Header */}
+                  <td colSpan={4} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px' }}>
+                    Keterangan/Remarks (Neraca)
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>
+                    {fsList[0]?.fiscalYear || '2023'}
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>
+                    {fsList[1]?.fiscalYear || '2024'}
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>
+                    {fsList[2]?.fiscalYear || '2025'}
+                  </td>
+
+                  {/* Spacer Col I */}
+                  <td style={{ padding: 0 }} />
+
+                  {/* Right: Income Statement Header */}
+                  <td colSpan={6} style={{ border: '1px solid #000000', fontWeight: 'bold', padding: '2px 4px' }}>
+                    Keterangan/Remarks (Laba Rugi)
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>
+                    {fsList[0]?.fiscalYear || '2023'}
+                  </td>
+                  <td style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>
+                    {fsList[1]?.fiscalYear || '2024'}
+                  </td>
+                  <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'center', fontWeight: 'bold', padding: '2px' }}>
+                    {fsList[2]?.fiscalYear || '2025'}
+                  </td>
+                </tr>
+
+                {/* 8 Financial Rows */}
+                {[
+                  {
+                    bsLabel: 'Total Aset Lancar/Total Current Asset',
+                    bsKey: 'currentAssets',
+                    isLabel: 'Pendapatan/Revenue',
+                    isKey: 'revenue'
+                  },
+                  {
+                    bsLabel: 'Total Aset Tetap/Total Non Current Asset',
+                    bsKey: 'nonCurrentAssets',
+                    isLabel: 'Laba Kotor/Gross Margin',
+                    isKey: 'grossMargin'
+                  },
+                  {
+                    bsLabel: 'Total Aset/Total Asset',
+                    bsKey: 'totalAssets',
+                    isLabel: 'Laba Usaha/Operating Margin',
+                    isKey: 'operatingMargin'
+                  },
+                  {
+                    bsLabel: 'Total Liabilitas Jk Pendek/Current Liabilities',
+                    bsKey: 'currentLiabilities',
+                    isLabel: 'Pajak/Tax',
+                    isKey: 'tax'
+                  },
+                  {
+                    bsLabel: 'Total Liabilitas Jk Panjang/Non Current Liab',
+                    bsKey: 'longTermLiabilities',
+                    isLabel: 'Laba Bersih/Net Income',
+                    isKey: 'netIncome'
+                  },
+                  {
+                    bsLabel: 'Total Liabilitas/ Total Liabilities',
+                    bsKey: 'totalLiabilities',
+                    isLabel: '',
+                    isKey: ''
+                  },
+                  {
+                    bsLabel: 'Ekuitas/Equity',
+                    bsKey: 'equity',
+                    isLabel: '',
+                    isKey: ''
+                  },
+                  {
+                    bsLabel: 'Total Liabilitas & Ekuitas/Total Liab & Equity',
+                    bsKey: 'totalLiabilitiesAndEquity',
+                    isLabel: '',
+                    isKey: ''
+                  },
+                ].map((row, idx) => (
+                  <tr key={idx} style={{ height: '20px' }}>
+                    {/* Balance Sheet Row */}
+                    <td colSpan={4} style={{ border: '1px solid #000000', padding: '2px 4px', fontWeight: row.bsLabel.includes('Total') ? 'bold' : 'normal' }}>
+                      {row.bsLabel}
+                    </td>
+                    <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>
+                      {formatNumber((fsList[0] as any)?.[row.bsKey])}
+                    </td>
+                    <td style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>
+                      {formatNumber((fsList[1] as any)?.[row.bsKey])}
+                    </td>
+                    <td colSpan={2} style={{ border: '1px solid #000000', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>
+                      {formatNumber((fsList[2] as any)?.[row.bsKey])}
+                    </td>
+
+                    {/* Spacer Col I */}
+                    <td style={{ padding: 0 }} />
+
+                    {/* Income Statement Row */}
+                    <td colSpan={6} style={{ border: row.isLabel ? '1px solid #000000' : 'none', padding: '2px 4px', fontWeight: row.isLabel.includes('Laba Bersih') || row.isLabel.includes('Pendapatan') ? 'bold' : 'normal' }}>
+                      {row.isLabel}
+                    </td>
+                    <td style={{ border: row.isLabel ? '1px solid #000000' : 'none', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>
+                      {row.isKey ? formatNumber((fsList[0] as any)?.[row.isKey]) : ''}
+                    </td>
+                    <td style={{ border: row.isLabel ? '1px solid #000000' : 'none', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>
+                      {row.isKey ? formatNumber((fsList[1] as any)?.[row.isKey]) : ''}
+                    </td>
+                    <td colSpan={2} style={{ border: row.isLabel ? '1px solid #000000' : 'none', textAlign: 'right', padding: '2px 4px', color: '#002060' }}>
+                      {row.isKey ? formatNumber((fsList[2] as any)?.[row.isKey]) : ''}
                     </td>
                   </tr>
-                </tbody>
-              </table>
-            </div>
-
-            {/* ==============================================================
-                SECTION 6: USULAN FASILITAS & DOKUMEN CHECKLIST (ROWS 73 - 92)
-                ============================================================== */}
-            <div className="exact-section-divider" id="fap-preview-sec-proposal">
-              <div className="exact-section-header">USULAN FASILITAS & PERSYARATAN DOKUMEN / FACILITY PROPOSED & REQUIRED DOCUMENTS</div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '2.1fr 1fr', gap: '12px', marginTop: '8px' }}>
-              {/* Left / Center 3-Column Product Matrix */}
-              <div style={{ border: '1px solid #000000', background: '#ffffff' }}>
-                <table className="exact-sh-table" style={{ border: 'none' }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: '135px', textAlign: 'left' }}>Facility Proposed :</th>
-                      <th style={{ textAlign: 'center', width: '31%', background: isLease ? '#dbeafe' : '#f1f5f9' }}>
-                        Sewa Pembiayaan/<br />Financial Lease {isLease ? '☑' : '☐'}
-                      </th>
-                      <th style={{ textAlign: 'center', width: '31%', background: isSaleAndLease ? '#dbeafe' : '#f1f5f9' }}>
-                        Jual dan Sewa kembali/<br />Sale and Lease Back {isSaleAndLease ? '☑' : '☐'}
-                      </th>
-                      <th style={{ textAlign: 'center', width: '31%', background: isInstallment ? '#dbeafe' : '#f1f5f9' }}>
-                        Pembelian dengan pembayaran angsuran/<br />Installment Financing {isInstallment ? '☑' : '☐'}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Tipe Fasilitas / Purpose</td>
-                      <td className="center" style={{ fontSize: '8.5px' }}>Investment</td>
-                      <td className="center" style={{ fontSize: '8.5px' }}>working capital / Investment</td>
-                      <td className="center" style={{ fontSize: '8.5px' }}>working capital / Investment</td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Cara Pembiayaan / financing method</td>
-                      <td className="center highlight-dynamic">{isLease ? 'Financial Lease' : '—'}</td>
-                      <td className="center highlight-dynamic">{isSaleAndLease ? 'Sale & Lease Back' : '—'}</td>
-                      <td className="center highlight-dynamic">{isInstallment ? 'Installment' : '—'}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Nilai Pembiayaan / financing value : (IDR/USD)</td>
-                      <td colSpan={3} className="center highlight-dynamic" style={{ fontWeight: 700, fontSize: '10.5px' }}>
-                        {formatCurrency(d.financingValue)} (IDR)
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Mata Uang / Currency</td>
-                      <td className="center">IDR</td>
-                      <td className="center">IDR</td>
-                      <td className="center">IDR</td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>
-                        {isInstallment ? 'Uang Muka / Down Payment' : 'Simpanan Jaminan / Security Deposit'}
-                      </td>
-                      <td className="center highlight-dynamic">{isLease ? formatCurrency(d.downPaymentValue) : '—'}</td>
-                      <td className="center highlight-dynamic">{isSaleAndLease ? formatCurrency(d.downPaymentValue) : '—'}</td>
-                      <td className="center highlight-dynamic">{isInstallment ? formatCurrency(d.downPaymentValue) : '—'}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Bunga/Interest Rate</td>
-                      <td colSpan={3} className="center highlight-dynamic">
-                        {d.interestRate ? `${d.interestRate}% p.a.` : '—'}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Jk. Waktu/Tenor</td>
-                      <td colSpan={3} className="center highlight-dynamic">
-                        {d.tenorMonths ? `${d.tenorMonths} Bulan / Months` : '—'}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Cara Pembayaran / Method</td>
-                      <td colSpan={3} className="center highlight-dynamic">
-                        {d.paymentMethod || 'In Arrear'}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Application Source</td>
-                      <td colSpan={3} className="center highlight-dynamic">
-                        {d.applicationSource || 'Direct / Dealer'}
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style={{ fontWeight: 600 }}>Notes :</td>
-                      <td colSpan={3} style={{ fontSize: '8.5px', color: '#475569', padding: '4px' }}>
-                        Heavy equipment unit delivery scheduled upon approval sign-off.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                {/* Mini Unit Realization Plan */}
-                <div style={{ padding: '6px', borderTop: '1px solid #000' }}>
-                  <div style={{ fontSize: '9px', fontWeight: 700, color: '#002060', marginBottom: '3px' }}>
-                    Rencana Realisasi Unit/Unit Realization Plan :
-                  </div>
-                  <table className="exact-sh-table" style={{ fontSize: '8.5px' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: 'left' }}>Brand</th>
-                        <th style={{ width: '45px', textAlign: 'center' }}>HE</th>
-                        <th style={{ width: '45px', textAlign: 'center' }}>Truck</th>
-                        <th style={{ width: '45px', textAlign: 'center' }}>Unit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>Liugong</td>
-                        <td className="center highlight-dynamic">{heLg || '—'}</td>
-                        <td className="center highlight-dynamic">{truckLg || '—'}</td>
-                        <td className="center highlight-dynamic">{unitLg || '—'}</td>
-                      </tr>
-                      <tr>
-                        <td>Non Liugong</td>
-                        <td className="center highlight-dynamic">{heNonLg || '—'}</td>
-                        <td className="center highlight-dynamic">{truckNonLg || '—'}</td>
-                        <td className="center highlight-dynamic">{unitNonLg || '—'}</td>
-                      </tr>
-                      <tr style={{ fontWeight: 700, background: '#f8fafc' }}>
-                        <td>Total</td>
-                        <td className="center">{totalHe || '—'}</td>
-                        <td className="center">{totalTruck || '—'}</td>
-                        <td className="center">{grandTotalUnits || '—'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Right Column: Required Document Checklist */}
-              <div style={{ border: '1px solid #000000', padding: '6px 8px', background: '#ffffff', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                <div style={{ fontSize: '9px', fontWeight: 700, color: '#002060', borderBottom: '1px solid #000', paddingBottom: '3px', marginBottom: '4px' }}>
-                  Document Requirements Checklist :
-                </div>
-
-                {[
-                  { label: 'Company Profile', checked: true },
-                  { label: 'Legality (e.g. NIB, SIUJK, SIUP, etc)', checked: Boolean(docCheckedMap['NIB'] || d.nib) },
-                  { label: 'Deed establishment & Deed Amendments', checked: Boolean(docCheckedMap['DEED'] || d.establishmentActNo) },
-                  { label: 'Decree of the ministry of law', checked: Boolean(docCheckedMap['LEGAL_OPINION'] || d.selectedDeedNo) },
-                  { label: 'Copy of ID, BOD, and Shareholder', checked: Boolean(docCheckedMap['KTP'] || (d.stakeholders && d.stakeholders.length > 0)) },
-                  { label: 'Audited Financial Statements', checked: Boolean(docCheckedMap['FINANCIALS'] || (d.financialStatements && d.financialStatements.length > 0)) },
-                  { label: 'Bank Statements', checked: Boolean(docCheckedMap['BANK'] || (d.bankReferences && d.bankReferences.length > 0)) },
-                  { label: 'Bank or Financing Facility', checked: Boolean(d.bankReferences && d.bankReferences.length > 0) },
-                  { label: 'Production report', checked: true },
-                  { label: 'List of fixed assets', checked: Boolean(grandTotalUnits > 0) },
-                  { label: 'Project Contracts', checked: Boolean(docCheckedMap['CONTRACT'] || (d.projects && d.projects.length > 0)) },
-                ].map((item, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '8.5px', padding: '1.5px 0' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: item.checked ? '#002060' : '#94a3b8' }}>
-                      {item.checked ? '☑' : '☐'}
-                    </span>
-                    <span style={{ color: item.checked ? '#0f172a' : '#64748b' }}>{item.label}</span>
-                  </div>
                 ))}
-              </div>
-            </div>
 
-            {/* ==============================================================
-                SECTION 7: RINGKASAN LAPORAN KEUANGAN (ROWS 93 - 105)
-                ============================================================== */}
-            <div className="exact-section-divider" id="fap-preview-sec-finance">
-              <div className="exact-section-header">LAPORAN KEUANGAN / FINANCIAL STATEMENTS — LAST 3 YEARS</div>
-            </div>
+                {/* ORANGE DIVIDER */}
+                <tr style={{ height: '6px' }}>
+                  <td colSpan={20} style={{ padding: 0, height: '2px', borderBottom: '2px solid #ed7d31' }} />
+                </tr>
 
-            <div style={{ marginTop: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '3px', fontSize: '9px', fontWeight: 600 }}>
-                <span>Audited (Yes/No) : <b>{fsList.some((f: any) => f.isAudited) ? 'Yes' : 'No'}</b></span>
-              </div>
+                {/* ==============================================================
+                    ROW 102 - 121: SECTION 8 - DECLARATION & SIGNATURES
+                    ============================================================== */}
+                <tr id="fap-preview-sec-decl" style={{ height: '20px' }}>
+                  <td colSpan={20} style={{ padding: '4px 2px 2px 2px', fontWeight: 'bold', fontSize: '8.5px', color: '#000000' }}>
+                    Dengan ini kami menyatakan dan menyetujui hal-hal sebagai berikut :
+                  </td>
+                </tr>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '10px' }}>
-                {/* Balance Sheet Table */}
-                <table className="exact-sh-table">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>Keterangan/Remarks</th>
-                      {fsList.map((fs: any, i: number) => (
-                        <th key={i} style={{ width: '80px', textAlign: 'right' }}>
-                          {fs.fiscalYear || `20${23 + i}`}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Total Aset Lancar/Total Current Asset</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentAssets)}</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Total Aset Tetap/Total Non Current Asset</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.nonCurrentAssets)}</td>
-                      ))}
-                    </tr>
-                    <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                      <td>Total Aset/Total Asset</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.totalAssets)}</b></td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Total Liabilitas Jangka Pendek/Total Current Liabilities</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.currentLiabilities)}</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Total Liabilitas Jangka Panjang/Total Non Current Liabilities</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.longTermLiabilities || fs.nonCurrentLiabilities)}</td>
-                      ))}
-                    </tr>
-                    <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                      <td>Total Liabilitas/ Total Liabilities</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.totalLiabilities)}</b></td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Ekuitas/Equity</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.equity)}</td>
-                      ))}
-                    </tr>
-                    <tr style={{ background: '#f1f5f9', fontWeight: 700 }}>
-                      <td>Total Liabilitas & Ekuitas/Total Liab. & Equity</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic"><b>{formatNumber((fs.totalLiabilities || 0) + (fs.equity || 0))}</b></td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
+                {/* Point 1 */}
+                <tr style={{ height: 'auto' }}>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontSize: '8px', padding: '2px 4px 2px 0', color: '#000000' }}>
+                    1
+                  </td>
+                  <td colSpan={19} style={{ padding: '2px 2px', fontSize: '7.8px', lineHeight: 1.25, color: '#000000' }}>
+                    <strong>PT LiuGong Finance Indonesia</strong> telah memberikan penjelasan mengenai karakteristik pembiayaan, risiko-risiko dan biaya-biaya yang melekat pada produk kepada Kami dan Kami telah memahami sepenuhnya produk tersebut/ <em><strong>PT LiuGong Finance Indonesia</strong> has duly provided an explanation regarding the characteristics of the financing, including the inherent risks and associated costs of the product, and we hereby declare that we fully understand the product</em>
+                  </td>
+                </tr>
 
-                {/* Income Statement Table */}
-                <table className="exact-sh-table">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign: 'left' }}>Keterangan/Remarks</th>
-                      {fsList.map((fs: any, i: number) => (
-                        <th key={i} style={{ width: '80px', textAlign: 'right' }}>
-                          {fs.fiscalYear || `20${23 + i}`}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td>Pendapatan/Revenue</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.revenue)}</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Laba Kotor/Gross Margin</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.grossMargin)}</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Laba Usaha/Operating Margin</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.operatingMargin)}</td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <td>Pajak/Tax</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic">{formatNumber(fs.tax)}</td>
-                      ))}
-                    </tr>
-                    <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                      <td>Laba Bersih/Net Income</td>
-                      {fsList.map((fs: any, i: number) => (
-                        <td key={i} className="right highlight-dynamic"><b>{formatNumber(fs.netIncome)}</b></td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                {/* Point 2 */}
+                <tr style={{ height: 'auto' }}>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontSize: '8px', padding: '2px 4px 2px 0', color: '#000000' }}>
+                    2
+                  </td>
+                  <td colSpan={19} style={{ padding: '2px 2px', fontSize: '7.8px', lineHeight: 1.25, color: '#000000' }}>
+                    <div>
+                      Menyatakan semua Informasi dan/atau dokumen milik kami, berikut informasi dan/atau dokumen berkaitan dengan penerima manfaat, yang telah diberikan adalah lengkap dan yang sebenar-benarnya, serta memberikan persetujuan kepada <strong>PT LiuGong Finance Indonesia</strong> dan/atau Pihak ketiga yang bekerja sama dengan <strong>PT LiuGong Finance Indonesia</strong> untuk menganalisa, memproses, menverifikasi, serta mengirimkan data dan/atau informasi tersebut sehubungan dengan pengajuan pembiayaan ini/ <em>We hereby declare that all information and/or documents provided by us, including those related to the beneficial owner, are complete and true to the best of our knowledge. We further provide our consent to <strong>PT LiuGong Finance Indonesia</strong> and/or any third party cooperating with <strong>PT LiuGong Finance Indonesia</strong> to analyze, process, verify, and transmit such data and/or information in connection with this financing application</em>
+                    </div>
+                    <div style={{ marginTop: '4px' }}>
+                      <em>We also give our consent to PT LiuGong Finance Indonesia and/or any third party in cooperation with PT LiuGong Finance Indonesia to analyze, process, verify, and transmit such data and/or information in connection with this financing application.</em>
+                    </div>
+                  </td>
+                </tr>
 
-            {/* ==============================================================
-                SECTION 8: PERNYATAAN & TANDA TANGAN (ROWS 106 - 122)
-                ============================================================== */}
-            <div className="exact-section-divider" id="fap-preview-sec-decl">
-              <div className="exact-section-header">PERNYATAAN & TANDA TANGAN / DECLARATION & SIGNATURES</div>
-            </div>
+                {/* Point 3 */}
+                <tr style={{ height: 'auto' }}>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontSize: '8px', padding: '2px 4px 2px 0', color: '#000000' }}>
+                    3
+                  </td>
+                  <td colSpan={19} style={{ padding: '2px 2px', fontSize: '7.8px', lineHeight: 1.25, color: '#000000' }}>
+                    Dalam proses persetujuan pengajuan Pembiayaan, <strong>PT LiuGong Finance Indonesia</strong> berhak untuk meminta informasi dan dokumen tambahan diluar dari dokumen persyaratan pembiayaan yang di syaratkan/ <em>in the course of the financing application approval process, <strong>PT LiuGong Finance Indonesia</strong> shall entitled to request additional information and documents beyond the standard financing documentation requirements.</em>
+                  </td>
+                </tr>
 
-            <div style={{ fontSize: '8.5px', color: '#1e293b', lineHeight: 1.35, margin: '8px 0 10px 0' }}>
-              <div style={{ fontWeight: 700, marginBottom: '4px' }}>Dengan ini kami menyatakan dan menyetujui hal-hal sebagai berikut :</div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '3px' }}>
-                <span style={{ fontWeight: 700 }}>1.</span>
-                <span>PT LiuGong Finance Indonesia telah memberikan penjelasan mengenai karakteristik pembiayaan, risiko-risiko dan biaya-biaya yang melekat pada produk kepada Kami dan Kami telah memahami sepenuhnya produk tersebut/ PT LiuGong Finance Indonesia has duly provided an explanation regarding the characteristics of the financing, including the inherent risks and associated costs of the product, and we hereby declare that we fully understand the product.</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '3px' }}>
-                <span style={{ fontWeight: 700 }}>2.</span>
-                <span>Menyatakan semua Informasi dan/atau dokumen milik kami, berikut informasi dan/atau dokumen berkaitan dengan penerima manfaat, yang telah diberikan adalah lengkap dan yang sebenar-benarnya, serta memberikan persetujuan kepada PT LiuGong Finance Indonesia dan/atau Pihak ketiga yang bekerja sama dengan PT LiuGong Finance Indonesia untuk menganalisa, memproses, menverifikasi, serta mengirimkan data dan/atau informasi tersebut sehubungan dengan pengajuan pembiayaan ini/ We hereby declare that all information and/or documents provided by us, including those related to the beneficial owner, are complete and true to the best of our knowledge. We further provide our consent to PT LiuGong Finance Indonesia and/or any third party cooperating with PT LiuGong Finance Indonesia to analyze, process, verify, and transmit such data and/or information in connection with this financing application.</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '3px' }}>
-                <span style={{ fontWeight: 700 }}>3.</span>
-                <span>Dalam proses persetujuan pengajuan Pembiayaan, PT LiuGong Finance Indonesia berhak untuk meminta informasi dan dokumen tambahan diluar dari dokumen persyaratan pembiayaan yang di syaratkan/ In the course of the financing application approval process, PT LiuGong Finance Indonesia shall entitled to request additional information and documents beyond the standard financing documentation requirements.</span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '3px' }}>
-                <span style={{ fontWeight: 700 }}>4.</span>
-                <span>PT LiuGong Finance Indonesia berhak untuk menerima/ menolak permohonan ini berdasarkan kebijakan internal yang berlaku/PT LiuGong Finance Indonesia shall entitled to approve or reject this application at its sole discretion in accordance with its prevailing internal policies.</span>
-              </div>
-            </div>
+                {/* Point 4 */}
+                <tr style={{ height: 'auto' }}>
+                  <td style={{ textAlign: 'right', verticalAlign: 'top', fontWeight: 'bold', fontSize: '8px', padding: '2px 4px 2px 0', color: '#000000' }}>
+                    4
+                  </td>
+                  <td colSpan={19} style={{ padding: '2px 2px', fontSize: '7.8px', lineHeight: 1.25, color: '#000000' }}>
+                    <strong>PT LiuGong Finance Indonesia</strong> berhak untuk menerima/ menolak permohonan ini berdasarkan kebijakan internal yang berlaku/<em><strong>PT LiuGong Finance Indonesia</strong> shall entitled to approve or reject this application at its sole discretion in accordance with its prevailing internal policies</em>
+                  </td>
+                </tr>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '10px' }}>
-              <div style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', background: '#ffffff' }}>
-                <div style={{ fontSize: '9.5px', fontWeight: 700 }}>Di tanda tangani debitur / signed by debtor</div>
-                <div style={{ height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
-                  [sign & company stamp]
-                </div>
-                <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontSize: '10px', fontWeight: 700 }}>
-                  [ {d.picName || '                                                              '} ]
-                </div>
-                <div style={{ fontSize: '9px', fontWeight: 700, color: '#002060', marginTop: '2px' }}>
-                  PT. {d.companyName || '                                          '}
-                </div>
-              </div>
+                {/* Spacer before signature boxes */}
+                <tr style={{ height: '8px' }}>
+                  <td colSpan={20} style={{ padding: 0 }} />
+                </tr>
 
-              <div style={{ border: '1px solid #000', padding: '8px', textAlign: 'center', background: '#ffffff' }}>
-                <div style={{ fontSize: '9.5px', fontWeight: 700 }}>Diverifikasi oleh pihak LFI/ verified by LFI</div>
-                <div style={{ height: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '9px' }}>
-                  [sign]
-                </div>
-                <div style={{ borderTop: '1px solid #000', paddingTop: '4px', fontSize: '10px', fontWeight: 700 }}>
-                  [                                                               ]
-                </div>
-                <div style={{ fontSize: '9px', fontWeight: 600, color: '#334155', marginTop: '3px' }}>
-                  Marketing
-                </div>
-                <div style={{ fontSize: '9px', fontWeight: 700, color: '#002060', marginTop: '1px' }}>
-                  PT. LIUGONG FINANCE INDONESIA
-                </div>
-              </div>
-            </div>
+                {/* ==============================================================
+                    SIGNATURE BOXES: DEBTOR & LFI MARKETING (1:1 EXCEL REPLICA)
+                    ============================================================== */}
+                {/* 1. Top Header Row */}
+                <tr style={{ height: '26px' }}>
+                  <td style={{ padding: 0 }} />
+                  {/* Left Header */}
+                  <td
+                    colSpan={7}
+                    style={{
+                      borderTop: '1.5px solid #000000',
+                      borderLeft: '1.5px solid #000000',
+                      borderRight: '1.5px solid #000000',
+                      borderBottom: '1.5px solid #000000',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      fontWeight: 'bold',
+                      fontSize: '8.5px',
+                      background: '#ffffff',
+                      color: '#000000',
+                      padding: '3px 4px'
+                    }}
+                  >
+                    Di tanda tangani debitur / signed by debtor
+                  </td>
 
-            {/* Form Version Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '14px', fontSize: '9px', fontWeight: 600, color: '#64748b' }}>
-              ver 01/2025
-            </div>
+                  {/* Center Gap */}
+                  <td colSpan={5} style={{ padding: 0 }} />
+
+                  {/* Right Header */}
+                  <td
+                    colSpan={7}
+                    style={{
+                      borderTop: '1.5px solid #000000',
+                      borderLeft: '1.5px solid #000000',
+                      borderRight: '1.5px solid #000000',
+                      borderBottom: '1.5px solid #000000',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      fontWeight: 'bold',
+                      fontSize: '8.5px',
+                      background: '#ffffff',
+                      color: '#000000',
+                      padding: '3px 4px'
+                    }}
+                  >
+                    Diverifikasi oleh pihak LFI/ verified by LFI
+                  </td>
+                </tr>
+
+                {/* 2. Middle Body Row (Signature stamp area + brackets) */}
+                <tr style={{ height: '125px' }}>
+                  <td style={{ padding: 0 }} />
+                  {/* Left Body */}
+                  <td
+                    colSpan={7}
+                    style={{
+                      borderLeft: '1.5px solid #000000',
+                      borderRight: '1.5px solid #000000',
+                      borderBottom: '1.5px solid #000000',
+                      background: '#ffffff',
+                      verticalAlign: 'top',
+                      padding: '0'
+                    }}
+                  >
+                    <div style={{ height: '100%', minHeight: '125px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '12px 10px 4px 10px', boxSizing: 'border-box' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontStyle: 'italic', color: '#a1a1aa', fontSize: '8.5px' }}>
+                          [sign &amp; company stamp]
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 'bold', color: '#000000', padding: '0 4px' }}>
+                        <span>[</span>
+                        <span>]</span>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Center Gap */}
+                  <td colSpan={5} style={{ padding: 0 }} />
+
+                  {/* Right Body */}
+                  <td
+                    colSpan={7}
+                    style={{
+                      borderLeft: '1.5px solid #000000',
+                      borderRight: '1.5px solid #000000',
+                      borderBottom: '1.5px solid #000000',
+                      background: '#ffffff',
+                      verticalAlign: 'top',
+                      padding: '0'
+                    }}
+                  >
+                    <div style={{ height: '100%', minHeight: '125px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '12px 10px 4px 10px', boxSizing: 'border-box' }}>
+                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontStyle: 'italic', color: '#a1a1aa', fontSize: '8.5px' }}>
+                          [sign]
+                        </span>
+                      </div>
+                      <div style={{ padding: '0 4px' }}>
+                        <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#000000', textAlign: 'left' }}>
+                          <span>[</span>
+                        </div>
+                        <div style={{ textAlign: 'center', fontSize: '8.5px', color: '#000000', marginTop: '-4px' }}>
+                          Marketing
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+
+                {/* 3. Bottom PT Entity Name Row */}
+                <tr style={{ height: '26px' }}>
+                  <td style={{ padding: 0 }} />
+                  {/* Left Footer: PT. [Company Name] */}
+                  <td
+                    colSpan={7}
+                    style={{
+                      borderLeft: '1.5px solid #000000',
+                      borderRight: '1.5px solid #000000',
+                      borderBottom: '1.5px solid #000000',
+                      verticalAlign: 'middle',
+                      padding: '3px 10px',
+                      fontSize: '8.5px',
+                      fontWeight: 'bold',
+                      color: '#000000',
+                      background: '#ffffff'
+                    }}
+                  >
+                    PT. {d.companyName ? d.companyName.replace(/^PT\.?\s*/i, '') : ''}
+                  </td>
+
+                  {/* Center Gap */}
+                  <td colSpan={5} style={{ padding: 0 }} />
+
+                  {/* Right Footer: PT. LIUGONG FINANCE INDONESIA */}
+                  <td
+                    colSpan={7}
+                    style={{
+                      borderLeft: '1.5px solid #000000',
+                      borderRight: '1.5px solid #000000',
+                      borderBottom: '1.5px solid #000000',
+                      textAlign: 'center',
+                      verticalAlign: 'middle',
+                      padding: '3px 6px',
+                      fontSize: '8.5px',
+                      fontWeight: 'bold',
+                      color: '#000000',
+                      background: '#ffffff'
+                    }}
+                  >
+                    PT. LIUGONG FINANCE INDONESIA
+                  </td>
+                </tr>
+
+                {/* 4. Version Tag Footer */}
+                <tr style={{ height: '18px' }}>
+                  <td colSpan={13} style={{ padding: 0 }} />
+                  <td
+                    colSpan={7}
+                    style={{
+                      textAlign: 'right',
+                      verticalAlign: 'bottom',
+                      fontSize: '8.5px',
+                      fontWeight: 'bold',
+                      fontStyle: 'italic',
+                      color: '#000000',
+                      padding: '3px 0 0 0'
+                    }}
+                  >
+                    ver 01/2025
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
