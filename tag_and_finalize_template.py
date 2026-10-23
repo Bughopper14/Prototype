@@ -29,6 +29,11 @@ def main():
     
     style_tag = soup.new_tag('style')
     custom_css = """
+    *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
     html {
         margin: 0 !important;
         padding: 0 !important;
@@ -52,6 +57,13 @@ def main():
         box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
         text-align: left !important;
         display: table !important;
+    }
+    .xl74, .xl75, .xl76 {
+        background-color: #002060 !important;
+        background: #002060 !important;
+        border-bottom: 22px solid #002060 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
     .fap-autofill-val {
         color: #002060 !important;
@@ -91,12 +103,58 @@ def main():
         outline: 4px solid #2563eb !important;
         background-color: rgba(219, 234, 254, 0.45) !important;
     }
+    @media print {
+        @page {
+            size: A4 landscape;
+            margin: 6mm 4mm;
+        }
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            width: 100% !important;
+            min-width: 100% !important;
+            text-align: center !important;
+        }
+        body {
+            zoom: 0.31 !important;
+        }
+        #fap-main-table, table.fap-main-table {
+            margin: 0 auto !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+        .xl74, .xl75, .xl76 {
+            background-color: #002060 !important;
+            background: #002060 !important;
+            border-bottom: 22px solid #002060 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
     """
     style_tag.string = css + '\n' + custom_css
     if soup.head:
         soup.head.append(style_tag)
     else:
         soup.insert(0, style_tag)
+
+    # Logo stabilization
+    for img in soup.find_all('img'):
+        if img.get('v:shapes') == 'Image_x0020_27' or 'image002' in str(img.get('src', '')):
+            img['class'] = (str(img.get('class', '')) + ' fap-logo-img').strip()
+            if img.parent and img.parent.name == 'span':
+                img.parent['class'] = (str(img.parent.get('class', '')) + ' fap-logo-span').strip()
+                img.parent['style'] = "position:absolute;z-index:10;left:24px;top:14px;width:420px;height:auto;margin:0;"
+            if img.parent and img.parent.parent and img.parent.parent.name == 'td':
+                td = img.parent.parent
+                td['class'] = (str(td.get('class', '')) + ' fap-logo-cell').strip()
+                td['style'] = (str(td.get('style', '')) + ';position:relative !important;overflow:visible !important;').strip()
 
     table = soup.find('table')
     if not table:

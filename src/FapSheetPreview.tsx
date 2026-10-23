@@ -446,7 +446,28 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
   const handlePrint = () => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
-      iframeRef.current.contentWindow.print();
+      const win = iframeRef.current.contentWindow;
+      const doc = win.document;
+      const prevZoom = doc.body.style.zoom;
+      const prevPadding = doc.body.style.padding;
+      const prevMargin = doc.body.style.margin;
+
+      // Scale cleanly to A4 landscape (3443px -> 1067px)
+      doc.body.style.zoom = '0.31';
+      doc.body.style.padding = '0';
+      doc.body.style.margin = '0 auto';
+      doc.body.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
+      doc.body.style.setProperty('print-color-adjust', 'exact', 'important');
+
+      win.print();
+
+      setTimeout(() => {
+        if (doc && doc.body) {
+          doc.body.style.zoom = prevZoom;
+          doc.body.style.padding = prevPadding;
+          doc.body.style.margin = prevMargin;
+        }
+      }, 500);
     } else {
       window.print();
     }
@@ -524,7 +545,32 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 }
 
 export function printFapDocument(_fapNumber?: string) {
-  window.print();
+  const iframe = document.querySelector('.excel-fap-viewer iframe') as HTMLIFrameElement;
+  if (iframe && iframe.contentWindow) {
+    const win = iframe.contentWindow;
+    const doc = win.document;
+    const prevZoom = doc.body.style.zoom;
+    const prevPadding = doc.body.style.padding;
+    const prevMargin = doc.body.style.margin;
+
+    doc.body.style.zoom = '0.31';
+    doc.body.style.padding = '0';
+    doc.body.style.margin = '0 auto';
+    doc.body.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
+    doc.body.style.setProperty('print-color-adjust', 'exact', 'important');
+
+    win.print();
+
+    setTimeout(() => {
+      if (doc && doc.body) {
+        doc.body.style.zoom = prevZoom;
+        doc.body.style.padding = prevPadding;
+        doc.body.style.margin = prevMargin;
+      }
+    }, 500);
+  } else {
+    window.print();
+  }
 }
 
 export default FapSheetPreview;
