@@ -265,10 +265,14 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     if (!iframe || !iframe.contentDocument) return;
     const doc = iframe.contentDocument;
 
-    // Apply zoom
+    // Apply zoom and centering
     if (doc.body) {
       doc.body.style.zoom = String(zoomLevel);
       doc.body.style.background = '#f8fafc';
+      doc.body.style.textAlign = 'center';
+      doc.body.style.padding = '20px 0';
+      doc.body.style.margin = '0';
+      doc.body.style.minWidth = '100%';
     }
 
     const mainTable = doc.getElementById('fap-main-table') || doc.querySelector('table');
@@ -277,6 +281,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       (mainTable as HTMLElement).style.marginRight = 'auto';
       (mainTable as HTMLElement).style.backgroundColor = '#ffffff';
       (mainTable as HTMLElement).style.boxShadow = '0 4px 24px rgba(15, 23, 42, 0.08)';
+      (mainTable as HTMLElement).style.textAlign = 'left';
+      (mainTable as HTMLElement).style.display = 'table';
     }
 
     const setText = (id: string, text: any) => {
@@ -415,7 +421,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       if (containerRef.current) {
         const w = containerRef.current.clientWidth;
         // Native Excel table width in sheet001.htm is 3443px
-        const targetZoom = Math.min(0.5, Math.max(0.18, (w - 24) / 3443));
+        // Deduct 36px so the table has breathing room (18px left & right) and centers smoothly
+        const availableWidth = Math.max(260, w - 36);
+        const targetZoom = Math.min(0.65, Math.max(0.10, availableWidth / 3443));
         setZoomLevel(Number(targetZoom.toFixed(2)));
       }
     };
@@ -425,12 +433,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     return () => observer.disconnect();
   }, []);
 
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.15, Number((z - 0.05).toFixed(2))));
+  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.10, Number((z - 0.05).toFixed(2))));
   const handleZoomIn = () => setZoomLevel((z) => Math.min(1.0, Number((z + 0.05).toFixed(2))));
   const handleResetZoom = () => {
     if (containerRef.current) {
       const w = containerRef.current.clientWidth;
-      const targetZoom = Math.min(0.5, Math.max(0.18, (w - 24) / 3443));
+      const availableWidth = Math.max(260, w - 36);
+      const targetZoom = Math.min(0.65, Math.max(0.10, availableWidth / 3443));
       setZoomLevel(Number(targetZoom.toFixed(2)));
     }
   };

@@ -1699,17 +1699,29 @@ td
 	white-space:normal;}
 
 
+    html {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #f8fafc !important;
+        width: 100% !important;
+    }
     body {
         margin: 0 !important;
-        padding: 24px 16px !important;
+        padding: 24px 0 !important;
         background: #f8fafc !important;
+        text-align: center !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        box-sizing: border-box !important;
         -webkit-font-smoothing: antialiased;
     }
-    #fap-main-table, .fap-main-table {
+    #fap-main-table, table.fap-main-table {
         margin-left: auto !important;
         margin-right: auto !important;
         background: #ffffff !important;
         box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
+        text-align: left !important;
+        display: table !important;
     }
     .fap-autofill-val {
         color: #002060 !important;
