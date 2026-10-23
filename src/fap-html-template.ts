@@ -1740,7 +1740,14 @@ td
     #fap-cell-city,
     #fap-cell-picCity,
     #fap-cell-postalCode,
-    #fap-cell-picPostalCode {
+    #fap-cell-picPostalCode,
+    #fap-cell-website,
+    #fap-cell-experienceYears,
+    #fap-cell-experienceMonths,
+    #fap-cell-establishmentActNo,
+    #fap-cell-establishmentDate,
+    #fap-cell-latestDeedNo,
+    #fap-cell-latestDeedDate {
         border: .5pt solid black !important;
         box-sizing: border-box !important;
     }
@@ -2694,9 +2701,7 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
     <x:SizeWithCells/>
     <x:CF>Bitmap</x:CF>
    </x:ClientData>
-  </v:shape><![endif]--><?if !vml?><span style="mso-ignore:vglayout;
-  position:absolute;z-index:2;margin-left:18px;margin-top:1px;width:71px;
-  height:2197px"><img height="2197" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEcAAAiVCAYAAAA5qalcAAAAAXNSR0ICQMB9xQAAAAlwSFlzAAAOxAAADsQBlSsOGwAAABl0RVh0U29mdHdhcmUATWljcm9zb2Z0IE9mZmljZX/tNXEAAArVSURBVHja7dCxDYQwFETB35cLAF1LiMC1UcD1cAXQAhgwFtaFpBO81cYTEbGUNv31jXqm0qjWVF3OSTnn0NXh8cQZoHQ4Axw4cODAgQMHDhw4UODAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQIHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDhw4cODAgQMHDhzBgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhQ4cODAgQMHDhw4cODAgQMHDhw4cODAERw4cODAgQMHDhw4cODAgQMHDhw4cOAIDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cKDAgQMHDhw4cODAgQMHDhw4cODAgQMHjuDAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMFDhw4cODAgQMHDhw4cODAgQMHDhw4cAQHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhwocODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAERw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cOBAgQMHDhw4cODAgQMHDhw4cODAgQMHDhzBgQMHDhw4cODAgQMHDhw4cODAgQMHjuDAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHChw4cODAgQMHDhw4cODAgQMHDhw4cOAIDhw4cODAgQMHDhw4cODAgQMHDhw4cAQHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4UODAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQIHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDhw4cODAgQMHDhzBgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhQ4cODAgQMHDhw4cODAgQMHDhw4cODAERw4cODAgQMHDhw4cODAgQMHDhw4cOAIDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cKDAgQMHDhw4cODAgQMHDhw4cODAgQMHjuDAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMFDhw4cODAgQMHDhw4cODAgQMHDhw4cAQHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhwocODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAERw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cOBAgQMHDhw4cODAgQMHDhw4cODAgQMHDhzBgQMHDhw4cODAgQMHDhw4cODAgQMHjuDAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHChw4cODAgQMHDhw4cODAgQMHDhw4cOAIDhw4cODAgQMHDhw4cODAgQMHDhw4cAQHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4UODAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQIHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDhw4cODAgQMHDhzBgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhQ4cODAgQMHDhw4cODAgQMHDhw4cODAERw4cODAgQMHDhw4cODAgQMHDhw4cOAIDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cKDAgQMHDhw4cODAgQMHDhw4cODAgQMHjuDAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMFDhw4cODAgQMHDhw4cODAgQMHDhw4cAQHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhwocODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAERw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cOBAgQMHDhw4cODAgQMHDhw4cODAgQMHDhzBgQMHDhw4cODAgQMHDhw4cODAgQMHjuDAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHChw4cODAgQMHDhw4cODAgQMHDhw4cOAIDhw4cODAgQMHDhw4cODAgQMHDhw4cAQHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4UODAgQMHDhw4cODAgQMHDhw4cODAgQNHcODAgQMHDhw4cODAgQMHDhw4cODAgSM4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQMHDhw4cODAgQIHDhw4cODAgQMHDhw4cODAgQMHDhw4ggMHDhw4cODAgQMHDpw3OAlKh5OeOHPpo9Z84/zqUd+6A+bhZJYKZFogAAAAAElFTkSuQmCC" v:shapes="TextBox_x0020_2" width="71"/></span><?endif?><span style="mso-ignore:vglayout2">
+  </v:shape><![endif]--><?if !vml?><?endif?><span style="mso-ignore:vglayout2">
 <table cellpadding="0" cellspacing="0">
 <tr>
 <td class="xl71" height="190" style="height:142.95pt;width:79pt" width="105"> </td>
@@ -2820,8 +2825,8 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 </tr>
 <tr height="166" style="mso-height-source:userset;height:124.5pt">
 <td class="xl71" height="166" style="height:124.5pt"> </td>
-<td class="xl108" style="width:123pt" width="164"></td>
-<td class="xl106" colspan="3" style="border-right:.5pt solid black">Provinsi/<font class="font18">Province</font></td>
+<td class="xl108" style="width:123pt" width="164"></td><td class="xl96">:</td>
+<td class="xl106" colspan="2" style="border-right:.5pt solid black">Provinsi/<font class="font18">Province</font></td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-province" style="border:.5pt solid black !important;"> </td>
 <td class="xl97"></td>
 <td class="xl72"> </td>
@@ -2968,11 +2973,11 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 <td class="xl168" colspan="2" rowspan="2" style="width:229pt" width="305">No. Akta
   Pendirian/ <font class="font18">Deed Establishment number</font></td>
 <td class="xl96">:</td>
-<td class="xl118 fap-autofill-val" id="fap-cell-establishmentActNo"> </td>
-<td class="xl178" colspan="2" style="border-left:none;width:229pt" width="305">Tanggal
+<td class="xl118 fap-autofill-val" id="fap-cell-establishmentActNo" style="border:.5pt solid black !important;"> </td>
+<td class="xl178" colspan="2" style="border-left:none;width:229pt;font-size:14pt !important;line-height:1.15 !important;padding:2px 4px !important" width="305">Tanggal
   Pendirian/<br/>
-<font class="font18">Est Date</font></td>
-<td class="xl98 fap-autofill-val" id="fap-cell-establishmentDate"> </td>
+<font class="font18" style="font-size:14pt !important;">Est Date</font></td>
+<td class="xl98 fap-autofill-val" id="fap-cell-establishmentDate" style="border:.5pt solid black !important;text-align:center !important;"> </td>
 <td class="xl97"></td>
 <td class="xl100" colspan="7" style="mso-ignore:colspan">Struktur Organisasi
   &amp; Pemegang Saham/<font class="font18">Organization &amp; Shareholder
@@ -3007,12 +3012,12 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl100" colspan="2" style="mso-ignore:colspan">Pengalaman/<font class="font18">Experien</font><span style="display:none"><font class="font18">ce</font></span></td>
+<td class="xl100" colspan="2" style="mso-ignore:colspan">Pengalaman/<font class="font18">Experien</font><span style="display:inline"><font class="font18">ce</font></span></td>
 <td class="xl96">:</td>
-<td class="xl118 fap-autofill-val" id="fap-cell-experienceYears"> </td>
-<td class="xl117">years</td>
-<td class="xl118 fap-autofill-val" id="fap-cell-experienceMonths"> </td>
-<td class="xl117">months</td>
+<td class="xl118 fap-autofill-val" id="fap-cell-experienceYears" style="border:.5pt solid black !important;text-align:center !important;"> </td>
+<td class="xl117" style="padding:0 6px !important">years</td>
+<td class="xl118 fap-autofill-val" id="fap-cell-experienceMonths" style="border:.5pt solid black !important;text-align:center !important;"> </td>
+<td class="xl117" style="padding:0 6px !important">months</td>
 <td class="xl97"></td>
 <td class="xl179" rowspan="2" style="border-bottom:.5pt solid black">No</td>
 <td class="xl180" colspan="4" rowspan="2" style="border-right:.5pt solid black;
@@ -3050,12 +3055,10 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 <td class="xl101" colspan="2" rowspan="2" style="width:229pt" width="305">No. Akta
   Perubahan Terakhir /<font class="font18"> Latest Deed of Amendment number</font></td>
 <td class="xl96">:</td>
-<td class="xl174 fap-autofill-val" id="fap-cell-latestDeedNo" rowspan="2" style="border-bottom:.5pt solid black;
-  width:118pt" width="158"> </td>
-<td class="xl101" colspan="2" rowspan="2" style="width:229pt" width="305">Tanggal
-  Perubahan Terakhir/<font class="font18">Date of The Latest Amendment</font></td>
-<td class="xl174 fap-autofill-val" id="fap-cell-latestDeedDate" rowspan="2" style="border-bottom:.5pt solid black;
-  width:319pt" width="426"> </td>
+<td class="xl174 fap-autofill-val" id="fap-cell-latestDeedNo" rowspan="2" style="border:.5pt solid black !important;" width="158"> </td>
+<td class="xl101" colspan="2" rowspan="2" style="width:229pt;font-size:14pt !important;line-height:1.15 !important;padding:2px 4px !important" width="305">Tanggal
+  Perubahan Terakhir/<font class="font18" style="font-size:14pt !important;">Date of The Latest Amendment</font></td>
+<td class="xl174 fap-autofill-val" id="fap-cell-latestDeedDate" rowspan="2" style="border:.5pt solid black !important;text-align:center !important;" width="426"> </td>
 <td class="xl97"></td>
 <td class="xl105" style="border-top:none">1</td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-sh-0-name" style="border-right:.5pt solid black"> </td>
@@ -3105,7 +3108,7 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl100" colspan="2" style="mso-ignore:colspan">NIB (No Induk Berusah<span style="display:none">a)</span></td>
+<td class="xl100" colspan="2" style="mso-ignore:colspan">NIB (No Induk Berusah<span style="display:inline">a)</span></td>
 <td class="xl96">:</td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-nib" style="border-right:.5pt solid black"> </td>
 <td class="xl97"></td>
@@ -3220,7 +3223,7 @@ AAAAAAAAAAAyBQAAZHJzL2Rvd25yZXYueG1sUEsFBgAAAAAEAAQA9QAAAH8GAAAAAA==
 <td class="xl100">Website</td>
 <td class="xl100"></td>
 <td class="xl96">:</td>
-<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-website" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-website" style="border:.5pt solid black !important;"> </td>
 <td class="xl97"></td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -4632,7 +4635,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl137" style="border-top:none">Non Liugon<span style="display:none">g</span></td>
+<td class="xl137" style="border-top:none">Non Liugon<span style="display:inline">g</span></td>
 <td class="xl118" style="border-top:none;border-left:none"> </td>
 <td class="xl118" style="border-top:none;border-left:none"> </td>
 <td class="xl118" style="border-top:none;border-left:none"> </td>

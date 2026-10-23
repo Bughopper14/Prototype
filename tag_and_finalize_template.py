@@ -70,7 +70,14 @@ def main():
     #fap-cell-city,
     #fap-cell-picCity,
     #fap-cell-postalCode,
-    #fap-cell-picPostalCode {
+    #fap-cell-picPostalCode,
+    #fap-cell-website,
+    #fap-cell-experienceYears,
+    #fap-cell-experienceMonths,
+    #fap-cell-establishmentActNo,
+    #fap-cell-establishmentDate,
+    #fap-cell-latestDeedNo,
+    #fap-cell-latestDeedDate {
         border: .5pt solid black !important;
         box-sizing: border-box !important;
     }
@@ -160,7 +167,17 @@ def main():
     else:
         soup.insert(0, style_tag)
 
-    # Logo stabilization
+    # 1. Remove ghost image006 shape (empty 2197px tall vertical box on left)
+    for img in soup.find_all('img'):
+        if 'image006' in str(img.get('src', '')) or img.get('v:shapes') == 'TextBox_x0020_2':
+            if img.parent and img.parent.name == 'span':
+                img.parent.decompose()
+
+    # 2. Unhide truncated text (Pengalaman/Experience, NIB, Non Liugong)
+    for span in soup.find_all('span', style=re.compile(r'display:\s*none', re.I)):
+        span['style'] = re.sub(r'display:\s*none', 'display:inline', span['style'], flags=re.I)
+
+    # 3. Logo stabilization
     for img in soup.find_all('img'):
         if img.get('v:shapes') == 'Image_x0020_27' or 'image002' in str(img.get('src', '')):
             img['class'] = (str(img.get('class', '')) + ' fap-logo-img').strip()
@@ -257,9 +274,16 @@ def main():
     # Row 20: Provinsi/Province (Company)
     r20_tds = rows[20].find_all('td')
     if len(r20_tds) > 3:
-        r20_tds[3]['id'] = 'fap-cell-province'
-        r20_tds[3]['class'] = r20_tds[3].get('class', []) + ['fap-autofill-val']
-        r20_tds[3]['style'] = 'border:.5pt solid black !important;'
+        colon_td = soup.new_tag('td')
+        colon_td['class'] = ['xl96']
+        colon_td.string = ':'
+        r20_tds[1].insert_after(colon_td)
+        r20_tds[2]['colspan'] = '2'
+        r20_tds_updated = rows[20].find_all('td')
+        if len(r20_tds_updated) > 4:
+            r20_tds_updated[4]['id'] = 'fap-cell-province'
+            r20_tds_updated[4]['class'] = r20_tds_updated[4].get('class', []) + ['fap-autofill-val']
+            r20_tds_updated[4]['style'] = 'border:.5pt solid black !important;'
 
     # Row 22: Postal code (Company), Kota/City (PIC)
     r22_tds = rows[22].find_all('td')
@@ -296,18 +320,30 @@ def main():
     if len(r27_tds) > 3:
         r27_tds[3]['id'] = 'fap-cell-establishmentActNo'
         r27_tds[3]['class'] = r27_tds[3].get('class', []) + ['fap-autofill-val']
+        r27_tds[3]['style'] = 'border:.5pt solid black !important;'
+    if len(r27_tds) > 4:
+        r27_tds[4]['style'] = (str(r27_tds[4].get('style', '')) + ';font-size:14pt !important;line-height:1.15 !important;padding:2px 4px !important;').strip(';')
+        for font in r27_tds[4].find_all('font'):
+            font['style'] = 'font-size:14pt !important;'
     if len(r27_tds) > 5:
         r27_tds[5]['id'] = 'fap-cell-establishmentDate'
         r27_tds[5]['class'] = r27_tds[5].get('class', []) + ['fap-autofill-val']
+        r27_tds[5]['style'] = 'border:.5pt solid black !important;text-align:center !important;'
 
     # Row 29: Pengalaman (years, months)
     r29_tds = rows[29].find_all('td')
     if len(r29_tds) > 3:
         r29_tds[3]['id'] = 'fap-cell-experienceYears'
         r29_tds[3]['class'] = r29_tds[3].get('class', []) + ['fap-autofill-val']
+        r29_tds[3]['style'] = 'border:.5pt solid black !important;text-align:center !important;'
+    if len(r29_tds) > 4:
+        r29_tds[4]['style'] = (str(r29_tds[4].get('style', '')) + ';padding:0 6px !important;').strip(';')
     if len(r29_tds) > 5:
         r29_tds[5]['id'] = 'fap-cell-experienceMonths'
         r29_tds[5]['class'] = r29_tds[5].get('class', []) + ['fap-autofill-val']
+        r29_tds[5]['style'] = 'border:.5pt solid black !important;text-align:center !important;'
+    if len(r29_tds) > 6:
+        r29_tds[6]['style'] = (str(r29_tds[6].get('style', '')) + ';padding:0 6px !important;').strip(';')
 
     # Row 31: No. Akta Perubahan Terakhir, Tanggal Perubahan Terakhir, Shareholder 1
     rows[31]['id'] = 'fap-preview-sec-projects'
@@ -315,9 +351,15 @@ def main():
     if len(r31_tds) > 3:
         r31_tds[3]['id'] = 'fap-cell-latestDeedNo'
         r31_tds[3]['class'] = r31_tds[3].get('class', []) + ['fap-autofill-val']
+        r31_tds[3]['style'] = 'border:.5pt solid black !important;'
+    if len(r31_tds) > 4:
+        r31_tds[4]['style'] = (str(r31_tds[4].get('style', '')) + ';font-size:14pt !important;line-height:1.15 !important;padding:2px 4px !important;').strip(';')
+        for font in r31_tds[4].find_all('font'):
+            font['style'] = 'font-size:14pt !important;'
     if len(r31_tds) > 5:
         r31_tds[5]['id'] = 'fap-cell-latestDeedDate'
         r31_tds[5]['class'] = r31_tds[5].get('class', []) + ['fap-autofill-val']
+        r31_tds[5]['style'] = 'border:.5pt solid black !important;text-align:center !important;'
 
     # Shareholder rows
     sh_map = [
@@ -359,6 +401,7 @@ def main():
     if len(r40_tds) > 4:
         r40_tds[4]['id'] = 'fap-cell-website'
         r40_tds[4]['class'] = r40_tds[4].get('class', []) + ['fap-autofill-val']
+        r40_tds[4]['style'] = 'border:.5pt solid black !important;'
 
     # Row 42: Email
     r42_tds = rows[42].find_all('td')
