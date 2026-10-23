@@ -1701,9 +1701,15 @@ td
 
     body {
         margin: 0 !important;
-        padding: 16px !important;
-        background: #ffffff !important;
+        padding: 24px 16px !important;
+        background: #f8fafc !important;
         -webkit-font-smoothing: antialiased;
+    }
+    #fap-main-table, .fap-main-table {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        background: #ffffff !important;
+        box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
     }
     .fap-autofill-val {
         color: #002060 !important;
@@ -1745,7 +1751,7 @@ td
     }
     </style></head>
 <body class="xl70" link="#0563C1" vlink="#954F72">
-<table border="0" cellpadding="0" cellspacing="0" style="border-collapse:
+<table border="0" cellpadding="0" cellspacing="0" class="fap-main-table" id="fap-main-table" style="border-collapse:
  collapse;table-layout:fixed;width:2580pt" width="3443">
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:3726;
  width:79pt" width="105"/>

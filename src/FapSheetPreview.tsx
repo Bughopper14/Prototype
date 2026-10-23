@@ -268,7 +268,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     // Apply zoom
     if (doc.body) {
       doc.body.style.zoom = String(zoomLevel);
-      doc.body.style.background = '#ffffff';
+      doc.body.style.background = '#f8fafc';
+    }
+
+    const mainTable = doc.getElementById('fap-main-table') || doc.querySelector('table');
+    if (mainTable) {
+      (mainTable as HTMLElement).style.marginLeft = 'auto';
+      (mainTable as HTMLElement).style.marginRight = 'auto';
+      (mainTable as HTMLElement).style.backgroundColor = '#ffffff';
+      (mainTable as HTMLElement).style.boxShadow = '0 4px 24px rgba(15, 23, 42, 0.08)';
     }
 
     const setText = (id: string, text: any) => {
@@ -493,13 +501,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       )}
 
       {/* Embedded Native HTML Template Frame */}
-      <div style={{ flex: 1, width: '100%', height: 'calc(100% - 40px)', background: '#ffffff', overflow: 'hidden' }}>
+      <div style={{ flex: 1, width: '100%', height: 'calc(100% - 67px)', background: '#f8fafc', overflow: 'hidden' }}>
         <iframe
           ref={iframeRef}
           srcDoc={FAP_EXCEL_HTML_TEMPLATE}
           title="Application Form APPROVED"
           onLoad={syncIframeValues}
-          style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff', display: 'block' }}
+          style={{ width: '100%', height: '100%', border: 'none', background: '#f8fafc', display: 'block' }}
         />
       </div>
     </div>

@@ -31,9 +31,15 @@ def main():
     custom_css = """
     body {
         margin: 0 !important;
-        padding: 16px !important;
-        background: #ffffff !important;
+        padding: 24px 16px !important;
+        background: #f8fafc !important;
         -webkit-font-smoothing: antialiased;
+    }
+    #fap-main-table, .fap-main-table {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        background: #ffffff !important;
+        box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
     }
     .fap-autofill-val {
         color: #002060 !important;
@@ -84,6 +90,9 @@ def main():
     if not table:
         print("Table not found!")
         return
+
+    table['id'] = 'fap-main-table'
+    table['class'] = table.get('class', []) + ['fap-main-table']
 
     rows = table.find_all('tr')
     print(f"Total rows in table: {len(rows)}")
