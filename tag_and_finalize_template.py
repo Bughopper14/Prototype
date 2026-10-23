@@ -57,10 +57,6 @@ def main():
         box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08) !important;
         text-align: left !important;
         display: table !important;
-        border-collapse: collapse !important;
-        border-left: 1.0pt solid black !important;
-        border-right: 1.0pt solid black !important;
-        border-top: 1.0pt solid black !important;
     }
     .xl74, .xl75, .xl76 {
         background-color: #002060 !important;
@@ -154,13 +150,6 @@ def main():
         .fap-page-break {
             page-break-before: always !important;
             break-before: page !important;
-        }
-        #fap-main-table {
-            border-collapse: collapse !important;
-            border-left: 1.0pt solid black !important;
-            border-right: 1.0pt solid black !important;
-            border-top: 1.0pt solid black !important;
-            box-shadow: none !important;
         }
         .fap-page-end-line td {
             border-bottom: 2.5pt solid black !important;
@@ -296,6 +285,8 @@ def main():
 
     # Row 18: Kota/City, Alamat Tempat Tinggal/Current Address (PIC)
     r18_tds = rows[18].find_all('td')
+    if len(r18_tds) > 2:
+        r18_tds[2].string = '' # Clear stray colon under Alamat Perusahaan
     if len(r18_tds) > 4:
         r18_tds[4]['id'] = 'fap-cell-city'
         r18_tds[4]['class'] = r18_tds[4].get('class', []) + ['fap-autofill-val']
@@ -312,6 +303,8 @@ def main():
 
     # Row 22: Postal code (Company), Kota/City (PIC)
     r22_tds = rows[22].find_all('td')
+    if len(r22_tds) > 2:
+        r22_tds[2].string = '' # Clear stray colon
     if len(r22_tds) > 4:
         r22_tds[4]['id'] = 'fap-cell-postalCode'
         r22_tds[4]['class'] = r22_tds[4].get('class', []) + ['fap-autofill-val']
