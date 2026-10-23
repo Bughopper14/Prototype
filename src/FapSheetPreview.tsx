@@ -338,6 +338,14 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     setText('fap-cell-repaymentSource', d.repaymentSource);
     setText('fap-cell-locationStatus', d.locationStatus);
 
+    // Ensure all address & location fields have complete 4-sided black borders
+    ['fap-cell-province', 'fap-cell-picProvince', 'fap-cell-city', 'fap-cell-picCity', 'fap-cell-postalCode', 'fap-cell-picPostalCode'].forEach(id => {
+      const el = doc.getElementById(id);
+      if (el) {
+        el.style.border = '.5pt solid black';
+      }
+    });
+
     // Shareholders up to 8
     const shList = d.stakeholders || [];
     for (let i = 0; i < 8; i++) {

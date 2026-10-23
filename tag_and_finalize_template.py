@@ -65,6 +65,15 @@ def main():
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+    #fap-cell-province,
+    #fap-cell-picProvince,
+    #fap-cell-city,
+    #fap-cell-picCity,
+    #fap-cell-postalCode,
+    #fap-cell-picPostalCode {
+        border: .5pt solid black !important;
+        box-sizing: border-box !important;
+    }
     .fap-autofill-val {
         color: #002060 !important;
         font-weight: 700 !important;
@@ -243,6 +252,7 @@ def main():
     if len(r20_tds) > 3:
         r20_tds[3]['id'] = 'fap-cell-province'
         r20_tds[3]['class'] = r20_tds[3].get('class', []) + ['fap-autofill-val']
+        r20_tds[3]['style'] = 'border:.5pt solid black !important;'
 
     # Row 22: Postal code (Company), Kota/City (PIC)
     r22_tds = rows[22].find_all('td')
@@ -263,6 +273,7 @@ def main():
         r24_tds[10]['id'] = 'fap-cell-picProvince'
         r24_tds[10]['class'] = ['xl105', 'fap-autofill-val']
         r24_tds[10]['colspan'] = '5'
+        r24_tds[10]['style'] = 'border:.5pt solid black !important;'
         for extra_td in [r24_tds[11], r24_tds[12], r24_tds[13], r24_tds[14]]:
             extra_td.decompose()
 
@@ -359,6 +370,21 @@ def main():
     if len(r46_tds) > 3:
         r46_tds[3]['id'] = 'fap-cell-locationStatus'
         r46_tds[3]['class'] = r46_tds[3].get('class', []) + ['fap-autofill-val']
+
+    # Row 67-69: Spacing between Orange dividing line and References section
+    if len(rows) > 68:
+        r68_tds = rows[68].find_all('td')
+        if r68_tds:
+            r68_tds[0]['colspan'] = '24'
+            r68_tds[0]['style'] = 'height: 28px !important; line-height: 28px !important;'
+
+    if len(rows) > 69:
+        r69_tds = rows[69].find_all('td')
+        if r69_tds:
+            r69_tds[0]['style'] = (str(r69_tds[0].get('style', '')) + ';position:relative !important;overflow:visible !important;').strip(';')
+            ref_span = r69_tds[0].find('span')
+            if ref_span:
+                ref_span['style'] = (str(ref_span.get('style', '')) + ';margin-top:16px !important;').strip(';')
 
     # Convert back to string
     final_html = str(soup)
