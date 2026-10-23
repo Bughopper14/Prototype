@@ -114,8 +114,8 @@ def main():
     }
     @media print {
         @page {
-            size: A4 landscape;
-            margin: 6mm 4mm;
+            size: A4 portrait;
+            margin: 4mm 3mm;
         }
         *, *::before, *::after {
             -webkit-print-color-adjust: exact !important;
@@ -131,12 +131,16 @@ def main():
             text-align: center !important;
         }
         body {
-            zoom: 0.31 !important;
+            zoom: 0.185 !important;
         }
         #fap-main-table, table.fap-main-table {
             margin: 0 auto !important;
             box-shadow: none !important;
             border: none !important;
+        }
+        .fap-page-break {
+            page-break-before: always !important;
+            break-before: page !important;
         }
         .xl74, .xl75, .xl76 {
             background-color: #002060 !important;
@@ -385,6 +389,12 @@ def main():
             ref_span = r69_tds[0].find('span')
             if ref_span:
                 ref_span['style'] = (str(ref_span.get('style', '')) + ';margin-top:16px !important;').strip(';')
+
+    # Row 77: Exact Official Boundary between Page 1 and Page 2
+    if len(rows) > 77:
+        rows[77]['class'] = (str(rows[77].get('class', '')) + ' fap-page-break').strip()
+        rows[77]['id'] = 'fap-preview-page-2'
+        rows[77]['style'] = (str(rows[77].get('style', '')) + ';page-break-before:always !important;break-before:page !important;').strip(';')
 
     # Convert back to string
     final_html = str(soup)

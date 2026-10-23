@@ -460,8 +460,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       const prevPadding = doc.body.style.padding;
       const prevMargin = doc.body.style.margin;
 
-      // Scale cleanly to A4 landscape (3443px -> 1067px)
-      doc.body.style.zoom = '0.31';
+      // Scale cleanly to A4 portrait (fits exactly 2 pages)
+      doc.body.style.zoom = '0.185';
       doc.body.style.padding = '0';
       doc.body.style.margin = '0 auto';
       doc.body.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
@@ -561,7 +561,8 @@ export function printFapDocument(_fapNumber?: string) {
     const prevPadding = doc.body.style.padding;
     const prevMargin = doc.body.style.margin;
 
-    doc.body.style.zoom = '0.31';
+    // Scale cleanly to A4 portrait (fits exactly 2 pages)
+    doc.body.style.zoom = '0.185';
     doc.body.style.padding = '0';
     doc.body.style.margin = '0 auto';
     doc.body.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');

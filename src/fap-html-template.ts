@@ -1784,8 +1784,8 @@ td
     }
     @media print {
         @page {
-            size: A4 landscape;
-            margin: 6mm 4mm;
+            size: A4 portrait;
+            margin: 4mm 3mm;
         }
         *, *::before, *::after {
             -webkit-print-color-adjust: exact !important;
@@ -1801,12 +1801,16 @@ td
             text-align: center !important;
         }
         body {
-            zoom: 0.31 !important;
+            zoom: 0.185 !important;
         }
         #fap-main-table, table.fap-main-table {
             margin: 0 auto !important;
             box-shadow: none !important;
             border: none !important;
+        }
+        .fap-page-break {
+            page-break-before: always !important;
+            break-before: page !important;
         }
         .xl74, .xl75, .xl76 {
             background-color: #002060 !important;
@@ -4095,7 +4099,7 @@ AAAABAAEAPUAAABfBgAAAAA=
 <td class="xl70"></td>
 <td class="xl70"></td>
 </tr>
-<tr height="42" style="height:31.2pt">
+<tr class="fap-page-break" height="42" id="fap-preview-page-2" style="height:31.2pt;page-break-before:always !important;break-before:page !important">
 <td align="left" height="42" style="height:31.2pt" valign="top"><!--[if gte vml 1]><v:shape
    id="Rectangle_x0020_7" o:spid="_x0000_s1031" type="#_x0000_t75" style='position:absolute;
    margin-left:15.6pt;margin-top:18.6pt;width:2469.6pt;height:3.6pt;z-index:7;
