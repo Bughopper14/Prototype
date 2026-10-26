@@ -273,7 +273,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
     if (iframe.contentWindow) {
       iframe.contentWindow.onbeforeprint = () => {
-        if (doc.body) doc.body.style.zoom = '0.182';
+        if (doc.body) doc.body.style.zoom = '0.175';
       };
       iframe.contentWindow.onafterprint = () => {
         if (doc.body) doc.body.style.zoom = String(zoomLevel);
@@ -472,7 +472,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       };
 
       iframe.contentWindow.addEventListener('afterprint', restoreZoom);
-      doc.body.style.zoom = '0.182';
+      doc.body.style.zoom = '0.175';
       iframe.contentWindow.print();
 
       setTimeout(restoreZoom, 30000);
