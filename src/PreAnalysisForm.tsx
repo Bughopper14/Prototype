@@ -217,6 +217,8 @@ interface PreAnalysisFormProps {
   profile?: any;
   onSaved?: () => void;
   notify?: (msg: string) => void;
+  registerSave?: (saveFn: () => Promise<void>) => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
@@ -329,6 +331,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
   const handleSave = async () => {
     setSaving(true);
+    props.onSavingChange?.(true);
     try {
       const json = await api(`/applications/${props.applicationId}/pre-analysis`, 'PUT', data);
       if (json && json.success) {
@@ -343,8 +346,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       setSaveStatus('error');
     } finally {
       setSaving(false);
+      props.onSavingChange?.(false);
     }
   };
+
+  useEffect(() => {
+    if (props.registerSave) {
+      props.registerSave(handleSave);
+    }
+  });
 
   const updateField = (key: keyof PreAnalysisData, val: any) => {
     setData(prev => ({ ...prev, [key]: val }));
@@ -1736,6 +1746,34 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Bottom actions for Section Form */}
+          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 16px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                borderRadius: '6px',
+                background: '#ffffff',
+                border: '1px solid #cbd5e1',
+                color: '#1e293b',
+                cursor: 'pointer',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+              }}
+              title="Save Pre-Analysis Draft"
+            >
+              {saving ? <Loader2 size={13} className="spin" /> : <Save size={13} />}
+              <span>{saving ? 'Saving...' : 'Save Draft'}</span>
+            </button>
           </div>
 
         </div>
