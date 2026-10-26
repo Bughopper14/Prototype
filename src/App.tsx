@@ -6,7 +6,14 @@ import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
 import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
-import {FapSheetPreview, printFapDocument, type FapSheetData} from './FapSheetPreview';
+import {
+  FapSheetPreview, 
+  printFapDocument, 
+  type FapSheetData,
+  SECTION_TO_CELL_ID_MAP,
+  CELL_ID_TO_SECTION_MAP,
+  FIELD_TO_CELL_ID_MAP
+} from './FapSheetPreview';
 import {PreAnalysisForm} from './PreAnalysisForm';
 import {
   parseKtpText, 
@@ -1858,22 +1865,23 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const [systemZoom, setSystemZoom] = useState<number>(0.72);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
   const [fapNavFilter, setFapNavFilter] = useState<string>('all');
+  const [fapNavTick, setFapNavTick] = useState<number>(() => Date.now());
   const master = useMasterData();
 
   const sectionFieldMap: Record<string, string[]> = {
     'fap-preview-sec-header': ['fapNumber', 'branchCode', 'customerStatus', 'companyType', 'applicationDate'],
-    'fap-preview-sec-company': ['companyName', 'companyAddress', 'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw', 'nib', 'npwp', 'sktNo', 'sppkpNo', 'phoneFax', 'email', 'website', 'mainBusiness'],
-    'fap-preview-sec-pic': ['picName', 'position', 'phone', 'email', 'picAddress', 'currentAddress', 'picCity', 'picProvince', 'picPostalCode', 'shareholders', 'representativeType', 'stakeholderType', 'idNumber'],
-    'fap-preview-sec-facility': ['creditFacility', 'monthlyInstallment', 'bankOrFinInstitution', 'units', 'assetSummary', 'years', 'brand', 'modelName', 'quantity'],
-    'fap-preview-sec-proposal': ['financingValue', 'downPaymentValue', 'securityDeposit', 'tenorMonths', 'interestRate', 'purposeDetail', 'financingMethod', 'paymentMethod', 'termsNotes']
+    'fap-preview-sec-company': ['companyName', 'companyAddress', 'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw', 'phoneFax', 'email', 'website'],
+    'fap-preview-sec-business': ['nib', 'npwp', 'sktNo', 'sppkpNo', 'mainBusiness', 'establishmentActNo', 'establishmentDate', 'latestDeedNo', 'latestDeedDate', 'experienceYears', 'experienceMonths'],
+    'fap-preview-sec-pic': ['picName', 'position', 'phone', 'email', 'picAddress', 'currentAddress', 'picCity', 'picProvince', 'picPostalCode', 'representativeType', 'idNumber'],
+    'fap-preview-sec-projects': ['shareholders', 'stakeholderType', 'projectName', 'projectOwner', 'projectValue', 'contractNumber', 'projects']
   };
 
   const fapSectionTitles: Record<string, string> = {
-    'fap-preview-sec-header': '1. Header & Register',
-    'fap-preview-sec-company': '2. Company Profile',
-    'fap-preview-sec-pic': '3. PIC & Shareholders',
-    'fap-preview-sec-facility': '4. Facilities & Fixed Assets',
-    'fap-preview-sec-proposal': '5. Financing Value'
+    'fap-preview-sec-header': '1. Identity',
+    'fap-preview-sec-company': '2. Domicile',
+    'fap-preview-sec-business': '3. Profile',
+    'fap-preview-sec-pic': '4. PIC',
+    'fap-preview-sec-projects': '5. Projects'
   };
 
   const filteredDiffs = useMemo(() => {
@@ -1906,43 +1914,98 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         el.classList.remove('fap-preview-sync-highlight');
       }, 2500);
     }
+
+    const cellId = FIELD_TO_CELL_ID_MAP[fieldKey];
+    if (cellId) {
+      const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-pane-card iframe');
+      iframes.forEach(iframe => {
+        try {
+          const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          const win = iframe.contentWindow;
+          if (!iDoc || !win) return;
+          const targetEl = iDoc.getElementById(cellId);
+          if (targetEl) {
+            targetEl.classList.remove('fap-cell-highlight');
+            void targetEl.offsetWidth;
+            targetEl.classList.add('fap-cell-highlight');
+            const rect = targetEl.getBoundingClientRect();
+            const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+            const targetY = Math.max(0, currentScrollY + rect.top - 80);
+            win.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+            setTimeout(() => targetEl.classList.remove('fap-cell-highlight'), 3000);
+          }
+        } catch {}
+      });
+    }
   };
 
   const scrollToFapSection = (secId: string) => {
     setFapNavFilter(secId);
-    const viewports = document.querySelectorAll('.excel-fap-viewport');
-    let scrolled = false;
+    setFapNavTick(Date.now());
 
-    viewports.forEach(vp => {
-      const target = vp.querySelector(`[id="${secId}"]`) as HTMLElement;
-      if (target) {
-        const vpRect = vp.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        const delta = targetRect.top - vpRect.top;
-        
-        vp.scrollTo({
-          top: vp.scrollTop + delta - 14,
-          behavior: 'smooth'
+    // Scroll and highlight inside both iframes within .fap-pane-card (System FAP & OCR FAP)
+    const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-pane-card iframe');
+    iframes.forEach(iframe => {
+      try {
+        const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        const win = iframe.contentWindow;
+        if (!iDoc || !win) return;
+
+        // Clear existing highlights
+        iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+          el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
         });
 
-        target.classList.remove('fap-preview-sync-highlight');
-        void target.offsetWidth;
-        target.classList.add('fap-preview-sync-highlight');
-        setTimeout(() => target.classList.remove('fap-preview-sync-highlight'), 2500);
-        scrolled = true;
+        if (secId === 'all') {
+          win.scrollTo({ top: 0, behavior: 'smooth' });
+          iDoc.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+          iDoc.body.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        const targetCellId = SECTION_TO_CELL_ID_MAP[secId];
+        // Highlight cells belonging to this section
+        const sectionCells = Object.entries(CELL_ID_TO_SECTION_MAP)
+          .filter(([, sec]) => sec === secId)
+          .map(([cellId]) => cellId);
+
+        sectionCells.forEach(cid => {
+          const cel = iDoc.getElementById(cid);
+          if (cel) cel.classList.add('fap-cell-highlight');
+        });
+
+        if (secId === 'fap-preview-sec-projects') {
+          for (let i = 0; i < 8; i++) {
+            ['name', 'pos', 'shares', 'pct'].forEach(k => {
+              const cel = iDoc.getElementById(`fap-cell-sh-${i}-${k}`);
+              if (cel) cel.classList.add('fap-cell-highlight');
+            });
+          }
+        }
+
+        if (targetCellId) {
+          const targetEl = iDoc.getElementById(targetCellId);
+          if (targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+            const targetY = Math.max(0, currentScrollY + rect.top - 60);
+            win.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+          }
+        }
+
+        setTimeout(() => {
+          iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+            el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+          });
+        }, 3500);
+      } catch (err) {
+        console.warn('Could not scroll iframe section:', err);
       }
     });
-
-    if (!scrolled) {
-      const el = document.getElementById(secId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        el.classList.remove('fap-preview-sync-highlight');
-        void el.offsetWidth;
-        el.classList.add('fap-preview-sync-highlight');
-        setTimeout(() => el.classList.remove('fap-preview-sync-highlight'), 2500);
-      }
-    }
   };
 
   const items = evidenceDefs.map(def => {
@@ -2414,7 +2477,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               <button 
                 type="button" 
                 className={fapNavFilter === 'all' ? 'active' : ''} 
-                onClick={() => { setFapNavFilter('all'); scrollToFapSection('fap-preview-sec-header'); }}
+                onClick={() => scrollToFapSection('all')}
               >
                 All Sections
               </button>
@@ -2423,35 +2486,35 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 className={fapNavFilter === 'fap-preview-sec-header' ? 'active' : ''} 
                 onClick={() => scrollToFapSection('fap-preview-sec-header')}
               >
-                1. Header & Register
+                1. Identity
               </button>
               <button 
                 type="button" 
                 className={fapNavFilter === 'fap-preview-sec-company' ? 'active' : ''} 
                 onClick={() => scrollToFapSection('fap-preview-sec-company')}
               >
-                2. Company Profile
+                2. Domicile
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-business' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-business')}
+              >
+                3. Profile
               </button>
               <button 
                 type="button" 
                 className={fapNavFilter === 'fap-preview-sec-pic' ? 'active' : ''} 
                 onClick={() => scrollToFapSection('fap-preview-sec-pic')}
               >
-                3. PIC & Shareholders
+                4. PIC
               </button>
               <button 
                 type="button" 
-                className={fapNavFilter === 'fap-preview-sec-facility' ? 'active' : ''} 
-                onClick={() => scrollToFapSection('fap-preview-sec-facility')}
+                className={fapNavFilter === 'fap-preview-sec-projects' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-projects')}
               >
-                4. Facilities & Fixed Assets
-              </button>
-              <button 
-                type="button" 
-                className={fapNavFilter === 'fap-preview-sec-proposal' ? 'active' : ''} 
-                onClick={() => scrollToFapSection('fap-preview-sec-proposal')}
-              >
-                5. Financing Value
+                5. Projects
               </button>
             </div>
           </div>
@@ -2506,6 +2569,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   diffSide="system"
                   diffs={activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : []}
                   externalZoom={systemZoom}
+                  activeSection={fapNavFilter === 'all' ? undefined : fapNavFilter}
+                  syncTick={fapNavTick}
                   onPrint={() => printFapDocument(a.fapNumber)}
                 />
               </div>
@@ -2594,6 +2659,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       diffSide="ocr"
                       diffs={activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : []}
                       externalZoom={systemZoom}
+                      activeSection={fapNavFilter === 'all' ? undefined : fapNavFilter}
+                      syncTick={fapNavTick}
                       onPrint={() => printFapDocument(a.fapNumber)}
                     />
                   ) : activeFile?.mimeType === 'application/pdf' ? (
