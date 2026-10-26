@@ -111,15 +111,34 @@ export function syncCustomerAndPicIntoPreAnalysis(
     profile?: any;
   }
 ): PreAnalysisData {
-  const companyName = sources.customer?.companyName || sources.application?.customer?.companyName;
-  const npwp = sources.customer?.npwp || sources.application?.customer?.npwp;
-  const fapNumber = sources.application?.fapNumber;
-  const picName = sources.pic?.picName 
-    ? `${sources.pic.picName}${sources.pic.position ? ` (${sources.pic.position})` : ''}` 
+  const companyName = sources.customer?.companyName || sources.application?.customer?.companyName || sources.profile?.companyName || sources.application?.companyName;
+  const npwp = sources.customer?.npwp || sources.application?.customer?.npwp || sources.profile?.npwp;
+  const fapNumber = sources.application?.fapNumber || sources.profile?.fapNumber;
+  const pic = sources.pic || sources.application?.pic || sources.profile?.pic;
+  const picName = pic?.picName 
+    ? `${pic.picName}${pic.position ? ` (${pic.position})` : ''}` 
     : undefined;
-  const city = sources.profile?.city || sources.customer?.city;
-  const province = sources.profile?.province || sources.customer?.province;
-  const area = city ? `${city}${province ? `, ${province}` : ''}` : undefined;
+  const city = sources.profile?.city || sources.customer?.city || sources.application?.city;
+  const province = sources.profile?.province || sources.customer?.province || sources.application?.province;
+  const area = city ? `${city}${province ? `, ${province}` : ''}` : province;
+  const repaymentSource = sources.profile?.repaymentSource || sources.application?.repaymentSource;
+
+  let paidUpCapital = current.paidUpCapital;
+  let equity = current.equity;
+  const deeds = sources.profile?.legal?.deeds || sources.application?.legal?.deeds;
+  if (deeds && Array.isArray(deeds)) {
+    let totalDeposited = 0;
+    deeds.forEach((d: any) => {
+      (d.stakeholders || []).forEach((s: any) => {
+        const val = Number(s.depositedCapital || s.primaryCapital || 0);
+        if (!isNaN(val)) totalDeposited += val;
+      });
+    });
+    if (totalDeposited > 0) {
+      paidUpCapital = `IDR ${totalDeposited.toLocaleString('id-ID')}`;
+      if (!equity) equity = paidUpCapital;
+    }
+  }
 
   return {
     ...current,
@@ -127,79 +146,67 @@ export function syncCustomerAndPicIntoPreAnalysis(
     ...(npwp ? { taxId: npwp } : {}),
     ...(fapNumber ? { fapNumber } : {}),
     ...(picName ? { customerPic: picName } : {}),
-    ...(area ? { customerArea: area } : {})
+    ...(area ? { customerArea: area } : {}),
+    ...(repaymentSource ? { sourceOfRepayment: repaymentSource } : {}),
+    ...(paidUpCapital ? { paidUpCapital } : {}),
+    ...(equity ? { equity } : {})
   };
 }
 
-const defaultInitialData: PreAnalysisData = {
-  preAnalysisNo: '001/PREANA/MKT/IX/2026',
-  preAnalysisDate: '07-Sep-2026',
-  customerProjectName: 'PT Handalan Putramas Santosa (HPS)',
-  taxId: '27.817.616.9-041.000',
-  fapNumber: '070/AF/VIII/2026',
-  leadSource: 'Dealer (PT. Intraco Penta Prima Servis)',
-  customerArea: 'Balikpapan, East Kalimantan',
-  dealerPic: 'Mr. Ronald / IPPS Bpp',
-  lmiPic: 'Mr. Tommy',
-  lfiPic: 'Arianti',
-  customerPic: 'Mr. Budi Santoso (Director)',
-  equity: 'IDR 12.500.000.000',
-  paidUpCapital: 'IDR 5.000.000.000',
-  sourceOfRepayment: 'Termin pembayaran project pengangkutan batubara dari Bowheer PT Bayan Resources Tbk',
+export const defaultInitialData: PreAnalysisData = {
+  preAnalysisNo: '',
+  preAnalysisDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-'),
+  customerProjectName: '',
+  taxId: '',
+  fapNumber: '',
+  leadSource: '',
+  customerArea: '',
+  dealerPic: '',
+  lmiPic: '',
+  lfiPic: '',
+  customerPic: '',
+  equity: '',
+  paidUpCapital: '',
+  sourceOfRepayment: '',
 
-  projectNameLocation: 'Proyek Pengupasan & Hauling Batubara, Site Muara Teweh & Tabang',
-  customerRole: 'Main Contractor Hauling & Earthmoving Sub-contractor',
-  otherContractors: 'PT Saptaindra Sejati (SIS), PT Pamapersada Nusantara (PAMA)',
-  projectOwner: 'PT Bayan Resources Tbk',
-  bowheerInfo: 'Reputasi pembayaran lancar (A-rating), termin tagihan 30 hari kalender, escrow account di Bank Mandiri',
-  projectStatus: 'Active mining hauling contract (5 years with 2-year extension option)',
-  investmentPlan: 'Pengadaan 10 unit Wheel Loader & Excavator LiuGong untuk ekspansi kapasitas muat',
-  financingSchemeRequested: 'Financial Lease tenor 36 bulan dengan DP 20% dan flat rate kompetitif',
+  projectNameLocation: '',
+  customerRole: '',
+  otherContractors: '',
+  projectOwner: '',
+  bowheerInfo: '',
+  projectStatus: '',
+  investmentPlan: '',
+  financingSchemeRequested: '',
 
-  uboInfo: 'Pemilik manfaat akhir: Bapak Hendra Wijaya (70% saham) & Ibu Shirley Santoso (30% saham)',
-  companyBackground: 'Berdiri sejak 2012 di Balikpapan, spesialis heavy equipment rental dan mining contractor terpercaya',
-  milestones: [
-    { year: '2012', entity: 'PT Handalan Putramas Santosa', description: 'Didirikan dengan fokus awal rental dump truck 10 unit' },
-    { year: '2017', entity: 'HPS Mining Division', description: 'Ekspansi ke kontrak hauling batubara pertama di Kutai Kartanegara' },
-    { year: '2021', entity: 'HPS Logistics', description: 'Meraih kontrak multi-tahun dengan Bayan Group untuk volume 500k MT/bulan' },
-    { year: '2024', entity: 'HPS Fleet Modernization', description: 'Standardisasi armada alat berat heavy class untuk efisiensi bahan bakar' }
-  ],
-  existingFincoBackup: 'Fasilitas aktif di BCA Finance (IDR 8M, lancar/Kol-1) dan Mandiri Tunas Finance (IDR 5M, lancar/Kol-1)',
+  uboInfo: '',
+  companyBackground: '',
+  milestones: [],
+  existingFincoBackup: '',
 
-  equipmentJobFit: 'Wheel Loader 856H & Excavator 936E sangat cocok untuk loading batubara di ROM stockpile dan barge terminal',
-  utilizationDuration: 'Operasional 2 shift (18 jam/hari), target utilisasi 450 jam per unit/bulan',
-  priorLiugongExperience: 'Memiliki 4 unit LiuGong CLG856H pembelian 2022 dengan reliability index 92%',
-  serviceAgreementFmc: 'Full Maintenance Contract didukung cabang service IPPS Balikpapan dengan penyediaan konsinyasi sparepart on-site',
-  unitComposition: [
-    { brand: 'LiuGong', type: 'Wheel Loader CLG856H 3.0 m3', quantity: 6, remarks: 'Loading stockpile barge terminal' },
-    { brand: 'LiuGong', type: 'Excavator CLG936E 1.6 m3', quantity: 4, remarks: 'Overburden stripping & bench cleaning' }
-  ],
+  equipmentJobFit: '',
+  utilizationDuration: '',
+  priorLiugongExperience: '',
+  serviceAgreementFmc: '',
+  unitComposition: [],
 
-  topDealerToCustomer: 'Termin pembayaran: DP 20% saat PO, pelunasan via disbursement fasilitas LiuGong Finance',
-  topLmiToDealer: 'Standar delivery 14 hari kerja setelah approval PO & konfirmasi LC/disbursement agreement',
-  lmiArCheck: 'Tidak ada tunggakan sparepart maupun unit dengan dealer IPPS maupun principal LiuGong Machinery Indonesia',
-  slikPefindoHighlight: 'SLIK Kolektibilitas 1 (Lancar) seluruh fasilitas bank & leasing 24 bulan terakhir. Riwayat DPK/NPL: Nihil.',
-  lenderExposures: [
-    { lender: 'PT Bank Central Asia Tbk', plafond: 'IDR 8.000.000.000', rate: '9.25% p.a. eff' },
-    { lender: 'PT Mandiri Tunas Finance', plafond: 'IDR 5.200.000.000', rate: '8.75% p.a. flat' },
-    { lender: 'PT CIMB Niaga Auto Finance', plafond: 'IDR 3.500.000.000', rate: '9.00% p.a. eff' }
-  ],
 
-  goodProject: true,
-  goodProjectNote: 'Kontrak jangka panjang dengan tier-1 mining company (Bayan Group), cash flow terjamin via escrow account terpisah.',
-  goodCustomer: true,
-  goodCustomerNote: 'Track record pembayaran bersih Kol-1, manajemen berpengalaman >12 tahun, rasio DER dan DSCR memenuhi benchmark sehat.',
-  recommendation: 'RECOMMEND',
-  suggestionOverview: 'Disarankan untuk melanjutkan ke tahap Full Documentation & On-site Field Verification oleh tim Credit Analyst.',
-  mitigationConditions: [
-    'Wajib menyerahkan standing instruction escrow account penerimaan termin hauling dari Bowheer.',
-    'Pemasangan GPS telemetry & fuel monitoring LiuGong telematics untuk tracking lokasi dan jam operasional alat.',
-    'Personal Guarantee dari Ultimate Beneficial Owner (Bpk. Hendra Wijaya & Ibu Shirley Santoso).'
-  ],
-  competitionNotes: 'Pefindo check 4 Sept 2026. Rate benchmark: Flat 7% p.a., 20% Security Deposit, 36-month lease tenor, 1% provision fee, IDR 5.000.000 admin fee per contract.',
-  proposedBy: 'Amanda Cynthia (Senior Account Manager)',
-  reviewedBy: 'Maria Regina (Dept. Head)',
-  approvedBy: 'Jembar Ganda E (Director)'
+  topDealerToCustomer: '',
+  topLmiToDealer: '',
+  lmiArCheck: '',
+  slikPefindoHighlight: '',
+  lenderExposures: [],
+
+  goodProject: false,
+  goodProjectNote: '',
+  goodCustomer: false,
+  goodCustomerNote: '',
+  recommendation: '' as any,
+  suggestionOverview: '',
+  mitigationConditions: [],
+  competitionNotes: '',
+  proposedBy: '',
+  reviewedBy: '',
+  approvedBy: ''
 };
 
 interface PreAnalysisFormProps {
@@ -214,14 +221,12 @@ interface PreAnalysisFormProps {
 
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const [data, setData] = useState<PreAnalysisData>(() => {
-    return {
-      ...defaultInitialData,
-      customerProjectName: props.customer?.companyName || props.application?.customer?.companyName || defaultInitialData.customerProjectName,
-      taxId: props.customer?.npwp || props.application?.customer?.npwp || defaultInitialData.taxId,
-      fapNumber: props.application?.fapNumber || defaultInitialData.fapNumber,
-      customerPic: props.pic?.picName ? `${props.pic.picName}${props.pic.position ? ` (${props.pic.position})` : ''}` : defaultInitialData.customerPic,
-      customerArea: props.profile?.city ? `${props.profile.city}, ${props.profile.province}` : (props.customer?.city ? `${props.customer.city}, ${props.customer.province}` : defaultInitialData.customerArea)
-    };
+    return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, {
+      customer: props.customer,
+      pic: props.pic,
+      application: props.application,
+      profile: props.profile
+    });
   });
 
   const [viewMode, setViewMode] = useState<'digital-twin' | 'original-pdf'>('digital-twin');
@@ -313,7 +318,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     api(`/applications/${props.applicationId}/pre-analysis`)
       .then(res => {
         if (isMounted && res && res.success && res.data) {
-          setData(prev => ({ ...prev, ...res.data }));
+          setData(res.data);
         }
       })
       .catch(err => {
@@ -1563,6 +1568,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       background: '#ffffff'
                     }}
                   >
+                    <option value="">— Select Recommendation —</option>
                     <option value="RECOMMEND">RECOMMEND</option>
                     <option value="NOT RECOMMEND TO FULL DOCUMENTATION">NOT RECOMMEND TO FULL DOCUMENTATION</option>
                     <option value="CONDITIONAL">CONDITIONAL</option>
@@ -2071,17 +2077,21 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   >
                     <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>Milestones / Growth</td>
                     <td style={{ padding: '4px 6px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
-                        <tbody>
-                          {data.milestones.map((m, i) => (
-                            <tr key={i}>
-                              <td style={{ width: '15%', fontWeight: 700, padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.year}</td>
-                              <td style={{ width: '25%', fontWeight: 600, padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.entity}</td>
-                              <td style={{ padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.description}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      {(!data.milestones || data.milestones.length === 0) ? (
+                        <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '8pt' }}>— Belum ada milestone —</span>
+                      ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
+                          <tbody>
+                            {data.milestones.map((m, i) => (
+                              <tr key={i}>
+                                <td style={{ width: '15%', fontWeight: 700, padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.year}</td>
+                                <td style={{ width: '25%', fontWeight: 600, padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.entity}</td>
+                                <td style={{ padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.description}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
                     </td>
                   </tr>
                   <tr 
@@ -2201,24 +2211,28 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   >
                     <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>Existing Lenders</td>
                     <td style={{ padding: '4px 6px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
-                        <thead>
-                          <tr style={{ background: '#f1f5f9' }}>
-                            <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left' }}>Lender</th>
-                            <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'right' }}>Plafond</th>
-                            <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}>Rate / Terms</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.lenderExposures.map((l, i) => (
-                            <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                              <td style={{ padding: '4px', border: '1px solid #e2e8f0' }}>{l.lender}</td>
-                              <td style={{ padding: '4px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>{l.plafond}</td>
-                              <td style={{ padding: '4px', border: '1px solid #e2e8f0', textAlign: 'center' }}>{l.rate}</td>
+                      {(!data.lenderExposures || data.lenderExposures.length === 0) ? (
+                        <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '8pt' }}>— Belum ada lender exposure —</span>
+                      ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
+                          <thead>
+                            <tr style={{ background: '#f1f5f9' }}>
+                              <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left' }}>Lender</th>
+                              <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'right' }}>Plafond</th>
+                              <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}>Rate / Terms</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {data.lenderExposures.map((l, i) => (
+                              <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
+                                <td style={{ padding: '4px', border: '1px solid #e2e8f0' }}>{l.lender}</td>
+                                <td style={{ padding: '4px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>{l.plafond}</td>
+                                <td style={{ padding: '4px', border: '1px solid #e2e8f0', textAlign: 'center' }}>{l.rate}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
                     </td>
                   </tr>
                 </tbody>
@@ -2297,7 +2311,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{
                   flex: 1,
-                  background: data.recommendation === 'RECOMMEND' ? '#16a34a' : '#dc2626',
+                  background: !data.recommendation ? '#94a3b8' : (data.recommendation === 'RECOMMEND' ? '#16a34a' : '#dc2626'),
                   color: '#ffffff',
                   textAlign: 'center',
                   padding: '8px 12px',
@@ -2306,7 +2320,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   borderRadius: '4px',
                   letterSpacing: '0.5px'
                 }}>
-                  {data.recommendation}
+                  {data.recommendation || '— BELUM ADA REKOMENDASI —'}
                 </div>
               </div>
 
@@ -2323,9 +2337,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   Mitigation conditions required if proceeding:
                 </div>
                 <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: 1.35 }}>
-                  {data.mitigationConditions.map((cond, i) => (
-                    <li key={i} style={{ marginBottom: '2px' }}>{cond}</li>
-                  ))}
+                  {(!data.mitigationConditions || data.mitigationConditions.length === 0) ? (
+                    <li style={{ color: '#94a3b8', fontStyle: 'italic', listStyleType: 'none', marginLeft: '-20px' }}>— Belum ada kondisi mitigasi —</li>
+                  ) : (
+                    data.mitigationConditions.map((cond, i) => (
+                      <li key={i} style={{ marginBottom: '2px' }}>{cond}</li>
+                    ))
+                  )}
                 </ul>
               </div>
 

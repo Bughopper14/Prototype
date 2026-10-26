@@ -252,7 +252,20 @@ export default function App(){
  useEffect(()=>{if(user)load();},[user]);
  useEffect(()=>{if(!user)return;let live=true;const refresh=()=>api('/notifications').then(n=>{if(live)setNotifications(n);}).catch(()=>{});const timer=setInterval(refresh,15000);window.addEventListener('storage',refresh);return()=>{live=false;clearInterval(timer);window.removeEventListener('storage',refresh);};},[user]);
  async function readNotification(id:string){try{await api('/notifications/'+id+'/read','PATCH',{});setNotifications(await api('/notifications'));}catch(e:any){setGlobalError(e.message);}}
- async function open(id:string,tab=0){setLoading(true);try{setDetailTab(tab);setSelected(await api('/applications/'+id));}catch(e:any){setGlobalError(e.message);}finally{setLoading(false);}}
+ async function open(id:string,tab?:number){
+  setLoading(true);
+  try{
+    const app = await api('/applications/'+id);
+    const isPre = (app.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(app.status);
+    const resolvedTab = tab !== undefined ? tab : (isPre ? 8 : 0);
+    setDetailTab(resolvedTab);
+    setSelected(app);
+  }catch(e:any){
+    setGlobalError(e.message);
+  }finally{
+    setLoading(false);
+  }
+}
  if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
  if(!user)return <Login onLogin={setUser}/>;
  const navigate=(p:string)=>{setPage(p);setSelected(null);setMobile(false);};
@@ -700,7 +713,19 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
   }catch(e:any){setError(e.message||'Failed to create new application. Please try again.');}
   finally{setBusy(false);}
  }
-const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));const [submitFapConfirm,setSubmitFapConfirm]=useState(false);useEffect(()=>{if(a.stage)setActiveStage(a.stage);else if(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status))setActiveStage('Pre-analysis');else setActiveStage('FAP Stage');},[a.id,a.stage,a.status]);const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);const [tab,setTab]=useState(initialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
+const isPreAnalysis = (a.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
+const resolvedInitialTab = (initialTab === 0 && isPreAnalysis) ? 8 : (initialTab ?? 0);
+const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));
+const [submitFapConfirm,setSubmitFapConfirm]=useState(false);
+useEffect(()=>{
+  const isPre = (a.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
+  if(a.stage)setActiveStage(a.stage);
+  else if(isPre)setActiveStage('Pre-analysis');
+  else setActiveStage('FAP Stage');
+  if(isPre && tab === 0) setTab(8);
+},[a.id,a.stage,a.status]);
+const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);
+const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
    'fap-preview-sec-header': true,
    'fap-preview-sec-company': true,

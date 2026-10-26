@@ -72,6 +72,109 @@ export async function getAllPreAnalysisNumbers(): Promise<string[]> {
   return numbers;
 }
 
+export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAnalysisNo?: string): any {
+  const companyName = appRecord?.customer?.companyName || appRecord?.companyName || '';
+  const npwp = appRecord?.customer?.npwp || appRecord?.npwp || '';
+  const fapNumber = appRecord?.fapNumber || '';
+  
+  const pic = appRecord?.pic;
+  const picName = pic?.picName 
+    ? `${pic.picName}${pic.position ? ` (${pic.position})` : ''}` 
+    : '';
+
+  const city = appRecord?.city || appRecord?.customer?.city || '';
+  const province = appRecord?.province || appRecord?.customer?.province || '';
+  const customerArea = city ? `${city}${province ? `, ${province}` : ''}` : (province || '');
+
+  const sourceOfRepayment = appRecord?.repaymentSource || '';
+  const leadSource = appRecord?.leadSource || '';
+  const dealerPic = appRecord?.dealerPic || '';
+  const lmiPic = appRecord?.lmiPic || '';
+  const lfiPic = appRecord?.lfiPic || '';
+
+  // Extract capital from deed stakeholders if present
+  let paidUpCapital = '';
+  let equity = '';
+  const deeds = appRecord?.legal?.deeds;
+  if (deeds && Array.isArray(deeds)) {
+    let totalDeposited = 0;
+    deeds.forEach((d: any) => {
+      (d.stakeholders || []).forEach((s: any) => {
+        const val = Number(s.depositedCapital || s.primaryCapital || 0);
+        if (!isNaN(val)) totalDeposited += val;
+      });
+    });
+    if (totalDeposited > 0) {
+      paidUpCapital = `IDR ${totalDeposited.toLocaleString('id-ID')}`;
+      equity = paidUpCapital;
+    }
+  }
+
+  const today = new Date();
+  const dStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-');
+
+  return {
+    preAnalysisNo: preAnalysisNo || '',
+    preAnalysisDate: dStr,
+    customerProjectName: companyName,
+    taxId: npwp,
+    fapNumber,
+    leadSource,
+    customerArea,
+    dealerPic,
+    lmiPic,
+    lfiPic,
+    customerPic: picName,
+    equity,
+    paidUpCapital,
+    sourceOfRepayment,
+
+    // Non-FAP fields are blank as requested by user
+    projectNameLocation: '',
+    customerRole: '',
+    otherContractors: '',
+    projectOwner: '',
+    bowheerInfo: '',
+    projectStatus: '',
+    investmentPlan: '',
+    financingSchemeRequested: '',
+
+    uboInfo: '',
+    companyBackground: '',
+    milestones: [],
+    existingFincoBackup: '',
+
+    equipmentJobFit: '',
+    utilizationDuration: '',
+    priorLiugongExperience: '',
+    serviceAgreementFmc: '',
+    unitComposition: [],
+
+    deliveryStatus: '',
+    deliveryDate: '',
+    qaIlinkComment: '',
+    qaConclusion: '',
+
+    topDealerToCustomer: '',
+    topLmiToDealer: '',
+    lmiArCheck: '',
+    slikPefindoHighlight: '',
+    lenderExposures: [],
+
+    goodProject: false,
+    goodProjectNote: '',
+    goodCustomer: false,
+    goodCustomerNote: '',
+    recommendation: '',
+    suggestionOverview: '',
+    mitigationConditions: [],
+    competitionNotes: '',
+    proposedBy: '',
+    reviewedBy: '',
+    approvedBy: ''
+  };
+}
+
 export const DEFAULT_PRE_ANALYSIS_DATA = {
   preAnalysisNo: '001/PREANA/MKT/IX/2026',
   preAnalysisDate: '07-Sep-2026',
@@ -182,8 +285,10 @@ export async function initPreAnalysisStore() {
   }
 }
 
-export async function getPreAnalysisData(appId: string): Promise<any> {
+export async function getPreAnalysisData(appId: string, appRecord?: any): Promise<any> {
   await ensureDir();
+  let storedData: any = null;
+
   if (pool) {
     try {
       const [rows] = await pool.query<any[]>(
@@ -191,7 +296,7 @@ export async function getPreAnalysisData(appId: string): Promise<any> {
         [appId]
       );
       if (rows && rows.length > 0 && rows[0].form_data) {
-        return typeof rows[0].form_data === 'string'
+        storedData = typeof rows[0].form_data === 'string'
           ? JSON.parse(rows[0].form_data)
           : rows[0].form_data;
       }
@@ -200,19 +305,57 @@ export async function getPreAnalysisData(appId: string): Promise<any> {
     }
   }
 
-  const filePath = path.join(storeDir, `${appId}.json`);
-  try {
-    const raw = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
-    // Generate next auto-increment sequence starting from 1
+  if (!storedData) {
+    const filePath = path.join(storeDir, `${appId}.json`);
+    try {
+      const raw = await fs.readFile(filePath, 'utf-8');
+      storedData = JSON.parse(raw);
+    } catch {}
+  }
+
+  // Check if existing stored data is old dummy fallback data (e.g. PT Handalan Putramas Santosa when real app is different)
+  const isOldDummy = storedData && storedData.customerProjectName === 'PT Handalan Putramas Santosa (HPS)' &&
+    appRecord && appRecord.companyName && appRecord.companyName !== 'PT Handalan Putramas Santosa (HPS)';
+
+  if (!storedData || isOldDummy) {
     const existingNumbers = await getAllPreAnalysisNumbers();
-    const nextNo = generatePreAnalysisNo(existingNumbers, DEFAULT_PRE_ANALYSIS_DATA.preAnalysisDate);
+    const nextNo = generatePreAnalysisNo(existingNumbers, new Date());
+    
+    if (appRecord) {
+      const initialData = createBlankPreAnalysisData(appId, appRecord, nextNo);
+      await savePreAnalysisData(appId, initialData);
+      return initialData;
+    }
+
     return {
       ...DEFAULT_PRE_ANALYSIS_DATA,
       preAnalysisNo: nextNo
     };
   }
+
+  // If storedData exists and appRecord is provided, ensure any missing key FAP info is kept up-to-date
+  if (appRecord) {
+    let updated = false;
+    const companyName = appRecord.customer?.companyName || appRecord.companyName;
+    if (companyName && !storedData.customerProjectName) {
+      storedData.customerProjectName = companyName;
+      updated = true;
+    }
+    const npwp = appRecord.customer?.npwp || appRecord.npwp;
+    if (npwp && !storedData.taxId) {
+      storedData.taxId = npwp;
+      updated = true;
+    }
+    if (appRecord.fapNumber && !storedData.fapNumber) {
+      storedData.fapNumber = appRecord.fapNumber;
+      updated = true;
+    }
+    if (updated) {
+      await savePreAnalysisData(appId, storedData);
+    }
+  }
+
+  return storedData;
 }
 
 export async function savePreAnalysisData(appId: string, data: any): Promise<any> {

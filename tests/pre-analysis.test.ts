@@ -133,6 +133,57 @@ test('syncCustomerAndPicIntoPreAnalysis gracefully preserves existing data when 
 });
 
 
+test('createBlankPreAnalysisData correctly populates FAP data and blanks non-FAP fields', async () => {
+  const { createBlankPreAnalysisData } = await import('../server/pre-analysis-store');
+  const mockApp = {
+    id: 'app-fap-mock-123',
+    companyName: 'PT Nusantara Jaya Mineral',
+    fapNumber: '099/AF/X/2026',
+    customer: {
+      companyName: 'PT Nusantara Jaya Mineral',
+      npwp: '01.234.567.8-901.000'
+    },
+    city: 'Samarinda',
+    province: 'Kalimantan Timur',
+    repaymentSource: 'Cash Flow Kontrak Batubara',
+    pic: {
+      picName: 'Bambang Sudirman',
+      position: 'Direktur Operasional'
+    },
+    legal: {
+      deeds: [
+        {
+          stakeholders: [
+            { depositedCapital: 5000000000 }
+          ]
+        }
+      ]
+    }
+  };
+
+  const blankData = createBlankPreAnalysisData('app-fap-mock-123', mockApp, '005/PREANA/MKT/X/2026');
+
+  // Verify FAP fields are connected
+  assert.equal(blankData.preAnalysisNo, '005/PREANA/MKT/X/2026');
+  assert.equal(blankData.customerProjectName, 'PT Nusantara Jaya Mineral');
+  assert.equal(blankData.taxId, '01.234.567.8-901.000');
+  assert.equal(blankData.fapNumber, '099/AF/X/2026');
+  assert.equal(blankData.customerPic, 'Bambang Sudirman (Direktur Operasional)');
+  assert.equal(blankData.customerArea, 'Samarinda, Kalimantan Timur');
+  assert.equal(blankData.sourceOfRepayment, 'Cash Flow Kontrak Batubara');
+  assert.ok(blankData.paidUpCapital.includes('5.000.000.000'));
+
+  // Verify non-FAP fields are blank / empty
+  assert.equal(blankData.projectNameLocation, '');
+  assert.equal(blankData.bowheerInfo, '');
+  assert.equal(blankData.companyBackground, '');
+  assert.deepEqual(blankData.milestones, []);
+  assert.deepEqual(blankData.unitComposition, []);
+  assert.deepEqual(blankData.lenderExposures, []);
+  assert.deepEqual(blankData.mitigationConditions, []);
+  assert.equal(blankData.recommendation, '');
+});
+
 // Cleanly terminate active database connection pool after test completion
 test('teardown pool connections', () => {
   setTimeout(() => process.exit(0), 100);
