@@ -72,6 +72,23 @@ export async function getAllPreAnalysisNumbers(): Promise<string[]> {
   return numbers;
 }
 
+
+export const DEFAULT_COMPETITION_TABLE = [
+  { finco: 'Komatsu Astra Finance (KAF)', rate: '9% - 11,5%', purpose: 'HE' },
+  { finco: 'Astra Credit Companies (ACC)', rate: '10% - 12%', purpose: 'HE & Vehicles' },
+  { finco: 'SAN Finance (SANF)', rate: '10,5% - 11,66%', purpose: 'HE & Vehicles' },
+  { finco: 'Mahada Finance', rate: '10,50%', purpose: 'Truck' },
+  { finco: 'Adira Finance', rate: '10,54%', purpose: 'HE & Vehicles' },
+  { finco: 'Bank Mandiri', rate: '7,5% - 9,5%', purpose: 'HE & Vehicles' },
+  { finco: 'BFI Finance', rate: '10,50%', purpose: 'HE' },
+  { finco: 'BNI Multifinance', rate: '7,51%', purpose: 'HE' },
+  { finco: 'Buana Finance', rate: '14,00%', purpose: 'HE' },
+  { finco: 'Clipan Finance', rate: '12,49%', purpose: 'Truck' },
+  { finco: 'Dipo Star Finance', rate: '9,66% - 13,76%', purpose: 'Truck' },
+  { finco: 'IMFI', rate: '10,00%', purpose: 'HE' },
+  { finco: 'SMFL', rate: '10,5% - 11,25%', purpose: 'HE' }
+];
+
 export const DEFAULT_PRE_ANALYSIS_DATA = {
   preAnalysisNo: '001/PREANA/MKT/IX/2026',
   preAnalysisDate: '07-Sep-2026',
@@ -154,6 +171,10 @@ export const DEFAULT_PRE_ANALYSIS_DATA = {
     'Escrow Account mechanism with Bowheer (RAPP) or direct payment split agreement.',
     'Pre-Delivery inspection and strict iLink GPS tracking with remote immobilizer protocol.'
   ],
+  competitionTable: DEFAULT_COMPETITION_TABLE,
+  applicantPefindoCheck: 'NO RECORD SINCE ITS NEWLY ESTABLISHED',
+  pefindoTerms: 'Current PT HPS commercial term on other fincos : Flat rate 7%, 20% SD, Normal Installment - 36 months lease terms, Provision 1%, admin fee IDR 5 bio per contract',
+  pefindoNotes: '- PT HPS is existing customer of SANF, ACC, etc. Payment current, but for PT HPS there are no close contract because PT HPS also new established company in 2024. All leasing contracts still open.\n- Its group : PT Harta Putramas Santosa (HTPS) is newly establish company, no record at all from Finco / Bank,\n- New business diversification, PT HTPS doesnt have any experience in Harvesting.',
   competitionNotes: 'Pefindo check 4 Sept 2026. Rate benchmark: Flat 7% p.a., 20% Security Deposit, 36-month lease tenor, 1% provision fee, IDR 5.000.000 admin fee per contract.',
   proposedBy: 'Amanda Cynthia (Senior Account Manager)',
   reviewedBy: 'Maria Regina (Dept. Head)',

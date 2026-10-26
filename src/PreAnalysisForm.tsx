@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   FileText,
-  Eye,
   Save,
   Printer,
   ZoomIn,
@@ -24,9 +23,38 @@ import {
   Sparkles,
   RefreshCw,
   Plus,
-  Trash2
+  Trash2,
+  Eye,
+  Check
 } from 'lucide-react';
 import { api } from './api';
+
+export interface MilestoneItem {
+  year: string;
+  milestone?: string;
+  entity?: string;
+  description?: string;
+}
+
+export interface UnitCompItem {
+  kategoriAset?: string;
+  brand: string;
+  type?: string;
+  qty: number;
+}
+
+export interface LenderExposureItem {
+  lender: string;
+  plafond: string;
+  rate: string;
+  notes?: string;
+}
+
+export interface CompetitionItem {
+  finco: string;
+  rate: string;
+  purpose: string;
+}
 
 export interface PreAnalysisData {
   preAnalysisNo: string;
@@ -44,7 +72,7 @@ export interface PreAnalysisData {
   paidUpCapital: string;
   sourceOfRepayment: string;
 
-  // 2. Project Information & Bowheer
+  // 2. PROJECT INFORMATION
   projectNameLocation: string;
   customerRole: string;
   otherContractors: string;
@@ -54,152 +82,195 @@ export interface PreAnalysisData {
   investmentPlan: string;
   financingSchemeRequested: string;
 
-  // 3. Customer & Group Background
+  // 3. CUSTOMER & GROUP BACKGROUND
   uboInfo: string;
   companyBackground: string;
-  milestones: Array<{
-    year: string;
-    entity: string;
-    description: string;
-  }>;
+  milestones: MilestoneItem[];
   existingFincoBackup: string;
 
-  // 4. Equipment Possibility of Success
+  // 4. EQUIPMENT POSSIBILITY OF SUCCESS
   equipmentJobFit: string;
   utilizationDuration: string;
   priorLiugongExperience: string;
   serviceAgreementFmc: string;
-  unitComposition: Array<{
-    brand: string;
-    type: string;
-    quantity: number;
-    remarks: string;
-  }>;
+  unitComposition: UnitCompItem[];
 
-  // 6. Cross-Check Dealer & LMI
+  // 5. UNIT DELIVERY STATUS & QA CHECK
+  deliveryStatus: string;
+  deliveryDate: string;
+  qaIlinkComment: string;
+  qaConclusion: string;
+
+  // 6. CROSS-CHECK WITH DEALER / LMI (quick)
   topDealerToCustomer: string;
   topLmiToDealer: string;
   lmiArCheck: string;
   slikPefindoHighlight: string;
-  lenderExposures: Array<{
-    lender: string;
-    plafond: string;
-    rate: string;
-  }>;
+  applicantPefindoCheck: string;
+  pefindoTerms: string;
+  pefindoNotes: string;
+  lenderExposures: LenderExposureItem[];
 
-  // 7. Expert Judgement Conclusion
+  // 7. EXPERT JUDGEMENT CONCLUSION
   goodProject: boolean;
   goodProjectNote: string;
   goodCustomer: boolean;
   goodCustomerNote: string;
-  recommendation: 'RECOMMEND' | 'NOT RECOMMEND TO FULL DOCUMENTATION' | 'CONDITIONAL';
-  suggestionOverview: string;
-  mitigationConditions: string[];
+  recommendation: string;
+  briefNote: string;
+  suggestions: string[];
   competitionNotes: string;
+  competitionTable: CompetitionItem[];
   proposedBy: string;
   reviewedBy: string;
   approvedBy: string;
 }
 
+export const DEFAULT_COMPETITION_TABLE: CompetitionItem[] = [
+  { finco: 'Komatsu Astra Finance (KAF)', rate: '9% - 11,5%', purpose: 'HE' },
+  { finco: 'Astra Credit Companies (ACC)', rate: '10% - 12%', purpose: 'HE & Vehicles' },
+  { finco: 'SAN Finance (SANF)', rate: '10,5% - 11,66%', purpose: 'HE & Vehicles' },
+  { finco: 'Mahada Finance', rate: '10,50%', purpose: 'Truck' },
+  { finco: 'Adira Finance', rate: '10,54%', purpose: 'HE & Vehicles' },
+  { finco: 'Bank Mandiri', rate: '7,5% - 9,5%', purpose: 'HE & Vehicles' },
+  { finco: 'BFI Finance', rate: '10,50%', purpose: 'HE' },
+  { finco: 'BNI Multifinance', rate: '7,51%', purpose: 'HE' },
+  { finco: 'Buana Finance', rate: '14,00%', purpose: 'HE' },
+  { finco: 'Clipan Finance', rate: '12,49%', purpose: 'Truck' },
+  { finco: 'Dipo Star Finance', rate: '9,66% - 13,76%', purpose: 'Truck' },
+  { finco: 'IMFI', rate: '10,00%', purpose: 'HE' },
+  { finco: 'SMFL', rate: '10,5% - 11,25%', purpose: 'HE' }
+];
+
+export const defaultInitialData: PreAnalysisData = {
+  preAnalysisNo: '047/PREANA/MKT/IX/2026',
+  preAnalysisDate: '07-Sep-26',
+  customerProjectName: 'PT Handalan Putra Santosa (HPS)',
+  taxId: '27.817.616.9-041.000',
+  fapNumber: '070/AF/VIII/2026',
+  leadSource: 'LMI',
+  customerArea: 'Head Office : Jakarta\nSite Operation : Sumatera Area',
+  dealerPic: 'Direct to LMI',
+  lmiPic: 'Deny Ardhian',
+  lfiPic: 'Amanda - no history with customer (new customer)',
+  customerPic: 'Mr. Abraham (Business Director)',
+  equity: '130.000.000.000  as of Last deed no 8, 8 June 2026',
+  paidUpCapital: '32.500.000.000',
+  sourceOfRepayment: 'Income / Others',
+
+  projectNameLocation: `STAR GROUP :\nExisting Project :\n1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025\n2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025\n3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025\n4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project - Project start from December 2024\n\nB. PT Pangan Sejahtera Santosa (PASS)\n1. PT Sinar Sosro - FMCG distributor - Start from 2022\n2. PT FKS Pangan Nusantara - Start from 2022\n3. PT Perfetti Van Melle - Start from 2022\n4. PT Mondelez Indonesia Trading - Start from 2022\n\nNew Project :\nC. PT Harta Putramas Santosa (HTPS) - NEW\n1. PT Industrial Forest Plantation - Harvesting project - Project start estimated around Sept / Oct 2026 (Kalimantan Timur)\n2. PT SBA Wood Industries - Land Clearing - Project start estimated around Oct 2026 (Lebong Hitam)\n3. RAPP - Mayawana (for next year)`,
+  customerRole: 'Land Clearing & Harvesting Contractor',
+  otherContractors: 'Sarindo Group, Bandang Group',
+  projectOwner: '1. PT Industrial Forest Plantation (RAPP)\n2. Oki Pulp & Paper',
+  bowheerInfo: `1. PT Riau Andalan Pulp and Paper (RAPP) is one of the world's largest producers of sustainable pulp and paper, operating in Pangkalan Kerinci, Pelalawan Regency, Riau Province.\n- Parent Company: The core business unit of APRIL Group (Asia Pacific Resources International Limited) under the RGE (Royal Golden Eagle) Group.\n- Operational Location: Pangkalan Kerinci, Riau, Sumatra, Indonesia.\n- Production Capacity: Capable of producing up to 2.8 million tons of pulp and 1.15 million tons of paper annually.\n- Flagship Product: PaperOne™\nEstablishment: Founded May 15, 1989. Integrated mill in Pangkalan Kerinci with 11 MW solar array and self-sufficient power.\n\n2. OKI Pulp & Paper - Sinar Mas Forestry Group\nStrategic subsidiary of Asia Pulp & Paper (APP) Group located in Air Sugihan, Ogan Komering Ilir Regency, South Sumatra, supported by Tanjung Tapa Seaport. Integrated upstream-to-downstream sustainable fiber supply network.`,
+  projectStatus: 'on Going with RAPP since 2025 for logistic',
+  investmentPlan: `- nearest plan : 20 units LIUGONG Excavator for RAPP & 30 units LIUGONG Excavator for Sinarmas Project (combine 13 & 20 ton)\nTotal demand will be around 100 units until end of 2026.\nOther info : 20-30 unit (1st batch) estimated will delivery on W3 September 2026`,
+  financingSchemeRequested: 'Tenor : 36-month lease\nSD : 15%',
+
+  uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
+  companyBackground: `PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).\n\nSTAR Group – Key Milestones\n2022 | PT PASS Established – FMCG Distribution Business (Sinar Sosro, FKS, Perfetti, Mondelez)\nQ1 2024 | PT STAR Established as Holding Company\nBusiness Development Background: Mr. Hansen Santosa partnered with Mr. Herry Tho (forestry logistics background from Pekanbaru) to enter forestry hauling.\nNovember 2024 | PT HPS Established – Secured 5-year RAPP contract starting Dec 2024.\nLate 2025 | Expansion into Land Clearing & Harvesting with 3 APP/Sinar Mas companies.\nEnd-2025 | PT HTPS Established – Focused specifically on harvesting business.`,
+  milestones: [
+    { year: '2022', milestone: "PT Pangan Sejahtera Santosa (PASS) established – Started the Group's business through urban FMCG distribution and supported major FMCG principals." },
+    { year: 'Q1 2024', milestone: "PT Santosa Abadi Raja (STAR) established – Set up as a holding company to consolidate businesses owned by Mr. Hansen and his family." },
+    { year: 'Nov-24', milestone: "PT Handalan Putra Santosa (HPS) established – Focused on logging and land clearing projects; secured a 5-year RAPP contract and three APP Group contracts: 1. PT Bumi Andalas Permai, 2. PT Bumi Mekar Hijau, 3. PT Sebangun Bumi Andalas Wood Industries" },
+    { year: 'End-2025', milestone: "PT Harta Putra Santosa (HTPS) established – Created to focus specifically on harvesting projects and further diversify the Group's business activities." },
+    { year: 'Mid-2026', milestone: "New RAPP harvesting contract – New harvesting project to be executed through PT HTPS." }
+  ],
+  existingFincoBackup: 'ACC, SANF, MTF, RADANA, SMFL, BCA',
+
+  equipmentJobFit: 'Suitable - for harvesting  in Sumatera Area',
+  utilizationDuration: 'Reasonable — 3 years contract duration',
+  priorLiugongExperience: 'Never invest Liugong prior this proposal',
+  serviceAgreementFmc: 'Standard warranty from LMI',
+  unitComposition: [
+    { kategoriAset: 'Truk ISUZU GIGA FVM U', brand: 'ISUZU', qty: 45 },
+    { kategoriAset: 'Truk FAW', brand: 'FAW', qty: 41 },
+    { kategoriAset: 'Truk Shacman', brand: 'Shacman', qty: 25 },
+    { kategoriAset: 'Truk ISUZU CDE L', brand: 'ISUZU', qty: 10 },
+    { kategoriAset: 'Vehicle Commercial Dmax', brand: 'ISUZU', qty: 3 },
+    { kategoriAset: 'Vehicle Commercial Toyota Calya - G AT 1.2 Lux', brand: 'Toyota', qty: 1 },
+    { kategoriAset: 'Vehicle Commercial Toyota Innova All New', brand: 'Toyota', qty: 1 }
+  ],
+
+  deliveryStatus: 'Not yet Deliver',
+  deliveryDate: 'demand units Sept 2026, will be delivery estimate on W3 & after receive PO from Finco',
+  qaIlinkComment: 'No Records / Pre-Delivery Inspection Pending',
+  qaConclusion: 'Standard PDI required upon delivery and iLink telemetry activation',
+
+  topDealerToCustomer: '20% DP, 80% cover by Leasing',
+  topLmiToDealer: '-',
+  lmiArCheck: 'No Records Payment - New Liugong Customer',
+  slikPefindoHighlight: 'Based on Pefindo Checking on 4 Sept 2026',
+  applicantPefindoCheck: 'NO RECORD SINCE ITS NEWLY ESTABLISHED',
+  pefindoTerms: 'Current PT HPS commercial term on other fincos : Flat rate 7%, 20% SD, Normal Installment - 36 months lease terms, Provision 1%, admin fee IDR 5 bio per contract',
+  pefindoNotes: `- PT HPS is existing customer of SANF, ACC, etc. Payment current, but for PT HPS there are no close contract because PT HPS also new established company in 2024. All leasing contracts still open.\n- Its group : PT Harta Putramas Santosa (HTPS) is newly establish company, no record at all from Finco / Bank,\n- New business diversification, PT HTPS doesnt have any experience in Harvesting.`,
+  lenderExposures: [
+    { lender: 'PT Astra Sedaya Finance (ACC)', plafond: '11.737.642.751,00', rate: '6,24' },
+    { lender: 'PT Bank Central Asia Tbk', plafond: '13.533.553.504,00', rate: '9,50' },
+    { lender: 'PT Bank Nano Syariah', plafond: '6.163.669.402,00', rate: '-' },
+    { lender: 'PT Bank Saqu Indonesia (d.h PT Bank Jasa Jakarta)', plafond: '2.738.552.586,00', rate: '10,41' },
+    { lender: 'PT Mandiri Tunas Finance (MTF)', plafond: '14.993.647.840,00', rate: '9,50' },
+    { lender: 'PT Mitsui Leasing Capital Indonesia', plafond: '392.806.826,00', rate: '10,63' },
+    { lender: 'PT Radana Bhaskara Finance', plafond: '3.273.898.464,00', rate: '7,20' },
+    { lender: 'PT SMFL Leasing Indonesia', plafond: '4.301.044.800,00', rate: '12,49' },
+    { lender: 'PT Surya Artha Nusantara Finance (SANF)', plafond: '23.538.710.000,00', rate: '11,25' }
+  ],
+
+  goodProject: true,
+  goodProjectNote: 'Harvesting Contractor, PT RAPP - APRIL Group',
+  goodCustomer: false,
+  goodCustomerNote: 'PT HPS was newly established company since 2024. Group (HTPS) newly established since 2025.',
+  recommendation: 'NOT RECOMMEND TO FULL DOCUMENTATION',
+  briefNote: `- Based on documents (Legal & financial data), PT HPS is newly established company since 2024.\n- It's Group (PT Harta Putramas Santosa / PT HTPS) also newly established company since 2025.\nNot recommend to process in this stage`,
+  suggestions: [
+    'If still want to process with FPG, can be consider with the limitations :',
+    'Corporate Guarantee from PT PASS',
+    'Personal Guarantee from Hansen Santosa',
+    'Project limited only for Sinarmas',
+    'Not support for harvesting project',
+    'Payment method : escrow + cover PDC for full tenor',
+    'HTPS must have factoring facility for Nano Bank, as a source of payment to LFI',
+    'If Nano Bank can not support, then need cover by 3 x Cash Collateral',
+    'Other condition base on LFI Credit Committee'
+  ],
+  competitionNotes: 'Pefindo check 4 Sept 2026. Rate benchmark: Flat 7% p.a., 20% Security Deposit, 36-month lease tenor, 1% provision fee, IDR 5.000.000 admin fee per contract.',
+  competitionTable: DEFAULT_COMPETITION_TABLE,
+  proposedBy: 'Amanda Cynthia\nSenior Account Manager',
+  reviewedBy: 'Maria Regina\nDept. Head',
+  approvedBy: 'Jembar Ganda E\nDirector'
+};
+
 export function syncCustomerAndPicIntoPreAnalysis(
-  current: PreAnalysisData,
-  sources: {
-    customer?: any;
-    pic?: any;
-    application?: any;
-    profile?: any;
-  }
+  prevData: PreAnalysisData,
+  sources: { customer?: any; pic?: any; profile?: any; application?: any }
 ): PreAnalysisData {
   const companyName = sources.customer?.companyName || sources.application?.customer?.companyName;
   const npwp = sources.customer?.npwp || sources.application?.customer?.npwp;
   const fapNumber = sources.application?.fapNumber;
-  const picName = sources.pic?.picName 
-    ? `${sources.pic.picName}${sources.pic.position ? ` (${sources.pic.position})` : ''}` 
-    : undefined;
-  const city = sources.profile?.city || sources.customer?.city;
-  const province = sources.profile?.province || sources.customer?.province;
-  const area = city ? `${city}${province ? `, ${province}` : ''}` : undefined;
+  const rawPicName = sources.pic?.picName || sources.application?.pic?.picName;
+  const rawPicPos = sources.pic?.position || sources.application?.pic?.position;
+  const city = sources.profile?.city || sources.application?.city;
+  const province = sources.profile?.province || sources.application?.province;
+
+  let customerPic = prevData.customerPic;
+  if (rawPicName) {
+    customerPic = rawPicPos ? `${rawPicName} (${rawPicPos})` : rawPicName;
+  }
+
+  let customerArea = prevData.customerArea;
+  if (city || province) {
+    customerArea = [city, province].filter(Boolean).join(', ');
+  }
 
   return {
-    ...current,
-    ...(companyName ? { customerProjectName: companyName } : {}),
-    ...(npwp ? { taxId: npwp } : {}),
-    ...(fapNumber ? { fapNumber } : {}),
-    ...(picName ? { customerPic: picName } : {}),
-    ...(area ? { customerArea: area } : {})
+    ...prevData,
+    customerProjectName: companyName || prevData.customerProjectName,
+    taxId: npwp || prevData.taxId,
+    fapNumber: fapNumber || prevData.fapNumber,
+    customerPic,
+    customerArea
   };
 }
-
-const defaultInitialData: PreAnalysisData = {
-  preAnalysisNo: '001/PREANA/MKT/IX/2026',
-  preAnalysisDate: '07-Sep-2026',
-  customerProjectName: 'PT Handalan Putramas Santosa (HPS)',
-  taxId: '27.817.616.9-041.000',
-  fapNumber: '070/AF/VIII/2026',
-  leadSource: 'Dealer (PT. Intraco Penta Prima Servis)',
-  customerArea: 'Balikpapan, East Kalimantan',
-  dealerPic: 'Mr. Ronald / IPPS Bpp',
-  lmiPic: 'Mr. Tommy',
-  lfiPic: 'Arianti',
-  customerPic: 'Mr. Budi Santoso (Director)',
-  equity: 'IDR 12.500.000.000',
-  paidUpCapital: 'IDR 5.000.000.000',
-  sourceOfRepayment: 'Termin pembayaran project pengangkutan batubara dari Bowheer PT Bayan Resources Tbk',
-
-  projectNameLocation: 'Proyek Pengupasan & Hauling Batubara, Site Muara Teweh & Tabang',
-  customerRole: 'Main Contractor Hauling & Earthmoving Sub-contractor',
-  otherContractors: 'PT Saptaindra Sejati (SIS), PT Pamapersada Nusantara (PAMA)',
-  projectOwner: 'PT Bayan Resources Tbk',
-  bowheerInfo: 'Reputasi pembayaran lancar (A-rating), termin tagihan 30 hari kalender, escrow account di Bank Mandiri',
-  projectStatus: 'Active mining hauling contract (5 years with 2-year extension option)',
-  investmentPlan: 'Pengadaan 10 unit Wheel Loader & Excavator LiuGong untuk ekspansi kapasitas muat',
-  financingSchemeRequested: 'Financial Lease tenor 36 bulan dengan DP 20% dan flat rate kompetitif',
-
-  uboInfo: 'Pemilik manfaat akhir: Bapak Hendra Wijaya (70% saham) & Ibu Shirley Santoso (30% saham)',
-  companyBackground: 'Berdiri sejak 2012 di Balikpapan, spesialis heavy equipment rental dan mining contractor terpercaya',
-  milestones: [
-    { year: '2012', entity: 'PT Handalan Putramas Santosa', description: 'Didirikan dengan fokus awal rental dump truck 10 unit' },
-    { year: '2017', entity: 'HPS Mining Division', description: 'Ekspansi ke kontrak hauling batubara pertama di Kutai Kartanegara' },
-    { year: '2021', entity: 'HPS Logistics', description: 'Meraih kontrak multi-tahun dengan Bayan Group untuk volume 500k MT/bulan' },
-    { year: '2024', entity: 'HPS Fleet Modernization', description: 'Standardisasi armada alat berat heavy class untuk efisiensi bahan bakar' }
-  ],
-  existingFincoBackup: 'Fasilitas aktif di BCA Finance (IDR 8M, lancar/Kol-1) dan Mandiri Tunas Finance (IDR 5M, lancar/Kol-1)',
-
-  equipmentJobFit: 'Wheel Loader 856H & Excavator 936E sangat cocok untuk loading batubara di ROM stockpile dan barge terminal',
-  utilizationDuration: 'Operasional 2 shift (18 jam/hari), target utilisasi 450 jam per unit/bulan',
-  priorLiugongExperience: 'Memiliki 4 unit LiuGong CLG856H pembelian 2022 dengan reliability index 92%',
-  serviceAgreementFmc: 'Full Maintenance Contract didukung cabang service IPPS Balikpapan dengan penyediaan konsinyasi sparepart on-site',
-  unitComposition: [
-    { brand: 'LiuGong', type: 'Wheel Loader CLG856H 3.0 m3', quantity: 6, remarks: 'Loading stockpile barge terminal' },
-    { brand: 'LiuGong', type: 'Excavator CLG936E 1.6 m3', quantity: 4, remarks: 'Overburden stripping & bench cleaning' }
-  ],
-
-  topDealerToCustomer: 'Termin pembayaran: DP 20% saat PO, pelunasan via disbursement fasilitas LiuGong Finance',
-  topLmiToDealer: 'Standar delivery 14 hari kerja setelah approval PO & konfirmasi LC/disbursement agreement',
-  lmiArCheck: 'Tidak ada tunggakan sparepart maupun unit dengan dealer IPPS maupun principal LiuGong Machinery Indonesia',
-  slikPefindoHighlight: 'SLIK Kolektibilitas 1 (Lancar) seluruh fasilitas bank & leasing 24 bulan terakhir. Riwayat DPK/NPL: Nihil.',
-  lenderExposures: [
-    { lender: 'PT Bank Central Asia Tbk', plafond: 'IDR 8.000.000.000', rate: '9.25% p.a. eff' },
-    { lender: 'PT Mandiri Tunas Finance', plafond: 'IDR 5.200.000.000', rate: '8.75% p.a. flat' },
-    { lender: 'PT CIMB Niaga Auto Finance', plafond: 'IDR 3.500.000.000', rate: '9.00% p.a. eff' }
-  ],
-
-  goodProject: true,
-  goodProjectNote: 'Kontrak jangka panjang dengan tier-1 mining company (Bayan Group), cash flow terjamin via escrow account terpisah.',
-  goodCustomer: true,
-  goodCustomerNote: 'Track record pembayaran bersih Kol-1, manajemen berpengalaman >12 tahun, rasio DER dan DSCR memenuhi benchmark sehat.',
-  recommendation: 'RECOMMEND',
-  suggestionOverview: 'Disarankan untuk melanjutkan ke tahap Full Documentation & On-site Field Verification oleh tim Credit Analyst.',
-  mitigationConditions: [
-    'Wajib menyerahkan standing instruction escrow account penerimaan termin hauling dari Bowheer.',
-    'Pemasangan GPS telemetry & fuel monitoring LiuGong telematics untuk tracking lokasi dan jam operasional alat.',
-    'Personal Guarantee dari Ultimate Beneficial Owner (Bpk. Hendra Wijaya & Ibu Shirley Santoso).'
-  ],
-  competitionNotes: 'Pefindo check 4 Sept 2026. Rate benchmark: Flat 7% p.a., 20% Security Deposit, 36-month lease tenor, 1% provision fee, IDR 5.000.000 admin fee per contract.',
-  proposedBy: 'Amanda Cynthia (Senior Account Manager)',
-  reviewedBy: 'Maria Regina (Dept. Head)',
-  approvedBy: 'Jembar Ganda E (Director)'
-};
 
 interface PreAnalysisFormProps {
   applicationId: string;
@@ -213,14 +284,7 @@ interface PreAnalysisFormProps {
 
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const [data, setData] = useState<PreAnalysisData>(() => {
-    return {
-      ...defaultInitialData,
-      customerProjectName: props.customer?.companyName || props.application?.customer?.companyName || defaultInitialData.customerProjectName,
-      taxId: props.customer?.npwp || props.application?.customer?.npwp || defaultInitialData.taxId,
-      fapNumber: props.application?.fapNumber || defaultInitialData.fapNumber,
-      customerPic: props.pic?.picName ? `${props.pic.picName}${props.pic.position ? ` (${props.pic.position})` : ''}` : defaultInitialData.customerPic,
-      customerArea: props.profile?.city ? `${props.profile.city}, ${props.profile.province}` : (props.customer?.city ? `${props.customer.city}, ${props.customer.province}` : defaultInitialData.customerArea)
-    };
+    return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
   });
 
   const [viewMode, setViewMode] = useState<'digital-twin' | 'original-pdf'>('digital-twin');
@@ -228,81 +292,67 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-  // Accordion section toggles
+  // Accordion section toggles - All 7 sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     sec1: true,
     sec2: true,
     sec3: false,
     sec4: false,
     sec5: false,
-    sec6: true,
+    sec6: false,
     sec7: true
   });
-
-  const previewContainerRef = useRef<HTMLDivElement>(null);
 
   const toggleSection = (id: string) => {
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const scrollToPreviewElement = (targetId: string) => {
+  // Sync scroll & highlight helper
+  const scrollToPreviewElement = (elementId: string) => {
     if (viewMode === 'original-pdf') {
       setViewMode('digital-twin');
     }
     setTimeout(() => {
-      const vp = previewContainerRef.current;
-      const target = document.getElementById(targetId);
-      if (!vp || !target) return;
-
-      const vpRect = vp.getBoundingClientRect();
-      const targetRect = target.getBoundingClientRect();
-      const delta = targetRect.top - vpRect.top;
-
-      vp.scrollTo({
-        top: vp.scrollTop + delta - 20,
-        behavior: 'smooth'
-      });
-
-      target.classList.remove('fap-preview-sync-highlight');
-      void target.offsetWidth;
-      target.classList.add('fap-preview-sync-highlight');
-      setTimeout(() => {
-        target.classList.remove('fap-preview-sync-highlight');
-      }, 2500);
-    }, 40);
-  };
-
-  const handleTriggerSync = (secId: string, previewTargetId: string) => {
-    setOpenSections(prev => ({ ...prev, [secId]: true }));
-    scrollToPreviewElement(previewTargetId);
-  };
-
-  const handlePreviewCellClick = (fieldKey: string, sectionKey: string) => {
-    setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
-    setTimeout(() => {
-      const formInput = document.querySelector(`[name="${fieldKey}"], [data-field="${fieldKey}"]`) as HTMLElement;
-      if (formInput) {
-        formInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        formInput.classList.remove('fap-preview-sync-highlight');
-        void formInput.offsetWidth;
-        formInput.classList.add('fap-preview-sync-highlight');
-        formInput.focus();
+      const el = document.getElementById(elementId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.remove('fap-preview-sync-highlight');
+        void el.offsetWidth;
+        el.classList.add('fap-preview-sync-highlight');
         setTimeout(() => {
-          formInput.classList.remove('fap-preview-sync-highlight');
+          el.classList.remove('fap-preview-sync-highlight');
         }, 2500);
       }
     }, 50);
   };
 
+  const handleTriggerSync = (secId: string, previewSecId: string) => {
+    setOpenSections(prev => ({ ...prev, [secId]: true }));
+    scrollToPreviewElement(previewSecId);
+  };
+
+  const handlePreviewCellClick = (fieldKey: string, sectionId?: string) => {
+    if (sectionId) {
+      setOpenSections(prev => ({ ...prev, [sectionId]: true }));
+      const formTarget = document.getElementById('acc-' + sectionId);
+      if (formTarget) {
+        formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+    if (fieldKey) {
+      setTimeout(() => {
+        const input = document.querySelector(`[name="${fieldKey}"], [data-field="${fieldKey}"]`) as HTMLElement;
+        if (input) {
+          input.focus();
+        }
+      }, 100);
+    }
+  };
+
   const handleSyncCustomerPicData = () => {
-    setData(prev => syncCustomerAndPicIntoPreAnalysis(prev, {
-      customer: props.customer,
-      pic: props.pic,
-      application: props.application,
-      profile: props.profile
-    }));
-    props.notify?.('Synced Customer & PIC data from FAP Application!');
-    handleTriggerSync('sec1', 'preana-preview-sec-1');
+    setData(prev => syncCustomerAndPicIntoPreAnalysis(prev, props));
+    props.notify?.('Customer & PIC data synced into Pre-Analysis!');
+    scrollToPreviewElement('preana-preview-sec-1');
   };
 
   // Fetch saved pre-analysis data from server
@@ -344,9 +394,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     setData(prev => ({ ...prev, [key]: val }));
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const totalUnits = useMemo(() => {
+    return (data.unitComposition || []).reduce((acc, u) => acc + (Number(u.qty) || 0), 0);
+  }, [data.unitComposition]);
 
   return (
     <div className="fap-detail-split-container" style={{ margin: 0, height: 'calc(100vh - 165px)' }}>
@@ -371,13 +421,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 Pre-Analysis Form
               </h3>
               <span style={{
-                background: data.recommendation === 'RECOMMEND' ? '#dcfce7' : '#fee2e2',
-                color: data.recommendation === 'RECOMMEND' ? '#15803d' : '#b91c1c',
+                background: data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
+                color: data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
                 fontSize: '0.7rem',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '12px',
-                border: `1px solid ${data.recommendation === 'RECOMMEND' ? '#86efac' : '#fca5a5'}`
+                border: `1px solid ${data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`
               }}>
                 {data.recommendation}
               </span>
@@ -388,15 +438,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={handleSyncCustomerPicData}
-              className="fap-acc-sync-btn"
-              style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#16a34a', padding: '6px 10px', fontSize: '0.75rem' }}
-              title="Sync Customer, NPWP, PIC, and Area from FAP Application"
-            >
-              <RefreshCw size={13} /> Sync Customer Data
-            </button>
             {saveStatus === 'saved' && (
               <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <CheckCircle2 size={14} /> Saved
@@ -423,60 +464,44 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <Save size={14} />
               {saving ? 'Saving...' : 'Save Draft'}
             </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#ffffff',
-                color: '#1e293b',
-                border: '1px solid #cbd5e1',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Printer size={14} />
-              Print
-            </button>
           </div>
         </div>
 
-        {/* ACCORDION SECTIONS */}
+        {/* ACCORDION SECTIONS 1 TO 7 */}
         <div className="fap-accordion-group" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          
-          {/* SECTION 1: GENERAL & CUSTOMER SCREENING */}
-          <div 
-            className={`fap-accordion-card ${openSections.sec1 ? 'is-open' : 'is-closed'}`}
-            id="acc-preana-sec-1"
-          >
+
+          {/* SECTION 1: 1. GENERAL INFORMATION */}
+          <div id="acc-sec1" className="fap-accordion-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
             <div
               className="fap-accordion-header"
               onClick={() => toggleSection('sec1')}
+              style={{
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderBottom: openSections.sec1 ? '1px solid #e2e8f0' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <div className="fap-acc-title-group">
-                <span className="fap-acc-badge">01</span>
-                <div>
-                  <h4>1. General Information & Quick Screening</h4>
-                  <p>Customer profile, NPWP, PIC assignments, and capital overview</p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>01</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  1. GENERAL INFORMATION
+                </span>
               </div>
-              <div className="fap-acc-actions">
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
-                  style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#16a34a' }}
-                  title="Sync Customer, NPWP, PIC, and Area from FAP Application"
+                  title="Pull latest Customer & PIC from FAP stage"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleSyncCustomerPicData();
                   }}
                 >
-                  <RefreshCw size={11} /> Sync Customer Data
+                  <RefreshCw size={12} /> Sync Customer Data
                 </button>
                 <button
                   type="button"
@@ -508,7 +533,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     value={data.preAnalysisNo}
                     onChange={e => updateField('preAnalysisNo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-preAnalysisNo')}
-                    placeholder="001/PREANA/MKT/IX/2026"
+                    placeholder="047/PREANA/MKT/IX/2026"
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
@@ -525,7 +550,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Customer / Project Name</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Customer / Project</label>
                   <input
                     type="text"
                     name="customerProjectName"
@@ -672,23 +697,28 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             )}
           </div>
 
-          {/* SECTION 2: PROJECT INFORMATION */}
-          <div 
-            className={`fap-accordion-card ${openSections.sec2 ? 'is-open' : 'is-closed'}`}
-            id="acc-preana-sec-2"
-          >
+          {/* SECTION 2: 2. PROJECT INFORMATION */}
+          <div id="acc-sec2" className="fap-accordion-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
             <div
               className="fap-accordion-header"
               onClick={() => toggleSection('sec2')}
+              style={{
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderBottom: openSections.sec2 ? '1px solid #e2e8f0' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <div className="fap-acc-title-group">
-                <span className="fap-acc-badge">02</span>
-                <div>
-                  <h4>2. Project Information & Bowheer</h4>
-                  <p>Contractor role, project portfolio, bowheer DD, and financing scheme</p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>02</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  2. PROJECT INFORMATION
+                </span>
               </div>
-              <div className="fap-acc-actions">
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
@@ -709,8 +739,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name & Location</label>
-                  <input
-                    type="text"
+                  <textarea
+                    rows={4}
                     name="projectNameLocation"
                     data-field="projectNameLocation"
                     value={data.projectNameLocation}
@@ -721,7 +751,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Customer Role in Project</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Role of Customer</label>
                     <input
                       type="text"
                       name="customerRole"
@@ -733,7 +763,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Contractors Involved</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Contractor work in the same bowheer</label>
                     <input
                       type="text"
                       name="otherContractors"
@@ -746,9 +776,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Owner / Bowheer</label>
-                  <input
-                    type="text"
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Owner</label>
+                  <textarea
+                    rows={2}
                     name="projectOwner"
                     data-field="projectOwner"
                     value={data.projectOwner}
@@ -758,9 +788,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Information on Bowheer (Track Record, Terms, Escrow)</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Bowheer Information</label>
                   <textarea
-                    rows={2}
+                    rows={4}
                     name="bowheerInfo"
                     data-field="bowheerInfo"
                     value={data.bowheerInfo}
@@ -770,7 +800,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Status & Contract Term</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Status</label>
                   <input
                     type="text"
                     name="projectStatus"
@@ -782,9 +812,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Investment / Procurement Plan</label>
-                  <input
-                    type="text"
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Investment Plan</label>
+                  <textarea
+                    rows={3}
                     name="investmentPlan"
                     data-field="investmentPlan"
                     value={data.investmentPlan}
@@ -809,23 +839,28 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             )}
           </div>
 
-          {/* SECTION 3: CUSTOMER & GROUP BACKGROUND */}
-          <div 
-            className={`fap-accordion-card ${openSections.sec3 ? 'is-open' : 'is-closed'}`}
-            id="acc-preana-sec-3"
-          >
+          {/* SECTION 3: 3. CUSTOMER & GROUP BACKGROUND */}
+          <div id="acc-sec3" className="fap-accordion-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
             <div
               className="fap-accordion-header"
               onClick={() => toggleSection('sec3')}
+              style={{
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderBottom: openSections.sec3 ? '1px solid #e2e8f0' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <div className="fap-acc-title-group">
-                <span className="fap-acc-badge">03</span>
-                <div>
-                  <h4>3. Customer & Group Background</h4>
-                  <p>UBO hierarchy, company background, milestones, and finco partners</p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>03</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  3. CUSTOMER & GROUP BACKGROUND
+                </span>
               </div>
-              <div className="fap-acc-actions">
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
@@ -845,9 +880,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             {openSections.sec3 && (
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Ultimate Beneficial Owner (UBO) & Shareholding</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>UBO (Ultimate Beneficiary Owner)</label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     name="uboInfo"
                     data-field="uboInfo"
                     value={data.uboInfo}
@@ -857,9 +892,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background & History</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background</label>
                   <textarea
-                    rows={2}
+                    rows={4}
                     name="companyBackground"
                     data-field="companyBackground"
                     value={data.companyBackground}
@@ -870,83 +905,76 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Key Milestones / Business Growth</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Milestones</label>
                     <button
                       type="button"
                       onClick={() => {
-                        setData(prev => ({
-                          ...prev,
-                          milestones: [...prev.milestones, { year: '2026', entity: '', description: '' }]
-                        }));
+                        const next = [...(data.milestones || []), { year: '', milestone: '' }];
+                        updateField('milestones', next);
                       }}
-                      style={{ fontSize: '0.7rem', padding: '2px 8px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer' }}
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                     >
                       + Add Milestone
                     </button>
                   </div>
-                  {data.milestones.map((m, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                      <input
-                        type="text"
-                        placeholder="Year"
-                        value={m.year}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.milestones];
-                            arr[idx].year = val;
-                            return { ...prev, milestones: arr };
-                          });
-                        }}
-                        style={{ width: '70px', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Entity / Project"
-                        value={m.entity}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.milestones];
-                            arr[idx].entity = val;
-                            return { ...prev, milestones: arr };
-                          });
-                        }}
-                        style={{ width: '140px', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Milestone description..."
-                        value={m.description}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.milestones];
-                            arr[idx].description = val;
-                            return { ...prev, milestones: arr };
-                          });
-                        }}
-                        style={{ flex: 1, padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setData(prev => ({
-                            ...prev,
-                            milestones: prev.milestones.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', padding: '0 6px', cursor: 'pointer' }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                      <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <tr>
+                          <th style={{ width: '18%', padding: '6px 8px', textAlign: 'left' }}>Year</th>
+                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Milestone</th>
+                          <th style={{ width: '40px', padding: '6px 8px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(data.milestones || []).map((m, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={m.year || ''}
+                                onChange={e => {
+                                  const copy = [...data.milestones];
+                                  copy[idx] = { ...copy[idx], year: e.target.value };
+                                  updateField('milestones', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px' }}>
+                              <textarea
+                                rows={2}
+                                value={m.milestone || m.description || ''}
+                                onChange={e => {
+                                  const copy = [...data.milestones];
+                                  copy[idx] = { ...copy[idx], milestone: e.target.value };
+                                  updateField('milestones', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const copy = data.milestones.filter((_, i) => i !== idx);
+                                  updateField('milestones', copy);
+                                }}
+                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Existing Finco / Bank Facilities Backup</label>
-                  <textarea
-                    rows={2}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Existing Finco Backup</label>
+                  <input
+                    type="text"
                     name="existingFincoBackup"
                     data-field="existingFincoBackup"
                     value={data.existingFincoBackup}
@@ -959,23 +987,28 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             )}
           </div>
 
-          {/* SECTION 4: EQUIPMENT POSSIBILITY OF SUCCESS */}
-          <div 
-            className={`fap-accordion-card ${openSections.sec4 ? 'is-open' : 'is-closed'}`}
-            id="acc-preana-sec-4"
-          >
+          {/* SECTION 4: 4. EQUIPMENT POSSIBILITY OF SUCCESS */}
+          <div id="acc-sec4" className="fap-accordion-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
             <div
               className="fap-accordion-header"
               onClick={() => toggleSection('sec4')}
+              style={{
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderBottom: openSections.sec4 ? '1px solid #e2e8f0' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <div className="fap-acc-title-group">
-                <span className="fap-acc-badge">04</span>
-                <div>
-                  <h4>4. Equipment Possibility of Success</h4>
-                  <p>Job fit, utilization duration, LiuGong experience, and unit fleet</p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>04</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  4. EQUIPMENT POSSIBILITY OF SUCCESS
+                </span>
               </div>
-              <div className="fap-acc-actions">
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
@@ -994,30 +1027,123 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             </div>
             {openSections.sec4 && (
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equipment Job Fit</label>
-                  <textarea
-                    rows={2}
-                    name="equipmentJobFit"
-                    data-field="equipmentJobFit"
-                    value={data.equipmentJobFit}
-                    onChange={e => updateField('equipmentJobFit', e.target.value)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-equipmentJobFit')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equipment-to-Job Fit</label>
+                    <input
+                      type="text"
+                      name="equipmentJobFit"
+                      data-field="equipmentJobFit"
+                      value={data.equipmentJobFit}
+                      onChange={e => updateField('equipmentJobFit', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-equipmentJobFit')}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Utilization vs Project Duration</label>
+                    <input
+                      type="text"
+                      name="utilizationDuration"
+                      data-field="utilizationDuration"
+                      value={data.utilizationDuration}
+                      onChange={e => updateField('utilizationDuration', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-utilizationDuration')}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
                 </div>
+
+                {/* Current Unit Composition Table */}
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Utilization & Duration Expectations</label>
-                  <input
-                    type="text"
-                    name="utilizationDuration"
-                    data-field="utilizationDuration"
-                    value={data.utilizationDuration}
-                    onChange={e => updateField('utilizationDuration', e.target.value)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-utilizationDuration')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Current Unit Composition (Total: {totalUnits} units)</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...(data.unitComposition || []), { kategoriAset: '', brand: '', qty: 0 }];
+                        updateField('unitComposition', next);
+                      }}
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                    >
+                      + Add Unit
+                    </button>
+                  </div>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                      <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <tr>
+                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Kategori Aset</th>
+                          <th style={{ width: '25%', padding: '6px 8px', textAlign: 'left' }}>Merk</th>
+                          <th style={{ width: '18%', padding: '6px 8px', textAlign: 'right' }}>Qty</th>
+                          <th style={{ width: '40px', padding: '6px 8px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(data.unitComposition || []).map((u, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={u.kategoriAset || ''}
+                                onChange={e => {
+                                  const copy = [...data.unitComposition];
+                                  copy[idx] = { ...copy[idx], kategoriAset: e.target.value };
+                                  updateField('unitComposition', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={u.brand || ''}
+                                onChange={e => {
+                                  const copy = [...data.unitComposition];
+                                  copy[idx] = { ...copy[idx], brand: e.target.value };
+                                  updateField('unitComposition', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                              <input
+                                type="number"
+                                value={u.qty || 0}
+                                onChange={e => {
+                                  const copy = [...data.unitComposition];
+                                  copy[idx] = { ...copy[idx], qty: Number(e.target.value) || 0 };
+                                  updateField('unitComposition', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const copy = data.unitComposition.filter((_, i) => i !== idx);
+                                  updateField('unitComposition', copy);
+                                }}
+                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', fontWeight: 700 }}>
+                        <tr>
+                          <td colSpan={2} style={{ padding: '6px 8px' }}>TOTAL</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right' }}>{totalUnits}</td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
                 </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Prior LiuGong Experience</label>
@@ -1032,7 +1158,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Service Agreement / FMC</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Have Service Agreement / FMC</label>
                     <input
                       type="text"
                       name="serviceAgreementFmc"
@@ -1044,116 +1170,126 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                 </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Unit Composition & Target Equipment</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setData(prev => ({
-                          ...prev,
-                          unitComposition: [...prev.unitComposition, { brand: 'LiuGong', type: '', quantity: 1, remarks: '' }]
-                        }));
-                      }}
-                      style={{ fontSize: '0.7rem', padding: '2px 8px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer' }}
-                    >
-                      + Add Unit
-                    </button>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION 5: 5. UNIT DELIVERY STATUS & QA CHECK */}
+          <div id="acc-sec5" className="fap-accordion-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
+            <div
+              className="fap-accordion-header"
+              onClick={() => toggleSection('sec5')}
+              style={{
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderBottom: openSections.sec5 ? '1px solid #e2e8f0' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>05</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  5. UNIT DELIVERY STATUS & QA CHECK
+                </span>
+              </div>
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  type="button"
+                  className="fap-acc-sync-btn"
+                  title="Sync preview document to this section"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleTriggerSync('sec5', 'preana-preview-sec-5');
+                  }}
+                >
+                  <Eye size={12} /> Sync View
+                </button>
+                <span className={`fap-acc-chevron ${openSections.sec5 ? 'rotate' : ''}`}>
+                  <ChevronDown size={16} />
+                </span>
+              </div>
+            </div>
+            {openSections.sec5 && (
+              <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Status</label>
+                    <input
+                      type="text"
+                      name="deliveryStatus"
+                      data-field="deliveryStatus"
+                      value={data.deliveryStatus}
+                      onChange={e => updateField('deliveryStatus', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-deliveryStatus')}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
                   </div>
-                  {data.unitComposition.map((u, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                      <input
-                        type="text"
-                        placeholder="Brand"
-                        value={u.brand}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.unitComposition];
-                            arr[idx].brand = val;
-                            return { ...prev, unitComposition: arr };
-                          });
-                        }}
-                        style={{ width: '90px', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Model / Type"
-                        value={u.type}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.unitComposition];
-                            arr[idx].type = val;
-                            return { ...prev, unitComposition: arr };
-                          });
-                        }}
-                        style={{ flex: 1, padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Qty"
-                        value={u.quantity}
-                        onChange={e => {
-                          const val = Number(e.target.value);
-                          setData(prev => {
-                            const arr = [...prev.unitComposition];
-                            arr[idx].quantity = val;
-                            return { ...prev, unitComposition: arr };
-                          });
-                        }}
-                        style={{ width: '55px', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Application remarks..."
-                        value={u.remarks}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.unitComposition];
-                            arr[idx].remarks = val;
-                            return { ...prev, unitComposition: arr };
-                          });
-                        }}
-                        style={{ flex: 1, padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setData(prev => ({
-                            ...prev,
-                            unitComposition: prev.unitComposition.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', padding: '0 6px', cursor: 'pointer' }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Date</label>
+                    <input
+                      type="text"
+                      name="deliveryDate"
+                      data-field="deliveryDate"
+                      value={data.deliveryDate}
+                      onChange={e => updateField('deliveryDate', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-deliveryDate')}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Comment — iLink/GPS Performance Check</label>
+                  <input
+                    type="text"
+                    name="qaIlinkComment"
+                    data-field="qaIlinkComment"
+                    value={data.qaIlinkComment}
+                    onChange={e => updateField('qaIlinkComment', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-qaIlinkComment')}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Conclusion</label>
+                  <input
+                    type="text"
+                    name="qaConclusion"
+                    data-field="qaConclusion"
+                    value={data.qaConclusion}
+                    onChange={e => updateField('qaConclusion', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-qaConclusion')}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  />
                 </div>
               </div>
             )}
           </div>
 
-          {/* SECTION 6: CROSS-CHECK DEALER & LMI */}
-          <div 
-            className={`fap-accordion-card ${openSections.sec6 ? 'is-open' : 'is-closed'}`}
-            id="acc-preana-sec-6"
-          >
+          {/* SECTION 6: 6. CROSS-CHECK WITH DEALER / LMI (quick) */}
+          <div id="acc-sec6" className="fap-accordion-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
             <div
               className="fap-accordion-header"
               onClick={() => toggleSection('sec6')}
+              style={{
+                padding: '10px 14px',
+                background: '#f8fafc',
+                borderBottom: openSections.sec6 ? '1px solid #e2e8f0' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <div className="fap-acc-title-group">
-                <span className="fap-acc-badge">06</span>
-                <div>
-                  <h4>6. Cross-Check with Dealer / LMI & Bureau SLIK</h4>
-                  <p>Terms of payment, AR track record, SLIK/Pefindo, and lender exposures</p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#dbeafe', color: '#1e40af', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>06</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  6. CROSS-CHECK WITH DEALER / LMI (quick)
+                </span>
               </div>
-              <div className="fap-acc-actions">
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
@@ -1174,7 +1310,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP Dealer to Customer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from Dealer to Customer</label>
                     <input
                       type="text"
                       name="topDealerToCustomer"
@@ -1186,7 +1322,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP LMI to Dealer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from LMI to Dealer</label>
                     <input
                       type="text"
                       name="topLmiToDealer"
@@ -1199,7 +1335,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI AR & Payment Track Record Check</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI Internal AR Check</label>
                   <input
                     type="text"
                     name="lmiArCheck"
@@ -1210,116 +1346,157 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>SLIK OJK / Pefindo Bureau Highlights</label>
-                  <textarea
-                    rows={2}
-                    name="slikPefindoHighlight"
-                    data-field="slikPefindoHighlight"
-                    value={data.slikPefindoHighlight}
-                    onChange={e => updateField('slikPefindoHighlight', e.target.value)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-slikPefindoHighlight')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                  />
-                </div>
-                <div>
+
+                {/* Subheading: 1. Sister Company SLIK / Pefindo */}
+                <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Existing Lender Exposures (Bank & Multi-Finance)</label>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
+                      1. PT HANDALAN PUTRAMAS SANTOSA (SISTER COMPANY) :
+                    </span>
                     <button
                       type="button"
                       onClick={() => {
-                        setData(prev => ({
-                          ...prev,
-                          lenderExposures: [...prev.lenderExposures, { lender: '', plafond: '', rate: '' }]
-                        }));
+                        const next = [...(data.lenderExposures || []), { lender: '', plafond: '', rate: '' }];
+                        updateField('lenderExposures', next);
                       }}
-                      style={{ fontSize: '0.7rem', padding: '2px 8px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer' }}
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                     >
                       + Add Lender
                     </button>
                   </div>
-                  {data.lenderExposures.map((l, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                      <input
-                        type="text"
-                        placeholder="Lender / Bank"
-                        value={l.lender}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.lenderExposures];
-                            arr[idx].lender = val;
-                            return { ...prev, lenderExposures: arr };
-                          });
-                        }}
-                        style={{ flex: 1.5, padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Plafond"
-                        value={l.plafond}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.lenderExposures];
-                            arr[idx].plafond = val;
-                            return { ...prev, lenderExposures: arr };
-                          });
-                        }}
-                        style={{ flex: 1.2, padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Rate / Terms"
-                        value={l.rate}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.lenderExposures];
-                            arr[idx].rate = val;
-                            return { ...prev, lenderExposures: arr };
-                          });
-                        }}
-                        style={{ width: '110px', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setData(prev => ({
-                            ...prev,
-                            lenderExposures: prev.lenderExposures.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', padding: '0 6px', cursor: 'pointer' }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>
+                    {data.slikPefindoHighlight}
+                  </div>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                      <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <tr>
+                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Row Labels</th>
+                          <th style={{ width: '32%', padding: '6px 8px', textAlign: 'right' }}>Sum of plafon</th>
+                          <th style={{ width: '20%', padding: '6px 8px', textAlign: 'right' }}>Interest Rate</th>
+                          <th style={{ width: '36px', padding: '6px 8px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(data.lenderExposures || []).map((lex, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={lex.lender || ''}
+                                onChange={e => {
+                                  const copy = [...data.lenderExposures];
+                                  copy[idx] = { ...copy[idx], lender: e.target.value };
+                                  updateField('lenderExposures', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                              <input
+                                type="text"
+                                value={lex.plafond || ''}
+                                onChange={e => {
+                                  const copy = [...data.lenderExposures];
+                                  copy[idx] = { ...copy[idx], plafond: e.target.value };
+                                  updateField('lenderExposures', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                              <input
+                                type="text"
+                                value={lex.rate || ''}
+                                onChange={e => {
+                                  const copy = [...data.lenderExposures];
+                                  copy[idx] = { ...copy[idx], rate: e.target.value };
+                                  updateField('lenderExposures', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const copy = data.lenderExposures.filter((_, i) => i !== idx);
+                                  updateField('lenderExposures', copy);
+                                }}
+                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pefindo Analysis Notes</label>
+                    <textarea
+                      rows={3}
+                      name="pefindoNotes"
+                      data-field="pefindoNotes"
+                      value={data.pefindoNotes}
+                      onChange={e => updateField('pefindoNotes', e.target.value)}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '8px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Commercial Terms on Other Fincos</label>
+                    <textarea
+                      rows={2}
+                      name="pefindoTerms"
+                      data-field="pefindoTerms"
+                      value={data.pefindoTerms}
+                      onChange={e => updateField('pefindoTerms', e.target.value)}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Subheading: 2. Applicant Company Check */}
+                <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
+                    2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY)
+                  </span>
+                  <input
+                    type="text"
+                    name="applicantPefindoCheck"
+                    data-field="applicantPefindoCheck"
+                    value={data.applicantPefindoCheck}
+                    onChange={e => updateField('applicantPefindoCheck', e.target.value)}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+                  />
                 </div>
               </div>
             )}
           </div>
 
-          {/* SECTION 7: EXPERT JUDGEMENT CONCLUSION & RECOMMENDATION */}
-          <div 
-            className={`fap-accordion-card ${openSections.sec7 ? 'is-open' : 'is-closed'}`}
-            id="acc-preana-sec-7"
-            style={{ border: '2px solid #1e3a8a' }}
-          >
+          {/* SECTION 7: 7. EXPERT JUDGEMENT CONCLUSION */}
+          <div id="acc-sec7" className="fap-accordion-card" style={{ background: '#ffffff', border: '2px solid #1e3a8a', borderRadius: '8px', overflow: 'hidden' }}>
             <div
               className="fap-accordion-header"
               onClick={() => toggleSection('sec7')}
-              style={{ background: '#eff6ff' }}
+              style={{
+                padding: '10px 14px',
+                background: '#eff6ff',
+                borderBottom: openSections.sec7 ? '1px solid #bfdbfe' : 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}
             >
-              <div className="fap-acc-title-group">
-                <span className="fap-acc-badge" style={{ background: '#1e3a8a', color: '#ffffff' }}>07</span>
-                <div>
-                  <h4 style={{ color: '#1e3a8a' }}>7. Expert Judgement Conclusion & Recommendation</h4>
-                  <p>Project & customer evaluation, risk mitigation, and executive sign-offs</p>
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className="badge-chip" style={{ background: '#1e3a8a', color: '#ffffff', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>07</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1e3a8a' }}>
+                  7. EXPERT JUDGEMENT CONCLUSION
+                </span>
               </div>
-              <div className="fap-acc-actions">
+              <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
@@ -1337,206 +1514,241 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               </div>
             </div>
             {openSections.sec7 && (
-              <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Good Project & Good Customer Toggles */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                  <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Good Project?</span>
+                  <div style={{ padding: '10px', borderRadius: '6px', border: `1px solid ${data.goodProject ? '#86efac' : '#fca5a5'}`, background: data.goodProject ? '#f0fdf4' : '#fef2f2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: data.goodProject ? '#15803d' : '#b91c1c' }}>
+                        Good Project? {data.goodProject ? 'YES' : 'NO'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => updateField('goodProject', !data.goodProject)}
-                        style={{
-                          background: data.goodProject ? '#16a34a' : '#dc2626',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '12px',
-                          padding: '2px 10px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
+                        style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', cursor: 'pointer' }}
                       >
-                        {data.goodProject ? 'YES' : 'NO'}
+                        Toggle
                       </button>
                     </div>
                     <input
                       type="text"
-                      name="goodProjectNote"
-                      data-field="goodProjectNote"
-                      placeholder="Project justification..."
                       value={data.goodProjectNote}
                       onChange={e => updateField('goodProjectNote', e.target.value)}
-                      onFocus={() => scrollToPreviewElement('preana-preview-cell-goodProject')}
+                      placeholder="e.g. Harvesting Contractor, PT RAPP - APRIL Group"
                       style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
 
-                  <div style={{ background: '#f8fafc', padding: '10px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Good Customer?</span>
+                  <div style={{ padding: '10px', borderRadius: '6px', border: `1px solid ${data.goodCustomer ? '#86efac' : '#fca5a5'}`, background: data.goodCustomer ? '#f0fdf4' : '#fef2f2' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: data.goodCustomer ? '#15803d' : '#b91c1c' }}>
+                        Good Customer? {data.goodCustomer ? 'YES' : 'NO'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => updateField('goodCustomer', !data.goodCustomer)}
-                        style={{
-                          background: data.goodCustomer ? '#16a34a' : '#dc2626',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '12px',
-                          padding: '2px 10px',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          cursor: 'pointer'
-                        }}
+                        style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', cursor: 'pointer' }}
                       >
-                        {data.goodCustomer ? 'YES' : 'NO'}
+                        Toggle
                       </button>
                     </div>
                     <input
                       type="text"
-                      name="goodCustomerNote"
-                      data-field="goodCustomerNote"
-                      placeholder="Customer credibility note..."
                       value={data.goodCustomerNote}
                       onChange={e => updateField('goodCustomerNote', e.target.value)}
-                      onFocus={() => scrollToPreviewElement('preana-preview-cell-goodCustomer')}
+                      placeholder="Customer assessment notes"
                       style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a', display: 'block', marginBottom: '4px' }}>
-                    Final Recommendation
-                  </label>
-                  <select
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Brief Note</label>
+                  <textarea
+                    rows={3}
+                    name="briefNote"
+                    data-field="briefNote"
+                    value={data.briefNote}
+                    onChange={e => updateField('briefNote', e.target.value)}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>RECOMMENDATION</label>
+                  <input
+                    type="text"
                     name="recommendation"
                     data-field="recommendation"
                     value={data.recommendation}
-                    onChange={e => updateField('recommendation', e.target.value as any)}
+                    onChange={e => updateField('recommendation', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-recommendation')}
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
+                      padding: '8px 10px',
                       fontSize: '0.85rem',
                       fontWeight: 700,
-                      borderRadius: '6px',
-                      border: '2px solid #1e3a8a',
-                      background: '#ffffff'
+                      borderRadius: '4px',
+                      border: data.recommendation.includes('NOT RECOMMEND') ? '2px solid #ef4444' : '2px solid #22c55e',
+                      color: data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
+                      background: data.recommendation.includes('NOT RECOMMEND') ? '#fef2f2' : '#f0fdf4'
                     }}
-                  >
-                    <option value="RECOMMEND">RECOMMEND</option>
-                    <option value="NOT RECOMMEND TO FULL DOCUMENTATION">NOT RECOMMEND TO FULL DOCUMENTATION</option>
-                    <option value="CONDITIONAL">CONDITIONAL</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Suggestion & Analytical Overview</label>
-                  <textarea
-                    rows={2}
-                    name="suggestionOverview"
-                    data-field="suggestionOverview"
-                    value={data.suggestionOverview}
-                    onChange={e => updateField('suggestionOverview', e.target.value)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-suggestionOverview')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
 
+                {/* Suggestions List */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Required Mitigation Conditions</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Suggestions / Mitigation Limitations</label>
                     <button
                       type="button"
                       onClick={() => {
-                        setData(prev => ({
-                          ...prev,
-                          mitigationConditions: [...prev.mitigationConditions, '']
-                        }));
+                        const next = [...(data.suggestions || []), ''];
+                        updateField('suggestions', next);
                       }}
-                      style={{ fontSize: '0.7rem', padding: '2px 8px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: '4px', cursor: 'pointer' }}
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                     >
-                      + Add Condition
+                      + Add Item
                     </button>
                   </div>
-                  {data.mitigationConditions.map((cond, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                      <input
-                        type="text"
-                        placeholder="Mitigation requirement..."
-                        value={cond}
-                        onChange={e => {
-                          const val = e.target.value;
-                          setData(prev => {
-                            const arr = [...prev.mitigationConditions];
-                            arr[idx] = val;
-                            return { ...prev, mitigationConditions: arr };
-                          });
-                        }}
-                        style={{ flex: 1, padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setData(prev => ({
-                            ...prev,
-                            mitigationConditions: prev.mitigationConditions.filter((_, i) => i !== idx)
-                          }));
-                        }}
-                        style={{ background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '4px', padding: '0 6px', cursor: 'pointer' }}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {(data.suggestions || []).map((s, idx) => (
+                      <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          value={s}
+                          onChange={e => {
+                            const copy = [...data.suggestions];
+                            copy[idx] = e.target.value;
+                            updateField('suggestions', copy);
+                          }}
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const copy = data.suggestions.filter((_, i) => i !== idx);
+                            updateField('suggestions', copy);
+                          }}
+                          style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Market Competition & Benchmark Terms</label>
-                  <textarea
-                    rows={2}
-                    name="competitionNotes"
-                    data-field="competitionNotes"
-                    value={data.competitionNotes}
-                    onChange={e => updateField('competitionNotes', e.target.value)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-competitionNotes')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                  />
+                {/* Competition Information Table */}
+                <div style={{ marginTop: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Competition Information</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = [...(data.competitionTable || []), { finco: '', rate: '', purpose: '' }];
+                        updateField('competitionTable', next);
+                      }}
+                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                    >
+                      + Add Finco
+                    </button>
+                  </div>
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                      <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                        <tr>
+                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Finco</th>
+                          <th style={{ width: '28%', padding: '6px 8px', textAlign: 'left' }}>Rate (effective)</th>
+                          <th style={{ width: '25%', padding: '6px 8px', textAlign: 'left' }}>Purpose</th>
+                          <th style={{ width: '36px', padding: '6px 8px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(data.competitionTable || DEFAULT_COMPETITION_TABLE).map((c, idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={c.finco || ''}
+                                onChange={e => {
+                                  const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
+                                  copy[idx] = { ...copy[idx], finco: e.target.value };
+                                  updateField('competitionTable', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={c.rate || ''}
+                                onChange={e => {
+                                  const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
+                                  copy[idx] = { ...copy[idx], rate: e.target.value };
+                                  updateField('competitionTable', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px' }}>
+                              <input
+                                type="text"
+                                value={c.purpose || ''}
+                                onChange={e => {
+                                  const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
+                                  copy[idx] = { ...copy[idx], purpose: e.target.value };
+                                  updateField('competitionTable', copy);
+                                }}
+                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                              />
+                            </td>
+                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const copy = (data.competitionTable || DEFAULT_COMPETITION_TABLE).filter((_, i) => i !== idx);
+                                  updateField('competitionTable', copy);
+                                }}
+                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                {/* Sign-offs */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569' }}>Proposed By</label>
-                    <input
-                      type="text"
-                      name="proposedBy"
-                      data-field="proposedBy"
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Propose by :</label>
+                    <textarea
+                      rows={2}
                       value={data.proposedBy}
                       onChange={e => updateField('proposedBy', e.target.value)}
-                      onFocus={() => scrollToPreviewElement('preana-preview-cell-proposedBy')}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569' }}>Reviewed By</label>
-                    <input
-                      type="text"
-                      name="reviewedBy"
-                      data-field="reviewedBy"
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Reviewed by :</label>
+                    <textarea
+                      rows={2}
                       value={data.reviewedBy}
                       onChange={e => updateField('reviewedBy', e.target.value)}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569' }}>Approved By</label>
-                    <input
-                      type="text"
-                      name="approvedBy"
-                      data-field="approvedBy"
+                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Approved by :</label>
+                    <textarea
+                      rows={2}
                       value={data.approvedBy}
                       onChange={e => updateField('approvedBy', e.target.value)}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
                     />
                   </div>
                 </div>
@@ -1547,120 +1759,128 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         </div>
       </div>
 
-      {/* RIGHT COLUMN: 50% LIVE DOCUMENT PREVIEW */}
-      <div className="fap-detail-preview-col" style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        background: '#f8fafc',
-        borderRadius: '8px',
-        border: '1px solid #cbd5e1',
-        overflow: 'hidden'
-      }}>
+      {/* RIGHT COLUMN: 50% LIVE DOCUMENT PREVIEW (DIGITAL TWIN 1:1 WITH PDF) */}
+      <div className="fap-detail-preview-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {/* Ribbon Toolbar */}
         <div style={{
+          height: '42px',
+          background: '#1b365d',
+          color: '#ffffff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '8px 14px',
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0'
+          padding: '0 14px',
+          borderRadius: '8px 8px 0 0',
+          fontSize: '0.8rem',
+          fontWeight: 600
         }}>
-          {/* Segmented View Mode */}
-          <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '6px', gap: '4px' }}>
-            <button
-              type="button"
-              onClick={() => setViewMode('digital-twin')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                border: 'none',
-                background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
-                color: viewMode === 'digital-twin' ? '#1e3a8a' : '#64748b',
-                boxShadow: viewMode === 'digital-twin' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <Sparkles size={13} />
-              Digital Twin (Pre-Analysis)
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('original-pdf')}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 10px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                borderRadius: '4px',
-                border: 'none',
-                background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
-                color: viewMode === 'original-pdf' ? '#1e3a8a' : '#64748b',
-                boxShadow: viewMode === 'original-pdf' ? '0 1px 2px rgba(0,0,0,0.06)' : 'none',
-                cursor: 'pointer'
-              }}
-            >
-              <FileSearch size={13} />
-              Original Expert Judgement PDF
-            </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <FileText size={16} />
+            <span>PRE-ANALYSIS — EXPERT JUDGEMENT</span>
+            <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 400 }}>Ref: {data.preAnalysisNo}</span>
           </div>
 
-          {/* Zoom and Fullscreen Actions */}
-          {viewMode === 'digital-twin' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', padding: '2px' }}>
               <button
                 type="button"
-                onClick={() => setZoomLevel(z => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
-                title="Zoom Out"
-                style={{ padding: '4px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                onClick={() => setViewMode('digital-twin')}
+                style={{
+                  background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'digital-twin' ? '#1b365d' : '#ffffff',
+                  border: 'none',
+                  padding: '3px 8px',
+                  borderRadius: '3px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
-                <ZoomOut size={14} />
-              </button>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, minWidth: '40px', textAlign: 'center', color: '#475569' }}>
-                {Math.round(zoomLevel * 100)}%
-              </span>
-              <button
-                type="button"
-                onClick={() => setZoomLevel(z => Math.min(1.5, Number((z + 0.1).toFixed(2))))}
-                title="Zoom In"
-                style={{ padding: '4px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
-              >
-                <ZoomIn size={14} />
+                Digital Twin
               </button>
               <button
                 type="button"
-                onClick={() => setZoomLevel(0.75)}
-                title="Reset Zoom to 75%"
-                style={{ padding: '4px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                onClick={() => setViewMode('original-pdf')}
+                style={{
+                  background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'original-pdf' ? '#1b365d' : '#ffffff',
+                  border: 'none',
+                  padding: '3px 8px',
+                  borderRadius: '3px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
-                <RotateCcw size={14} />
+                Original PDF
               </button>
             </div>
-          )}
+
+            {viewMode === 'digital-twin' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(prev => Math.max(0.4, Number((prev - 0.05).toFixed(2))))}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px' }}
+                  title="Zoom Out"
+                >
+                  <ZoomOut size={15} />
+                </button>
+                <span style={{ fontSize: '0.72rem', minWidth: '32px', textAlign: 'center' }}>
+                  {Math.round(zoomLevel * 100)}%
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(prev => Math.min(1.2, Number((prev + 0.05).toFixed(2))))}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px' }}
+                  title="Zoom In"
+                >
+                  <ZoomIn size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(0.75)}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px' }}
+                  title="Reset Zoom"
+                >
+                  <RotateCcw size={13} />
+                </button>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#ffffff',
+                color: '#1b365d',
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              <Printer size={13} /> Print
+            </button>
+          </div>
         </div>
 
         {/* Viewport Canvas */}
-        <div 
-          ref={previewContainerRef}
-          id="preana-preview-viewport"
-          style={{
-            flex: 1,
-            overflowY: 'auto',
-            overflowX: 'auto',
-            background: '#f1f5f9',
-            padding: '16px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'flex-start'
-          }}
-        >
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          overflowX: 'auto',
+          background: '#f1f5f9',
+          padding: '16px',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-start'
+        }}>
           {viewMode === 'original-pdf' ? (
             <iframe
               src="/pre_analysis/pre_analysis_sample.pdf#toolbar=1"
@@ -1677,7 +1897,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           ) : (
             /* Digital Twin Document Render */
             <div
-              id="preana-digital-twin-doc"
               style={{
                 width: '840px',
                 minWidth: '840px',
@@ -1692,17 +1911,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               }}
             >
               {/* Document Header */}
-              <div 
-                id="preana-preview-cell-preAnalysisNo"
-                style={{ marginBottom: '16px', transition: 'all 0.2s ease' }}
-              >
+              <div style={{ marginBottom: '16px' }}>
                 <h1 style={{ margin: 0, fontSize: '18pt', fontWeight: 800, color: '#1b365d', letterSpacing: '-0.2px' }}>
                   PRE-ANALYSIS — EXPERT JUDGEMENT
                 </h1>
                 <div style={{ fontSize: '11pt', fontWeight: 700, color: '#1b365d', marginTop: '2px' }}>
                   (Quick Screening, Interview Base)
                 </div>
-                <div style={{ fontSize: '10pt', color: '#000000', marginTop: '4px' }}>
+                <div id="preana-preview-cell-preAnalysisNo" style={{ fontSize: '10pt', color: '#000000', marginTop: '4px' }}>
                   No. : {data.preAnalysisNo}
                 </div>
               </div>
@@ -1710,493 +1926,477 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               {/* Top Thick Navy Divider */}
               <div style={{ height: '3px', background: '#1b365d', marginBottom: '8px' }} />
 
-              {/* Section 1: Customer Profile & Financial Table */}
-              <table 
+              {/* SECTION 1: 1. GENERAL INFORMATION TABLE */}
+              <table
                 id="preana-preview-sec-1"
-                style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5pt', marginBottom: '16px', transition: 'all 0.2s ease' }}
+                style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9.5pt', marginBottom: '16px' }}
               >
                 <tbody>
-                  <tr 
-                    id="preana-preview-cell-customerProjectName"
-                    onClick={() => handlePreviewCellClick('customerProjectName', 'sec1')}
-                    title="Click to focus Customer / Project in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '22%', padding: '4px 6px', fontWeight: 700 }}>Customer / Project</td>
-                    <td style={{ width: '48%', padding: '4px 6px', fontWeight: 700, color: '#1b365d' }}>{data.customerProjectName}</td>
+                    <td id="preana-preview-cell-customerProjectName" onClick={() => handlePreviewCellClick('customerProjectName', 'sec1')} style={{ width: '48%', padding: '4px 6px', fontWeight: 700, color: '#1b365d', cursor: 'pointer' }}>{data.customerProjectName}</td>
                     <td style={{ width: '14%', padding: '4px 6px', fontWeight: 700 }}>Dealer PIC</td>
-                    <td style={{ width: '16%', padding: '4px 6px' }}>{data.dealerPic}</td>
+                    <td id="preana-preview-cell-dealerPic" onClick={() => handlePreviewCellClick('dealerPic', 'sec1')} style={{ width: '16%', padding: '4px 6px', cursor: 'pointer' }}>{data.dealerPic}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-taxId"
-                    onClick={() => handlePreviewCellClick('taxId', 'sec1')}
-                    title="Click to focus Tax ID in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Tax ID (NPWP)</td>
-                    <td style={{ padding: '4px 6px' }}>{data.taxId}</td>
+                    <td id="preana-preview-cell-taxId" onClick={() => handlePreviewCellClick('taxId', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.taxId}</td>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>LMI PIC</td>
-                    <td style={{ padding: '4px 6px' }}>{data.lmiPic}</td>
+                    <td id="preana-preview-cell-lmiPic" onClick={() => handlePreviewCellClick('lmiPic', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.lmiPic}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-fapNumber"
-                    onClick={() => handlePreviewCellClick('fapNumber', 'sec1')}
-                    title="Click to focus FAP No in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>FAP No</td>
-                    <td style={{ padding: '4px 6px' }}>{data.fapNumber}</td>
+                    <td id="preana-preview-cell-fapNumber" onClick={() => handlePreviewCellClick('fapNumber', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.fapNumber}</td>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>LFI PIC</td>
-                    <td style={{ padding: '4px 6px' }}>{data.lfiPic}</td>
+                    <td id="preana-preview-cell-lfiPic" onClick={() => handlePreviewCellClick('lfiPic', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.lfiPic}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-customerPic"
-                    onClick={() => handlePreviewCellClick('customerPic', 'sec1')}
-                    title="Click to focus Customer PIC in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Lead Source</td>
-                    <td style={{ padding: '4px 6px' }}>{data.leadSource}</td>
+                    <td id="preana-preview-cell-leadSource" onClick={() => handlePreviewCellClick('leadSource', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.leadSource}</td>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Customer PIC</td>
-                    <td style={{ padding: '4px 6px' }}>{data.customerPic}</td>
+                    <td id="preana-preview-cell-customerPic" onClick={() => handlePreviewCellClick('customerPic', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.customerPic}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-customerArea"
-                    onClick={() => handlePreviewCellClick('customerArea', 'sec1')}
-                    title="Click to focus Customer Area in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Customer Area</td>
-                    <td style={{ padding: '4px 6px' }}>{data.customerArea}</td>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Date</td>
-                    <td style={{ padding: '4px 6px' }}>{data.preAnalysisDate}</td>
+                    <td id="preana-preview-cell-customerArea" onClick={() => handlePreviewCellClick('customerArea', 'sec1')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.customerArea}</td>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Pre-Analysis Date</td>
+                    <td id="preana-preview-cell-preAnalysisDate" onClick={() => handlePreviewCellClick('preAnalysisDate', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.preAnalysisDate}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-equity"
-                    onClick={() => handlePreviewCellClick('equity', 'sec1')}
-                    title="Click to focus Equity in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Equity</td>
-                    <td style={{ padding: '4px 6px' }}>{data.equity}</td>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Paid up Cap.</td>
-                    <td style={{ padding: '4px 6px' }}>{data.paidUpCapital}</td>
+                    <td id="preana-preview-cell-equity" onClick={() => handlePreviewCellClick('equity', 'sec1')} colSpan={3} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.equity}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-sourceOfRepayment"
-                    onClick={() => handlePreviewCellClick('sourceOfRepayment', 'sec1')}
-                    title="Click to focus Source of Repayment in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Paid up Capital</td>
+                    <td id="preana-preview-cell-paidUpCapital" onClick={() => handlePreviewCellClick('paidUpCapital', 'sec1')} colSpan={3} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.paidUpCapital}</td>
+                  </tr>
+                  <tr>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Source of Repayment</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.sourceOfRepayment}</td>
+                    <td id="preana-preview-cell-sourceOfRepayment" onClick={() => handlePreviewCellClick('sourceOfRepayment', 'sec1')} colSpan={3} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.sourceOfRepayment}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Section 2 Banner: 2. PROJECT INFORMATION */}
-              <div 
+              {/* SECTION 2: 2. PROJECT INFORMATION */}
+              <div
                 id="preana-preview-sec-2"
-                style={{ background: '#1b365d', color: '#ffffff', padding: '6px 10px', fontWeight: 800, fontSize: '10.5pt', marginBottom: '8px', transition: 'all 0.2s ease' }}
+                onClick={() => handlePreviewCellClick('projectNameLocation', 'sec2')}
+                style={{
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  fontWeight: 700,
+                  fontSize: '10.5pt',
+                  marginTop: '16px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
               >
                 2. PROJECT INFORMATION
               </div>
-
-              {/* Section 2 Table */}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
                 <tbody>
-                  <tr 
-                    id="preana-preview-cell-projectNameLocation"
-                    onClick={() => handlePreviewCellClick('projectNameLocation', 'sec2')}
-                    title="Click to focus Project Name & Location in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ width: '28%', padding: '4px 6px', fontWeight: 700 }}>Project Name & Location</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.projectNameLocation}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Project Name & Location</td>
+                    <td id="preana-preview-cell-projectNameLocation" onClick={() => handlePreviewCellClick('projectNameLocation', 'sec2')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.projectNameLocation}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-customerRole"
-                    onClick={() => handlePreviewCellClick('customerRole', 'sec2')}
-                    title="Click to focus Customer Role in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Role in Project</td>
-                    <td style={{ width: '32%', padding: '4px 6px' }}>{data.customerRole}</td>
-                    <td style={{ width: '18%', padding: '4px 6px', fontWeight: 700 }}>Other Contractors</td>
-                    <td style={{ width: '22%', padding: '4px 6px' }}>{data.otherContractors}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Role of Customer</td>
+                    <td id="preana-preview-cell-customerRole" onClick={() => handlePreviewCellClick('customerRole', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.customerRole}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-projectOwner"
-                    onClick={() => handlePreviewCellClick('projectOwner', 'sec2')}
-                    title="Click to focus Project Owner in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Owner / Bowheer</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.projectOwner}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other Contractor work in the same bowheer</td>
+                    <td id="preana-preview-cell-otherContractors" onClick={() => handlePreviewCellClick('otherContractors', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.otherContractors}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-bowheerInfo"
-                    onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')}
-                    title="Click to focus Bowheer Info in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Info on Bowheer</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.bowheerInfo}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Owner</td>
+                    <td id="preana-preview-cell-projectOwner" onClick={() => handlePreviewCellClick('projectOwner', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.projectOwner}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-projectStatus"
-                    onClick={() => handlePreviewCellClick('projectStatus', 'sec2')}
-                    title="Click to focus Project Status in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Bowheer Information</td>
+                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.bowheerInfo}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Status</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.projectStatus}</td>
+                    <td id="preana-preview-cell-projectStatus" onClick={() => handlePreviewCellClick('projectStatus', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.projectStatus}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-investmentPlan"
-                    onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')}
-                    title="Click to focus Investment Plan in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Investment Plan</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.investmentPlan}</td>
+                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.investmentPlan}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-financingSchemeRequested"
-                    onClick={() => handlePreviewCellClick('financingSchemeRequested', 'sec2')}
-                    title="Click to focus Financing Scheme in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Financing Scheme Requested</td>
-                    <td colSpan={3} style={{ padding: '4px 6px' }}>{data.financingSchemeRequested}</td>
+                    <td id="preana-preview-cell-financingSchemeRequested" onClick={() => handlePreviewCellClick('financingSchemeRequested', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.financingSchemeRequested}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Section 3 Banner: 3. CUSTOMER & GROUP BACKGROUND */}
-              <div 
+              {/* SECTION 3: 3. CUSTOMER & GROUP BACKGROUND */}
+              <div
                 id="preana-preview-sec-3"
-                style={{ background: '#1b365d', color: '#ffffff', padding: '6px 10px', fontWeight: 800, fontSize: '10.5pt', marginBottom: '8px', transition: 'all 0.2s ease' }}
+                onClick={() => handlePreviewCellClick('uboInfo', 'sec3')}
+                style={{
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  fontWeight: 700,
+                  fontSize: '10.5pt',
+                  marginTop: '16px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
               >
                 3. CUSTOMER & GROUP BACKGROUND
               </div>
-
-              {/* Section 3 Table */}
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
                 <tbody>
-                  <tr 
-                    id="preana-preview-cell-uboInfo"
-                    onClick={() => handlePreviewCellClick('uboInfo', 'sec3')}
-                    title="Click to focus UBO Info in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ width: '28%', padding: '4px 6px', fontWeight: 700 }}>UBO / Ownership</td>
-                    <td style={{ padding: '4px 6px' }}>{data.uboInfo}</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
+                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.uboInfo}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-companyBackground"
-                    onClick={() => handlePreviewCellClick('companyBackground', 'sec3')}
-                    title="Click to focus Company Background in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>
-                    <td style={{ padding: '4px 6px' }}>{data.companyBackground}</td>
+                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.companyBackground}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-milestones"
-                    onClick={() => handlePreviewCellClick('milestones', 'sec3')}
-                    title="Click to focus Milestones in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>Milestones / Growth</td>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Milestones</td>
                     <td style={{ padding: '4px 6px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
-                        <tbody>
-                          {data.milestones.map((m, i) => (
-                            <tr key={i}>
-                              <td style={{ width: '15%', fontWeight: 700, padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.year}</td>
-                              <td style={{ width: '25%', fontWeight: 600, padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.entity}</td>
-                              <td style={{ padding: '2px 4px', borderBottom: '1px dotted #cbd5e1' }}>{m.description}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-existingFincoBackup"
-                    onClick={() => handlePreviewCellClick('existingFincoBackup', 'sec3')}
-                    title="Click to focus Finco Backup in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Finco / Bank</td>
-                    <td style={{ padding: '4px 6px' }}>{data.existingFincoBackup}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Section 4 Banner: 4. EQUIPMENT POSSIBILITY OF SUCCESS */}
-              <div 
-                id="preana-preview-sec-4"
-                style={{ background: '#1b365d', color: '#ffffff', padding: '6px 10px', fontWeight: 800, fontSize: '10.5pt', marginBottom: '8px', transition: 'all 0.2s ease' }}
-              >
-                4. EQUIPMENT POSSIBILITY OF SUCCESS
-              </div>
-
-              {/* Section 4 Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
-                <tbody>
-                  <tr 
-                    id="preana-preview-cell-equipmentJobFit"
-                    onClick={() => handlePreviewCellClick('equipmentJobFit', 'sec4')}
-                    title="Click to focus Equipment Job Fit in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ width: '28%', padding: '4px 6px', fontWeight: 700 }}>Equipment Job Fit</td>
-                    <td style={{ padding: '4px 6px' }}>{data.equipmentJobFit}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-utilizationDuration"
-                    onClick={() => handlePreviewCellClick('utilizationDuration', 'sec4')}
-                    title="Click to focus Utilization in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Utilization & Duration</td>
-                    <td style={{ padding: '4px 6px' }}>{data.utilizationDuration}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-priorLiugongExperience"
-                    onClick={() => handlePreviewCellClick('priorLiugongExperience', 'sec4')}
-                    title="Click to focus Prior LiuGong Exp in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Prior LiuGong Exp.</td>
-                    <td style={{ padding: '4px 6px' }}>{data.priorLiugongExperience}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-serviceAgreementFmc"
-                    onClick={() => handlePreviewCellClick('serviceAgreementFmc', 'sec4')}
-                    title="Click to focus Service Agreement in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Service Agreement / FMC</td>
-                    <td style={{ padding: '4px 6px' }}>{data.serviceAgreementFmc}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              {/* Section 6 Banner: 6. CROSS-CHECK WITH DEALER / LMI & PEFINDO */}
-              <div 
-                id="preana-preview-sec-6"
-                style={{ background: '#1b365d', color: '#ffffff', padding: '6px 10px', fontWeight: 800, fontSize: '10.5pt', marginBottom: '8px', transition: 'all 0.2s ease' }}
-              >
-                6. CROSS-CHECK WITH DEALER / LMI & PEFINDO
-              </div>
-
-              {/* Section 6 Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
-                <tbody>
-                  <tr 
-                    id="preana-preview-cell-topDealerToCustomer"
-                    onClick={() => handlePreviewCellClick('topDealerToCustomer', 'sec6')}
-                    title="Click to focus TOP Dealer in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ width: '28%', padding: '4px 6px', fontWeight: 700 }}>TOP Dealer to Customer</td>
-                    <td style={{ padding: '4px 6px' }}>{data.topDealerToCustomer}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-topLmiToDealer"
-                    onClick={() => handlePreviewCellClick('topLmiToDealer', 'sec6')}
-                    title="Click to focus TOP LMI in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>TOP LMI to Dealer</td>
-                    <td style={{ padding: '4px 6px' }}>{data.topLmiToDealer}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-lmiArCheck"
-                    onClick={() => handlePreviewCellClick('lmiArCheck', 'sec6')}
-                    title="Click to focus LMI AR in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>LMI AR Payment Track</td>
-                    <td style={{ padding: '4px 6px' }}>{data.lmiArCheck}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-slikPefindoHighlight"
-                    onClick={() => handlePreviewCellClick('slikPefindoHighlight', 'sec6')}
-                    title="Click to focus SLIK in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>SLIK / Pefindo Status</td>
-                    <td style={{ padding: '4px 6px' }}>{data.slikPefindoHighlight}</td>
-                  </tr>
-                  <tr 
-                    id="preana-preview-cell-lenderExposures"
-                    onClick={() => handlePreviewCellClick('lenderExposures', 'sec6')}
-                    title="Click to focus Lender Exposures in form"
-                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>Existing Lenders</td>
-                    <td style={{ padding: '4px 6px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9' }}>
-                            <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'left' }}>Lender</th>
-                            <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'right' }}>Plafond</th>
-                            <th style={{ padding: '4px', border: '1px solid #cbd5e1', textAlign: 'center' }}>Rate / Terms</th>
+                            <th style={{ width: '20%', padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Year</th>
+                            <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Milestone</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {data.lenderExposures.map((l, i) => (
-                            <tr key={i} style={{ background: i % 2 === 0 ? '#ffffff' : '#f8fafc' }}>
-                              <td style={{ padding: '4px', border: '1px solid #e2e8f0' }}>{l.lender}</td>
-                              <td style={{ padding: '4px', border: '1px solid #e2e8f0', textAlign: 'right', fontWeight: 600 }}>{l.plafond}</td>
-                              <td style={{ padding: '4px', border: '1px solid #e2e8f0', textAlign: 'center' }}>{l.rate}</td>
+                          {(data.milestones || []).map((m, idx) => (
+                            <tr key={idx}>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', fontWeight: 600 }}>{m.year}</td>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{m.milestone || m.description}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </td>
                   </tr>
+                  <tr>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Finco Backup</td>
+                    <td id="preana-preview-cell-existingFincoBackup" onClick={() => handlePreviewCellClick('existingFincoBackup', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.existingFincoBackup}</td>
+                  </tr>
                 </tbody>
               </table>
 
-              {/* Section 7 Banner: 7. EXPERT JUDGEMENT CONCLUSION */}
-              <div 
-                id="preana-preview-sec-7"
-                style={{ background: '#1b365d', color: '#ffffff', padding: '6px 10px', fontWeight: 800, fontSize: '10.5pt', marginBottom: '8px', transition: 'all 0.2s ease' }}
+              {/* SECTION 4: 4. EQUIPMENT POSSIBILITY OF SUCCESS */}
+              <div
+                id="preana-preview-sec-4"
+                onClick={() => handlePreviewCellClick('equipmentJobFit', 'sec4')}
+                style={{
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  fontWeight: 700,
+                  fontSize: '10.5pt',
+                  marginTop: '16px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
               >
-                7. EXPERT JUDGEMENT CONCLUSION & RECOMMENDATION
+                4. EQUIPMENT POSSIBILITY OF SUCCESS
               </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Equipment-to-Job Fit</td>
+                    <td id="preana-preview-cell-equipmentJobFit" onClick={() => handlePreviewCellClick('equipmentJobFit', 'sec4')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.equipmentJobFit}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Utilization vs Project Duration</td>
+                    <td id="preana-preview-cell-utilizationDuration" onClick={() => handlePreviewCellClick('utilizationDuration', 'sec4')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.utilizationDuration}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Current Unit Composition</td>
+                    <td style={{ padding: '4px 6px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9' }}>
+                            <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Kategori Aset</th>
+                            <th style={{ width: '25%', padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Merk</th>
+                            <th style={{ width: '18%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Qty</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(data.unitComposition || []).map((u, idx) => (
+                            <tr key={idx}>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{u.kategoriAset || '-'}</td>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{u.brand}</td>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right' }}>{u.qty}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
+                            <td colSpan={2} style={{ padding: '4px 6px', border: '1px solid #cbd5e1' }}>TOTAL</td>
+                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>{totalUnits}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Prior LiuGong Experience</td>
+                    <td id="preana-preview-cell-priorLiugongExperience" onClick={() => handlePreviewCellClick('priorLiugongExperience', 'sec4')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.priorLiugongExperience}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Have Service Agreement / FMC</td>
+                    <td id="preana-preview-cell-serviceAgreementFmc" onClick={() => handlePreviewCellClick('serviceAgreementFmc', 'sec4')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.serviceAgreementFmc}</td>
+                  </tr>
+                </tbody>
+              </table>
 
-              {/* Aspect Evaluation Table */}
+              {/* SECTION 5: 5. UNIT DELIVERY STATUS & QA CHECK */}
+              <div
+                id="preana-preview-sec-5"
+                onClick={() => handlePreviewCellClick('deliveryStatus', 'sec5')}
+                style={{
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  fontWeight: 700,
+                  fontSize: '10.5pt',
+                  marginTop: '16px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                5. UNIT DELIVERY STATUS & QA CHECK
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Delivery Status</td>
+                    <td id="preana-preview-cell-deliveryStatus" onClick={() => handlePreviewCellClick('deliveryStatus', 'sec5')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.deliveryStatus}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Delivery Date</td>
+                    <td id="preana-preview-cell-deliveryDate" onClick={() => handlePreviewCellClick('deliveryDate', 'sec5')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.deliveryDate}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>QA Comment — iLink/GPS Performance Check</td>
+                    <td id="preana-preview-cell-qaIlinkComment" onClick={() => handlePreviewCellClick('qaIlinkComment', 'sec5')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.qaIlinkComment}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>QA Conclusion</td>
+                    <td id="preana-preview-cell-qaConclusion" onClick={() => handlePreviewCellClick('qaConclusion', 'sec5')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.qaConclusion}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* SECTION 6: 6. CROSS-CHECK WITH DEALER / LMI (quick) */}
+              <div
+                id="preana-preview-sec-6"
+                onClick={() => handlePreviewCellClick('topDealerToCustomer', 'sec6')}
+                style={{
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  fontWeight: 700,
+                  fontSize: '10.5pt',
+                  marginTop: '16px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                6. CROSS-CHECK WITH DEALER / LMI (quick)
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
+                <tbody>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>TOP from Dealer to Customer</td>
+                    <td id="preana-preview-cell-topDealerToCustomer" onClick={() => handlePreviewCellClick('topDealerToCustomer', 'sec6')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.topDealerToCustomer}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>TOP from LMI to Dealer</td>
+                    <td id="preana-preview-cell-topLmiToDealer" onClick={() => handlePreviewCellClick('topLmiToDealer', 'sec6')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.topLmiToDealer}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>LMI Internal AR Check</td>
+                    <td id="preana-preview-cell-lmiArCheck" onClick={() => handlePreviewCellClick('lmiArCheck', 'sec6')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.lmiArCheck}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>SLIK/Bureau Highlight</td>
+                    <td style={{ padding: '4px 6px' }}>
+                      <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
+                        1. PT HANDALAN PUTRAMAS SANTOSA (SISTER COMPANY) :
+                      </div>
+                      <div style={{ fontStyle: 'italic', marginBottom: '6px', fontSize: '8pt', color: '#475569' }}>
+                        {data.slikPefindoHighlight}
+                      </div>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt', marginBottom: '8px' }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9' }}>
+                            <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Row Labels</th>
+                            <th style={{ width: '35%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Sum of plafon</th>
+                            <th style={{ width: '22%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Interest Rate</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(data.lenderExposures || []).map((lex, idx) => (
+                            <tr key={idx}>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{lex.lender}</td>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right' }}>{lex.plafond}</td>
+                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right' }}>{lex.rate}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
+                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1' }}>Grand Total</td>
+                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>80.673.526.173,00</td>
+                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>-</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                      <div style={{ whiteSpace: 'pre-line', fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
+                        {data.pefindoNotes}
+                      </div>
+                      <div style={{ fontSize: '8pt', color: '#334155', fontWeight: 600, background: '#f8fafc', padding: '4px', border: '1px solid #e2e8f0' }}>
+                        {data.pefindoTerms}
+                      </div>
+                      <div style={{ fontWeight: 700, color: '#1b365d', marginTop: '10px' }}>
+                        2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY) - {data.applicantPefindoCheck}
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* SECTION 7: 7. EXPERT JUDGEMENT CONCLUSION */}
+              <div
+                id="preana-preview-sec-7"
+                onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
+                style={{
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  padding: '6px 10px',
+                  fontWeight: 700,
+                  fontSize: '10.5pt',
+                  marginTop: '16px',
+                  marginBottom: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                7. EXPERT JUDGEMENT CONCLUSION
+              </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '12px' }}>
                 <thead>
-                  <tr style={{ background: '#3b5998', color: '#ffffff' }}>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', width: '25%', textAlign: 'left' }}>Aspect</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', width: '20%', textAlign: 'center' }}>Assessment</th>
-                    <th style={{ padding: '6px', border: '1px solid #cbd5e1', width: '55%', textAlign: 'left' }}>Brief Note</th>
+                  <tr style={{ background: '#f1f5f9' }}>
+                    <th style={{ width: '30%', padding: '4px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Aspect</th>
+                    <th style={{ width: '20%', padding: '4px 6px', textAlign: 'center', border: '1px solid #cbd5e1' }}>Assessment</th>
+                    <th style={{ padding: '4px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Notes</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr 
-                    id="preana-preview-cell-goodProject"
-                    onClick={() => handlePreviewCellClick('goodProjectNote', 'sec7')}
-                    title="Click to focus Good Project in form"
-                    style={{ borderBottom: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '6px', fontWeight: 700 }}>Good Project?</td>
-                    <td style={{ padding: '6px', textAlign: 'center' }}>
-                      <span style={{
-                        background: data.goodProject ? '#16a34a' : '#dc2626',
-                        color: '#ffffff',
-                        padding: '2px 14px',
-                        borderRadius: '4px',
-                        fontWeight: 800
-                      }}>
-                        {data.goodProject ? 'Yes' : 'No'}
-                      </span>
+                  <tr>
+                    <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', fontWeight: 700 }}>Good Project?</td>
+                    <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: data.goodProject ? '#16a34a' : '#dc2626' }}>
+                      {data.goodProject ? 'Yes' : 'No'}
                     </td>
-                    <td style={{ padding: '6px' }}>{data.goodProjectNote}</td>
+                    <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0' }}>{data.goodProjectNote}</td>
                   </tr>
-                  <tr 
-                    id="preana-preview-cell-goodCustomer"
-                    onClick={() => handlePreviewCellClick('goodCustomerNote', 'sec7')}
-                    title="Click to focus Good Customer in form"
-                    style={{ borderBottom: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.2s ease' }}
-                  >
-                    <td style={{ padding: '6px', fontWeight: 700 }}>Good Customer?</td>
-                    <td style={{ padding: '6px', textAlign: 'center' }}>
-                      <span style={{
-                        background: data.goodCustomer ? '#16a34a' : '#dc2626',
-                        color: '#ffffff',
-                        padding: '2px 14px',
-                        borderRadius: '4px',
-                        fontWeight: 800
-                      }}>
-                        {data.goodCustomer ? 'Yes' : 'No'}
-                      </span>
+                  <tr>
+                    <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', fontWeight: 700 }}>Good Customer?</td>
+                    <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: data.goodCustomer ? '#16a34a' : '#dc2626' }}>
+                      {data.goodCustomer ? 'Yes' : 'No'}
                     </td>
-                    <td style={{ padding: '6px' }}>{data.goodCustomerNote}</td>
+                    <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0' }}>{data.goodCustomerNote}</td>
                   </tr>
                 </tbody>
               </table>
 
-              {/* Formal Recommendation Highlight Banner */}
-              <div 
-                id="preana-preview-cell-recommendation"
-                onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
-                title="Click to focus Recommendation in form"
-                style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', cursor: 'pointer', transition: 'all 0.2s ease' }}
-              >
-                <div style={{ width: '25%', fontWeight: 800, fontSize: '10pt', color: '#000000' }}>
-                  RECOMMENDATION
-                </div>
-                <div style={{
-                  flex: 1,
-                  background: data.recommendation === 'RECOMMEND' ? '#16a34a' : '#dc2626',
-                  color: '#ffffff',
-                  textAlign: 'center',
-                  padding: '8px 12px',
-                  fontWeight: 900,
-                  fontSize: '11pt',
-                  borderRadius: '4px',
-                  letterSpacing: '0.5px'
-                }}>
-                  {data.recommendation}
+              <div style={{ marginBottom: '10px', fontSize: '9pt' }}>
+                <span style={{ fontWeight: 700 }}>Brief Note:</span>
+                <div style={{ whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b' }}>
+                  {data.briefNote}
                 </div>
               </div>
 
-              {/* Suggestions & Risk Mitigations */}
-              <div 
-                id="preana-preview-cell-suggestionOverview"
-                onClick={() => handlePreviewCellClick('suggestionOverview', 'sec7')}
-                title="Click to focus Suggestions in form"
-                style={{ marginBottom: '14px', fontSize: '9pt', cursor: 'pointer', transition: 'all 0.2s ease' }}
+              {/* Recommendation Callout */}
+              <div
+                id="preana-preview-cell-recommendation"
+                onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
+                style={{
+                  background: data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
+                  border: `2px solid ${data.recommendation.includes('NOT RECOMMEND') ? '#ef4444' : '#22c55e'}`,
+                  color: data.recommendation.includes('NOT RECOMMEND') ? '#991b1b' : '#166534',
+                  padding: '8px 12px',
+                  borderRadius: '4px',
+                  fontWeight: 800,
+                  fontSize: '11pt',
+                  textAlign: 'center',
+                  marginBottom: '12px',
+                  letterSpacing: '0.3px',
+                  cursor: 'pointer'
+                }}
               >
-                <div style={{ fontWeight: 800, marginBottom: '4px' }}>Suggestion:</div>
-                <div style={{ marginBottom: '6px', lineHeight: 1.35 }}>{data.suggestionOverview}</div>
-                <div style={{ fontWeight: 700, color: '#dc2626', marginBottom: '4px' }}>
-                  Mitigation conditions required if proceeding:
-                </div>
-                <ul style={{ margin: 0, paddingLeft: '20px', lineHeight: 1.35 }}>
-                  {data.mitigationConditions.map((cond, i) => (
-                    <li key={i} style={{ marginBottom: '2px' }}>{cond}</li>
+                RECOMMENDATION: {data.recommendation}
+              </div>
+
+              {/* Suggestion Bullet Points */}
+              <div style={{ marginBottom: '14px', fontSize: '8.5pt' }}>
+                <span style={{ fontWeight: 700 }}>Suggestion:</span>
+                <ul style={{ margin: '4px 0 0 0', paddingLeft: '20px' }}>
+                  {(data.suggestions || []).map((s, idx) => (
+                    <li key={idx} style={{ marginBottom: '2px' }}>{s}</li>
                   ))}
                 </ul>
               </div>
 
-              {/* Sign-off Approval Block */}
-              <div 
-                id="preana-preview-cell-proposedBy"
-                onClick={() => handlePreviewCellClick('proposedBy', 'sec7')}
-                title="Click to focus Proposed By in form"
-                style={{ border: '1px solid #000000', padding: '10px 14px', marginTop: '16px', cursor: 'pointer', transition: 'all 0.2s ease' }}
-              >
-                <div style={{ fontSize: '9pt', fontWeight: 700, marginBottom: '30px' }}>
-                  Propose by :
+              {/* Competition Information Table */}
+              <div style={{ marginTop: '14px', marginBottom: '16px' }}>
+                <div style={{ fontWeight: 700, fontSize: '9pt', marginBottom: '4px' }}>
+                  Competition Information
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', textAlign: 'center', fontSize: '9pt' }}>
-                  <div>
-                    <div style={{ borderTop: '1px solid #000000', paddingTop: '4px', fontWeight: 700 }}>
-                      {data.proposedBy}
-                    </div>
-                    <div style={{ fontSize: '8pt', color: '#475569' }}>Senior Account Manager</div>
-                  </div>
-                  <div>
-                    <div style={{ borderTop: '1px solid #000000', paddingTop: '4px', fontWeight: 700 }}>
-                      {data.reviewedBy}
-                    </div>
-                    <div style={{ fontSize: '8pt', color: '#475569' }}>Dept. Head</div>
-                  </div>
-                  <div>
-                    <div style={{ borderTop: '1px solid #000000', paddingTop: '4px', fontWeight: 700 }}>
-                      {data.approvedBy}
-                    </div>
-                    <div style={{ fontSize: '8pt', color: '#475569' }}>Director</div>
-                  </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt' }}>
+                  <thead>
+                    <tr style={{ background: '#f1f5f9' }}>
+                      <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Finco</th>
+                      <th style={{ width: '25%', padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Rate (effective)</th>
+                      <th style={{ width: '25%', padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Purpose</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data.competitionTable || DEFAULT_COMPETITION_TABLE).map((c, idx) => (
+                      <tr key={idx}>
+                        <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{c.finco}</td>
+                        <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{c.rate}</td>
+                        <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{c.purpose}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Approvals / Sign-off Footer */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '16px',
+                marginTop: '28px',
+                borderTop: '1px solid #000000',
+                paddingTop: '8px',
+                fontSize: '9pt'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: '24px' }}>Propose by :</div>
+                  <div style={{ fontWeight: 700, whiteSpace: 'pre-line' }}>{data.proposedBy}</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: '24px' }}>Reviewed by :</div>
+                  <div style={{ fontWeight: 700, whiteSpace: 'pre-line' }}>{data.reviewedBy}</div>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: '24px' }}>Approved by :</div>
+                  <div style={{ fontWeight: 700, whiteSpace: 'pre-line' }}>{data.approvedBy}</div>
                 </div>
               </div>
             </div>
@@ -2206,5 +2406,3 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     </div>
   );
 }
-
-export default PreAnalysisForm;
