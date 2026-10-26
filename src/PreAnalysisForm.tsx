@@ -110,6 +110,7 @@ export interface PreAnalysisData {
   qaConclusion: string;
 
   // 6. CROSS-CHECK WITH DEALER / LMI (quick)
+  dealerCheck: string;
   topDealerToCustomer: string;
   topLmiToDealer: string;
   lmiArCheck: string;
@@ -250,6 +251,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   qaIlinkComment: 'No Records / Pre-Delivery Inspection Pending',
   qaConclusion: 'Standard PDI required upon delivery and iLink telemetry activation',
 
+  dealerCheck: 'No Records Payment - New Liugong Customer',
   topDealerToCustomer: '20% DP, 80% cover by Leasing',
   topLmiToDealer: '-',
   lmiArCheck: 'No Records Payment - New Liugong Customer',
@@ -1464,6 +1466,21 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             </div>
             {openSections.sec6 && (
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Dealer Check</span>
+                    <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600 }}>Dealer Verification</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="dealerCheck"
+                    data-field="dealerCheck"
+                    value={data.dealerCheck || ''}
+                    onChange={e => updateField('dealerCheck', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-dealerCheck')}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from Dealer to Customer</label>
@@ -2427,6 +2444,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
                 <tbody>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Dealer Check</td>
+                    <td id="preana-preview-cell-dealerCheck" onClick={() => handlePreviewCellClick('dealerCheck', 'sec6')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer', fontWeight: 600 }}>{data.dealerCheck}</td>
+                  </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>TOP from Dealer to Customer</td>
                     <td id="preana-preview-cell-topDealerToCustomer" onClick={() => handlePreviewCellClick('topDealerToCustomer', 'sec6')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.topDealerToCustomer}</td>

@@ -174,10 +174,14 @@ End-2025 | PT HTPS Established – Harvesting Business
   qaIlinkComment: 'No Records / Pre-Delivery Inspection Pending',
   qaConclusion: 'Standard PDI required upon delivery and iLink telemetry activation',
 
-  topDealerToCustomer: '20% DP, 80% covered by Leasing facility',
+  dealerCheck: 'No Records Payment - New Liugong Customer',
+  topDealerToCustomer: '20% DP, 80% cover by Leasing',
   topLmiToDealer: '-',
-  lmiArCheck: 'No Records Payment - New LiuGong Customer',
-  slikPefindoHighlight: 'Pefindo check 4 Sept 2026: 9 bank/leasing facilities with total plafond IDR 80.67 Bio. Status Kol 1 (Current), 0 bad debts recorded.',
+  lmiArCheck: 'No Records Payment - New Liugong Customer',
+  slikPefindoHighlight: 'No Records Payment - New Established Company',
+  applicantPefindoCheck: "2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY) - NO RECORD SINCE IT'S NEWLY ESTABLISHED",
+  pefindoTerms: 'Current PT HPS commercial term on other fincos : Flat rate 7%, 20% SD, Normal Installment - 36 months lease terms, Provision 1%, admin fee IDR 5 bio per contract',
+  pefindoNotes: 'Based on Pefindo Checking on 4 Sept 2026',
   lenderExposures: [
     { lender: 'ACC', plafond: 'IDR 11.730.000.000', rate: '6.24%', notes: 'Active facilities, smooth payment record' },
     { lender: 'BCA', plafond: 'IDR 13.530.000.000', rate: '9.50%', notes: 'Working capital & vehicle financing' },
@@ -203,9 +207,6 @@ End-2025 | PT HTPS Established – Harvesting Business
     'Pre-Delivery inspection and strict iLink GPS tracking with remote immobilizer protocol.'
   ],
   competitionTable: DEFAULT_COMPETITION_TABLE,
-  applicantPefindoCheck: 'NO RECORD SINCE ITS NEWLY ESTABLISHED',
-  pefindoTerms: 'Current PT HPS commercial term on other fincos : Flat rate 7%, 20% SD, Normal Installment - 36 months lease terms, Provision 1%, admin fee IDR 5 bio per contract',
-  pefindoNotes: '- PT HPS is existing customer of SANF, ACC, etc. Payment current, but for PT HPS there are no close contract because PT HPS also new established company in 2024. All leasing contracts still open.\n- Its group : PT Harta Putramas Santosa (HTPS) is newly establish company, no record at all from Finco / Bank,\n- New business diversification, PT HTPS doesnt have any experience in Harvesting.',
   competitionNotes: 'Pefindo check 4 Sept 2026. Rate benchmark: Flat 7% p.a., 20% Security Deposit, 36-month lease tenor, 1% provision fee, IDR 5.000.000 admin fee per contract.',
   proposedBy: 'Amanda Cynthia (Senior Account Manager)',
   reviewedBy: 'Maria Regina (Dept. Head)',

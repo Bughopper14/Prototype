@@ -190,3 +190,11 @@ test('pre-analysis Section 3 separates company background, star group milestones
   assert.match(data.operationalTeamInfo, /Sarindo/i);
 });
 
+test('pre-analysis Section 6 includes dealerCheck field matching PDF', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-005');
+  assert.ok(data.dealerCheck, 'dealerCheck must exist');
+  assert.match(data.dealerCheck, /No Records Payment|New Liugong Customer/i);
+  assert.ok(data.topDealerToCustomer, 'topDealerToCustomer must exist');
+  assert.ok(data.lmiArCheck, 'lmiArCheck must exist');
+});
+
