@@ -1777,6 +1777,8 @@ td
         }
         table {
             margin: 0 auto !important;
+            transform: scaleX(1.008) !important;
+            transform-origin: top center !important;
         }
         .fap-page-2-start {
             page-break-before: always !important;
@@ -1803,6 +1805,8 @@ td
         border-right: none !important;
         margin-left: auto !important;
         margin-right: auto !important;
+        transform: scaleX(1.008) !important;
+        transform-origin: top center !important;
     }
     table:first-of-type > tbody > tr:first-child > .xl67,
     table:first-of-type > tbody > tr:first-child > .xl68,
