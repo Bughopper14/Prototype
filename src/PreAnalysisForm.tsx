@@ -88,11 +88,13 @@ export interface PreAnalysisData {
   financingSchemeRequested: string;
 
   // 3. CUSTOMER & GROUP BACKGROUND
+  ubo?: string;
   uboInfo: string;
   companyBackground: string;
   starGroupMilestonesNarrative?: string;
   businessDevBackground?: string;
   operationalTeamInfo?: string;
+  uboInformation?: string;
   milestones: MilestoneItem[];
   existingFincoBackup: string;
 
@@ -195,6 +197,7 @@ B. PT Pangan Sejahtera Santosa (PASS) (Existing Project):
   investmentPlan: `- nearest plan : 20 units LIUGONG Excavator for RAPP & 30 units LIUGONG Excavator for Sinarmas Project (combine 13 & 20 ton)\nTotal demand will be around 100 units until end of 2026.\nOther info : 20-30 unit (1st batch) estimated will delivery on W3 September 2026`,
   financingSchemeRequested: 'Tenor : 36-month lease\nSD : 15%',
 
+  ubo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
   uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
   companyBackground: 'PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).',
   starGroupMilestonesNarrative: `2022 | PT PASS Established – FMCG Distribution Business
@@ -223,6 +226,17 @@ End-2025 | PT HTPS Established – Harvesting Business
 - Mr. Herry Tho is based from Pekanbaru and has a background in logistics and hauling, with business connections within the forestry sector, including contacts at RAPP and APP/Sinar Mas. Through this relationship, he introduced Mr. Hansen to investment opportunities in forestry logistics and wood hauling.
 - Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
   operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
+  uboInformation: `STAR GROUP Corporate Shareholding & Governance Structure:
+• PT Sentosa Abadi Raja (Holding Company): Modal Dasar Rp 240 M, Modal Disetor Rp 60 M
+  - Hansen Santosa (54% - Presiden Direktur)
+  - Leonard Santosa (34% - Direktur)
+  - Oky Santosa (12% - Komisaris)
+• PT Pangan Sejahtera Santosa (PASS - FMCG): Modal Dasar Rp 50 M, Modal Disetor Rp 17,5 M
+  - PT STAR (99,994%), Leonard Santosa (0,006%)
+• PT Handalan Putramas Santosa (HPS - Sister Co): Modal Dasar Rp 130 M, Modal Disetor Rp 32,5 M
+  - PT STAR (99,997%), Leonard Santosa (0,003%)
+• PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
+  - PT STAR (99,98%), Leonard Santosa (0,02%)`,
   milestones: [
     { year: '2022', milestone: "PT Pangan Sejahtera Santosa (PASS) established – Started the Group's business through urban FMCG distribution and supported major FMCG principals." },
     { year: 'Q1 2024', milestone: "PT Santosa Abadi Raja (STAR) established – Set up as a holding company to consolidate businesses owned by Mr. Hansen and his family." },
@@ -1060,6 +1074,39 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-operationalTeamInfo')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
+                      UBO Information (Bagan Struktur Kepemilikan & Legalitas Saham Group)
+                    </label>
+                    <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600, background: '#dbeafe', padding: '1px 6px', borderRadius: '3px' }}>
+                      Kolom Terpisah Sebelum Milestones
+                    </span>
+                  </div>
+                  <textarea
+                    rows={6}
+                    name="uboInformation"
+                    data-field="uboInformation"
+                    value={data.uboInformation || ''}
+                    onChange={e => updateField('uboInformation', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
+                    placeholder="STAR GROUP Corporate Ownership Structure..."
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '6px', lineHeight: 1.35 }}
+                  />
+                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px', background: '#f8fafc' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#1e3a8a', marginBottom: '4px' }}>
+                      Diagram Struktur Kepemilikan STAR Group (Lampiran Resmi Halaman 3):
+                    </div>
+                    <img
+                      src="/crm/pre_analysis/star_group_structure.jpg"
+                      alt="STAR Group Structure"
+                      style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px' }}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/pre_analysis/star_group_structure.jpg';
+                      }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -2362,20 +2409,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
                     <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      <div style={{ marginBottom: '6px' }}>{data.uboInfo}</div>
-                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px', background: '#f8fafc', marginTop: '6px' }}>
-                        <div style={{ fontSize: '8pt', fontWeight: 700, color: '#1e3a8a', marginBottom: '4px' }}>
-                          STAR GROUP SHAREHOLDING & GOVERNANCE STRUCTURE:
-                        </div>
-                        <img
-                          src="/crm/pre_analysis/star_group_structure.jpg"
-                          alt="STAR Group Corporate Structure"
-                          style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '3px' }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/pre_analysis/star_group_structure.jpg';
-                          }}
-                        />
-                      </div>
+                      {data.ubo || data.uboInfo}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -2400,6 +2434,29 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other information :</td>
                     <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
                       {data.operationalTeamInfo}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>
+                      UBO Information
+                    </td>
+                    <td id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
+                      <div style={{ fontSize: '8.5pt', color: '#1e293b', whiteSpace: 'pre-line', marginBottom: '8px', lineHeight: 1.4 }}>
+                        {data.uboInformation}
+                      </div>
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px', background: '#f8fafc' }}>
+                        <div style={{ fontSize: '8pt', fontWeight: 700, color: '#1e3a8a', marginBottom: '4px' }}>
+                          BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP (HALAMAN 3):
+                        </div>
+                        <img
+                          src="/crm/pre_analysis/star_group_structure.jpg"
+                          alt="STAR Group Corporate Structure"
+                          style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '3px' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/pre_analysis/star_group_structure.jpg';
+                          }}
+                        />
+                      </div>
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>

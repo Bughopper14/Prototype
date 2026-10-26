@@ -188,6 +188,15 @@ test('pre-analysis Section 3 separates company background, star group milestones
   // Other Information / Operational Team
   assert.ok(data.operationalTeamInfo, 'operationalTeamInfo must exist');
   assert.match(data.operationalTeamInfo, /Sarindo/i);
+
+  // UBO (Ultimate Beneficiary Owner)
+  assert.ok(data.uboInfo || data.ubo, 'ubo / uboInfo must exist');
+  assert.match(data.uboInfo || data.ubo, /Mr\. Hansen Santosa/i);
+
+  // UBO Information (Separate column before company milestones)
+  assert.ok(data.uboInformation, 'uboInformation must exist as a separate field');
+  assert.match(data.uboInformation, /STAR GROUP Corporate/i);
+  assert.match(data.uboInformation, /PT Sentosa Abadi Raja/i);
 });
 
 test('pre-analysis Section 6 includes dealerCheck field matching PDF', async () => {

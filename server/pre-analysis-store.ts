@@ -119,6 +119,7 @@ export const DEFAULT_PRE_ANALYSIS_DATA = {
   investmentPlan: '20-30 units nearest plan: 20 units LIUGONG Excavator for RAPP & 30 units for Sinarmas',
   financingSchemeRequested: '36-month lease, 15-20% Security Deposit, Normal Installment structure',
 
+    ubo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
   uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
   companyBackground: 'PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).',
   starGroupMilestonesNarrative: `2022 | PT PASS Established – FMCG Distribution Business
@@ -147,6 +148,18 @@ End-2025 | PT HTPS Established – Harvesting Business
 - Mr. Herry Tho is based from Pekanbaru and has a background in logistics and hauling, with business connections within the forestry sector, including contacts at RAPP and APP/Sinar Mas. Through this relationship, he introduced Mr. Hansen to investment opportunities in forestry logistics and wood hauling.
 - Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
   operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
+  uboInformation: `STAR GROUP Corporate Shareholding & Governance Structure:
+• PT Sentosa Abadi Raja (STAR Holding): Modal Dasar Rp 240 M, Modal Disetor Rp 60 M
+  - Hansen Santosa (54% - Presiden Direktur)
+  - Leonard Santosa (34% - Direktur)
+  - Oky Santosa (12% - Komisaris)
+• PT Pangan Sejahtera Santosa (PASS - FMCG): Modal Dasar Rp 50 M, Modal Disetor Rp 17,5 M
+  - PT STAR (99,994%), Leonard Santosa (0,006%)
+• PT Handalan Putramas Santosa (HPS - Sister Co): Modal Dasar Rp 130 M, Modal Disetor Rp 32,5 M
+  - PT STAR (99,997%), Leonard Santosa (0,003%)
+• PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
+  - PT STAR (99,98%), Leonard Santosa (0,02%)`,
+
   milestones: [
     { year: '2022', entity: 'PT PASS', description: 'Established for FMCG transport (Sinar Sosro, FKS, Perfetti)' },
     { year: 'Q1 2024', entity: 'PT HPS', description: 'Formed to expand heavy logistics for RAPP & APP Sinarmas' },
