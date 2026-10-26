@@ -7,6 +7,7 @@ import {
   generatePreAnalysisNo,
   getRomanMonthFromDate
 } from '../server/pre-analysis-store';
+import { syncCustomerAndPicIntoPreAnalysis, type PreAnalysisData } from '../src/PreAnalysisForm';
 
 test('pre-analysis number auto-increment starts from 1 with 000/PREANA/MKT/IX/YYYY template', () => {
   // Test starting from 1
@@ -63,4 +64,70 @@ test('pre-analysis store persists updates and retrieves saved values', async () 
   assert.equal(retrieved.preAnalysisNo, '001/PREANA/MKT/IX/2026');
   assert.equal(retrieved.customerProjectName, 'PT Handalan Testing Mandiri');
   assert.equal(retrieved.goodCustomer, true);
+});
+
+test('syncCustomerAndPicIntoPreAnalysis maps Customer, NPWP, FAP No, and PIC data accurately', () => {
+  const initial = {
+    ...DEFAULT_PRE_ANALYSIS_DATA,
+    customerProjectName: 'Initial Company',
+    taxId: '00.000.000.0-000.000',
+    fapNumber: 'INITIAL/FAP/2026',
+    customerPic: 'Initial PIC',
+    customerArea: 'Jakarta, DKI Jakarta'
+  } as unknown as PreAnalysisData;
+
+  const sources = {
+    customer: {
+      companyName: 'PT Mandiri Prima Persada',
+      npwp: '31.456.789.0-021.000',
+      city: 'Surabaya',
+      province: 'Jawa Timur'
+    },
+    pic: {
+      picName: 'Hendra Setiawan',
+      position: 'Managing Director'
+    },
+    application: {
+      fapNumber: '102/AF/X/2026'
+    },
+    profile: {
+      city: 'Surabaya',
+      province: 'Jawa Timur'
+    }
+  };
+
+  const synced = syncCustomerAndPicIntoPreAnalysis(initial, sources);
+  assert.equal(synced.customerProjectName, 'PT Mandiri Prima Persada');
+  assert.equal(synced.taxId, '31.456.789.0-021.000');
+  assert.equal(synced.fapNumber, '102/AF/X/2026');
+  assert.equal(synced.customerPic, 'Hendra Setiawan (Managing Director)');
+  assert.equal(synced.customerArea, 'Surabaya, Jawa Timur');
+
+  // Verify non-targeted fields remain preserved
+  assert.equal(synced.preAnalysisNo, initial.preAnalysisNo);
+  assert.equal(synced.goodProject, initial.goodProject);
+});
+
+test('syncCustomerAndPicIntoPreAnalysis gracefully preserves existing data when sources are empty or partial', () => {
+  const initial = {
+    ...DEFAULT_PRE_ANALYSIS_DATA,
+    customerProjectName: 'Preserved Company',
+    taxId: '99.999.999.9-999.000',
+    fapNumber: 'KEEP/FAP/2026',
+    customerPic: 'Preserved PIC (Director)',
+    customerArea: 'Medan, Sumatera Utara'
+  } as unknown as PreAnalysisData;
+
+  // Empty sources
+  const syncedEmpty = syncCustomerAndPicIntoPreAnalysis(initial, {});
+  assert.equal(syncedEmpty.customerProjectName, 'Preserved Company');
+  assert.equal(syncedEmpty.taxId, '99.999.999.9-999.000');
+  assert.equal(syncedEmpty.customerPic, 'Preserved PIC (Director)');
+
+  // Partial sources (only PIC without position)
+  const syncedPartial = syncCustomerAndPicIntoPreAnalysis(initial, {
+    pic: { picName: 'Dewi Sartika' }
+  });
+  assert.equal(syncedPartial.customerPic, 'Dewi Sartika');
+  assert.equal(syncedPartial.customerProjectName, 'Preserved Company');
 });
