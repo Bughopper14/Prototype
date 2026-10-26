@@ -522,117 +522,157 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   }, [data.unitComposition]);
 
   return (
-    <div className="pre-analysis-container" style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+    <div className="fap-detail-split-container pre-analysis-container" style={{ height: 'calc(100vh - 170px)', minHeight: '620px', overflow: 'hidden' }}>
       {/* LEFT COLUMN: 50% EDITABLE FORM ACCORDIONS */}
-      <div className="fap-detail-form-col" style={{ flex: '1 1 50%', minWidth: 0, paddingRight: '4px' }}>
+      <div className="fap-detail-form-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingRight: '8px' }}>
         {/* Sticky Action Header */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 16px',
+          padding: '10px 14px',
           background: '#ffffff',
           borderRadius: '8px',
           border: '1px solid #cbd5e1',
           marginBottom: '14px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <FileText size={18} color="#1e3a8a" />
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
+          {/* Row 1: Title & Status Badge on Left, Action Buttons on Right */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+            flexWrap: 'nowrap'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flexShrink: 0 }}>
+              <FileText size={18} color="#1e3a8a" style={{ flexShrink: 0 }} />
+              <h3 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
                 Pre-Analysis Form
               </h3>
               <span style={{
                 background: data.recommendation === 'CONDITIONAL' ? '#fef9c3' : data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
                 color: data.recommendation === 'CONDITIONAL' ? '#a16207' : data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
-                fontSize: '0.7rem',
+                fontSize: '0.68rem',
                 fontWeight: 700,
-                padding: '2px 8px',
+                padding: '2px 7px',
                 borderRadius: '12px',
-                border: `1px solid ${data.recommendation === 'CONDITIONAL' ? '#fde047' : data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`
+                border: `1px solid ${data.recommendation === 'CONDITIONAL' ? '#fde047' : data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`,
+                whiteSpace: 'nowrap',
+                flexShrink: 0
               }}>
                 {data.recommendation || 'DRAFT'}
               </span>
             </div>
-            <p style={{ margin: '3px 0 0 0', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>
-              Ref No: <b style={{ color: '#1e293b' }}>{data.preAnalysisNo || 'Auto-generated'}</b> &nbsp;&bull;&nbsp; FAP No: <b style={{ color: '#1e293b' }}>{data.fapNumber || '-'}</b>
-            </p>
+
+            {/* Action Buttons: Clean, single-line, identical height and no wrapping */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+              <button
+                type="button"
+                className="fap-acc-sync-btn"
+                title="Sync customer profile, NPWP, and PIC data from FAP stage"
+                onClick={() => {
+                  setData(prev => syncCustomerAndPicIntoPreAnalysis(prev, {
+                    customer: props.customer || props.profile?.customer,
+                    pic: props.pic || props.profile?.pic,
+                    application: props.application,
+                    profile: props.profile
+                  }));
+                  props.notify?.('Customer, Tax ID, and PIC successfully synchronized into form');
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  borderRadius: '5px',
+                  background: '#f8fafc',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  height: '28px',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <RefreshCw size={11} /> Sync Customer Data
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrintPreAnalysis}
+                className="button"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 9px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  borderRadius: '5px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  color: '#334155',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  height: '28px',
+                  boxSizing: 'border-box'
+                }}
+                title="Print Pre-Analysis Form"
+              >
+                <Printer size={11} /> Print
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="button primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 10px',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  borderRadius: '5px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  height: '28px',
+                  boxSizing: 'border-box'
+                }}
+                title="Save Pre-Analysis Draft"
+              >
+                {saving ? <Loader2 size={11} className="spin" /> : <Save size={11} />}
+                <span>{saving ? 'Saving...' : 'Save Draft'}</span>
+              </button>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              className="fap-acc-sync-btn"
-              title="Sync customer profile, NPWP, and PIC data from FAP stage"
-              onClick={() => {
-                setData(prev => syncCustomerAndPicIntoPreAnalysis(prev, {
-                  customer: props.customer || props.profile?.customer,
-                  pic: props.pic || props.profile?.pic,
-                  application: props.application,
-                  profile: props.profile
-                }));
-                props.notify?.('Customer, Tax ID, and PIC successfully synchronized into form');
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '5px 10px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                background: '#f8fafc',
-                border: '1px solid #cbd5e1',
-                color: '#334155',
-                cursor: 'pointer'
-              }}
-            >
-              <RefreshCw size={12} /> Sync Customer Data
-            </button>
-
-            <button
-              type="button"
-              onClick={handlePrintPreAnalysis}
-              className="button"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '5px 10px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                color: '#334155',
-                cursor: 'pointer'
-              }}
-              title="Print Pre-Analysis Form"
-            >
-              <Printer size={12} /> Print
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="button primary"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '5px 12px',
-                fontSize: '0.75rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                cursor: 'pointer'
-              }}
-              title="Save Pre-Analysis Draft"
-            >
-              {saving ? <Loader2 size={12} className="spin" /> : <Save size={12} />}
-              <span>{saving ? 'Saving...' : 'Save Draft'}</span>
-            </button>
+          {/* Row 2: Sub-bar with Ref No and FAP No displayed cleanly */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingTop: '6px',
+            borderTop: '1px solid #f1f5f9',
+            fontSize: '0.73rem',
+            color: '#64748b'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div>
+                Ref No: <b style={{ color: '#1e293b' }}>{data.preAnalysisNo || 'Auto-generated'}</b>
+              </div>
+              <span style={{ color: '#cbd5e1' }}>•</span>
+              <div>
+                FAP No: <b style={{ color: '#1e293b' }}>{data.fapNumber || '-'}</b>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+              Stage: <b style={{ color: '#475569' }}>Pre-Analysis</b>
+            </div>
           </div>
         </div>
 
@@ -2017,10 +2057,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       {/* RIGHT COLUMN: 50% PREVIEW & DIGITAL TWIN / ORIGINAL PDF */}
       <div className="fap-detail-preview-col" style={{
         flex: '1 1 50%',
+        width: '50%',
         minWidth: 0,
+        height: '100%',
+        maxHeight: '100%',
         display: 'flex',
         flexDirection: 'column',
-        height: 'calc(100vh - 165px)',
         background: '#f8fafc',
         borderRadius: '8px',
         border: '1px solid #cbd5e1',
@@ -2169,7 +2211,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           ref={previewContainerRef}
           style={{
             flex: 1,
+            height: 'calc(100% - 44px)',
             overflowY: 'auto',
+            overflowX: 'auto',
             padding: '16px',
             display: 'flex',
             justifyContent: 'center',
