@@ -50,8 +50,8 @@ export interface FapSheetPreviewProps {
   stakeholders?: any[];
   compact?: boolean;
   readOnly?: boolean;
-  activeSection?: string;
-  activeField?: string;
+  activeSection?: string | null;
+  activeField?: string | null;
   syncTick?: number;
   onSectionClick?: (sectionId: string) => void;
   onPreviewCellClick?: (fieldKey: string, sectionId?: string) => void;
@@ -123,6 +123,57 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   primaryCapital: 'fap-cell-sh-0-shares',
   depositedCapital: 'fap-cell-sh-0-shares',
 };
+
+export function resolveFieldToCellId(fieldKey: string, section?: string | null, extraData?: any): string {
+  if (section === 'pic' || section === 'fap-preview-sec-pic') {
+    const picMap: Record<string, string> = {
+      name: 'fap-cell-picName',
+      picName: 'fap-cell-picName',
+      phone: 'fap-cell-phone',
+      mobilePhone: 'fap-cell-phone',
+      position: 'fap-cell-position',
+      email: 'fap-cell-picEmail',
+      picEmail: 'fap-cell-picEmail',
+      currentAddress: 'fap-cell-currentAddress',
+      address: 'fap-cell-currentAddress',
+      city: 'fap-cell-picCity',
+      picCity: 'fap-cell-picCity',
+      province: 'fap-cell-picProvince',
+      picProvince: 'fap-cell-picProvince',
+      postalCode: 'fap-cell-picPostalCode',
+      picPostalCode: 'fap-cell-picPostalCode',
+      district: 'fap-cell-picCity',
+      village: 'fap-cell-picCity',
+      rt: 'fap-cell-currentAddress',
+      rw: 'fap-cell-currentAddress',
+      country: 'fap-cell-currentAddress',
+    };
+    if (picMap[fieldKey]) return picMap[fieldKey];
+  }
+
+  if (fieldKey === 'companyType') {
+    const val = String(extraData?.companyType || '').toUpperCase();
+    if (val.includes('COMMERCIAL')) return 'fap-cell-commercial';
+    if (val.includes('MICRO')) return 'fap-cell-micro';
+    return 'fap-cell-corporate';
+  }
+
+  if (fieldKey === 'customerCategory') {
+    const cat = String(extraData?.customerCategory || '').toUpperCase();
+    return cat === 'EXISTING' ? 'fap-cell-custExisting' : 'fap-cell-custNew';
+  }
+
+  if (FIELD_TO_CELL_ID_MAP[fieldKey]) {
+    return FIELD_TO_CELL_ID_MAP[fieldKey];
+  }
+
+  if (fieldKey && fieldKey.startsWith('fap-cell-')) {
+    return fieldKey;
+  }
+
+  return '';
+}
+
 
 export const SECTION_TO_CELL_IDS_MAP: Record<string, string[]> = {
   'fap-preview-sec-header': [
@@ -507,7 +558,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     let scrollTargetCellId: string | null = null;
 
     if (props.activeField) {
-      const cid = FIELD_TO_CELL_ID_MAP[props.activeField];
+      const cid = resolveFieldToCellId(props.activeField, props.activeSection || undefined, props.data) || FIELD_TO_CELL_ID_MAP[props.activeField] || (props.activeField.startsWith('fap-cell-') ? props.activeField : null);
       if (cid) {
         cellIdsToHighlight.push(cid);
         scrollTargetCellId = cid;

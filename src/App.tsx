@@ -14,7 +14,8 @@ import {
   SECTION_TO_SCROLL_TARGET_MAP,
   SECTION_TO_CELL_ID_MAP,
   CELL_ID_TO_SECTION_MAP,
-  FIELD_TO_CELL_ID_MAP
+  FIELD_TO_CELL_ID_MAP,
+  resolveFieldToCellId
 } from './FapSheetPreview';
 import {PreAnalysisForm} from './PreAnalysisForm';
 import {
@@ -96,7 +97,7 @@ export function deriveDeedSync(legal:any, application?:any):{
 function deedValidity(deedDate:any){if(!deedDate)return {status:'Date not filled',active:null,expiry:null};const parts=String(deedDate).slice(0,10).split('-').map(Number);if(parts.length!==3||parts.some(x=>!x))return {status:'Date not filled',active:null,expiry:null};const expiry=new Date(parts[0],parts[1]-1,parts[2]);if(Number.isNaN(expiry.getTime()))return {status:'Date not filled',active:null,expiry:null};expiry.setFullYear(expiry.getFullYear()+5);const today=new Date();today.setHours(0,0,0,0);expiry.setHours(0,0,0,0);const active=today<=expiry;return {status:active?'Active':'Inactive',active,expiry};}
 function Badge({status}:{status:string}){return <span className={'badge '+status?.toLowerCase()}><i/>{statusLabel[status]||label(status)}</span>;}
 function IconBox({children}:{children:ReactNode}){return <span className="iconbox">{children}</span>;}
-function Fields({fields,value,onChange,disabled=false,className,section,onSelectOption,onFieldFocus,onNibOcr,customErrors}:{fields:Field[],value:any,onChange:(v:any)=>void,disabled?:boolean,className?:string,section?:string,onSelectOption?:(k:string,v:string)=>void,onFieldFocus?:(k:string)=>void,onNibOcr?:()=>void,customErrors?:Record<string,string>}){
+function Fields({fields,value,onChange,disabled=false,className,section,onSelectOption,onFieldFocus,onFieldSync,activeFieldKey,onNibOcr,customErrors}:{fields:Field[],value:any,onChange:(v:any)=>void,disabled?:boolean,className?:string,section?:string,onSelectOption?:(k:string,v:string)=>void,onFieldFocus?:(k:string,section?:string)=>void,onFieldSync?:(k:string,section?:string)=>void,activeFieldKey?:string|null,onNibOcr?:()=>void,customErrors?:Record<string,string>}){
   const master=useMasterData();
   const mandatoryRules=useMandatoryRules();
   return <div className={`formgrid ${className||''}`}>{fields.map(f=>{
@@ -212,13 +213,16 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
     return <label key={f.key} className={f.wide?'field-wide':undefined}>
       <div className="field-label-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:22,marginBottom:4,gap:6}}>
         <span className="field-label" title={toTitleCase(f.label)} style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>{toTitleCase(f.label)}{isRequired&&<span className="field-required" aria-label="Required">*</span>}</span>
-        {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn" style={{flexShrink:0}}><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
+        <div style={{display:'inline-flex',alignItems:'center',gap:4,flexShrink:0}}>
+          {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn"><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
+          {onFieldSync&&<button type="button" onClick={(e)=>{e.stopPropagation();e.preventDefault();onFieldSync(f.key,section);}} title={`Sync view ke kolom ${toTitleCase(f.label)} di formulir aplikasi`} className={`field-sync-btn ${activeFieldKey===f.key?'active':''}`}><Eye size={11}/><span>Sync View</span></button>}
+        </div>
       </div>
-      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onBlur={handleBlur} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
+      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onBlur={handleBlur} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
     </label>;
   })}</div>;
 }
-function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{toTitleCase(title)}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{toTitleCase(title)} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
+function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false,section,onFieldFocus,onFieldSync,activeFieldKey}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean,section?:string,onFieldFocus?:(k:string,section?:string)=>void,onFieldSync?:(k:string,section?:string)=>void,activeFieldKey?:string|null}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{toTitleCase(title)}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{toTitleCase(title)} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} section={section||title.toLowerCase()} onFieldFocus={onFieldFocus} onFieldSync={onFieldSync} activeFieldKey={activeFieldKey} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
 function Modal({title,children,onClose,className=""}:{title:string,children:ReactNode,onClose:()=>void,className?:string}){return <div className="modal-scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className={`modal ${className}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>{children}</section></div>;}
 function Login({onLogin}:{onLogin:(u:any)=>void}){const [email,setEmail]=useState('mkt@liugong.local'),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);return <div className="login"><div className="login-story"><Brand/><div><span className="eyebrow">LIUGONG FINANCE INDONESIA</span><h1>Moving business.<br/>Building possibilities.</h1><p>A single workspace for equipment financing,<br/>from the first application to the final decision.</p><div className="login-lines"><span/><span/><span/></div></div><small>Loan origination & document management</small></div><div className="login-form"><span className="eyebrow">YOUR ORIGINATION WORKSPACE</span><h2>Welcome back</h2><p>Sign in to keep business moving.</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{onLogin(await api('/auth/login','POST',{email,password}));}catch(e:any){setError(e.message);}finally{setBusy(false);}}}><label>Email address<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button className="button primary" disabled={busy}>{busy?<Loader2 className="spin" size={16}/>:null}Sign in <ArrowRight size={17}/></button></form><div className="demo-note"><strong>Public interactive demo · synthetic data</strong><p>Choose a department. Changes are saved only in this browser.</p><div className="role-pills">{['MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'].map(r=><button key={r} onClick={()=>{setEmail(r==='BS'?'arianti@liugong.local':r==='HEAD_BS'?'dellatra@liugong.local':r.toLowerCase()+'@liugong.local');setPassword('LiuGong2026!');}}>{r==='BS'?'Arianti / BS':r==='HEAD_BS'?'Dellatra / Head BS':r}</button>)}</div><small>Demo password: LiuGong2026! · Use synthetic information only.</small></div></div></div>;}
 function Brand(){return <div className="brand"><div className="brand-mark">L<span>G</span></div><div><strong>LIUGONG</strong><small>FINANCE INDONESIA</small></div></div>;}
@@ -745,11 +749,62 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
    'fap-preview-sec-projects': true,
  });
  const [activeSyncSection, setActiveSyncSection] = useState<string>('fap-preview-sec-header');
+ const [activeSyncField, setActiveSyncField] = useState<string | null>(null);
+ const [activeFieldKey, setActiveFieldKey] = useState<string | null>(null);
  const [syncTick, setSyncTick] = useState<number>(() => Date.now());
+
+ const handleTriggerFieldSync = (fieldKey: string, sectionContext?: string) => {
+   if (!sideBySide) setSideBySide(true);
+   const cellId = resolveFieldToCellId(fieldKey, sectionContext, {
+     companyType: customerDraft?.companyType || draft?.customer?.companyType || draft?.companyType,
+     customerCategory
+   });
+
+   setActiveFieldKey(fieldKey);
+   setActiveSyncField(cellId || fieldKey);
+   setActiveSyncSection('');
+   setSyncTick(Date.now());
+
+   // Instant direct highlight & scroll on live preview iframe if mounted
+   const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-detail-preview-col iframe');
+   iframes.forEach(iframe => {
+     try {
+       const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+       const win = iframe.contentWindow;
+       if (!iDoc || !win) return;
+
+       iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+         el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+       });
+
+       if (cellId) {
+         const cel = iDoc.getElementById(cellId);
+         if (cel) {
+           cel.classList.add('fap-cell-highlight');
+           const rect = cel.getBoundingClientRect();
+           const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+           const targetY = Math.max(0, currentScrollY + rect.top - 80);
+           win.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+         }
+       }
+
+       setTimeout(() => {
+         if (cellId) {
+           const cel = iDoc.getElementById(cellId);
+           if (cel) cel.classList.remove('fap-cell-highlight');
+         }
+       }, 4500);
+     } catch (_) {}
+   });
+ };
 
  const handleTriggerSync = (secId: string) => {
    if (!sideBySide) setSideBySide(true);
    setActiveSyncSection(secId);
+   setActiveSyncField(null);
+   setActiveFieldKey(null);
    setSyncTick(Date.now());
 
    // Instant direct highlight & scroll on live preview iframe if mounted
@@ -832,23 +887,29 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
     }
   };
 
-  const handleApproveFapChangesInDetail = async (extractedData: any) => {
+  const [customerDetailLocked, setCustomerDetailLocked] = useState<boolean>(() => Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
+
+  const handleApproveDocument = (updatedApp?: any) => {
+    localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
+    setCustomerDetailLocked(true);
+    const nextApp = { ...(updatedApp || a), customerDetailLocked: true, stage: 'Pre-analysis' };
+    setDraft((prev: any) => ({ ...prev, ...nextApp, customerDetailLocked: true }));
+    if (onChange) onChange(nextApp);
+    setActiveStage('Pre-analysis');
+    setTab(8);
+  };
+
+  const handleApproveFapChangesInDetail = async (extractedData?: any) => {
     setBusy(true);
     try {
       const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
-        approvedData: extractedData
+        remarks: a.fapRemarks || draft.fapRemarks || ''
       });
-      if (res.application) {
-        onChange(res.application);
-        setDraft(structuredClone(res.application));
-        setActiveStage(res.application.stage || 'Pre-analysis');
-      } else {
-        setActiveStage('Pre-analysis');
-      }
+      handleApproveDocument(res?.application);
       setFapComparisonModal(null);
-      notify('FAP document data changes approved. Stage advanced to Pre-analysis.');
+      notify('Dokumen FAP telah disetujui. Customer & PIC dikunci, beralih ke tahap Pre-analysis.');
     } catch (err: any) {
-      notify('Failed to update data: ' + err.message);
+      notify('Gagal menyetujui dokumen: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -859,10 +920,8 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
       await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST');
     } catch {}
     setFapComparisonModal(null);
-    notify('Data differences noted. You can review and correct the data in the FAP form manually.');
+    notify('Perbedaan data dicatat. Anda dapat mereview dan mencatat remarks pada tab Dokumen.');
   };
-
-const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
  async function submitCustomerDetail(){
   setError('');
   const missing: string[] = [];
@@ -1093,6 +1152,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
  const canLegal = isAdminUser || (!isFapLocked && canEditLegal(user, a));
  const canEdit = isAdminUser || (!isFapLocked && (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status))));
  const canFinance = isAdminUser || (user.role === 'MKT' && ['DRAFT', 'RETURNED'].includes(a.status)) || (user.role === 'CA' && a.status === 'IN_CA_LEGAL_REVIEW');
+  const canEditCustomerPic = canEdit && !customerDetailLocked;
  
  async function submitFapStage(){
    setBusy(true);setError('');
@@ -1220,7 +1280,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-header'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-header"
-        onFocus={() => handleTriggerSync('fap-preview-sec-header')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1259,22 +1319,41 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         {openSections['fap-preview-sec-header'] && (
           <div className="fap-accordion-content">
             <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
-              <div>
-                <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
-                <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <div>
+                  <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
+                  <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
+                </div>
+                <button type="button" className={`field-sync-btn ${activeFieldKey==='applicationDate'?'active':''}`} onClick={()=>handleTriggerFieldSync('applicationDate','header')} title="Sync view ke Tanggal/Date di formulir aplikasi">
+                  <Eye size={11}/><span>Sync View</span>
+                </button>
               </div>
-              <div>
-                <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP Registration Number</span>
-                <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                <div>
+                  <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP Registration Number</span>
+                  <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
+                </div>
+                <button type="button" className={`field-sync-btn ${activeFieldKey==='fapNumber'?'active':''}`} onClick={()=>handleTriggerFieldSync('fapNumber','header')} title="Sync view ke No. Register FAP di formulir aplikasi">
+                  <Eye size={11}/><span>Sync View</span>
+                </button>
               </div>
             </div>
             <div className="customer-category-selector-box" style={{marginBottom:16}}>
-              <label className="customer-category-select">
-                Customer Category
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Customer Category</span>
+                <button type="button" className={`field-sync-btn ${activeFieldKey==='customerCategory'?'active':''}`} onClick={()=>handleTriggerFieldSync('customerCategory','header')} title="Sync view ke Customer Items di formulir aplikasi">
+                  <Eye size={11}/><span>Sync View</span>
+                </button>
+              </div>
+              <label className="customer-category-select" style={{marginTop:0}}>
                 <select 
                   value={customerCategory} 
-                  disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
-                  onChange={e => changeCategory(e.target.value)}
+                  disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
+                  onFocus={()=>handleTriggerFieldSync('customerCategory','header')}
+                  onChange={e => {
+                    changeCategory(e.target.value);
+                    handleTriggerFieldSync(e.target.value==='EXISTING'?'fap-cell-custExisting':'fap-cell-custNew','header');
+                  }}
                 >
                   <option value="EXISTING">Existing Customer</option>
                   <option value="NEW">New Customer</option>
@@ -1284,13 +1363,20 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             {customerCategory === 'EXISTING' ? (
               <>
                 <div className="existing-customer-picker" style={{marginBottom:16}}>
-                  <label>
-                    Existing Customer
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                    <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Existing Customer</span>
+                    <button type="button" className={`field-sync-btn ${activeFieldKey==='companyName'?'active':''}`} onClick={()=>handleTriggerFieldSync('companyName','customer')} title="Sync view ke Nama Perusahaan di formulir aplikasi">
+                      <Eye size={11}/><span>Sync View</span>
+                    </button>
+                  </div>
+                  <label style={{marginTop:0}}>
                     <select 
                       value={customerId} 
-                      disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                      disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                      onFocus={()=>handleTriggerFieldSync('companyName','customer')}
                       onChange={e => {
                         const cid = e.target.value;
+                        handleTriggerFieldSync('companyName','customer');
                         setCustomerId(cid);
                         setError('');
                         const cust = customers.find((c: any) => c.id === cid);
@@ -1333,6 +1419,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                     value={selectedCustomer || customerDraft || blank(customerFields)} 
                     disabled={true} 
                     onChange={() => {}} 
+                    section="customer"
+                    onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
+                    onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
+                    activeFieldKey={activeFieldKey}
                   />
                 </div>
               </>
@@ -1344,9 +1434,13 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                 </div>
                 <Fields 
                   fields={fapCustomerFields} 
-                  onNibOcr={()=>setNibOcrOpen(true)}
+                  onNibOcr={canEditCustomerPic ? () => setNibOcrOpen(true) : undefined}
                   value={customerDraft} 
-                  disabled={!canEdit} 
+                  disabled={!canEditCustomerPic} 
+                  section="customer"
+                  onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
+                  onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
+                  activeFieldKey={activeFieldKey}
                   onChange={c => {
                     setCustomerDraft(c);
                     // Sync establishment deed to latestDeed and experience if no deeds in legal yet
@@ -1378,7 +1472,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-company'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-company"
-        onFocus={() => handleTriggerSync('fap-preview-sec-company')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1418,11 +1512,11 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office & Branch Status</h5>
-              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEditCustomerPic} section="company" onFieldFocus={k => handleTriggerFieldSync(k, 'company')} onFieldSync={k => handleTriggerFieldSync(k, 'company')} activeFieldKey={activeFieldKey} onChange={setDraft}/>
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office Address & Official Contact</h5>
-              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onChange={setDraft}/>
+              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEditCustomerPic} section="company" onFieldFocus={k => handleTriggerFieldSync(k, 'company')} onFieldSync={k => handleTriggerFieldSync(k, 'company')} activeFieldKey={activeFieldKey} onChange={setDraft}/>
             </div>
           </div>
         )}
@@ -1432,7 +1526,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-business'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-business"
-        onFocus={() => handleTriggerSync('fap-preview-sec-business')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1492,7 +1586,11 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                     <Fields 
                       fields={opFields} 
                       value={operationalValues} 
-                      disabled={!canEdit} 
+                      disabled={!canEditCustomerPic} 
+                      section="business"
+                      onFieldFocus={k => handleTriggerFieldSync(k, 'business')}
+                      onFieldSync={k => handleTriggerFieldSync(k, 'business')}
+                      activeFieldKey={activeFieldKey}
                       onChange={v => {
                         const exp = liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate) : null;
                         setDraft({
@@ -1511,7 +1609,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Amendment Deed Legal Summary</h5>
-              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
+              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEditCustomerPic} section="business" onFieldFocus={k => handleTriggerFieldSync(k, 'business')} onFieldSync={k => handleTriggerFieldSync(k, 'business')} activeFieldKey={activeFieldKey} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
               {liveEstablishmentDate&&<small style={{color:'#94a3b8',fontSize:'0.72rem',display:'block',marginTop:4}}>Latest deed synced automatically from the Legal tab.</small>}
             </div>
           </div>
@@ -1522,7 +1620,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-pic'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-pic"
-        onFocus={() => handleTriggerSync('fap-preview-sec-pic')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1560,7 +1658,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         </div>
         {openSections['fap-preview-sec-pic'] && (
           <div className="fap-accordion-content">
-            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onChange={pic=>setDraft({...draft,pic})}/>
+            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEditCustomerPic} section="pic" onFieldFocus={k => handleTriggerFieldSync(k, 'pic')} onFieldSync={k => handleTriggerFieldSync(k, 'pic')} activeFieldKey={activeFieldKey} onChange={pic=>setDraft({...draft,pic})}/>
           </div>
         )}
       </div>
@@ -1569,7 +1667,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-projects'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-projects"
-        onFocus={() => handleTriggerSync('fap-preview-sec-projects')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1607,7 +1705,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         </div>
         {openSections['fap-preview-sec-projects'] && (
           <div className="fap-accordion-content">
-            <Repeater title="Project Contracts" description="Active project contracts and business activities (filled by Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/>
+            <Repeater title="Project Contracts" description="Active project contracts and business activities (filled by Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEditCustomerPic} carousel section="projects" onFieldFocus={k => handleTriggerFieldSync(k, 'projects')} onFieldSync={k => handleTriggerFieldSync(k, 'projects')} activeFieldKey={activeFieldKey} onChange={projects=>setDraft({...draft,projects})}/>
           </div>
         )}
       </div>
@@ -1615,6 +1713,12 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
   );
 
   return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked&&<div className="stage-readonly-banner"><Lock size={16}/><span><strong>FAP Stage has been locked:</strong> The FAP Stage form has been signed and the application has advanced to the <strong>Pre-analysis</strong> stage. All FAP Stage data is read-only and cannot be modified.</span></div>}{tab===0&&<>
+  {customerDetailLocked && (
+    <div className="stage-readonly-banner" style={{marginBottom:16,background:'#ecfdf5',borderColor:'#a7f3d0',color:'#065f46'}}>
+      <Lock size={16}/>
+      <span><strong>Customer &amp; PIC Telah Dikunci:</strong> Dokumen fisik FAP telah disetujui pada tab Dokumen. Form Customer &amp; PIC dikunci dan tidak mengubah data sistem sebelum beralih ke tahap Pre-analysis.</span>
+    </div>
+  )}
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <Building2 size={18}/>
@@ -1641,8 +1745,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           profile={draft}
           pic={draft.pic || a.pic}
           activeSection={activeSyncSection} 
+          activeField={activeSyncField || undefined}
           syncTick={syncTick} 
           onSectionClick={handlePreviewSectionClick} 
+          onPreviewCellClick={(fKey, sId) => handleTriggerFieldSync(fKey, sId)}
           onPrint={handlePrintFap} 
         />
       </div>
@@ -1652,7 +1758,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>=6&&(actions.length>0||tab===8))&&<div className="form-bottom-actions"><div className="form-bottom-left">{tab===8&&<span className="subtle-chip" style={{display:'inline-flex',alignItems:'center',gap:6,color:'#64748b'}}><FileText size={14}/>Pre-Analysis Stage</span>}</div><div className="form-bottom-right">{tab===8&&<button type="button" className="button" disabled={preAnalysisSaving||busy} title="Save Pre-Analysis Draft" style={{display:'inline-flex',alignItems:'center',gap:6}} onClick={async()=>{if(preAnalysisSaveRef.current){setPreAnalysisSaving(true);try{await preAnalysisSaveRef.current();}finally{setPreAnalysisSaving(false);}}}}>{preAnalysisSaving?<Loader2 size={15} className="spin"/>:<Save size={15}/>}<span>{preAnalysisSaving?'Saving...':'Save Draft'}</span></button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Dikunci</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>=6&&(actions.length>0||tab===8))&&<div className="form-bottom-actions"><div className="form-bottom-left">{tab===8&&<span className="subtle-chip" style={{display:'inline-flex',alignItems:'center',gap:6,color:'#64748b'}}><FileText size={14}/>Pre-Analysis Stage</span>}</div><div className="form-bottom-right">{tab===8&&<button type="button" className="button" disabled={preAnalysisSaving||busy} title="Save Pre-Analysis Draft" style={{display:'inline-flex',alignItems:'center',gap:6}} onClick={async()=>{if(preAnalysisSaveRef.current){setPreAnalysisSaving(true);try{await preAnalysisSaveRef.current();}finally{setPreAnalysisSaving(false);}}}}>{preAnalysisSaving?<Loader2 size={15} className="spin"/>:<Save size={15}/>}<span>{preAnalysisSaving?'Saving...':'Save Draft'}</span></button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
     {fapComparisonModal && (
       <FapComparisonModal
         comparison={fapComparisonModal}
@@ -1766,10 +1872,10 @@ function FapComparisonModal({
           </div>
 
           <div style={{fontSize:'12px', color:'#64748b', lineHeight:1.5}}>
-            Choose the next action:
+            Konfirmasi verifikasi dokumen fisik FAP:
             <ul style={{margin:'6px 0 0 18px', padding:0}}>
-              <li><strong>Approve Changes:</strong> Updates the database values with the latest data from the physical FAP document and continues the process.</li>
-              <li><strong>Correct Data:</strong> Closes this dialog and keeps the current data, allowing you to review or correct the data in the form manually.</li>
+              <li><strong>Setujui Dokumen:</strong> TIDAK akan mengubah data sistem/database. Semua perbedaan dicatat pada Remarks, dan bagian Customer &amp; PIC akan dikunci sebelum beralih ke Pre-analysis.</li>
+              <li><strong>Review Remarks:</strong> Menutup modal dan tetap pada form untuk mereview atau menambahkan catatan remarks.</li>
             </ul>
           </div>
         </div>
@@ -1782,7 +1888,7 @@ function FapComparisonModal({
             onClick={onCorrect} 
             style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
           >
-            <Pencil size={14} /> Correct Data
+            <Pencil size={14} /> Review Remarks / Batal
           </button>
           <button 
             type="button" 
@@ -1791,7 +1897,7 @@ function FapComparisonModal({
             onClick={() => onApprove(comparison.extractedData)} 
             style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
           >
-            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Approve Changes
+            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Setujui Dokumen (Kunci Customer &amp; PIC)
           </button>
         </div>
       </div>
@@ -1875,7 +1981,7 @@ function FapRemarksTinyMCE({
   );
 }
 
-function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void,filterStage?:string}){
+function Documents({a,user,onChange,notify,filterStage,onApproveDocument}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void,filterStage?:string,onApproveDocument?:(updatedApp?:any)=>void}){
   const evidenceDefs = [
     { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT', desc: 'Official signed financing application form from debtor' },
     { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA', desc: 'Initial review and credit feasibility analysis by Credit Analyst' },
@@ -2363,20 +2469,24 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     }
   }
 
-  async function handleApproveFapChanges(extractedData: any) {
+  async function handleApproveFapChanges() {
     setBusy(true);
     setError('');
     try {
-      await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
-        approvedData: extractedData,
+      const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
         remarks: fapRemarks
       });
-      const updated = await api(`/applications/${a.id}`);
-      onChange(updated);
+      localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
+      const updated = res?.application || (await api(`/applications/${a.id}`));
       setFapComparison(null);
-      notify('OCR data changes approved. Stage advanced to Pre-analysis.');
+      notify('Dokumen fisik FAP telah disetujui. Bagian Customer & PIC dikunci, beralih ke tahap Pre-analysis.');
+      if (onApproveDocument) {
+        onApproveDocument(updated);
+      } else {
+        onChange({ ...updated, customerDetailLocked: true, stage: 'Pre-analysis' });
+      }
     } catch (err: any) {
-      setError('Failed to approve data changes: ' + err.message);
+      setError('Gagal menyetujui dokumen: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -2390,9 +2500,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         remarks: fapRemarks
       });
       setFapComparison(null);
-      notify('OCR changes dismissed. Current system data retained.');
+      notify('Catatan remarks disimpan. Tetap pada dokumen saat ini.');
     } catch (err: any) {
-      setError('Failed to dismiss data changes: ' + err.message);
+      setError('Gagal menutup perbandingan data: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -2890,30 +3000,32 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   </div>
 
                   {/* Bottom Actions Bar */}
-                  {fapComparison.diffs.length > 0 && (
-                    <div className="fap-diff-actions-bar">
-                      <span style={{fontSize:'12px', color:'#64748b'}}>
-                        Choose <strong>Approve Changes</strong> to update the system data, or <strong>Correct Data</strong> to keep the current system data.
+                  {fapComparison && (
+                    <div className="fap-diff-actions-bar" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px', background:'#f8fafc', padding:'12px 18px', border:'1px solid #e2e8f0', borderRadius:'8px', marginTop:'14px', flexWrap:'wrap'}}>
+                      <span style={{fontSize:'12.5px', color:'#475569', lineHeight:1.4, flex:1, minWidth:'280px'}}>
+                        Perbedaan dokumen fisik FAP dicatat pada kolom Remarks di atas. Menyetujui dokumen ini <strong>TIDAK akan mengubah data sistem/database</strong>, dan akan <strong>mengunci bagian Customer &amp; PIC</strong> sebelum melanjutkan ke tahap Pre-analysis.
                       </span>
-                      <div className="fap-diff-actions-right">
+                      <div className="fap-diff-actions-right" style={{display:'flex', alignItems:'center', gap:'10px', flexShrink:0}}>
                         <button
                           type="button"
                           className="button"
                           disabled={busy}
                           onClick={handleDismissFapChanges}
                           style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
+                          title="Simpan catatan perbedaan dan tetap berada pada tab dokumen"
                         >
-                          <Pencil size={14} /> Correct Data (Keep System)
+                          <Pencil size={14} /> Review Remarks / Tetap di Dokumen
                         </button>
                         <button
                           type="button"
                           className="button primary"
                           disabled={busy}
-                          onClick={() => handleApproveFapChanges(fapComparison.extractedData)}
+                          onClick={() => handleApproveFapChanges()}
                           style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
+                          title="Setujui verifikasi dokumen dan kunci form Customer & PIC"
                         >
                           {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-                          Approve Changes (Use OCR Data)
+                          Setujui Dokumen (Kunci Customer &amp; PIC)
                         </button>
                       </div>
                     </div>

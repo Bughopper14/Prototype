@@ -989,127 +989,8 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
   const current = await intakeDetail(id);
   if (!current) return res.status(404).json({ error: 'Application not found' });
 
-  const bodyData = req.body?.approvedData || {};
-  const approvedFields: string[] = Array.isArray(req.body?.fields) ? req.body.fields : Object.keys(bodyData);
-  const shouldApply = (f: string) => approvedFields.includes(f) && bodyData[f] !== undefined && bodyData[f] !== null && String(bodyData[f]).trim() !== '';
-
-  const customerUpdates: Record<string, any> = { ...(current.customer || {}) };
-  const profileUpdates: Record<string, any> = { ...current };
-  const picUpdates: Record<string, any> = { ...(current.pic || {}) };
-  const proposalUpdates: Record<string, any> = { ...(current.proposal || {}) };
-
-  if (shouldApply('companyName')) {
-    customerUpdates.companyName = bodyData.companyName;
-    profileUpdates.companyName = bodyData.companyName;
-  }
-  if (shouldApply('nib')) {
-    customerUpdates.nib = bodyData.nib;
-    profileUpdates.nib = bodyData.nib;
-  }
-  if (shouldApply('npwp')) {
-    customerUpdates.npwp = bodyData.npwp;
-    profileUpdates.npwp = bodyData.npwp;
-  }
-  if (shouldApply('companyAddress')) {
-    customerUpdates.companyAddress = bodyData.companyAddress;
-    profileUpdates.companyAddress = bodyData.companyAddress;
-  }
-  if (shouldApply('rt')) {
-    customerUpdates.rt = bodyData.rt;
-    profileUpdates.rt = bodyData.rt;
-  }
-  if (shouldApply('rw')) {
-    customerUpdates.rw = bodyData.rw;
-    profileUpdates.rw = bodyData.rw;
-  }
-  if (shouldApply('city')) {
-    customerUpdates.city = bodyData.city;
-    profileUpdates.city = bodyData.city;
-  }
-  if (shouldApply('province')) {
-    customerUpdates.province = bodyData.province;
-    profileUpdates.province = bodyData.province;
-  }
-  if (shouldApply('postalCode')) {
-    customerUpdates.postalCode = bodyData.postalCode;
-    profileUpdates.postalCode = bodyData.postalCode;
-  }
-  if (shouldApply('phoneFax')) {
-    profileUpdates.phoneFax = bodyData.phoneFax;
-  }
-  if (shouldApply('email')) {
-    profileUpdates.email = bodyData.email;
-  }
-  if (shouldApply('website')) {
-    profileUpdates.website = bodyData.website;
-  }
-  if (shouldApply('mainBusiness')) {
-    profileUpdates.mainBusiness = bodyData.mainBusiness;
-  }
-  if (shouldApply('repaymentSource')) {
-    profileUpdates.repaymentSource = bodyData.repaymentSource;
-  }
-  if (shouldApply('locationStatus')) {
-    profileUpdates.locationStatus = bodyData.locationStatus;
-  }
-  if (shouldApply('establishmentActNo')) {
-    profileUpdates.establishmentActNo = bodyData.establishmentActNo;
-  }
-  if (shouldApply('establishmentDate')) {
-    profileUpdates.establishmentDate = bodyData.establishmentDate;
-  }
-  if (shouldApply('latestDeedNo')) {
-    profileUpdates.latestDeedNo = bodyData.latestDeedNo;
-  }
-  if (shouldApply('latestDeedDate')) {
-    profileUpdates.latestDeedDate = bodyData.latestDeedDate;
-  }
-
-  if (shouldApply('picName')) picUpdates.picName = bodyData.picName;
-  if (shouldApply('picPosition')) picUpdates.position = bodyData.picPosition;
-  if (shouldApply('picPhone')) picUpdates.phone = bodyData.picPhone;
-  if (shouldApply('picEmail')) picUpdates.email = bodyData.picEmail;
-  if (shouldApply('picAddress')) picUpdates.currentAddress = bodyData.picAddress;
-  if (shouldApply('picCity')) picUpdates.city = bodyData.picCity;
-  if (shouldApply('picProvince')) picUpdates.province = bodyData.picProvince;
-  if (shouldApply('picPostalCode')) picUpdates.postalCode = bodyData.picPostalCode;
-
-  let hasProposalUpdates = false;
-  if (shouldApply('financingValue')) {
-    proposalUpdates.financingValue = Number(String(bodyData.financingValue).replace(/[^\d.-]/g, ''));
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('downPaymentValue')) {
-    proposalUpdates.downPaymentValue = Number(String(bodyData.downPaymentValue).replace(/[^\d.-]/g, ''));
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('tenorMonths')) {
-    proposalUpdates.tenorMonths = Number(String(bodyData.tenorMonths).replace(/[^\d.-]/g, ''));
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('facilityPurpose')) {
-    proposalUpdates.facilityPurpose = bodyData.facilityPurpose;
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('financingMethod')) {
-    proposalUpdates.financingMethod = bodyData.financingMethod;
-    hasProposalUpdates = true;
-  }
-
-  await saveCustomerPic(id, {
-    customer: customerUpdates,
-    profile: profileUpdates,
-    pic: picUpdates
-  });
-
-  if (hasProposalUpdates) {
-    try {
-      await saveBusiness(id, { proposal: proposalUpdates });
-    } catch (bizErr) {
-      console.warn('saveBusiness proposal updates error:', bizErr);
-    }
-  }
-
+  // Per user specification: Approving FAP document does NOT modify system/database values.
+  // All differences are documented in remarks.
   if (req.body?.remarks !== undefined) {
     await saveFapRemarks(id, String(req.body.remarks || ''));
   }
@@ -1124,7 +1005,7 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
   }
 
   const updated = await intakeDetail(id);
-  res.json({ success: true, application: updated });
+  res.json({ success: true, application: updated, customerDetailLocked: true });
 });
 
 app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
