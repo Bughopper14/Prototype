@@ -90,6 +90,9 @@ export interface PreAnalysisData {
   // 3. CUSTOMER & GROUP BACKGROUND
   uboInfo: string;
   companyBackground: string;
+  starGroupMilestonesNarrative?: string;
+  businessDevBackground?: string;
+  operationalTeamInfo?: string;
   milestones: MilestoneItem[];
   existingFincoBackup: string;
 
@@ -192,7 +195,33 @@ B. PT Pangan Sejahtera Santosa (PASS) (Existing Project):
   financingSchemeRequested: 'Tenor : 36-month lease\nSD : 15%',
 
   uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
-  companyBackground: `PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).\n\nSTAR Group – Key Milestones\n2022 | PT PASS Established – FMCG Distribution Business (Sinar Sosro, FKS, Perfetti, Mondelez)\nQ1 2024 | PT STAR Established as Holding Company\nBusiness Development Background: Mr. Hansen Santosa partnered with Mr. Herry Tho (forestry logistics background from Pekanbaru) to enter forestry hauling.\nNovember 2024 | PT HPS Established – Secured 5-year RAPP contract starting Dec 2024.\nLate 2025 | Expansion into Land Clearing & Harvesting with 3 APP/Sinar Mas companies.\nEnd-2025 | PT HTPS Established – Focused specifically on harvesting business.`,
+  companyBackground: 'PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).',
+  starGroupMilestonesNarrative: `2022 | PT PASS Established – FMCG Distribution Business
+- PT Pangan Sejahtera Santosa (PT PASS) was established by Mr. Hansen Santosa, son of Mr. Oky Santosa, marking the beginning of the STAR Group's business operations.
+- PT PASS focuses on urban FMCG distribution, operating warehouses and providing next-day delivery services while generating revenue from distribution margins.
+- In 2022, PT PASS supported the distribution activities of several major FMCG companies, including PT Sinar Sosro, PT FKS Pangan Nusantara, PT Perfetti Van Melle, and PT Mondelez Indonesia Trading.
+
+Q1 2024 | PT STAR Established as Holding Company
+- PT Sentosa Abadi Raja (STAR) was established by Mr. Hansen Santosa as a holding company to consolidate and manage the businesses of Mr. Hansen.
+
+November 2024 | PT HPS Established – Entry into Forestry Logistics and Hauling
+- PT HPS was established as the vehicle for STAR Group's entry into forestry, following Mr. Herry Tho's former experience. The initial business focus was forestry logistics and wood hauling.
+- PT HPS secured a five-year contract with RAPP, with operations commencing in December 2024.
+
+Late 2025 | Expansion into Land Clearing and Harvesting
+- After approximately one year of forestry operations, Mr. Herry Tho proposed further expansion into land clearing and harvesting.
+- In November 2025, PT HPS commenced land clearing, maintenance, and logging projects with three APP Group/Sinar Mas companies:
+  1. PT Bumi Andalas Permai
+  2. PT Bumi Mekar Hijau
+  3. PT Sebangun Bumi Andalas Wood Industries
+
+End-2025 | PT HTPS Established – Harvesting Business
+- PT HTPS was established by Mr. Hansen Santosa to focus specifically on harvesting projects.
+- The establishment of a separate entity was intended to differentiate and streamline the diversification of each business/project within the STAR Group and to focusing on land clearing & harvesting contractor.`,
+  businessDevBackground: `While seeking a partner to develop wingbox trucking services to support his FMCG distribution business, Mr. Hansen Santosa met Mr. Herry Tho.
+- Mr. Herry Tho is based from Pekanbaru and has a background in logistics and hauling, with business connections within the forestry sector, including contacts at RAPP and APP/Sinar Mas. Through this relationship, he introduced Mr. Hansen to investment opportunities in forestry logistics and wood hauling.
+- Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
+  operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
   milestones: [
     { year: '2022', milestone: "PT Pangan Sejahtera Santosa (PASS) established – Started the Group's business through urban FMCG distribution and supported major FMCG principals." },
     { year: 'Q1 2024', milestone: "PT Santosa Abadi Raja (STAR) established – Set up as a holding company to consolidate businesses owned by Mr. Hansen and his family." },
@@ -977,14 +1006,56 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background (Profil Singkat Entitas & Holding)</label>
                   <textarea
-                    rows={4}
+                    rows={3}
                     name="companyBackground"
                     data-field="companyBackground"
                     value={data.companyBackground}
                     onChange={e => updateField('companyBackground', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-companyBackground')}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>STAR Group – Key Milestones Narrative (Riwayat & Narasi Ekspansi)</span>
+                    <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600 }}>2022 - 2026 Expansion</span>
+                  </label>
+                  <textarea
+                    rows={7}
+                    name="starGroupMilestonesNarrative"
+                    data-field="starGroupMilestonesNarrative"
+                    value={data.starGroupMilestonesNarrative || ''}
+                    onChange={e => updateField('starGroupMilestonesNarrative', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-starGroupMilestonesNarrative')}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Business Development Background (Kemitraan Herry Tho & Rekam Jejak)</span>
+                    <span style={{ fontSize: '0.68rem', color: '#dc2626', fontWeight: 600 }}>Key Risk Factor</span>
+                  </label>
+                  <textarea
+                    rows={5}
+                    name="businessDevBackground"
+                    data-field="businessDevBackground"
+                    value={data.businessDevBackground || ''}
+                    onChange={e => updateField('businessDevBackground', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-businessDevBackground')}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
+                  <textarea
+                    rows={3}
+                    name="operationalTeamInfo"
+                    data-field="operationalTeamInfo"
+                    value={data.operationalTeamInfo || ''}
+                    onChange={e => updateField('operationalTeamInfo', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-operationalTeamInfo')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
@@ -2182,7 +2253,27 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>
-                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.companyBackground}</td>
+                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
+                      {data.companyBackground}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>STAR Group – Key Milestones</td>
+                    <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
+                      {data.starGroupMilestonesNarrative}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Business Development Background</td>
+                    <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
+                      {data.businessDevBackground}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other information :</td>
+                    <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
+                      {data.operationalTeamInfo}
+                    </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Milestones</td>

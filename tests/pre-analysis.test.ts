@@ -168,3 +168,25 @@ test('pre-analysis Section 2 separates holding group, project name, location, an
   assert.match(data.newProjects, /PT Harta Putramas Santosa/i);
 });
 
+test('pre-analysis Section 3 separates company background, star group milestones narrative, business dev background, and operational team info', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-004');
+  // Company Background
+  assert.ok(data.companyBackground, 'companyBackground must exist');
+  assert.match(data.companyBackground, /PT Handalan Putramas Santosa/i);
+
+  // STAR Group Milestones Narrative
+  assert.ok(data.starGroupMilestonesNarrative, 'starGroupMilestonesNarrative must exist');
+  assert.match(data.starGroupMilestonesNarrative, /PT PASS Established/i);
+  assert.match(data.starGroupMilestonesNarrative, /PT STAR Established as Holding Company/i);
+  assert.match(data.starGroupMilestonesNarrative, /PT HPS Established/i);
+
+  // Business Development Background (Mr. Herry Tho)
+  assert.ok(data.businessDevBackground, 'businessDevBackground must exist');
+  assert.match(data.businessDevBackground, /Mr\. Herry Tho/i);
+  assert.match(data.businessDevBackground, /DNR Logistics/i);
+
+  // Other Information / Operational Team
+  assert.ok(data.operationalTeamInfo, 'operationalTeamInfo must exist');
+  assert.match(data.operationalTeamInfo, /Sarindo/i);
+});
+

@@ -119,8 +119,34 @@ export const DEFAULT_PRE_ANALYSIS_DATA = {
   investmentPlan: '20-30 units nearest plan: 20 units LIUGONG Excavator for RAPP & 30 units for Sinarmas',
   financingSchemeRequested: '36-month lease, 15-20% Security Deposit, Normal Installment structure',
 
-  uboInfo: '1. Mr. Oky Santosa (Father)\n2. Mr. Hansen Santosa (Owner)\n3. Mr. Leonard Santosa (Brother)',
-  companyBackground: 'STAR Group operates in logistics, transportation, and industrial forestry harvesting. Group holding PT PASS established 2022 handling FMCG, expanding into PT HPS and PT HTPS for forestry concessions.',
+  uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
+  companyBackground: 'PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).',
+  starGroupMilestonesNarrative: `2022 | PT PASS Established – FMCG Distribution Business
+- PT Pangan Sejahtera Santosa (PT PASS) was established by Mr. Hansen Santosa, son of Mr. Oky Santosa, marking the beginning of the STAR Group's business operations.
+- PT PASS focuses on urban FMCG distribution, operating warehouses and providing next-day delivery services while generating revenue from distribution margins.
+- In 2022, PT PASS supported the distribution activities of several major FMCG companies, including PT Sinar Sosro, PT FKS Pangan Nusantara, PT Perfetti Van Melle, and PT Mondelez Indonesia Trading.
+
+Q1 2024 | PT STAR Established as Holding Company
+- PT Sentosa Abadi Raja (STAR) was established by Mr. Hansen Santosa as a holding company to consolidate and manage the businesses of Mr. Hansen.
+
+November 2024 | PT HPS Established – Entry into Forestry Logistics and Hauling
+- PT HPS was established as the vehicle for STAR Group's entry into forestry, following Mr. Herry Tho's former experience. The initial business focus was forestry logistics and wood hauling.
+- PT HPS secured a five-year contract with RAPP, with operations commencing in December 2024.
+
+Late 2025 | Expansion into Land Clearing and Harvesting
+- After approximately one year of forestry operations, Mr. Herry Tho proposed further expansion into land clearing and harvesting.
+- In November 2025, PT HPS commenced land clearing, maintenance, and logging projects with three APP Group/Sinar Mas companies:
+  1. PT Bumi Andalas Permai
+  2. PT Bumi Mekar Hijau
+  3. PT Sebangun Bumi Andalas Wood Industries
+
+End-2025 | PT HTPS Established – Harvesting Business
+- PT HTPS was established by Mr. Hansen Santosa to focus specifically on harvesting projects.
+- The establishment of a separate entity was intended to differentiate and streamline the diversification of each business/project within the STAR Group and to focusing on land clearing & harvesting contractor.`,
+  businessDevBackground: `While seeking a partner to develop wingbox trucking services to support his FMCG distribution business, Mr. Hansen Santosa met Mr. Herry Tho.
+- Mr. Herry Tho is based from Pekanbaru and has a background in logistics and hauling, with business connections within the forestry sector, including contacts at RAPP and APP/Sinar Mas. Through this relationship, he introduced Mr. Hansen to investment opportunities in forestry logistics and wood hauling.
+- Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
+  operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
   milestones: [
     { year: '2022', entity: 'PT PASS', description: 'Established for FMCG transport (Sinar Sosro, FKS, Perfetti)' },
     { year: 'Q1 2024', entity: 'PT HPS', description: 'Formed to expand heavy logistics for RAPP & APP Sinarmas' },
