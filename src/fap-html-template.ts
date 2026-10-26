@@ -1816,6 +1816,14 @@ td
     table:first-of-type > tr:first-child > .xl69 {
         border-top: 1.0pt solid windowtext !important;
     }
+    table.fap-page-2-start,
+    table.fap-page-2-start > tbody > tr:first-child > td,
+    table.fap-page-2-start > tr:first-child > td {
+        border-top: 1.0pt solid windowtext !important;
+    }
+    #fap-preview-sec-company > td:not(.xl70) {
+        border-top: 0.5pt solid windowtext !important;
+    }
     table:first-of-type > tbody > tr:first-child > .xl67,
     table:first-of-type > tr:first-child > .xl67 {
         border-left: 1.0pt solid windowtext !important;
