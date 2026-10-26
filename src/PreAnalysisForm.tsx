@@ -2905,33 +2905,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         </div>
       </div>
     
-          {/* Bottom actions for Section Form */}
-          <div style={{ marginTop: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              className="button"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '7px 16px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                borderRadius: '6px',
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                color: '#1e293b',
-                cursor: 'pointer',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-              }}
-              title="Save Pre-Analysis Draft"
-            >
-              {saving ? <Loader2 size={13} className="spin" /> : <Save size={13} />}
-              <span>{saving ? 'Saving...' : 'Save Draft'}</span>
-            </button>
-          </div>
+
 </div>
   );
 }
