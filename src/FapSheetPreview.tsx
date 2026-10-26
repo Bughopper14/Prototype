@@ -124,26 +124,94 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   depositedCapital: 'fap-cell-sh-0-shares',
 };
 
-export const SECTION_TO_CELL_ID_MAP: Record<string, string> = {
-  'fap-preview-sec-header': 'fap-cell-applicationDate',
-  'fap-preview-sec-company': 'fap-cell-companyName',
+export const SECTION_TO_CELL_IDS_MAP: Record<string, string[]> = {
+  'fap-preview-sec-header': [
+    'fap-cell-applicationDate',
+    'fap-cell-fapNumber',
+    'fap-cell-custNew',
+    'fap-cell-custExisting',
+    'fap-cell-corporate',
+    'fap-cell-commercial',
+    'fap-cell-micro',
+    'fap-cell-companyName',
+    'fap-cell-nib',
+    'fap-cell-npwp',
+    'fap-cell-establishmentActNo',
+    'fap-cell-establishmentDate',
+  ],
+  'fap-preview-sec-company': [
+    'fap-cell-branchCode',
+    'fap-cell-liugongUser',
+    'fap-cell-locationStatus',
+    'fap-cell-companyAddress',
+    'fap-cell-city',
+    'fap-cell-province',
+    'fap-cell-postalCode',
+    'fap-cell-phoneFax',
+    'fap-cell-website',
+    'fap-cell-email',
+  ],
+  'fap-preview-sec-business': [
+    'fap-cell-mainBusiness',
+    'fap-cell-repaymentSource',
+    'fap-cell-experienceYears',
+    'fap-cell-experienceMonths',
+    'fap-cell-latestDeedNo',
+    'fap-cell-latestDeedDate',
+  ],
+  'fap-preview-sec-pic': [
+    'fap-cell-picName',
+    'fap-cell-phone',
+    'fap-cell-position',
+    'fap-cell-picEmail',
+    'fap-cell-currentAddress',
+    'fap-cell-picCity',
+    'fap-cell-picProvince',
+    'fap-cell-picPostalCode',
+  ],
+  'fap-preview-sec-projects': [
+    'fap-cell-sh-0-name', 'fap-cell-sh-0-pos', 'fap-cell-sh-0-shares', 'fap-cell-sh-0-pct',
+    'fap-cell-sh-1-name', 'fap-cell-sh-1-pos', 'fap-cell-sh-1-shares', 'fap-cell-sh-1-pct',
+    'fap-cell-sh-2-name', 'fap-cell-sh-2-pos', 'fap-cell-sh-2-shares', 'fap-cell-sh-2-pct',
+    'fap-cell-sh-3-name', 'fap-cell-sh-3-pos', 'fap-cell-sh-3-shares', 'fap-cell-sh-3-pct',
+    'fap-cell-sh-4-name', 'fap-cell-sh-4-pos', 'fap-cell-sh-4-shares', 'fap-cell-sh-4-pct',
+    'fap-cell-sh-5-name', 'fap-cell-sh-5-pos', 'fap-cell-sh-5-shares', 'fap-cell-sh-5-pct',
+    'fap-cell-sh-6-name', 'fap-cell-sh-6-pos', 'fap-cell-sh-6-shares', 'fap-cell-sh-6-pct',
+    'fap-cell-sh-7-name', 'fap-cell-sh-7-pos', 'fap-cell-sh-7-shares', 'fap-cell-sh-7-pct',
+  ],
+};
+
+export const SECTION_TO_SCROLL_TARGET_MAP: Record<string, string> = {
+  'fap-preview-sec-header': 'fap-cell-fapNumber',
+  'fap-preview-sec-company': 'fap-cell-companyAddress',
   'fap-preview-sec-business': 'fap-cell-mainBusiness',
   'fap-preview-sec-pic': 'fap-cell-picName',
   'fap-preview-sec-projects': 'fap-cell-sh-0-name',
 };
 
+export const SECTION_TO_CELL_ID_MAP: Record<string, string> = {
+  ...SECTION_TO_SCROLL_TARGET_MAP,
+};
+
 export const CELL_ID_TO_SECTION_MAP: Record<string, string> = {
-  'fap-cell-fapNumber': 'fap-preview-sec-header',
+  // Header / Identity
   'fap-cell-applicationDate': 'fap-preview-sec-header',
-  'fap-cell-branchCode': 'fap-preview-sec-header',
+  'fap-cell-fapNumber': 'fap-preview-sec-header',
   'fap-cell-custNew': 'fap-preview-sec-header',
   'fap-cell-custExisting': 'fap-preview-sec-header',
   'fap-cell-corporate': 'fap-preview-sec-header',
   'fap-cell-commercial': 'fap-preview-sec-header',
   'fap-cell-micro': 'fap-preview-sec-header',
-  'fap-cell-liugongUser': 'fap-preview-sec-header',
+  'fap-cell-companyName': 'fap-preview-sec-header',
+  'fap-cell-nib': 'fap-preview-sec-header',
+  'fap-cell-npwp': 'fap-preview-sec-header',
+  'fap-cell-establishmentActNo': 'fap-preview-sec-header',
+  'fap-cell-establishmentDate': 'fap-preview-sec-header',
 
-  'fap-cell-companyName': 'fap-preview-sec-company',
+  // Company / Domicile
+  'fap-cell-branchCode': 'fap-preview-sec-company',
+  'fap-cell-liugongUser': 'fap-preview-sec-company',
+  'fap-cell-locationStatus': 'fap-preview-sec-company',
   'fap-cell-companyAddress': 'fap-preview-sec-company',
   'fap-cell-city': 'fap-preview-sec-company',
   'fap-cell-province': 'fap-preview-sec-company',
@@ -151,19 +219,16 @@ export const CELL_ID_TO_SECTION_MAP: Record<string, string> = {
   'fap-cell-phoneFax': 'fap-preview-sec-company',
   'fap-cell-website': 'fap-preview-sec-company',
   'fap-cell-email': 'fap-preview-sec-company',
-  'fap-cell-repaymentSource': 'fap-preview-sec-company',
-  'fap-cell-locationStatus': 'fap-preview-sec-company',
 
+  // Business Profile & Deeds
   'fap-cell-mainBusiness': 'fap-preview-sec-business',
-  'fap-cell-establishmentActNo': 'fap-preview-sec-business',
-  'fap-cell-establishmentDate': 'fap-preview-sec-business',
+  'fap-cell-repaymentSource': 'fap-preview-sec-business',
   'fap-cell-experienceYears': 'fap-preview-sec-business',
   'fap-cell-experienceMonths': 'fap-preview-sec-business',
   'fap-cell-latestDeedNo': 'fap-preview-sec-business',
   'fap-cell-latestDeedDate': 'fap-preview-sec-business',
-  'fap-cell-nib': 'fap-preview-sec-business',
-  'fap-cell-npwp': 'fap-preview-sec-business',
 
+  // PIC
   'fap-cell-picName': 'fap-preview-sec-pic',
   'fap-cell-phone': 'fap-preview-sec-pic',
   'fap-cell-position': 'fap-preview-sec-pic',
@@ -173,7 +238,39 @@ export const CELL_ID_TO_SECTION_MAP: Record<string, string> = {
   'fap-cell-picProvince': 'fap-preview-sec-pic',
   'fap-cell-picPostalCode': 'fap-preview-sec-pic',
 
+  // Projects & Shareholders
   'fap-cell-sh-0-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-0-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-0-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-0-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-1-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-1-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-1-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-1-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-2-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-2-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-2-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-2-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-3-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-3-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-3-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-3-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-4-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-4-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-4-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-4-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-5-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-5-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-5-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-5-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-6-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-6-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-6-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-6-pct': 'fap-preview-sec-projects',
+  'fap-cell-sh-7-name': 'fap-preview-sec-projects',
+  'fap-cell-sh-7-pos': 'fap-preview-sec-projects',
+  'fap-cell-sh-7-shares': 'fap-preview-sec-projects',
+  'fap-cell-sh-7-pct': 'fap-preview-sec-projects',
 };
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
@@ -392,37 +489,72 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     const doc = iframe.contentDocument;
     const win = iframe.contentWindow;
 
-    const targetCellId = (props.activeField && FIELD_TO_CELL_ID_MAP[props.activeField]) ||
-                         (props.activeSection && (SECTION_TO_CELL_ID_MAP[props.activeSection] || props.activeSection)) ||
-                         (props.activeSection && FIELD_TO_CELL_ID_MAP[props.activeSection]);
+    // Clear old highlights
+    doc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(h => {
+      h.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+    });
 
-    if (!targetCellId) return;
+    if (!props.activeSection && !props.activeField) return;
 
-    const el = doc.getElementById(targetCellId);
-    if (el) {
-      // Clear old highlights
-      doc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(h => {
-        h.classList.remove('fap-cell-highlight', 'fap-section-highlight');
-      });
+    if (props.activeSection === 'all') {
+      win.scrollTo({ top: 0, behavior: 'smooth' });
+      doc.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+      doc.body.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
-      // Highlight target with blue theme
-      const isSection = targetCellId.startsWith('fap-preview-sec-') || el.tagName === 'TR';
-      el.classList.add(isSection ? 'fap-section-highlight' : 'fap-cell-highlight');
+    let cellIdsToHighlight: string[] = [];
+    let scrollTargetCellId: string | null = null;
 
-      // Robust pixel-level scroll calculation inside iframe
-      const rect = el.getBoundingClientRect();
+    if (props.activeField) {
+      const cid = FIELD_TO_CELL_ID_MAP[props.activeField];
+      if (cid) {
+        cellIdsToHighlight.push(cid);
+        scrollTargetCellId = cid;
+      }
+    } else if (props.activeSection) {
+      const sectionCells = SECTION_TO_CELL_IDS_MAP[props.activeSection];
+      if (sectionCells && sectionCells.length > 0) {
+        cellIdsToHighlight = sectionCells;
+        scrollTargetCellId = SECTION_TO_SCROLL_TARGET_MAP[props.activeSection] || sectionCells[0];
+      } else {
+        const single = SECTION_TO_CELL_ID_MAP[props.activeSection] || props.activeSection;
+        if (single) {
+          cellIdsToHighlight.push(single);
+          scrollTargetCellId = single;
+        }
+      }
+    }
+
+    if (cellIdsToHighlight.length === 0 && !scrollTargetCellId) return;
+
+    // Highlight all target cells with blue theme
+    cellIdsToHighlight.forEach(cid => {
+      const cel = doc.getElementById(cid);
+      if (cel) {
+        cel.classList.add('fap-cell-highlight');
+      }
+    });
+
+    // Robust pixel-level scroll calculation inside iframe
+    const scrollTargetEl = scrollTargetCellId ? doc.getElementById(scrollTargetCellId) : null;
+    if (scrollTargetEl) {
+      const rect = scrollTargetEl.getBoundingClientRect();
       const currentScrollY = win.scrollY || doc.documentElement.scrollTop || doc.body.scrollTop || 0;
       const targetY = Math.max(0, currentScrollY + rect.top - 60);
 
       win.scrollTo({ top: targetY, behavior: 'smooth' });
       doc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
       doc.body.scrollTo({ top: targetY, behavior: 'smooth' });
-
-      const timer = setTimeout(() => {
-        el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
-      }, 3500);
-      return () => clearTimeout(timer);
     }
+
+    const timer = setTimeout(() => {
+      cellIdsToHighlight.forEach(cid => {
+        const cel = doc.getElementById(cid);
+        if (cel) cel.classList.remove('fap-cell-highlight');
+      });
+    }, 4500);
+    return () => clearTimeout(timer);
   }, [props.activeSection, props.activeField, props.syncTick]);
 
   useEffect(() => {

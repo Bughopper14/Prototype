@@ -1750,6 +1750,10 @@ td
         position: relative !important;
         color: #1e3a8a !important;
     }
+    .fap-cell-highlight * {
+        color: #1e3a8a !important;
+        font-weight: 700 !important;
+    }
     .fap-section-highlight {
         animation: fapCellPulse 2.2s ease-in-out !important;
         outline: 4px solid #2563eb !important;

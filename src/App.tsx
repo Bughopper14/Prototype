@@ -7,9 +7,11 @@ import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
 import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {
-  FapSheetPreview, 
-  printFapDocument, 
+  FapSheetPreview,
+  printFapDocument,
   type FapSheetData,
+  SECTION_TO_CELL_IDS_MAP,
+  SECTION_TO_SCROLL_TARGET_MAP,
   SECTION_TO_CELL_ID_MAP,
   CELL_ID_TO_SECTION_MAP,
   FIELD_TO_CELL_ID_MAP
@@ -746,8 +748,49 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
  const [syncTick, setSyncTick] = useState<number>(() => Date.now());
 
  const handleTriggerSync = (secId: string) => {
+   if (!sideBySide) setSideBySide(true);
    setActiveSyncSection(secId);
    setSyncTick(Date.now());
+
+   // Instant direct highlight & scroll on live preview iframe if mounted
+   const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-detail-preview-col iframe');
+   iframes.forEach(iframe => {
+     try {
+       const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+       const win = iframe.contentWindow;
+       if (!iDoc || !win) return;
+
+       iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+         el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+       });
+
+       const sectionCells = SECTION_TO_CELL_IDS_MAP[secId] || [];
+       sectionCells.forEach(cid => {
+         const cel = iDoc.getElementById(cid);
+         if (cel) cel.classList.add('fap-cell-highlight');
+       });
+
+       const targetCellId = SECTION_TO_SCROLL_TARGET_MAP[secId] || sectionCells[0];
+       if (targetCellId) {
+         const targetEl = iDoc.getElementById(targetCellId);
+         if (targetEl) {
+           const rect = targetEl.getBoundingClientRect();
+           const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+           const targetY = Math.max(0, currentScrollY + rect.top - 60);
+           win.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+         }
+       }
+
+       setTimeout(() => {
+         sectionCells.forEach(cid => {
+           const cel = iDoc.getElementById(cid);
+           if (cel) cel.classList.remove('fap-cell-highlight');
+         });
+       }, 4500);
+     } catch (_) {}
+   });
  };
 
  const toggleSection = (secId: string) => {
@@ -1869,11 +1912,29 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const master = useMasterData();
 
   const sectionFieldMap: Record<string, string[]> = {
-    'fap-preview-sec-header': ['fapNumber', 'branchCode', 'customerStatus', 'companyType', 'applicationDate'],
-    'fap-preview-sec-company': ['companyName', 'companyAddress', 'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw', 'phoneFax', 'email', 'website'],
-    'fap-preview-sec-business': ['nib', 'npwp', 'sktNo', 'sppkpNo', 'mainBusiness', 'establishmentActNo', 'establishmentDate', 'latestDeedNo', 'latestDeedDate', 'experienceYears', 'experienceMonths'],
-    'fap-preview-sec-pic': ['picName', 'position', 'phone', 'email', 'picAddress', 'currentAddress', 'picCity', 'picProvince', 'picPostalCode', 'representativeType', 'idNumber'],
-    'fap-preview-sec-projects': ['shareholders', 'stakeholderType', 'projectName', 'projectOwner', 'projectValue', 'contractNumber', 'projects']
+    'fap-preview-sec-header': [
+      'fapNumber', 'applicationDate', 'customerCategory', 'customerStatus',
+      'companyName', 'companyType', 'nib', 'nibDate', 'npwp',
+      'establishmentActNo', 'establishmentDate'
+    ],
+    'fap-preview-sec-company': [
+      'branchCode', 'customerStatus', 'locationStatus', 'companyAddress',
+      'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw',
+      'phoneFax', 'email', 'website'
+    ],
+    'fap-preview-sec-business': [
+      'mainBusiness', 'repaymentSource', 'industrySegment', 'businessRole',
+      'experienceYears', 'experienceMonths', 'latestDeedNo', 'latestDeedDate'
+    ],
+    'fap-preview-sec-pic': [
+      'picName', 'position', 'phone', 'email', 'picEmail', 'picAddress',
+      'currentAddress', 'picCity', 'picProvince', 'picPostalCode',
+      'representativeType', 'idNumber'
+    ],
+    'fap-preview-sec-projects': [
+      'shareholders', 'stakeholderType', 'projectName', 'projectOwner',
+      'projectValue', 'contractNumber', 'projects'
+    ]
   };
 
   const fapSectionTitles: Record<string, string> = {
@@ -1965,26 +2026,13 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
           return;
         }
 
-        const targetCellId = SECTION_TO_CELL_ID_MAP[secId];
-        // Highlight cells belonging to this section
-        const sectionCells = Object.entries(CELL_ID_TO_SECTION_MAP)
-          .filter(([, sec]) => sec === secId)
-          .map(([cellId]) => cellId);
-
+        const sectionCells = SECTION_TO_CELL_IDS_MAP[secId] || [];
         sectionCells.forEach(cid => {
           const cel = iDoc.getElementById(cid);
           if (cel) cel.classList.add('fap-cell-highlight');
         });
 
-        if (secId === 'fap-preview-sec-projects') {
-          for (let i = 0; i < 8; i++) {
-            ['name', 'pos', 'shares', 'pct'].forEach(k => {
-              const cel = iDoc.getElementById(`fap-cell-sh-${i}-${k}`);
-              if (cel) cel.classList.add('fap-cell-highlight');
-            });
-          }
-        }
-
+        const targetCellId = SECTION_TO_SCROLL_TARGET_MAP[secId] || sectionCells[0];
         if (targetCellId) {
           const targetEl = iDoc.getElementById(targetCellId);
           if (targetEl) {
@@ -1998,10 +2046,11 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         }
 
         setTimeout(() => {
-          iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
-            el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+          sectionCells.forEach(cid => {
+            const cel = iDoc.getElementById(cid);
+            if (cel) cel.classList.remove('fap-cell-highlight');
           });
-        }, 3500);
+        }, 4500);
       } catch (err) {
         console.warn('Could not scroll iframe section:', err);
       }
