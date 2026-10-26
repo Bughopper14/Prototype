@@ -24,7 +24,8 @@ import {
   Sparkles,
   RefreshCw,
   Plus,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react';
 import { api } from './api';
 
@@ -354,95 +355,135 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       <div className="fap-detail-form-col" style={{ paddingRight: '10px' }}>
         {/* Sticky Action Header */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '10px 16px',
+          padding: '10px 14px',
           background: '#ffffff',
           borderRadius: '8px',
           border: '1px solid #cbd5e1',
           marginBottom: '14px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '12px'
         }}>
-          <div>
+          {/* Left Info: Title + Ref & FAP No stacked */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={18} color="#1e3a8a" />
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
+              <FileText size={17} color="#1b365d" style={{ flexShrink: 0 }} />
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
                 Pre-Analysis Form
               </h3>
+            </div>
+            <div style={{ fontSize: '0.73rem', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '2px', whiteSpace: 'nowrap' }}>
+              <div><span style={{ color: '#475569', fontWeight: 600 }}>Ref No:</span> {data.preAnalysisNo || '—'}</div>
+              <div><span style={{ color: '#475569', fontWeight: 600 }}>FAP No:</span> {data.fapNumber || '—'}</div>
+            </div>
+          </div>
+
+          {/* Right Actions: Unified Buttons + Recommendation status pill */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={handleSyncCustomerPicData}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: '#ffffff',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Sync Customer, NPWP, PIC, and Area from FAP Application"
+              >
+                <RefreshCw size={12} color="#475569" />
+                <span>Sync Customer Data</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handlePrint}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: '#ffffff',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  padding: '5px 10px',
+                  borderRadius: '5px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Print Pre-Analysis Document"
+              >
+                <Printer size={12} color="#475569" />
+                <span>Print</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  border: '1px solid #1b365d',
+                  padding: '5px 12px',
+                  borderRadius: '5px',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.7 : 1,
+                  transition: 'all 0.15s ease'
+                }}
+                title="Save Pre-Analysis Draft"
+              >
+                {saving ? <Loader2 size={12} className="spin" /> : <Save size={12} />}
+                <span>{saving ? 'Saving...' : 'Save Draft'}</span>
+              </button>
+            </div>
+
+            {/* Status & Recommendation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              {saveStatus === 'saved' && (
+                <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '3px', marginRight: '6px' }}>
+                  <CheckCircle2 size={13} /> Saved
+                </span>
+              )}
               <span style={{
-                background: data.recommendation === 'RECOMMEND' ? '#dcfce7' : '#fee2e2',
-                color: data.recommendation === 'RECOMMEND' ? '#15803d' : '#b91c1c',
-                fontSize: '0.7rem',
+                whiteSpace: 'nowrap',
+                background: data.recommendation === 'RECOMMEND' ? '#ecfdf5' : data.recommendation === 'CONDITIONAL' ? '#fffbeb' : '#fef2f2',
+                color: data.recommendation === 'RECOMMEND' ? '#047857' : data.recommendation === 'CONDITIONAL' ? '#b45309' : '#b91c1c',
+                fontSize: '0.67rem',
                 fontWeight: 700,
                 padding: '2px 8px',
-                borderRadius: '12px',
-                border: `1px solid ${data.recommendation === 'RECOMMEND' ? '#86efac' : '#fca5a5'}`
+                borderRadius: '10px',
+                border: `1px solid ${data.recommendation === 'RECOMMEND' ? '#a7f3d0' : data.recommendation === 'CONDITIONAL' ? '#fde68a' : '#fecaca'}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
               }}>
+                <span style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  background: data.recommendation === 'RECOMMEND' ? '#10b981' : data.recommendation === 'CONDITIONAL' ? '#f59e0b' : '#ef4444'
+                }} />
                 {data.recommendation}
               </span>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-              Ref: {data.preAnalysisNo} • FAP No: {data.fapNumber}
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={handleSyncCustomerPicData}
-              className="fap-acc-sync-btn"
-              style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#16a34a', padding: '6px 10px', fontSize: '0.75rem' }}
-              title="Sync Customer, NPWP, PIC, and Area from FAP Application"
-            >
-              <RefreshCw size={13} /> Sync Customer Data
-            </button>
-            {saveStatus === 'saved' && (
-              <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <CheckCircle2 size={14} /> Saved
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#1e3a8a',
-                color: '#ffffff',
-                border: 'none',
-                padding: '6px 14px',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Save size={14} />
-              {saving ? 'Saving...' : 'Save Draft'}
-            </button>
-            <button
-              type="button"
-              onClick={handlePrint}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                background: '#ffffff',
-                color: '#1e293b',
-                border: '1px solid #cbd5e1',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Printer size={14} />
-              Print
-            </button>
           </div>
         </div>
 
@@ -469,7 +510,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <button
                   type="button"
                   className="fap-acc-sync-btn"
-                  style={{ background: '#f0fdf4', borderColor: '#bbf7d0', color: '#16a34a' }}
+                  
                   title="Sync Customer, NPWP, PIC, and Area from FAP Application"
                   onClick={(e) => {
                     e.stopPropagation();
