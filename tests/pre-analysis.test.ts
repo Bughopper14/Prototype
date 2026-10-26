@@ -46,6 +46,21 @@ test('pre-analysis store initializes with 001/PREANA/MKT/IX/2026 default payload
   assert.ok(Array.isArray(data.lenderExposures), 'lenderExposures should be an array');
 });
 
+test('pre-analysis default payload includes Section 5 delivery & Section 7 competition table matching PDF', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-002');
+  // Section 5 Delivery & QA check
+  assert.ok(data.deliveryStatus, 'deliveryStatus should exist');
+  assert.match(data.deliveryStatus, /Not yet Deliver/i);
+  assert.ok(data.deliveryDate, 'deliveryDate should exist');
+  assert.ok(data.qaConclusion, 'qaConclusion should exist');
+
+  // Section 7 Competition Table (13 finco rows)
+  assert.ok(Array.isArray(data.competitionTable), 'competitionTable should be an array');
+  assert.equal(data.competitionTable.length, 13, 'competitionTable should contain 13 competitor benchmark rows');
+  assert.equal(data.competitionTable[0].finco, 'Komatsu Astra Finance (KAF)');
+  assert.equal(data.competitionTable[12].finco, 'SMFL');
+});
+
 test('pre-analysis store persists updates and retrieves saved values', async () => {
   const customData = {
     ...DEFAULT_PRE_ANALYSIS_DATA,
@@ -131,7 +146,6 @@ test('syncCustomerAndPicIntoPreAnalysis gracefully preserves existing data when 
   assert.equal(syncedPartial.customerPic, 'Dewi Sartika');
   assert.equal(syncedPartial.customerProjectName, 'Preserved Company');
 });
-
 
 test('createBlankPreAnalysisData correctly populates FAP data and blanks non-FAP fields', async () => {
   const { createBlankPreAnalysisData } = await import('../server/pre-analysis-store');
