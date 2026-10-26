@@ -794,7 +794,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
            const cel = iDoc.getElementById(cellId);
            if (cel) cel.classList.remove('fap-cell-highlight');
          }
-       }, 6500);
+       }, 3200);
      } catch (_) {}
    });
  };
@@ -842,7 +842,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
            const cel = iDoc.getElementById(cid);
            if (cel) cel.classList.remove('fap-cell-highlight');
          });
-       }, 6500);
+       }, 3200);
      } catch (_) {}
    });
  };
@@ -1397,10 +1397,6 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
                   </label>
                 </div>
                 <div className="new-customer-fields-block" style={{marginTop:12}}>
-                  <div style={{marginBottom:12}}>
-                    <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company Details</h4>
-                    <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Company identity from master customer record (read-only for Existing Customer).</p>
-                  </div>
                   <Fields 
                     fields={fapCustomerFields} 
                     value={selectedCustomer || customerDraft || blank(customerFields)} 
@@ -1415,10 +1411,6 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
               </>
             ) : (
               <div className="new-customer-fields-block" style={{marginTop:12}}>
-                <div style={{marginBottom:12}}>
-                  <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company Details</h4>
-                  <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>New company identity (Company Name PT/CV, business type, NIB 13 digits, NPWP 15-16 digits, and establishment deed).</p>
-                </div>
                 <Fields 
                   fields={fapCustomerFields} 
                   onNibOcr={canEditCustomerPic ? () => setNibOcrOpen(true) : undefined}
@@ -2003,8 +1995,42 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
   const [remarksSaveStatus, setRemarksSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
-  const [systemZoom, setSystemZoom] = useState<number>(0.72);
+  const [systemZoom, setSystemZoom] = useState<number>(0.15);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
+  const fapComparisonContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleFitBothDocuments = () => {
+    if (fapComparisonContainerRef.current) {
+      const containerW = fapComparisonContainerRef.current.clientWidth;
+      const colW = (containerW - 24) / 2;
+      const target = Math.max(0.10, Math.min(0.25, Number(((colW - 32) / 3940).toFixed(2))));
+      setSystemZoom(target);
+    } else {
+      setSystemZoom(0.15);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCode === 'FAP') {
+      handleFitBothDocuments();
+      const handleResize = () => {
+        if (fapComparisonContainerRef.current) {
+          const containerW = fapComparisonContainerRef.current.clientWidth;
+          const colW = (containerW - 24) / 2;
+          if (colW > 200) {
+            const target = Math.max(0.10, Math.min(0.25, Number(((colW - 32) / 3940).toFixed(2))));
+            setSystemZoom(target);
+          }
+        }
+      };
+      window.addEventListener('resize', handleResize);
+      const t = setTimeout(handleFitBothDocuments, 200);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        clearTimeout(t);
+      };
+    }
+  }, [selectedCode]);
   const [fapNavFilter, setFapNavFilter] = useState<string>('all');
   const [fapNavTick, setFapNavTick] = useState<number>(() => Date.now());
   const master = useMasterData();
@@ -2148,7 +2174,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
             const cel = iDoc.getElementById(cid);
             if (cel) cel.classList.remove('fap-cell-highlight');
           });
-        }, 6500);
+        }, 3200);
       } catch (err) {
         console.warn('Could not scroll iframe section:', err);
       }
@@ -2676,7 +2702,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
           </div>
 
           {/* 50 / 50 Comparison Split Grid */}
-          <div className="fap-comparison-grid-5050">
+          <div className="fap-comparison-grid-5050" ref={fapComparisonContainerRef}>
             {/* Left Pane (50%): Dokumen Terakhir yang di-generate oleh sistem */}
             <div className="fap-pane-card">
               <div className="fap-pane-head">
@@ -2706,12 +2732,15 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
                   <div style={{display:'flex', alignItems:'center', gap:'6px', marginLeft:'auto'}}>
                     <span style={{fontSize:'11px', color:'#64748b', fontWeight:500}}>Zoom:</span>
                     <div className="excel-zoom-controls compact" style={{display:'inline-flex', alignItems:'center', gap:'3px', background:'#f1f5f9', padding:'2px 6px', borderRadius:'6px', border:'1px solid #cbd5e1', height:'26px', boxSizing:'border-box'}}>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.4, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom Out (-)">
+                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.05, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom Out (-)">
                         <ZoomOut size={12} />
                       </button>
                       <span style={{fontSize:'11px', fontWeight:600, minWidth:'36px', textAlign:'center'}}>{Math.round(systemZoom * 100)}%</span>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.4, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom In (+)">
+                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.5, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom In (+)">
                         <ZoomIn size={12} />
+                      </button>
+                      <button type="button" onClick={handleFitBothDocuments} className="button small" style={{padding:'2px 6px', height:'20px', fontSize:'11px', fontWeight:600}} title="Fit both documents to screen size">
+                        Fit
                       </button>
                     </div>
                   </div>

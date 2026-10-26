@@ -1737,10 +1737,10 @@ td
         overflow-wrap: break-word !important;
     }
     [id^="fap-cell-"], td.fap-autofill-val {
-        transition: background-color 1.2s cubic-bezier(0.25, 1, 0.5, 1),
-                    box-shadow 1.2s cubic-bezier(0.25, 1, 0.5, 1),
-                    outline 1.2s cubic-bezier(0.25, 1, 0.5, 1),
-                    color 0.8s ease !important;
+        transition: background-color 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+                    box-shadow 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+                    outline 0.6s cubic-bezier(0.25, 1, 0.5, 1),
+                    color 0.4s ease !important;
         outline: 0px solid rgba(37, 99, 235, 0);
         outline-offset: -1px;
     }
@@ -1752,28 +1752,28 @@ td
             color: inherit;
         }
         16% {
-            /* Slow gentle fade in (~1.0s) */
+            /* Smooth gentle fade in (~0.5s) */
             background-color: #dbeafe;
             outline: 3.5px solid #2563eb;
             box-shadow: inset 0 0 0 3px #2563eb, 0 0 20px rgba(37, 99, 235, 0.65);
             color: #1e3a8a;
         }
         48% {
-            /* Slow, calm breathing */
+            /* Gentle breathing peak (~1.5s) */
             background-color: #bfdbfe;
             outline: 4px solid #1d4ed8;
             box-shadow: inset 0 0 0 4px #1d4ed8, 0 0 26px rgba(37, 99, 235, 0.8);
             color: #1e3a8a;
         }
         72% {
-            /* Sustained highlight */
+            /* Sustained highlight (~2.2s) */
             background-color: #dbeafe;
             outline: 3.5px solid #2563eb;
             box-shadow: inset 0 0 0 3px #2563eb, 0 0 18px rgba(37, 99, 235, 0.55);
             color: #1e3a8a;
         }
         100% {
-            /* Slow gentle fade out back to normal */
+            /* Smooth gentle fade out back to normal (~3.0s) */
             background-color: transparent;
             outline: 0px solid rgba(37, 99, 235, 0);
             box-shadow: inset 0 0 0 0 rgba(37, 99, 235, 0), 0 0 0 rgba(37, 99, 235, 0);
@@ -1781,7 +1781,7 @@ td
         }
     }
     .fap-cell-highlight {
-        animation: fapSlowFadeInOut 6s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+        animation: fapSlowFadeInOut 3s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
         outline-offset: -1px !important;
         z-index: 100 !important;
         position: relative !important;
@@ -1791,7 +1791,7 @@ td
         font-weight: 700 !important;
     }
     .fap-section-highlight {
-        animation: fapSlowFadeInOut 6.5s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
+        animation: fapSlowFadeInOut 3.2s cubic-bezier(0.25, 1, 0.5, 1) forwards !important;
         outline-offset: -1px !important;
         z-index: 90 !important;
         position: relative !important;
@@ -1844,15 +1844,18 @@ td
         html {
             background-color: #525659 !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 16px 20px 40px 20px !important;
             min-height: 100% !important;
             display: flex !important;
             justify-content: center !important;
+            width: max-content !important;
+            min-width: 100% !important;
+            box-sizing: border-box !important;
         }
         body {
             background-color: #ffffff !important;
-            margin: 20px auto 40px auto !important;
-            padding: 80px 420px 120px 350px !important;
+            margin: 0 auto !important;
+            padding: 60px 140px 80px 120px !important;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
             box-sizing: content-box !important;
             width: 3640px !important;
@@ -1876,10 +1879,18 @@ td
     table:first-of-type > tr:first-child > .xl69 {
         border-top: 1.0pt solid windowtext !important;
     }
-    table.fap-page-2-start,
-    table.fap-page-2-start > tbody > tr:first-child > td,
-    table.fap-page-2-start > tr:first-child > td {
+    table.fap-page-2-start {
+        border-top: none !important;
+    }
+    table.fap-page-2-start > tbody > tr:first-child > td:not(.xl70),
+    table.fap-page-2-start > tr:first-child > td:not(.xl70) {
         border-top: 1.0pt solid windowtext !important;
+    }
+    table.fap-page-2-start > tbody > tr:first-child > td.xl70,
+    table.fap-page-2-start > tr:first-child > td.xl70,
+    table.fap-page-2-start td.xl70,
+    table.fap-page-2-start th.xl70 {
+        border: none !important;
     }
     #fap-preview-sec-company > td:not(.xl70) {
         border-top: 0.5pt solid windowtext !important;

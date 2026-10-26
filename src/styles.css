@@ -1614,18 +1614,18 @@ button:focus-visible, a:focus-visible {
 label input,
 label select,
 label textarea {
-  transition: border-color 0.8s ease, box-shadow 0.8s ease, background-color 0.8s ease !important;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, background-color 0.4s ease !important;
 }
 
 label .field-label {
-  transition: color 0.8s ease !important;
+  transition: color 0.4s ease !important;
 }
 
 label.field-active-sync input,
 label.field-active-sync select,
 label.field-active-sync textarea {
   border-color: #3b82f6 !important;
-  animation: formFieldSlowPulse 3.6s infinite ease-in-out !important;
+  animation: formFieldSlowPulse 1.8s infinite ease-in-out !important;
 }
 
 label.field-active-sync .field-label {
@@ -4035,7 +4035,7 @@ label.field-active-sync .field-label {
 
 .fap-pane-body-system,
 .fap-pane-body-physical {
-  background: #94a3b8;
+  background: #525659;
   padding: 0 !important;
   overflow: hidden !important;
   display: flex;

@@ -666,7 +666,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
         const cel = doc.getElementById(cid);
         if (cel) cel.classList.remove('fap-cell-highlight');
       });
-    }, 6500);
+    }, 3200);
     return () => clearTimeout(timer);
   }, [props.activeSection, props.activeField, props.syncTick]);
 
@@ -676,13 +676,11 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     }
   }, [props.externalZoom]);
 
-  // Auto-fit initial zoom based on container width with print-like margins matching Gambar 1 exactly
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || (props.externalZoom !== undefined && props.externalZoom > 0)) return;
     const updateWidth = () => {
-      if (containerRef.current) {
+      if (containerRef.current && (!props.externalZoom || props.externalZoom <= 0)) {
         const w = containerRef.current.clientWidth;
-        // Total document width with printout page margins is 4410px
         const targetZoom = Math.min(0.5, Math.max(0.08, Number(((w - 40) / 4410).toFixed(2))));
         setZoomLevel(targetZoom);
       }
@@ -691,7 +689,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     const observer = new ResizeObserver(updateWidth);
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [props.externalZoom]);
 
   const handleZoomOut = () => setZoomLevel((z) => Math.max(0.05, Number((z - 0.05).toFixed(2))));
   const handleZoomIn = () => setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
@@ -701,7 +699,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       const targetZoom = Math.min(0.5, Math.max(0.08, Number(((w - 40) / 4410).toFixed(2))));
       setZoomLevel(targetZoom);
     } else {
-      setZoomLevel(0.12);
+      setZoomLevel(0.15);
     }
   };
 
@@ -786,7 +784,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       )}
 
       {/* Embedded Native HTML Template Frame */}
-      <div style={{ flex: 1, width: '100%', height: 'calc(100% - 40px)', background: '#525659', overflow: 'hidden' }}>
+      <div style={{ flex: 1, width: '100%', height: props.hideToolbar ? '100%' : 'calc(100% - 40px)', background: '#525659', overflow: 'hidden' }}>
         <iframe
           ref={iframeRef}
           srcDoc={FAP_EXCEL_HTML_TEMPLATE}
