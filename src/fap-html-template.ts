@@ -1777,7 +1777,7 @@ td
         }
         table {
             margin: 0 auto !important;
-            transform: scaleX(1.028) !important;
+            transform: scaleX(1.0545) !important;
             transform-origin: top center !important;
         }
         .fap-page-2-start {
@@ -1805,7 +1805,7 @@ td
         border-right: none !important;
         margin-left: auto !important;
         margin-right: auto !important;
-        transform: scaleX(1.028) !important;
+        transform: scaleX(1.0545) !important;
         transform-origin: top center !important;
     }
     table:first-of-type > tbody > tr:first-child > .xl67,
