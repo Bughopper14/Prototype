@@ -11,6 +11,7 @@ import {initializeFinanceMasters,financeMasterCatalog,saveFinanceMasters} from '
 import {initializeEquipmentMasters,equipmentMasterCatalog,saveEquipmentMasters} from './mysql-equipment-masters';
 import {initializeDocumentMasters,documentMasterCatalog,saveDocumentMasters} from './mysql-document-masters';
 import {initializeFinancialStatements,saveFinancialStatements} from './mysql-financial-statements';
+import {initPreAnalysisStore,getPreAnalysisData,savePreAnalysisData} from './pre-analysis-store';
 import {mergeLegal,deedTransition,reviewStatus,deedBaseline,canEditLegal,saveSingleDeed} from '../src/deed-workflow';
 import {validateWrite} from '../src/input-validation';
 import 'dotenv/config';
@@ -54,6 +55,7 @@ await initializeEquipmentMasters({...defaultMasterCatalog(),...initialCatalog});
 await initializeDocumentMasters({...defaultMasterCatalog(),...initialCatalog});
 await initializeApplicationDocuments();
 await initializeAudit();
+await initPreAnalysisStore();
 async function refreshDocuments(){if(!pool)return;const documents=(await documentMasterCatalog(defaultMasterCatalog())).documents;await syncApplicationDocuments();await syncLegacyDocumentChecklists(documents);await syncLegacyDocumentCatalog(documents);}
 await refreshDocuments();
 let cachedMasterData:{catalog:any,revision:number}|null=null;
@@ -88,6 +90,7 @@ for (const sub of ['ktp', 'npwp', 'nib', 'passport', 'kitas', 'akta', 'id_types'
   fs.mkdir(path.join(documentsDir, sub), { recursive: true }).catch(() => {});
 }
 app.use('/documents', express.static(documentsDir));
+app.use('/pre_analysis', express.static(path.resolve('public/pre_analysis')));
 
 function getPaddedDateParts(d = new Date()) {
   const yyyy = d.getFullYear();
@@ -279,6 +282,8 @@ app.post('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only adminis
 app.get('/api/v1/workspace-data/:menu',async(req,res)=>res.json(await readMenu(String(req.params.menu))));
 app.post('/api/v1/workspace-data/:menu',async(req,res)=>res.status(201).json(await writeMenu(String(req.params.menu),req.body?.payload)));
 app.post('/api/v1/intake/drafts',async(req,res)=>{ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT','Only Marketing can create a draft',403);if(req.body.customerCategory==='EXISTING'){const mysqlCustomers=await intakeCustomers(),seedCustomers=await all('Customer');ensure([...mysqlCustomers,...seedCustomers].some(c=>c.id===req.body.customerId),'Existing customer was not found',404);}res.status(201).json(await createIntake(req.body));});
+app.get('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const data=await getPreAnalysisData(id);res.json({success:true,data});});
+app.put('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const data=req.body;await savePreAnalysisData(id,data);res.json({success:true,data});});
 app.get('/api/v1/applications/:id',async(req,res,next)=>{const detail=await intakeDetail(String(req.params.id));if(detail)return res.json(detail);next();});
 app.put('/api/v1/applications/:id/business',async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);const fallback=a?null:await detail(id);a=a||fallback;const marketing=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT')&&['DRAFT','RETURNED'].includes(a.status),finance=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='CA')&&a.status==='IN_CA_LEGAL_REVIEW';ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||marketing||finance,'Business information is locked at this workflow stage',403);if(fallback)await saveCustomerPic(id,{profile:fallback},fallback);await saveBusiness(id,{...req.body,...(finance?{projects:a.projects,bankReferences:a.bankReferences}:{})});res.json(await intakeDetail(id));});
 app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{if(!req.body.profile&&!req.body.pic)return next();const id=String(req.params.id);const existing=await intakeDetail(id);if(!existing)return next();if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}res.json(await saveCustomerPic(id,req.body));});
