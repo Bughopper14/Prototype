@@ -1758,7 +1758,7 @@ td
     @media print {
         @page {
             size: A4 portrait;
-            margin: 7mm 4mm 4mm 4mm;
+            margin: 4mm 3mm 3mm 3mm;
         }
         html, body {
             width: 100% !important;
@@ -1769,7 +1769,7 @@ td
             print-color-adjust: exact !important;
         }
         body {
-            zoom: 0.166 !important;
+            zoom: 0.182 !important;
         }
         table {
             margin: 0 auto !important;
@@ -1777,6 +1777,10 @@ td
         .fap-page-2-start {
             page-break-before: always !important;
             break-before: page !important;
+        }
+        .fap-spacer-row {
+            height: 12px !important;
+            line-height: 0 !important;
         }
         .fap-cell-highlight, .fap-section-highlight {
             outline: none !important;
