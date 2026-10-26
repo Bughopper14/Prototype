@@ -1593,16 +1593,44 @@ button:focus-visible, a:focus-visible {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25);
 }
 
+@keyframes formFieldSlowPulse {
+  0% {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 0 12px rgba(59, 130, 246, 0.25);
+    background-color: #f8fafc;
+  }
+  50% {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28), 0 0 18px rgba(37, 99, 235, 0.35);
+    background-color: #eff6ff;
+  }
+  100% {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2), 0 0 12px rgba(59, 130, 246, 0.25);
+    background-color: #f8fafc;
+  }
+}
+
+label input,
+label select,
+label textarea {
+  transition: border-color 0.8s ease, box-shadow 0.8s ease, background-color 0.8s ease !important;
+}
+
+label .field-label {
+  transition: color 0.8s ease !important;
+}
+
 label.field-active-sync input,
 label.field-active-sync select,
 label.field-active-sync textarea {
   border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15) !important;
+  animation: formFieldSlowPulse 3.6s infinite ease-in-out !important;
 }
 
 label.field-active-sync .field-label {
-  color: #1d4ed8;
-  font-weight: 600;
+  color: #1d4ed8 !important;
+  font-weight: 600 !important;
 }
 
 .fap-acc-chevron {

@@ -210,12 +210,11 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
         }
       }
     };
-    return <label key={f.key} className={f.wide?'field-wide':undefined}>
+    return <label key={f.key} className={`${f.wide?'field-wide':''} ${activeFieldKey===f.key?'field-active-sync':''}`.trim()} onClick={() => onFieldFocus?.(f.key, section)}>
       <div className="field-label-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:22,marginBottom:4,gap:6}}>
         <span className="field-label" title={toTitleCase(f.label)} style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>{toTitleCase(f.label)}{isRequired&&<span className="field-required" aria-label="Required">*</span>}</span>
         <div style={{display:'inline-flex',alignItems:'center',gap:4,flexShrink:0}}>
           {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn"><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
-          {onFieldSync&&<button type="button" onClick={(e)=>{e.stopPropagation();e.preventDefault();onFieldSync(f.key,section);}} title={`Sync view ke kolom ${toTitleCase(f.label)} di formulir aplikasi`} className={`field-sync-btn ${activeFieldKey===f.key?'active':''}`}><Eye size={11}/><span>Sync View</span></button>}
         </div>
       </div>
       {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onBlur={handleBlur} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
@@ -795,7 +794,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
            const cel = iDoc.getElementById(cellId);
            if (cel) cel.classList.remove('fap-cell-highlight');
          }
-       }, 4500);
+       }, 6500);
      } catch (_) {}
    });
  };
@@ -843,7 +842,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
            const cel = iDoc.getElementById(cid);
            if (cel) cel.classList.remove('fap-cell-highlight');
          });
-       }, 4500);
+       }, 6500);
      } catch (_) {}
    });
  };
@@ -1323,33 +1322,20 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
         {openSections['fap-preview-sec-header'] && (
           <div className="fap-accordion-content">
             <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                <div>
-                  <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
-                  <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
-                </div>
-                <button type="button" className={`field-sync-btn ${activeFieldKey==='applicationDate'?'active':''}`} onClick={()=>handleTriggerFieldSync('applicationDate','header')} title="Sync view ke Tanggal/Date di formulir aplikasi">
-                  <Eye size={11}/><span>Sync View</span>
-                </button>
+              <div style={{cursor:'pointer'}} onClick={()=>handleTriggerFieldSync('applicationDate','header')} title="Click to sync view Tanggal/Date di formulir aplikasi">
+                <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
+                <b style={{fontSize:'0.875rem',color:activeFieldKey==='applicationDate'?'#2563eb':'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
               </div>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                <div>
-                  <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP Registration Number</span>
-                  <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
-                </div>
-                <button type="button" className={`field-sync-btn ${activeFieldKey==='fapNumber'?'active':''}`} onClick={()=>handleTriggerFieldSync('fapNumber','header')} title="Sync view ke No. Register FAP di formulir aplikasi">
-                  <Eye size={11}/><span>Sync View</span>
-                </button>
+              <div style={{cursor:'pointer'}} onClick={()=>handleTriggerFieldSync('fapNumber','header')} title="Click to sync view No. Register FAP di formulir aplikasi">
+                <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP Registration Number</span>
+                <b style={{fontSize:'0.875rem',color:activeFieldKey==='fapNumber'?'#2563eb':'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
               </div>
             </div>
             <div className="customer-category-selector-box" style={{marginBottom:16}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+              <div style={{marginBottom:4}}>
                 <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Customer Category</span>
-                <button type="button" className={`field-sync-btn ${activeFieldKey==='customerCategory'?'active':''}`} onClick={()=>handleTriggerFieldSync('customerCategory','header')} title="Sync view ke Customer Items di formulir aplikasi">
-                  <Eye size={11}/><span>Sync View</span>
-                </button>
               </div>
-              <label className="customer-category-select" style={{marginTop:0}}>
+              <label className="customer-category-select" style={{marginTop:0}} onClick={()=>handleTriggerFieldSync('customerCategory','header')}>
                 <select 
                   value={customerCategory} 
                   disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
@@ -1367,11 +1353,8 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
             {customerCategory === 'EXISTING' ? (
               <>
                 <div className="existing-customer-picker" style={{marginBottom:16}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                  <div style={{marginBottom:4}}>
                     <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Existing Customer</span>
-                    <button type="button" className={`field-sync-btn ${activeFieldKey==='companyName'?'active':''}`} onClick={()=>handleTriggerFieldSync('companyName','customer')} title="Sync view ke Nama Perusahaan di formulir aplikasi">
-                      <Eye size={11}/><span>Sync View</span>
-                    </button>
                   </div>
                   <label style={{marginTop:0}}>
                     <select 
@@ -2165,7 +2148,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
             const cel = iDoc.getElementById(cid);
             if (cel) cel.classList.remove('fap-cell-highlight');
           });
-        }, 4500);
+        }, 6500);
       } catch (err) {
         console.warn('Could not scroll iframe section:', err);
       }

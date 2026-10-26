@@ -378,7 +378,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const master = useMasterData();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [zoomLevel, setZoomLevel] = useState<number>(0.44);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.15);
 
   // Compute normalized values from props
   const d = useMemo(() => {
@@ -666,7 +666,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
         const cel = doc.getElementById(cid);
         if (cel) cel.classList.remove('fap-cell-highlight');
       });
-    }, 4500);
+    }, 6500);
     return () => clearTimeout(timer);
   }, [props.activeSection, props.activeField, props.syncTick]);
 
@@ -676,15 +676,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     }
   }, [props.externalZoom]);
 
-  // Auto-fit initial zoom based on container width
+  // Auto-fit initial zoom based on container width with print-like margins matching Gambar 1 exactly
   useEffect(() => {
     if (!containerRef.current) return;
     const updateWidth = () => {
       if (containerRef.current) {
         const w = containerRef.current.clientWidth;
-        // Native Excel table width in sheet001.htm is 3443px
-        const targetZoom = Math.min(0.5, Math.max(0.18, (w - 24) / 3443));
-        setZoomLevel(Number(targetZoom.toFixed(2)));
+        // Total document width with printout page margins is 4410px
+        const targetZoom = Math.min(0.5, Math.max(0.08, Number(((w - 40) / 4410).toFixed(2))));
+        setZoomLevel(targetZoom);
       }
     };
     updateWidth();
@@ -693,13 +693,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     return () => observer.disconnect();
   }, []);
 
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.15, Number((z - 0.05).toFixed(2))));
-  const handleZoomIn = () => setZoomLevel((z) => Math.min(1.0, Number((z + 0.05).toFixed(2))));
+  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.05, Number((z - 0.05).toFixed(2))));
+  const handleZoomIn = () => setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
   const handleResetZoom = () => {
     if (containerRef.current) {
       const w = containerRef.current.clientWidth;
-      const targetZoom = Math.min(0.5, Math.max(0.18, (w - 24) / 3443));
-      setZoomLevel(Number(targetZoom.toFixed(2)));
+      const targetZoom = Math.min(0.5, Math.max(0.08, Number(((w - 40) / 4410).toFixed(2))));
+      setZoomLevel(targetZoom);
+    } else {
+      setZoomLevel(0.12);
     }
   };
 
@@ -784,13 +786,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       )}
 
       {/* Embedded Native HTML Template Frame */}
-      <div style={{ flex: 1, width: '100%', height: 'calc(100% - 40px)', background: '#ffffff', overflow: 'hidden' }}>
+      <div style={{ flex: 1, width: '100%', height: 'calc(100% - 40px)', background: '#525659', overflow: 'hidden' }}>
         <iframe
           ref={iframeRef}
           srcDoc={FAP_EXCEL_HTML_TEMPLATE}
           title="Application Form APPROVED"
           onLoad={syncIframeValues}
-          style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff', display: 'block' }}
+          style={{ width: '100%', height: '100%', border: 'none', background: '#525659', display: 'block' }}
         />
       </div>
     </div>
