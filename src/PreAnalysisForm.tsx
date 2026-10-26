@@ -565,13 +565,33 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               )}
               <span style={{
                 whiteSpace: 'nowrap',
-                background: data.recommendation === 'RECOMMEND' ? '#ecfdf5' : data.recommendation === 'CONDITIONAL' ? '#fffbeb' : '#fef2f2',
-                color: data.recommendation === 'RECOMMEND' ? '#047857' : data.recommendation === 'CONDITIONAL' ? '#b45309' : '#b91c1c',
+                background: !data.recommendation
+                  ? '#f1f5f9'
+                  : data.recommendation === 'RECOMMEND'
+                  ? '#ecfdf5'
+                  : data.recommendation === 'CONDITIONAL'
+                  ? '#fef9c3'
+                  : '#fef2f2',
+                color: !data.recommendation
+                  ? '#64748b'
+                  : data.recommendation === 'RECOMMEND'
+                  ? '#047857'
+                  : data.recommendation === 'CONDITIONAL'
+                  ? '#a16207'
+                  : '#b91c1c',
                 fontSize: '0.67rem',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '10px',
-                border: `1px solid ${data.recommendation === 'RECOMMEND' ? '#a7f3d0' : data.recommendation === 'CONDITIONAL' ? '#fde68a' : '#fecaca'}`,
+                border: `1px solid ${
+                  !data.recommendation
+                    ? '#cbd5e1'
+                    : data.recommendation === 'RECOMMEND'
+                    ? '#a7f3d0'
+                    : data.recommendation === 'CONDITIONAL'
+                    ? '#fde047'
+                    : '#fecaca'
+                }`,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px'
@@ -580,9 +600,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   width: 5,
                   height: 5,
                   borderRadius: '50%',
-                  background: data.recommendation === 'RECOMMEND' ? '#10b981' : data.recommendation === 'CONDITIONAL' ? '#f59e0b' : '#ef4444'
+                  background: !data.recommendation
+                    ? '#94a3b8'
+                    : data.recommendation === 'RECOMMEND'
+                    ? '#10b981'
+                    : data.recommendation === 'CONDITIONAL'
+                    ? '#eab308'
+                    : '#ef4444'
                 }} />
-                {data.recommendation}
+                {data.recommendation || 'NO RECOMMENDATION'}
               </span>
             </div>
           </div>
@@ -1564,8 +1590,31 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       fontSize: '0.85rem',
                       fontWeight: 700,
                       borderRadius: '6px',
-                      border: '2px solid #1e3a8a',
-                      background: '#ffffff'
+                      border: `2px solid ${
+                        data.recommendation === 'RECOMMEND'
+                          ? '#16a34a'
+                          : data.recommendation === 'CONDITIONAL'
+                          ? '#eab308'
+                          : data.recommendation === 'NOT RECOMMEND TO FULL DOCUMENTATION'
+                          ? '#dc2626'
+                          : '#1e3a8a'
+                      }`,
+                      background:
+                        data.recommendation === 'CONDITIONAL'
+                          ? '#fefce8'
+                          : data.recommendation === 'RECOMMEND'
+                          ? '#f0fdf4'
+                          : data.recommendation === 'NOT RECOMMEND TO FULL DOCUMENTATION'
+                          ? '#fef2f2'
+                          : '#ffffff',
+                      color:
+                        data.recommendation === 'CONDITIONAL'
+                          ? '#854d0e'
+                          : data.recommendation === 'RECOMMEND'
+                          ? '#15803d'
+                          : data.recommendation === 'NOT RECOMMEND TO FULL DOCUMENTATION'
+                          ? '#b91c1c'
+                          : '#1e293b'
                     }}
                   >
                     <option value="">— Select Recommendation —</option>
@@ -2311,8 +2360,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{
                   flex: 1,
-                  background: !data.recommendation ? '#94a3b8' : (data.recommendation === 'RECOMMEND' ? '#16a34a' : '#dc2626'),
-                  color: '#ffffff',
+                  background: !data.recommendation
+                    ? '#94a3b8'
+                    : data.recommendation === 'RECOMMEND'
+                    ? '#16a34a'
+                    : data.recommendation === 'CONDITIONAL'
+                    ? '#facc15'
+                    : '#dc2626',
+                  color: data.recommendation === 'CONDITIONAL' ? '#000000' : '#ffffff',
+                  border: data.recommendation === 'CONDITIONAL' ? '1px solid #eab308' : 'none',
                   textAlign: 'center',
                   padding: '8px 12px',
                   fontWeight: 900,
