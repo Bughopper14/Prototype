@@ -72,6 +72,7 @@ export async function getAllPreAnalysisNumbers(): Promise<string[]> {
   return numbers;
 }
 
+
 export const DEFAULT_COMPETITION_TABLE = [
   { finco: 'Komatsu Astra Finance (KAF)', rate: '9% - 11,5%', purpose: 'HE' },
   { finco: 'Astra Credit Companies (ACC)', rate: '10% - 12%', purpose: 'HE & Vehicles' },
@@ -145,7 +146,12 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     paidUpCapital,
     sourceOfRepayment,
 
-    // Non-FAP fields are blank as requested by user
+    // Discrete Project & Background fields
+    holdingGroup: '',
+    projectName: '',
+    projectLocation: '',
+    existingProjects: '',
+    newProjects: '',
     projectNameLocation: '',
     customerRole: '',
     otherContractors: '',
@@ -155,8 +161,13 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     investmentPlan: '',
     financingSchemeRequested: '',
 
+    ubo: '',
     uboInfo: '',
+    uboInformation: '',
     companyBackground: '',
+    starGroupMilestonesNarrative: '',
+    businessDevBackground: '',
+    operationalTeamInfo: '',
     milestones: [],
     existingFincoBackup: '',
 
@@ -171,6 +182,7 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     qaIlinkComment: '',
     qaConclusion: '',
 
+    dealerCheck: '',
     topDealerToCustomer: '',
     topLmiToDealer: '',
     lmiArCheck: '',
@@ -186,9 +198,7 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     goodCustomerNote: '',
     recommendation: '',
     briefNote: '',
-    suggestionOverview: '',
     suggestions: [],
-    mitigationConditions: [],
     competitionNotes: '',
     competitionTable: [],
     proposedBy: '',
@@ -213,68 +223,115 @@ export const DEFAULT_PRE_ANALYSIS_DATA = {
   paidUpCapital: 'IDR 32.500.000.000',
   sourceOfRepayment: 'Income / Others',
 
-  projectNameLocation: 'STAR GROUP Project Portfolio:\nA. PT Handalan Putramas Santosa (HPS) - RAPP, SBA Wood, BMH (Start Dec 2024 - ongoing)\nB. PT Pelayaran Andalan Santosa (PAS) - Transport (Ongoing)\nC. PT Harta Putramas Santosa (HTPS) - Harvesting (Start Oct 2026)',
-  customerRole: 'Main Contractor / Sub-Contractor',
-  otherContractors: 'KAP, BAP, HJM, RPP, WBS, etc.',
-  projectOwner: 'PT Riau Andalan Pulp & Paper (APRIL Group)',
-  bowheerInfo: 'RAPP Pelalawan Concession, Riau Province. Long-term concession license valid through 2045.',
-  projectStatus: 'Active harvesting & hauling contract for wood fiber supplying Pangkalan Kerinci mill.',
-  investmentPlan: 'Procurement of 10 Units Heavy Equipment for capacity ramp-up Q4 2026.',
-  financingSchemeRequested: 'Leasing with balloon payment or normal installment 36 months tenor, 20% down payment.',
+  holdingGroup: 'STAR GROUP (PT Sentosa Abadi Raja)',
+  projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
+  projectLocation: 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
+  existingProjects: 'A. PT Handalan Putramas Santosa (HPS) - Existing Project:\n1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project (Start Dec 2024)\n\nB. PT Pangan Sejahtera Santosa (PASS) - Existing Project:\n1. PT Sinar Sosro - FMCG Distributor (Start 2022)\n2. PT FKS Pangan Nusantara (Start 2022)\n3. PT Perfetti Van Melle (Start 2022)\n4. PT Mondelez Indonesia Trading (Start 2022)',
+  newProjects: 'C. PT Harta Putramas Santosa (HTPS) - NEW Project:\n1. PT Industrial Forest Plantation - Harvesting Project (Est. Sept/Oct 2026, Kalimantan Timur)\n2. PT SBA Wood Industries - Land Clearing (Est. Oct 2026, Lebong Hitam)\n3. RAPP - Mayawana (For next year)',
+  projectNameLocation: 'STAR GROUP (PT Sentosa Abadi Raja) - Land Clearing, Wood Hauling & Harvesting | Sumatera & Kalimantan',
+  customerRole: 'Land Clearing & Harvesting Contractor',
+  otherContractors: 'Sarindo Group, Bandang Group',
+  projectOwner: '1. PT Industrial Forest Plantation (RAPP)\n2. Oki Pulp & Paper (APP / Sinarmas)',
+  bowheerInfo: 'PT Riau Andalan Pulp and Paper (RAPP) - APRIL Group (RGE Group). One of the largest pulp and paper producers in the world located in Pangkalan Kerinci, Riau. Mill capacity 2.8M tons pulp and 1.15M tons paper/yr. Upstream fiber plantation management planting 200M saplings/yr.',
+  projectStatus: 'On Going with RAPP since 2025 for logistics and harvesting support',
+  investmentPlan: '20-30 units nearest plan: 20 units LIUGONG Excavator for RAPP & 30 units for Sinarmas',
+  financingSchemeRequested: '36-month lease, 15-20% Security Deposit, Normal Installment structure',
 
-  uboInfo: 'Mr. Hansen Santosa (80% shares via holding PT PASS), Mr. Hendry Santosa (20% shares). Ultimate Beneficial Owner is Mr. Hansen Santosa.',
-  companyBackground: 'HPS established in 2024 as dedicated forestry contractor unit under Star Group. Star Group itself has operated logistics & maritime transport since 2012 across Sumatera and Java.',
+    ubo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
+  uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
+  companyBackground: 'PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).',
+  starGroupMilestonesNarrative: `2022 | PT PASS Established – FMCG Distribution Business
+- PT Pangan Sejahtera Santosa (PT PASS) was established by Mr. Hansen Santosa, son of Mr. Oky Santosa, marking the beginning of the STAR Group's business operations.
+- PT PASS focuses on urban FMCG distribution, operating warehouses and providing next-day delivery services while generating revenue from distribution margins.
+- In 2022, PT PASS supported the distribution activities of several major FMCG companies, including PT Sinar Sosro, PT FKS Pangan Nusantara, PT Perfetti Van Melle, and PT Mondelez Indonesia Trading.
+
+Q1 2024 | PT STAR Established as Holding Company
+- PT Sentosa Abadi Raja (STAR) was established by Mr. Hansen Santosa as a holding company to consolidate and manage the businesses of Mr. Hansen.
+
+November 2024 | PT HPS Established – Entry into Forestry Logistics and Hauling
+- PT HPS was established as the vehicle for STAR Group's entry into forestry, following Mr. Herry Tho's former experience. The initial business focus was forestry logistics and wood hauling.
+- PT HPS secured a five-year contract with RAPP, with operations commencing in December 2024.
+
+Late 2025 | Expansion into Land Clearing and Harvesting
+- After approximately one year of forestry operations, Mr. Herry Tho proposed further expansion into land clearing and harvesting.
+- In November 2025, PT HPS commenced land clearing, maintenance, and logging projects with three APP Group/Sinar Mas companies:
+  1. PT Bumi Andalas Permai
+  2. PT Bumi Mekar Hijau
+  3. PT Sebangun Bumi Andalas Wood Industries
+
+End-2025 | PT HTPS Established – Harvesting Business
+- PT HTPS was established by Mr. Hansen Santosa to focus specifically on harvesting projects.
+- The establishment of a separate entity was intended to differentiate and streamline the diversification of each business/project within the STAR Group and to focusing on land clearing & harvesting contractor.`,
+  businessDevBackground: `While seeking a partner to develop wingbox trucking services to support his FMCG distribution business, Mr. Hansen Santosa met Mr. Herry Tho.
+- Mr. Herry Tho is based from Pekanbaru and has a background in logistics and hauling, with business connections within the forestry sector, including contacts at RAPP and APP/Sinar Mas. Through this relationship, he introduced Mr. Hansen to investment opportunities in forestry logistics and wood hauling.
+- Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
+  operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
+  uboInformation: `STAR GROUP Corporate Shareholding & Governance Structure:
+• PT Sentosa Abadi Raja (STAR Holding): Modal Dasar Rp 240 M, Modal Disetor Rp 60 M
+  - Hansen Santosa (54% - Presiden Direktur)
+  - Leonard Santosa (34% - Direktur)
+  - Oky Santosa (12% - Komisaris)
+• PT Pangan Sejahtera Santosa (PASS - FMCG): Modal Dasar Rp 50 M, Modal Disetor Rp 17,5 M
+  - PT STAR (99,994%), Leonard Santosa (0,006%)
+• PT Handalan Putramas Santosa (HPS - Sister Co): Modal Dasar Rp 130 M, Modal Disetor Rp 32,5 M
+  - PT STAR (99,997%), Leonard Santosa (0,003%)
+• PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
+  - PT STAR (99,98%), Leonard Santosa (0,02%)`,
+
   milestones: [
-    { year: '2012', entity: 'PT Pelayaran Andalan Santosa (PAS)', description: 'Established transport & barging company with 8 tug & barges.' },
-    { year: '2018', entity: 'Star Logistics Holding', description: 'Consolidation of FMCG distribution fleet across Riau and Jambi.' },
-    { year: '2024', entity: 'PT Handalan Putramas Santosa (HPS)', description: 'Established forestry contractor division and entered RAPP supplier network.' },
-    { year: '2026', entity: 'PT Harta Putramas Santosa (HTPS)', description: 'Formed new legal entity for harvesting operation expansion.' }
+    { year: '2022', entity: 'PT PASS', description: 'Established for FMCG transport (Sinar Sosro, FKS, Perfetti)' },
+    { year: 'Q1 2024', entity: 'PT HPS', description: 'Formed to expand heavy logistics for RAPP & APP Sinarmas' },
+    { year: 'Nov-24', entity: 'PT PASS', description: 'Secured long-term contracts with Mayora & Mondelez' },
+    { year: 'End-2025', entity: 'PT HPS', description: 'Operation full capacity with 70+ transport units' },
+    { year: 'Mid-2026', entity: 'PT HTPS', description: 'Established for direct wood harvesting concession with RAPP' }
   ],
-  existingFincoBackup: 'SAN Finance, Astra Credit Companies (ACC), Dipo Star Finance, Komatsu Astra Finance (KAF).',
+  existingFincoBackup: 'ACC, SANF, MTF, RADANA, SMFL, BCA, Bank Saqu, Bank Nano Syariah, Mitsui',
 
-  equipmentJobFit: 'Forestry Excavators (922E/920E forestry package) with log grapple & high-ground clearance track shoes.',
-  utilizationDuration: 'Planned 18-20 hours/day across 2 shifts in concession blocks.',
-  priorLiugongExperience: 'Customer has operated 4 units LiuGong 922E with zero major powertrain breakdown over 3,500 hours.',
-  serviceAgreementFmc: 'Full Maintenance Contract (FMC) backed by PT LiuGong Machinery Indonesia & authorized regional dealer.',
+  equipmentJobFit: 'Suitable - for harvesting in Sumatera Area (Heavy forestry spec)',
+  utilizationDuration: 'Reasonable — 3 years contract duration matching requested financing term',
+  priorLiugongExperience: 'Never invest LiuGong prior to this proposal (First-time user)',
+  serviceAgreementFmc: 'Standard warranty from LMI, on-site mechanic standby at Riau depot',
   unitComposition: [
-    { kategoriAset: 'Forestry Excavator', brand: 'LiuGong', type: '922E Forestry Spec', qty: 6 },
-    { kategoriAset: 'Wheel Loader', brand: 'LiuGong', type: '856H Log Handler', qty: 2 },
-    { kategoriAset: 'Motor Grader', brand: 'LiuGong', type: '4180D Concession Road', qty: 2 }
+    { brand: 'Truk ISUZU GIGA FVM U', type: 'Transport / Heavy Truck', qty: 45 },
+    { brand: 'Truk FAW', type: 'Dump Truck 6x4', qty: 41 },
+    { brand: 'Truk Shacman', type: 'Heavy Duty 8x4', qty: 25 },
+    { brand: 'Truk ISUZU CDE L', type: 'Light Truck', qty: 10 },
+    { brand: 'Vehicle Commercial Dmax', type: 'Operational Support 4x4', qty: 3 },
+    { brand: 'Vehicle Commercial Calya / Innova', type: 'Management Support', qty: 2 }
   ],
 
-  deliveryStatus: 'Not yet Deliver',
-  deliveryDate: 'Waiting DP and Contract Signing',
-  qaIlinkComment: 'GPS iLink unit ready for installation upon delivery to RAPP concession.',
-  qaConclusion: 'Passed preliminary unit check.',
+  deliveryStatus: 'Not Yet Delivered (Pending PO & Credit Committee Approval)',
+  deliveryDate: 'Demand units Sept 2026, delivery est W3 after PO release',
+  qaIlinkComment: 'No Records / Pre-Delivery Inspection Pending',
+  qaConclusion: 'Standard PDI required upon delivery and iLink telemetry activation',
 
-  topDealerToCustomer: '30 days after unit commissioning on site',
-  topLmiToDealer: '45 days invoice settlement backed by LFI commitment letter',
-  lmiArCheck: 'Clear record, no overdue or write-off history with LMI or dealers.',
-  slikPefindoHighlight: 'SLIK Kol 1 Smooth across all commercial lenders. Total facility IDR 80.67 Bio.',
-  applicantPefindoCheck: 'NO RECORD SINCE ITS NEWLY ESTABLISHED',
+  dealerCheck: 'No Records Payment - New Liugong Customer',
+  topDealerToCustomer: '20% DP, 80% cover by Leasing',
+  topLmiToDealer: '-',
+  lmiArCheck: 'No Records Payment - New Liugong Customer',
+  slikPefindoHighlight: 'No Records Payment - New Established Company',
+  applicantPefindoCheck: "2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY) - NO RECORD SINCE IT'S NEWLY ESTABLISHED",
   pefindoTerms: 'Current PT HPS commercial term on other fincos : Flat rate 7%, 20% SD, Normal Installment - 36 months lease terms, Provision 1%, admin fee IDR 5 bio per contract',
-  pefindoNotes: '- PT HPS is existing customer of SANF, ACC, etc. Payment current, but for PT HPS there are no close contract because PT HPS also new established company in 2024. All leasing contracts still open.\n- Its group : PT Harta Putramas Santosa (HTPS) is newly establish company, no record at all from Finco / Bank,\n- New business diversification, PT HTPS doesnt have any experience in Harvesting.',
+  pefindoNotes: 'Based on Pefindo Checking on 4 Sept 2026',
   lenderExposures: [
-    { lender: 'SANF', plafond: 'IDR 35.000.000.000', rate: 'Flat 7.25% p.a.' },
-    { lender: 'ACC', plafond: 'IDR 24.500.000.000', rate: 'Flat 7.00% p.a.' },
-    { lender: 'Dipo Star Finance', plafond: 'IDR 12.000.000.000', rate: 'Flat 7.50% p.a.' },
-    { lender: 'Bank Mandiri', plafond: 'IDR 9.173.526.173', rate: 'Floating 9.25% eff' }
+    { lender: 'ACC', plafond: 'IDR 11.730.000.000', rate: '6.24%', notes: 'Active facilities, smooth payment record' },
+    { lender: 'BCA', plafond: 'IDR 13.530.000.000', rate: '9.50%', notes: 'Working capital & vehicle financing' },
+    { lender: 'Bank Nano Syariah', plafond: 'IDR 6.160.000.000', rate: '-', notes: 'Murabahah facility' },
+    { lender: 'Bank Saqu', plafond: 'IDR 2.730.000.000', rate: '10.41%', notes: 'Short term revolving' },
+    { lender: 'MTF', plafond: 'IDR 14.990.000.000', rate: '9.50%', notes: 'Fleet truck lease' },
+    { lender: 'Mitsui', plafond: 'IDR 392.800.000', rate: '10.63%', notes: 'Support fleet' },
+    { lender: 'Radana', plafond: 'IDR 3.270.000.000', rate: '7.20%', notes: 'Heavy transport equipment' },
+    { lender: 'SMFL', plafond: 'IDR 4.300.000.000', rate: '12.49%', notes: 'Equipment lease' },
+    { lender: 'SANF', plafond: 'IDR 23.530.000.000', rate: '11.25%', notes: 'Logistics fleet facility' }
   ],
 
   goodProject: true,
-  goodProjectNote: 'Long-term captive wood supply contract with APRIL Group (RAPP). High off-taker reliability.',
+  goodProjectNote: 'Harvesting Contractor, PT RAPP - APRIL Group',
   goodCustomer: false,
-  goodCustomerNote: 'Entity newly incorporated in 2024 with limited standalone financial track record; relies heavily on Group operational experience.',
+  goodCustomerNote: 'PT HPS was newly established in 2024. All leasing contracts remain open. Group entity PT HTPS is newly established with zero track record across banks and fincos. Diversification into harvesting lacks operational experience.',
   recommendation: 'NOT RECOMMEND TO FULL DOCUMENTATION',
   briefNote: 'Key risks identified: Customer newly established (2024) with lack of harvesting experience; sister company PT PASS focuses only on FMCG transport; no closed contracts yet in Pefindo.',
-  suggestionOverview: 'Corporate Guarantee from PT PASS and Personal Guarantee from Mr. Hansen Santosa are mandatory.',
   suggestions: [
-    'Corporate Guarantee from PT PASS (Star Group parent holding with proven revenue).',
-    'Personal Guarantee from Mr. Hansen Santosa (ultimate beneficial owner) with asset pledge.',
-    'Escrow Account mechanism with Bowheer (RAPP) or direct payment split agreement.',
-    'Pre-Delivery inspection and strict iLink GPS tracking with remote immobilizer protocol.'
-  ],
-  mitigationConditions: [
     'Corporate Guarantee from PT PASS (Star Group parent holding with proven revenue).',
     'Personal Guarantee from Mr. Hansen Santosa (ultimate beneficial owner) with asset pledge.',
     'Escrow Account mechanism with Bowheer (RAPP) or direct payment split agreement.',
@@ -316,7 +373,7 @@ export async function getPreAnalysisData(appId: string, appRecord?: any): Promis
   if (pool) {
     try {
       const [rows] = await pool.query<any[]>(
-        'SELECT form_data FROM application_pre_analysis WHERE application_id = ?',
+        'SELECT form_data FROM pre_analysis_records WHERE application_id = ?',
         [appId]
       );
       if (rows && rows.length > 0 && rows[0].form_data) {
@@ -324,9 +381,7 @@ export async function getPreAnalysisData(appId: string, appRecord?: any): Promis
           ? JSON.parse(rows[0].form_data)
           : rows[0].form_data;
       }
-    } catch (e) {
-      console.warn('Failed to query application_pre_analysis from MySQL, falling back to file:', e);
-    }
+    } catch {}
   }
 
   if (!storedData) {

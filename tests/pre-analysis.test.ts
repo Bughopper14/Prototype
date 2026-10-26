@@ -46,21 +46,6 @@ test('pre-analysis store initializes with 001/PREANA/MKT/IX/2026 default payload
   assert.ok(Array.isArray(data.lenderExposures), 'lenderExposures should be an array');
 });
 
-test('pre-analysis default payload includes Section 5 delivery & Section 7 competition table matching PDF', async () => {
-  const data = await getPreAnalysisData('test-fresh-app-002');
-  // Section 5 Delivery & QA check
-  assert.ok(data.deliveryStatus, 'deliveryStatus should exist');
-  assert.match(data.deliveryStatus, /Not yet Deliver/i);
-  assert.ok(data.deliveryDate, 'deliveryDate should exist');
-  assert.ok(data.qaConclusion, 'qaConclusion should exist');
-
-  // Section 7 Competition Table (13 finco rows)
-  assert.ok(Array.isArray(data.competitionTable), 'competitionTable should be an array');
-  assert.equal(data.competitionTable.length, 13, 'competitionTable should contain 13 competitor benchmark rows');
-  assert.equal(data.competitionTable[0].finco, 'Komatsu Astra Finance (KAF)');
-  assert.equal(data.competitionTable[12].finco, 'SMFL');
-});
-
 test('pre-analysis store persists updates and retrieves saved values', async () => {
   const customData = {
     ...DEFAULT_PRE_ANALYSIS_DATA,
@@ -147,6 +132,96 @@ test('syncCustomerAndPicIntoPreAnalysis gracefully preserves existing data when 
   assert.equal(syncedPartial.customerProjectName, 'Preserved Company');
 });
 
+test('pre-analysis default payload includes Section 5 delivery & Section 7 competition table matching PDF', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-002');
+  // Section 5 Delivery & QA check
+  assert.ok(data.deliveryStatus, 'deliveryStatus should exist');
+  assert.match(data.deliveryStatus, /Not yet Deliver/i);
+  assert.ok(data.deliveryDate, 'deliveryDate should exist');
+  assert.ok(data.qaConclusion, 'qaConclusion should exist');
+
+  // Section 7 Competition Table (13 finco rows)
+  assert.ok(Array.isArray(data.competitionTable), 'competitionTable should be an array');
+  assert.equal(data.competitionTable.length, 13, 'competitionTable should contain 13 competitor benchmark rows');
+  assert.equal(data.competitionTable[0].finco, 'Komatsu Astra Finance (KAF)');
+  assert.equal(data.competitionTable[12].finco, 'SMFL');
+});
+
+test('pre-analysis Section 2 separates holding group, project name, location, and existing/new projects', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-003');
+  // Holding Group (STAR GROUP)
+  assert.ok(data.holdingGroup, 'holdingGroup must exist');
+  assert.match(data.holdingGroup, /STAR GROUP/i);
+
+  // Project Name & Location distinct fields
+  assert.ok(data.projectName, 'projectName must exist');
+  assert.match(data.projectName, /Land Clearing|Harvesting/i);
+  assert.ok(data.projectLocation, 'projectLocation must exist');
+  assert.match(data.projectLocation, /Sumatera|Jakarta/i);
+
+  // Existing Projects vs New Projects distinct fields
+  assert.ok(data.existingProjects, 'existingProjects must exist');
+  assert.match(data.existingProjects, /PT Handalan Putramas Santosa/i);
+  assert.match(data.existingProjects, /PT Pangan Sejahtera Santosa/i);
+
+  assert.ok(data.newProjects, 'newProjects must exist');
+  assert.match(data.newProjects, /PT Harta Putramas Santosa/i);
+});
+
+test('pre-analysis Section 3 separates company background, star group milestones narrative, business dev background, and operational team info', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-004');
+  // Company Background
+  assert.ok(data.companyBackground, 'companyBackground must exist');
+  assert.match(data.companyBackground, /PT Handalan Putramas Santosa/i);
+
+  // STAR Group Milestones Narrative
+  assert.ok(data.starGroupMilestonesNarrative, 'starGroupMilestonesNarrative must exist');
+  assert.match(data.starGroupMilestonesNarrative, /PT PASS Established/i);
+  assert.match(data.starGroupMilestonesNarrative, /PT STAR Established as Holding Company/i);
+  assert.match(data.starGroupMilestonesNarrative, /PT HPS Established/i);
+
+  // Business Development Background (Mr. Herry Tho)
+  assert.ok(data.businessDevBackground, 'businessDevBackground must exist');
+  assert.match(data.businessDevBackground, /Mr\. Herry Tho/i);
+  assert.match(data.businessDevBackground, /DNR Logistics/i);
+
+  // Other Information / Operational Team
+  assert.ok(data.operationalTeamInfo, 'operationalTeamInfo must exist');
+  assert.match(data.operationalTeamInfo, /Sarindo/i);
+
+  // UBO (Ultimate Beneficiary Owner)
+  assert.ok(data.uboInfo || data.ubo, 'ubo / uboInfo must exist');
+  assert.match(data.uboInfo || data.ubo, /Mr\. Hansen Santosa/i);
+
+  // UBO Information (Separate column before company milestones)
+  assert.ok(data.uboInformation, 'uboInformation must exist as a separate field');
+  assert.match(data.uboInformation, /STAR GROUP Corporate/i);
+  assert.match(data.uboInformation, /PT Sentosa Abadi Raja/i);
+});
+
+test('pre-analysis Section 6 includes dealerCheck field matching PDF', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-005');
+  assert.ok(data.dealerCheck, 'dealerCheck must exist');
+  assert.match(data.dealerCheck, /No Records Payment|New Liugong Customer/i);
+  assert.ok(data.topDealerToCustomer, 'topDealerToCustomer must exist');
+  assert.ok(data.lmiArCheck, 'lmiArCheck must exist');
+});
+
+test('pre-analysis Section 7 includes full approval committee sign-off fields matching PDF', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-006');
+  // 3 Committee Signatories
+  assert.ok(data.proposedBy, 'proposedBy must exist');
+  assert.match(data.proposedBy, /Amanda Cynthia/i);
+  assert.match(data.proposedBy, /Senior Account Manager/i);
+
+  assert.ok(data.reviewedBy, 'reviewedBy must exist');
+  assert.match(data.reviewedBy, /Maria Regina/i);
+  assert.match(data.reviewedBy, /Dept\. Head/i);
+
+  assert.ok(data.approvedBy, 'approvedBy must exist');
+  assert.match(data.approvedBy, /Jembar Ganda E/i);
+  assert.match(data.approvedBy, /Director/i);
+});
 test('createBlankPreAnalysisData correctly populates FAP data and blanks non-FAP fields', async () => {
   const { createBlankPreAnalysisData } = await import('../server/pre-analysis-store');
   const mockApp = {
@@ -188,13 +263,13 @@ test('createBlankPreAnalysisData correctly populates FAP data and blanks non-FAP
   assert.ok(blankData.paidUpCapital.includes('5.000.000.000'));
 
   // Verify non-FAP fields are blank / empty
-  assert.equal(blankData.projectNameLocation, '');
+  assert.equal(blankData.holdingGroup, '');
+  assert.equal(blankData.projectName, '');
   assert.equal(blankData.bowheerInfo, '');
   assert.equal(blankData.companyBackground, '');
   assert.deepEqual(blankData.milestones, []);
   assert.deepEqual(blankData.unitComposition, []);
   assert.deepEqual(blankData.lenderExposures, []);
-  assert.deepEqual(blankData.mitigationConditions, []);
   assert.equal(blankData.recommendation, '');
 });
 
