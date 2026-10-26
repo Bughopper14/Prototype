@@ -1895,34 +1895,144 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
 
-                {/* Sign-offs */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Propose by :</label>
-                    <textarea
-                      rows={2}
-                      value={data.proposedBy}
-                      onChange={e => updateField('proposedBy', e.target.value)}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                    />
+                {/* Sign-offs (Area Tanda Tangan Diperlebar & Terstruktur) */}
+                <div style={{ marginTop: '20px', borderTop: '1px solid #cbd5e1', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <div>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a' }}>Area Tanda Tangan & Otorisasi Komite</span>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Kolom tanda tangan diperluas untuk otorisasi formal (Propose, Review, Approve)</div>
+                    </div>
+                    <span style={{ fontSize: '0.7rem', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                      3 Komite Wajib
+                    </span>
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Reviewed by :</label>
-                    <textarea
-                      rows={2}
-                      value={data.reviewedBy}
-                      onChange={e => updateField('reviewedBy', e.target.value)}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569' }}>Approved by :</label>
-                    <textarea
-                      rows={2}
-                      value={data.approvedBy}
-                      onChange={e => updateField('approvedBy', e.target.value)}
-                      style={{ width: '100%', padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
-                    />
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {/* Propose by Card */}
+                    <div style={{
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      padding: '14px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>1. Propose by :</span>
+                        <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                          Marketing / Sales
+                        </span>
+                      </div>
+                      <div style={{
+                        height: '75px',
+                        border: '1.5px dashed #94a3b8',
+                        borderRadius: '6px',
+                        background: '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        marginBottom: '10px'
+                      }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
+                        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
+                      </div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Pengusul :</label>
+                      <textarea
+                        rows={2}
+                        name="proposedBy"
+                        data-field="proposedBy"
+                        value={data.proposedBy}
+                        onChange={e => updateField('proposedBy', e.target.value)}
+                        onFocus={() => scrollToPreviewElement('preana-preview-cell-proposedBy')}
+                        placeholder="Amanda Cynthia&#10;Senior Account Manager"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', lineHeight: 1.4 }}
+                      />
+                    </div>
+
+                    {/* Reviewed by Card */}
+                    <div style={{
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      padding: '14px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>2. Reviewed by :</span>
+                        <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                          Risk & Credit Dept Head
+                        </span>
+                      </div>
+                      <div style={{
+                        height: '75px',
+                        border: '1.5px dashed #94a3b8',
+                        borderRadius: '6px',
+                        background: '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        marginBottom: '10px'
+                      }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
+                        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
+                      </div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Reviewer :</label>
+                      <textarea
+                        rows={2}
+                        name="reviewedBy"
+                        data-field="reviewedBy"
+                        value={data.reviewedBy}
+                        onChange={e => updateField('reviewedBy', e.target.value)}
+                        onFocus={() => scrollToPreviewElement('preana-preview-cell-reviewedBy')}
+                        placeholder="Maria Regina&#10;Dept. Head"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', lineHeight: 1.4 }}
+                      />
+                    </div>
+
+                    {/* Approved by Card */}
+                    <div style={{
+                      border: '1.5px solid #cbd5e1',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      padding: '14px',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>3. Approved by :</span>
+                        <span style={{ fontSize: '0.7rem', background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                          Director / Credit Committee
+                        </span>
+                      </div>
+                      <div style={{
+                        height: '75px',
+                        border: '1.5px dashed #94a3b8',
+                        borderRadius: '6px',
+                        background: '#ffffff',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        marginBottom: '10px'
+                      }}>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
+                        <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
+                      </div>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Approver :</label>
+                      <textarea
+                        rows={2}
+                        name="approvedBy"
+                        data-field="approvedBy"
+                        value={data.approvedBy}
+                        onChange={e => updateField('approvedBy', e.target.value)}
+                        onFocus={() => scrollToPreviewElement('preana-preview-cell-approvedBy')}
+                        placeholder="Jembar Ganda E&#10;Director"
+                        style={{ width: '100%', padding: '8px 10px', fontSize: '0.8rem', border: '1px solid #cbd5e1', borderRadius: '4px', lineHeight: 1.4 }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2614,28 +2724,103 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </table>
               </div>
 
-              {/* Approvals / Sign-off Footer */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: '16px',
-                marginTop: '28px',
-                borderTop: '1px solid #000000',
-                paddingTop: '8px',
-                fontSize: '9pt'
-              }}>
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: '24px' }}>Propose by :</div>
-                  <div style={{ fontWeight: 700, whiteSpace: 'pre-line' }}>{data.proposedBy}</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: '24px' }}>Reviewed by :</div>
-                  <div style={{ fontWeight: 700, whiteSpace: 'pre-line' }}>{data.reviewedBy}</div>
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, marginBottom: '24px' }}>Approved by :</div>
-                  <div style={{ fontWeight: 700, whiteSpace: 'pre-line' }}>{data.approvedBy}</div>
-                </div>
+              {/* Approvals / Sign-off Footer - Widened & Formal Executive Format */}
+              <div style={{ marginTop: '36px', marginBottom: '28px' }}>
+                <table style={{
+                  width: '100%',
+                  borderCollapse: 'collapse',
+                  fontSize: '9pt',
+                  border: '1.5px solid #000000',
+                  background: '#ffffff'
+                }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #000000' }}>
+                      <th style={{ width: '33.33%', padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: '9pt', color: '#000000', borderRight: '1.5px solid #000000' }}>
+                        Propose by :
+                      </th>
+                      <th style={{ width: '33.33%', padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: '9pt', color: '#000000', borderRight: '1.5px solid #000000' }}>
+                        Reviewed by :
+                      </th>
+                      <th style={{ width: '33.34%', padding: '8px 10px', textAlign: 'left', fontWeight: 700, fontSize: '9pt', color: '#000000' }}>
+                        Approved by :
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Generous signature clearance - 95px height */}
+                    <tr style={{ height: '95px' }}>
+                      <td
+                        id="preana-preview-cell-sign-propose"
+                        onClick={() => handlePreviewCellClick('proposedBy', 'sec7')}
+                        style={{ padding: '10px', verticalAlign: 'bottom', borderRight: '1.5px solid #000000', cursor: 'pointer', height: '95px' }}
+                      >
+                        <div style={{ minHeight: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '7.5pt' }}>
+                          ( Tanda Tangan / Stempel )
+                        </div>
+                      </td>
+                      <td
+                        id="preana-preview-cell-sign-review"
+                        onClick={() => handlePreviewCellClick('reviewedBy', 'sec7')}
+                        style={{ padding: '10px', verticalAlign: 'bottom', borderRight: '1.5px solid #000000', cursor: 'pointer', height: '95px' }}
+                      >
+                        <div style={{ minHeight: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '7.5pt' }}>
+                          ( Tanda Tangan / Stempel )
+                        </div>
+                      </td>
+                      <td
+                        id="preana-preview-cell-sign-approve"
+                        onClick={() => handlePreviewCellClick('approvedBy', 'sec7')}
+                        style={{ padding: '10px', verticalAlign: 'bottom', cursor: 'pointer', height: '95px' }}
+                      >
+                        <div style={{ minHeight: '75px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontStyle: 'italic', fontSize: '7.5pt' }}>
+                          ( Tanda Tangan / Stempel )
+                        </div>
+                      </td>
+                    </tr>
+                    {/* Signatory Names & Positions */}
+                    <tr style={{ borderTop: '1px solid #000000' }}>
+                      <td
+                        id="preana-preview-cell-proposedBy"
+                        onClick={() => handlePreviewCellClick('proposedBy', 'sec7')}
+                        style={{ padding: '8px 10px', verticalAlign: 'top', borderRight: '1.5px solid #000000', cursor: 'pointer' }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: '9pt', color: '#000000', textDecoration: 'underline' }}>
+                          {data.proposedBy.split('\n')[0] || data.proposedBy}
+                        </div>
+                        <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
+                          {data.proposedBy.split('\n').slice(1).join('\n') || 'Senior Account Manager'}
+                        </div>
+                        <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
+                      </td>
+                      <td
+                        id="preana-preview-cell-reviewedBy"
+                        onClick={() => handlePreviewCellClick('reviewedBy', 'sec7')}
+                        style={{ padding: '8px 10px', verticalAlign: 'top', borderRight: '1.5px solid #000000', cursor: 'pointer' }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: '9pt', color: '#000000', textDecoration: 'underline' }}>
+                          {data.reviewedBy.split('\n')[0] || data.reviewedBy}
+                        </div>
+                        <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
+                          {data.reviewedBy.split('\n').slice(1).join('\n') || 'Dept. Head'}
+                        </div>
+                        <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
+                      </td>
+                      <td
+                        id="preana-preview-cell-approvedBy"
+                        onClick={() => handlePreviewCellClick('approvedBy', 'sec7')}
+                        style={{ padding: '8px 10px', verticalAlign: 'top', cursor: 'pointer' }}
+                      >
+                        <div style={{ fontWeight: 700, fontSize: '9pt', color: '#000000', textDecoration: 'underline' }}>
+                          {data.approvedBy.split('\n')[0] || data.approvedBy}
+                        </div>
+                        <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
+                          {data.approvedBy.split('\n').slice(1).join('\n') || 'Director'}
+                        </div>
+                        <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

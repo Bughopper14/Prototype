@@ -198,3 +198,19 @@ test('pre-analysis Section 6 includes dealerCheck field matching PDF', async () 
   assert.ok(data.lmiArCheck, 'lmiArCheck must exist');
 });
 
+test('pre-analysis Section 7 includes full approval committee sign-off fields matching PDF', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-006');
+  // 3 Committee Signatories
+  assert.ok(data.proposedBy, 'proposedBy must exist');
+  assert.match(data.proposedBy, /Amanda Cynthia/i);
+  assert.match(data.proposedBy, /Senior Account Manager/i);
+
+  assert.ok(data.reviewedBy, 'reviewedBy must exist');
+  assert.match(data.reviewedBy, /Maria Regina/i);
+  assert.match(data.reviewedBy, /Dept\. Head/i);
+
+  assert.ok(data.approvedBy, 'approvedBy must exist');
+  assert.match(data.approvedBy, /Jembar Ganda E/i);
+  assert.match(data.approvedBy, /Director/i);
+});
+
