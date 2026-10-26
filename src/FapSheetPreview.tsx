@@ -38,6 +38,7 @@ export interface FapSheetData {
   picPostalCode?: string;
   selectedDeedNo?: string;
   stakeholders?: any[];
+  projects?: any[];
   [key: string]: any;
 }
 
@@ -48,6 +49,7 @@ export interface FapSheetPreviewProps {
   profile?: any;
   pic?: any;
   stakeholders?: any[];
+  projects?: any[];
   compact?: boolean;
   readOnly?: boolean;
   activeSection?: string | null;
@@ -117,6 +119,14 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   picProvince: 'fap-cell-picProvince',
   picPostalCode: 'fap-cell-picPostalCode',
 
+  // Projects
+  projectOwner: 'fap-cell-proj-0-owner',
+  projectLocation: 'fap-cell-proj-0-loc',
+  location: 'fap-cell-proj-0-loc',
+  projectRole: 'fap-cell-proj-0-role',
+  roleInProject: 'fap-cell-proj-0-role',
+  contractStatus: 'fap-cell-proj-0-status',
+
   // Shareholders
   shareholders: 'fap-cell-sh-0-name',
   sharePercentage: 'fap-cell-sh-0-pct',
@@ -125,6 +135,17 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
 };
 
 export function resolveFieldToCellId(fieldKey: string, section?: string | null, extraData?: any): string {
+  if (section?.startsWith('projects') || ['projectOwner', 'projectLocation', 'location', 'projectRole', 'roleInProject', 'contractStatus'].includes(fieldKey)) {
+    let rowIndex = 0;
+    const m = section?.match(/projects-(\d+)/);
+    if (m) rowIndex = parseInt(m[1], 10) || 0;
+    if (rowIndex > 6) rowIndex = 6;
+    if (fieldKey === 'projectOwner') return `fap-cell-proj-${rowIndex}-owner`;
+    if (fieldKey === 'projectLocation' || fieldKey === 'location') return `fap-cell-proj-${rowIndex}-loc`;
+    if (fieldKey === 'projectRole' || fieldKey === 'roleInProject') return `fap-cell-proj-${rowIndex}-role`;
+    if (fieldKey === 'contractStatus') return `fap-cell-proj-${rowIndex}-status`;
+    return `fap-cell-proj-${rowIndex}-owner`;
+  }
   if (section === 'pic' || section === 'fap-preview-sec-pic') {
     const picMap: Record<string, string> = {
       name: 'fap-cell-picName',
@@ -221,14 +242,13 @@ export const SECTION_TO_CELL_IDS_MAP: Record<string, string[]> = {
     'fap-cell-picPostalCode',
   ],
   'fap-preview-sec-projects': [
-    'fap-cell-sh-0-name', 'fap-cell-sh-0-pos', 'fap-cell-sh-0-shares', 'fap-cell-sh-0-pct',
-    'fap-cell-sh-1-name', 'fap-cell-sh-1-pos', 'fap-cell-sh-1-shares', 'fap-cell-sh-1-pct',
-    'fap-cell-sh-2-name', 'fap-cell-sh-2-pos', 'fap-cell-sh-2-shares', 'fap-cell-sh-2-pct',
-    'fap-cell-sh-3-name', 'fap-cell-sh-3-pos', 'fap-cell-sh-3-shares', 'fap-cell-sh-3-pct',
-    'fap-cell-sh-4-name', 'fap-cell-sh-4-pos', 'fap-cell-sh-4-shares', 'fap-cell-sh-4-pct',
-    'fap-cell-sh-5-name', 'fap-cell-sh-5-pos', 'fap-cell-sh-5-shares', 'fap-cell-sh-5-pct',
-    'fap-cell-sh-6-name', 'fap-cell-sh-6-pos', 'fap-cell-sh-6-shares', 'fap-cell-sh-6-pct',
-    'fap-cell-sh-7-name', 'fap-cell-sh-7-pos', 'fap-cell-sh-7-shares', 'fap-cell-sh-7-pct',
+    'fap-cell-proj-0-owner', 'fap-cell-proj-0-loc', 'fap-cell-proj-0-role', 'fap-cell-proj-0-status',
+    'fap-cell-proj-1-owner', 'fap-cell-proj-1-loc', 'fap-cell-proj-1-role', 'fap-cell-proj-1-status',
+    'fap-cell-proj-2-owner', 'fap-cell-proj-2-loc', 'fap-cell-proj-2-role', 'fap-cell-proj-2-status',
+    'fap-cell-proj-3-owner', 'fap-cell-proj-3-loc', 'fap-cell-proj-3-role', 'fap-cell-proj-3-status',
+    'fap-cell-proj-4-owner', 'fap-cell-proj-4-loc', 'fap-cell-proj-4-role', 'fap-cell-proj-4-status',
+    'fap-cell-proj-5-owner', 'fap-cell-proj-5-loc', 'fap-cell-proj-5-role', 'fap-cell-proj-5-status',
+    'fap-cell-proj-6-owner', 'fap-cell-proj-6-loc', 'fap-cell-proj-6-role', 'fap-cell-proj-6-status',
   ],
 };
 
@@ -237,7 +257,7 @@ export const SECTION_TO_SCROLL_TARGET_MAP: Record<string, string> = {
   'fap-preview-sec-company': 'fap-cell-companyAddress',
   'fap-preview-sec-business': 'fap-cell-mainBusiness',
   'fap-preview-sec-pic': 'fap-cell-picName',
-  'fap-preview-sec-projects': 'fap-cell-sh-0-name',
+  'fap-preview-sec-projects': 'fap-cell-proj-0-owner',
 };
 
 export const SECTION_TO_CELL_ID_MAP: Record<string, string> = {
@@ -289,7 +309,37 @@ export const CELL_ID_TO_SECTION_MAP: Record<string, string> = {
   'fap-cell-picProvince': 'fap-preview-sec-pic',
   'fap-cell-picPostalCode': 'fap-preview-sec-pic',
 
-  // Projects & Shareholders
+  // Projects (Pemilik Proyek)
+  'fap-cell-proj-0-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-0-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-0-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-0-status': 'fap-preview-sec-projects',
+  'fap-cell-proj-1-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-1-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-1-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-1-status': 'fap-preview-sec-projects',
+  'fap-cell-proj-2-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-2-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-2-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-2-status': 'fap-preview-sec-projects',
+  'fap-cell-proj-3-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-3-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-3-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-3-status': 'fap-preview-sec-projects',
+  'fap-cell-proj-4-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-4-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-4-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-4-status': 'fap-preview-sec-projects',
+  'fap-cell-proj-5-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-5-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-5-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-5-status': 'fap-preview-sec-projects',
+  'fap-cell-proj-6-owner': 'fap-preview-sec-projects',
+  'fap-cell-proj-6-loc': 'fap-preview-sec-projects',
+  'fap-cell-proj-6-role': 'fap-preview-sec-projects',
+  'fap-cell-proj-6-status': 'fap-preview-sec-projects',
+
+  // Shareholders
   'fap-cell-sh-0-name': 'fap-preview-sec-projects',
   'fap-cell-sh-0-pos': 'fap-preview-sec-projects',
   'fap-cell-sh-0-shares': 'fap-preview-sec-projects',
@@ -338,6 +388,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     const prof = props.profile || app.profile || {};
     const p = props.pic || app.pic || raw.pic || {};
     const sh = props.stakeholders || app.stakeholders || raw.stakeholders || [];
+    const proj = props.projects || (raw as any).projects || (app as any).projects || [];
 
     const pick = (vA: any, vB: any, vC?: any, fallback = '') => {
       if (vA !== undefined && vA !== null && vA !== '') return vA;
@@ -404,8 +455,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       picProvince: resolveLoc('province', pick(raw.picProvince, p.province, '')),
       picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
       stakeholders: sh,
+      projects: proj,
     };
-  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, master]);
+  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, props.projects, master]);
 
   // Push values into iframe DOM
   const syncIframeValues = () => {
@@ -480,6 +532,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     setText('fap-cell-email', d.email);
     setText('fap-cell-repaymentSource', d.repaymentSource);
     setText('fap-cell-locationStatus', d.locationStatus);
+
+    // Projects (Pemilik Proyek / Project Owner table)
+    const projList = d.projects || [];
+    for (let i = 0; i < 7; i++) {
+      const item = projList[i] || {};
+      setText(`fap-cell-proj-${i}-owner`, item.projectOwner || '');
+      setText(`fap-cell-proj-${i}-loc`, item.projectLocation || item.location || '');
+      setText(`fap-cell-proj-${i}-role`, item.projectRole || item.roleInProject || '');
+      setText(`fap-cell-proj-${i}-status`, item.contractStatus || '');
+    }
 
     // Shareholders up to 8
     const shList = d.stakeholders || [];

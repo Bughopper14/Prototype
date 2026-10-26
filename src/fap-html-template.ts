@@ -1896,7 +1896,7 @@ td
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:824;
  width:17pt" width="23"/>
 <col class="xl70" span="2" style="width:47pt" width="63"/>
-<tr height="31" style="height:23.4pt">
+<tr id="fap-preview-sec-projects" height="31" style="height:23.4pt">
 <td class="xl67" align="left" height="31" style="height:23.4pt;width:79pt;border-left:1.0pt solid windowtext;" valign="top" width="105"><!--[if gte vml 1]><v:shapetype id="_x0000_t75" coordsize="21600,21600"
    o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f"
    stroked="f">
@@ -3026,7 +3026,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl70"></td>
 <td class="xl70"></td>
 </tr>
-<tr height="106" id="fap-preview-sec-projects" style="mso-height-source:userset;height:79.95pt">
+<tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl101" colspan="2" rowspan="2" style="width:229pt" width="305">No. Akta
   Perubahan Terakhir /<font class="font18"> Latest Deed of Amendment number</font></td>
@@ -3696,12 +3696,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl97"></td>
 <td class="xl118"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Cons. Owner</td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-0-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-0-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-0-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-0-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -3715,12 +3715,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl97"></td>
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Contractors</td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-1-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-1-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-1-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-1-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -3734,12 +3734,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl97"></td>
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Sub Cont</td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-2-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-2-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-2-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-2-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -3753,12 +3753,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl116">Rental</td>
 <td class="xl97"></td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-3-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-3-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-3-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-3-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -3774,12 +3774,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl116">Other</td>
 <td class="xl97"></td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-4-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-4-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-4-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-4-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -3794,12 +3794,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-5-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-5-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-5-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-5-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -3815,12 +3815,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="4" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-6-owner" style="border-right:.5pt solid black"> </td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-6-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-6-role" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td class="xl105 fap-autofill-val" colspan="2" id="fap-cell-proj-6-status" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>

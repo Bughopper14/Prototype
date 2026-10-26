@@ -286,9 +286,51 @@ app.get('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String
 app.put('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const data=req.body;await savePreAnalysisData(id,data);res.json({success:true,data});});
 app.get('/api/v1/applications/:id',async(req,res,next)=>{const detail=await intakeDetail(String(req.params.id));if(detail)return res.json(detail);next();});
 app.put('/api/v1/applications/:id/business',async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);const fallback=a?null:await detail(id);a=a||fallback;const marketing=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT')&&['DRAFT','RETURNED'].includes(a.status),finance=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='CA')&&a.status==='IN_CA_LEGAL_REVIEW';ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||marketing||finance,'Business information is locked at this workflow stage',403);if(fallback)await saveCustomerPic(id,{profile:fallback},fallback);await saveBusiness(id,{...req.body,...(finance?{projects:a.projects,bankReferences:a.bankReferences}:{})});res.json(await intakeDetail(id));});
-app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{if(!req.body.profile&&!req.body.pic)return next();const id=String(req.params.id);const existing=await intakeDetail(id);if(!existing)return next();if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}res.json(await saveCustomerPic(id,req.body));});
+async function checkIsPreAnalysis(id: string, existing?: any): Promise<boolean> {
+  const a = existing || (await intakeDetail(id));
+  if (!a) return false;
+  if (a.stage === 'Pre-analysis' || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)) {
+    return true;
+  }
+  try {
+    const lock = await getSubmitLock(id);
+    if (lock && lock.stage === 'PRE_ANALYSIS') return true;
+  } catch {}
+  return false;
+}
+
+app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{
+  if(!req.body.profile&&!req.body.pic)return next();
+  const id=String(req.params.id);
+  const existing=await intakeDetail(id);
+  if(!existing)return next();
+  if (await checkIsPreAnalysis(id, existing)) {
+    return res.status(403).json({ error: 'FAP Stage is locked because the application has advanced to Pre-analysis.' });
+  }
+  if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}
+  res.json(await saveCustomerPic(id,req.body));
+});
 app.put('/api/v1/applications/:id/stage',async(req,res)=>{const id=String(req.params.id);const stage=String(req.body.stage||'Pre-analysis');if(stage==='Pre-analysis'){try{const lock=await getSubmitLock(id);if(lock.isLocked){return res.status(403).json({error:'Tombol submit terkunci. Harap upload dokumen FAP terlebih dahulu pada tab Dokumen.'});}}catch{}}try{if(pool){const dbStage=stage==='Pre-analysis'?'PRE_ANALYSIS':'FAP_STAGE';await pool.query('UPDATE application_submit_lock SET stage=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[dbStage,id]);await pool.query('UPDATE applications SET stage=? WHERE id=?',[stage,id]);}}catch{}res.json({success:true,stage});});
-app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res,next)=>{const id=String(req.params.id);let a=await intakeDetail(id);if(!a)return next();ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);const legalData=req.body.legal||(req.body.deeds?req.body:(Array.isArray(req.body)?{deeds:req.body}:{}));if(req.body.stakeholders&&Array.isArray(legalData?.deeds)){const selId=legalData.selectedDeedId||legalData.deeds[0]?.id;const targetDeed=legalData.deeds.find((d:any)=>d.id===selId)||legalData.deeds[0];if(targetDeed){targetDeed.stakeholders=req.body.stakeholders;targetDeed._stakeholdersPassed=true;}}await saveLegal(id,legalData,false);res.json(await intakeDetail(id));});
+app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res,next)=>{
+  const id=String(req.params.id);
+  let a=await intakeDetail(id);
+  if(!a)return next();
+  if (await checkIsPreAnalysis(id, a)) {
+    return res.status(403).json({ error: 'Legal data in FAP Stage is locked because the application has advanced to Pre-analysis.' });
+  }
+  ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);
+  const legalData=req.body.legal||(req.body.deeds?req.body:(Array.isArray(req.body)?{deeds:req.body}:{}));
+  if(req.body.stakeholders&&Array.isArray(legalData?.deeds)){
+    const selId=legalData.selectedDeedId||legalData.deeds[0]?.id;
+    const targetDeed=legalData.deeds.find((d:any)=>d.id===selId)||legalData.deeds[0];
+    if(targetDeed){
+      targetDeed.stakeholders=req.body.stakeholders;
+      targetDeed._stakeholdersPassed=true;
+    }
+  }
+  await saveLegal(id,legalData,false);
+  res.json(await intakeDetail(id));
+});
 app.use('/api/v1',(req,res,next)=>{try{validateWrite(req.path,req.method,req.body);next();}catch(e:any){next(new Problem(422,e.message));}});
 const permit=(req:Request,roles:string[])=>ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||roles.includes(req.actor.role),'Your role cannot perform this action',403);
 async function application(id:string,q=query){const a=(await all('Application',{id},q))[0];ensure(a,'Application not found',404);return a;}
@@ -782,6 +824,14 @@ app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async
   const formattedFileName = `${cleanBase}_${appHash}_${dateStamp}${ext}`;
 
   if(await intakeDetail(id)){
+    if (await checkIsPreAnalysis(id)) {
+      const docs = await readApplicationDocuments(id);
+      const targetCheck = docs.find(d => String(d.id) === String(req.body.checklistId));
+      const isFap = targetCheck && (String(targetCheck.documentCode).toUpperCase() === 'FAP' || String(targetCheck.documentName).toLowerCase().includes('fap'));
+      if (isFap) {
+        return res.status(403).json({ error: 'FAP Stage documents are locked because the application has advanced to Pre-analysis.' });
+      }
+    }
     const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:formattedFileName},req.actor.id,async key=>{
       if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));
       else{
@@ -1022,6 +1072,13 @@ app.delete(['/api/v1/applications/:id/documents/files/:fileId', '/api/v1/applica
  permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);
  const id=String(req.params.id),fileId=String(req.params.fileId);
  if(await intakeDetail(id)){
+  if (await checkIsPreAnalysis(id)) {
+    const docs = await readApplicationDocuments(id);
+    const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
+    if (fapCheck && fapCheck.files?.some((f: any) => String(f.id) === fileId)) {
+      return res.status(403).json({ error: 'FAP Stage documents are locked because the application has advanced to Pre-analysis.' });
+    }
+  }
   await deleteApplicationDocumentFile(id,fileId,removeStoredDocument);
   const docs = await readApplicationDocuments(id);
   const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
