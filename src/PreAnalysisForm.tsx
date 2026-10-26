@@ -73,7 +73,12 @@ export interface PreAnalysisData {
   sourceOfRepayment: string;
 
   // 2. PROJECT INFORMATION
-  projectNameLocation: string;
+  holdingGroup: string;
+  projectName: string;
+  projectLocation: string;
+  existingProjects: string;
+  newProjects: string;
+  projectNameLocation?: string;
   customerRole: string;
   otherContractors: string;
   projectOwner: string;
@@ -158,7 +163,26 @@ export const defaultInitialData: PreAnalysisData = {
   paidUpCapital: '32.500.000.000',
   sourceOfRepayment: 'Income / Others',
 
-  projectNameLocation: `STAR GROUP :\nExisting Project :\n1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025\n2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025\n3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025\n4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project - Project start from December 2024\n\nB. PT Pangan Sejahtera Santosa (PASS)\n1. PT Sinar Sosro - FMCG distributor - Start from 2022\n2. PT FKS Pangan Nusantara - Start from 2022\n3. PT Perfetti Van Melle - Start from 2022\n4. PT Mondelez Indonesia Trading - Start from 2022\n\nNew Project :\nC. PT Harta Putramas Santosa (HTPS) - NEW\n1. PT Industrial Forest Plantation - Harvesting project - Project start estimated around Sept / Oct 2026 (Kalimantan Timur)\n2. PT SBA Wood Industries - Land Clearing - Project start estimated around Oct 2026 (Lebong Hitam)\n3. RAPP - Mayawana (for next year)`,
+  // 2. PROJECT INFORMATION
+  holdingGroup: 'STAR GROUP (PT Sentosa Abadi Raja)',
+  projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
+  projectLocation: 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
+  existingProjects: `A. PT Handalan Putramas Santosa (HPS) (Existing Project):
+1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
+2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
+3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
+4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project - Project start from December 2024
+
+B. PT Pangan Sejahtera Santosa (PASS) (Existing Project):
+1. PT Sinar Sosro - FMCG distributor - Start from 2022
+2. PT FKS Pangan Nusantara - Start from 2022
+3. PT Perfetti Van Melle - Start from 2022
+4. PT Mondelez Indonesia Trading - Start from 2022`,
+  newProjects: `C. PT Harta Putramas Santosa (HTPS) - NEW (Proposed Project):
+1. PT Industrial Forest Plantation - Harvesting project - Project start estimated around Sept / Oct 2026 (Kalimantan Timur)
+2. PT SBA Wood Industries - Land Clearing - Project start estimated around Oct 2026 (Lebong Hitam)
+3. RAPP - Mayawana (for next year)`,
+  projectNameLocation: 'STAR GROUP (PT Sentosa Abadi Raja) - Land Clearing, Wood Hauling & Harvesting | Sumatera & Kalimantan',
   customerRole: 'Land Clearing & Harvesting Contractor',
   otherContractors: 'Sarindo Group, Bandang Group',
   projectOwner: '1. PT Industrial Forest Plantation (RAPP)\n2. Oki Pulp & Paper',
@@ -738,15 +762,76 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             {openSections.sec2 && (
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name & Location</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Holding Group / Parent Company (Perusahaan Utama)</label>
+                  <input
+                    type="text"
+                    name="holdingGroup"
+                    data-field="holdingGroup"
+                    value={data.holdingGroup || ''}
+                    onChange={e => updateField('holdingGroup', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-holdingGroup')}
+                    placeholder="STAR GROUP (PT Sentosa Abadi Raja)"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name (Nama Objek Proyek)</label>
+                    <input
+                      type="text"
+                      name="projectName"
+                      data-field="projectName"
+                      value={data.projectName || ''}
+                      onChange={e => updateField('projectName', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-projectName')}
+                      placeholder="Land Clearing, Wood Hauling & Harvesting"
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Location (Lokasi Proyek)</label>
+                    <input
+                      type="text"
+                      name="projectLocation"
+                      data-field="projectLocation"
+                      value={data.projectLocation || ''}
+                      onChange={e => updateField('projectLocation', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-projectLocation')}
+                      placeholder="Sumatera Area & Kalimantan Timur"
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Existing Projects (Proyek Yang Sedang Berjalan - PT HPS & PT PASS)</span>
+                    <span style={{ fontSize: '0.68rem', color: '#166534', fontWeight: 600 }}>Active Contracts</span>
+                  </label>
+                  <textarea
+                    rows={6}
+                    name="existingProjects"
+                    data-field="existingProjects"
+                    value={data.existingProjects || ''}
+                    onChange={e => updateField('existingProjects', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
+                    placeholder="A. PT Handalan Putramas Santosa (HPS)...\nB. PT Pangan Sejahtera Santosa (PASS)..."
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>New Projects (Pipeline Proyek Baru / Diajukan - PT HTPS)</span>
+                    <span style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: 600 }}>Proposed Pipeline</span>
+                  </label>
                   <textarea
                     rows={4}
-                    name="projectNameLocation"
-                    data-field="projectNameLocation"
-                    value={data.projectNameLocation}
-                    onChange={e => updateField('projectNameLocation', e.target.value)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-projectNameLocation')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    name="newProjects"
+                    data-field="newProjects"
+                    value={data.newProjects || ''}
+                    onChange={e => updateField('newProjects', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-newProjects')}
+                    placeholder="C. PT Harta Putramas Santosa (HTPS)..."
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -1997,8 +2082,34 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px' }}>
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Project Name & Location</td>
-                    <td id="preana-preview-cell-projectNameLocation" onClick={() => handlePreviewCellClick('projectNameLocation', 'sec2')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.projectNameLocation}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Holding Group / Main Company</td>
+                    <td id="preana-preview-cell-holdingGroup" onClick={() => handlePreviewCellClick('holdingGroup', 'sec2')} style={{ width: '74%', padding: '4px 6px', fontWeight: 700, color: '#1e3a8a', cursor: 'pointer' }}>
+                      {data.holdingGroup || 'STAR GROUP (PT Sentosa Abadi Raja)'}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Name</td>
+                    <td id="preana-preview-cell-projectName" onClick={() => handlePreviewCellClick('projectName', 'sec2')} style={{ padding: '4px 6px', fontWeight: 600, cursor: 'pointer' }}>
+                      {data.projectName || 'Land Clearing, Wood Hauling & Forestry Harvesting Operations'}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Location</td>
+                    <td id="preana-preview-cell-projectLocation" onClick={() => handlePreviewCellClick('projectLocation', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
+                      {data.projectLocation || 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur'}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
+                    <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
+                      {data.existingProjects}
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>New Projects</td>
+                    <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
+                      {data.newProjects}
+                    </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Role of Customer</td>
@@ -2052,7 +2163,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
-                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.uboInfo}</td>
+                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
+                      <div style={{ marginBottom: '6px' }}>{data.uboInfo}</div>
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px', background: '#f8fafc', marginTop: '6px' }}>
+                        <div style={{ fontSize: '8pt', fontWeight: 700, color: '#1e3a8a', marginBottom: '4px' }}>
+                          STAR GROUP SHAREHOLDING & GOVERNANCE STRUCTURE:
+                        </div>
+                        <img
+                          src="/crm/pre_analysis/star_group_structure.jpg"
+                          alt="STAR Group Corporate Structure"
+                          style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '3px' }}
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/pre_analysis/star_group_structure.jpg';
+                          }}
+                        />
+                      </div>
+                    </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>

@@ -147,3 +147,24 @@ test('pre-analysis default payload includes Section 5 delivery & Section 7 compe
   assert.equal(data.competitionTable[12].finco, 'SMFL');
 });
 
+test('pre-analysis Section 2 separates holding group, project name, location, and existing/new projects', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-003');
+  // Holding Group (STAR GROUP)
+  assert.ok(data.holdingGroup, 'holdingGroup must exist');
+  assert.match(data.holdingGroup, /STAR GROUP/i);
+
+  // Project Name & Location distinct fields
+  assert.ok(data.projectName, 'projectName must exist');
+  assert.match(data.projectName, /Land Clearing|Harvesting/i);
+  assert.ok(data.projectLocation, 'projectLocation must exist');
+  assert.match(data.projectLocation, /Sumatera|Jakarta/i);
+
+  // Existing Projects vs New Projects distinct fields
+  assert.ok(data.existingProjects, 'existingProjects must exist');
+  assert.match(data.existingProjects, /PT Handalan Putramas Santosa/i);
+  assert.match(data.existingProjects, /PT Pangan Sejahtera Santosa/i);
+
+  assert.ok(data.newProjects, 'newProjects must exist');
+  assert.match(data.newProjects, /PT Harta Putramas Santosa/i);
+});
+

@@ -105,7 +105,12 @@ export const DEFAULT_PRE_ANALYSIS_DATA = {
   paidUpCapital: 'IDR 32.500.000.000',
   sourceOfRepayment: 'Income / Others',
 
-  projectNameLocation: 'STAR GROUP Project Portfolio:\nA. PT Handalan Putramas Santosa (HPS) - RAPP, SBA Wood, BMH (Start Dec 2024 / Nov 2025)\nB. PT Pangan Sejahtera Santosa (PASS) - FMCG (Sosro, FKS, Mondelez) (Start 2022)\nC. PT Harta Putramas Santosa (HTPS) - NEW Harvesting Project (Est. Sept/Oct 2026)',
+  holdingGroup: 'STAR GROUP (PT Sentosa Abadi Raja)',
+  projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
+  projectLocation: 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
+  existingProjects: 'A. PT Handalan Putramas Santosa (HPS) - Existing Project:\n1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project (Start Dec 2024)\n\nB. PT Pangan Sejahtera Santosa (PASS) - Existing Project:\n1. PT Sinar Sosro - FMCG Distributor (Start 2022)\n2. PT FKS Pangan Nusantara (Start 2022)\n3. PT Perfetti Van Melle (Start 2022)\n4. PT Mondelez Indonesia Trading (Start 2022)',
+  newProjects: 'C. PT Harta Putramas Santosa (HTPS) - NEW Project:\n1. PT Industrial Forest Plantation - Harvesting Project (Est. Sept/Oct 2026, Kalimantan Timur)\n2. PT SBA Wood Industries - Land Clearing (Est. Oct 2026, Lebong Hitam)\n3. RAPP - Mayawana (For next year)',
+  projectNameLocation: 'STAR GROUP (PT Sentosa Abadi Raja) - Land Clearing, Wood Hauling & Harvesting | Sumatera & Kalimantan',
   customerRole: 'Land Clearing & Harvesting Contractor',
   otherContractors: 'Sarindo Group, Bandang Group',
   projectOwner: '1. PT Industrial Forest Plantation (RAPP)\n2. Oki Pulp & Paper (APP / Sinarmas)',
