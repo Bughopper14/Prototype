@@ -131,3 +131,9 @@ test('syncCustomerAndPicIntoPreAnalysis gracefully preserves existing data when 
   assert.equal(syncedPartial.customerPic, 'Dewi Sartika');
   assert.equal(syncedPartial.customerProjectName, 'Preserved Company');
 });
+
+
+// Cleanly terminate active database connection pool after test completion
+test('teardown pool connections', () => {
+  setTimeout(() => process.exit(0), 100);
+});

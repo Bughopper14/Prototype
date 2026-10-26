@@ -346,7 +346,103 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const handlePrint = () => {
-    window.print();
+    const docEl = document.getElementById('preana-digital-twin-doc');
+    if (!docEl) {
+      window.print();
+      return;
+    }
+
+    // Reuse or create invisible print iframe
+    let printFrame = document.getElementById('preana-print-frame') as HTMLIFrameElement | null;
+    if (!printFrame) {
+      printFrame = document.createElement('iframe');
+      printFrame.id = 'preana-print-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = 'none';
+      printFrame.style.visibility = 'hidden';
+      document.body.appendChild(printFrame);
+    }
+
+    const frameDoc = printFrame.contentWindow?.document;
+    if (!frameDoc) {
+      window.print();
+      return;
+    }
+
+    // Clone digital twin and remove screen-only UI/zoom
+    const clone = docEl.cloneNode(true) as HTMLElement;
+    clone.style.width = '100%';
+    clone.style.minWidth = '0';
+    clone.style.maxWidth = '100%';
+    clone.style.boxShadow = 'none';
+    clone.style.border = 'none';
+    clone.style.padding = '0';
+    clone.style.zoom = '1';
+    clone.style.margin = '0 auto';
+
+    frameDoc.open();
+    frameDoc.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Pre-Analysis Expert Judgement - ${data.preAnalysisNo || 'Form'}</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 4mm 3mm 3mm 3mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+      width: 100% !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-family: Calibri, Arial, sans-serif;
+    }
+    #preana-print-wrapper {
+      width: 100% !important;
+      margin: 0 auto !important;
+      padding: 2mm 3mm !important;
+    }
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+    tr, td, th {
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
+    button, .fap-acc-sync-btn, .fap-acc-actions {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div id="preana-print-wrapper">
+    ${clone.outerHTML}
+  </div>
+</body>
+</html>`);
+    frameDoc.close();
+
+    setTimeout(() => {
+      try {
+        printFrame?.contentWindow?.focus();
+        printFrame?.contentWindow?.print();
+      } catch (e) {
+        console.error('Print error:', e);
+        window.print();
+      }
+    }, 200);
   };
 
   return (
@@ -538,9 +634,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             {openSections.sec1 && (
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Pre-Analysis No</span>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 400 }}>000/PREANA/MKT/IX/YYYY</span>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px', height: '18px', lineHeight: '18px' }}>
+                    Pre-Analysis No
                   </label>
                   <input
                     type="text"
@@ -549,12 +644,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     value={data.preAnalysisNo}
                     onChange={e => updateField('preAnalysisNo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-preAnalysisNo')}
-                    placeholder="001/PREANA/MKT/IX/2026"
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    placeholder="000/PREANA/MKT/IX/YYYY"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', height: '34px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pre-Analysis Date</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '6px', height: '18px', lineHeight: '18px' }}>
+                    Pre-Analysis Date
+                  </label>
                   <input
                     type="text"
                     name="preAnalysisDate"
@@ -562,7 +659,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     value={data.preAnalysisDate}
                     onChange={e => updateField('preAnalysisDate', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-preAnalysisDate')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    placeholder="DD-Mon-YYYY"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', height: '34px', boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
@@ -1682,6 +1780,28 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 style={{ padding: '4px', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
               >
                 <RotateCcw size={14} />
+              </button>
+              <div style={{ width: '1px', height: '18px', background: '#cbd5e1', margin: '0 2px' }} />
+              <button
+                type="button"
+                onClick={handlePrint}
+                title="Print Pre-Analysis Document (A4 Portrait)"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  background: '#1b365d',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '0.74rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Printer size={13} />
+                <span>Print</span>
               </button>
             </div>
           )}
