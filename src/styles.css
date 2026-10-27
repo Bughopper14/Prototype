@@ -877,18 +877,29 @@ button:focus-visible, a:focus-visible {
   background: transparent;
   border: 0;
   color: #ffffff;
-  padding: 2px;
+  padding: 2px 4px;
   border-radius: 3px;
   cursor: pointer;
   display: grid;
   place-items: center;
+  transition: background 0.15s ease;
+}
+
+.excel-zoom-controls button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.excel-zoom-controls button.active {
+  background: rgba(255, 255, 255, 0.3);
+  color: #38bdf8;
 }
 
 .excel-zoom-btn-label {
   font-size: 10.5px;
   font-weight: 700;
-  min-width: 52px;
+  min-width: 68px;
   text-align: center;
+  color: #ffffff;
 }
 
 .excel-print-btn {

@@ -1844,13 +1844,13 @@ td
         html {
             background-color: #525659 !important;
             margin: 0 !important;
-            padding: 16px 20px 40px 20px !important;
+            padding: 16px 0 40px 0 !important;
             min-height: 100% !important;
-            display: flex !important;
-            justify-content: center !important;
-            width: max-content !important;
-            min-width: 100% !important;
+            width: 100% !important;
             box-sizing: border-box !important;
+            overflow-x: auto !important;
+            overflow-y: auto !important;
+            text-align: center !important;
         }
         body {
             background-color: #ffffff !important;
@@ -1859,6 +1859,8 @@ td
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
             box-sizing: content-box !important;
             width: 3640px !important;
+            display: inline-block !important;
+            text-align: left !important;
         }
     }
 

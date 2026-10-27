@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer } from 'lucide-react';
+import { FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer, Maximize2 } from 'lucide-react';
 import { FAP_EXCEL_HTML_TEMPLATE } from './fap-html-template';
 import { useMasterData } from './master-data';
 
@@ -379,6 +379,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(0.15);
+  const [autoFit, setAutoFit] = useState<boolean>(true);
 
   // Compute normalized values from props
   const d = useMemo(() => {
@@ -673,34 +674,48 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   useEffect(() => {
     if (props.externalZoom !== undefined && props.externalZoom > 0) {
       setZoomLevel(props.externalZoom);
+      setAutoFit(false);
     }
   }, [props.externalZoom]);
+
+  const calculateFitZoom = () => {
+    if (!containerRef.current) return 0.15;
+    const w = containerRef.current.clientWidth;
+    // Paper total width: 3640px table container + 260px padding = 3900px
+    // Keep 24px total margin for outer borders
+    const available = Math.max(200, w - 24);
+    const scale = Math.min(1.0, Math.max(0.05, Number((available / 3900).toFixed(3))));
+    return scale;
+  };
 
   useEffect(() => {
     if (!containerRef.current || (props.externalZoom !== undefined && props.externalZoom > 0)) return;
     const updateWidth = () => {
-      if (containerRef.current && (!props.externalZoom || props.externalZoom <= 0)) {
-        const w = containerRef.current.clientWidth;
-        const targetZoom = Math.min(0.5, Math.max(0.08, Number(((w - 40) / 4410).toFixed(2))));
-        setZoomLevel(targetZoom);
+      if (containerRef.current && autoFit && (!props.externalZoom || props.externalZoom <= 0)) {
+        setZoomLevel(calculateFitZoom());
       }
     };
     updateWidth();
     const observer = new ResizeObserver(updateWidth);
     observer.observe(containerRef.current);
     return () => observer.disconnect();
-  }, [props.externalZoom]);
+  }, [props.externalZoom, autoFit]);
 
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.05, Number((z - 0.05).toFixed(2))));
-  const handleZoomIn = () => setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
+  const handleZoomOut = () => {
+    setAutoFit(false);
+    setZoomLevel((z) => Math.max(0.05, Number((z - 0.02).toFixed(3))));
+  };
+  const handleZoomIn = () => {
+    setAutoFit(false);
+    setZoomLevel((z) => Math.min(1.5, Number((z + 0.02).toFixed(3))));
+  };
+  const handleToggleAutoFit = () => {
+    setAutoFit(true);
+    setZoomLevel(calculateFitZoom());
+  };
   const handleResetZoom = () => {
-    if (containerRef.current) {
-      const w = containerRef.current.clientWidth;
-      const targetZoom = Math.min(0.5, Math.max(0.08, Number(((w - 40) / 4410).toFixed(2))));
-      setZoomLevel(targetZoom);
-    } else {
-      setZoomLevel(0.15);
-    }
+    setAutoFit(true);
+    setZoomLevel(calculateFitZoom());
   };
 
   const handlePrint = () => {
@@ -746,10 +761,20 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
             <div className="excel-ribbon-right">
               <div className="excel-zoom-controls">
-                <button onClick={handleZoomOut} title="Zoom Out"><ZoomOut size={13} /></button>
-                <span className="excel-zoom-btn-label">{Math.round(zoomLevel * 100)}%</span>
-                <button onClick={handleZoomIn} title="Zoom In"><ZoomIn size={13} /></button>
-                <button onClick={handleResetZoom} title="Reset Zoom"><RotateCcw size={13} /></button>
+                <button
+                  type="button"
+                  className={autoFit ? 'active' : ''}
+                  onClick={handleToggleAutoFit}
+                  title={autoFit ? 'Fit to Screen (Active)' : 'Fit to Screen'}
+                >
+                  <Maximize2 size={13} />
+                </button>
+                <button type="button" onClick={handleZoomOut} title="Zoom Out"><ZoomOut size={13} /></button>
+                <span className="excel-zoom-btn-label" title={autoFit ? 'Auto-Fit to Screen' : 'Custom Zoom'}>
+                  {Math.round(zoomLevel * 100)}%{autoFit ? ' (Fit)' : ''}
+                </span>
+                <button type="button" onClick={handleZoomIn} title="Zoom In"><ZoomIn size={13} /></button>
+                <button type="button" onClick={handleResetZoom} title="Reset to Fit"><RotateCcw size={13} /></button>
               </div>
               <button className="excel-print-btn" onClick={handlePrint} title="Print Document">
                 <Printer size={13} />
