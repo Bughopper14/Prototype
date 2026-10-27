@@ -287,6 +287,19 @@ test('pre-analysis Section 3 includes dynamic groupStructure with holding and su
   assert.equal(data.groupStructure.subsidiaries[2].name, 'PT HTPS (PT Harta Putramas Sentosa)');
 });
 
+test('pre-analysis Section 3 UBO field updates and synchronizes with preview', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-008');
+  assert.ok(data.uboInfo || data.ubo, 'initial ubo value must exist');
+  
+  const updated = await savePreAnalysisData('test-fresh-app-008', {
+    ...data,
+    uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)\nadadad',
+    ubo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)\nadadad'
+  });
+  assert.match(updated.uboInfo, /adadad/);
+  assert.match(updated.ubo, /adadad/);
+});
+
 // Cleanly terminate active database connection pool after test completion
 test('teardown pool connections', () => {
   setTimeout(() => process.exit(0), 100);

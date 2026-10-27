@@ -584,6 +584,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     }
     setData(prev => {
       const next: PreAnalysisData = { ...prev, [key]: val };
+      if (key === 'uboInfo') {
+        next.ubo = val;
+        next.uboInfo = val;
+      }
+      if (key === 'ubo') {
+        next.uboInfo = val;
+        next.ubo = val;
+      }
       if (key === 'holdingGroup' && val) {
         const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
         if (gs.holding) {
@@ -1431,7 +1439,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     rows={3}
                     name="uboInfo"
                     data-field="uboInfo"
-                    value={data.uboInfo}
+                    value={data.uboInfo || data.ubo || ''}
                     onChange={e => updateField('uboInfo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInfo')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
@@ -3108,7 +3116,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
                     <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      {data.ubo || data.uboInfo}
+                      {data.uboInfo || data.ubo}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
