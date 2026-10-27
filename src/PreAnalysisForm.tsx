@@ -510,21 +510,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
                 Pre-Analysis Form
               </h3>
-              <span style={{
-                background: data.recommendation === 'CONDITIONAL' ? '#fef9c3' : data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
-                color: data.recommendation === 'CONDITIONAL' ? '#a16207' : data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
-                fontSize: '0.68rem',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '12px',
-                border: `1px solid ${data.recommendation === 'CONDITIONAL' ? '#fde047' : data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: '220px'
-              }} title={data.recommendation}>
-                {data.recommendation}
-              </span>
             </div>
             <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               Ref: <span style={{ fontWeight: 600, color: '#334155' }}>{data.preAnalysisNo}</span> • FAP No: <span style={{ fontWeight: 600, color: '#334155' }}>{data.fapNumber}</span>
@@ -619,9 +604,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             {openSections.sec1 && (
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Pre-Analysis No</span>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 400 }}>000/PREANA/MKT/IX/YYYY</span>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                    Pre-Analysis No
                   </label>
                   <input
                     type="text"
@@ -630,12 +614,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     value={data.preAnalysisNo}
                     onChange={e => updateField('preAnalysisNo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-preAnalysisNo')}
-                    placeholder="047/PREANA/MKT/IX/2026"
+                    placeholder="000/PREANA/MKT/IX/YYYY"
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pre-Analysis Date</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>
+                    Pre-Analysis Date
+                  </label>
                   <input
                     type="text"
                     name="preAnalysisDate"
@@ -643,6 +629,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     value={data.preAnalysisDate}
                     onChange={e => updateField('preAnalysisDate', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-preAnalysisDate')}
+                    placeholder="DD-Mmm-YY"
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
