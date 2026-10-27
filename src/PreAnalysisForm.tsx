@@ -3036,19 +3036,19 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Holding Group / Main Company</td>
                     <td id="preana-preview-cell-holdingGroup" onClick={() => handlePreviewCellClick('holdingGroup', 'sec2')} style={{ width: '74%', padding: '4px 6px', fontWeight: 700, color: '#1e3a8a', cursor: 'pointer' }}>
-                      {data.holdingGroup || 'STAR GROUP (PT Sentosa Abadi Raja)'}
+                      {data.holdingGroup || '-'}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Name</td>
                     <td id="preana-preview-cell-projectName" onClick={() => handlePreviewCellClick('projectName', 'sec2')} style={{ padding: '4px 6px', fontWeight: 600, cursor: 'pointer' }}>
-                      {data.projectName || 'Land Clearing, Wood Hauling & Forestry Harvesting Operations'}
+                      {data.projectName || '-'}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Location</td>
                     <td id="preana-preview-cell-projectLocation" onClick={() => handlePreviewCellClick('projectLocation', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
-                      {data.projectLocation || 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur'}
+                      {data.projectLocation || '-'}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3662,10 +3662,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         style={{ padding: '8px 10px', verticalAlign: 'top', borderRight: '1.5px solid #000000', cursor: 'pointer' }}
                       >
                         <div style={{ fontWeight: 700, fontSize: '9pt', color: '#000000', textDecoration: 'underline' }}>
-                          {data.proposedBy.split('\n')[0] || data.proposedBy}
+                          {(data.proposedBy || '').split('\n')[0] || data.proposedBy || '-'}
                         </div>
                         <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
-                          {data.proposedBy.split('\n').slice(1).join('\n') || 'Senior Account Manager'}
+                          {(data.proposedBy || '').split('\n').slice(1).join('\n')}
                         </div>
                         <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
                       </td>
@@ -3675,10 +3675,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         style={{ padding: '8px 10px', verticalAlign: 'top', borderRight: '1.5px solid #000000', cursor: 'pointer' }}
                       >
                         <div style={{ fontWeight: 700, fontSize: '9pt', color: '#000000', textDecoration: 'underline' }}>
-                          {data.reviewedBy.split('\n')[0] || data.reviewedBy}
+                          {(data.reviewedBy || '').split('\n')[0] || data.reviewedBy || '-'}
                         </div>
                         <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
-                          {data.reviewedBy.split('\n').slice(1).join('\n') || 'Dept. Head'}
+                          {(data.reviewedBy || '').split('\n').slice(1).join('\n')}
                         </div>
                         <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
                       </td>
@@ -3688,10 +3688,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         style={{ padding: '8px 10px', verticalAlign: 'top', cursor: 'pointer' }}
                       >
                         <div style={{ fontWeight: 700, fontSize: '9pt', color: '#000000', textDecoration: 'underline' }}>
-                          {data.approvedBy.split('\n')[0] || data.approvedBy}
+                          {(data.approvedBy || '').split('\n')[0] || data.approvedBy || '-'}
                         </div>
                         <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
-                          {data.approvedBy.split('\n').slice(1).join('\n') || 'Director'}
+                          {(data.approvedBy || '').split('\n').slice(1).join('\n')}
                         </div>
                         <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
                       </td>
