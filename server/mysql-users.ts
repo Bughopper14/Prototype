@@ -68,9 +68,13 @@ export async function auditTable(table:string){
  const [mktRows]=await pool.query<any[]>("SELECT user_id FROM crm_users WHERE role='MKT' ORDER BY (username='mkt') DESC,is_placeholder ASC,created_at ASC LIMIT 1");const mktUserId=mktRows[0]?.user_id||null;
  if(mktUserId)await pool.query(`UPDATE \`${table}\` SET created_by=? WHERE created_by IS NULL OR created_by=''`,[mktUserId]);
  // Refresh both hooks after repairs; inserts without an application actor belong to MKT.
+ try {
  await pool.query(`CREATE TRIGGER audit_${table}_insert BEFORE INSERT ON \`${table}\` FOR EACH ROW SET NEW.created_by=COALESCE(@app_user_id,${mktUserId?`'${String(mktUserId).replaceAll("'","''")}'`:'NULL'}),NEW.updated_by=NULL`);
+ } catch(e: any) { if (e.code !== 'ER_TRG_ALREADY_EXISTS') console.warn(e.message); }
  const changed=cols.filter(c=>!['id','created_by','updated_by','created_at','updated_at','last_login_at'].includes(c.COLUMN_NAME)).map(c=>`NOT(OLD.\`${c.COLUMN_NAME}\` <=> NEW.\`${c.COLUMN_NAME}\`)`).join(' OR ')||'FALSE';
+ try {
  await pool.query(`CREATE TRIGGER audit_${table}_update BEFORE UPDATE ON \`${table}\` FOR EACH ROW BEGIN SET NEW.created_by=OLD.created_by;IF (${changed}) THEN SET NEW.updated_by=COALESCE(@app_user_id,OLD.updated_by);ELSE SET NEW.updated_by=OLD.updated_by;END IF;END`);
+ } catch(e: any) { if (e.code !== 'ER_TRG_ALREADY_EXISTS') console.warn(e.message); }
 }
 export async function initializeAudit(){if(!pool)return;const [tables]=await pool.query<any[]>('SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema=DATABASE() AND table_type=\'BASE TABLE\'');for(const t of tables)await auditTable(t.TABLE_NAME);}
 

@@ -1,3 +1,12 @@
+
+export function getStaticAssetUrl(relativePath: string): string {
+  const clean = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/crm')) {
+    return `/crm/${clean}`;
+  }
+  return `/${clean}`;
+}
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   FileText,
@@ -25,7 +34,8 @@ import {
   Plus,
   Trash2,
   Eye,
-  Check
+  Check,
+  Loader2
 } from 'lucide-react';
 import { api } from './api';
 
@@ -349,6 +359,8 @@ interface PreAnalysisFormProps {
   profile?: any;
   onSaved?: () => void;
   notify?: (msg: string) => void;
+  registerSave?: (saveFn: () => Promise<void>) => void;
+  onSavingChange?: (saving: boolean) => void;
 }
 
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
@@ -442,6 +454,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
   const handleSave = async () => {
     setSaving(true);
+    props.onSavingChange?.(true);
     try {
       const json = await api(`/applications/${props.applicationId}/pre-analysis`, 'PUT', data);
       if (json && json.success) {
@@ -456,8 +469,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       setSaveStatus('error');
     } finally {
       setSaving(false);
+      props.onSavingChange?.(false);
     }
   };
+
+  useEffect(() => {
+    if (props.registerSave) {
+      props.registerSave(handleSave);
+    }
+  });
 
   const updateField = (key: keyof PreAnalysisData, val: any) => {
     setData(prev => ({ ...prev, [key]: val }));
@@ -468,9 +488,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   }, [data.unitComposition]);
 
   return (
-    <div className="fap-detail-split-container" style={{ margin: 0, height: 'calc(100vh - 165px)' }}>
+    <div className="fap-detail-split-container pre-analysis-container" style={{ height: 'calc(100vh - 170px)', minHeight: '620px', overflow: 'hidden' }}>
       {/* LEFT COLUMN: 50% EDITABLE FORM */}
-      <div className="fap-detail-form-col" style={{ paddingRight: '10px' }}>
+      <div className="fap-detail-form-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingRight: '8px' }}>
         {/* Sticky Action Header */}
         <div style={{
           display: 'flex',
@@ -490,13 +510,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 Pre-Analysis Form
               </h3>
               <span style={{
-                background: data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
-                color: data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
+                background: data.recommendation === 'CONDITIONAL' ? '#fef9c3' : data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
+                color: data.recommendation === 'CONDITIONAL' ? '#a16207' : data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
                 fontSize: '0.7rem',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '12px',
-                border: `1px solid ${data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`
+                border: `1px solid ${data.recommendation === 'CONDITIONAL' ? '#fde047' : data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`
               }}>
                 {data.recommendation}
               </span>
@@ -1099,7 +1119,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       Diagram Struktur Kepemilikan STAR Group (Lampiran Resmi Halaman 3):
                     </div>
                     <img
-                      src="/crm/pre_analysis/star_group_structure.jpg"
+                      src={getStaticAssetUrl("pre_analysis/star_group_structure.jpg")}
                       alt="STAR Group Structure"
                       style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px' }}
                       onError={(e) => {
@@ -1810,7 +1830,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       fontWeight: 700,
                       borderRadius: '4px',
                       border: data.recommendation.includes('NOT RECOMMEND') ? '2px solid #ef4444' : '2px solid #22c55e',
-                      color: data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
+                      color: data.recommendation === 'CONDITIONAL' ? '#a16207' : data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
                       background: data.recommendation.includes('NOT RECOMMEND') ? '#fef2f2' : '#f0fdf4'
                     }}
                   />
@@ -2090,7 +2110,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       </div>
 
       {/* RIGHT COLUMN: 50% LIVE DOCUMENT PREVIEW (DIGITAL TWIN 1:1 WITH PDF) */}
-      <div className="fap-detail-preview-col" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="fap-detail-preview-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         {/* Ribbon Toolbar */}
         <div style={{
           height: '42px',
@@ -2203,6 +2223,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         {/* Viewport Canvas */}
         <div style={{
           flex: 1,
+          height: 'calc(100% - 42px)',
           overflowY: 'auto',
           overflowX: 'auto',
           background: '#f1f5f9',
@@ -2213,7 +2234,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         }}>
           {viewMode === 'original-pdf' ? (
             <iframe
-              src="/pre_analysis/pre_analysis_sample.pdf#toolbar=1"
+              src={`${getStaticAssetUrl("pre_analysis/pre_analysis_sample.pdf")}#toolbar=1`}
               title="Original Pre-Analysis PDF"
               style={{
                 width: '100%',
@@ -2449,7 +2470,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP (HALAMAN 3):
                         </div>
                         <img
-                          src="/crm/pre_analysis/star_group_structure.jpg"
+                          src={getStaticAssetUrl("pre_analysis/star_group_structure.jpg")}
                           alt="STAR Group Corporate Structure"
                           style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '3px' }}
                           onError={(e) => {
@@ -2730,7 +2751,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 id="preana-preview-cell-recommendation"
                 onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
                 style={{
-                  background: data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
+                  background: data.recommendation === 'CONDITIONAL' ? '#fef9c3' : data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
                   border: `2px solid ${data.recommendation.includes('NOT RECOMMEND') ? '#ef4444' : '#22c55e'}`,
                   color: data.recommendation.includes('NOT RECOMMEND') ? '#991b1b' : '#166534',
                   padding: '8px 12px',
@@ -2883,6 +2904,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           )}
         </div>
       </div>
-    </div>
+    
+
+</div>
   );
 }

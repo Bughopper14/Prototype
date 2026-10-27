@@ -10,7 +10,7 @@ export function modelInput(model:string,body:any,required:string[]=[]){
  for(const [k,v] of Object.entries(meta[model].fields)){
   if(v.generated||['applicationId','proposalId','customerId','checklistId','fapNumber','status'].includes(k))continue;
   let s:z.ZodTypeAny=v.type==='Int'?z.coerce.number().int().min(0).max(2147483647):v.type==='Decimal'?z.union([z.string().regex(/^-?\d{1,16}(\.\d{1,2})?$/),z.number().finite()]).transform(x=>money(x).toFixed(2)):v.type==='Boolean'?z.boolean():v.type==='DateTime'?z.preprocess((val)=>{if(!val||String(val).trim()===''||String(val)==='null'||String(val)==='undefined')return null;const str=String(val).trim();return str.length>=10?str.slice(0,10):str;},z.string().regex(/^\d{4}-\d{2}-\d{2}/).nullable().optional()):z.string().trim().max(20000);
-  if(v.type==='String'&&required.includes(k))s=z.string().trim().min(1).max(1000);
+  if(v.type==='String'&&required.includes(k))s=z.string().trim().max(1000);
   fields[k]=required.includes(k)?s:s.nullable().optional();
  }
  return z.object(fields).parse(body);

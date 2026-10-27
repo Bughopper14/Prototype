@@ -20,6 +20,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'node:fs/promises';
+import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import zlib from 'node:zlib';
@@ -89,7 +90,6 @@ for (const sub of ['ktp', 'npwp', 'nib', 'passport', 'kitas', 'akta', 'id_types'
   fs.mkdir(path.join(documentsDir, sub), { recursive: true }).catch(() => {});
 }
 app.use('/documents', express.static(documentsDir));
-app.use('/excel_template', express.static(path.resolve('public/excel_template')));
 app.use('/pre_analysis', express.static(path.resolve('public/pre_analysis')));
 
 function getPaddedDateParts(d = new Date()) {
@@ -282,13 +282,55 @@ app.post('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only adminis
 app.get('/api/v1/workspace-data/:menu',async(req,res)=>res.json(await readMenu(String(req.params.menu))));
 app.post('/api/v1/workspace-data/:menu',async(req,res)=>res.status(201).json(await writeMenu(String(req.params.menu),req.body?.payload)));
 app.post('/api/v1/intake/drafts',async(req,res)=>{ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT','Only Marketing can create a draft',403);if(req.body.customerCategory==='EXISTING'){const mysqlCustomers=await intakeCustomers(),seedCustomers=await all('Customer');ensure([...mysqlCustomers,...seedCustomers].some(c=>c.id===req.body.customerId),'Existing customer was not found',404);}res.status(201).json(await createIntake(req.body));});
-app.get('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const data=await getPreAnalysisData(id);res.json({success:true,data});});
+app.get('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const appRecord=await intakeDetail(id)||(await detail(id).catch(()=>null));const data=await getPreAnalysisData(id,appRecord);res.json({success:true,data});});
 app.put('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const data=req.body;await savePreAnalysisData(id,data);res.json({success:true,data});});
 app.get('/api/v1/applications/:id',async(req,res,next)=>{const detail=await intakeDetail(String(req.params.id));if(detail)return res.json(detail);next();});
 app.put('/api/v1/applications/:id/business',async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);const fallback=a?null:await detail(id);a=a||fallback;const marketing=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT')&&['DRAFT','RETURNED'].includes(a.status),finance=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='CA')&&a.status==='IN_CA_LEGAL_REVIEW';ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||marketing||finance,'Business information is locked at this workflow stage',403);if(fallback)await saveCustomerPic(id,{profile:fallback},fallback);await saveBusiness(id,{...req.body,...(finance?{projects:a.projects,bankReferences:a.bankReferences}:{})});res.json(await intakeDetail(id));});
-app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{if(!req.body.profile&&!req.body.pic)return next();const id=String(req.params.id);const existing=await intakeDetail(id);if(!existing)return next();if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}res.json(await saveCustomerPic(id,req.body));});
+async function checkIsPreAnalysis(id: string, existing?: any): Promise<boolean> {
+  const a = existing || (await intakeDetail(id));
+  if (!a) return false;
+  if (a.stage === 'Pre-analysis' || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)) {
+    return true;
+  }
+  try {
+    const lock = await getSubmitLock(id);
+    if (lock && lock.stage === 'PRE_ANALYSIS') return true;
+  } catch {}
+  return false;
+}
+
+app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{
+  if(!req.body.profile&&!req.body.pic)return next();
+  const id=String(req.params.id);
+  const existing=await intakeDetail(id);
+  if(!existing)return next();
+  if (await checkIsPreAnalysis(id, existing)) {
+    return res.status(403).json({ error: 'FAP Stage is locked because the application has advanced to Pre-analysis.' });
+  }
+  if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}
+  res.json(await saveCustomerPic(id,req.body));
+});
 app.put('/api/v1/applications/:id/stage',async(req,res)=>{const id=String(req.params.id);const stage=String(req.body.stage||'Pre-analysis');if(stage==='Pre-analysis'){try{const lock=await getSubmitLock(id);if(lock.isLocked){return res.status(403).json({error:'Tombol submit terkunci. Harap upload dokumen FAP terlebih dahulu pada tab Dokumen.'});}}catch{}}try{if(pool){const dbStage=stage==='Pre-analysis'?'PRE_ANALYSIS':'FAP_STAGE';await pool.query('UPDATE application_submit_lock SET stage=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[dbStage,id]);await pool.query('UPDATE applications SET stage=? WHERE id=?',[stage,id]);}}catch{}res.json({success:true,stage});});
-app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res,next)=>{const id=String(req.params.id);let a=await intakeDetail(id);if(!a)return next();ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);const legalData=req.body.legal||(req.body.deeds?req.body:(Array.isArray(req.body)?{deeds:req.body}:{}));if(req.body.stakeholders&&Array.isArray(legalData?.deeds)){const selId=legalData.selectedDeedId||legalData.deeds[0]?.id;const targetDeed=legalData.deeds.find((d:any)=>d.id===selId)||legalData.deeds[0];if(targetDeed){targetDeed.stakeholders=req.body.stakeholders;targetDeed._stakeholdersPassed=true;}}await saveLegal(id,legalData,false);res.json(await intakeDetail(id));});
+app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res,next)=>{
+  const id=String(req.params.id);
+  let a=await intakeDetail(id);
+  if(!a)return next();
+  if (await checkIsPreAnalysis(id, a)) {
+    return res.status(403).json({ error: 'Legal data in FAP Stage is locked because the application has advanced to Pre-analysis.' });
+  }
+  ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);
+  const legalData=req.body.legal||(req.body.deeds?req.body:(Array.isArray(req.body)?{deeds:req.body}:{}));
+  if(req.body.stakeholders&&Array.isArray(legalData?.deeds)){
+    const selId=legalData.selectedDeedId||legalData.deeds[0]?.id;
+    const targetDeed=legalData.deeds.find((d:any)=>d.id===selId)||legalData.deeds[0];
+    if(targetDeed){
+      targetDeed.stakeholders=req.body.stakeholders;
+      targetDeed._stakeholdersPassed=true;
+    }
+  }
+  await saveLegal(id,legalData,false);
+  res.json(await intakeDetail(id));
+});
 app.use('/api/v1',(req,res,next)=>{try{validateWrite(req.path,req.method,req.body);next();}catch(e:any){next(new Problem(422,e.message));}});
 const permit=(req:Request,roles:string[])=>ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||roles.includes(req.actor.role),'Your role cannot perform this action',403);
 async function application(id:string,q=query){const a=(await all('Application',{id},q))[0];ensure(a,'Application not found',404);return a;}
@@ -308,7 +350,7 @@ app.get('/api/v1/master-data',async(req,res)=>{
   res.json(data);
 });
 app.put('/api/v1/master-data',async(req,res)=>{let catalog:MasterCatalog;try{catalog=validateMasterCatalog(req.body.catalog);}catch(e:any){throw new Problem(422,e.message);}const result=await transaction(async q=>{await q('SELECT id FROM master_data WHERE id=1 FOR UPDATE');const previous=await masterData(q,true);ensure(req.body.revision===previous.revision,'Master data telah berubah. Muat ulang lalu simpan kembali.',409);for(const [key,rows] of Object.entries(previous.catalog as Record<string,any[]>)){const values=new Set((rows||[]).map(x=>x.value));for(const row of (rows||[]))ensure(values.has(row.value),'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.');}if(pool){await saveLocations(catalog,previous.catalog);await saveCustomerMasters(catalog);await saveBusinessMasters(catalog);await saveLegalMasters(catalog);await saveFinanceMasters(catalog);await saveEquipmentMasters(catalog);await saveDocumentMasters(catalog);}await q('UPDATE master_data SET catalog=$1,revision=revision+1 WHERE id=1',[JSON.stringify(catalog)]);cachedMasterData=null;cachedMasterDataGzip=null;return masterData(q,true);});res.json(result);});
-app.get('/api/v1/customers',async(_req,res)=>{const original=await all('Customer'),current=await intakeCustomers(),byIdentity=new Map<string,any>(),customers:any[]=[];for(const customer of [...original,...current]){const nib=String(customer.nib||'').replace(/\D/g,''),npwp=String(customer.npwp||'').replace(/\D/g,''),identity=nib&&npwp?`${nib}|${npwp}`:`id:${customer.id}`;const existing=byIdentity.get(identity);if(existing)Object.assign(existing,customer,{id:existing.id});else{const row={...customer};byIdentity.set(identity,row);customers.push(row);}}res.json(customers);});
+app.get('/api/v1/customers',async(_req,res)=>{const original=await all('Customer'),current=await intakeCustomers(),byIdentity=new Map<string,any>(),customers:any[]=[];for(const customer of [...original,...current]){const nib=String(customer.nib||'').replace(/\D/g,''),npwp=String(customer.npwp||'').replace(/\D/g,''),identity=nib&&npwp?`${nib}|${npwp}`:`id:${customer.id}`;const existing=byIdentity.get(identity);if(existing){const savedCreatedAt=existing.createdAt||existing.created_at;const savedFirstApp=existing.firstApplicationDate;Object.assign(existing,customer,{id:existing.id});if(savedCreatedAt&&!existing.createdAt)existing.createdAt=savedCreatedAt;if(savedFirstApp&&!existing.firstApplicationDate)existing.firstApplicationDate=savedFirstApp;}else{const row={...customer};if(!row.createdAt&&row.created_at)row.createdAt=row.created_at;byIdentity.set(identity,row);customers.push(row);}}res.json(customers);});
 app.post('/api/v1/customers',async(req,res)=>{
   permit(req,['MKT']);
   const data=modelInput('Customer',req.body,['companyName','companyType','nib','npwp']);
@@ -337,7 +379,7 @@ app.post('/api/v1/customers',async(req,res)=>{
 });
 app.get('/api/v1/applications',async(_req,res)=>{const current=await listIntake(),original=(await query(`SELECT a.*,c.company_name,c.company_type,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id AND d.status='VERIFIED') AS verified_docs,(SELECT count(*)::integer FROM document_checklists d WHERE d.application_id=a.id) AS total_docs,p.financing_value,p.tenor_months,p.financing_method FROM applications a JOIN business_partner c ON c.id=a.customer_id LEFT JOIN financing_proposals p ON p.application_id=a.id ORDER BY a.created_at DESC`)).rows;res.json([...current,...original.filter((row:any)=>!current.some((saved:any)=>saved.id===row.id))].sort((a:any,b:any)=>new Date(b.created_at||b.createdAt||0).getTime()-new Date(a.created_at||a.createdAt||0).getTime()));});
 const appRequired=['branchCode','customerStatus','companyAddress','city','province','postalCode','phoneFax','email','mainBusiness','locationStatus','repaymentSource','industrySegment','businessRole'];
-const defaultAppFields:Record<string,string>={branchCode:'JKT01',customerStatus:'NEW',companyAddress:'-',city:'-',province:'-',postalCode:'00000',phoneFax:'-',email:'draft@liugong.local',mainBusiness:'-',locationStatus:'OWNED',repaymentSource:'Operating Cash Flow',industrySegment:'MINING',businessRole:'CONTRACTOR'};
+const defaultAppFields:Record<string,string>={branchCode:'JKT01',customerStatus:'NEW',companyAddress:'',city:'',province:'',postalCode:'',phoneFax:'',email:'',mainBusiness:'',locationStatus:'OWNED',repaymentSource:'Operating Cash Flow',industrySegment:'MINING',businessRole:'CONTRACTOR'};
 
 async function getNextFapNumber(date = new Date()): Promise<string> {
   const year = date.getUTCFullYear();
@@ -406,7 +448,16 @@ async function getNextFapNumber(date = new Date()): Promise<string> {
 app.post('/api/v1/applications',async(req,res)=>{
   permit(req,['MKT']);
   const safeInput={...defaultAppFields,...req.body};
-  for(const k of appRequired)if(safeInput[k]===undefined||safeInput[k]===null||String(safeInput[k]).trim()==='')safeInput[k]=defaultAppFields[k]||'-';
+  for(const k of appRequired){
+    if(!safeInput[k] || String(safeInput[k]).trim()===''){
+      safeInput[k]=defaultAppFields[k]||'';
+    }
+  }
+  if (!safeInput.locationStatus || safeInput.locationStatus === '') safeInput.locationStatus = 'OWNED';
+  if (!safeInput.repaymentSource || safeInput.repaymentSource === '') safeInput.repaymentSource = 'Operating Cash Flow';
+  if (!safeInput.industrySegment || safeInput.industrySegment === '') safeInput.industrySegment = 'MINING';
+  if (!safeInput.businessRole || safeInput.businessRole === '') safeInput.businessRole = 'CONTRACTOR';
+  if (!safeInput.branchCode || safeInput.branchCode === '') safeInput.branchCode = 'JKT01';
   const body=modelInput('Application',safeInput,appRequired);
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(body.email||'').trim()))body.email='draft@liugong.local';
   z.string().email().parse(body.email);
@@ -495,9 +546,9 @@ app.get('/api/v1/document-desk',async(_req,res)=>{const rows=await query("SELECT
 app.get('/api/v1/applications/:id',async(req,res)=>res.json(await detail(String(req.params.id))));
 const editable=(a:any,req:Request,ca=false)=>{if(req.actor?.isAdmin||req.actor?.role==='ADMIN')return;permit(req,ca?['MKT','CA']:['MKT']);ensure(req.actor.role==='CA'?a.status==='IN_CA_LEGAL_REVIEW':['DRAFT','RETURNED'].includes(a.status),'This application is locked at its current workflow stage',409);};
 app.put('/api/v1/applications/:id/page-1',async(req,res)=>{const id=String(req.params.id);await transaction(async q=>{await q('SELECT id FROM applications WHERE id=$1 FOR UPDATE',[id]);const a=await application(id,q);editable(a,req);const body=req.body;
- if(body.profile){const safeProfile={...body.profile};for(const k of appRequired)if(safeProfile[k]===undefined||safeProfile[k]===null||String(safeProfile[k]).trim()==='')safeProfile[k]=a[k]||defaultAppFields[k]||'-';if(!safeProfile.latestDeedDate||String(safeProfile.latestDeedDate).trim()===''||String(safeProfile.latestDeedDate)==='null')safeProfile.latestDeedDate=null;if(!safeProfile.latestDeedNo||String(safeProfile.latestDeedNo).trim()==='')safeProfile.latestDeedNo=null;const data=modelInput('Application',safeProfile,appRequired);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email||'').trim()))data.email=a.email||'draft@liugong.local';z.string().email().parse(data.email);await update('Application',id,data,q);}
+ if(body.profile){const safeProfile={...body.profile};for(const k of appRequired)if(safeProfile[k]===undefined||safeProfile[k]===null)safeProfile[k]=a[k]||defaultAppFields[k]||'';if(!safeProfile.latestDeedDate||String(safeProfile.latestDeedDate).trim()===''||String(safeProfile.latestDeedDate)==='null')safeProfile.latestDeedDate=null;if(!safeProfile.latestDeedNo||String(safeProfile.latestDeedNo).trim()==='')safeProfile.latestDeedNo=null;const data=modelInput('Application',safeProfile,appRequired);if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(data.email||'').trim()))data.email=a.email||'draft@liugong.local';z.string().email().parse(data.email);await update('Application',id,data,q);}
  if(body.customer&&a.customerId){const safeCust={...body.customer};if(!safeCust.establishmentDate||String(safeCust.establishmentDate).trim()===''||String(safeCust.establishmentDate)==='null')safeCust.establishmentDate=null;if(!safeCust.establishmentActNo||String(safeCust.establishmentActNo).trim()==='')safeCust.establishmentActNo=null;try{const custData=modelInput('Customer',safeCust,[]);await update('Customer',a.customerId,custData,q);}catch{}}
- if(body.pic){const hasPicContent=Object.values(body.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');if(hasPicContent){const safePic={picName:'-',position:'-',phone:'-',email:'pic.draft@liugong.local',currentAddress:'-',city:'-',province:'-',postalCode:'00000',...body.pic};for(const k of ['picName','position','phone','email','currentAddress','city','province','postalCode'])if(!safePic[k]||!String(safePic[k]).trim())safePic[k]=(safePic as any)[k]||'-';if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(safePic.email||'').trim()))safePic.email='pic.draft@liugong.local';const p=modelInput('ApplicationPic',safePic,['picName','position','phone','email','currentAddress','city','province','postalCode']);z.string().email().parse(p.email);await replace('ApplicationPic','applicationId',id,[p],q);}}
+ if(body.pic){const hasPicContent=Object.values(body.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');if(hasPicContent){const safePic={picName:'',position:'',phone:'',email:'',currentAddress:'',city:'',province:'',postalCode:'',...body.pic};for(const k of ['picName','position','phone','email','currentAddress','city','province','postalCode'])if(safePic[k]===undefined||safePic[k]===null)safePic[k]=(safePic as any)[k]||'';if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(safePic.email||'').trim()))safePic.email='pic.draft@liugong.local';const p=modelInput('ApplicationPic',safePic,['picName','position','phone','email','currentAddress','city','province','postalCode']);z.string().email().parse(p.email);await replace('ApplicationPic','applicationId',id,[p],q);}}
   if(body.stakeholders){
     const rows=z.array(z.any()).max(100).parse(body.stakeholders).map(x=>{
       const safe = {
@@ -614,6 +665,7 @@ const s3=process.env.S3_BUCKET?new S3Client({region:process.env.S3_REGION||'ap-s
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1}});
 
 async function compareFapDocumentOcr(id: string, fileName: string, currentApp: any) {
+  console.log('>>> compareFapDocumentOcr called:', { id, fileName });
   try {
     const cliScript = path.resolve('server/ocr_cli.py');
     const pyExe = [
@@ -621,8 +673,16 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
       'C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/python.exe',
       'python'
     ].find(p => p && p.trim().length > 0) || 'python';
-    const docFilePath = path.join(documentsDir, path.basename(fileName));
-    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 60000 });
+    let docFilePath = path.join(documentsDir, path.basename(fileName));
+    if (!fsSync.existsSync(docFilePath) || fsSync.statSync(docFilePath).isDirectory()) {
+      const clean = path.basename(fileName).split('_[')[0];
+      try {
+        const files = await fs.readdir(documentsDir);
+        const match = files.find(f => f.startsWith(clean) && fsSync.statSync(path.join(documentsDir, f)).isFile());
+        if (match) docFilePath = path.join(documentsDir, match);
+      } catch {}
+    }
+    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 300000 });
     const jsonStart = stdout.indexOf('{');
     const jsonEnd = stdout.lastIndexOf('}');
     const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
@@ -764,6 +824,14 @@ app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async
   const formattedFileName = `${cleanBase}_${appHash}_${dateStamp}${ext}`;
 
   if(await intakeDetail(id)){
+    if (await checkIsPreAnalysis(id)) {
+      const docs = await readApplicationDocuments(id);
+      const targetCheck = docs.find(d => String(d.id) === String(req.body.checklistId));
+      const isFap = targetCheck && (String(targetCheck.documentCode).toUpperCase() === 'FAP' || String(targetCheck.documentName).toLowerCase().includes('fap'));
+      if (isFap) {
+        return res.status(403).json({ error: 'FAP Stage documents are locked because the application has advanced to Pre-analysis.' });
+      }
+    }
     const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:formattedFileName},req.actor.id,async key=>{
       if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));
       else{
@@ -952,6 +1020,7 @@ app.post('/api/v1/applications/:id/fap-comparison/remarks', async (req, res) => 
 });
 
 app.post('/api/v1/applications/:id/fap-comparison/run', async (req, res) => {
+  console.log('>>> Route /api/v1/applications/:id/fap-comparison/run hit for id:', req.params.id);
   permit(req, ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE']);
   const id = String(req.params.id);
   const currentApp = await intakeDetail(id);
@@ -970,135 +1039,23 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
   const current = await intakeDetail(id);
   if (!current) return res.status(404).json({ error: 'Application not found' });
 
-  const bodyData = req.body?.approvedData || {};
-  const approvedFields: string[] = Array.isArray(req.body?.fields) ? req.body.fields : Object.keys(bodyData);
-  const shouldApply = (f: string) => approvedFields.includes(f) && bodyData[f] !== undefined && bodyData[f] !== null && String(bodyData[f]).trim() !== '';
-
-  const customerUpdates: Record<string, any> = { ...(current.customer || {}) };
-  const profileUpdates: Record<string, any> = { ...current };
-  const picUpdates: Record<string, any> = { ...(current.pic || {}) };
-  const proposalUpdates: Record<string, any> = { ...(current.proposal || {}) };
-
-  if (shouldApply('companyName')) {
-    customerUpdates.companyName = bodyData.companyName;
-    profileUpdates.companyName = bodyData.companyName;
-  }
-  if (shouldApply('nib')) {
-    customerUpdates.nib = bodyData.nib;
-    profileUpdates.nib = bodyData.nib;
-  }
-  if (shouldApply('npwp')) {
-    customerUpdates.npwp = bodyData.npwp;
-    profileUpdates.npwp = bodyData.npwp;
-  }
-  if (shouldApply('companyAddress')) {
-    customerUpdates.companyAddress = bodyData.companyAddress;
-    profileUpdates.companyAddress = bodyData.companyAddress;
-  }
-  if (shouldApply('rt')) {
-    customerUpdates.rt = bodyData.rt;
-    profileUpdates.rt = bodyData.rt;
-  }
-  if (shouldApply('rw')) {
-    customerUpdates.rw = bodyData.rw;
-    profileUpdates.rw = bodyData.rw;
-  }
-  if (shouldApply('city')) {
-    customerUpdates.city = bodyData.city;
-    profileUpdates.city = bodyData.city;
-  }
-  if (shouldApply('province')) {
-    customerUpdates.province = bodyData.province;
-    profileUpdates.province = bodyData.province;
-  }
-  if (shouldApply('postalCode')) {
-    customerUpdates.postalCode = bodyData.postalCode;
-    profileUpdates.postalCode = bodyData.postalCode;
-  }
-  if (shouldApply('phoneFax')) {
-    profileUpdates.phoneFax = bodyData.phoneFax;
-  }
-  if (shouldApply('email')) {
-    profileUpdates.email = bodyData.email;
-  }
-  if (shouldApply('website')) {
-    profileUpdates.website = bodyData.website;
-  }
-  if (shouldApply('mainBusiness')) {
-    profileUpdates.mainBusiness = bodyData.mainBusiness;
-  }
-  if (shouldApply('repaymentSource')) {
-    profileUpdates.repaymentSource = bodyData.repaymentSource;
-  }
-  if (shouldApply('locationStatus')) {
-    profileUpdates.locationStatus = bodyData.locationStatus;
-  }
-  if (shouldApply('establishmentActNo')) {
-    profileUpdates.establishmentActNo = bodyData.establishmentActNo;
-  }
-  if (shouldApply('establishmentDate')) {
-    profileUpdates.establishmentDate = bodyData.establishmentDate;
-  }
-  if (shouldApply('latestDeedNo')) {
-    profileUpdates.latestDeedNo = bodyData.latestDeedNo;
-  }
-  if (shouldApply('latestDeedDate')) {
-    profileUpdates.latestDeedDate = bodyData.latestDeedDate;
-  }
-
-  if (shouldApply('picName')) picUpdates.picName = bodyData.picName;
-  if (shouldApply('picPosition')) picUpdates.position = bodyData.picPosition;
-  if (shouldApply('picPhone')) picUpdates.phone = bodyData.picPhone;
-  if (shouldApply('picEmail')) picUpdates.email = bodyData.picEmail;
-  if (shouldApply('picAddress')) picUpdates.currentAddress = bodyData.picAddress;
-  if (shouldApply('picCity')) picUpdates.city = bodyData.picCity;
-  if (shouldApply('picProvince')) picUpdates.province = bodyData.picProvince;
-  if (shouldApply('picPostalCode')) picUpdates.postalCode = bodyData.picPostalCode;
-
-  let hasProposalUpdates = false;
-  if (shouldApply('financingValue')) {
-    proposalUpdates.financingValue = Number(String(bodyData.financingValue).replace(/[^\d.-]/g, ''));
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('downPaymentValue')) {
-    proposalUpdates.downPaymentValue = Number(String(bodyData.downPaymentValue).replace(/[^\d.-]/g, ''));
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('tenorMonths')) {
-    proposalUpdates.tenorMonths = Number(String(bodyData.tenorMonths).replace(/[^\d.-]/g, ''));
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('facilityPurpose')) {
-    proposalUpdates.facilityPurpose = bodyData.facilityPurpose;
-    hasProposalUpdates = true;
-  }
-  if (shouldApply('financingMethod')) {
-    proposalUpdates.financingMethod = bodyData.financingMethod;
-    hasProposalUpdates = true;
-  }
-
-  await saveCustomerPic(id, {
-    customer: customerUpdates,
-    profile: profileUpdates,
-    pic: picUpdates
-  });
-
-  if (hasProposalUpdates) {
-    try {
-      await saveBusiness(id, { proposal: proposalUpdates });
-    } catch (bizErr) {
-      console.warn('saveBusiness proposal updates error:', bizErr);
-    }
-  }
-
+  // Per user specification: Approving FAP document does NOT modify system/database values.
+  // All differences are documented in remarks.
   if (req.body?.remarks !== undefined) {
     await saveFapRemarks(id, String(req.body.remarks || ''));
   }
   await saveFapComparison(id, null);
   await syncSubmitLock(id);
+  if (pool) {
+    try {
+      await pool.query("UPDATE application_submit_lock SET stage='PRE_ANALYSIS', is_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?", [id]);
+    } catch (e) {
+      console.warn('Update stage to PRE_ANALYSIS error:', e);
+    }
+  }
 
   const updated = await intakeDetail(id);
-  res.json({ success: true, application: updated });
+  res.json({ success: true, application: updated, customerDetailLocked: true });
 });
 
 app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
@@ -1115,6 +1072,13 @@ app.delete(['/api/v1/applications/:id/documents/files/:fileId', '/api/v1/applica
  permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);
  const id=String(req.params.id),fileId=String(req.params.fileId);
  if(await intakeDetail(id)){
+  if (await checkIsPreAnalysis(id)) {
+    const docs = await readApplicationDocuments(id);
+    const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
+    if (fapCheck && fapCheck.files?.some((f: any) => String(f.id) === fileId)) {
+      return res.status(403).json({ error: 'FAP Stage documents are locked because the application has advanced to Pre-analysis.' });
+    }
+  }
   await deleteApplicationDocumentFile(id,fileId,removeStoredDocument);
   const docs = await readApplicationDocuments(id);
   const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
@@ -1166,7 +1130,9 @@ app.post('/api/v1/applications/:id/transition',async(req,res)=>{const id=String(
 app.use('/api',(_req,_res,next)=>next(new Problem(404,'Endpoint not found')));
 app.use('/crm-dashboard',express.static(path.resolve('dist-dashboard')));app.get('/crm-dashboard/{*path}',(_req,res)=>res.sendFile(path.resolve('dist-dashboard/index.html')));
 app.use('/crm',express.static(path.resolve('dist')));app.use(express.static(path.resolve('dist')));app.get('/crm/{*path}',(_req,res)=>res.sendFile(path.resolve('dist/index.html')));app.get('/{*path}',(_req,res)=>res.sendFile(path.resolve('dist/index.html')));
-app.use((error:any,req:Request,res:Response,_next:NextFunction)=>{let status=error.status||500,message=error.message,errors=error.errors||[];if(error instanceof z.ZodError){status=422;message='Validation failed';errors=error.issues.map(x=>({field:x.path.join('.'),detail:x.message}));}else if(error.code==='ER_DUP_ENTRY'){status=409;message='Username/email atau data unik sudah digunakan';}else if(error.code==='23505'){status=409;message='A record with these unique details already exists';}else if(['23514','23502','22001','22003','22007','22P02'].includes(error.code)){status=422;message='One or more fields contain an invalid value';}else if(error.code==='23503'){status=422;message='Referenced record was not found';}else if(error instanceof multer.MulterError){status=422;message=error.code==='LIMIT_FILE_SIZE'?'File exceeds the 20 MB limit':error.message;}if(status>=500){console.error(error);message='An unexpected server error occurred';}res.status(status).type('application/problem+json').json({type:'about:blank',title:message,status,statusCode:status,error:status===422?'Unprocessable Entity':message,message,errors,timestamp:new Date().toISOString()});});
+app.use((error:any,req:Request,res:Response,_next:NextFunction)=>{
+  console.error('API Handled Error:', error.code, error.message, error.detail, error);
+  let status=error.status||500,message=error.message,errors=error.errors||[];if(error instanceof z.ZodError){status=422;message='Validation failed';errors=error.issues.map(x=>({field:x.path.join('.'),detail:x.message}));}else if(error.code==='ER_DUP_ENTRY'){status=409;message='Username/email atau data unik sudah digunakan';}else if(error.code==='23505'){status=409;message='A record with these unique details already exists';}else if(['23514','23502','22001','22003','22007','22P02'].includes(error.code)){status=422;message='One or more fields contain an invalid value';}else if(error.code==='23503'){status=422;message='Referenced record was not found';}else if(error instanceof multer.MulterError){status=422;message=error.code==='LIMIT_FILE_SIZE'?'File exceeds the 20 MB limit':error.message;}if(status>=500){console.error(error);message='An unexpected server error occurred';}res.status(status).type('application/problem+json').json({type:'about:blank',title:message,status,statusCode:status,error:status===422?'Unprocessable Entity':message,message,errors,timestamp:new Date().toISOString()});});
 const port=Number(process.env.PORT||3001);app.listen(port,'0.0.0.0',()=>console.log(`LiuGong API running at http://0.0.0.0:${port}`));
 
 

@@ -2,11 +2,15 @@ export type Field={key:string,label:string,type?:string,options?:string[],option
 const f=(key:string,label:string,type='text',options?:string[]):Field=>({key,label,type,options});
 
 const LOWERCASE_WORDS = new Set(['at', 'in', 'or', 'of']);
+const UPPERCASE_WORDS = new Set(['rt', 'rw', 'ktp', 'npwp', 'nib', 'pic', 'fap', 'cfo', 'ceo', 'coo', 'los', 'crm', 'id', 'zip']);
 
 export function toTitleCase(str: string): string {
   if (!str) return '';
   return str.replace(/\b([a-zA-Z]+)\b/g, (word, offset) => {
     const lower = word.toLowerCase();
+    if (UPPERCASE_WORDS.has(lower)) {
+      return lower.toUpperCase();
+    }
     if (offset > 0 && LOWERCASE_WORDS.has(lower)) {
       return lower;
     }
@@ -96,8 +100,8 @@ export const stakeholderFields=[
   f('cityRegency','City / Regency'),
   f('district','District'),
   f('village','Village / Sub-District'),
-  f('rw','RW'),
   f('rt','RT'),
+  f('rw','RW'),
   f('address','Address'),
   f('postalCode','Postal / ZIP Code')
 ];
@@ -166,8 +170,8 @@ export const financialFields=[
 export const blank=(fields:Field[])=>Object.fromEntries(fields.map(f=>[f.key,f.options?.[0]??(f.type==='number'?0:f.type==='date'?null:'')]));
 export const label=(s:string)=>s ? toTitleCase(s.replaceAll('_',' ')) : '—';
 export const legalDeedFields=[
-  f('deedNumber','Deed Number'),
-  f('deedDate','Deed Date','date'),
+  {...f('deedNumber','Deed Number'),required:true},
+  {...f('deedDate','Deed Date','date'),required:true},
   f('ministerialDecreeNumber','Ministerial Decree Number'),
   f('ministerialDecreeDate','Ministerial Decree Date','date')
 ];

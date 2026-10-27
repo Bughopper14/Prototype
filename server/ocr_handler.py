@@ -1163,14 +1163,30 @@ def extract_nib(boxes: list) -> tuple:
             phone = tel_candidates[0].strip()
 
     # 4. Ekstraksi Tanggal Terbit
-    tgl_match = re.search(r'(?:diterbitkan|ditetapkan|tanggal\s+terbit|pada\s+tanggal)[\s\w,\.]*?(?:pada\s+tanggal\s*[:.\-–—]?\s*)?(\d{1,2}\s+[A-Za-z]+\s+\d{4})', full_text, re.IGNORECASE)
+    tgl_match = re.search(r'(?:diterbitkan|ditetapkan)(?:\s+di\s+[A-Za-z]+)?\s*,?\s*(?:pada\s+tanggal|tanggal)\s*[:.\-–—=]?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', full_text, re.IGNORECASE)
     if tgl_match:
         tanggal_terbit = parse_indo_date(tgl_match.group(1))
 
     if not tanggal_terbit:
-        date_candidates = re.findall(r'\b(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})\b', full_text, re.IGNORECASE)
-        if date_candidates:
-            tanggal_terbit = parse_indo_date(date_candidates[-1])
+        tgl_match = re.search(r'(?:tanggal\s+terbit|pada\s+tanggal)\s*[:.\-–—=]?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', full_text, re.IGNORECASE)
+        if tgl_match:
+            tanggal_terbit = parse_indo_date(tgl_match.group(1))
+
+    if not tanggal_terbit:
+        m_jkt = re.search(r'(?:jakarta|surabaya|bandung|semarang|medan|makassar|denpasar|palembang)[,\s]+(?:tanggal\s*[:.\-–—=]?)?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4})', full_text, re.IGNORECASE)
+        if m_jkt:
+            tanggal_terbit = parse_indo_date(m_jkt.group(1))
+
+    if not tanggal_terbit:
+        date_candidates = re.findall(r'(\d{1,2}\s+(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember|January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4})', full_text, re.IGNORECASE)
+        for dc in date_candidates:
+            idx_dc = full_text.find(dc)
+            preceding = full_text[max(0, idx_dc-40):idx_dc]
+            if not re.search(r'cetak', preceding, re.IGNORECASE):
+                tanggal_terbit = parse_indo_date(dc)
+                break
+        if not tanggal_terbit and date_candidates:
+            tanggal_terbit = parse_indo_date(date_candidates[0])
 
     if not tanggal_terbit:
         m_tgl_num = re.search(r'(?:diterbitkan|ditetapkan|tanggal)[\s\w,\.]*?(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', full_text, re.IGNORECASE)
@@ -1310,18 +1326,55 @@ def extract_nib(boxes: list) -> tuple:
     if kel_match:
         kelurahan = re.sub(r'[^A-Za-z\s]', '', kel_match.group(1)).strip().upper()
 
-    for idx, line in enumerate(lines):
-        m_c = re.search(r'^(?:\d+[\.\)]\s*)?(?:nama\s+perusahaan|nama\s+pelaku\s+usaha|nama\s+perseroan)[\s:.\-–—=]*(.*)$', line.strip(), re.IGNORECASE)
-        if m_c:
-            cand_name = m_c.group(1).strip()
-            if not cand_name and idx + 1 < len(lines):
-                next_cand = lines[idx + 1].strip()
-                if not re.search(r'^\d+[\.\)]', next_cand) and not re.search(r'alamat|telepon|email', next_cand, re.IGNORECASE):
-                    cand_name = next_cand
-            cand_name = re.sub(r'^[:\s.\-–—=]+', '', cand_name).strip()
-            if len(cand_name) > 3 and not re.search(r'pemerintah\s+republik|kementerian|badan\s+koordinasi', cand_name, re.IGNORECASE):
-                company_name = format_company_name(cand_name)
-                break
+    # 6. Ekstraksi Nama Perusahaan
+    # Cek orientasi geometris jika boxes memiliki bounding box
+    target_box = None
+    for b in boxes:
+        txt = b.get('text', '').lower()
+        if 'nama pelaku usaha' in txt or 'nama perusahaan' in txt or 'nama perseroan' in txt:
+            target_box = b
+            break
+
+    if target_box:
+        m_same = re.search(r'(?:nama\s+pelaku\s+usaha|nama\s+perusahaan|nama\s+perseroan)[\s:.\-–—=]+(.*)', target_box.get('text', ''), re.IGNORECASE)
+        if m_same and len(m_same.group(1).strip()) > 3:
+            cand = re.sub(r'^[:\s.\-–—=]+', '', m_same.group(1)).strip()
+            if not re.search(r'pemerintah\s+republik|kementerian|badan\s+koordinasi', cand, re.IGNORECASE):
+                company_name = format_company_name(cand)
+        else:
+            y_center = (target_box.get('y_min', 0) + target_box.get('y_max', 0)) / 2
+            right_boxes = []
+            for b in boxes:
+                if b == target_box:
+                    continue
+                b_y_center = (b.get('y_min', 0) + b.get('y_max', 0)) / 2
+                if abs(b_y_center - y_center) < 40 and b.get('x_min', 0) >= target_box.get('x_max', 0) - 20:
+                    right_boxes.append(b)
+            if right_boxes:
+                right_boxes.sort(key=lambda x: x.get('x_min', 0))
+                cand_clean = ""
+                for b in right_boxes:
+                    t = b.get('text', '').strip()
+                    if re.search(r'^\s*[:;]?\s*(?:jl\.?|jalan|alamat|desa|kelurahan)\b', t, re.IGNORECASE):
+                        break
+                    cand_clean = (cand_clean + " " + t).strip()
+                cand_clean = re.sub(r'^[:\s.\-–—=]+', '', cand_clean).strip()
+                if len(cand_clean) > 3 and not re.search(r'pemerintah\s+republik|kementerian|badan\s+koordinasi', cand_clean, re.IGNORECASE):
+                    company_name = format_company_name(cand_clean)
+
+    if not company_name:
+        for idx, line in enumerate(lines):
+            m_c = re.search(r'^(?:\d+[\.\)]\s*)?(?:nama\s+perusahaan|nama\s+pelaku\s+usaha|nama\s+perseroan)[\s:.\-–—=]*(.*)$', line.strip(), re.IGNORECASE)
+            if m_c:
+                cand_name = m_c.group(1).strip()
+                if not cand_name and idx + 1 < len(lines):
+                    next_cand = lines[idx + 1].strip()
+                    if not re.search(r'^\d+[\.\)]', next_cand) and not re.search(r'alamat|telepon|email', next_cand, re.IGNORECASE):
+                        cand_name = next_cand
+                cand_name = re.sub(r'^[:\s.\-–—=]+', '', cand_name).strip()
+                if len(cand_name) > 3 and not re.search(r'pemerintah\s+republik|kementerian|badan\s+koordinasi', cand_name, re.IGNORECASE):
+                    company_name = format_company_name(cand_name)
+                    break
 
     if not company_name:
         comp_match = re.search(r'(?:nama\s+perusahaan|nama\s+pelaku\s+usaha|nama\s+perseroan)[\s:.\-–—]*([A-Za-z0-9\.,\s\(\)]+?)(?:$|\n|nomor\s+induk|nib|alamat)', full_text, re.IGNORECASE)
@@ -1355,6 +1408,9 @@ def extract_nib(boxes: list) -> tuple:
         "phone": phone,
         "tanggal_terbit": tanggal_terbit,
         "establishmentDate": tanggal_terbit,
+        "nibIssuedDate": tanggal_terbit,
+        "issueDate": tanggal_terbit,
+        "tanggalTerbit": tanggal_terbit,
         "kecamatan": kecamatan,
         "district": kecamatan,
         "kel_desa": kelurahan,
@@ -1957,14 +2013,32 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
 
         # 2. If no digital text (scanned PDF) or image, load and run OCR engine
         if not boxes:
-            raw_img, page_count = DocumentPreprocessor.load_document(temp_path)
-            oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
-            deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-            img_to_process = deskewed_img
+            if temp_path.suffix.lower() == '.pdf':
+                import fitz, cv2, numpy as np
+                p_doc = fitz.open(str(temp_path))
+                page_count = len(p_doc)
+                is_nib = (doc_type or '').lower() == 'nib' or 'nib' in filename.lower()
+                dpi = 200.0 if is_nib else 300.0
+                mat = fitz.Matrix(dpi / 72.0, dpi / 72.0)
+                max_pages = min(page_count, 2)
+                for p_idx in range(max_pages):
+                    pix = p_doc[p_idx].get_pixmap(matrix=mat, alpha=False)
+                    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
+                    bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                    p_boxes = OCREngine.process_image(bgr) if OCR_AVAILABLE else []
+                    if not p_boxes:
+                        p_boxes = TesseractEngine.process_image(bgr)
+                    boxes.extend(p_boxes)
+                p_doc.close()
+            else:
+                raw_img, page_count = DocumentPreprocessor.load_document(temp_path)
+                oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
+                deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+                img_to_process = deskewed_img
 
-            boxes = OCREngine.process_image(img_to_process) if OCR_AVAILABLE else []
-            if not boxes:
-                boxes = TesseractEngine.process_image(img_to_process)
+                boxes = OCREngine.process_image(img_to_process) if OCR_AVAILABLE else []
+                if not boxes:
+                    boxes = TesseractEngine.process_image(img_to_process)
 
         # 5. Document Type detection
         dtype_clean = (doc_type or "auto").strip().lower()

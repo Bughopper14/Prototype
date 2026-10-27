@@ -4,9 +4,19 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
+import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
-import {FapSheetPreview, printFapDocument, type FapSheetData} from './FapSheetPreview';
+import {
+  FapSheetPreview,
+  printFapDocument,
+  type FapSheetData,
+  SECTION_TO_CELL_IDS_MAP,
+  SECTION_TO_SCROLL_TARGET_MAP,
+  SECTION_TO_CELL_ID_MAP,
+  CELL_ID_TO_SECTION_MAP,
+  FIELD_TO_CELL_ID_MAP,
+  resolveFieldToCellId
+} from './FapSheetPreview';
 import {PreAnalysisForm} from './PreAnalysisForm';
 import {
   parseKtpText, 
@@ -26,6 +36,13 @@ import {api} from './api';
 import {MasterDataPage,MasterSelect,useMasterData,setMasterData,resetMasterChildren,useMandatoryRules,isFieldMandatory,resolveWilayahUpwards} from './master-data';
 import {masterGroups,masterKey} from './master-catalog';
 import {type Field,profileFields,customerFields,picFields,stakeholderFields,projectFields,bankFields,proposalFields,unitFields,financialFields,legalDeedFields,legalPartyFields,blank,label,toTitleCase} from './fields';
+export function getGalleryUrl(): string {
+  if (typeof window === 'undefined') return '/gallery';
+  if (window.location.port === '5173') {
+    return `http://${window.location.hostname}:8086/gallery`;
+  }
+  return '/gallery';
+}
 const statusLabel:Record<string,string>={DRAFT:'Draft',SUBMITTED_TO_BS:'BS verification',BS_VERIFIED:'BS verified',IN_CA_LEGAL_REVIEW:'CA & Legal review',CREDIT_COMMITTEE_REVIEW:'Committee review',APPROVED:'Approved',REJECTED:'Rejected',RETURNED:'Returned'};
 const money=(n:any,compact=false)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'IDR',maximumFractionDigits:0,...(compact?{notation:'compact' as const}:{})}).format(Number(n)||0).replace('IDR','Rp');
 const date=(d:any)=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
@@ -80,12 +97,16 @@ export function deriveDeedSync(legal:any, application?:any):{
 function deedValidity(deedDate:any){if(!deedDate)return {status:'Date not filled',active:null,expiry:null};const parts=String(deedDate).slice(0,10).split('-').map(Number);if(parts.length!==3||parts.some(x=>!x))return {status:'Date not filled',active:null,expiry:null};const expiry=new Date(parts[0],parts[1]-1,parts[2]);if(Number.isNaN(expiry.getTime()))return {status:'Date not filled',active:null,expiry:null};expiry.setFullYear(expiry.getFullYear()+5);const today=new Date();today.setHours(0,0,0,0);expiry.setHours(0,0,0,0);const active=today<=expiry;return {status:active?'Active':'Inactive',active,expiry};}
 function Badge({status}:{status:string}){return <span className={'badge '+status?.toLowerCase()}><i/>{statusLabel[status]||label(status)}</span>;}
 function IconBox({children}:{children:ReactNode}){return <span className="iconbox">{children}</span>;}
-function Fields({fields,value,onChange,disabled=false,className,section,onSelectOption,onFieldFocus,onNibOcr,customErrors}:{fields:Field[],value:any,onChange:(v:any)=>void,disabled?:boolean,className?:string,section?:string,onSelectOption?:(k:string,v:string)=>void,onFieldFocus?:(k:string)=>void,onNibOcr?:()=>void,customErrors?:Record<string,string>}){
+function Fields({fields,value,onChange,disabled=false,className,section,onSelectOption,onFieldFocus,onFieldSync,activeFieldKey,onNibOcr,customErrors}:{fields:Field[],value:any,onChange:(v:any)=>void,disabled?:boolean,className?:string,section?:string,onSelectOption?:(k:string,v:string)=>void,onFieldFocus?:(k:string,section?:string)=>void,onFieldSync?:(k:string,section?:string)=>void,activeFieldKey?:string|null,onNibOcr?:()=>void,customErrors?:Record<string,string>}){
   const master=useMasterData();
   const mandatoryRules=useMandatoryRules();
   return <div className={`formgrid ${className||''}`}>{fields.map(f=>{
     const isRequired=isFieldMandatory(mandatoryRules,section,f.key,f.required);
-    const fieldValue=f.type==='date'?String(value?.[f.key]||'').slice(0,10):value?.[f.key]??'';
+    const rawVal=value?.[f.key];
+    const isPlaceholderDash=String(rawVal??'').trim()==='-';
+    const isPlaceholderZip=f.key==='postalCode'&&String(rawVal??'').trim()==='00000';
+    const cleanVal=(isPlaceholderDash||isPlaceholderZip)?'':(rawVal??'');
+    const fieldValue=f.type==='date'?String(cleanVal||'').slice(0,10):cleanVal;
     const isDigitsOnly=['phone','mobilePhone','phoneFax','rt','rw'].includes(f.key);
     const isLettersOnly=['repaymentSource'].includes(f.key);
     const isTitleCaseField=[
@@ -189,16 +210,18 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
         }
       }
     };
-    return <label key={f.key} className={f.wide?'field-wide':undefined}>
+    return <label key={f.key} className={`${f.wide?'field-wide':''} ${activeFieldKey===f.key?'field-active-sync':''}`.trim()} onClick={() => onFieldFocus?.(f.key, section)}>
       <div className="field-label-header" style={{display:'flex',justifyContent:'space-between',alignItems:'center',minHeight:22,marginBottom:4,gap:6}}>
         <span className="field-label" title={toTitleCase(f.label)} style={{whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',flex:1,minWidth:0}}>{toTitleCase(f.label)}{isRequired&&<span className="field-required" aria-label="Required">*</span>}</span>
-        {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn" style={{flexShrink:0}}><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
+        <div style={{display:'inline-flex',alignItems:'center',gap:4,flexShrink:0}}>
+          {f.key==='nib'&&onNibOcr&&!disabled&&<button type="button" onClick={onNibOcr} title="Upload & Scan Dokumen OSS/NIB · Auto-Fill OCR" className="nib-header-ocr-btn"><ScanLine size={11}/><span>Scan OCR NIB</span></button>}
+        </div>
       </div>
-      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onBlur={handleBlur} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key);}} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
+      {isMaster?<MasterSelect fieldKey={f.key} value={String(fieldValue)} record={value||{}} disabled={disabled} required={isRequired} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onChange={update}/>:f.options?<select required={isRequired} disabled={disabled} value={value?.[f.key]??f.options[0]} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onChange={e=>{update(e.target.value);if(onSelectOption)onSelectOption(f.key,e.target.value);}}>{f.options.map(o=><option key={o} value={o}>{f.optionLabels?.[o]??toTitleCase(label(o))}</option>)}</select>:f.type==='textarea'?<textarea aria-label={toTitleCase(f.label)} required={isRequired} disabled={disabled} rows={3} value={fieldValue} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onBlur={handleBlur} onChange={e=>{const v=isTitleCaseField?toTitleCase(e.target.value):e.target.value;update(v);}}/>:f.unit?<div className="input-with-unit"><input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/><span>{f.unit}</span></div>:<input aria-label={toTitleCase(f.label)} required={isRequired} disabled={isFieldDisabled} readOnly={isAgeField} style={ageStyle} type={f.type||'text'} inputMode={isDigitsOnly?'numeric':undefined} pattern={isDigitsOnly?'[0-9]*':undefined} maxLength={['rt','rw'].includes(f.key)?3:undefined} onFocus={()=>{if(onFieldFocus)onFieldFocus(f.key,section);}} onKeyDown={handleKeyDown} onPaste={handlePaste} onBlur={handleBlur} step={f.type==='number'?'0.01':undefined} {...inputLimits(f.key)} aria-invalid={!!fieldError} value={fieldValue} onChange={handleInputChange}/>}{fieldError&&<small className="input-validation-error" role="alert" title={fieldError}>{fieldError}</small>}
     </label>;
   })}</div>;
 }
-function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{toTitleCase(title)}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{toTitleCase(title)} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
+function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false,section,onFieldFocus,onFieldSync,activeFieldKey}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean,section?:string,onFieldFocus?:(k:string,section?:string)=>void,onFieldSync?:(k:string,section?:string)=>void,activeFieldKey?:string|null}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{toTitleCase(title)}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{toTitleCase(title)} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} section={section||title.toLowerCase()} onFieldFocus={onFieldFocus} onFieldSync={onFieldSync} activeFieldKey={activeFieldKey} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
 function Modal({title,children,onClose,className=""}:{title:string,children:ReactNode,onClose:()=>void,className?:string}){return <div className="modal-scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className={`modal ${className}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>{children}</section></div>;}
 function Login({onLogin}:{onLogin:(u:any)=>void}){const [email,setEmail]=useState('mkt@liugong.local'),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);return <div className="login"><div className="login-story"><Brand/><div><span className="eyebrow">LIUGONG FINANCE INDONESIA</span><h1>Moving business.<br/>Building possibilities.</h1><p>A single workspace for equipment financing,<br/>from the first application to the final decision.</p><div className="login-lines"><span/><span/><span/></div></div><small>Loan origination & document management</small></div><div className="login-form"><span className="eyebrow">YOUR ORIGINATION WORKSPACE</span><h2>Welcome back</h2><p>Sign in to keep business moving.</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{onLogin(await api('/auth/login','POST',{email,password}));}catch(e:any){setError(e.message);}finally{setBusy(false);}}}><label>Email address<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button className="button primary" disabled={busy}>{busy?<Loader2 className="spin" size={16}/>:null}Sign in <ArrowRight size={17}/></button></form><div className="demo-note"><strong>Public interactive demo · synthetic data</strong><p>Choose a department. Changes are saved only in this browser.</p><div className="role-pills">{['MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'].map(r=><button key={r} onClick={()=>{setEmail(r==='BS'?'arianti@liugong.local':r==='HEAD_BS'?'dellatra@liugong.local':r.toLowerCase()+'@liugong.local');setPassword('LiuGong2026!');}}>{r==='BS'?'Arianti / BS':r==='HEAD_BS'?'Dellatra / Head BS':r}</button>)}</div><small>Demo password: LiuGong2026! · Use synthetic information only.</small></div></div></div>;}
 function Brand(){return <div className="brand"><div className="brand-mark">L<span>G</span></div><div><strong>LIUGONG</strong><small>FINANCE INDONESIA</small></div></div>;}
@@ -241,7 +264,20 @@ export default function App(){
  useEffect(()=>{if(user)load();},[user]);
  useEffect(()=>{if(!user)return;let live=true;const refresh=()=>api('/notifications').then(n=>{if(live)setNotifications(n);}).catch(()=>{});const timer=setInterval(refresh,15000);window.addEventListener('storage',refresh);return()=>{live=false;clearInterval(timer);window.removeEventListener('storage',refresh);};},[user]);
  async function readNotification(id:string){try{await api('/notifications/'+id+'/read','PATCH',{});setNotifications(await api('/notifications'));}catch(e:any){setGlobalError(e.message);}}
- async function open(id:string,tab=0){setLoading(true);try{setDetailTab(tab);setSelected(await api('/applications/'+id));}catch(e:any){setGlobalError(e.message);}finally{setLoading(false);}}
+ async function open(id:string,tab?:number){
+  setLoading(true);
+  try{
+    const app = await api('/applications/'+id);
+    const isPre = (app.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(app.status);
+    const resolvedTab = tab !== undefined ? tab : (isPre ? 8 : 0);
+    setDetailTab(resolvedTab);
+    setSelected(app);
+  }catch(e:any){
+    setGlobalError(e.message);
+  }finally{
+    setLoading(false);
+  }
+}
  if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
  if(!user)return <Login onLogin={setUser}/>;
  const navigate=(p:string)=>{setPage(p);setSelected(null);setMobile(false);};
@@ -297,10 +333,208 @@ export default function App(){
     setSelected(newAppDraft);
   }
 
-  return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}</button>)}</nav><div className="sidebar-bottom"><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.displayRole || (checkIsAdmin(user) ? 'Administrator' : user.role === 'MKT' ? 'Marketing' : label(user.role))} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : (checkIsAdmin(user) ? 'ADMIN' : (user.roleBadge || user.displayRole || user.role))}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Deed review and approval results that need follow-up.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>(user.role==='MKT'||checkIsAdmin(user))?startNewApplication():notify('Application creation is available for Marketing (MKT) and Administrator accounts.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<section className="panel"><div className="panel-head"><h2>Customer directory <span>{customers.length}</span></h2><Users size={19}/></div><div className="customer-grid">{customers.map(c=><button className="customer-card" key={c.id} onClick={()=>{const a=rows.find(r=>r.customer_id===c.id);if(a)open(a.id);else if(user.role==='MKT'||checkIsAdmin(user))startNewApplication(c.id);else notify('This customer has no applications yet. Use New application to create one.');}}><IconBox><Building2 size={21}/></IconBox><h3>{c.companyName}</h3><span className="muted">{label(c.companyType)}</span><dl><dt>NIB</dt><dd>{c.nib}</dd><dt>NPWP</dt><dd>{c.npwp}</dd></dl><span className="text-link">{rows.filter(r=>r.customer_id===c.id).length} applications <ArrowUpRight size={15}/></span></button>)}</div></section>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
+  return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><a href={getGalleryUrl()} className="sidebar-gallery-btn" title="Kembali ke Gallery Aplikasi"><ArrowLeft size={16}/><span>Kembali ke Gallery</span></a><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}{name==='Customers'&&<em>{customers.length}</em>}</button>)}</nav><div className="sidebar-bottom"><a href={getGalleryUrl()} className="sidebar-gallery-btn-bottom" title="Kembali ke Gallery Aplikasi"><LayoutGrid size={15}/><span>Kembali ke Gallery</span></a><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.displayRole || (checkIsAdmin(user) ? 'Administrator' : user.role === 'MKT' ? 'Marketing' : label(user.role))} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : (checkIsAdmin(user) ? 'ADMIN' : (user.roleBadge || user.displayRole || user.role))}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Deed review and approval results that need follow-up.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>(user.role==='MKT'||checkIsAdmin(user))?startNewApplication():notify('Application creation is available for Marketing (MKT) and Administrator accounts.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<CustomerDirectory customers={customers} rows={rows} user={user} open={open} startNewApplication={startNewApplication} notify={notify}/>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
 }
 function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-brand"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Review deed document':user.role==='HEAD_BS'?'Approve deed document':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Fix the rejected deed':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
+function CustomerDirectory({
+  customers,
+  rows,
+  user,
+  open,
+  startNewApplication,
+  notify,
+}: {
+  customers: any[];
+  rows: any[];
+  user: any;
+  open: (id: string) => void;
+  startNewApplication: (customerId?: string) => void;
+  notify: (msg: string) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<
+    'created_desc' | 'created_asc' | 'first_app_desc' | 'first_app_asc' | 'name_asc' | 'name_desc' | 'apps_desc'
+  >('created_desc');
+
+  const enriched = useMemo(() => {
+    return customers.map(c => {
+      const custApps = rows.filter(r => r.customer_id === c.id);
+      const appDates = custApps
+        .map(a => new Date(a.application_date || a.created_at || a.createdAt).getTime())
+        .filter(t => !isNaN(t) && t > 0);
+      const firstAppTs = appDates.length > 0
+        ? Math.min(...appDates)
+        : (c.firstApplicationDate ? new Date(c.firstApplicationDate).getTime() : null);
+
+      const rawCreated = c.createdAt || c.created_at;
+      const createdTs = rawCreated
+        ? new Date(rawCreated).getTime()
+        : (firstAppTs ?? 0);
+
+      return {
+        ...c,
+        appCount: custApps.length,
+        createdTs: isNaN(createdTs) ? 0 : createdTs,
+        firstAppTs: (firstAppTs && !isNaN(firstAppTs)) ? firstAppTs : null,
+      };
+    });
+  }, [customers, rows]);
+
+  const filteredAndSorted = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    let list = enriched.filter(c => {
+      if (!term) return true;
+      return (
+        (c.companyName || '').toLowerCase().includes(term) ||
+        (c.nib || '').includes(term) ||
+        (c.npwp || '').includes(term)
+      );
+    });
+
+    list.sort((a, b) => {
+      if (sortBy === 'created_desc') {
+        return (b.createdTs || 0) - (a.createdTs || 0);
+      }
+      if (sortBy === 'created_asc') {
+        return (a.createdTs || 0) - (b.createdTs || 0);
+      }
+      if (sortBy === 'first_app_desc') {
+        const bTs = b.firstAppTs ?? -1;
+        const aTs = a.firstAppTs ?? -1;
+        return bTs - aTs;
+      }
+      if (sortBy === 'first_app_asc') {
+        const aTs = a.firstAppTs ?? Infinity;
+        const bTs = b.firstAppTs ?? Infinity;
+        return aTs - bTs;
+      }
+      if (sortBy === 'name_asc') {
+        return (a.companyName || '').localeCompare(b.companyName || '');
+      }
+      if (sortBy === 'name_desc') {
+        return (b.companyName || '').localeCompare(a.companyName || '');
+      }
+      if (sortBy === 'apps_desc') {
+        return b.appCount - a.appCount;
+      }
+      return 0;
+    });
+
+    return list;
+  }, [enriched, search, sortBy]);
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h2>
+          Customer directory <span>{filteredAndSorted.length}{filteredAndSorted.length !== customers.length ? ` / ${customers.length}` : ''}</span>
+        </h2>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b' }}>
+          <Users size={19} />
+        </div>
+      </div>
+      <div className="table-toolbar" style={{ padding: '0 22px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+        <div className="search">
+          <Search size={17} />
+          <input
+            aria-label="Cari customer"
+            placeholder="Cari perusahaan, NIB, atau NPWP…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="filters" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <label style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748b', fontWeight: 600, margin: 0 }}>
+            <span>Urutkan:</span>
+            <select
+              aria-label="Urutkan customer"
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as any)}
+              style={{ minWidth: '240px', padding: '8px 12px', fontSize: '11px', fontWeight: 500, borderColor: '#cbd5e1', borderRadius: '6px' }}
+            >
+              <option value="created_desc">🕒 Tanggal Dibuat (Terbaru)</option>
+              <option value="created_asc">🕒 Tanggal Dibuat (Terlama)</option>
+              <option value="first_app_desc">📄 Aplikasi Pertama (Terbaru)</option>
+              <option value="first_app_asc">📄 Aplikasi Pertama (Paling Awal)</option>
+              <option value="name_asc">🔤 Nama Perusahaan (A - Z)</option>
+              <option value="name_desc">🔤 Nama Perusahaan (Z - A)</option>
+              <option value="apps_desc">📊 Jumlah Aplikasi Terbanyak</option>
+            </select>
+          </label>
+          {search && (
+            <button className="button small" onClick={() => setSearch('')}>
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="customer-grid">
+        {filteredAndSorted.map(c => (
+          <button
+            className="customer-card"
+            key={c.id}
+            onClick={() => {
+              const a = rows.find(r => r.customer_id === c.id);
+              if (a) open(a.id);
+              else if (user.role === 'MKT' || checkIsAdmin(user)) startNewApplication(c.id);
+              else notify('This customer has no applications yet. Use New application to create one.');
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+              <IconBox><Building2 size={21} /></IconBox>
+              {c.createdTs > 0 && (
+                <span
+                  style={{
+                    fontSize: '9.5px',
+                    color: '#64748b',
+                    background: '#f1f5f9',
+                    padding: '3px 8px',
+                    borderRadius: '5px',
+                    border: '1px solid #e2e8f0',
+                    whiteSpace: 'nowrap'
+                  }}
+                  title="Waktu customer pertama kali didaftarkan di database"
+                >
+                  Dibuat: {date(c.createdTs)}
+                </span>
+              )}
+            </div>
+            <h3>{c.companyName}</h3>
+            <span className="muted">{label(c.companyType)}</span>
+            <dl>
+              <dt>NIB</dt><dd>{c.nib || '—'}</dd>
+              <dt>NPWP</dt><dd>{c.npwp || '—'}</dd>
+              <dt title="Waktu aplikasi pertama kali dibuat">App 1st</dt>
+              <dd style={{ color: c.firstAppTs ? '#1e40af' : '#94a3b8', fontWeight: c.firstAppTs ? 600 : 400 }}>
+                {c.firstAppTs ? date(c.firstAppTs) : 'Belum ada'}
+              </dd>
+            </dl>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+              <span className="text-link">
+                {c.appCount} applications <ArrowUpRight size={15} />
+              </span>
+              {c.firstAppTs && (
+                <span style={{ fontSize: '9px', color: '#64748b' }} title="Tanggal aplikasi pertama dibuat">
+                  Aplikasi 1: {date(c.firstAppTs)}
+                </span>
+              )}
+            </div>
+          </button>
+        ))}
+      </div>
+      {!filteredAndSorted.length && (
+        <div className="empty" style={{ padding: '40px 20px', textAlign: 'center' }}>
+          <Search size={28} style={{ color: '#94a3b8', marginBottom: '8px' }} />
+          <h3>Tidak ada customer ditemukan</h3>
+          <p>Coba gunakan kata kunci pencarian yang lain.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // Note: New application process has been merged directly into Detail view (Tab 0 FAP Intake).
 function normalizeStakeholderIdType(rawType: string | undefined, s?: any): 'NONE' | 'KTP_NPWP' | 'PASSPORT_KITAS' {
   const t = String(rawType || '').toUpperCase().trim();
@@ -349,6 +583,8 @@ function stakeholderForSave(s:any){
 }
 function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustomerCreated,notify}:{value:any,user:any,customers?:any[],initialTab?:number,onBack:()=>void,onChange:(a:any)=>void,onCustomerCreated?:(c:any)=>void,notify:(s:string)=>void}){
   const master=useMasterData();
+  const preAnalysisSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const [preAnalysisSaving, setPreAnalysisSaving] = useState(false);
   const [customerCategory,setCustomerCategory]=useState<string>(()=>a.customerCategory||a.customerStatus||(a.isNew?'NEW':(a.customerId?'EXISTING':'NEW')));
   const [customerId,setCustomerId]=useState<string>(()=>a.isNew?(a.customerId||''):(a.customerId||a.customer_id||a.customer?.id||''));
   const sanitizeCustomer=(c:any)=>{if(!c)return c;const npwpRaw=String(c.npwp||'').replace(/\D/g,'');return{...c,npwp:/^0+$/.test(npwpRaw)?'':c.npwp};};
@@ -457,13 +693,13 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
    const safePayload = {
      branchCode: profileData.branchCode || 'JKT01',
      companyName: finalCompanyName,
-     companyAddress: profileData.companyAddress || '-',
-     city: profileData.city || '-',
-     province: profileData.province || '-',
-     postalCode: profileData.postalCode || '00000',
-     phoneFax: profileData.phoneFax || '-',
-     email: profileData.email || (customerDraft.email || 'draft@liugong.local'),
-     mainBusiness: profileData.mainBusiness || '-',
+     companyAddress: profileData.companyAddress || '',
+     city: profileData.city || '',
+     province: profileData.province || '',
+     postalCode: profileData.postalCode || '',
+     phoneFax: profileData.phoneFax || '',
+     email: profileData.email || (customerDraft.email || ''),
+     mainBusiness: profileData.mainBusiness || '',
      locationStatus: profileData.locationStatus || 'OWNED',
      repaymentSource: profileData.repaymentSource || 'Operating Cash Flow',
      industrySegment: profileData.industrySegment || 'MINING',
@@ -491,7 +727,19 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
   }catch(e:any){setError(e.message||'Failed to create new application. Please try again.');}
   finally{setBusy(false);}
  }
-const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));const [submitFapConfirm,setSubmitFapConfirm]=useState(false);useEffect(()=>{if(a.stage)setActiveStage(a.stage);else if(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status))setActiveStage('Pre-analysis');else setActiveStage('FAP Stage');},[a.id,a.stage,a.status]);const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);const [tab,setTab]=useState(initialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
+const isPreAnalysis = (a.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
+const resolvedInitialTab = (initialTab === 0 && isPreAnalysis) ? 8 : (initialTab ?? 0);
+const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status)?'Pre-analysis':'FAP Stage')));
+const [submitFapConfirm,setSubmitFapConfirm]=useState(false);
+useEffect(()=>{
+  const isPre = (a.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);
+  if(a.stage)setActiveStage(a.stage);
+  else if(isPre)setActiveStage('Pre-analysis');
+  else setActiveStage('FAP Stage');
+  if(isPre && tab === 0) setTab(8);
+},[a.id,a.stage,a.status]);
+const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);
+const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
    'fap-preview-sec-header': true,
    'fap-preview-sec-company': true,
@@ -500,19 +748,103 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
    'fap-preview-sec-projects': true,
  });
  const [activeSyncSection, setActiveSyncSection] = useState<string>('fap-preview-sec-header');
- const [activeSyncField, setActiveSyncField] = useState<string>('');
+ const [activeSyncField, setActiveSyncField] = useState<string | null>(null);
+ const [activeFieldKey, setActiveFieldKey] = useState<string | null>(null);
  const [syncTick, setSyncTick] = useState<number>(() => Date.now());
 
- const handleTriggerSync = (secId: string, fieldKey?: string) => {
-   setActiveSyncSection(secId);
-   setActiveSyncField(fieldKey || '');
+ const handleTriggerFieldSync = (fieldKey: string, sectionContext?: string) => {
+   if (!sideBySide) setSideBySide(true);
+   const cellId = resolveFieldToCellId(fieldKey, sectionContext, {
+     companyType: customerDraft?.companyType || draft?.customer?.companyType || draft?.companyType,
+     customerCategory
+   });
+
+   setActiveFieldKey(fieldKey);
+   setActiveSyncField(cellId || fieldKey);
+   setActiveSyncSection('');
    setSyncTick(Date.now());
+
+   // Instant direct highlight & scroll on live preview iframe if mounted
+   const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-detail-preview-col iframe');
+   iframes.forEach(iframe => {
+     try {
+       const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+       const win = iframe.contentWindow;
+       if (!iDoc || !win) return;
+
+       iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+         el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+       });
+
+       if (cellId) {
+         const cel = iDoc.getElementById(cellId);
+         if (cel) {
+           cel.classList.add('fap-cell-highlight');
+           const rect = cel.getBoundingClientRect();
+           const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+           const targetY = Math.max(0, currentScrollY + rect.top - 80);
+           win.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+         }
+       }
+
+       setTimeout(() => {
+         if (cellId) {
+           const cel = iDoc.getElementById(cellId);
+           if (cel) cel.classList.remove('fap-cell-highlight');
+         }
+       }, 3200);
+     } catch (_) {}
+   });
  };
 
- const handleTriggerFieldSync = (fieldKey: string, secId?: string) => {
-   setActiveSyncField(fieldKey);
-   if (secId) setActiveSyncSection(secId);
+ const handleTriggerSync = (secId: string) => {
+   if (!sideBySide) setSideBySide(true);
+   setActiveSyncSection(secId);
+   setActiveSyncField(null);
+   setActiveFieldKey(null);
    setSyncTick(Date.now());
+
+   // Instant direct highlight & scroll on live preview iframe if mounted
+   const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-detail-preview-col iframe');
+   iframes.forEach(iframe => {
+     try {
+       const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+       const win = iframe.contentWindow;
+       if (!iDoc || !win) return;
+
+       iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+         el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+       });
+
+       const sectionCells = SECTION_TO_CELL_IDS_MAP[secId] || [];
+       sectionCells.forEach(cid => {
+         const cel = iDoc.getElementById(cid);
+         if (cel) cel.classList.add('fap-cell-highlight');
+       });
+
+       const targetCellId = SECTION_TO_SCROLL_TARGET_MAP[secId] || sectionCells[0];
+       if (targetCellId) {
+         const targetEl = iDoc.getElementById(targetCellId);
+         if (targetEl) {
+           const rect = targetEl.getBoundingClientRect();
+           const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+           const targetY = Math.max(0, currentScrollY + rect.top - 60);
+           win.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+           iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+         }
+       }
+
+       setTimeout(() => {
+         sectionCells.forEach(cid => {
+           const cel = iDoc.getElementById(cid);
+           if (cel) cel.classList.remove('fap-cell-highlight');
+         });
+       }, 3200);
+     } catch (_) {}
+   });
  };
 
  const toggleSection = (secId: string) => {
@@ -531,23 +863,6 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
    const formTarget = document.getElementById('acc-' + secId);
    if (formTarget) {
      formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-   }
- };
-
- const handlePreviewCellClick = (fieldKey: string, secId?: string) => {
-   if (secId) {
-     setOpenSections(prev => ({ ...prev, [secId]: true }));
-     const formTarget = document.getElementById('acc-' + secId);
-     if (formTarget) {
-       formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
-     }
-   }
-   if (fieldKey) {
-     handleTriggerFieldSync(fieldKey, secId);
-     const targetInput = document.querySelector(`input[name="${fieldKey}"], [aria-label*="${fieldKey}" i], textarea[aria-label*="${fieldKey}" i]`) as HTMLElement;
-     if (targetInput) {
-       targetInput.focus();
-     }
    }
  };
  
@@ -571,20 +886,29 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
     }
   };
 
-  const handleApproveFapChangesInDetail = async (extractedData: any) => {
+  const [customerDetailLocked, setCustomerDetailLocked] = useState<boolean>(() => Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
+
+  const handleApproveDocument = (updatedApp?: any) => {
+    localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
+    setCustomerDetailLocked(true);
+    const nextApp = { ...(updatedApp || a), customerDetailLocked: true, stage: 'Pre-analysis' };
+    setDraft((prev: any) => ({ ...prev, ...nextApp, customerDetailLocked: true }));
+    if (onChange) onChange(nextApp);
+    setActiveStage('Pre-analysis');
+    setTab(8);
+  };
+
+  const handleApproveFapChangesInDetail = async (extractedData?: any) => {
     setBusy(true);
     try {
       const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
-        approvedData: extractedData
+        remarks: a.fapRemarks || draft.fapRemarks || ''
       });
-      if (res.application) {
-        onChange(res.application);
-        setDraft(structuredClone(res.application));
-      }
+      handleApproveDocument(res?.application);
       setFapComparisonModal(null);
-      notify('FAP document data changes approved and updated to database.');
+      notify('Dokumen FAP telah disetujui. Customer & PIC dikunci, beralih ke tahap Pre-analysis.');
     } catch (err: any) {
-      notify('Failed to update data: ' + err.message);
+      notify('Gagal menyetujui dokumen: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -595,10 +919,8 @@ const [activeStage,setActiveStage]=useState<string>(()=>(a.stage||(['SUBMITTED_T
       await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST');
     } catch {}
     setFapComparisonModal(null);
-    notify('Data differences noted. You can review and correct the data in the FAP form manually.');
+    notify('Perbedaan data dicatat. Anda dapat mereview dan mencatat remarks pada tab Dokumen.');
   };
-
-const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
  async function submitCustomerDetail(){
   setError('');
   const missing: string[] = [];
@@ -760,17 +1082,15 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
   repaymentSource: draft.repaymentSource,
   locationStatus: draft.locationStatus,
   industrySegment: draft.industrySegment || a.industrySegment,
-  businessRole: draft.businessRole || a.businessRole,
-  pic: draft.pic,
-  picName: draft.pic?.picName || a.pic?.name || a.pic?.picName,
-  position: draft.pic?.position || a.pic?.position,
-  phone: draft.pic?.phone || a.pic?.phone,
-  picEmail: draft.pic?.email || a.pic?.email,
-  currentAddress: draft.pic?.currentAddress || a.pic?.currentAddress,
-  picCity: master.city?.find(x => x.value === draft.pic?.city || x.name.toLowerCase() === String(draft.pic?.city || '').toLowerCase())?.name || draft.pic?.city,
-  picProvince: master.province?.find(x => x.value === draft.pic?.province || x.name.toLowerCase() === String(draft.pic?.province || '').toLowerCase())?.name || draft.pic?.province,
-  picPostalCode: draft.pic?.postalCode || a.pic?.postalCode,
-  stakeholders: draft.stakeholders || a.stakeholders,
+  pic: draft.pic || a.pic,
+  picName: draft.pic?.picName || draft.pic?.name || a.pic?.picName || a.pic?.name || a.picName || '',
+  position: draft.pic?.position || a.pic?.position || a.position || '',
+  phone: draft.pic?.phone || draft.pic?.mobilePhone || a.pic?.phone || a.phone || '',
+  picEmail: draft.pic?.email || draft.pic?.picEmail || a.pic?.email || a.picEmail || '',
+  currentAddress: draft.pic?.currentAddress || draft.pic?.address || a.pic?.currentAddress || a.currentAddress || '',
+  picCity: master.city?.find(x => x.value === (draft.pic?.city || a.pic?.city) || x.name?.toLowerCase() === String(draft.pic?.city || a.pic?.city || '').toLowerCase())?.name || draft.pic?.city || a.pic?.city || '',
+  picProvince: master.province?.find(x => x.value === (draft.pic?.province || a.pic?.province) || x.name?.toLowerCase() === String(draft.pic?.province || a.pic?.province || '').toLowerCase())?.name || draft.pic?.province || a.pic?.province || '',
+  picPostalCode: draft.pic?.postalCode || a.pic?.postalCode || a.picPostalCode || '',
   selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo,
   proposal: draft.proposal || a.proposal,
   projects: draft.projects || a.projects,
@@ -827,9 +1147,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
  const tabOrder = stageTabOrder;
 
  const isAdminUser = checkIsAdmin(user);
- const isFapLocked = !isAdminUser && isPreAnalysisReached && activeStage === 'FAP Stage';
- const canLegal = isAdminUser || (!isFapLocked && canEditLegal(user, a));
- const canEdit = isAdminUser || (!isFapLocked && (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status))));
+ const isFapLocked = Boolean(isPreAnalysisReached);
+ const canLegal = !isFapLocked && (isAdminUser || canEditLegal(user, a));
+ const canEditCustomerPic = !isFapLocked && !customerDetailLocked && (isAdminUser || (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status))));
+ const canEdit = isAdminUser || (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status)));
  const canFinance = isAdminUser || (user.role === 'MKT' && ['DRAFT', 'RETURNED'].includes(a.status)) || (user.role === 'CA' && a.status === 'IN_CA_LEGAL_REVIEW');
  
  async function submitFapStage(){
@@ -839,7 +1160,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
      await api('/applications/'+a.id+'/stage','PUT',{stage:'Pre-analysis'});
      setDraft(updated);
      setActiveStage('Pre-analysis');
-     setTab(2);
+     setTab(8);
      setSubmitFapConfirm(false);
      notify('FAP Stage submitted. Pre-analysis stage is now active.');
      if(onChange)onChange(updated);
@@ -866,6 +1187,10 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
  }
 
  async function save(){
+   if (isFapLocked && (tab === 0 || tab === 5)) {
+     setError('FAP Stage telah dikunci karena aplikasi telah berada pada tahap Pre-analysis. Perubahan data tidak diizinkan.');
+     return;
+   }
    setBusy(true);
    setError('');
    try{
@@ -958,7 +1283,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-header'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-header"
-        onFocus={() => handleTriggerSync('fap-preview-sec-header')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -997,22 +1322,28 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         {openSections['fap-preview-sec-header'] && (
           <div className="fap-accordion-content">
             <div className="intake-system-fields" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:12,padding:'12px 14px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:8,marginBottom:16}}>
-              <div>
+              <div style={{cursor:'pointer'}} onClick={()=>handleTriggerFieldSync('applicationDate','header')} title="Click to sync view Tanggal/Date di formulir aplikasi">
                 <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>Application date</span>
-                <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
+                <b style={{fontSize:'0.875rem',color:activeFieldKey==='applicationDate'?'#2563eb':'#0f172a'}}>{new Date(draft.applicationDate || Date.now()).toLocaleDateString('en-GB')}</b>
               </div>
-              <div>
+              <div style={{cursor:'pointer'}} onClick={()=>handleTriggerFieldSync('fapNumber','header')} title="Click to sync view No. Register FAP di formulir aplikasi">
                 <span style={{fontSize:'0.75rem',color:'#64748b',display:'block'}}>FAP Registration Number</span>
-                <b style={{fontSize:'0.875rem',color:'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
+                <b style={{fontSize:'0.875rem',color:activeFieldKey==='fapNumber'?'#2563eb':'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
               </div>
             </div>
             <div className="customer-category-selector-box" style={{marginBottom:16}}>
-              <label className="customer-category-select">
-                Customer Category
+              <div style={{marginBottom:4}}>
+                <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Customer Category</span>
+              </div>
+              <label className="customer-category-select" style={{marginTop:0}} onClick={()=>handleTriggerFieldSync('customerCategory','header')}>
                 <select 
                   value={customerCategory} 
-                  disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
-                  onChange={e => changeCategory(e.target.value)}
+                  disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
+                  onFocus={()=>handleTriggerFieldSync('customerCategory','header')}
+                  onChange={e => {
+                    changeCategory(e.target.value);
+                    handleTriggerFieldSync(e.target.value==='EXISTING'?'fap-cell-custExisting':'fap-cell-custNew','header');
+                  }}
                 >
                   <option value="EXISTING">Existing Customer</option>
                   <option value="NEW">New Customer</option>
@@ -1022,13 +1353,17 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             {customerCategory === 'EXISTING' ? (
               <>
                 <div className="existing-customer-picker" style={{marginBottom:16}}>
-                  <label>
-                    Existing Customer
+                  <div style={{marginBottom:4}}>
+                    <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Existing Customer</span>
+                  </div>
+                  <label style={{marginTop:0}}>
                     <select 
                       value={customerId} 
-                      disabled={!canEdit || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                      disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                      onFocus={()=>handleTriggerFieldSync('companyName','customer')}
                       onChange={e => {
                         const cid = e.target.value;
+                        handleTriggerFieldSync('companyName','customer');
                         setCustomerId(cid);
                         setError('');
                         const cust = customers.find((c: any) => c.id === cid);
@@ -1062,31 +1397,29 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                   </label>
                 </div>
                 <div className="new-customer-fields-block" style={{marginTop:12}}>
-                  <div style={{marginBottom:12}}>
-                    <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company Details</h4>
-                    <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>Company identity from master customer record (read-only for Existing Customer).</p>
-                  </div>
                   <Fields 
                     fields={fapCustomerFields} 
                     value={selectedCustomer || customerDraft || blank(customerFields)} 
                     disabled={true} 
-                    onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-header')}
                     onChange={() => {}} 
+                    section="customer"
+                    onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
+                    onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
+                    activeFieldKey={activeFieldKey}
                   />
                 </div>
               </>
             ) : (
               <div className="new-customer-fields-block" style={{marginTop:12}}>
-                <div style={{marginBottom:12}}>
-                  <h4 style={{margin:0,fontSize:'0.9rem',fontWeight:600,color:'#0f172a'}}>Company Details</h4>
-                  <p style={{margin:'2px 0 0 0',fontSize:'0.8rem',color:'#64748b'}}>New company identity (Company Name PT/CV, business type, NIB 13 digits, NPWP 15-16 digits, and establishment deed).</p>
-                </div>
                 <Fields 
                   fields={fapCustomerFields} 
-                  onNibOcr={()=>setNibOcrOpen(true)}
+                  onNibOcr={canEditCustomerPic ? () => setNibOcrOpen(true) : undefined}
                   value={customerDraft} 
-                  disabled={!canEdit} 
-                  onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-header')}
+                  disabled={!canEditCustomerPic} 
+                  section="customer"
+                  onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
+                  onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
+                  activeFieldKey={activeFieldKey}
                   onChange={c => {
                     setCustomerDraft(c);
                     // Sync establishment deed to latestDeed and experience if no deeds in legal yet
@@ -1118,7 +1451,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-company'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-company"
-        onFocus={() => handleTriggerSync('fap-preview-sec-company')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1158,11 +1491,11 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
           <div className="fap-accordion-content">
             <div style={{marginBottom:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office & Branch Status</h5>
-              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-company')} onChange={setDraft}/>
+              <Fields fields={profileFields.filter(f=>['branchCode','customerStatus','locationStatus'].includes(f.key))} value={draft} disabled={!canEditCustomerPic} section="company" onFieldFocus={k => handleTriggerFieldSync(k, 'company')} onFieldSync={k => handleTriggerFieldSync(k, 'company')} activeFieldKey={activeFieldKey} onChange={setDraft}/>
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Office Address & Official Contact</h5>
-              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-company')} onChange={setDraft}/>
+              <Fields fields={profileFields.filter(f=>['companyAddress','province','city','district','village','rt','rw','postalCode','phoneFax','email','website'].includes(f.key))} value={draft} disabled={!canEditCustomerPic} section="company" onFieldFocus={k => handleTriggerFieldSync(k, 'company')} onFieldSync={k => handleTriggerFieldSync(k, 'company')} activeFieldKey={activeFieldKey} onChange={setDraft}/>
             </div>
           </div>
         )}
@@ -1172,7 +1505,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-business'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-business"
-        onFocus={() => handleTriggerSync('fap-preview-sec-business')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1232,8 +1565,11 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
                     <Fields 
                       fields={opFields} 
                       value={operationalValues} 
-                      disabled={!canEdit} 
-                      onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-business')}
+                      disabled={!canEditCustomerPic} 
+                      section="business"
+                      onFieldFocus={k => handleTriggerFieldSync(k, 'business')}
+                      onFieldSync={k => handleTriggerFieldSync(k, 'business')}
+                      activeFieldKey={activeFieldKey}
                       onChange={v => {
                         const exp = liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate) : null;
                         setDraft({
@@ -1252,7 +1588,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
             </div>
             <div style={{borderTop:'1px dashed #e2e8f0',paddingTop:14}}>
               <h5 style={{margin:'0 0 6px 0',fontSize:'0.82rem',color:'#1e293b',fontWeight:700}}>Amendment Deed Legal Summary</h5>
-              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-business')} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
+              <Fields fields={profileFields.filter(f=>['latestDeedNo','latestDeedDate'].includes(f.key))} value={draft} disabled={!canEditCustomerPic} section="business" onFieldFocus={k => handleTriggerFieldSync(k, 'business')} onFieldSync={k => handleTriggerFieldSync(k, 'business')} activeFieldKey={activeFieldKey} onChange={v=>{const exp=calculateAgeYearsMonths(liveEstablishmentDate);setDraft({...v,experienceYears:exp.years,experienceMonths:exp.months});}}/>
               {liveEstablishmentDate&&<small style={{color:'#94a3b8',fontSize:'0.72rem',display:'block',marginTop:4}}>Latest deed synced automatically from the Legal tab.</small>}
             </div>
           </div>
@@ -1263,7 +1599,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-pic'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-pic"
-        onFocus={() => handleTriggerSync('fap-preview-sec-pic')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1301,7 +1637,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         </div>
         {openSections['fap-preview-sec-pic'] && (
           <div className="fap-accordion-content">
-            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEdit} onFieldFocus={(k) => handleTriggerFieldSync(k, 'fap-preview-sec-pic')} onChange={pic=>setDraft({...draft,pic})}/>
+            <Fields fields={picFields} value={draft.pic||{}} disabled={!canEditCustomerPic} section="pic" onFieldFocus={k => handleTriggerFieldSync(k, 'pic')} onFieldSync={k => handleTriggerFieldSync(k, 'pic')} activeFieldKey={activeFieldKey} onChange={pic=>setDraft({...draft,pic})}/>
           </div>
         )}
       </div>
@@ -1310,7 +1646,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div 
         className={`fap-accordion-card ${openSections['fap-preview-sec-projects'] ? 'is-open' : 'is-closed'}`}
         id="acc-fap-preview-sec-projects"
-        onFocus={() => handleTriggerSync('fap-preview-sec-projects')}
+        
       >
         <div 
           className="fap-accordion-header" 
@@ -1348,14 +1684,25 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
         </div>
         {openSections['fap-preview-sec-projects'] && (
           <div className="fap-accordion-content">
-            <Repeater title="Project Contracts" description="Active project contracts and business activities (filled by Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEdit} carousel onChange={projects=>setDraft({...draft,projects})}/>
+            <Repeater title="Project Contracts" description="Active project contracts and business activities (filled by Marketing)." fields={projectFields} rows={draft.projects||[]} disabled={!canEditCustomerPic} carousel section="projects" onFieldFocus={k => handleTriggerFieldSync(k, 'projects')} onFieldSync={k => handleTriggerFieldSync(k, 'projects')} activeFieldKey={activeFieldKey} onChange={projects=>setDraft({...draft,projects})}/>
           </div>
         )}
       </div>
     </div>
   );
 
-  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked&&<div className="stage-readonly-banner"><Lock size={16}/><span><strong>FAP Stage has been locked:</strong> The FAP Stage form has been signed and the application has advanced to the <strong>Pre-analysis</strong> stage. All FAP Stage data is read-only and cannot be modified.</span></div>}{tab===0&&<>
+  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked && [0, 1, 5].includes(tab) && (
+    <div className="stage-readonly-banner" style={{marginBottom:16, background:'#ecfdf5', borderColor:'#a7f3d0', color:'#065f46'}}>
+      <Lock size={16}/>
+      <span><strong>FAP Stage Telah Dikunci:</strong> Aplikasi telah berada pada tahap <strong>Pre-analysis</strong>. Seluruh data FAP Stage ({tab===0?'Customer & PIC':tab===5?'Legal':tab===1?'Stakeholders':'FAP'}) terkunci permanen dan tidak dapat diubah kembali.</span>
+    </div>
+  )}{tab===0&&<>
+  {!isFapLocked && customerDetailLocked && (
+    <div className="stage-readonly-banner" style={{marginBottom:16,background:'#ecfdf5',borderColor:'#a7f3d0',color:'#065f46'}}>
+      <Lock size={16}/>
+      <span><strong>Customer &amp; PIC Telah Dikunci:</strong> Dokumen fisik FAP telah disetujui pada tab Dokumen. Form Customer &amp; PIC dikunci dan tidak mengubah data sistem sebelum beralih ke tahap Pre-analysis.</span>
+    </div>
+  )}
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <Building2 size={18}/>
@@ -1368,7 +1715,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       </div>
     </div>
   </div>
-  {!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData} onPrint={handlePrintFap}/></div>}
+  {!sideBySide&&<div style={{display:'none'}} className="print-hidden-doc"><FapSheetPreview data={liveDetailFapData} application={a} customer={draft.customer||a.customer} profile={draft} pic={draft.pic||a.pic} onPrint={handlePrintFap}/></div>}
   {sideBySide ? (
     <div className="fap-detail-split-container">
       <div className="fap-detail-form-col">
@@ -1377,11 +1724,15 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       <div className="fap-detail-preview-col">
         <FapSheetPreview 
           data={liveDetailFapData} 
+          application={a}
+          customer={draft.customer || a.customer}
+          profile={draft}
+          pic={draft.pic || a.pic}
           activeSection={activeSyncSection} 
-          activeField={activeSyncField}
+          activeField={activeSyncField || undefined}
           syncTick={syncTick} 
           onSectionClick={handlePreviewSectionClick} 
-          onPreviewCellClick={handlePreviewCellClick}
+          onPreviewCellClick={(fKey, sId) => handleTriggerFieldSync(fKey, sId)}
           onPrint={handlePrintFap} 
         />
       </div>
@@ -1391,7 +1742,7 @@ const [customerDetailLocked,setCustomerDetailLocked]=useState<boolean>(()=>Boole
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{tab>=6&&actions.length>0&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right"><div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div></div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (isFapLocked && [0, 5, 1].includes(tab)) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>FAP Stage Dikunci</span> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Dikunci</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>=6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
     {fapComparisonModal && (
       <FapComparisonModal
         comparison={fapComparisonModal}
@@ -1505,10 +1856,10 @@ function FapComparisonModal({
           </div>
 
           <div style={{fontSize:'12px', color:'#64748b', lineHeight:1.5}}>
-            Choose the next action:
+            Konfirmasi verifikasi dokumen fisik FAP:
             <ul style={{margin:'6px 0 0 18px', padding:0}}>
-              <li><strong>Approve Changes:</strong> Updates the database values with the latest data from the physical FAP document and continues the process.</li>
-              <li><strong>Correct Data:</strong> Closes this dialog and keeps the current data, allowing you to review or correct the data in the form manually.</li>
+              <li><strong>Setujui Dokumen:</strong> TIDAK akan mengubah data sistem/database. Semua perbedaan dicatat pada Remarks, dan bagian Customer &amp; PIC akan dikunci sebelum beralih ke Pre-analysis.</li>
+              <li><strong>Review Remarks:</strong> Menutup modal dan tetap pada form untuk mereview atau menambahkan catatan remarks.</li>
             </ul>
           </div>
         </div>
@@ -1521,7 +1872,7 @@ function FapComparisonModal({
             onClick={onCorrect} 
             style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
           >
-            <Pencil size={14} /> Correct Data
+            <Pencil size={14} /> Review Remarks / Batal
           </button>
           <button 
             type="button" 
@@ -1530,7 +1881,7 @@ function FapComparisonModal({
             onClick={() => onApprove(comparison.extractedData)} 
             style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
           >
-            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Approve Changes
+            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Setujui Dokumen (Kunci Customer &amp; PIC)
           </button>
         </div>
       </div>
@@ -1614,7 +1965,7 @@ function FapRemarksTinyMCE({
   );
 }
 
-function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void,filterStage?:string}){
+function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLocked}:{a:any,user:any,onChange:(a:any)=>void,notify:(s:string)=>void,filterStage?:string,onApproveDocument?:(updatedApp?:any)=>void,isFapLocked?:boolean}){
   const evidenceDefs = [
     { code: 'FAP', name: 'fap', title: 'FAP (Financing Application Form)', stage: 'FAP Intake', badgeClass: 'stage-badge-fap', role: 'MKT', desc: 'Official signed financing application form from debtor' },
     { code: 'PREANALYSIS', name: 'Preanalysis', title: 'Pre-analysis Document', stage: 'Pre-analysis', badgeClass: 'stage-badge-preanalysis', role: 'CA', desc: 'Initial review and credit feasibility analysis by Credit Analyst' },
@@ -1644,24 +1995,78 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
   const [remarksSaveStatus, setRemarksSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
-  const [systemZoom, setSystemZoom] = useState<number>(0.72);
+  const [systemZoom, setSystemZoom] = useState<number>(0.15);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
+  const fapComparisonContainerRef = useRef<HTMLDivElement>(null);
+
+  const handleFitBothDocuments = () => {
+    if (fapComparisonContainerRef.current) {
+      const containerW = fapComparisonContainerRef.current.clientWidth;
+      const colW = (containerW - 24) / 2;
+      const target = Math.max(0.10, Math.min(0.25, Number(((colW - 32) / 3940).toFixed(2))));
+      setSystemZoom(target);
+    } else {
+      setSystemZoom(0.15);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedCode === 'FAP') {
+      handleFitBothDocuments();
+      const handleResize = () => {
+        if (fapComparisonContainerRef.current) {
+          const containerW = fapComparisonContainerRef.current.clientWidth;
+          const colW = (containerW - 24) / 2;
+          if (colW > 200) {
+            const target = Math.max(0.10, Math.min(0.25, Number(((colW - 32) / 3940).toFixed(2))));
+            setSystemZoom(target);
+          }
+        }
+      };
+      window.addEventListener('resize', handleResize);
+      const t = setTimeout(handleFitBothDocuments, 200);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        clearTimeout(t);
+      };
+    }
+  }, [selectedCode]);
   const [fapNavFilter, setFapNavFilter] = useState<string>('all');
+  const [fapNavTick, setFapNavTick] = useState<number>(() => Date.now());
+  const master = useMasterData();
 
   const sectionFieldMap: Record<string, string[]> = {
-    'fap-preview-sec-header': ['fapNumber', 'branchCode', 'customerStatus', 'companyType', 'applicationDate'],
-    'fap-preview-sec-company': ['companyName', 'companyAddress', 'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw', 'nib', 'npwp', 'sktNo', 'sppkpNo', 'phoneFax', 'email', 'website', 'mainBusiness'],
-    'fap-preview-sec-pic': ['picName', 'position', 'phone', 'email', 'picAddress', 'currentAddress', 'picCity', 'picProvince', 'picPostalCode', 'shareholders', 'representativeType', 'stakeholderType', 'idNumber'],
-    'fap-preview-sec-facility': ['creditFacility', 'monthlyInstallment', 'bankOrFinInstitution', 'units', 'assetSummary', 'years', 'brand', 'modelName', 'quantity'],
-    'fap-preview-sec-proposal': ['financingValue', 'downPaymentValue', 'securityDeposit', 'tenorMonths', 'interestRate', 'purposeDetail', 'financingMethod', 'paymentMethod', 'termsNotes']
+    'fap-preview-sec-header': [
+      'fapNumber', 'applicationDate', 'customerCategory', 'customerStatus',
+      'companyName', 'companyType', 'nib', 'nibDate', 'npwp',
+      'establishmentActNo', 'establishmentDate'
+    ],
+    'fap-preview-sec-company': [
+      'branchCode', 'customerStatus', 'locationStatus', 'companyAddress',
+      'province', 'city', 'district', 'village', 'postalCode', 'rt', 'rw',
+      'phoneFax', 'email', 'website'
+    ],
+    'fap-preview-sec-business': [
+      'mainBusiness', 'repaymentSource', 'industrySegment', 'businessRole',
+      'experienceYears', 'experienceMonths', 'latestDeedNo', 'latestDeedDate'
+    ],
+    'fap-preview-sec-pic': [
+      'picName', 'position', 'phone', 'email', 'picEmail', 'picAddress',
+      'currentAddress', 'picCity', 'picProvince', 'picPostalCode',
+      'representativeType', 'idNumber'
+    ],
+    'fap-preview-sec-projects': [
+      'shareholders', 'stakeholderType', 'projectName', 'projectOwner',
+      'projectValue', 'contractNumber', 'projects'
+    ]
   };
 
   const fapSectionTitles: Record<string, string> = {
-    'fap-preview-sec-header': '1. Header & Register',
-    'fap-preview-sec-company': '2. Company Profile',
-    'fap-preview-sec-pic': '3. PIC & Shareholders',
-    'fap-preview-sec-facility': '4. Facilities & Fixed Assets',
-    'fap-preview-sec-proposal': '5. Financing Value'
+    'fap-preview-sec-header': '1. Identity',
+    'fap-preview-sec-company': '2. Domicile',
+    'fap-preview-sec-business': '3. Profile',
+    'fap-preview-sec-pic': '4. PIC',
+    'fap-preview-sec-projects': '5. Projects'
   };
 
   const filteredDiffs = useMemo(() => {
@@ -1694,43 +2099,86 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         el.classList.remove('fap-preview-sync-highlight');
       }, 2500);
     }
+
+    const cellId = FIELD_TO_CELL_ID_MAP[fieldKey];
+    if (cellId) {
+      const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-pane-card iframe');
+      iframes.forEach(iframe => {
+        try {
+          const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          const win = iframe.contentWindow;
+          if (!iDoc || !win) return;
+          const targetEl = iDoc.getElementById(cellId);
+          if (targetEl) {
+            targetEl.classList.remove('fap-cell-highlight');
+            void targetEl.offsetWidth;
+            targetEl.classList.add('fap-cell-highlight');
+            const rect = targetEl.getBoundingClientRect();
+            const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+            const targetY = Math.max(0, currentScrollY + rect.top - 80);
+            win.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+            setTimeout(() => targetEl.classList.remove('fap-cell-highlight'), 3000);
+          }
+        } catch {}
+      });
+    }
   };
 
   const scrollToFapSection = (secId: string) => {
     setFapNavFilter(secId);
-    const viewports = document.querySelectorAll('.excel-fap-viewport');
-    let scrolled = false;
+    setFapNavTick(Date.now());
 
-    viewports.forEach(vp => {
-      const target = vp.querySelector(`[id="${secId}"]`) as HTMLElement;
-      if (target) {
-        const vpRect = vp.getBoundingClientRect();
-        const targetRect = target.getBoundingClientRect();
-        const delta = targetRect.top - vpRect.top;
-        
-        vp.scrollTo({
-          top: vp.scrollTop + delta - 14,
-          behavior: 'smooth'
+    // Scroll and highlight inside both iframes within .fap-pane-card (System FAP & OCR FAP)
+    const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-pane-card iframe');
+    iframes.forEach(iframe => {
+      try {
+        const iDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        const win = iframe.contentWindow;
+        if (!iDoc || !win) return;
+
+        // Clear existing highlights
+        iDoc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+          el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
         });
 
-        target.classList.remove('fap-preview-sync-highlight');
-        void target.offsetWidth;
-        target.classList.add('fap-preview-sync-highlight');
-        setTimeout(() => target.classList.remove('fap-preview-sync-highlight'), 2500);
-        scrolled = true;
+        if (secId === 'all') {
+          win.scrollTo({ top: 0, behavior: 'smooth' });
+          iDoc.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+          iDoc.body.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        const sectionCells = SECTION_TO_CELL_IDS_MAP[secId] || [];
+        sectionCells.forEach(cid => {
+          const cel = iDoc.getElementById(cid);
+          if (cel) cel.classList.add('fap-cell-highlight');
+        });
+
+        const targetCellId = SECTION_TO_SCROLL_TARGET_MAP[secId] || sectionCells[0];
+        if (targetCellId) {
+          const targetEl = iDoc.getElementById(targetCellId);
+          if (targetEl) {
+            const rect = targetEl.getBoundingClientRect();
+            const currentScrollY = win.scrollY || iDoc.documentElement.scrollTop || iDoc.body.scrollTop || 0;
+            const targetY = Math.max(0, currentScrollY + rect.top - 60);
+            win.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
+            iDoc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+          }
+        }
+
+        setTimeout(() => {
+          sectionCells.forEach(cid => {
+            const cel = iDoc.getElementById(cid);
+            if (cel) cel.classList.remove('fap-cell-highlight');
+          });
+        }, 3200);
+      } catch (err) {
+        console.warn('Could not scroll iframe section:', err);
       }
     });
-
-    if (!scrolled) {
-      const el = document.getElementById(secId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        el.classList.remove('fap-preview-sync-highlight');
-        void el.offsetWidth;
-        el.classList.add('fap-preview-sync-highlight');
-        setTimeout(() => el.classList.remove('fap-preview-sync-highlight'), 2500);
-      }
-    }
   };
 
   const items = evidenceDefs.map(def => {
@@ -1797,55 +2245,60 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     }
   }, [selectedCode, a.id, activeFiles.length]);
 
-  const liveFapData: FapSheetData = useMemo(() => ({
-    fapNumber: a.fapNumber || '-',
-    applicationDate: a.applicationDate || new Date().toISOString(),
-    branchCode: a.branchCode || a.profile?.branchCode || '',
-    customerStatus: a.customerCategory || a.profile?.customerStatus || 'EXISTING',
-    companyName: a.customer?.companyName || a.companyName || '',
-    companyType: a.customer?.companyType || a.companyType || 'PT',
-    nib: a.customer?.nib || a.nib || '',
-    nibDate: a.customer?.nibDate || a.nibDate || '',
-    npwp: a.customer?.npwp || a.npwp || '',
-    establishmentActNo: a.customer?.establishmentActNo || a.establishmentActNo || '',
-    establishmentDate: a.customer?.establishmentDate || a.establishmentDate || '',
-    companyAddress: a.customer?.companyAddress || a.companyAddress || '',
-    city: a.customer?.city || a.city || '',
-    province: a.customer?.province || a.province || '',
-    postalCode: a.customer?.postalCode || a.postalCode || '',
-    experienceYears: a.customer?.experienceYears ?? a.experienceYears ?? '',
-    experienceMonths: a.customer?.experienceMonths ?? a.experienceMonths ?? '',
-    mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
-    latestDeedNo: a.latestDeedNo || '',
-    latestDeedDate: a.latestDeedDate || '',
-    phoneFax: a.phoneFax || '',
-    website: a.website || '',
-    email: a.email || '',
-    repaymentSource: a.repaymentSource || '',
-    locationStatus: a.locationStatus || '',
-    picName: a.pic?.picName || '',
-    position: a.pic?.position || '',
-    phone: a.pic?.phone || '',
-    currentAddress: a.pic?.currentAddress || '',
-    picCity: a.pic?.city || '',
-    picProvince: a.pic?.province || '',
-    picPostalCode: a.pic?.postalCode || '',
-    selectedDeedNo: a.selectedDeedNo || a.customer?.establishmentActNo || '',
-    stakeholders: a.stakeholders || [],
-    facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || '',
-    financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
-    financingValue: a.proposal?.financingValue || a.financingValue || '',
-    downPaymentValue: a.proposal?.downPaymentValue || a.downPaymentValue || '',
-    interestRate: a.proposal?.interestRate || a.interestRate || '',
-    tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
-    paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
-    industrySegment: a.industrySegment || '',
-    businessRole: a.businessRole || '',
-    proposal: a.proposal || {},
-    projects: a.projects || [],
-    bankReferences: a.bankReferences || [],
-    financialStatements: a.financialStatements || []
-  }), [a]);
+  const liveFapData: FapSheetData = useMemo(() => {
+    const docPic = a.pic || a.customer?.pic || {};
+    return {
+      fapNumber: a.fapNumber || '-',
+      applicationDate: a.applicationDate || new Date().toISOString(),
+      branchCode: a.branchCode || a.profile?.branchCode || '',
+      customerStatus: a.customerCategory || a.profile?.customerStatus || 'EXISTING',
+      companyName: a.customer?.companyName || a.companyName || '',
+      companyType: a.customer?.companyType || a.companyType || 'PT',
+      nib: a.customer?.nib || a.nib || '',
+      nibDate: a.customer?.nibDate || a.nibDate || '',
+      npwp: a.customer?.npwp || a.npwp || '',
+      establishmentActNo: a.customer?.establishmentActNo || a.establishmentActNo || '',
+      establishmentDate: a.customer?.establishmentDate || a.establishmentDate || '',
+      companyAddress: a.customer?.companyAddress || a.companyAddress || '',
+      city: a.customer?.city || a.city || '',
+      province: a.customer?.province || a.province || '',
+      postalCode: a.customer?.postalCode || a.postalCode || '',
+      experienceYears: a.customer?.experienceYears ?? a.experienceYears ?? '',
+      experienceMonths: a.customer?.experienceMonths ?? a.experienceMonths ?? '',
+      mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
+      latestDeedNo: a.latestDeedNo || '',
+      latestDeedDate: a.latestDeedDate || '',
+      phoneFax: a.phoneFax || '',
+      website: a.website || '',
+      email: a.email || '',
+      repaymentSource: a.repaymentSource || '',
+      locationStatus: a.locationStatus || '',
+      pic: docPic,
+      picName: docPic.picName || docPic.name || a.picName || '',
+      position: docPic.position || a.position || '',
+      phone: docPic.phone || docPic.mobilePhone || a.phone || '',
+      picEmail: docPic.email || docPic.picEmail || a.picEmail || '',
+      currentAddress: docPic.currentAddress || docPic.address || a.currentAddress || '',
+      picCity: master.city?.find(x => x.value === docPic.city || x.name?.toLowerCase() === String(docPic.city || '').toLowerCase())?.name || docPic.city || a.picCity || '',
+      picProvince: master.province?.find(x => x.value === docPic.province || x.name?.toLowerCase() === String(docPic.province || '').toLowerCase())?.name || docPic.province || a.picProvince || '',
+      picPostalCode: docPic.postalCode || a.picPostalCode || '',
+      selectedDeedNo: a.selectedDeedNo || a.customer?.establishmentActNo || '',
+      stakeholders: a.stakeholders || [],
+      facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || '',
+      financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
+      financingValue: a.proposal?.financingValue || a.financingValue || '',
+      downPaymentValue: a.proposal?.downPaymentValue || a.downPaymentValue || '',
+      interestRate: a.proposal?.interestRate || a.interestRate || '',
+      tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
+      paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
+      industrySegment: a.industrySegment || '',
+      businessRole: a.businessRole || '',
+      proposal: a.proposal || {},
+      projects: a.projects || [],
+      bankReferences: a.bankReferences || [],
+      financialStatements: a.financialStatements || []
+    };
+  }, [a, master]);
 
   const ocrFapData: FapSheetData = useMemo(() => {
     const ext = fapComparison?.extractedData || {};
@@ -2034,20 +2487,24 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
     }
   }
 
-  async function handleApproveFapChanges(extractedData: any) {
+  async function handleApproveFapChanges() {
     setBusy(true);
     setError('');
     try {
-      await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
-        approvedData: extractedData,
+      const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
         remarks: fapRemarks
       });
-      const updated = await api(`/applications/${a.id}`);
-      onChange(updated);
+      localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
+      const updated = res?.application || (await api(`/applications/${a.id}`));
       setFapComparison(null);
-      notify('OCR data changes approved and updated in database.');
+      notify('Dokumen fisik FAP telah disetujui. Bagian Customer & PIC dikunci, beralih ke tahap Pre-analysis.');
+      if (onApproveDocument) {
+        onApproveDocument(updated);
+      } else {
+        onChange({ ...updated, customerDetailLocked: true, stage: 'Pre-analysis' });
+      }
     } catch (err: any) {
-      setError('Failed to approve data changes: ' + err.message);
+      setError('Gagal menyetujui dokumen: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -2061,9 +2518,9 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
         remarks: fapRemarks
       });
       setFapComparison(null);
-      notify('OCR changes dismissed. Current system data retained.');
+      notify('Catatan remarks disimpan. Tetap pada dokumen saat ini.');
     } catch (err: any) {
-      setError('Failed to dismiss data changes: ' + err.message);
+      setError('Gagal menutup perbandingan data: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -2163,8 +2620,13 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               </div>
             </div>
 
-            {/* Full-width Dropzone */}
-            {canUpload && (
+            {/* Full-width Dropzone or Locked Banner */}
+            {isFapLocked ? (
+              <div className="stage-readonly-banner" style={{margin:'0 0 16px 0', background:'#ecfdf5', borderColor:'#a7f3d0', color:'#065f46', borderRadius:'8px'}}>
+                <Lock size={18} />
+                <span><strong>Dokumen FAP Telah Dikunci:</strong> Aplikasi telah berada pada tahap <strong>Pre-analysis</strong>. Dokumen FAP fisik telah diverifikasi dan disetujui. File dokumen FAP terkunci permanen (tidak dapat diupload ulang atau dihapus).</span>
+              </div>
+            ) : canUpload && (
               <label className="fap-dropzone-full" onClick={e => e.stopPropagation()}>
                 <div className="fap-dropzone-full-icon">
                   {busy ? <Loader2 size={22} className="spin" /> : <UploadCloud size={22} />}
@@ -2197,7 +2659,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
               <button 
                 type="button" 
                 className={fapNavFilter === 'all' ? 'active' : ''} 
-                onClick={() => { setFapNavFilter('all'); scrollToFapSection('fap-preview-sec-header'); }}
+                onClick={() => scrollToFapSection('all')}
               >
                 All Sections
               </button>
@@ -2206,41 +2668,41 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                 className={fapNavFilter === 'fap-preview-sec-header' ? 'active' : ''} 
                 onClick={() => scrollToFapSection('fap-preview-sec-header')}
               >
-                1. Header & Register
+                1. Identity
               </button>
               <button 
                 type="button" 
                 className={fapNavFilter === 'fap-preview-sec-company' ? 'active' : ''} 
                 onClick={() => scrollToFapSection('fap-preview-sec-company')}
               >
-                2. Company Profile
+                2. Domicile
+              </button>
+              <button 
+                type="button" 
+                className={fapNavFilter === 'fap-preview-sec-business' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-business')}
+              >
+                3. Profile
               </button>
               <button 
                 type="button" 
                 className={fapNavFilter === 'fap-preview-sec-pic' ? 'active' : ''} 
                 onClick={() => scrollToFapSection('fap-preview-sec-pic')}
               >
-                3. PIC & Shareholders
+                4. PIC
               </button>
               <button 
                 type="button" 
-                className={fapNavFilter === 'fap-preview-sec-facility' ? 'active' : ''} 
-                onClick={() => scrollToFapSection('fap-preview-sec-facility')}
+                className={fapNavFilter === 'fap-preview-sec-projects' ? 'active' : ''} 
+                onClick={() => scrollToFapSection('fap-preview-sec-projects')}
               >
-                4. Facilities & Fixed Assets
-              </button>
-              <button 
-                type="button" 
-                className={fapNavFilter === 'fap-preview-sec-proposal' ? 'active' : ''} 
-                onClick={() => scrollToFapSection('fap-preview-sec-proposal')}
-              >
-                5. Financing Value
+                5. Projects
               </button>
             </div>
           </div>
 
           {/* 50 / 50 Comparison Split Grid */}
-          <div className="fap-comparison-grid-5050">
+          <div className="fap-comparison-grid-5050" ref={fapComparisonContainerRef}>
             {/* Left Pane (50%): Dokumen Terakhir yang di-generate oleh sistem */}
             <div className="fap-pane-card">
               <div className="fap-pane-head">
@@ -2270,12 +2732,15 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   <div style={{display:'flex', alignItems:'center', gap:'6px', marginLeft:'auto'}}>
                     <span style={{fontSize:'11px', color:'#64748b', fontWeight:500}}>Zoom:</span>
                     <div className="excel-zoom-controls compact" style={{display:'inline-flex', alignItems:'center', gap:'3px', background:'#f1f5f9', padding:'2px 6px', borderRadius:'6px', border:'1px solid #cbd5e1', height:'26px', boxSizing:'border-box'}}>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.4, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom Out (-)">
+                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.05, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom Out (-)">
                         <ZoomOut size={12} />
                       </button>
                       <span style={{fontSize:'11px', fontWeight:600, minWidth:'36px', textAlign:'center'}}>{Math.round(systemZoom * 100)}%</span>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.4, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom In (+)">
+                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.5, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px'}} title="Zoom In (+)">
                         <ZoomIn size={12} />
+                      </button>
+                      <button type="button" onClick={handleFitBothDocuments} className="button small" style={{padding:'2px 6px', height:'20px', fontSize:'11px', fontWeight:600}} title="Fit both documents to screen size">
+                        Fit
                       </button>
                     </div>
                   </div>
@@ -2289,6 +2754,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   diffSide="system"
                   diffs={activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : []}
                   externalZoom={systemZoom}
+                  activeSection={fapNavFilter === 'all' ? undefined : fapNavFilter}
+                  syncTick={fapNavTick}
                   onPrint={() => printFapDocument(a.fapNumber)}
                 />
               </div>
@@ -2377,6 +2844,8 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                       diffSide="ocr"
                       diffs={activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : []}
                       externalZoom={systemZoom}
+                      activeSection={fapNavFilter === 'all' ? undefined : fapNavFilter}
+                      syncTick={fapNavTick}
                       onPrint={() => printFapDocument(a.fapNumber)}
                     />
                   ) : activeFile?.mimeType === 'application/pdf' ? (
@@ -2557,33 +3026,48 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                   </div>
 
                   {/* Bottom Actions Bar */}
-                  {fapComparison.diffs.length > 0 && (
-                    <div className="fap-diff-actions-bar">
-                      <span style={{fontSize:'12px', color:'#64748b'}}>
-                        Choose <strong>Approve Changes</strong> to update the system data, or <strong>Correct Data</strong> to keep the current system data.
-                      </span>
-                      <div className="fap-diff-actions-right">
-                        <button
-                          type="button"
-                          className="button"
-                          disabled={busy}
-                          onClick={handleDismissFapChanges}
-                          style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
-                        >
-                          <Pencil size={14} /> Correct Data (Keep System)
-                        </button>
-                        <button
-                          type="button"
-                          className="button primary"
-                          disabled={busy}
-                          onClick={() => handleApproveFapChanges(fapComparison.extractedData)}
-                          style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
-                        >
-                          {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-                          Approve Changes (Use OCR Data)
-                        </button>
+                  {fapComparison && (
+                    isFapLocked ? (
+                      <div className="fap-diff-actions-bar" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px', background:'#ecfdf5', padding:'12px 18px', border:'1px solid #a7f3d0', borderRadius:'8px', marginTop:'14px', flexWrap:'wrap'}}>
+                        <span style={{fontSize:'12.5px', color:'#065f46', lineHeight:1.4, flex:1, minWidth:'280px', display:'inline-flex', alignItems:'center', gap:'8px'}}>
+                          <Lock size={16} /> Dokumen fisik FAP telah disetujui &amp; diverifikasi. Seluruh data FAP Stage terkunci permanen pada tahap Pre-analysis.
+                        </span>
+                        <div className="fap-diff-actions-right" style={{display:'flex', alignItems:'center', gap:'10px', flexShrink:0}}>
+                          <span style={{display:'inline-flex', alignItems:'center', gap:'6px', color:'#059669', fontWeight:600, fontSize:'13px', background:'#ffffff', padding:'6px 14px', borderRadius:'6px', border:'1px solid #a7f3d0'}}>
+                            <CheckCircle size={15}/> Dokumen Telah Disetujui (Terkunci)
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="fap-diff-actions-bar" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px', background:'#f8fafc', padding:'12px 18px', border:'1px solid #e2e8f0', borderRadius:'8px', marginTop:'14px', flexWrap:'wrap'}}>
+                        <span style={{fontSize:'12.5px', color:'#475569', lineHeight:1.4, flex:1, minWidth:'280px'}}>
+                          Perbedaan dokumen fisik FAP dicatat pada kolom Remarks di atas. Menyetujui dokumen ini <strong>TIDAK akan mengubah data sistem/database</strong>, dan akan <strong>mengunci bagian Customer &amp; PIC</strong> sebelum melanjutkan ke tahap Pre-analysis.
+                        </span>
+                        <div className="fap-diff-actions-right" style={{display:'flex', alignItems:'center', gap:'10px', flexShrink:0}}>
+                          <button
+                            type="button"
+                            className="button"
+                            disabled={busy}
+                            onClick={handleDismissFapChanges}
+                            style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
+                            title="Simpan catatan perbedaan dan tetap berada pada tab dokumen"
+                          >
+                            <Pencil size={14} /> Review Remarks / Tetap di Dokumen
+                          </button>
+                          <button
+                            type="button"
+                            className="button primary"
+                            disabled={busy}
+                            onClick={() => handleApproveFapChanges()}
+                            style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
+                            title="Setujui verifikasi dokumen dan kunci form Customer & PIC"
+                          >
+                            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
+                            Setujui Dokumen (Kunci Customer &amp; PIC)
+                          </button>
+                        </div>
+                      </div>
+                    )
                   )}
                 </>
               )}
@@ -2993,7 +3477,7 @@ function Documents({a,user,onChange,notify,filterStage}:{a:any,user:any,onChange
                         >
                           <Download size={13} />
                         </a>
-                        {canUpload && (
+                        {canUpload && !(isFapLocked && activeItem.code === 'FAP') && (
                           <button
                             type="button"
                             className="button small"
@@ -4614,7 +5098,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
  const amendmentRemarkCategories=[{id:'amendment-share-change',name:'Shares',remarks:''},{id:'amendment-management-change',name:'Management',remarks:''},{id:'amendment-business-activity-change',name:'Business Activities',remarks:''},{id:'amendment-articles-change',name:'Articles Of Association',remarks:''},{id:'amendment-other',name:'Other',remarks:''},...masterCats.filter(x=>!['establishment-deed','amendment-share-change','amendment-management-change','amendment-business-activity-change','amendment-articles-change','amendment-other'].includes(x.id))];
  const getDeedCategoryIds=(d:any):string[]=>{if(Array.isArray(d?.remarkCategoryIds)&&d.remarkCategoryIds.length>0)return d.remarkCategoryIds;if(d?.remarkCategoryId)return [d.remarkCategoryId];return d?.type==='establishment'?['establishment-deed']:[];};
  const deeds=legalDeedList(value,application),selectedId=value.selectedDeedId||deeds.find(x=>x.type===(value.selectedDeed||'establishment'))?.id||deeds[0]?.id,parties=editing?.parties||{};
- const locked=(d:any)=>!checkIsAdmin(user)&&(disabled||deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED');const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
+ const locked=(d:any)=>disabled || (!checkIsAdmin(user)&&(deedPending(d)||!['DRAFT','RETURNED'].includes(application.status)&&reviewStatus(d)!=='REJECTED'));const listLocked=locked(deeds.find(d=>d.id===stakeholderList));const editorLocked=locked(stakeholderModal?deeds.find(d=>d.id===stakeholderModal.deedId):editing);
  const rowsFor=(x:any):any[]=>Array.isArray(x?.stakeholders)?x.stakeholders:Array.isArray(stakeholders)?stakeholders:[];
  const updateRows=async(deedId:string,rows:any[])=>{
    const hydrated=deeds.map(x=>({...x,stakeholders:Array.isArray(x.stakeholders)?x.stakeholders:stakeholders}));
@@ -4638,9 +5122,12 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
    }
  };
  const safeUUID=()=>typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():'deed-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);
- const openAdd=()=>setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
+ const openAdd=()=>{
+    if (disabled) return;
+    setEditing({id:safeUUID(),type:deeds.some(x=>x.type==='establishment')?'amendment':'establishment',createdAt:new Date().toISOString(),stakeholders:[]});
+  };
  const saveDeed=async()=>{
-    if(!editing||editorLocked)return;
+    if(!editing||editorLocked||disabled)return;
     const cleanEditingDeedNumber = String(editing.deedNumber || '').trim().toLowerCase();
     const isDuplicate = Boolean(cleanEditingDeedNumber && deeds.some((d: any) => d.id !== editing.id && String(d.deedNumber || '').trim().toLowerCase() === cleanEditingDeedNumber));
     if (isDuplicate) {
@@ -4820,7 +5307,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   };
   const editingCategoryIds=editing?getDeedCategoryIds(editing):[];const cleanEditingDeedNumber=String(editing?.deedNumber||'').trim().toLowerCase();
   const isDuplicateDeedNumber=Boolean(cleanEditingDeedNumber&&deeds.some((d:any)=>d.id!==editing?.id&&String(d.deedNumber||'').trim().toLowerCase()===cleanEditingDeedNumber));
-  const complete=editing&&!isDuplicateDeedNumber&&['deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate'].every(k=>String(editing[k]||'').trim())&&(editing.type!=='amendment'||editingCategoryIds.length>0);
+  const complete=Boolean(editing&&!isDuplicateDeedNumber&&String(editing.deedNumber||'').trim()&&String(editing.deedDate||'').trim()&&(editing.type!=='amendment'||editingCategoryIds.length>0));
 
   // Active Deed Classification (Strict Legal) vs Historical Deed (History)
   const establishmentDeeds = deeds.filter((d: any) => d.type === 'establishment');
@@ -4901,18 +5388,16 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
               const val = deedValidity(x.deedDate);
               const isPrimaryEst = primaryEstablishmentDeed?.id === x.id;
               const isLatestAmend = latestAmendmentDeed?.id === x.id;
+              const typeLabel = (x.type === 'amendment' && isLatestAmend) ? 'Latest Amendment Deed' : deedNames[x.type];
               return (
                 <tr key={x.id} className={selectedId === x.id ? 'selected' : ''} aria-selected={selectedId === x.id}>
                   <td data-label="Deed">
                     <div className="legal-deed-primary">
-                      <span className="legal-type-badge">{deedNames[x.type]}</span>
-                      {selectedId === x.id && <span className="legal-current">Selected</span>}
+                      <span className="legal-type-badge">{typeLabel}</span>
                       {isHistory ? (
                         <span className="legal-history-badge">Historical</span>
                       ) : isPrimaryEst ? (
                         <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Primary</span>
-                      ) : isLatestAmend ? (
-                        <span className="legal-role-badge" style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>Latest</span>
                       ) : null}
                     </div>
                     <b className="legal-deed-number">{x.deedNumber || 'Number not filled'}</b>
@@ -5134,7 +5619,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   )}
  {deleteStakeholder&&<Modal title="Delete Stakeholder" onClose={()=>setDeleteStakeholder(null)}><div className="modal-body"><p>Delete this stakeholder from the deed?</p><p className="muted legal-delete-note">Click Save changes in Legal to keep changes saved.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleteStakeholder(null)}>Cancel</button><button className="button legal-confirm-delete" onClick={()=>{const x=deeds.find(d=>d.id===deleteStakeholder.deedId);if(x)updateRows(x.id,rowsFor(x).filter((_,i)=>i!==deleteStakeholder.index));setDeleteStakeholder(null);}}><Trash2 size={15}/>Delete stakeholder</button></div></Modal>}
  {deleting&&<Modal title="Delete Deed" onClose={()=>setDeleting(null)}><div className="modal-body"><p>Delete {deedNames[deleting.type]} <strong>{deleting.deedNumber||'no number'}</strong> from the Legal list?</p>{deleting.source==='Sistem'&&<p className="muted legal-delete-note">Original data in Customer or profile remains; this deed will be hidden from the Legal list.</p>}<p className="muted legal-delete-note">Click Save changes after deleting to keep changes saved.</p></div><div className="modal-actions"><button className="button" onClick={()=>setDeleting(null)}>Cancel</button><button className="button legal-confirm-delete" onClick={removeDeed}><Trash2 size={15}/>Delete deed</button></div></Modal>}
-  {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);return <Modal title={`Remarks Details · ${deedNames[deed.type]}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedNames[deed.type]}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Change Categories ({rawIds.length} Selected):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Deed Notes / Remarks:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',minHeight:'80px'}} dangerouslySetInnerHTML={{ __html: deed.remarks || 'No remarks notes for this deed yet.' }} /></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Close</button></div></Modal>;})()}</>;
+  {viewRemarkDeed&&(()=>{const deed=viewRemarkDeed.deed,rawIds=getDeedCategoryIds(deed);const isLatest=deed.id===latestAmendmentDeed?.id&&deed.type==='amendment';const deedTitle=isLatest?'Latest Amendment Deed':deedNames[deed.type];return <Modal title={`Remarks Details · ${deedTitle}`} onClose={()=>setViewRemarkDeed(null)}><div className="modal-body legal-category-popup"><div className="legal-popup-meta"><span className="legal-type-badge">{deedTitle}</span><span className="legal-popup-deed-no">{deed.deedNumber}</span><span className="legal-popup-date">{date(deed.deedDate)}</span></div><div style={{marginBottom:'14px'}}><span className="field-label" style={{fontSize:'11px',fontWeight:700,color:'#475569',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Change Categories ({rawIds.length} Selected):</span><div className="legal-categories-wrap" style={{display:'flex',flexWrap:'wrap',gap:'6px'}}>{rawIds.map((id:string)=>{const cat=remarkCategories.find(c=>c.id===id||c.name===id),name=cat?.name||id;return <span key={id} className="legal-category-badge" style={{background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe',padding:'4px 10px',borderRadius:'16px',fontSize:'11.5px',fontWeight:600}}>✓ {name}</span>;})}</div></div><div className="legal-single-remark-view"><span className="field-label" style={{fontSize:'11.5px',fontWeight:700,color:'#002060',display:'block',marginBottom:'6px',textTransform:'uppercase',letterSpacing:'0.5px'}}>Deed Notes / Remarks:</span><div style={{background:'#f8fafc',border:'1px solid #cbd5e1',borderRadius:'8px',padding:'14px 16px',fontSize:'13px',lineHeight:'1.6',color:'#0f172a',minHeight:'80px'}} dangerouslySetInnerHTML={{ __html: deed.remarks || 'No remarks notes for this deed yet.' }} /></div></div><div className="modal-actions"><button className="button primary" onClick={()=>setViewRemarkDeed(null)}>Close</button></div></Modal>;})()}</>;
 }
 
 function ShareholderCountContent({rows}:{rows:any[]}){const owners=rows.filter(r=>Number(r.sharePercentage)>0),total=owners.reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),name=(r:any,i:number)=>[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Shareholder ${i+1}`;return <div className="modal-body shareholder-count-modal"><div className="shareholder-count-top"><div><small>SHAREHOLDER COUNT</small><strong>{owners.length}</strong><span>Dihitung dari Percentage share &gt; 0</span></div><div><small>TOTAL OWNERSHIP</small><strong className={total>100.01?'text-red':'text-brand'}>{total.toFixed(2)}%</strong><span>{total>100.01?'Exceeds maximum limit of 100%':'Maximum 100% (not required to be 100%)'}</span></div></div>{owners.length?<div className="shareholder-count-list">{owners.map((r,i)=><div key={r.id||i}><span><b>{String(i+1).padStart(2,'0')}</b>{name(r,i)}</span><strong>{Number(r.sharePercentage).toFixed(2)}%</strong></div>)}</div>:<div className="empty-small">No stakeholders with share percentage greater than 0 on this deed.</div>}<p className="legal-ownership-rule">Total share percentage on the deed must not exceed 100%. Stakeholder data does not need to reach 100% (partial ownership portions may be recorded).</p><p className="field-note">Count and percentage follow Stakeholder data on this deed. Change share percentage via the Stakeholders button on the deed row.</p></div>;}
