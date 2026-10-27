@@ -501,34 +501,39 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           borderRadius: '8px',
           border: '1px solid #cbd5e1',
           marginBottom: '14px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          gap: '12px'
         }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <FileText size={18} color="#1e3a8a" />
-              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a' }}>
+          <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'nowrap' }}>
+              <FileText size={18} color="#1e3a8a" style={{ flexShrink: 0 }} />
+              <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap' }}>
                 Pre-Analysis Form
               </h3>
               <span style={{
                 background: data.recommendation === 'CONDITIONAL' ? '#fef9c3' : data.recommendation.includes('NOT RECOMMEND') ? '#fee2e2' : '#dcfce7',
                 color: data.recommendation === 'CONDITIONAL' ? '#a16207' : data.recommendation.includes('NOT RECOMMEND') ? '#b91c1c' : '#15803d',
-                fontSize: '0.7rem',
+                fontSize: '0.68rem',
                 fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: '12px',
-                border: `1px solid ${data.recommendation === 'CONDITIONAL' ? '#fde047' : data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`
-              }}>
+                border: `1px solid ${data.recommendation === 'CONDITIONAL' ? '#fde047' : data.recommendation.includes('NOT RECOMMEND') ? '#fca5a5' : '#86efac'}`,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                maxWidth: '220px'
+              }} title={data.recommendation}>
                 {data.recommendation}
               </span>
             </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-              Ref: {data.preAnalysisNo} • FAP No: {data.fapNumber}
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Ref: <span style={{ fontWeight: 600, color: '#334155' }}>{data.preAnalysisNo}</span> • FAP No: <span style={{ fontWeight: 600, color: '#334155' }}>{data.fapNumber}</span>
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {saveStatus === 'saved' && (
-              <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}>
                 <CheckCircle2 size={14} /> Saved
               </span>
             )}
@@ -547,7 +552,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 borderRadius: '6px',
                 fontSize: '0.8rem',
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
               }}
             >
               <Save size={14} />
@@ -2113,37 +2121,50 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       <div className="fap-detail-preview-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         {/* Ribbon Toolbar */}
         <div style={{
-          height: '42px',
-          background: '#1b365d',
+          height: '44px',
+          minHeight: '44px',
+          background: '#0f294a',
           color: '#ffffff',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 14px',
-          borderRadius: '8px 8px 0 0',
+          padding: '0 12px',
+          borderRadius: '7px 7px 0 0',
           fontSize: '0.8rem',
-          fontWeight: 600
+          fontWeight: 600,
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+          boxSizing: 'border-box',
+          gap: '10px'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <FileText size={16} />
-            <span>PRE-ANALYSIS — EXPERT JUDGEMENT</span>
-            <span style={{ fontSize: '0.7rem', opacity: 0.8, fontWeight: 400 }}>Ref: {data.preAnalysisNo}</span>
+          {/* Left: Document Identity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            <FileText size={15} color="#93c5fd" style={{ flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em', color: '#f8fafc', whiteSpace: 'nowrap' }}>
+              PRE-ANALYSIS
+            </span>
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8', borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Ref: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.preAnalysisNo}</span>
+            </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '4px', padding: '2px' }}>
+          {/* Right: Controls (Tabs, Zoom, Print) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {/* View Toggle Tabs */}
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
               <button
                 type="button"
                 onClick={() => setViewMode('digital-twin')}
                 style={{
                   background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
-                  color: viewMode === 'digital-twin' ? '#1b365d' : '#ffffff',
+                  color: viewMode === 'digital-twin' ? '#0f294a' : 'rgba(255,255,255,0.8)',
                   border: 'none',
-                  padding: '3px 8px',
-                  borderRadius: '3px',
+                  padding: '3px 9px',
+                  borderRadius: '4px',
                   fontSize: '0.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
+                  fontWeight: viewMode === 'digital-twin' ? 700 : 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 Digital Twin
@@ -2153,51 +2174,55 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 onClick={() => setViewMode('original-pdf')}
                 style={{
                   background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
-                  color: viewMode === 'original-pdf' ? '#1b365d' : '#ffffff',
+                  color: viewMode === 'original-pdf' ? '#0f294a' : 'rgba(255,255,255,0.8)',
                   border: 'none',
-                  padding: '3px 8px',
-                  borderRadius: '3px',
+                  padding: '3px 9px',
+                  borderRadius: '4px',
                   fontSize: '0.72rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
+                  fontWeight: viewMode === 'original-pdf' ? 700 : 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
                 }}
               >
                 Original PDF
               </button>
             </div>
 
+            {/* Zoom Controls */}
             {viewMode === 'digital-twin' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <button
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.max(0.4, Number((prev - 0.05).toFixed(2))))}
-                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px' }}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
                   title="Zoom Out"
                 >
-                  <ZoomOut size={15} />
+                  <ZoomOut size={13} />
                 </button>
-                <span style={{ fontSize: '0.72rem', minWidth: '32px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.72rem', minWidth: '38px', textAlign: 'center', fontWeight: 700, color: '#f8fafc' }}>
                   {Math.round(zoomLevel * 100)}%
                 </span>
                 <button
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.min(1.2, Number((prev + 0.05).toFixed(2))))}
-                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px' }}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
                   title="Zoom In"
                 >
-                  <ZoomIn size={15} />
+                  <ZoomIn size={13} />
                 </button>
                 <button
                   type="button"
                   onClick={() => setZoomLevel(0.75)}
-                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px' }}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
                   title="Reset Zoom"
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw size={12} />
                 </button>
               </div>
             )}
 
+            {/* Print Button */}
             <button
               type="button"
               onClick={() => window.print()}
@@ -2206,13 +2231,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 alignItems: 'center',
                 gap: '4px',
                 background: '#ffffff',
-                color: '#1b365d',
+                color: '#0f294a',
                 border: 'none',
                 padding: '4px 10px',
-                borderRadius: '4px',
+                borderRadius: '5px',
                 fontSize: '0.72rem',
                 fontWeight: 700,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
               }}
             >
               <Printer size={13} /> Print
