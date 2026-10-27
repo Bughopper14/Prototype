@@ -1220,6 +1220,13 @@ button:focus-visible, a:focus-visible {
   footer,
   .breadcrumb,
   .notification-bell,
+  .back-link,
+  .detail-heading,
+  .chevron-stepper,
+  .detail-summary,
+  .detail-tabs,
+  .pre-analysis-ribbon-toolbar,
+  .pre-analysis-form-col,
   .fap-tab-layout-toggle,
   .fap-detail-form-col,
   .excel-fap-ribbon,
@@ -1241,6 +1248,7 @@ button:focus-visible, a:focus-visible {
   .content,
   .detail-layout,
   .fap-detail-split-container,
+  .pre-analysis-container,
   .fap-detail-preview-col,
   .excel-fap-viewer,
   .excel-fap-viewport,
@@ -1251,6 +1259,7 @@ button:focus-visible, a:focus-visible {
     max-width: 100% !important;
     height: auto !important;
     min-height: auto !important;
+    max-height: none !important;
     overflow: visible !important;
     position: static !important;
     margin: 0 !important;
@@ -1259,9 +1268,28 @@ button:focus-visible, a:focus-visible {
     box-shadow: none !important;
     background: transparent !important;
     transform: none !important;
+    flex: none !important;
   }
 
-  #fap-excel-printable-doc {
+  .pre-analysis-canvas {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+
+  .pre-analysis-ribbon-toolbar {
+    display: none !important;
+  }
+
+  #fap-excel-printable-doc,
+  #preana-digital-twin-doc,
+  .pre-analysis-digital-twin-doc {
     display: block !important;
     visibility: visible !important;
     position: static !important;
@@ -1273,10 +1301,14 @@ button:focus-visible, a:focus-visible {
     border: none !important;
     box-shadow: none !important;
     background: #ffffff !important;
+    zoom: 1 !important;
     transform: none !important;
+    overflow: visible !important;
   }
 
-  #fap-excel-printable-doc * {
+  #fap-excel-printable-doc *,
+  #preana-digital-twin-doc *,
+  .pre-analysis-digital-twin-doc * {
     visibility: visible !important;
   }
 }

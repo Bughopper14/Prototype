@@ -487,6 +487,122 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     return (data.unitComposition || []).reduce((acc, u) => acc + (Number(u.qty) || 0), 0);
   }, [data.unitComposition]);
 
+  const pdfIframeRef = useRef<HTMLIFrameElement>(null);
+
+  const handlePrint = () => {
+    if (viewMode === 'original-pdf') {
+      const iframe = pdfIframeRef.current;
+      if (iframe && iframe.contentWindow) {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          return;
+        } catch (e) {
+          console.warn('Failed to print iframe directly:', e);
+        }
+      }
+    }
+
+    const docElement = document.getElementById('preana-digital-twin-doc');
+    if (!docElement) {
+      window.print();
+      return;
+    }
+
+    let printFrame = document.getElementById('preana-print-hidden-frame') as HTMLIFrameElement;
+    if (!printFrame) {
+      printFrame = document.createElement('iframe');
+      printFrame.id = 'preana-print-hidden-frame';
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = '0';
+      printFrame.style.visibility = 'hidden';
+      document.body.appendChild(printFrame);
+    }
+
+    const frameDoc = printFrame.contentWindow?.document;
+    if (!frameDoc) {
+      window.print();
+      return;
+    }
+
+    frameDoc.open();
+    frameDoc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Pre-Analysis - ${data.preAnalysisNo || 'Document'}</title>
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 8mm 10mm 10mm 10mm;
+            }
+            * {
+              box-sizing: border-box;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
+              color: #000000 !important;
+              font-size: 9pt;
+            }
+            .pre-analysis-print-wrapper {
+              width: 100% !important;
+              max-width: 100% !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+              transform: none !important;
+              zoom: 1 !important;
+            }
+            table {
+              width: 100% !important;
+              border-collapse: collapse !important;
+              page-break-inside: auto;
+            }
+            tr {
+              page-break-inside: avoid !important;
+              page-break-after: auto;
+            }
+            th, td {
+              border: 1px solid #000000 !important;
+              padding: 3px 5px !important;
+            }
+            img {
+              max-width: 100% !important;
+              height: auto !important;
+              page-break-inside: avoid !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="pre-analysis-print-wrapper">
+            ${docElement.innerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    frameDoc.close();
+
+    setTimeout(() => {
+      try {
+        printFrame.contentWindow?.focus();
+        printFrame.contentWindow?.print();
+      } catch (err) {
+        console.error('Error triggering iframe print:', err);
+        window.print();
+      }
+    }, 250);
+  };
+
   return (
     <div className="fap-detail-split-container pre-analysis-container" style={{ height: 'calc(100vh - 170px)', minHeight: '620px', overflow: 'hidden' }}>
       {/* LEFT COLUMN: 50% EDITABLE FORM */}
@@ -2107,22 +2223,25 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       {/* RIGHT COLUMN: 50% LIVE DOCUMENT PREVIEW (DIGITAL TWIN 1:1 WITH PDF) */}
       <div className="fap-detail-preview-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         {/* Ribbon Toolbar */}
-        <div style={{
-          height: '44px',
-          minHeight: '44px',
-          background: '#0f294a',
-          color: '#ffffff',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 12px',
-          borderRadius: '7px 7px 0 0',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          borderBottom: '1px solid rgba(255,255,255,0.1)',
-          boxSizing: 'border-box',
-          gap: '10px'
-        }}>
+        <div
+          className="pre-analysis-ribbon-toolbar"
+          style={{
+            height: '44px',
+            minHeight: '44px',
+            background: '#0f294a',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 12px',
+            borderRadius: '7px 7px 0 0',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            boxSizing: 'border-box',
+            gap: '10px'
+          }}
+        >
           {/* Left: Document Identity */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
             <FileText size={15} color="#93c5fd" style={{ flexShrink: 0 }} />
@@ -2212,7 +2331,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
             {/* Print Button */}
             <button
               type="button"
-              onClick={() => window.print()}
+              onClick={handlePrint}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -2235,19 +2354,23 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         </div>
 
         {/* Viewport Canvas */}
-        <div style={{
-          flex: 1,
-          height: 'calc(100% - 42px)',
-          overflowY: 'auto',
-          overflowX: 'auto',
-          background: '#f1f5f9',
-          padding: '16px',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'flex-start'
-        }}>
+        <div
+          className="pre-analysis-canvas"
+          style={{
+            flex: 1,
+            height: 'calc(100% - 42px)',
+            overflowY: 'auto',
+            overflowX: 'auto',
+            background: '#f1f5f9',
+            padding: '16px',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'flex-start'
+          }}
+        >
           {viewMode === 'original-pdf' ? (
             <iframe
+              ref={pdfIframeRef}
               src={`${getStaticAssetUrl("pre_analysis/pre_analysis_sample.pdf")}#toolbar=1`}
               title="Original Pre-Analysis PDF"
               style={{
@@ -2262,6 +2385,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           ) : (
             /* Digital Twin Document Render */
             <div
+              id="preana-digital-twin-doc"
+              className="pre-analysis-digital-twin-doc"
               style={{
                 width: '840px',
                 minWidth: '840px',
