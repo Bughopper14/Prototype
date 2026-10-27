@@ -131,6 +131,38 @@ export const DEFAULT_GROUP_STRUCTURE: GroupStructureData = {
   ]
 };
 
+export function formatGroupStructureAsNarrative(gs: GroupStructureData): string {
+  if (!gs || !gs.holding) return '';
+  const lines: string[] = [];
+  const hName = gs.holding.name || 'Holding Company';
+  const hCap = `Modal Dasar: ${gs.holding.authorizedCapital || '-'}, Modal Disetor: ${gs.holding.paidUpCapital || '-'}`;
+  lines.push(`CORPORATE SHAREHOLDING & GOVERNANCE STRUCTURE:`);
+  lines.push(`• ${hName} (Holding Parent): ${hCap}`);
+  (gs.holding.shareholders || []).forEach(sh => {
+    if (sh.name) {
+      lines.push(`  - ${sh.name} (${sh.percentage || '-'}${sh.role ? ` - ${sh.role}` : ''})`);
+    }
+  });
+  if (gs.holding.management) {
+    lines.push(`  - Pengurus: ${gs.holding.management}`);
+  }
+  (gs.subsidiaries || []).forEach(sub => {
+    if (sub.name) {
+      const sCap = `Modal Dasar: ${sub.authorizedCapital || '-'}, Modal Disetor: ${sub.paidUpCapital || '-'}`;
+      lines.push(`• ${sub.name}: ${sCap}`);
+      (sub.shareholders || []).forEach(sh => {
+        if (sh.name) {
+          lines.push(`  - ${sh.name} (${sh.percentage || '-'}${sh.role ? ` - ${sh.role}` : ''})`);
+        }
+      });
+      if (sub.management) {
+        lines.push(`  - Pengurus: ${sub.management}`);
+      }
+    }
+  });
+  return lines.join('\n');
+}
+
 export interface PreAnalysisData {
   preAnalysisNo: string;
   preAnalysisDate: string;
@@ -547,70 +579,101 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   });
 
   const updateField = (key: keyof PreAnalysisData, val: any) => {
-    setData(prev => ({ ...prev, [key]: val }));
+    if (viewMode === 'original-pdf') {
+      setViewMode('digital-twin');
+    }
+    setData(prev => {
+      const next: PreAnalysisData = { ...prev, [key]: val };
+      if (key === 'holdingGroup' && val) {
+        const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+        if (gs.holding) {
+          const updatedGs: GroupStructureData = {
+            ...gs,
+            holding: { ...gs.holding, name: val }
+          };
+          next.groupStructure = updatedGs;
+          next.uboInformation = formatGroupStructureAsNarrative(updatedGs);
+        }
+      }
+      return next;
+    });
   };
 
   const currentGroupStructure = useMemo<GroupStructureData>(() => {
     return data.groupStructure || DEFAULT_GROUP_STRUCTURE;
   }, [data.groupStructure]);
 
+  const syncStructureIntoData = (prev: PreAnalysisData, newGs: GroupStructureData): PreAnalysisData => {
+    const narrative = formatGroupStructureAsNarrative(newGs);
+    const holdingShareholders = (newGs.holding?.shareholders || [])
+      .filter(s => s.name)
+      .map(s => `${s.name} (${s.percentage || ''})${s.role ? ` - ${s.role}` : ''}`)
+      .join(', ');
+    
+    return {
+      ...prev,
+      groupStructure: newGs,
+      uboInformation: narrative,
+      uboInfo: holdingShareholders || prev.uboInfo,
+      ubo: holdingShareholders || prev.ubo,
+      holdingGroup: newGs.holding?.name ? newGs.holding.name : prev.holdingGroup
+    };
+  };
+
   const updateHoldingField = (field: keyof GroupEntity, val: any) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          holding: { ...gs.holding, [field]: val }
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        holding: { ...gs.holding, [field]: val }
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const updateHoldingShareholder = (idx: number, field: keyof GroupShareholder, val: string) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = [...(gs.holding.shareholders || [])];
       sh[idx] = { ...sh[idx], [field]: val };
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          holding: { ...gs.holding, shareholders: sh }
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        holding: { ...gs.holding, shareholders: sh }
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const addHoldingShareholder = () => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = [...(gs.holding.shareholders || []), { name: '', percentage: '', role: '' }];
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          holding: { ...gs.holding, shareholders: sh }
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        holding: { ...gs.holding, shareholders: sh }
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const removeHoldingShareholder = (idx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = (gs.holding.shareholders || []).filter((_, i) => i !== idx);
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          holding: { ...gs.holding, shareholders: sh }
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        holding: { ...gs.holding, shareholders: sh }
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const addSubsidiary = () => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const holdingName = gs.holding?.name ? gs.holding.name.split('(')[0].trim() : 'Holding';
@@ -624,91 +687,84 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         ],
         management: ''
       };
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          subsidiaries: [...(gs.subsidiaries || []), newSub]
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        subsidiaries: [...(gs.subsidiaries || []), newSub]
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const removeSubsidiary = (idx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = (gs.subsidiaries || []).filter((_, i) => i !== idx);
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          subsidiaries: subs
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        subsidiaries: subs
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const updateSubsidiaryField = (idx: number, field: keyof GroupEntity, val: any) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
       subs[idx] = { ...subs[idx], [field]: val };
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          subsidiaries: subs
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        subsidiaries: subs
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const updateSubsidiaryShareholder = (subIdx: number, sIdx: number, field: keyof GroupShareholder, val: string) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
       const sh = [...(subs[subIdx].shareholders || [])];
       sh[sIdx] = { ...sh[sIdx], [field]: val };
       subs[subIdx] = { ...subs[subIdx], shareholders: sh };
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          subsidiaries: subs
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        subsidiaries: subs
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const addSubsidiaryShareholder = (subIdx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
       const sh = [...(subs[subIdx].shareholders || []), { name: '', percentage: '', role: '' }];
       subs[subIdx] = { ...subs[subIdx], shareholders: sh };
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          subsidiaries: subs
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        subsidiaries: subs
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
   const removeSubsidiaryShareholder = (subIdx: number, sIdx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
       const sh = (subs[subIdx].shareholders || []).filter((_, i) => i !== sIdx);
       subs[subIdx] = { ...subs[subIdx], shareholders: sh };
-      return {
-        ...prev,
-        groupStructure: {
-          ...gs,
-          subsidiaries: subs
-        }
+      const updatedGs: GroupStructureData = {
+        ...gs,
+        subsidiaries: subs
       };
+      return syncStructureIntoData(prev, updatedGs);
     });
   };
 
@@ -1502,6 +1558,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             type="text"
                             value={currentGroupStructure.holding?.name || ''}
                             onChange={e => updateHoldingField('name', e.target.value)}
+                            onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                             placeholder="e.g. PT STAR (PT Sentosa Abadi Raja)"
                             style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                           />
@@ -1512,6 +1569,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             type="text"
                             value={currentGroupStructure.holding?.authorizedCapital || ''}
                             onChange={e => updateHoldingField('authorizedCapital', e.target.value)}
+                            onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                             placeholder="e.g. Rp 240 Miliar"
                             style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                           />
@@ -1522,6 +1580,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             type="text"
                             value={currentGroupStructure.holding?.paidUpCapital || ''}
                             onChange={e => updateHoldingField('paidUpCapital', e.target.value)}
+                            onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                             placeholder="e.g. Rp 60 Miliar"
                             style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                           />
@@ -1533,6 +1592,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           type="text"
                           value={currentGroupStructure.holding?.management || ''}
                           onChange={e => updateHoldingField('management', e.target.value)}
+                          onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                           placeholder="e.g. Presdir: Hansen Santosa | Direktur: Leonard Santosa | Komisaris: Oky Santosa"
                           style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                         />
@@ -1556,6 +1616,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="text"
                               value={sh.name}
                               onChange={e => updateHoldingShareholder(sIdx, 'name', e.target.value)}
+                              onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                               placeholder="Nama Pemegang Saham"
                               style={{ flex: '1 1 45%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                             />
@@ -1563,6 +1624,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="text"
                               value={sh.percentage}
                               onChange={e => updateHoldingShareholder(sIdx, 'percentage', e.target.value)}
+                              onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                               placeholder="%"
                               style={{ width: '55px', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
                             />
@@ -1570,6 +1632,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="text"
                               value={sh.role || ''}
                               onChange={e => updateHoldingShareholder(sIdx, 'role', e.target.value)}
+                              onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                               placeholder="Jabatan"
                               style={{ flex: '1 1 35%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                             />
@@ -1612,6 +1675,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 type="text"
                                 value={sub.name}
                                 onChange={e => updateSubsidiaryField(subIdx, 'name', e.target.value)}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                 placeholder="e.g. PT Anak Perusahaan"
                                 style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                               />
@@ -1622,6 +1686,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 type="text"
                                 value={sub.authorizedCapital || ''}
                                 onChange={e => updateSubsidiaryField(subIdx, 'authorizedCapital', e.target.value)}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                 placeholder="Rp ..."
                                 style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                               />
@@ -1632,6 +1697,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 type="text"
                                 value={sub.paidUpCapital || ''}
                                 onChange={e => updateSubsidiaryField(subIdx, 'paidUpCapital', e.target.value)}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                 placeholder="Rp ..."
                                 style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                               />
@@ -1643,6 +1709,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="text"
                               value={sub.management || ''}
                               onChange={e => updateSubsidiaryField(subIdx, 'management', e.target.value)}
+                              onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                               placeholder="e.g. Direktur: Leonard Santosa | Komisaris: Hansen Santosa"
                               style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                             />
@@ -1666,6 +1733,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   type="text"
                                   value={sh.name}
                                   onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'name', e.target.value)}
+                                  onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                   placeholder="Nama Pemilik / PT"
                                   style={{ flex: '1 1 45%', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                                 />
@@ -1673,6 +1741,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   type="text"
                                   value={sh.percentage}
                                   onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'percentage', e.target.value)}
+                                  onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                   placeholder="%"
                                   style={{ width: '50px', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
                                 />
@@ -1680,6 +1749,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   type="text"
                                   value={sh.role || ''}
                                   onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'role', e.target.value)}
+                                  onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                   placeholder="Jabatan"
                                   style={{ flex: '1 1 35%', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                                 />
