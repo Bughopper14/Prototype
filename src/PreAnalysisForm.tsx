@@ -66,6 +66,71 @@ export interface CompetitionItem {
   purpose: string;
 }
 
+export interface GroupShareholder {
+  name: string;
+  percentage: string;
+  role?: string;
+}
+
+export interface GroupEntity {
+  name: string;
+  authorizedCapital: string;
+  paidUpCapital: string;
+  shareholders: GroupShareholder[];
+  management?: string;
+}
+
+export interface GroupStructureData {
+  holding: GroupEntity;
+  subsidiaries: GroupEntity[];
+}
+
+export const DEFAULT_GROUP_STRUCTURE: GroupStructureData = {
+  holding: {
+    name: 'PT STAR (PT Sentosa Abadi Raja)',
+    authorizedCapital: 'Rp 240 Miliar',
+    paidUpCapital: 'Rp 60 Miliar',
+    shareholders: [
+      { name: 'Hansen Santosa', percentage: '54%', role: 'Presiden Direktur' },
+      { name: 'Leonard Santosa', percentage: '34%', role: 'Direktur' },
+      { name: 'Oky Santosa', percentage: '12%', role: 'Komisaris' }
+    ],
+    management: 'Presdir: Hansen Santosa | Direktur: Leonard Santosa | Komisaris: Oky Santosa'
+  },
+  subsidiaries: [
+    {
+      name: 'PT PASS (PT Pangan Sejahtera Sentosa)',
+      authorizedCapital: 'Rp 40 Miliar',
+      paidUpCapital: 'Rp 10 Miliar',
+      shareholders: [
+        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
+        { name: 'Leonard Santosa', percentage: '1%', role: 'Direktur' }
+      ],
+      management: 'Komisaris: Hansen Santosa'
+    },
+    {
+      name: 'PT HPS (PT Handalan Putra Sentosa)',
+      authorizedCapital: 'Rp 160 Miliar',
+      paidUpCapital: 'Rp 40 Miliar',
+      shareholders: [
+        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
+        { name: 'Hansen Santosa', percentage: '1%', role: 'Presdir' }
+      ],
+      management: 'Direktur: Leonard Santosa'
+    },
+    {
+      name: 'PT HTPS (PT Harta Putramas Sentosa)',
+      authorizedCapital: 'Rp 80 Miliar',
+      paidUpCapital: 'Rp 20 Miliar',
+      shareholders: [
+        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
+        { name: 'Hansen Santosa', percentage: '1%', role: 'Presdir' }
+      ],
+      management: 'Direktur: Leonard Santosa'
+    }
+  ]
+};
+
 export interface PreAnalysisData {
   preAnalysisNo: string;
   preAnalysisDate: string;
@@ -105,6 +170,7 @@ export interface PreAnalysisData {
   businessDevBackground?: string;
   operationalTeamInfo?: string;
   uboInformation?: string;
+  groupStructure?: GroupStructureData;
   milestones: MilestoneItem[];
   existingFincoBackup: string;
 
@@ -247,6 +313,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   - PT STAR (99,997%), Leonard Santosa (0,003%)
 • PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
   - PT STAR (99,98%), Leonard Santosa (0,02%)`,
+  groupStructure: DEFAULT_GROUP_STRUCTURE,
   milestones: [
     { year: '2022', milestone: "PT Pangan Sejahtera Santosa (PASS) established – Started the Group's business through urban FMCG distribution and supported major FMCG principals." },
     { year: 'Q1 2024', milestone: "PT Santosa Abadi Raja (STAR) established – Set up as a holding company to consolidate businesses owned by Mr. Hansen and his family." },
@@ -481,6 +548,168 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
   const updateField = (key: keyof PreAnalysisData, val: any) => {
     setData(prev => ({ ...prev, [key]: val }));
+  };
+
+  const currentGroupStructure = useMemo<GroupStructureData>(() => {
+    return data.groupStructure || DEFAULT_GROUP_STRUCTURE;
+  }, [data.groupStructure]);
+
+  const updateHoldingField = (field: keyof GroupEntity, val: any) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          holding: { ...gs.holding, [field]: val }
+        }
+      };
+    });
+  };
+
+  const updateHoldingShareholder = (idx: number, field: keyof GroupShareholder, val: string) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const sh = [...(gs.holding.shareholders || [])];
+      sh[idx] = { ...sh[idx], [field]: val };
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          holding: { ...gs.holding, shareholders: sh }
+        }
+      };
+    });
+  };
+
+  const addHoldingShareholder = () => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const sh = [...(gs.holding.shareholders || []), { name: '', percentage: '', role: '' }];
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          holding: { ...gs.holding, shareholders: sh }
+        }
+      };
+    });
+  };
+
+  const removeHoldingShareholder = (idx: number) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const sh = (gs.holding.shareholders || []).filter((_, i) => i !== idx);
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          holding: { ...gs.holding, shareholders: sh }
+        }
+      };
+    });
+  };
+
+  const addSubsidiary = () => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const holdingName = gs.holding?.name ? gs.holding.name.split('(')[0].trim() : 'Holding';
+      const newSub: GroupEntity = {
+        name: '',
+        authorizedCapital: '',
+        paidUpCapital: '',
+        shareholders: [
+          { name: holdingName, percentage: '99%', role: 'Holding' },
+          { name: '', percentage: '1%', role: 'Direktur' }
+        ],
+        management: ''
+      };
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          subsidiaries: [...(gs.subsidiaries || []), newSub]
+        }
+      };
+    });
+  };
+
+  const removeSubsidiary = (idx: number) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const subs = (gs.subsidiaries || []).filter((_, i) => i !== idx);
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          subsidiaries: subs
+        }
+      };
+    });
+  };
+
+  const updateSubsidiaryField = (idx: number, field: keyof GroupEntity, val: any) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const subs = [...(gs.subsidiaries || [])];
+      subs[idx] = { ...subs[idx], [field]: val };
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          subsidiaries: subs
+        }
+      };
+    });
+  };
+
+  const updateSubsidiaryShareholder = (subIdx: number, sIdx: number, field: keyof GroupShareholder, val: string) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const subs = [...(gs.subsidiaries || [])];
+      const sh = [...(subs[subIdx].shareholders || [])];
+      sh[sIdx] = { ...sh[sIdx], [field]: val };
+      subs[subIdx] = { ...subs[subIdx], shareholders: sh };
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          subsidiaries: subs
+        }
+      };
+    });
+  };
+
+  const addSubsidiaryShareholder = (subIdx: number) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const subs = [...(gs.subsidiaries || [])];
+      const sh = [...(subs[subIdx].shareholders || []), { name: '', percentage: '', role: '' }];
+      subs[subIdx] = { ...subs[subIdx], shareholders: sh };
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          subsidiaries: subs
+        }
+      };
+    });
+  };
+
+  const removeSubsidiaryShareholder = (subIdx: number, sIdx: number) => {
+    setData(prev => {
+      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const subs = [...(gs.subsidiaries || [])];
+      const sh = (subs[subIdx].shareholders || []).filter((_, i) => i !== sIdx);
+      subs[subIdx] = { ...subs[subIdx], shareholders: sh };
+      return {
+        ...prev,
+        groupStructure: {
+          ...gs,
+          subsidiaries: subs
+        }
+      };
+    });
   };
 
   const totalUnits = useMemo(() => {
@@ -1225,18 +1454,248 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     placeholder="STAR GROUP Corporate Ownership Structure..."
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '6px', lineHeight: 1.35 }}
                   />
-                  <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '8px', background: '#f8fafc' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#1e3a8a', marginBottom: '4px' }}>
-                      Diagram Struktur Kepemilikan STAR Group (Lampiran Resmi Halaman 3):
+                  <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: '#f8fafc', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <div>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a' }}>
+                          Bagan Struktur Kepemilikan Saham Group (Input System)
+                        </div>
+                        <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
+                          Input entitas holding & anak perusahaan. Diagram hierarki visual otomatis ter-generate di Digital Twin (Halaman 3).
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addSubsidiary}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          background: '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        + Tambah Anak Perusahaan
+                      </button>
                     </div>
-                    <img
-                      src={getStaticAssetUrl("pre_analysis/star_group_structure.jpg")}
-                      alt="STAR Group Structure"
-                      style={{ width: '100%', maxHeight: '180px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '4px' }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/pre_analysis/star_group_structure.jpg';
-                      }}
-                    />
+
+                    {/* 1. HOLDING COMPANY (ENTITAS INDUK) */}
+                    <div style={{ background: '#ffffff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '10px', marginBottom: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a' }}>
+                          🏢 Entitas Induk (Holding Company)
+                        </span>
+                        <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                          Level 1 Parent
+                        </span>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Nama Perusahaan Holding</label>
+                          <input
+                            type="text"
+                            value={currentGroupStructure.holding?.name || ''}
+                            onChange={e => updateHoldingField('name', e.target.value)}
+                            placeholder="e.g. PT STAR (PT Sentosa Abadi Raja)"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Modal Dasar</label>
+                          <input
+                            type="text"
+                            value={currentGroupStructure.holding?.authorizedCapital || ''}
+                            onChange={e => updateHoldingField('authorizedCapital', e.target.value)}
+                            placeholder="e.g. Rp 240 Miliar"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Modal Disetor</label>
+                          <input
+                            type="text"
+                            value={currentGroupStructure.holding?.paidUpCapital || ''}
+                            onChange={e => updateHoldingField('paidUpCapital', e.target.value)}
+                            placeholder="e.g. Rp 60 Miliar"
+                            style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Pengurus / Catatan Manajemen</label>
+                        <input
+                          type="text"
+                          value={currentGroupStructure.holding?.management || ''}
+                          onChange={e => updateHoldingField('management', e.target.value)}
+                          placeholder="e.g. Presdir: Hansen Santosa | Direktur: Leonard Santosa | Komisaris: Oky Santosa"
+                          style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                        />
+                      </div>
+
+                      {/* Holding Shareholders */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>Pemegang Saham Induk</span>
+                          <button
+                            type="button"
+                            onClick={addHoldingShareholder}
+                            style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '3px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                          >
+                            + Tambah Saham
+                          </button>
+                        </div>
+                        {(currentGroupStructure.holding?.shareholders || []).map((sh, sIdx) => (
+                          <div key={sIdx} style={{ display: 'flex', gap: '6px', marginBottom: '4px', alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={sh.name}
+                              onChange={e => updateHoldingShareholder(sIdx, 'name', e.target.value)}
+                              placeholder="Nama Pemegang Saham"
+                              style={{ flex: '1 1 45%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                            />
+                            <input
+                              type="text"
+                              value={sh.percentage}
+                              onChange={e => updateHoldingShareholder(sIdx, 'percentage', e.target.value)}
+                              placeholder="%"
+                              style={{ width: '55px', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                            />
+                            <input
+                              type="text"
+                              value={sh.role || ''}
+                              onChange={e => updateHoldingShareholder(sIdx, 'role', e.target.value)}
+                              placeholder="Jabatan"
+                              style={{ flex: '1 1 35%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeHoldingShareholder(sIdx)}
+                              style={{ padding: '2px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.68rem' }}
+                              title="Hapus"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. SUBSIDIARY ENTITIES (ANAK PERUSAHAAN) */}
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        🔗 Anak Perusahaan ({currentGroupStructure.subsidiaries?.length || 0} Entitas)
+                      </div>
+                      {(currentGroupStructure.subsidiaries || []).map((sub, subIdx) => (
+                        <div key={subIdx} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px', marginBottom: '6px' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0369a1' }}>
+                              Anak Perusahaan #{subIdx + 1}: {sub.name ? sub.name.split('(')[0] : 'Entitas Baru'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeSubsidiary(subIdx)}
+                              style={{ fontSize: '0.65rem', padding: '1px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
+                            >
+                              Hapus Entitas
+                            </button>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
+                            <div>
+                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Nama Perusahaan</label>
+                              <input
+                                type="text"
+                                value={sub.name}
+                                onChange={e => updateSubsidiaryField(subIdx, 'name', e.target.value)}
+                                placeholder="e.g. PT Anak Perusahaan"
+                                style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Modal Dasar</label>
+                              <input
+                                type="text"
+                                value={sub.authorizedCapital || ''}
+                                onChange={e => updateSubsidiaryField(subIdx, 'authorizedCapital', e.target.value)}
+                                placeholder="Rp ..."
+                                style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                            <div>
+                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Modal Disetor</label>
+                              <input
+                                type="text"
+                                value={sub.paidUpCapital || ''}
+                                onChange={e => updateSubsidiaryField(subIdx, 'paidUpCapital', e.target.value)}
+                                placeholder="Rp ..."
+                                style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ marginBottom: '6px' }}>
+                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Pengurus / Manajemen</label>
+                            <input
+                              type="text"
+                              value={sub.management || ''}
+                              onChange={e => updateSubsidiaryField(subIdx, 'management', e.target.value)}
+                              placeholder="e.g. Direktur: Leonard Santosa | Komisaris: Hansen Santosa"
+                              style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                            />
+                          </div>
+
+                          {/* Subsidiary Shareholders */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#475569' }}>Pemegang Saham</span>
+                              <button
+                                type="button"
+                                onClick={() => addSubsidiaryShareholder(subIdx)}
+                                style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '2px', background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', cursor: 'pointer' }}
+                              >
+                                + Saham
+                              </button>
+                            </div>
+                            {(sub.shareholders || []).map((sh, sIdx) => (
+                              <div key={sIdx} style={{ display: 'flex', gap: '4px', marginBottom: '3px', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  value={sh.name}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'name', e.target.value)}
+                                  placeholder="Nama Pemilik / PT"
+                                  style={{ flex: '1 1 45%', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                                />
+                                <input
+                                  type="text"
+                                  value={sh.percentage}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'percentage', e.target.value)}
+                                  placeholder="%"
+                                  style={{ width: '50px', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                                />
+                                <input
+                                  type="text"
+                                  value={sh.role || ''}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'role', e.target.value)}
+                                  placeholder="Jabatan"
+                                  style={{ flex: '1 1 35%', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeSubsidiaryShareholder(subIdx, sIdx)}
+                                  style={{ padding: '1px 5px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '2px', cursor: 'pointer', fontSize: '0.65rem' }}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <div>
@@ -2614,18 +3073,131 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       <div style={{ fontSize: '8.5pt', color: '#1e293b', whiteSpace: 'pre-line', marginBottom: '8px', lineHeight: 1.4 }}>
                         {data.uboInformation}
                       </div>
-                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '6px', background: '#f8fafc' }}>
-                        <div style={{ fontSize: '8pt', fontWeight: 700, color: '#1e3a8a', marginBottom: '4px' }}>
-                          BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP (HALAMAN 3):
+                      {/* Dynamic Corporate Group Structure Diagram */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: '6px' }}>
+                        <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
+                          BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
                         </div>
-                        <img
-                          src={getStaticAssetUrl("pre_analysis/star_group_structure.jpg")}
-                          alt="STAR Group Corporate Structure"
-                          style={{ width: '100%', maxHeight: '240px', objectFit: 'contain', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '3px' }}
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = '/pre_analysis/star_group_structure.jpg';
-                          }}
-                        />
+
+                        {/* LEVEL 1: HOLDING ENTITY (CENTERED) */}
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                          <div style={{
+                            width: '320px',
+                            background: '#f8fafc',
+                            border: '1.5px solid #1e3a8a',
+                            borderRadius: '5px',
+                            overflow: 'hidden',
+                            boxShadow: '0 2px 4px rgba(30, 58, 138, 0.08)'
+                          }}>
+                            <div style={{ background: '#1e3a8a', color: '#ffffff', padding: '4px 8px', fontSize: '8.5pt', fontWeight: 800, textAlign: 'center' }}>
+                              {currentGroupStructure.holding?.name || 'HOLDING COMPANY'}
+                            </div>
+                            <div style={{ padding: '6px 8px', fontSize: '8pt', color: '#0f172a' }}>
+                              <div style={{ fontWeight: 700, color: '#334155', marginBottom: '3px', fontSize: '7.5pt' }}>
+                                PEMEGANG SAHAM:
+                              </div>
+                              <ul style={{ margin: '0 0 4px 0', paddingLeft: '14px', lineHeight: 1.3 }}>
+                                {(currentGroupStructure.holding?.shareholders || []).map((sh, idx) => (
+                                  <li key={idx} style={{ fontSize: '7.5pt' }}>
+                                    <strong>{sh.name}</strong> ({sh.percentage}){sh.role ? ` - ${sh.role}` : ''}
+                                  </li>
+                                ))}
+                              </ul>
+                              {currentGroupStructure.holding?.management && (
+                                <div style={{ fontSize: '7.5pt', color: '#475569', borderTop: '1px dotted #e2e8f0', paddingTop: '3px', marginTop: '3px' }}>
+                                  {currentGroupStructure.holding.management}
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', background: '#eff6ff', padding: '3px 6px', borderRadius: '3px', marginTop: '4px', fontSize: '7pt', color: '#1e40af', fontWeight: 600 }}>
+                                <span>Modal Dasar: {currentGroupStructure.holding?.authorizedCapital || '-'}</span>
+                                <span>Modal Disetor: {currentGroupStructure.holding?.paidUpCapital || '-'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* CONNECTOR STEM & BRANCH LINES */}
+                        {(currentGroupStructure.subsidiaries || []).length > 0 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', margin: '0 auto' }}>
+                            {/* Vertical stem from holding */}
+                            <div style={{ width: '2px', height: '14px', background: '#1e3a8a' }} />
+                            
+                            {/* Horizontal bar spanning children */}
+                            {(currentGroupStructure.subsidiaries || []).length > 1 ? (
+                              <div style={{
+                                width: `calc(100% - ${100 / (currentGroupStructure.subsidiaries?.length || 1)}%)`,
+                                height: '2px',
+                                background: '#1e3a8a'
+                              }} />
+                            ) : null}
+
+                            {/* Downward drop lines with arrows into each child */}
+                            <div style={{
+                              display: 'grid',
+                              gridTemplateColumns: `repeat(${currentGroupStructure.subsidiaries?.length || 1}, 1fr)`,
+                              width: '100%'
+                            }}>
+                              {(currentGroupStructure.subsidiaries || []).map((_, idx) => (
+                                <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                  <div style={{ width: '2px', height: '12px', background: '#1e3a8a' }} />
+                                  <div style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #1e3a8a' }} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* LEVEL 2: SUBSIDIARIES GRID */}
+                        {(currentGroupStructure.subsidiaries || []).length > 0 && (
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: `repeat(${currentGroupStructure.subsidiaries?.length || 1}, minmax(0, 1fr))`,
+                            gap: '8px',
+                            marginTop: '2px'
+                          }}>
+                            {(currentGroupStructure.subsidiaries || []).map((sub, sIdx) => (
+                              <div
+                                key={sIdx}
+                                style={{
+                                  background: '#f8fafc',
+                                  border: '1px solid #0369a1',
+                                  borderRadius: '4px',
+                                  overflow: 'hidden',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  boxShadow: '0 1px 3px rgba(3, 105, 161, 0.08)'
+                                }}
+                              >
+                                <div style={{ background: '#0284c7', color: '#ffffff', padding: '3px 6px', fontSize: '7.5pt', fontWeight: 700, textAlign: 'center' }}>
+                                  {sub.name || `Anak Perusahaan #${sIdx + 1}`}
+                                </div>
+                                <div style={{ padding: '6px', fontSize: '7.5pt', color: '#0f172a', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                  <div>
+                                    <div style={{ fontWeight: 700, color: '#475569', fontSize: '7pt', marginBottom: '2px' }}>
+                                      PEMEGANG SAHAM:
+                                    </div>
+                                    <ul style={{ margin: '0 0 4px 0', paddingLeft: '12px', lineHeight: 1.25 }}>
+                                      {(sub.shareholders || []).map((sh, shIdx) => (
+                                        <li key={shIdx} style={{ fontSize: '7pt' }}>
+                                          <strong>{sh.name}</strong> ({sh.percentage}){sh.role ? ` - ${sh.role}` : ''}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                    {sub.management && (
+                                      <div style={{ fontSize: '7pt', color: '#475569', borderTop: '1px dotted #e2e8f0', paddingTop: '2px', marginTop: '2px' }}>
+                                        {sub.management}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div style={{ background: '#f0f9ff', padding: '3px 4px', borderRadius: '3px', marginTop: '4px', fontSize: '6.5pt', color: '#0369a1', fontWeight: 600 }}>
+                                    <div>M. Dasar: {sub.authorizedCapital || '-'}</div>
+                                    <div>M. Disetor: {sub.paidUpCapital || '-'}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </td>
                   </tr>

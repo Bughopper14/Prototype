@@ -273,6 +273,20 @@ test('createBlankPreAnalysisData correctly populates FAP data and blanks non-FAP
   assert.equal(blankData.recommendation, '');
 });
 
+test('pre-analysis Section 3 includes dynamic groupStructure with holding and subsidiaries', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-007');
+  assert.ok(data.groupStructure, 'groupStructure must exist');
+  assert.ok(data.groupStructure.holding, 'holding must exist');
+  assert.equal(data.groupStructure.holding.name, 'PT STAR (PT Santosa Abadi Raja)');
+  assert.equal(data.groupStructure.holding.authorizedCapital, 'Rp 240 Miliar');
+  assert.equal(data.groupStructure.holding.paidUpCapital, 'Rp 60 Miliar');
+  assert.equal(data.groupStructure.holding.shareholders.length, 3);
+  assert.equal(data.groupStructure.subsidiaries.length, 3);
+  assert.equal(data.groupStructure.subsidiaries[0].name, 'PT PASS (PT Pangan Sejahtera Sentosa)');
+  assert.equal(data.groupStructure.subsidiaries[1].name, 'PT HPS (PT Handalan Putra Sentosa)');
+  assert.equal(data.groupStructure.subsidiaries[2].name, 'PT HTPS (PT Harta Putramas Sentosa)');
+});
+
 // Cleanly terminate active database connection pool after test completion
 test('teardown pool connections', () => {
   setTimeout(() => process.exit(0), 100);
