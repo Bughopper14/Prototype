@@ -2284,46 +2284,56 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               >
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ width: '22%', padding: '4px 6px', fontWeight: 700 }}>Customer / Project</td>
-                    <td id="preana-preview-cell-customerProjectName" onClick={() => handlePreviewCellClick('customerProjectName', 'sec1')} style={{ width: '48%', padding: '4px 6px', fontWeight: 700, color: '#1b365d', cursor: 'pointer' }}>{data.customerProjectName}</td>
-                    <td style={{ width: '14%', padding: '4px 6px', fontWeight: 700 }}>Dealer PIC</td>
-                    <td id="preana-preview-cell-dealerPic" onClick={() => handlePreviewCellClick('dealerPic', 'sec1')} style={{ width: '16%', padding: '4px 6px', cursor: 'pointer' }}>{data.dealerPic}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Customer / Project</td>
+                    <td id="preana-preview-cell-customerProjectName" onClick={() => handlePreviewCellClick('customerProjectName', 'sec1')} style={{ width: '74%', padding: '4px 6px', fontWeight: 700, color: '#1b365d', cursor: 'pointer' }}>{data.customerProjectName}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Tax ID (NPWP)</td>
-                    <td id="preana-preview-cell-taxId" onClick={() => handlePreviewCellClick('taxId', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.taxId}</td>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>LMI PIC</td>
-                    <td id="preana-preview-cell-lmiPic" onClick={() => handlePreviewCellClick('lmiPic', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.lmiPic}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Tax ID (NPWP)</td>
+                    <td id="preana-preview-cell-taxId" onClick={() => handlePreviewCellClick('taxId', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.taxId}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>FAP No</td>
-                    <td id="preana-preview-cell-fapNumber" onClick={() => handlePreviewCellClick('fapNumber', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.fapNumber}</td>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>LFI PIC</td>
-                    <td id="preana-preview-cell-lfiPic" onClick={() => handlePreviewCellClick('lfiPic', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.lfiPic}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>FAP No</td>
+                    <td id="preana-preview-cell-fapNumber" onClick={() => handlePreviewCellClick('fapNumber', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.fapNumber}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Lead Source</td>
-                    <td id="preana-preview-cell-leadSource" onClick={() => handlePreviewCellClick('leadSource', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.leadSource}</td>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Customer PIC</td>
-                    <td id="preana-preview-cell-customerPic" onClick={() => handlePreviewCellClick('customerPic', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.customerPic}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Lead Source</td>
+                    <td id="preana-preview-cell-leadSource" onClick={() => handlePreviewCellClick('leadSource', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.leadSource}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Customer Area</td>
-                    <td id="preana-preview-cell-customerArea" onClick={() => handlePreviewCellClick('customerArea', 'sec1')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.customerArea}</td>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Pre-Analysis Date</td>
-                    <td id="preana-preview-cell-preAnalysisDate" onClick={() => handlePreviewCellClick('preAnalysisDate', 'sec1')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.preAnalysisDate}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Customer Area</td>
+                    <td id="preana-preview-cell-customerArea" onClick={() => handlePreviewCellClick('customerArea', 'sec1')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.customerArea}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Equity</td>
-                    <td id="preana-preview-cell-equity" onClick={() => handlePreviewCellClick('equity', 'sec1')} colSpan={3} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.equity}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Dealer PIC</td>
+                    <td id="preana-preview-cell-dealerPic" onClick={() => handlePreviewCellClick('dealerPic', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.dealerPic}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Paid up Capital</td>
-                    <td id="preana-preview-cell-paidUpCapital" onClick={() => handlePreviewCellClick('paidUpCapital', 'sec1')} colSpan={3} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.paidUpCapital}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>LMI PIC</td>
+                    <td id="preana-preview-cell-lmiPic" onClick={() => handlePreviewCellClick('lmiPic', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.lmiPic}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>LFI PIC</td>
+                    <td id="preana-preview-cell-lfiPic" onClick={() => handlePreviewCellClick('lfiPic', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.lfiPic}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Customer PIC</td>
+                    <td id="preana-preview-cell-customerPic" onClick={() => handlePreviewCellClick('customerPic', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.customerPic}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Pre-Analysis Date</td>
+                    <td id="preana-preview-cell-preAnalysisDate" onClick={() => handlePreviewCellClick('preAnalysisDate', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.preAnalysisDate}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Equity</td>
+                    <td id="preana-preview-cell-equity" onClick={() => handlePreviewCellClick('equity', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.equity}</td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Paid up Capital</td>
+                    <td id="preana-preview-cell-paidUpCapital" onClick={() => handlePreviewCellClick('paidUpCapital', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.paidUpCapital}</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Source of Repayment</td>
-                    <td id="preana-preview-cell-sourceOfRepayment" onClick={() => handlePreviewCellClick('sourceOfRepayment', 'sec1')} colSpan={3} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.sourceOfRepayment}</td>
+                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Source of Repayment</td>
+                    <td id="preana-preview-cell-sourceOfRepayment" onClick={() => handlePreviewCellClick('sourceOfRepayment', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.sourceOfRepayment}</td>
                   </tr>
                 </tbody>
               </table>
