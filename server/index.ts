@@ -782,6 +782,17 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
           const normDeed = (s: string) => s.replace(/[\s\-_/.]/g, '').toUpperCase();
           if (normDeed(sNew) === normDeed(sOld)) return;
         }
+
+        // Facility Purpose normalization (Investasi vs Investment vs WORKING_CAPITAL)
+        if (key.toLowerCase().includes('purpose') || key.toLowerCase().includes('tujuan')) {
+          const normPurpose = (s: string) => {
+            const u = s.toUpperCase();
+            if (u.includes('INVEST')) return 'INVESTMENT';
+            if (u.includes('MODAL') || u.includes('WORKING')) return 'WORKING_CAPITAL';
+            return u;
+          };
+          if (normPurpose(sNew) === normPurpose(sOld)) return;
+        }
       }
 
       diffs.push({
@@ -822,7 +833,7 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     compareField('financingValue', 'Nilai Pembiayaan', currentApp.proposal?.financingValue, extracted.financingValue, true);
     compareField('downPaymentValue', 'Uang Muka (DP)', currentApp.proposal?.downPaymentValue, extracted.downPaymentValue, true);
     compareField('tenorMonths', 'Tenor (Bulan)', currentApp.proposal?.tenorMonths, extracted.tenorMonths, true);
-    compareField('facilityPurpose', 'Tujuan Pembiayaan', currentApp.proposal?.facilityPurpose, extracted.facilityPurpose);
+    compareField('facilityPurpose', 'Tujuan Pembiayaan', currentApp.proposal?.facilityPurpose || currentApp.facilityPurpose || 'INVESTMENT', extracted.facilityPurpose);
     compareField('financingMethod', 'Metode Pembayaran', currentApp.proposal?.financingMethod, extracted.financingMethod);
 
     const comparison = {

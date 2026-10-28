@@ -266,7 +266,7 @@ export function FapSheetPreviewClassic(props: FapSheetPreviewProps & { onSwitchT
       selectedDeedNo: pick(raw.selectedDeedNo, prof.latestDeedNo, ''),
       stakeholders: sh.length ? sh : (raw.stakeholders || app.stakeholders || []),
       // Extended fields
-      facilityPurpose: pick(raw.facilityPurpose, prop.facilityPurpose, ''),
+      facilityPurpose: pick(raw.facilityPurpose, prop.facilityPurpose, 'INVESTMENT'),
       financingMethod: pick(raw.financingMethod, prop.financingMethod, ''),
       financingValue: pick(raw.financingValue, prop.financingValue, ''),
       downPaymentValue: pick(raw.downPaymentValue, prop.downPaymentValue, ''),
