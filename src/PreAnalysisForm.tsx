@@ -424,7 +424,7 @@ export function syncCustomerAndPicIntoPreAnalysis(
 ): PreAnalysisData {
   const companyName = sources.customer?.companyName || sources.application?.customer?.companyName;
   const npwp = sources.customer?.npwp || sources.application?.customer?.npwp;
-  const fapNumber = sources.application?.fapNumber;
+  const fapNumber = sources.application?.fapNumber || sources.application?.fap_number;
   const rawPicName = sources.pic?.picName || sources.application?.pic?.picName;
   const rawPicPos = sources.pic?.position || sources.application?.pic?.position;
   const city = sources.profile?.city || sources.application?.city;
@@ -1067,15 +1067,29 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>FAP No</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>FAP No</label>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', background: '#f1f5f9', padding: '1px 5px', borderRadius: '3px', fontWeight: 500 }}>Auto-generated</span>
+                  </div>
                   <input
                     type="text"
                     name="fapNumber"
                     data-field="fapNumber"
                     value={data.fapNumber}
-                    onChange={e => updateField('fapNumber', e.target.value)}
+                    readOnly
+                    tabIndex={-1}
+                    title="Auto-generated from Application FAP No (cannot be edited)"
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-fapNumber')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    style={{
+                      width: '100%',
+                      padding: '6px 10px',
+                      fontSize: '0.8rem',
+                      borderRadius: '4px',
+                      border: '1px solid #cbd5e1',
+                      background: '#f8fafc',
+                      color: '#475569',
+                      cursor: 'not-allowed'
+                    }}
                   />
                 </div>
                 <div>

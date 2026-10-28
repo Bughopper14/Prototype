@@ -157,7 +157,7 @@ export const DEFAULT_GROUP_STRUCTURE: GroupStructureData = {
 export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAnalysisNo?: string): any {
   const companyName = appRecord?.customer?.companyName || appRecord?.companyName || '';
   const npwp = appRecord?.customer?.npwp || appRecord?.npwp || '';
-  const fapNumber = appRecord?.fapNumber || '';
+  const fapNumber = appRecord?.fapNumber || appRecord?.fap_number || '';
   
   const pic = appRecord?.pic;
   const picName = pic?.picName 

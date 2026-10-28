@@ -300,6 +300,24 @@ test('pre-analysis Section 3 UBO field updates and synchronizes with preview', a
   assert.match(updated.ubo, /adadad/);
 });
 
+test('pre-analysis Section 1 fapNumber syncs from application and remains protected', () => {
+  const mockPrev: any = {
+    customerProjectName: '',
+    taxId: '',
+    fapNumber: '',
+    customerPic: '',
+    customerArea: ''
+  };
+  const synced = syncCustomerAndPicIntoPreAnalysis(mockPrev, {
+    application: {
+      fap_number: '005/AF/X/2026',
+      customer: { companyName: 'PT Test Company', npwp: '01.234.567.8-901.000' }
+    }
+  });
+  assert.equal(synced.fapNumber, '005/AF/X/2026');
+  assert.equal(synced.customerProjectName, 'PT Test Company');
+});
+
 // Cleanly terminate active database connection pool after test completion
 test('teardown pool connections', () => {
   setTimeout(() => process.exit(0), 100);
