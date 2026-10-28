@@ -23,6 +23,10 @@ import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import zlib from 'node:zlib';
 import {execFile} from 'node:child_process';
 import util from 'node:util';
@@ -667,20 +671,47 @@ const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*102
 async function compareFapDocumentOcr(id: string, fileName: string, currentApp: any) {
   console.log('>>> compareFapDocumentOcr called:', { id, fileName });
   try {
-    const cliScript = path.resolve('server/ocr_cli.py');
+    const cliScript = [
+      path.resolve(__dirname, 'ocr_cli.py'),
+      path.resolve('server/ocr_cli.py'),
+      path.resolve('prototype-src/server/ocr_cli.py')
+    ].find(p => fsSync.existsSync(p)) || path.resolve('server/ocr_cli.py');
     const pyExe = [
       process.env.PYTHON_PATH,
       'C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/python.exe',
       'python'
     ].find(p => p && p.trim().length > 0) || 'python';
-    let docFilePath = path.join(documentsDir, path.basename(fileName));
-    if (!fsSync.existsSync(docFilePath) || fsSync.statSync(docFilePath).isDirectory()) {
+    
+    const possibleDirs = [
+      documentsDir,
+      path.resolve('Documents'),
+      path.resolve('prototype-src/Documents'),
+      path.resolve('../LiugongApps_Clean/CRM_Dashboard/Documents'),
+      path.resolve('LiugongApps_Clean/CRM_Dashboard/Documents')
+    ];
+    let docFilePath = '';
+    for (const d of possibleDirs) {
+      const p = path.join(d, path.basename(fileName));
+      if (fsSync.existsSync(p) && fsSync.statSync(p).isFile()) {
+        docFilePath = p;
+        break;
+      }
+    }
+    if (!docFilePath) {
       const clean = path.basename(fileName).split('_[')[0];
-      try {
-        const files = await fs.readdir(documentsDir);
-        const match = files.find(f => f.startsWith(clean) && fsSync.statSync(path.join(documentsDir, f)).isFile());
-        if (match) docFilePath = path.join(documentsDir, match);
-      } catch {}
+      for (const d of possibleDirs) {
+        try {
+          const files = await fs.readdir(d);
+          const match = files.find(f => f.startsWith(clean) && fsSync.statSync(path.join(d, f)).isFile());
+          if (match) {
+            docFilePath = path.join(d, match);
+            break;
+          }
+        } catch {}
+      }
+    }
+    if (!docFilePath) {
+      docFilePath = path.join(documentsDir, path.basename(fileName));
     }
     const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 60000 });
     const jsonStart = stdout.indexOf('{');
@@ -734,9 +765,15 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
           if (dNew && dOld && (dNew === dOld || dNew.endsWith(dOld) || dOld.endsWith(dNew))) return;
         }
 
-        // Address normalization (Jl. vs JI. vs J1., whitespace, punctuation)
+        // Province normalization (e.g. Jawa Timu vs Jawa Timur)
+        if (key.toLowerCase().includes('province') || key.toLowerCase().includes('provinsi')) {
+          const normProv = (s: string) => s.replace(/\s+/g, ' ').replace(/TIMU\b/gi, 'TIMUR').trim().toUpperCase();
+          if (normProv(sNew) === normProv(sOld)) return;
+        }
+
+        // Address normalization (Jl. vs JI. vs J1., whitespace, punctuation, Timu -> Timur)
         if (key.toLowerCase().includes('address') || key.toLowerCase().includes('alamat')) {
-          const normAddr = (s: string) => s.replace(/\bJ[I1L]\.?\s*/gi, 'JL. ').replace(/[\s,.-]+/g, ' ').trim().toUpperCase();
+          const normAddr = (s: string) => s.replace(/\bJ[I1L]\.?\s*/gi, 'JL. ').replace(/TIMU\b/gi, 'TIMUR').replace(/[\s,.-]+/g, ' ').trim().toUpperCase();
           if (normAddr(sNew) === normAddr(sOld)) return;
         }
 

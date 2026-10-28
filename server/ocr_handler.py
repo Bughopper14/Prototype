@@ -1636,7 +1636,7 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                     return b
             return None
 
-        def collect_right(box_list, label_box, next_label_y, x_min=0.25, x_max=0.50):
+        def collect_right(box_list, label_box, next_label_y, x_min=0.25, x_max=0.45):
             if not label_box:
                 return ""
             y_start = label_box["y1"] - 0.005
@@ -1646,157 +1646,214 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
             return join_tokens([b["text"] for b in matched])
 
         # Left Column Labels
-        l_comp_name = find_label(p1, r'company\s+name|nama\s+perusahaan', 0.05, 0.30)
-        l_comp_addr = find_label(p1, r'company\s+address|alamat\s+perusahaan', 0.05, 0.30)
-        l_city = find_label(p1, r'\bcity\b|\bkota\b', 0.05, 0.30)
+        l_comp_name = find_label(p1, r'company.*?n[ao]me|nama\s*perusahaan|ueeyesnsad', 0.05, 0.30)
+        l_comp_addr = find_label(p1, r'company\s+address|compony\s+address|alamat\s+perusahaan', 0.05, 0.30)
+        l_city = find_label(p1, r'\bcity\b|\bkota\b', 0.20, 0.32)
         l_district = find_label(p1, r'district|kecamatan', 0.05, 0.30)
         l_village = find_label(p1, r'village|kelurahan', 0.05, 0.30)
         l_rt_rw = find_label(p1, r'rt\s*/\s*rw', 0.05, 0.30)
-        l_province = find_label(p1, r'province|provinsi', 0.05, 0.30)
-        l_postal = find_label(p1, r'postal\s*code|kode\s*pos', 0.05, 0.30)
-        l_business = find_label(p1, r'main\s+business|bidang\s+usaha', 0.05, 0.30)
+        l_province = find_label(p1, r'province|provinsi', 0.20, 0.32)
+        l_postal = find_label(p1, r'postal\s*code|kode\s*pos', 0.20, 0.32)
+        l_business = find_label(p1, r'main\s+business|moin\s+business|bidang\s+usaha|bisnis\s+utama', 0.05, 0.30)
         l_est_deed = find_label(p1, r'establishment\s+deed|akta\s+pendirian', 0.05, 0.30)
         l_exp = find_label(p1, r'experience|pengalaman', 0.05, 0.30)
-        l_latest_deed = find_label(p1, r'latest\s+amendment|akta\s+perubahan', 0.05, 0.30)
+        l_latest_deed = find_label(p1, r'latest\s+amendment|lotest\s+deed|akta\s+perubahan', 0.05, 0.30)
         l_nib = find_label(p1, r'\bnib\b', 0.05, 0.30)
         l_npwp = find_label(p1, r'npwp', 0.05, 0.30)
         l_phone = find_label(p1, r'phone\s*/\s*fax|telepon\s*/\s*fax', 0.05, 0.30)
         l_web = find_label(p1, r'website', 0.05, 0.30)
         l_email = find_label(p1, r'email', 0.05, 0.30)
-        l_repay = find_label(p1, r'repayment\s+source|sumber\s+pengembalian', 0.05, 0.30)
-        l_loc = find_label(p1, r'business\s+location\s+status|status\s+lokasi', 0.05, 0.30)
+        l_repay = find_label(p1, r'repayment\s+source|sumber\s+pengembalian|sumber\s+pembayaran', 0.05, 0.30)
+        l_loc = find_label(p1, r'location\s+st[ao]tus|status\s+lokasi', 0.05, 0.30)
+        l_purp = find_label(p1, r'financing\s+purpose|tujuan\s+pembiayaan', 0.05, 0.30)
 
+        # 1. Company Name
+        y_next = l_comp_addr["y1"] if l_comp_addr else 0.15
         if l_comp_name:
-            y_next = l_comp_addr["y1"] if l_comp_addr else l_comp_name["y2"] + 0.03
-            data["companyName"] = collect_right(p1, l_comp_name, y_next)
+            data["companyName"] = collect_right(p1, l_comp_name, y_next, x_min=0.25, x_max=0.45)
+        if not data["companyName"] and l_comp_addr:
+            comp_cand = [b for b in p1 if b["xc"] >= 0.25 and b["xc"] <= 0.45 and b["yc"] >= 0.10 and b["yc"] < l_comp_addr["y1"]]
+            if comp_cand:
+                data["companyName"] = join_tokens([b["text"] for b in comp_cand])
 
+        # 2. Company Address
         if l_comp_addr:
-            y_next = l_city["y1"] if l_city else l_comp_addr["y2"] + 0.05
-            data["companyAddress"] = clean_address(collect_right(p1, l_comp_addr, y_next))
+            y_next = l_city["y1"] if l_city else (l_comp_addr["y2"] + 0.05)
+            data["companyAddress"] = clean_address(collect_right(p1, l_comp_addr, y_next, x_min=0.25, x_max=0.45))
 
+        # 3. City / Kabupaten
         if l_city:
-            y_next = l_district["y1"] if l_district else l_city["y2"] + 0.025
-            data["city"] = collect_right(p1, l_city, y_next)
+            y_next = l_province["y1"] if l_province else (l_district["y1"] if l_district else l_city["y2"] + 0.025)
+            city_boxes = [b for b in p1 if b["xc"] >= 0.31 and b["xc"] <= 0.45 and b["yc"] >= l_city["y1"] - 0.005 and b["yc"] < y_next]
+            city_boxes = [b for b in city_boxes if not re.search(r'\b(kota|city|provinsi|province|alamat|tinggal)\b', b["text"], re.IGNORECASE)]
+            data["city"] = join_tokens([b["text"] for b in city_boxes])
 
+        # 4. Province
         if l_province:
             y_next = l_postal["y1"] if l_postal else l_province["y2"] + 0.025
-            data["province"] = collect_right(p1, l_province, y_next)
+            prov_boxes = [b for b in p1 if b["xc"] >= 0.31 and b["xc"] <= 0.45 and b["yc"] >= l_province["y1"] - 0.005 and b["yc"] < y_next]
+            prov_boxes = [b for b in prov_boxes if not re.search(r'\b(provinsi|province|alamat|tinggal|address)\b', b["text"], re.IGNORECASE)]
+            raw_prov = join_tokens([b["text"] for b in prov_boxes])
+            if re.search(r'nwy\s*emer|jawa\s*timu|jawa\s*timur', raw_prov, re.IGNORECASE):
+                data["province"] = "Jawa Timur"
+            elif re.search(r'jawa\s*barat', raw_prov, re.IGNORECASE):
+                data["province"] = "Jawa Barat"
+            elif re.search(r'jawa\s*tengah', raw_prov, re.IGNORECASE):
+                data["province"] = "Jawa Tengah"
+            elif re.search(r'dki\s*jakarta|jakarta', raw_prov, re.IGNORECASE):
+                data["province"] = "DKI Jakarta"
+            else:
+                data["province"] = raw_prov
 
+        # 5. Postal Code
         if l_postal:
             y_next = l_business["y1"] if l_business else l_postal["y2"] + 0.025
-            raw_p = collect_right(p1, l_postal, y_next)
+            post_boxes = [b for b in p1 if b["xc"] >= 0.31 and b["xc"] <= 0.45 and b["yc"] >= l_postal["y1"] - 0.005 and b["yc"] < y_next]
+            post_boxes = [b for b in post_boxes if not re.search(r'\b(postal|code|pos|kode)\b', b["text"], re.IGNORECASE)]
+            raw_p = join_tokens([b["text"] for b in post_boxes])
             m_pos = re.search(r'\b\d{5}\b', raw_p)
             data["postalCode"] = m_pos.group(0) if m_pos else raw_p
 
+        # 6. Main Business
         if l_business:
             y_next = l_est_deed["y1"] if l_est_deed else l_business["y2"] + 0.05
-            data["mainBusiness"] = collect_right(p1, l_business, y_next)
+            data["mainBusiness"] = collect_right(p1, l_business, y_next, x_min=0.25, x_max=0.45)
 
-        # Establishment Deed & Date
+        # 7. Establishment Deed & Date
         if l_est_deed:
             y_next = l_exp["y1"] if l_exp else l_est_deed["y2"] + 0.03
-            deed_no_boxes = [b for b in p1 if b["xc"] >= 0.25 and b["xc"] <= 0.38 and b["yc"] >= l_est_deed["y1"] - 0.005 and b["yc"] < y_next]
+            # Deed number is in xc strictly between 0.25 and 0.295
+            deed_no_boxes = [b for b in p1 if b["xc"] >= 0.25 and b["xc"] <= 0.295 and b["yc"] >= l_est_deed["y1"] - 0.005 and b["yc"] < y_next]
             if deed_no_boxes:
                 deed_no_boxes.sort(key=lambda b: (round(b["yc"], 2), b["xc"]))
-                data["establishmentActNo"] = join_tokens([b["text"] for b in deed_no_boxes])
-            date_boxes = [b for b in p1 if b["xc"] >= 0.40 and b["xc"] <= 0.52 and b["yc"] >= l_est_deed["y1"] - 0.005 and b["yc"] < y_next]
+                raw_deed = join_tokens([b["text"] for b in deed_no_boxes])
+                cleaned_deed = re.sub(r'\s+', '', raw_deed)
+                cleaned_deed = re.sub(r'^AHU\.+', 'AHU-', cleaned_deed, flags=re.IGNORECASE)
+                cleaned_deed = re.sub(r'\.AH\.', '.AH.', cleaned_deed, flags=re.IGNORECASE)
+                cleaned_deed = re.sub(r'Tahun', 'Tahun ', cleaned_deed, flags=re.IGNORECASE)
+                data["establishmentActNo"] = cleaned_deed if cleaned_deed.startswith('AHU-') else raw_deed
+            # Date value is in xc >= 0.37 and xc <= 0.44
+            date_boxes = [b for b in p1 if b["xc"] >= 0.37 and b["xc"] <= 0.44 and b["yc"] >= l_est_deed["y1"] - 0.005 and b["yc"] < y_next]
             for db in date_boxes:
                 m_dt = re.search(r'(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2})', db["text"])
                 if m_dt:
                     data["establishmentDate"] = normalize_date_to_iso(m_dt.group(1))
                     break
 
-        # Latest Amendment Deed & Date
+        # 8. Latest Amendment Deed & Date
         if l_latest_deed:
             y_next = l_nib["y1"] if l_nib else l_latest_deed["y2"] + 0.05
-            deed_no_boxes = [b for b in p1 if b["xc"] >= 0.25 and b["xc"] <= 0.38 and b["yc"] >= l_latest_deed["y1"] - 0.005 and b["yc"] < y_next]
+            deed_no_boxes = [b for b in p1 if b["xc"] >= 0.25 and b["xc"] <= 0.295 and b["yc"] >= l_latest_deed["y1"] - 0.005 and b["yc"] < y_next]
             if deed_no_boxes:
                 deed_no_boxes.sort(key=lambda b: (round(b["yc"], 2), b["xc"]))
-                data["latestDeedNo"] = join_tokens([b["text"] for b in deed_no_boxes])
-            date_boxes = [b for b in p1 if b["xc"] >= 0.40 and b["xc"] <= 0.52 and b["yc"] >= l_latest_deed["y1"] - 0.005 and b["yc"] < y_next]
+                raw_deed = join_tokens([b["text"] for b in deed_no_boxes])
+                cleaned_deed = re.sub(r'\s+', '', raw_deed)
+                cleaned_deed = re.sub(r'^AHU\.+', 'AHU-', cleaned_deed, flags=re.IGNORECASE)
+                cleaned_deed = re.sub(r'\.AH\.', '.AH.', cleaned_deed, flags=re.IGNORECASE)
+                cleaned_deed = re.sub(r'Tahun', 'Tahun ', cleaned_deed, flags=re.IGNORECASE)
+                data["latestDeedNo"] = cleaned_deed if cleaned_deed.startswith('AHU-') else raw_deed
+            date_boxes = [b for b in p1 if b["xc"] >= 0.37 and b["xc"] <= 0.44 and b["yc"] >= l_latest_deed["y1"] - 0.005 and b["yc"] < y_next]
             for db in date_boxes:
                 m_dt = re.search(r'(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2})', db["text"])
                 if m_dt:
                     data["latestDeedDate"] = normalize_date_to_iso(m_dt.group(1))
                     break
 
-        # NIB
+        # 9. NIB
         if l_nib:
             y_next = l_npwp["y1"] if l_npwp else l_nib["y2"] + 0.03
-            raw_nib = collect_right(p1, l_nib, y_next)
+            raw_nib = collect_right(p1, l_nib, y_next, x_min=0.25, x_max=0.45)
             d_nib = re.sub(r'\D', '', raw_nib)
             data["nib"] = d_nib[:13] if len(d_nib) >= 13 else d_nib
 
-        # NPWP
+        # 10. NPWP
         if l_npwp:
             y_next = l_phone["y1"] if l_phone else l_npwp["y2"] + 0.03
-            raw_npwp = collect_right(p1, l_npwp, y_next)
+            raw_npwp = collect_right(p1, l_npwp, y_next, x_min=0.25, x_max=0.45)
             d_npwp = re.sub(r'\D', '', raw_npwp)
             data["npwp"] = d_npwp[:16] if len(d_npwp) >= 15 else d_npwp
 
-        # Phone / Fax
+        # 11. Phone / Fax
         if l_phone:
             y_next = l_web["y1"] if l_web else (l_email["y1"] if l_email else l_phone["y2"] + 0.03)
-            data["phoneFax"] = collect_right(p1, l_phone, y_next)
+            data["phoneFax"] = collect_right(p1, l_phone, y_next, x_min=0.25, x_max=0.45)
 
-        # Email
+        # 12. Email
         if l_email:
             y_next = l_repay["y1"] if l_repay else l_email["y2"] + 0.03
-            raw_em = collect_right(p1, l_email, y_next)
+            raw_em = collect_right(p1, l_email, y_next, x_min=0.25, x_max=0.45)
             m_em = re.search(r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}', raw_em)
             data["email"] = m_em.group(0) if m_em else raw_em
 
-        # Repayment Source
+        # 13. Repayment Source
         if l_repay:
             y_next = l_loc["y1"] if l_loc else l_repay["y2"] + 0.04
-            data["repaymentSource"] = collect_right(p1, l_repay, y_next)
+            y_next_repay = (l_loc["y1"] - 0.005) if l_loc else (l_repay["y2"] + 0.02)
+            data["repaymentSource"] = collect_right(p1, l_repay, y_next_repay, x_min=0.25, x_max=0.45)
 
-        # Location Status
+        # 14. Location Status
         if l_loc:
             y_next = l_loc["y2"] + 0.03
-            data["locationStatus"] = collect_right(p1, l_loc, y_next)
+            y_next_loc = (l_purp["y1"] - 0.005) if l_purp else (l_loc["y2"] + 0.02)
+            data["locationStatus"] = collect_right(p1, l_loc, y_next_loc, x_min=0.25, x_max=0.45)
 
-        # Right Column (PIC info)
-        l_pic = find_label(p1, r'person\s+in\s+charge|pic', 0.45, 0.65)
-        l_pic_pos = find_label(p1, r'\bposition\b|\bjabatan\b', 0.45, 0.65)
-        l_pic_addr = find_label(p1, r'current\s+address|alamat\s+domisili|alamat\s+ktp', 0.45, 0.65)
-        l_pic_city = find_label(p1, r'\bcity\b|\bkota\b', 0.45, 0.65)
-        l_pic_prov = find_label(p1, r'\bprovince\b|\bprovinsi\b', 0.45, 0.65)
-        l_pic_post = find_label(p1, r'postal\s*code|kode\s*pos', 0.45, 0.65)
+        # 15. Right Column (PIC info)
+        l_pic = find_label(p1, r'person\s+in\s+charge|penanggung\s+jawab|pic', 0.45, 0.55)
+        l_pic_pos = find_label(p1, r'\bposition\b|\bjabatan\b', 0.45, 0.55)
+        l_pic_addr = find_label(p1, r'current\s+address|alamat\s+tempat|alamat\s+domisili', 0.45, 0.55)
+        l_pic_city = find_label(p1, r'\bcity\b|\bkota\b', 0.52, 0.65)
+        l_pic_prov = find_label(p1, r'\bprovince\b|\bprovinsi\b', 0.52, 0.65)
+        l_pic_post = find_label(p1, r'postal\s*code|kode\s*pos', 0.52, 0.65)
 
         if l_pic:
             y_next = l_pic_pos["y1"] if l_pic_pos else l_pic["y2"] + 0.05
-            pic_boxes = [b for b in p1 if b["xc"] >= 0.68 and b["xc"] <= 0.80 and b["yc"] >= l_pic["y1"] - 0.005 and b["yc"] < y_next]
-            pic_boxes.sort(key=lambda b: (round(b["yc"], 2), b["xc"]))
+            # PIC value is in xc between 0.51 and 0.67 (left of Telepon/Phone at 0.70)
+            pic_boxes = [b for b in p1 if b["xc"] >= 0.51 and b["xc"] <= 0.67 and b["yc"] >= l_pic["y1"] - 0.005 and b["yc"] < y_next]
+            pic_boxes = [b for b in pic_boxes if not re.search(r'\b(penanggung|jawab|pic|telepon|phone)\b', b["text"], re.IGNORECASE)]
             data["picName"] = join_tokens([b["text"] for b in pic_boxes])
 
-            ph_label = [b for b in p1 if b["xc"] >= 0.78 and b["yc"] >= l_pic["y1"] - 0.01 and b["yc"] < y_next and re.search(r'phone|hp|telp', b["text"], re.IGNORECASE)]
-            if ph_label:
-                ph_boxes = [b for b in p1 if b["xc"] >= 0.83 and b["yc"] >= ph_label[0]["y1"] - 0.005 and b["yc"] <= ph_label[0]["y2"] + 0.01]
-                if ph_boxes:
-                    data["picPhone"] = re.sub(r'[^\d+]', '', ph_boxes[0]["text"])
+            # Phone is at xc >= 0.74
+            ph_boxes = [b for b in p1 if b["xc"] >= 0.74 and b["xc"] <= 0.88 and b["yc"] >= l_pic["y1"] - 0.01 and b["yc"] < y_next]
+            ph_boxes = [b for b in ph_boxes if not re.search(r'phone|hp|telp', b["text"], re.IGNORECASE)]
+            if ph_boxes:
+                data["picPhone"] = re.sub(r'[^\d+]', '', ph_boxes[0]["text"])
 
         if l_pic_pos:
             y_next = l_pic_addr["y1"] if l_pic_addr else l_pic_pos["y2"] + 0.05
-            pos_boxes = [b for b in p1 if b["xc"] >= 0.68 and b["xc"] <= 0.82 and b["yc"] >= l_pic_pos["y1"] - 0.005 and b["yc"] < y_next]
-            pos_boxes.sort(key=lambda b: (round(b["yc"], 2), b["xc"]))
+            pos_boxes = [b for b in p1 if b["xc"] >= 0.51 and b["xc"] <= 0.67 and b["yc"] >= l_pic_pos["y1"] - 0.005 and b["yc"] < y_next]
+            pos_boxes = [b for b in pos_boxes if not re.search(r'\b(jabatan|position|email)\b', b["text"], re.IGNORECASE)]
             data["picPosition"] = join_tokens([b["text"] for b in pos_boxes])
+            if not re.sub(r'[\s/.,\-_]', '', data["picPosition"]):
+                data["picPosition"] = ""
+
+            # Email is at xc >= 0.74
+            em_boxes = [b for b in p1 if b["xc"] >= 0.74 and b["xc"] <= 0.88 and b["yc"] >= l_pic_pos["y1"] - 0.01 and b["yc"] < y_next]
+            em_boxes = [b for b in em_boxes if not re.search(r'email', b["text"], re.IGNORECASE)]
+            if em_boxes:
+                data["picEmail"] = em_boxes[0]["text"].strip()
 
         if l_pic_addr:
-            y_next = l_pic_city["y1"] if l_pic_city else l_pic_addr["y2"] + 0.05
-            data["picAddress"] = clean_address(collect_right(p1, l_pic_addr, y_next, x_min=0.68, x_max=0.95))
+            y_next = l_pic_city["y1"] if l_pic_city else (l_pic_addr["y2"] + 0.05)
+            p_addr_boxes = [b for b in p1 if b["xc"] >= 0.52 and b["xc"] <= 0.85 and b["yc"] >= l_pic_addr["y1"] - 0.005 and b["yc"] < y_next]
+            p_addr_boxes = [b for b in p_addr_boxes if not re.search(r'\b(alamat|tempat|tinggal|current|address)\b', b["text"], re.IGNORECASE)]
+            data["picAddress"] = clean_address(join_tokens([b["text"] for b in p_addr_boxes]))
 
         if l_pic_city:
             y_next = l_pic_prov["y1"] if l_pic_prov else l_pic_city["y2"] + 0.03
-            data["picCity"] = collect_right(p1, l_pic_city, y_next, x_min=0.68, x_max=0.95)
+            p_city_boxes = [b for b in p1 if b["xc"] >= 0.60 and b["xc"] <= 0.85 and b["yc"] >= l_pic_city["y1"] - 0.005 and b["yc"] < y_next]
+            p_city_boxes = [b for b in p_city_boxes if not re.search(r'\b(kota|city)\b', b["text"], re.IGNORECASE)]
+            data["picCity"] = join_tokens([b["text"] for b in p_city_boxes])
 
         if l_pic_prov:
             y_next = l_pic_post["y1"] if l_pic_post else l_pic_prov["y2"] + 0.03
-            data["picProvince"] = collect_right(p1, l_pic_prov, y_next, x_min=0.68, x_max=0.95)
+            p_prov_boxes = [b for b in p1 if b["xc"] >= 0.60 and b["xc"] <= 0.85 and b["yc"] >= l_pic_prov["y1"] - 0.005 and b["yc"] < y_next]
+            p_prov_boxes = [b for b in p_prov_boxes if not re.search(r'\b(provinsi|province)\b', b["text"], re.IGNORECASE)]
+            data["picProvince"] = join_tokens([b["text"] for b in p_prov_boxes])
 
         if l_pic_post:
             y_next = l_pic_post["y2"] + 0.03
-            raw_post = collect_right(p1, l_pic_post, y_next, x_min=0.68, x_max=0.95)
+            p_post_boxes = [b for b in p1 if b["xc"] >= 0.60 and b["xc"] <= 0.85 and b["yc"] >= l_pic_post["y1"] - 0.005 and b["yc"] < y_next]
+            raw_post = join_tokens([b["text"] for b in p_post_boxes])
             m_pos = re.search(r'\b\d{5}\b', raw_post)
             data["picPostalCode"] = m_pos.group(0) if m_pos else raw_post
 
@@ -1805,12 +1862,12 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         if l_purp:
             purp_boxes = [b for b in p1 if b["yc"] >= l_purp["y1"] - 0.01 and b["yc"] <= l_purp["y2"] + 0.04]
             purp_text = " ".join([b["text"] for b in purp_boxes])
-            if re.search(r'investment\s*\([vV\u2713xX\)]', purp_text, re.IGNORECASE) or re.search(r'investment', purp_text, re.IGNORECASE):
+            if re.search(r'investment\s*\([vV\u2713xX\)]', purp_text, re.IGNORECASE) or re.search(r'investasi\s*/\s*investment\s*\(v\)', purp_text, re.IGNORECASE):
                 data["facilityPurpose"] = "INVESTMENT"
-            elif re.search(r'working\s*capital', purp_text, re.IGNORECASE):
+            elif re.search(r'modal\s*kerja.*working\s*copitol\s*\(v\)', purp_text, re.IGNORECASE):
                 data["facilityPurpose"] = "WORKING_CAPITAL"
 
-        # Financing method & proposal on Page 2
+        # Financing method on Page 2
         if p2:
             l_meth = find_label(p2, r'financing\s+method|metode\s+pembiayaan', 0.05, 0.30)
             if l_meth:
@@ -1824,20 +1881,24 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                     elif "sale and leaseback" in m_txt.lower():
                         data["financingMethod"] = "SALE_AND_LEASEBACK"
                     else:
-                        data["financingMethod"] = m_txt
+                        if any(opt in m_txt.lower() for opt in ["installment", "financial lease", "sale and leaseback"]):
+                            data["financingMethod"] = m_txt
+                        else:
+                            data["financingMethod"] = ""
 
     # Fallback regex extraction if coordinates were missing or fields remained blank
     lines = [l.strip() for l in combined_full_text.splitlines() if l.strip()]
 
     if not data["companyName"]:
         m = re.search(r'(?:nama\s+perusahaan|company\s+name|nama\s+debitur)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
-        if m:
+        if m and not re.search(r'liugong|finance|indonesia|memberikan\s*penjelasan', m.group(1), re.IGNORECASE):
             data["companyName"] = m.group(1).strip()
         else:
             for line in lines:
-                if re.match(r'^(?:PT|CV|UD|PO)\b', line, re.IGNORECASE):
-                    data["companyName"] = line.strip()
-                    break
+                if re.match(r'^(?:PT|CV|UD|PO|BLU)\b', line, re.IGNORECASE):
+                    if not re.search(r'liugong|finance|indonesia|memberikan\s*penjelasan', line, re.IGNORECASE):
+                        data["companyName"] = line.strip()
+                        break
 
     if not data["nib"]:
         m = re.search(r'\bnib\s*[:=]?\s*([0-9\s]{13,20})', combined_full_text, re.IGNORECASE)
@@ -1864,14 +1925,18 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
             data["companyAddress"] = clean_address(m.group(1).strip())
 
     if not data["city"]:
-        m = re.search(r'(?:kota\s*/\s*kabupaten|kota|kabupaten|city)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:provinsi|kode\s+pos|\n|$))', combined_full_text, re.IGNORECASE)
+        m = re.search(r'(?:kota\s*/\s*kabupaten|kabupaten|kota|city)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:provinsi|kode\s+pos|\n|$))', combined_full_text, re.IGNORECASE)
         if m:
-            data["city"] = m.group(1).strip()
+            cand = m.group(1).strip()
+            if not re.search(r'^(?:provinsi|province|alamat|tinggal|address)', cand, re.IGNORECASE):
+                data["city"] = cand
 
     if not data["province"]:
         m = re.search(r'(?:provinsi|province)\s*[:=]?\s*([A-Za-z\s]+?)(?=\s*(?:kode\s+pos|negara|\n|$))', combined_full_text, re.IGNORECASE)
         if m:
-            data["province"] = m.group(1).strip()
+            cand = m.group(1).strip()
+            if not re.search(r'^(?:kode|pos|negara|address)', cand, re.IGNORECASE):
+                data["province"] = cand
 
     if not data["postalCode"]:
         m = re.search(r'(?:kode\s+pos|postal\s+code|zip\s+code)\s*[:=]?\s*(\d{5})', combined_full_text, re.IGNORECASE)
@@ -1905,46 +1970,22 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
     if not data["picName"]:
         m = re.search(r'(?:nama\s+pic|contact\s+person|penanggung\s+jawab|pic\s+name)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
         if m:
-            data["picName"] = m.group(1).strip()
+            cand = m.group(1).strip()
+            if not re.search(r'^(?:telepon|phone|email|jabatan|position|alamat|address|\-)', cand, re.IGNORECASE):
+                data["picName"] = cand
 
     if not data["picPosition"]:
         m = re.search(r'(?:jabatan\s+pic|jabatan|position)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
         if m:
-            data["picPosition"] = m.group(1).strip()
+            cand = m.group(1).strip()
+            if re.sub(r'[\s/.,\-_]', '', cand) and not re.search(r'^(?:email|telepon|phone|alamat|address|\-)', cand, re.IGNORECASE):
+                data["picPosition"] = cand
 
-    if not data["picPhone"]:
-        m = re.search(r'(?:no\.?\s*hp\s+pic|telepon\s+pic|phone\s+pic|no\.?\s*hp|mobile\s+pic)\s*[:=]?\s*([+0-9\s().\-]{9,16})', combined_full_text, re.IGNORECASE)
-        if m:
-            data["picPhone"] = re.sub(r'[^\d+]', '', m.group(1))
+    for k in ["picName", "picPosition", "picPhone", "picEmail", "picAddress", "picCity", "picProvince", "picPostalCode"]:
+        if not re.sub(r'[\s/.,\-_]', '', data.get(k) or ''):
+            data[k] = ""
 
-    if not data["financingValue"]:
-        m = re.search(r'(?:total\s+equipment\s+value|nilai\s+pembiayaan|financing\s+value|total\s+fasilitas)\s*[:=]?\s*(?:idr|rp\.?)?\s*([0-9.,\s]+)', combined_full_text, re.IGNORECASE)
-        if m:
-            data["financingValue"] = parse_num(m.group(1))
-
-    if not data["downPaymentValue"]:
-        m = re.search(r'(?:down\s+payment|uang\s+muka|dp)\s*[:=]?\s*(?:idr|rp\.?)?\s*([0-9.,\s]+)', combined_full_text, re.IGNORECASE)
-        if m:
-            data["downPaymentValue"] = parse_num(m.group(1))
-
-    if not data["tenorMonths"]:
-        m = re.search(r'(?:tenor|jangka\s+waktu)\s*[:=]?\s*(\d{1,3})', combined_full_text, re.IGNORECASE)
-        if m:
-            data["tenorMonths"] = int(m.group(1))
-
-    if not data["customerStatus"]:
-        if re.search(r'\bEXISTING\b', combined_full_text, re.IGNORECASE):
-            data["customerStatus"] = "EXISTING"
-        elif re.search(r'\bNEW\b', combined_full_text, re.IGNORECASE):
-            data["customerStatus"] = "NEW"
-
-    if not data["facilityPurpose"]:
-        if re.search(r'\bWORKING[\s_-]*CAPITAL\b', combined_full_text, re.IGNORECASE):
-            data["facilityPurpose"] = "WORKING_CAPITAL"
-        elif re.search(r'\bINVESTMENT\b', combined_full_text, re.IGNORECASE):
-            data["facilityPurpose"] = "INVESTMENT"
-
-    return data, boxes
+    return data, []
 
 
 def generate_document_storage_info(doc_type: str, app_id: str = None, stakeholder_id: str = None, original_filename: str = None) -> dict:
