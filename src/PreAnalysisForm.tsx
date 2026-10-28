@@ -2858,104 +2858,158 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
       {/* RIGHT COLUMN: 50% LIVE DOCUMENT PREVIEW (DIGITAL TWIN 1:1 WITH PDF) */}
       <div className="fap-detail-preview-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        {/* Ribbon Toolbar */}
+        {/* Ribbon Toolbar - 2 Rows for spacious and clean controls */}
         <div
           className="pre-analysis-ribbon-toolbar"
           style={{
-            height: '44px',
-            minHeight: '44px',
             background: '#0f294a',
             color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 12px',
             borderRadius: '7px 7px 0 0',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            borderBottom: '1px solid rgba(255,255,255,0.12)',
             boxSizing: 'border-box',
-            gap: '10px'
+            display: 'flex',
+            flexDirection: 'column'
           }}
         >
-          {/* Left: Document Identity */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
-            <FileText size={15} color="#93c5fd" style={{ flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em', color: '#f8fafc', whiteSpace: 'nowrap' }}>
-              PRE-ANALYSIS
-            </span>
-            <span style={{ fontSize: '0.7rem', color: '#94a3b8', borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              Ref: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.preAnalysisNo}</span>
-            </span>
-          </div>
-
-          {/* Right: Controls (Tabs, Zoom, Print) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* View Toggle Tabs */}
-            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <button
-                type="button"
-                onClick={() => setViewMode('digital-twin')}
-                style={{
-                  background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
-                  color: viewMode === 'digital-twin' ? '#0f294a' : 'rgba(255,255,255,0.8)',
-                  border: 'none',
-                  padding: '3px 9px',
-                  borderRadius: '4px',
-                  fontSize: '0.72rem',
-                  fontWeight: viewMode === 'digital-twin' ? 700 : 500,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Digital Twin
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('original-pdf')}
-                style={{
-                  background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
-                  color: viewMode === 'original-pdf' ? '#0f294a' : 'rgba(255,255,255,0.8)',
-                  border: 'none',
-                  padding: '3px 9px',
-                  borderRadius: '4px',
-                  fontSize: '0.72rem',
-                  fontWeight: viewMode === 'original-pdf' ? 700 : 500,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Lihat Dokumen Pedoman PDF (Original Expert Judgement)"
-              >
-                Pedoman PDF (Original)
-              </button>
+          {/* Row 1: Document Identity & Print Button */}
+          <div
+            style={{
+              height: '38px',
+              minHeight: '38px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 12px',
+              borderBottom: '1px solid rgba(255,255,255,0.08)',
+              gap: '10px'
+            }}
+          >
+            {/* Left: Document Identity */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+              <FileText size={15} color="#93c5fd" style={{ flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em', color: '#f8fafc', whiteSpace: 'nowrap' }}>
+                PRE-ANALYSIS
+              </span>
+              <span style={{ fontSize: '0.7rem', color: '#94a3b8', borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                Ref: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.preAnalysisNo}</span>
+              </span>
+              {data.fapNumber && (
+                <span style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
+                  • FAP No: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.fapNumber}</span>
+                </span>
+              )}
             </div>
-            <a
-              href={getStaticAssetUrl("pre_analysis/pre_analysis_sample.pdf")}
-              target="_blank"
-              rel="noopener noreferrer"
+
+            {/* Right: Print Button */}
+            <button
+              type="button"
+              onClick={handlePrint}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '4px',
-                background: 'rgba(255,255,255,0.1)',
-                color: '#ffffff',
-                textDecoration: 'none',
-                padding: '3px 7px',
-                borderRadius: '4px',
-                fontSize: '0.7rem',
-                border: '1px solid rgba(255,255,255,0.15)',
-                whiteSpace: 'nowrap'
+                gap: '5px',
+                background: '#ffffff',
+                color: '#0f294a',
+                border: 'none',
+                padding: '4px 11px',
+                borderRadius: '5px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                flexShrink: 0,
+                transition: 'all 0.15s ease'
               }}
-              title="Buka Pedoman PDF di Tab Baru"
+              title="Print atau Save ke PDF"
             >
-              <ExternalLink size={11} /> Tab Baru
-            </a>
+              <Printer size={13} color="#0f294a" />
+              <span>Print / PDF</span>
+            </button>
+          </div>
 
-            {/* Zoom Controls */}
-            {viewMode === 'digital-twin' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
+          {/* Row 2: View Switcher (Digital Twin vs Pedoman PDF) & Zoom Controls */}
+          <div
+            style={{
+              height: '36px',
+              minHeight: '36px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 12px',
+              background: 'rgba(0,0,0,0.18)',
+              gap: '8px'
+            }}
+          >
+            {/* Left: View Toggle Tabs & External Link */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('digital-twin')}
+                  style={{
+                    background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
+                    color: viewMode === 'digital-twin' ? '#0f294a' : 'rgba(255,255,255,0.85)',
+                    border: 'none',
+                    padding: '3px 10px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    fontWeight: viewMode === 'digital-twin' ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  Digital Twin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('original-pdf')}
+                  style={{
+                    background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
+                    color: viewMode === 'original-pdf' ? '#0f294a' : 'rgba(255,255,255,0.85)',
+                    border: 'none',
+                    padding: '3px 10px',
+                    borderRadius: '4px',
+                    fontSize: '0.72rem',
+                    fontWeight: viewMode === 'original-pdf' ? 700 : 500,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease'
+                  }}
+                  title="Lihat Dokumen Pedoman PDF (Original Expert Judgement)"
+                >
+                  Pedoman PDF (Original)
+                </button>
+              </div>
+
+              <a
+                href={getStaticAssetUrl("pre_analysis/pre_analysis_sample.pdf")}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'rgba(255,255,255,0.1)',
+                  color: '#ffffff',
+                  textDecoration: 'none',
+                  padding: '3px 8px',
+                  borderRadius: '4px',
+                  fontSize: '0.7rem',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Buka Pedoman PDF di Tab Baru"
+              >
+                <ExternalLink size={11} /> Tab Baru
+              </a>
+            </div>
+
+            {/* Right: Zoom Controls */}
+            {viewMode === 'digital-twin' ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <button
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.max(0.4, Number((prev - 0.05).toFixed(2))))}
@@ -3003,30 +3057,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <RotateCcw size={12} />
                 </button>
               </div>
-            )}
-
-            {/* Print Button */}
-            <button
-              type="button"
-              onClick={handlePrint}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                background: '#ffffff',
-                color: '#0f294a',
-                border: 'none',
-                padding: '4px 10px',
-                borderRadius: '5px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
-              }}
-            >
-              <Printer size={13} /> Print
-            </button>
+            ) : <div />}
           </div>
         </div>
 
@@ -3036,7 +3067,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
           className="pre-analysis-canvas"
           style={{
             flex: 1,
-            height: 'calc(100% - 42px)',
+            minHeight: 0,
             overflowY: 'auto',
             overflowX: 'auto',
             background: '#f1f5f9',
