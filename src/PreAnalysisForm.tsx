@@ -1042,6 +1042,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="preAnalysisNo"
                     data-field="preAnalysisNo"
+                    className="preana-input-greyed-out"
                     value={data.preAnalysisNo}
                     readOnly
                     tabIndex={-1}
@@ -1052,9 +1053,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       padding: '6px 10px',
                       fontSize: '0.8rem',
                       borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: '#e2e8f0',
-                      color: '#334155',
+                      border: '1px solid #94a3b8',
+                      backgroundColor: '#cbd5e1',
+                      background: '#cbd5e1',
+                      color: '#1e293b',
                       cursor: 'not-allowed',
                       fontWeight: 500
                     }}
@@ -1066,6 +1068,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="preAnalysisDate"
                     data-field="preAnalysisDate"
+                    className="preana-input-greyed-out"
                     value={data.preAnalysisDate}
                     readOnly
                     tabIndex={-1}
@@ -1076,9 +1079,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       padding: '6px 10px',
                       fontSize: '0.8rem',
                       borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: '#e2e8f0',
-                      color: '#334155',
+                      border: '1px solid #94a3b8',
+                      backgroundColor: '#cbd5e1',
+                      background: '#cbd5e1',
+                      color: '#1e293b',
                       cursor: 'not-allowed',
                       fontWeight: 500
                     }}
@@ -1090,6 +1094,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="customerProjectName"
                     data-field="customerProjectName"
+                    className="preana-input-greyed-out"
                     value={data.customerProjectName}
                     readOnly
                     tabIndex={-1}
@@ -1099,9 +1104,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       padding: '6px 10px',
                       fontSize: '0.8rem',
                       borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: '#e2e8f0',
-                      color: '#334155',
+                      border: '1px solid #94a3b8',
+                      backgroundColor: '#cbd5e1',
+                      background: '#cbd5e1',
+                      color: '#1e293b',
                       cursor: 'not-allowed',
                       fontWeight: 500
                     }}
@@ -1113,6 +1119,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="taxId"
                     data-field="taxId"
+                    className="preana-input-greyed-out"
                     value={data.taxId}
                     readOnly
                     tabIndex={-1}
@@ -1122,9 +1129,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       padding: '6px 10px',
                       fontSize: '0.8rem',
                       borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: '#e2e8f0',
-                      color: '#334155',
+                      border: '1px solid #94a3b8',
+                      backgroundColor: '#cbd5e1',
+                      background: '#cbd5e1',
+                      color: '#1e293b',
                       cursor: 'not-allowed',
                       fontWeight: 500
                     }}
@@ -1136,6 +1144,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="fapNumber"
                     data-field="fapNumber"
+                    className="preana-input-greyed-out"
                     value={data.fapNumber}
                     readOnly
                     tabIndex={-1}
@@ -1145,9 +1154,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       padding: '6px 10px',
                       fontSize: '0.8rem',
                       borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: '#e2e8f0',
-                      color: '#334155',
+                      border: '1px solid #94a3b8',
+                      backgroundColor: '#cbd5e1',
+                      background: '#cbd5e1',
+                      color: '#1e293b',
                       cursor: 'not-allowed',
                       fontWeight: 500
                     }}
@@ -1171,6 +1181,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="customerArea"
                     data-field="customerArea"
+                    className="preana-input-greyed-out"
                     value={data.customerArea}
                     readOnly
                     tabIndex={-1}
@@ -1181,9 +1192,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       padding: '6px 10px',
                       fontSize: '0.8rem',
                       borderRadius: '4px',
-                      border: '1px solid #cbd5e1',
-                      background: '#e2e8f0',
-                      color: '#334155',
+                      border: '1px solid #94a3b8',
+                      backgroundColor: '#cbd5e1',
+                      background: '#cbd5e1',
+                      color: '#1e293b',
                       cursor: 'not-allowed',
                       fontWeight: 500
                     }}
