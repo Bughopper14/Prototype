@@ -280,7 +280,7 @@ app.get('/api/v1/wilayah/reverse-lookup',async(req,res)=>{
     res.status(500).json({error:err.message||String(err)});
   }
 });
-app.use('/api',async(req,res,next)=>{try{const isOcrScan=req.path.startsWith('/v1/ocr/scan')||req.path.startsWith('/v1/fap-comparison/run');const token=(req.headers.cookie||'').split('; ').find(x=>x.startsWith('los_session='))?.slice(12);if(!token&&isOcrScan){req.actor={id:'ocr-scanner',name:'OCR Scanner',email:'system@los.local',role:'MKT',isAdmin:false} as any;return next();}ensure(token,'Please sign in',401);const decoded=jwt.verify(token,jwtSecret,{audience:'los-api'}) as Actor;const actual=['mysql','placeholder'].includes(decoded.source||'')?await findUser(decoded.id,true):null;const user=actual?publicUser(actual):decoded.source==='mysql'?null:(await query('SELECT id,name,email,role FROM users WHERE id=$1',[decoded.id])).rows[0];ensure(user&&(!actual||actual.is_active),'Session is no longer valid',401);const placeholder=pool?(!actual||!!actual.is_placeholder):false;req.actor=placeholder?{...user,source:'placeholder'}:user;if(decoded.role==='ADMIN'||(decoded as any).isAdmin||req.actor.email==='admin@liugong.local'||req.actor.email==='axel@liugongfinance.com'){req.actor.isAdmin=true;req.actor.role='ADMIN';}if(placeholder&&!['GET','HEAD','OPTIONS'].includes(req.method)&&!req.actor.isAdmin)throw new Problem(403,'Akun placeholder hanya untuk melihat. Perubahan memerlukan user MySQL aktif.');mysqlActor.run(placeholder?null:actual?.user_id||null,()=>next());}catch(e){next(e instanceof Problem?e:new Problem(401,'Session expired. Please sign in again.'));}});
+app.use('/api',async(req,res,next)=>{try{const isOcrScan=req.path.startsWith('/v1/ocr/scan')||req.path.includes('fap-comparison');const token=(req.headers.cookie||'').split('; ').find(x=>x.startsWith('los_session='))?.slice(12);if(!token&&isOcrScan){req.actor={id:'ocr-scanner',name:'OCR Scanner',email:'system@los.local',role:'MKT',isAdmin:false} as any;return next();}ensure(token,'Please sign in',401);const decoded=jwt.verify(token,jwtSecret,{audience:'los-api'}) as Actor;const actual=['mysql','placeholder'].includes(decoded.source||'')?await findUser(decoded.id,true):null;const user=actual?publicUser(actual):decoded.source==='mysql'?null:(await query('SELECT id,name,email,role FROM users WHERE id=$1',[decoded.id])).rows[0];ensure(user&&(!actual||actual.is_active),'Session is no longer valid',401);const placeholder=pool?(!actual||!!actual.is_placeholder):false;req.actor=placeholder?{...user,source:'placeholder'}:user;if(decoded.role==='ADMIN'||(decoded as any).isAdmin||req.actor.email==='admin@liugong.local'||req.actor.email==='axel@liugongfinance.com'){req.actor.isAdmin=true;req.actor.role='ADMIN';}if(placeholder&&!['GET','HEAD','OPTIONS'].includes(req.method)&&!req.actor.isAdmin)throw new Problem(403,'Akun placeholder hanya untuk melihat. Perubahan memerlukan user MySQL aktif.');mysqlActor.run(placeholder?null:actual?.user_id||null,()=>next());}catch(e){next(e instanceof Problem?e:new Problem(401,'Session expired. Please sign in again.'));}});
 app.get('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);const {pool}=await import('./mysql-store');const [users]=await pool!.query<any[]>('SELECT * FROM crm_users ORDER BY created_at');res.json(users.map(publicUser));});
 app.post('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);res.status(201).json(await createUser(req.body));});
 app.get('/api/v1/workspace-data/:menu',async(req,res)=>res.json(await readMenu(String(req.params.menu))));
@@ -668,9 +668,17 @@ app.get('/api/v1/applications/:id/checklist',async(req,res)=>res.json((await int
 const s3=process.env.S3_BUCKET?new S3Client({region:process.env.S3_REGION||'ap-southeast-1',endpoint:process.env.S3_ENDPOINT||undefined,forcePathStyle:!!process.env.S3_ENDPOINT,credentials:{accessKeyId:process.env.S3_ACCESS_KEY_ID||'',secretAccessKey:process.env.S3_SECRET_ACCESS_KEY||''}}):null;
 const upload=multer({storage:multer.memoryStorage(),limits:{fileSize:20*1024*1024,files:1}});
 
+const ongoingFapOcr = new Map<string, Promise<any>>();
+
 async function compareFapDocumentOcr(id: string, fileName: string, currentApp: any) {
-  console.log('>>> compareFapDocumentOcr called:', { id, fileName });
-  try {
+  if (ongoingFapOcr.has(id)) {
+    console.log('>>> compareFapDocumentOcr reusing in-flight promise for:', id);
+    return await ongoingFapOcr.get(id);
+  }
+
+  const task = (async () => {
+    console.log('>>> compareFapDocumentOcr called:', { id, fileName });
+    try {
     const cliScript = [
       path.resolve(__dirname, 'ocr_cli.py'),
       path.resolve('server/ocr_cli.py'),
@@ -713,7 +721,7 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     if (!docFilePath) {
       docFilePath = path.join(documentsDir, path.basename(fileName));
     }
-    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 60000 });
+    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 120000 });
     const jsonStart = stdout.indexOf('{');
     const jsonEnd = stdout.lastIndexOf('}');
     const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
@@ -851,6 +859,14 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     console.warn('compareFapDocumentOcr error:', err);
     return null;
   }
+  })();
+
+  ongoingFapOcr.set(id, task);
+  try {
+    return await task;
+  } finally {
+    ongoingFapOcr.delete(id);
+  }
 }
 
 app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async(req,res)=>{
@@ -901,14 +917,13 @@ app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async
     if (isFap) {
       try {
         const currentApp = await intakeDetail(id);
-        // Wait up to 15 seconds for comparison, otherwise continue in background so upload finishes promptly
+        // Wait up to 25 seconds for comparison, otherwise continue in background so upload finishes promptly
         fapComparison = await Promise.race([
           compareFapDocumentOcr(id, formattedFileName, currentApp),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Comparison backgrounded')), 15000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Comparison backgrounded')), 25000))
         ]);
       } catch (ocrErr: any) {
         console.log('[Upload] OCR comparison running in background:', ocrErr?.message);
-        intakeDetail(id).then(curr => compareFapDocumentOcr(id, formattedFileName, curr)).catch(() => {});
         fapComparison = { isFap: true, status: 'processing', diffs: [] };
       }
     }
@@ -1063,7 +1078,17 @@ app.get('/api/v1/applications/:id/fap-comparison', async (req, res) => {
     return res.json({ status: 'success', comparison: null });
   }
   const lock = await getSubmitLock(id);
-  const comp = lock.ocrComparison || { isFap: true, hasDifferences: false, diffs: [] };
+  let comp = lock.ocrComparison;
+  if (!comp || !comp.extractedData || Object.keys(comp.extractedData).length === 0) {
+    const file = fapCheck.files[fapCheck.files.length - 1];
+    const currentApp = await intakeDetail(id);
+    if (file && currentApp) {
+      comp = await compareFapDocumentOcr(id, file.fileName, currentApp);
+    }
+  }
+  if (!comp) {
+    comp = { isFap: true, hasDifferences: false, diffs: [] };
+  }
   comp.remarks = lock.remarks || comp.remarks || fapCheck.notes || '';
   res.json({ status: 'success', comparison: comp });
 });
@@ -1102,7 +1127,14 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
   if (req.body?.remarks !== undefined) {
     await saveFapRemarks(id, String(req.body.remarks || ''));
   }
-  await saveFapComparison(id, null);
+  const lock = await getSubmitLock(id);
+  const existingComp = lock.ocrComparison || {};
+  await saveFapComparison(id, {
+    ...existingComp,
+    isFap: true,
+    hasDifferences: false,
+    diffs: []
+  });
   await syncSubmitLock(id);
   if (pool) {
     try {
@@ -1121,7 +1153,14 @@ app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
   if (req.body?.remarks !== undefined) {
     await saveFapRemarks(id, String(req.body.remarks || ''));
   }
-  await saveFapComparison(id, null);
+  const lock = await getSubmitLock(id);
+  const existingComp = lock.ocrComparison || {};
+  await saveFapComparison(id, {
+    ...existingComp,
+    isFap: true,
+    hasDifferences: false,
+    diffs: []
+  });
   await syncSubmitLock(id);
   res.json({ success: true });
 });

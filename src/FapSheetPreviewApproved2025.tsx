@@ -272,6 +272,8 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
 
   const formatDate = (dateStr?: string) => {
     if (!dateStr) return '';
+    const m = String(dateStr).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
     try {
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
