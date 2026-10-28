@@ -884,6 +884,50 @@ button:focus-visible, a:focus-visible {
   place-items: center;
 }
 
+.excel-zoom-controls.compact {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+}
+
+.excel-zoom-controls.compact button {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.excel-zoom-controls.compact button:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #002c5f !important;
+}
+
+.excel-zoom-controls.compact button svg {
+  stroke: #0f172a !important;
+}
+
+.excel-zoom-controls.compact button:hover svg {
+  stroke: #002c5f !important;
+}
+
+.excel-zoom-controls.compact button.btn-fit,
+.excel-zoom-controls.compact button.excel-zoom-fit-btn {
+  background: #002c5f !important;
+  color: #ffffff !important;
+  border: 1px solid #002c5f !important;
+  font-weight: 700 !important;
+}
+
+.excel-zoom-controls.compact button.btn-fit:hover,
+.excel-zoom-controls.compact button.excel-zoom-fit-btn:hover {
+  background: #001f42 !important;
+  border-color: #001f42 !important;
+  color: #ffffff !important;
+}
+
 .excel-zoom-btn-label {
   font-size: 10.5px;
   font-weight: 700;
