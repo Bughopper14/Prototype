@@ -449,7 +449,7 @@ export async function getPreAnalysisData(appId: string, appRecord?: any): Promis
   if (pool) {
     try {
       const [rows] = await pool.query<any[]>(
-        'SELECT form_data FROM pre_analysis_records WHERE application_id = ?',
+        'SELECT form_data FROM application_pre_analysis WHERE application_id = ?',
         [appId]
       );
       if (rows && rows.length > 0 && rows[0].form_data) {
