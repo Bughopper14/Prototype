@@ -89,10 +89,75 @@ export const DEFAULT_COMPETITION_TABLE = [
   { finco: 'SMFL', rate: '10,5% - 11,25%', purpose: 'HE' }
 ];
 
+export interface GroupShareholder {
+  name: string;
+  percentage: string;
+  role?: string;
+}
+
+export interface GroupEntity {
+  name: string;
+  authorizedCapital: string;
+  paidUpCapital: string;
+  shareholders: GroupShareholder[];
+  management?: string;
+}
+
+export interface GroupStructureData {
+  holding: GroupEntity;
+  subsidiaries: GroupEntity[];
+}
+
+export const DEFAULT_GROUP_STRUCTURE: GroupStructureData = {
+  holding: {
+    name: 'PT STAR (PT Santosa Abadi Raja)',
+    authorizedCapital: 'Rp 240 Miliar',
+    paidUpCapital: 'Rp 60 Miliar',
+    shareholders: [
+      { name: 'Hansen Santosa', percentage: '54%', role: 'Presiden Direktur' },
+      { name: 'Leonard Santosa', percentage: '34%', role: 'Direktur' },
+      { name: 'Oky Santosa', percentage: '12%', role: 'Komisaris' }
+    ],
+    management: 'Presdir: Hansen Santosa | Direktur: Leonard Santosa | Komisaris: Oky Santosa'
+  },
+  subsidiaries: [
+    {
+      name: 'PT PASS (PT Pangan Sejahtera Sentosa)',
+      authorizedCapital: 'Rp 40 Miliar',
+      paidUpCapital: 'Rp 10 Miliar',
+      shareholders: [
+        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
+        { name: 'Leonard Santosa', percentage: '1%', role: 'Direktur' }
+      ],
+      management: 'Komisaris: Hansen Santosa'
+    },
+    {
+      name: 'PT HPS (PT Handalan Putra Sentosa)',
+      authorizedCapital: 'Rp 160 Miliar',
+      paidUpCapital: 'Rp 40 Miliar',
+      shareholders: [
+        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
+        { name: 'Hansen Santosa', percentage: '1%', role: 'Presdir' }
+      ],
+      management: 'Direktur: Leonard Santosa'
+    },
+    {
+      name: 'PT HTPS (PT Harta Putramas Sentosa)',
+      authorizedCapital: 'Rp 80 Miliar',
+      paidUpCapital: 'Rp 20 Miliar',
+      shareholders: [
+        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
+        { name: 'Hansen Santosa', percentage: '1%', role: 'Presdir' }
+      ],
+      management: 'Direktur: Leonard Santosa'
+    }
+  ]
+};
+
 export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAnalysisNo?: string): any {
   const companyName = appRecord?.customer?.companyName || appRecord?.companyName || '';
   const npwp = appRecord?.customer?.npwp || appRecord?.npwp || '';
-  const fapNumber = appRecord?.fapNumber || '';
+  const fapNumber = appRecord?.fapNumber || appRecord?.fap_number || '';
   
   const pic = appRecord?.pic;
   const picName = pic?.picName 
@@ -164,6 +229,16 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     ubo: '',
     uboInfo: '',
     uboInformation: '',
+    groupStructure: {
+      holding: {
+        name: '',
+        authorizedCapital: '',
+        paidUpCapital: '',
+        shareholders: [{ name: '', percentage: '', role: '' }],
+        management: ''
+      },
+      subsidiaries: []
+    },
     companyBackground: '',
     starGroupMilestonesNarrative: '',
     businessDevBackground: '',
@@ -277,6 +352,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   - PT STAR (99,997%), Leonard Santosa (0,003%)
 • PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
   - PT STAR (99,98%), Leonard Santosa (0,02%)`,
+  groupStructure: DEFAULT_GROUP_STRUCTURE,
 
   milestones: [
     { year: '2022', entity: 'PT PASS', description: 'Established for FMCG transport (Sinar Sosro, FKS, Perfetti)' },

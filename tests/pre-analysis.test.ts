@@ -273,6 +273,51 @@ test('createBlankPreAnalysisData correctly populates FAP data and blanks non-FAP
   assert.equal(blankData.recommendation, '');
 });
 
+test('pre-analysis Section 3 includes dynamic groupStructure with holding and subsidiaries', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-007');
+  assert.ok(data.groupStructure, 'groupStructure must exist');
+  assert.ok(data.groupStructure.holding, 'holding must exist');
+  assert.equal(data.groupStructure.holding.name, 'PT STAR (PT Santosa Abadi Raja)');
+  assert.equal(data.groupStructure.holding.authorizedCapital, 'Rp 240 Miliar');
+  assert.equal(data.groupStructure.holding.paidUpCapital, 'Rp 60 Miliar');
+  assert.equal(data.groupStructure.holding.shareholders.length, 3);
+  assert.equal(data.groupStructure.subsidiaries.length, 3);
+  assert.equal(data.groupStructure.subsidiaries[0].name, 'PT PASS (PT Pangan Sejahtera Sentosa)');
+  assert.equal(data.groupStructure.subsidiaries[1].name, 'PT HPS (PT Handalan Putra Sentosa)');
+  assert.equal(data.groupStructure.subsidiaries[2].name, 'PT HTPS (PT Harta Putramas Sentosa)');
+});
+
+test('pre-analysis Section 3 UBO field updates and synchronizes with preview', async () => {
+  const data = await getPreAnalysisData('test-fresh-app-008');
+  assert.ok(data.uboInfo || data.ubo, 'initial ubo value must exist');
+  
+  const updated = await savePreAnalysisData('test-fresh-app-008', {
+    ...data,
+    uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)\nadadad',
+    ubo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)\nadadad'
+  });
+  assert.match(updated.uboInfo, /adadad/);
+  assert.match(updated.ubo, /adadad/);
+});
+
+test('pre-analysis Section 1 fapNumber syncs from application and remains protected', () => {
+  const mockPrev: any = {
+    customerProjectName: '',
+    taxId: '',
+    fapNumber: '',
+    customerPic: '',
+    customerArea: ''
+  };
+  const synced = syncCustomerAndPicIntoPreAnalysis(mockPrev, {
+    application: {
+      fap_number: '005/AF/X/2026',
+      customer: { companyName: 'PT Test Company', npwp: '01.234.567.8-901.000' }
+    }
+  });
+  assert.equal(synced.fapNumber, '005/AF/X/2026');
+  assert.equal(synced.customerProjectName, 'PT Test Company');
+});
+
 // Cleanly terminate active database connection pool after test completion
 test('teardown pool connections', () => {
   setTimeout(() => process.exit(0), 100);
