@@ -468,7 +468,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   });
 
   const [viewMode, setViewMode] = useState<'digital-twin' | 'original-pdf'>('digital-twin');
-  const [zoomLevel, setZoomLevel] = useState<number>(0.75);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.60);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
@@ -577,6 +577,42 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       props.registerSave(handleSave);
     }
   });
+
+  // Container ref for measuring container width to fit to screen
+  const previewContainerRef = useRef<HTMLDivElement>(null);
+
+  const calculateFitZoom = () => {
+    if (previewContainerRef.current) {
+      const cw = previewContainerRef.current.clientWidth;
+      if (cw > 100) {
+        // Document width is 840px. Available width considering 16px left + 16px right padding = 32px
+        const avail = cw - 36;
+        const fit = Math.min(1.0, Math.max(0.4, Number((avail / 840).toFixed(2))));
+        return fit;
+      }
+    }
+    return 0.60;
+  };
+
+  const handleFit = () => {
+    const fit = calculateFitZoom();
+    setZoomLevel(fit);
+  };
+
+  useEffect(() => {
+    const autoFit = () => {
+      if (previewContainerRef.current) {
+        const fit = calculateFitZoom();
+        if (fit) setZoomLevel(fit);
+      }
+    };
+    const t = setTimeout(autoFit, 100);
+    window.addEventListener('resize', autoFit);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', autoFit);
+    };
+  }, []);
 
   const updateField = (key: keyof PreAnalysisData, val: any) => {
     setData(prev => {
@@ -2871,12 +2907,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
             {/* Zoom Controls */}
             {viewMode === 'digital-twin' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <button
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.max(0.4, Number((prev - 0.05).toFixed(2))))}
                   style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
-                  title="Zoom Out"
+                  title="Zoom Out (-5%)"
                 >
                   <ZoomOut size={13} />
                 </button>
@@ -2887,15 +2923,34 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.min(1.2, Number((prev + 0.05).toFixed(2))))}
                   style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
-                  title="Zoom In"
+                  title="Zoom In (+5%)"
                 >
                   <ZoomIn size={13} />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setZoomLevel(0.75)}
+                  onClick={handleFit}
+                  style={{
+                    background: 'rgba(255,255,255,0.15)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    padding: '1px 6px',
+                    borderRadius: '3px',
+                    fontSize: '0.68rem',
+                    fontWeight: 700,
+                    letterSpacing: '0.02em',
+                    lineHeight: '16px'
+                  }}
+                  title="Fit to Container Width (Sesuaikan dengan Lebar Kolom)"
+                >
+                  Fit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomLevel(0.60)}
                   style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
-                  title="Reset Zoom"
+                  title="Reset to 60%"
                 >
                   <RotateCcw size={12} />
                 </button>
@@ -2929,6 +2984,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
         {/* Viewport Canvas */}
         <div
+          ref={previewContainerRef}
           className="pre-analysis-canvas"
           style={{
             flex: 1,
