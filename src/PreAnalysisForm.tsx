@@ -1506,26 +1506,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Owner</label>
-                  <textarea
-                    rows={2}
-                    name="projectOwner"
-                    data-field="projectOwner"
-                    value={data.projectOwner}
-                    onChange={e => updateField('projectOwner', e.target.value)}
+                  <PreAnalysisRichEditor
+                    value={data.projectOwner || ''}
+                    onChange={val => updateField('projectOwner', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-projectOwner')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={140}
+                    dataField="projectOwner"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Bowheer Information</label>
-                  <textarea
-                    rows={4}
-                    name="bowheerInfo"
-                    data-field="bowheerInfo"
-                    value={data.bowheerInfo}
-                    onChange={e => updateField('bowheerInfo', e.target.value)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Bowheer Information</label>
+                  <PreAnalysisRichEditor
+                    value={data.bowheerInfo || ''}
+                    onChange={val => updateField('bowheerInfo', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-bowheerInfo')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={180}
+                    dataField="bowheerInfo"
                   />
                 </div>
                 <div>
@@ -1541,15 +1537,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Investment Plan</label>
-                  <textarea
-                    rows={3}
-                    name="investmentPlan"
-                    data-field="investmentPlan"
-                    value={data.investmentPlan}
-                    onChange={e => updateField('investmentPlan', e.target.value)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Investment Plan</label>
+                  <PreAnalysisRichEditor
+                    value={data.investmentPlan || ''}
+                    onChange={val => updateField('investmentPlan', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-investmentPlan')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={150}
+                    dataField="investmentPlan"
                   />
                 </div>
                 <div>
@@ -1610,68 +1604,58 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>UBO (Ultimate Beneficiary Owner)</label>
-                  <textarea
-                    rows={3}
-                    name="uboInfo"
-                    data-field="uboInfo"
+                  <PreAnalysisRichEditor
                     value={data.uboInfo || data.ubo || ''}
-                    onChange={e => updateField('uboInfo', e.target.value)}
+                    onChange={val => { updateField('uboInfo', val); updateField('ubo', val); }}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInfo')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={160}
+                    dataField="uboInfo"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background (Profil Singkat Entitas & Holding)</label>
-                  <textarea
-                    rows={3}
-                    name="companyBackground"
-                    data-field="companyBackground"
-                    value={data.companyBackground}
-                    onChange={e => updateField('companyBackground', e.target.value)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Company Background (Profil Singkat Entitas & Holding)</label>
+                  <PreAnalysisRichEditor
+                    value={data.companyBackground || ''}
+                    onChange={val => updateField('companyBackground', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-companyBackground')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={170}
+                    dataField="companyBackground"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span>STAR Group – Key Milestones Narrative (Riwayat & Narasi Ekspansi)</span>
                     <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600 }}>2022 - 2026 Expansion</span>
                   </label>
-                  <textarea
-                    rows={7}
-                    name="starGroupMilestonesNarrative"
-                    data-field="starGroupMilestonesNarrative"
+                  <PreAnalysisRichEditor
                     value={data.starGroupMilestonesNarrative || ''}
-                    onChange={e => updateField('starGroupMilestonesNarrative', e.target.value)}
+                    onChange={val => updateField('starGroupMilestonesNarrative', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-starGroupMilestonesNarrative')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    height={240}
+                    dataField="starGroupMilestonesNarrative"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span>Business Development Background (Kemitraan Herry Tho & Rekam Jejak)</span>
                     <span style={{ fontSize: '0.68rem', color: '#dc2626', fontWeight: 600 }}>Key Risk Factor</span>
                   </label>
-                  <textarea
-                    rows={5}
-                    name="businessDevBackground"
-                    data-field="businessDevBackground"
+                  <PreAnalysisRichEditor
                     value={data.businessDevBackground || ''}
-                    onChange={e => updateField('businessDevBackground', e.target.value)}
+                    onChange={val => updateField('businessDevBackground', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-businessDevBackground')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    height={220}
+                    dataField="businessDevBackground"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
-                  <textarea
-                    rows={3}
-                    name="operationalTeamInfo"
-                    data-field="operationalTeamInfo"
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
+                  <PreAnalysisRichEditor
                     value={data.operationalTeamInfo || ''}
-                    onChange={e => updateField('operationalTeamInfo', e.target.value)}
+                    onChange={val => updateField('operationalTeamInfo', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-operationalTeamInfo')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={160}
+                    dataField="operationalTeamInfo"
                   />
                 </div>
                 <div>
@@ -1683,15 +1667,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       Kolom Terpisah Sebelum Milestones
                     </span>
                   </div>
-                  <textarea
-                    rows={6}
-                    name="uboInformation"
-                    data-field="uboInformation"
+                  <PreAnalysisRichEditor
                     value={data.uboInformation || ''}
-                    onChange={e => updateField('uboInformation', e.target.value)}
+                    onChange={val => updateField('uboInformation', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                     placeholder="STAR GROUP Corporate Ownership Structure..."
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '6px', lineHeight: 1.35 }}
+                    height={220}
+                    dataField="uboInformation"
                   />
                   <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: '#f8fafc', marginTop: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -2498,24 +2480,20 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pefindo Analysis Notes</label>
-                    <textarea
-                      rows={3}
-                      name="pefindoNotes"
-                      data-field="pefindoNotes"
-                      value={data.pefindoNotes}
-                      onChange={e => updateField('pefindoNotes', e.target.value)}
-                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '8px' }}
+                    <PreAnalysisRichEditor
+                      value={data.pefindoNotes || ''}
+                      onChange={val => updateField('pefindoNotes', val)}
+                      height={160}
+                      dataField="pefindoNotes"
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Commercial Terms on Other Fincos</label>
-                    <textarea
-                      rows={2}
-                      name="pefindoTerms"
-                      data-field="pefindoTerms"
-                      value={data.pefindoTerms}
-                      onChange={e => updateField('pefindoTerms', e.target.value)}
-                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Commercial Terms on Other Fincos</label>
+                    <PreAnalysisRichEditor
+                      value={data.pefindoTerms || ''}
+                      onChange={val => updateField('pefindoTerms', val)}
+                      height={140}
+                      dataField="pefindoTerms"
                     />
                   </div>
                 </div>
@@ -2627,13 +2605,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Brief Note</label>
-                  <textarea
-                    rows={3}
-                    name="briefNote"
-                    data-field="briefNote"
-                    value={data.briefNote}
-                    onChange={e => updateField('briefNote', e.target.value)}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  <PreAnalysisRichEditor
+                    value={data.briefNote || ''}
+                    onChange={val => updateField('briefNote', val)}
+                    height={180}
+                    dataField="briefNote"
                   />
                 </div>
 
@@ -3329,11 +3305,23 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Owner</td>
-                    <td id="preana-preview-cell-projectOwner" onClick={() => handlePreviewCellClick('projectOwner', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.projectOwner}</td>
+                    <td id="preana-preview-cell-projectOwner" onClick={() => handlePreviewCellClick('projectOwner', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
+                      {data.projectOwner?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.projectOwner }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.projectOwner}</div>
+                      )}
+                    </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Bowheer Information</td>
-                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.bowheerInfo}</td>
+                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
+                      {data.bowheerInfo?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.bowheerInfo }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.bowheerInfo}</div>
+                      )}
+                    </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Status</td>
@@ -3341,7 +3329,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Investment Plan</td>
-                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.investmentPlan}</td>
+                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
+                      {data.investmentPlan?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.investmentPlan }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.investmentPlan}</div>
+                      )}
+                    </td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Financing Scheme Requested</td>
@@ -3371,32 +3365,52 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
-                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      {data.uboInfo || data.ubo}
+                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
+                      {(data.uboInfo || data.ubo)?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.uboInfo || data.ubo }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.uboInfo || data.ubo}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>
-                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
-                      {data.companyBackground}
+                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
+                      {data.companyBackground?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.companyBackground }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.companyBackground}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>STAR Group – Key Milestones</td>
-                    <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
-                      {data.starGroupMilestonesNarrative}
+                    <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#f8fafc' }}>
+                      {data.starGroupMilestonesNarrative?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.starGroupMilestonesNarrative }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.starGroupMilestonesNarrative}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Business Development Background</td>
-                    <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
-                      {data.businessDevBackground}
+                    <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#fffbeb' }}>
+                      {data.businessDevBackground?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.businessDevBackground }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.businessDevBackground}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other information :</td>
-                    <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      {data.operationalTeamInfo}
+                    <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
+                      {data.operationalTeamInfo?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.operationalTeamInfo }} style={{ lineHeight: 1.45 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.operationalTeamInfo}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3404,8 +3418,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       UBO Information
                     </td>
                     <td id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
-                      <div style={{ fontSize: '8.5pt', color: '#1e293b', whiteSpace: 'pre-line', marginBottom: '8px', lineHeight: 1.4 }}>
-                        {data.uboInformation}
+                      <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: '8px', lineHeight: 1.4 }}>
+                        {data.uboInformation?.includes('<') ? (
+                          <div dangerouslySetInnerHTML={{ __html: data.uboInformation }} />
+                        ) : (
+                          <div style={{ whiteSpace: 'pre-line' }}>{data.uboInformation}</div>
+                        )}
                       </div>
                       {/* Dynamic Corporate Group Structure Diagram */}
                       <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: '6px' }}>
@@ -3737,11 +3755,19 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           </tr>
                         </tfoot>
                       </table>
-                      <div style={{ whiteSpace: 'pre-line', fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
-                        {data.pefindoNotes}
+                      <div style={{ fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
+                        {data.pefindoNotes?.includes('<') ? (
+                          <div dangerouslySetInnerHTML={{ __html: data.pefindoNotes }} style={{ lineHeight: 1.45 }} />
+                        ) : (
+                          <div style={{ whiteSpace: 'pre-line' }}>{data.pefindoNotes}</div>
+                        )}
                       </div>
                       <div style={{ fontSize: '8pt', color: '#334155', fontWeight: 600, background: '#f8fafc', padding: '4px', border: '1px solid #e2e8f0' }}>
-                        {data.pefindoTerms}
+                        {data.pefindoTerms?.includes('<') ? (
+                          <div dangerouslySetInnerHTML={{ __html: data.pefindoTerms }} style={{ lineHeight: 1.45 }} />
+                        ) : (
+                          <div style={{ whiteSpace: 'pre-line' }}>{data.pefindoTerms}</div>
+                        )}
                       </div>
                       <div style={{ fontWeight: 700, color: '#1b365d', marginTop: '10px' }}>
                         2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY) - {data.applicantPefindoCheck}
@@ -3796,8 +3822,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
               <div style={{ marginBottom: '10px', fontSize: '9pt' }}>
                 <span style={{ fontWeight: 700 }}>Brief Note:</span>
-                <div style={{ whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b' }}>
-                  {data.briefNote}
+                <div style={{ marginTop: '2px', color: '#1e293b' }}>
+                  {data.briefNote?.includes('<') ? (
+                    <div dangerouslySetInnerHTML={{ __html: data.briefNote }} style={{ lineHeight: 1.45 }} />
+                  ) : (
+                    <div style={{ whiteSpace: 'pre-line' }}>{data.briefNote}</div>
+                  )}
                 </div>
               </div>
 
