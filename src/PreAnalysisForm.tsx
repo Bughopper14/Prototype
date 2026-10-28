@@ -551,14 +551,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-  // Accordion section toggles - All 7 sections
+  // Accordion section toggles - All 7 sections expanded by default
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     sec1: true,
     sec2: true,
-    sec3: false,
-    sec4: false,
-    sec5: false,
-    sec6: false,
+    sec3: true,
+    sec4: true,
+    sec5: true,
+    sec6: true,
     sec7: true
   });
 
