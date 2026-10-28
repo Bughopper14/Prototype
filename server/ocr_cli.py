@@ -61,20 +61,24 @@ def main():
                 else:
                     # Render pages and run RapidOCR / Tesseract
                     is_nib_doc = (dtype_hint == 'nib' or 'nib' in p.name.lower())
-                    dpi = 200.0 if is_nib_doc else 300.0
+                    is_fap_doc = (dtype_hint == 'fap' or 'fap' in p.name.lower())
+                    dpi = 200.0 if is_nib_doc else (160.0 if is_fap_doc else 200.0)
                     mat = fitz.Matrix(dpi / 72.0, dpi / 72.0)
-                    pages_to_process = min(page_count, 2) if is_nib_doc else page_count
+                    pages_to_process = min(page_count, 2) if is_nib_doc else (min(page_count, 3) if is_fap_doc else min(page_count, 4))
 
                     for p_idx in range(pages_to_process):
                         page = doc[p_idx]
                         pix = page.get_pixmap(matrix=mat, alpha=False)
                         img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
                         bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-                        oriented_img, _ = DocumentPreprocessor.auto_orient_image(bgr)
-                        p_boxes = OCREngine.process_image(oriented_img)
+                        # Fast-path RapidOCR directly without auto_orient unless empty
+                        p_boxes = OCREngine.process_image(bgr)
+                        if not p_boxes:
+                            oriented_img, _ = DocumentPreprocessor.auto_orient_image(bgr)
+                            p_boxes = OCREngine.process_image(oriented_img)
                         if not p_boxes:
                             from ocr_handler import TesseractEngine
-                            p_boxes = TesseractEngine.process_image(oriented_img)
+                            p_boxes = TesseractEngine.process_image(bgr)
                         for b in p_boxes:
                             b["page"] = p_idx + 1
                             b["page_width"] = pix.w

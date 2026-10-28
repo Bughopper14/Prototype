@@ -682,7 +682,7 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
         if (match) docFilePath = path.join(documentsDir, match);
       } catch {}
     }
-    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 300000 });
+    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 60000 });
     const jsonStart = stdout.indexOf('{');
     const jsonEnd = stdout.lastIndexOf('}');
     const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
@@ -851,8 +851,18 @@ app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async
                   String(req.body.documentCode || '').toUpperCase() === 'FAP';
     let fapComparison = null;
     if (isFap) {
-      const currentApp = await intakeDetail(id);
-      fapComparison = await compareFapDocumentOcr(id, formattedFileName, currentApp);
+      try {
+        const currentApp = await intakeDetail(id);
+        // Wait up to 15 seconds for comparison, otherwise continue in background so upload finishes promptly
+        fapComparison = await Promise.race([
+          compareFapDocumentOcr(id, formattedFileName, currentApp),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Comparison backgrounded')), 15000))
+        ]);
+      } catch (ocrErr: any) {
+        console.log('[Upload] OCR comparison running in background:', ocrErr?.message);
+        intakeDetail(id).then(curr => compareFapDocumentOcr(id, formattedFileName, curr)).catch(() => {});
+        fapComparison = { isFap: true, status: 'processing', diffs: [] };
+      }
     }
 
     return res.status(201).json({ ...result, fileName: formattedFileName, fapComparison });

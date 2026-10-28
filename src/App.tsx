@@ -2400,11 +2400,26 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       onChange(updated);
       notify(`Evidence ${item.title} uploaded successfully.`);
       if (res?.fapComparison?.isFap) {
-        setFapComparison(res.fapComparison);
-        if (res.fapComparison.hasDifferences) {
-          notify(`FAP Document OCR Verification: ${res.fapComparison.diffs?.length || 0} data differences detected.`);
+        if (res.fapComparison.status === 'processing') {
+          notify(`Evidence ${item.title} uploaded successfully. Physical document OCR analysis is running in background...`);
+          setTimeout(async () => {
+            try {
+              const compRes = await api(`/applications/${a.id}/fap-comparison`);
+              if (compRes?.comparison) {
+                setFapComparison(compRes.comparison);
+                if (compRes.comparison.hasDifferences) {
+                  notify(`FAP Document OCR: ${compRes.comparison.diffs?.length || 0} data differences detected.`);
+                }
+              }
+            } catch {}
+          }, 4000);
         } else {
-          notify('FAP Document OCR Verification: Data matches the system, no differences detected.');
+          setFapComparison(res.fapComparison);
+          if (res.fapComparison.hasDifferences) {
+            notify(`FAP Document OCR Verification: ${res.fapComparison.diffs?.length || 0} data differences detected.`);
+          } else {
+            notify('FAP Document OCR Verification: Data matches the system, no differences detected.');
+          }
         }
       }
       const updatedChk = (updated.documentChecks || []).find((d: any) => 
