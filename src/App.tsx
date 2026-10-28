@@ -2819,15 +2819,30 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
                 <div className="fap-pane-head-bottom">
                   <div style={{display:'flex', alignItems:'center', gap:'6px', marginLeft:'auto'}}>
                     <span style={{fontSize:'11.5px', color:'#334155', fontWeight:600}}>Zoom:</span>
-                    <div className="excel-zoom-controls compact" style={{display:'inline-flex', alignItems:'center', gap:'4px', background:'#f8fafc', padding:'2px 6px', borderRadius:'6px', border:'1px solid #cbd5e1', height:'26px', boxSizing:'border-box', boxShadow:'0 1px 2px rgba(0,0,0,0.04)'}}>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.max(0.05, Number((z - 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px', background:'#ffffff', border:'1px solid #cbd5e1', color:'#0f172a', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}} title="Zoom Out (-)">
-                        <ZoomOut size={13} color="#0f172a" />
+                    <div className="excel-zoom-controls compact">
+                      <button
+                        type="button"
+                        onClick={() => setSystemZoom(z => Math.max(0.05, Number((z - 0.05).toFixed(2))))}
+                        className="excel-zoom-btn btn-zoom-icon"
+                        title="Zoom Out (-)"
+                      >
+                        <ZoomOut size={13} />
                       </button>
-                      <span style={{fontSize:'11.5px', fontWeight:700, minWidth:'38px', textAlign:'center', color:'#0f172a'}}>{Math.round(systemZoom * 100)}%</span>
-                      <button type="button" onClick={() => setSystemZoom(z => Math.min(1.5, Number((z + 0.05).toFixed(2))))} className="button small" style={{padding:'2px 6px', height:'20px', background:'#ffffff', border:'1px solid #cbd5e1', color:'#0f172a', borderRadius:'4px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer'}} title="Zoom In (+)">
-                        <ZoomIn size={13} color="#0f172a" />
+                      <span className="excel-zoom-val">{Math.round(systemZoom * 100)}%</span>
+                      <button
+                        type="button"
+                        onClick={() => setSystemZoom(z => Math.min(1.5, Number((z + 0.05).toFixed(2))))}
+                        className="excel-zoom-btn btn-zoom-icon"
+                        title="Zoom In (+)"
+                      >
+                        <ZoomIn size={13} />
                       </button>
-                      <button type="button" onClick={handleFitBothDocuments} className="button small btn-fit excel-zoom-fit-btn" style={{padding:'2px 8px', height:'20px', fontSize:'11px', fontWeight:700, background:'#002c5f', color:'#ffffff', border:'1px solid #002c5f', borderRadius:'4px', cursor:'pointer'}} title="Fit both documents to screen size">
+                      <button
+                        type="button"
+                        onClick={handleFitBothDocuments}
+                        className="excel-zoom-btn btn-fit excel-zoom-fit-btn"
+                        title="Fit both documents to screen size"
+                      >
                         Fit
                       </button>
                     </div>

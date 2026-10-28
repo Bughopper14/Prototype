@@ -885,47 +885,112 @@ button:focus-visible, a:focus-visible {
 }
 
 .excel-zoom-controls.compact {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
   background: #f8fafc !important;
   border: 1px solid #cbd5e1 !important;
   border-radius: 6px !important;
+  padding: 2px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
 }
 
-.excel-zoom-controls.compact button {
+.excel-zoom-controls.compact button,
+.excel-zoom-controls.compact .excel-zoom-btn {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  margin: 0 !important;
+  padding: 0 !important;
   background: #ffffff !important;
   border: 1px solid #cbd5e1 !important;
   color: #0f172a !important;
   border-radius: 4px !important;
   cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  font-family: inherit !important;
   transition: all 0.15s ease !important;
 }
 
-.excel-zoom-controls.compact button:hover {
+.excel-zoom-controls.compact button.btn-zoom-icon,
+.excel-zoom-controls.compact .excel-zoom-btn.btn-zoom-icon {
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+}
+
+.excel-zoom-controls.compact button:hover,
+.excel-zoom-controls.compact .excel-zoom-btn:hover {
   background: #f1f5f9 !important;
   border-color: #94a3b8 !important;
   color: #002c5f !important;
 }
 
-.excel-zoom-controls.compact button svg {
+.excel-zoom-controls.compact button svg,
+.excel-zoom-controls.compact .excel-zoom-btn svg {
   stroke: #0f172a !important;
+  width: 13px !important;
+  height: 13px !important;
 }
 
-.excel-zoom-controls.compact button:hover svg {
+.excel-zoom-controls.compact button:hover svg,
+.excel-zoom-controls.compact .excel-zoom-btn:hover svg {
   stroke: #002c5f !important;
 }
 
 .excel-zoom-controls.compact button.btn-fit,
-.excel-zoom-controls.compact button.excel-zoom-fit-btn {
+.excel-zoom-controls.compact button.excel-zoom-fit-btn,
+.excel-zoom-controls.compact .excel-zoom-btn.btn-fit,
+.excel-zoom-controls.compact .excel-zoom-btn.excel-zoom-fit-btn {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
   background: #002c5f !important;
   color: #ffffff !important;
   border: 1px solid #002c5f !important;
   font-weight: 700 !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
 }
 
 .excel-zoom-controls.compact button.btn-fit:hover,
-.excel-zoom-controls.compact button.excel-zoom-fit-btn:hover {
+.excel-zoom-controls.compact button.excel-zoom-fit-btn:hover,
+.excel-zoom-controls.compact .excel-zoom-btn.btn-fit:hover,
+.excel-zoom-controls.compact .excel-zoom-btn.excel-zoom-fit-btn:hover {
   background: #001f42 !important;
   border-color: #001f42 !important;
   color: #ffffff !important;
+}
+
+.excel-zoom-controls.compact .excel-zoom-val {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  min-width: 40px !important;
+  padding: 0 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
 }
 
 .excel-zoom-btn-label {
