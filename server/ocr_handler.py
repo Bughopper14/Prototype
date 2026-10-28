@@ -1547,6 +1547,107 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                 res += " " + t
         return res.strip()
 
+    def sanitize_fap_field(key: str, val: any) -> any:
+        if val is None:
+            return ""
+        val_str = str(val).strip()
+        if not val_str:
+            return ""
+
+        cleaned = re.sub(r'^[\s/:\-.,;=]+|[\s/:\-.,;=]+$', '', val_str).strip()
+        if not re.search(r'[A-Za-z0-9]', cleaned):
+            return ""
+
+        cleaned_lower = cleaned.lower()
+        norm_c = re.sub(r'[\s/:\-_.,]+', ' ', cleaned_lower).strip()
+
+        bad_substrings = [
+            'nama perusahaan', "company's name", 'company name',
+            'penanggung jawab', 'person in charge',
+            'alamat perusahaan', 'company address', 'current address',
+            'struktur organisasi', 'shareholder structure',
+            'cara pembayaran', 'payment method', 'paymentmethod',
+            'keterangan/remarks', 'remarks', 'pendapatan/revenue',
+            'laba kotor', 'gross margin', 'grossmargin',
+            'laba usaha', 'operating margin', 'operatingmargin',
+            'facility proposed', 'liugong finance',
+            'telepon/phone', 'kota/city', 'provinsi/province',
+            'kodepost/postal', 'kode pos/postal', 'kode post/postal',
+            'bidang usaha', 'main business', 'sumber pengembalian', 'repayment source',
+            'status lokasi', 'location status', 'akta pendirian', 'establishment deed',
+            'akta perubahan', 'latest deed', 'latest amendment'
+        ]
+        for bs in bad_substrings:
+            if bs in cleaned_lower or bs in norm_c:
+                return ""
+
+        boilerplate_exact = {
+            'nama perusahaan', "company's name", 'company name',
+            'penanggung jawab', 'person in charge', 'pic', 'pic name',
+            'jabatan', 'position',
+            'alamat perusahaan', 'company address', 'alamat', 'address',
+            'alamat tempat tinggal', 'current address',
+            'kota', 'city', 'kota city',
+            'provinsi', 'province', 'provinsi province',
+            'kode pos', 'postal code', 'kodepost postal code', 'kode post postal code',
+            'telepon', 'phone', 'telepon phone', 'phone fax', 'telepon fax',
+            'email', 'website',
+            'bisnis utama', 'bidang usaha', 'main business',
+            'akta pendirian', 'establishment deed',
+            'akta perubahan', 'latest amendment deed', 'latest deed',
+            'milik sendiri sewa', 'milik sendiri', 'sewa',
+            'facility proposed', 'liugong', 'finance indonesia', 'company profile',
+            'facility'
+        }
+
+        if norm_c in boilerplate_exact:
+            return ""
+
+        if key in ('postalCode', 'picPostalCode'):
+            m = re.search(r'\b\d{5}\b', cleaned)
+            return m.group(0) if m else ""
+
+        if key in ('nib',):
+            digits = re.sub(r'\D', '', cleaned)
+            return digits[:13] if len(digits) >= 10 else ""
+
+        if key in ('npwp',):
+            digits = re.sub(r'\D', '', cleaned)
+            return digits[:16] if len(digits) >= 10 else ""
+
+        if key in ('email', 'picEmail'):
+            m = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', cleaned)
+            return m.group(0) if m else ""
+
+        if key in ('phoneFax', 'picPhone'):
+            digits = re.sub(r'[^\d+]', '', cleaned)
+            return digits if len(digits) >= 6 else ""
+
+        if key in ('establishmentDate', 'latestDeedDate'):
+            if re.match(r'^\d{4}-\d{2}-\d{2}$', cleaned):
+                return cleaned
+            return ""
+
+        if key in ('experienceYears', 'experienceMonths'):
+            m = re.search(r'^\d{1,2}$', cleaned)
+            return m.group(0) if m else ""
+
+        if key == 'locationStatus':
+            if norm_c in ('milik sendiri sewa', 'milik sendiri', 'sewa'):
+                return ""
+
+        if key == 'mainBusiness':
+            if norm_c in ('pertambangan mining', 'pertanian agriculture', 'kehutanan forestry', 'konstruksi construction', 'perdagangan trading', 'manufaktur manufacturing', 'transportasi transportation', 'jasa service', 'lain lain others'):
+                return ""
+
+        if key in ('companyName', 'picName', 'picPosition', 'companyAddress', 'mainBusiness', 'repaymentSource'):
+            if len(cleaned) <= 2 or norm_c in ('pic', 'telepon', 'phone', 'email', 'nama', 'pt', 'cv'):
+                return ""
+            if key == 'repaymentSource' and re.match(r'^\d+$', cleaned):
+                return ""
+
+        return cleaned
+
     def parse_num(val):
         if not val:
             return None
@@ -1612,10 +1713,16 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                     x_max = float(b.get("x_max", 0)) / w
                     y_max = float(b.get("y_max", 0)) / h
                 elif 'box' in b and isinstance(b['box'], list) and len(b['box']) == 4:
-                    xs = [pt[0] if isinstance(pt, (list, tuple)) else b['box'][0] for pt in b['box']]
-                    ys = [pt[1] if isinstance(pt, (list, tuple)) else b['box'][1] for pt in b['box']]
-                    x_min, x_max = float(min(xs)) / w, float(max(xs)) / w
-                    y_min, y_max = float(min(ys)) / h, float(max(ys)) / h
+                    if isinstance(b['box'][0], (list, tuple)):
+                        xs = [pt[0] for pt in b['box']]
+                        ys = [pt[1] for pt in b['box']]
+                        x_min, x_max = float(min(xs)) / w, float(max(xs)) / w
+                        y_min, y_max = float(min(ys)) / h, float(max(ys)) / h
+                    elif isinstance(b['box'][0], (int, float)):
+                        x_min, y_min = float(b['box'][0]) / w, float(b['box'][1]) / h
+                        x_max, y_max = float(b['box'][2]) / w, float(b['box'][3]) / h
+                    else:
+                        continue
                 else:
                     continue
                 txt = (b.get("text") or "").strip()
@@ -1644,6 +1751,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
             y_start = label_box["y1"] - 0.005
             y_end = next_label_y if next_label_y is not None else label_box["y2"] + 0.03
             matched = [b for b in box_list if b["xc"] >= x_min and b["xc"] <= x_max and b["yc"] >= y_start and b["yc"] < y_end]
+            # Exclude punctuation-only or single separator boxes like '/', ':', '-', '.'
+            matched = [b for b in matched if re.search(r'[A-Za-z0-9]', b["text"])]
             matched.sort(key=lambda b: (round(b["yc"], 2), b["xc"]))
             return join_tokens([b["text"] for b in matched])
 
@@ -2046,9 +2155,30 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
             if re.sub(r'[\s/.,\-_]', '', cand) and not re.search(r'^(?:email|telepon|phone|alamat|address|\-)', cand, re.IGNORECASE):
                 data["picPosition"] = cand
 
-    for k in ["picName", "picPosition", "picPhone", "picEmail", "picAddress", "picCity", "picProvince", "picPostalCode"]:
-        if not re.sub(r'[\s/.,\-_]', '', data.get(k) or ''):
-            data[k] = ""
+    # Sanitize each field against stray punctuation and template boilerplate
+    for k in list(data.keys()):
+        if k in ('raw_text', 'financingValue', 'downPaymentValue', 'tenorMonths'):
+            continue
+        data[k] = sanitize_fap_field(k, data.get(k))
+
+    # Whole-document blank form detection:
+    # If core identity fields are all blank, the document is an unfilled blank template.
+    is_blank_form = (
+        not data.get("companyName") and
+        not data.get("nib") and
+        not data.get("npwp") and
+        not data.get("establishmentActNo") and
+        not data.get("establishmentDate") and
+        not data.get("picName")
+    )
+    if is_blank_form:
+        for k in list(data.keys()):
+            if k == "raw_text":
+                continue
+            if k in ("financingValue", "downPaymentValue", "tenorMonths"):
+                data[k] = None
+            else:
+                data[k] = ""
 
     return data, []
 
@@ -2100,6 +2230,9 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
                 page_count = len(p_doc)
                 digital_boxes = []
                 for p_idx in range(len(p_doc)):
+                    rect = p_doc[p_idx].rect
+                    pw = float(rect.width or 612.0)
+                    ph = float(rect.height or 792.0)
                     page_blocks = p_doc[p_idx].get_text("blocks")
                     for blk in page_blocks:
                         blk_txt = blk[4].strip() if len(blk) > 4 else ""
@@ -2109,7 +2242,10 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
                                 digital_boxes.append({
                                     "text": clean_line,
                                     "confidence": 1.0,
-                                    "box": [int(blk[0]), int(blk[1]), int(blk[2]), int(blk[3])]
+                                    "box": [int(blk[0]), int(blk[1]), int(blk[2]), int(blk[3])],
+                                    "page": p_idx + 1,
+                                    "page_width": pw,
+                                    "page_height": ph
                                 })
                 p_doc.close()
                 if len(digital_boxes) >= 5:

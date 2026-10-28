@@ -390,7 +390,14 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     const sh = props.stakeholders || app.stakeholders || raw.stakeholders || [];
     const proj = props.projects || (raw as any).projects || (app as any).projects || [];
 
+    const isOcrSide = props.diffSide === 'ocr';
+
     const pick = (vA: any, vB: any, vC?: any, fallback = '') => {
+      if (isOcrSide) {
+        // On OCR side, strictly use vA (the OCR extracted value). Do not fall back to system data (vB, vC).
+        if (vA !== undefined && vA !== null) return vA;
+        return fallback;
+      }
       if (vA !== undefined && vA !== null && vA !== '') return vA;
       if (vB !== undefined && vB !== null && vB !== '') return vB;
       if (vC !== undefined && vC !== null && vC !== '') return vC;
@@ -422,10 +429,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     };
 
     return {
-      fapNumber: pick(raw.fapNumber, app.fapNumber, '0006/AF/03/2026'),
-      applicationDate: formatDate(pick(raw.applicationDate, app.applicationDate, new Date().toISOString())),
-      branchCode: pick(raw.branchCode, app.branchCode, 'JKT01'),
-      customerStatus: pick(raw.customerStatus, app.customerStatus, 'EXISTING').toUpperCase(),
+      fapNumber: isOcrSide ? (raw.fapNumber || '') : pick(raw.fapNumber, app.fapNumber, '0006/AF/03/2026'),
+      applicationDate: isOcrSide ? (raw.applicationDate ? formatDate(raw.applicationDate) : '') : formatDate(pick(raw.applicationDate, app.applicationDate, new Date().toISOString())),
+      branchCode: isOcrSide ? (raw.branchCode || '') : pick(raw.branchCode, app.branchCode, 'JKT01'),
+      customerStatus: isOcrSide ? (raw.customerStatus || '').toUpperCase() : pick(raw.customerStatus, app.customerStatus, 'EXISTING').toUpperCase(),
       companyType: pick(raw.companyType, cust.companyType, '').toUpperCase(),
       companyName: pick(raw.companyName, cust.companyName, ''),
       companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
@@ -436,6 +443,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
       establishmentDate: formatDate(pick(raw.establishmentDate, cust.establishmentDate, '')),
       experienceYears: (() => {
+        if (isOcrSide) {
+          return raw.experienceYears != null ? raw.experienceYears : '';
+        }
         const val = pick(raw.experienceYears, prof.experienceYears, '');
         if (val !== '' && val != null) return val;
         const eDate = pick(raw.establishmentDate, cust.establishmentDate, '');
@@ -453,6 +463,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
         return '';
       })(),
       experienceMonths: (() => {
+        if (isOcrSide) {
+          return raw.experienceMonths != null ? raw.experienceMonths : '';
+        }
         const val = pick(raw.experienceMonths, prof.experienceMonths, '');
         if (val !== '' && val != null) return val;
         const eDate = pick(raw.establishmentDate, cust.establishmentDate, '');
@@ -486,8 +499,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       picCity: resolveLoc('city', pick(raw.picCity, p.city, '')),
       picProvince: resolveLoc('province', pick(raw.picProvince, p.province, '')),
       picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
-      stakeholders: sh,
-      projects: proj,
+      stakeholders: isOcrSide ? (raw.stakeholders || []) : sh,
+      projects: isOcrSide ? ((raw as any).projects || []) : proj,
     };
   }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, props.projects, master]);
 
@@ -523,9 +536,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     setText('fap-cell-applicationDate', d.applicationDate);
     setText('fap-cell-branchCode', d.branchCode);
 
-    const isNew = d.customerStatus.includes('NEW') || (!d.customerStatus.includes('EXISTING') && !d.customerStatus.includes('LAMA'));
-    setText('fap-cell-custNew', isNew ? '✓' : '');
-    setText('fap-cell-custExisting', !isNew ? '✓' : '');
+    if (props.diffSide === 'ocr' && !d.customerStatus) {
+      setText('fap-cell-custNew', '');
+      setText('fap-cell-custExisting', '');
+    } else {
+      const isNew = d.customerStatus.includes('NEW');
+      const isExisting = d.customerStatus.includes('EXISTING') || d.customerStatus.includes('LAMA');
+      setText('fap-cell-custNew', isNew ? '✓' : '');
+      setText('fap-cell-custExisting', isExisting ? '✓' : '');
+    }
 
     const isCorp = d.companyType.includes('CORPORATE') || d.companyType.includes('PT') || d.companyType.includes('PERSEROAN');
     const isComm = d.companyType.includes('COMMERCIAL') || d.companyType.includes('CV') || d.companyType.includes('FIRMA');
