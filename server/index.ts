@@ -721,7 +721,10 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     if (!docFilePath) {
       docFilePath = path.join(documentsDir, path.basename(fileName));
     }
-    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], { timeout: 120000 });
+    const { stdout } = await execFileAsync(pyExe, [cliScript, docFilePath, 'fap'], {
+      timeout: 120000,
+      env: { ...process.env, PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' }
+    });
     const jsonStart = stdout.indexOf('{');
     const jsonEnd = stdout.lastIndexOf('}');
     const ocrRes = jsonStart !== -1 && jsonEnd !== -1 ? JSON.parse(stdout.slice(jsonStart, jsonEnd + 1)) : JSON.parse(stdout.trim());
@@ -739,11 +742,21 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
 
     const diffs: Array<{ field: string; label: string; oldValue: string; newValue: string }> = [];
     const compareField = (key: string, label: string, oldVal: any, newVal: any, isNumber = false) => {
-      if (newVal === undefined || newVal === null || String(newVal).trim() === '') return;
-      const sNew = String(newVal).trim();
+      const sNew = newVal !== undefined && newVal !== null ? String(newVal).trim() : '';
       const sOld = oldVal !== undefined && oldVal !== null ? String(oldVal).trim() : '';
 
+      // If both are empty / blank, no difference
+      if (!sNew && !sOld) return;
+
       if (isNumber) {
+        if (!sNew && sOld) {
+          diffs.push({ field: key, label, oldValue: sOld, newValue: '— (Kosong di dokumen)' });
+          return;
+        }
+        if (sNew && !sOld) {
+          diffs.push({ field: key, label, oldValue: '—', newValue: sNew });
+          return;
+        }
         const nNew = Number(sNew.replace(/[^\d.-]/g, ''));
         const nOld = Number(sOld.replace(/[^\d.-]/g, ''));
         if (!isNaN(nNew) && !isNaN(nOld) && nNew === nOld) return;
@@ -751,6 +764,16 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
         const cleanNew = sNew.replace(/\s+/g, ' ').toUpperCase();
         const cleanOld = sOld.replace(/\s+/g, ' ').toUpperCase();
         if (cleanNew === cleanOld) return;
+
+        // If one is empty and the other is not, it is a difference!
+        if (!cleanNew && cleanOld) {
+          diffs.push({ field: key, label, oldValue: sOld, newValue: '— (Kosong di dokumen)' });
+          return;
+        }
+        if (cleanNew && !cleanOld) {
+          diffs.push({ field: key, label, oldValue: '—', newValue: sNew });
+          return;
+        }
 
         // Date normalization (DD/MM/YYYY vs YYYY-MM-DD)
         if (key.toLowerCase().includes('date') || key.toLowerCase().includes('tanggal')) {
@@ -807,7 +830,7 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
         field: key,
         label,
         oldValue: sOld || '—',
-        newValue: sNew
+        newValue: sNew || '— (Kosong di dokumen)'
       });
     };
 
@@ -920,7 +943,7 @@ app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async
         // Wait up to 25 seconds for comparison, otherwise continue in background so upload finishes promptly
         fapComparison = await Promise.race([
           compareFapDocumentOcr(id, formattedFileName, currentApp),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Comparison backgrounded')), 25000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Comparison backgrounded')), 6000))
         ]);
       } catch (ocrErr: any) {
         console.log('[Upload] OCR comparison running in background:', ocrErr?.message);

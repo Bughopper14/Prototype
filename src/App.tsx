@@ -1995,6 +1995,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
   const [remarksSaveStatus, setRemarksSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle');
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
+  const [isFapOcrScanning, setIsFapOcrScanning] = useState<boolean>(false);
   const [systemZoom, setSystemZoom] = useState<number>(0.15);
   const [autoFitSystem, setAutoFitSystem] = useState<boolean>(true);
   const fapComparisonContainerRef = useRef<HTMLDivElement>(null);
@@ -2223,26 +2224,73 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
 
   // Load existing FAP comparison from backend on stage switch or when files change
   useEffect(() => {
+    let isCancelled = false;
+    let pollTimer: any = null;
+
     if (selectedCode === 'FAP' && activeFiles.length > 0) {
       api(`/applications/${a.id}/fap-comparison`).then(res => {
-        setFapComparison(res?.comparison || null);
-        if (res?.comparison?.remarks) {
-          setFapRemarks(res.comparison.remarks);
+        if (isCancelled) return;
+        const comp = res?.comparison;
+        setFapComparison(comp || null);
+        if (comp?.remarks) {
+          setFapRemarks(comp.remarks);
           setRemarksSaveStatus('saved');
         } else {
           setFapRemarks('');
           setRemarksSaveStatus('idle');
         }
+
+        if (comp && (!comp.extractedData || Object.keys(comp.extractedData).length === 0 || comp.status === 'processing')) {
+          setIsFapOcrScanning(true);
+          let attempts = 0;
+          pollTimer = setInterval(async () => {
+            if (isCancelled) {
+              clearInterval(pollTimer);
+              return;
+            }
+            attempts++;
+            try {
+              const compRes = await api(`/applications/${a.id}/fap-comparison`);
+              const c = compRes?.comparison;
+              if (c && c.extractedData && Object.keys(c.extractedData).length > 0) {
+                clearInterval(pollTimer);
+                if (!isCancelled) {
+                  setFapComparison(c);
+                  setIsFapOcrScanning(false);
+                }
+              } else if (attempts >= 45) {
+                clearInterval(pollTimer);
+                if (!isCancelled) setIsFapOcrScanning(false);
+              }
+            } catch {
+              if (attempts >= 45) {
+                clearInterval(pollTimer);
+                if (!isCancelled) setIsFapOcrScanning(false);
+              }
+            }
+          }, 2000);
+        } else {
+          setIsFapOcrScanning(false);
+        }
       }).catch(() => {
-        setFapComparison(null);
-        setFapRemarks('');
-        setRemarksSaveStatus('idle');
+        if (!isCancelled) {
+          setFapComparison(null);
+          setFapRemarks('');
+          setRemarksSaveStatus('idle');
+          setIsFapOcrScanning(false);
+        }
       });
     } else {
       setFapComparison(null);
       setFapRemarks('');
       setRemarksSaveStatus('idle');
+      setIsFapOcrScanning(false);
     }
+
+    return () => {
+      isCancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [selectedCode, a.id, activeFiles.length]);
 
   const liveFapData: FapSheetData = useMemo(() => {
@@ -2400,27 +2448,49 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       onChange(updated);
       notify(`Evidence ${item.title} uploaded successfully.`);
       if (res?.fapComparison?.isFap) {
-        if (res.fapComparison.status === 'processing') {
+        if (res.fapComparison.status === 'processing' || !res.fapComparison.extractedData) {
+          setIsFapOcrScanning(true);
+          setRightViewMode('ocr');
           notify(`Evidence ${item.title} uploaded successfully. Physical document OCR analysis is running in background...`);
-          setTimeout(async () => {
+          let attempts = 0;
+          const pollTimer = setInterval(async () => {
+            attempts++;
             try {
               const compRes = await api(`/applications/${a.id}/fap-comparison`);
-              if (compRes?.comparison) {
-                setFapComparison(compRes.comparison);
-                if (compRes.comparison.hasDifferences) {
-                  notify(`FAP Document OCR: ${compRes.comparison.diffs?.length || 0} data differences detected.`);
+              const c = compRes?.comparison;
+              if (c && c.extractedData && Object.keys(c.extractedData).length > 0) {
+                clearInterval(pollTimer);
+                setIsFapOcrScanning(false);
+                setFapComparison(c);
+                setRightViewMode('ocr');
+                if (c.hasDifferences) {
+                  notify(`FAP Document OCR: ${c.diffs?.length || 0} data differences detected.`);
+                } else {
+                  notify('FAP Document OCR Verification: Data matches 100%, no differences detected.');
                 }
+              } else if (attempts >= 45) {
+                clearInterval(pollTimer);
+                setIsFapOcrScanning(false);
               }
-            } catch {}
-          }, 4000);
+            } catch {
+              if (attempts >= 45) {
+                clearInterval(pollTimer);
+                setIsFapOcrScanning(false);
+              }
+            }
+          }, 2000);
         } else {
           setFapComparison(res.fapComparison);
+          setIsFapOcrScanning(false);
+          setRightViewMode('ocr');
           if (res.fapComparison.hasDifferences) {
             notify(`FAP Document OCR Verification: ${res.fapComparison.diffs?.length || 0} data differences detected.`);
           } else {
             notify('FAP Document OCR Verification: Data matches the system, no differences detected.');
           }
         }
+      } else {
+        setIsFapOcrScanning(false);
       }
       const updatedChk = (updated.documentChecks || []).find((d: any) => 
         d.id === item.chk.id || 
@@ -2543,11 +2613,13 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
 
   async function handleRunFapComparison() {
     setBusy(true);
+    setIsFapOcrScanning(true);
     setError('');
     try {
       const res = await api(`/applications/${a.id}/fap-comparison/run`, 'POST');
       if (res?.comparison) {
         setFapComparison(res.comparison);
+        setRightViewMode('ocr');
         if (res.comparison.hasDifferences) {
           notify(`OCR scan complete: ${res.comparison.diffs?.length || 0} data differences found.`);
         } else {
@@ -2560,6 +2632,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       setError('Failed to run OCR verification: ' + (err.message || ''));
     } finally {
       setBusy(false);
+      setIsFapOcrScanning(false);
     }
   }
 
@@ -2849,7 +2922,31 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
                   )}
                 </div>
               </div>
-              <div className="fap-pane-body fap-pane-body-physical">
+              <div className="fap-pane-body fap-pane-body-physical" style={{ position: 'relative' }}>
+                {isFapOcrScanning && (
+                  <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    background: 'rgba(255, 255, 255, 0.94)',
+                    backdropFilter: 'blur(3px)',
+                    zIndex: 20,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '12px',
+                    padding: '24px',
+                    textAlign: 'center'
+                  }}>
+                    <Loader2 size={38} className="spin" style={{ color: '#002060' }} />
+                    <div style={{ fontWeight: 600, color: '#002060', fontSize: '15px' }}>
+                      Mengekstrak Dokumen FAP dengan OCR...
+                    </div>
+                    <p style={{ margin: 0, color: '#64748b', fontSize: '13px', maxWidth: '380px', lineHeight: 1.5 }}>
+                      Sistem sedang membaca setiap kolom teks dari dokumen PDF yang diupload. Hasil pembacaan akan otomatis langsung tampil di formulir ini begitu selesai.
+                    </p>
+                  </div>
+                )}
                 {activeFiles.length > 0 && activeFileUrl ? (
                   rightViewMode === 'ocr' ? (
                     <FapSheetPreview

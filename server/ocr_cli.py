@@ -1,7 +1,20 @@
 import sys
+import io
 import os
 import json
 from pathlib import Path
+
+# Ensure UTF-8 output on Windows consoles/pipes
+if hasattr(sys.stdout, 'buffer'):
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+if hasattr(sys.stderr, 'buffer'):
+    try:
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 # Include OCR and current dir in sys.path
 sys.path.insert(0, r"C:\Users\reage\Documents\ChatGPT\OCR")
