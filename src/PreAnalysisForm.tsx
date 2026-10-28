@@ -1479,8 +1479,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Role of Customer</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Role of Customer</label>
                     <input
                       type="text"
                       name="customerRole"
@@ -1491,8 +1491,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Contractor work in the same bowheer</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Other Contractor work in the same bowheer</label>
                     <input
                       type="text"
                       name="otherContractors"
