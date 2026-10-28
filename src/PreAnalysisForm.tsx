@@ -8,6 +8,7 @@ export function getStaticAssetUrl(relativePath: string): string {
 }
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 import {
   FileText,
   Save,
@@ -459,6 +460,85 @@ interface PreAnalysisFormProps {
   notify?: (msg: string) => void;
   registerSave?: (saveFn: () => Promise<void>) => void;
   onSavingChange?: (saving: boolean) => void;
+}
+
+function PreAnalysisRichEditor({
+  value,
+  onChange,
+  onFocus,
+  placeholder,
+  height = 200,
+  dataField
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  onFocus?: () => void;
+  placeholder?: string;
+  height?: number;
+  dataField?: string;
+}) {
+  const initialHtml = useMemo(() => {
+    if (!value) return '';
+    if (value.includes('<p>') || value.includes('<div>') || value.includes('<ul>') || value.includes('<ol>')) {
+      return value;
+    }
+    return value.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
+  }, []);
+
+  return (
+    <div
+      data-field={dataField}
+      onClick={onFocus}
+      style={{
+        borderRadius: '6px',
+        overflow: 'hidden',
+        border: '1px solid #cbd5e1',
+        background: '#ffffff'
+      }}
+    >
+      <Editor
+        licenseKey="gpl"
+        tinymceScriptSrc={getStaticAssetUrl("tinymce/tinymce.min.js")}
+        initialValue={initialHtml}
+        onEditorChange={(newHtml) => onChange(newHtml)}
+        init={{
+          height: height,
+          menubar: false,
+          plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'charmap',
+            'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'table', 'wordcount'
+          ],
+          toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table | removeformat',
+          content_style: `
+            body { 
+              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              font-size: 13px; 
+              line-height: 1.5; 
+              color: #0f172a; 
+              padding: 8px 12px; 
+            }
+            ol, ul {
+              margin: 0 0 6px 0;
+              padding-left: 20px;
+            }
+            li {
+              margin-bottom: 3px;
+              line-height: 1.5;
+            }
+            p {
+              margin: 0 0 5px 0;
+              line-height: 1.5;
+            }
+          `,
+          branding: false,
+          promotion: false,
+          statusbar: false,
+          placeholder: placeholder
+        }}
+      />
+    </div>
+  );
 }
 
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
@@ -1371,35 +1451,31 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span>Existing Projects (Proyek Yang Sedang Berjalan - PT HPS & PT PASS)</span>
-                    <span style={{ fontSize: '0.68rem', color: '#166534', fontWeight: 600 }}>Active Contracts</span>
+                    <span style={{ fontSize: '0.68rem', color: '#166534', background: '#dcfce7', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>Active Contracts</span>
                   </label>
-                  <textarea
-                    rows={6}
-                    name="existingProjects"
-                    data-field="existingProjects"
+                  <PreAnalysisRichEditor
                     value={data.existingProjects || ''}
-                    onChange={e => updateField('existingProjects', e.target.value)}
+                    onChange={val => updateField('existingProjects', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
-                    placeholder="A. PT Handalan Putramas Santosa (HPS)...\nB. PT Pangan Sejahtera Santosa (PASS)..."
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    placeholder="A. PT Handalan Putramas Santosa (HPS)..."
+                    height={220}
+                    dataField="existingProjects"
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <span>New Projects (Pipeline Proyek Baru / Diajukan - PT HTPS)</span>
-                    <span style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: 600 }}>Proposed Pipeline</span>
+                    <span style={{ fontSize: '0.68rem', color: '#b45309', background: '#fef3c7', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>Proposed Pipeline</span>
                   </label>
-                  <textarea
-                    rows={4}
-                    name="newProjects"
-                    data-field="newProjects"
+                  <PreAnalysisRichEditor
                     value={data.newProjects || ''}
-                    onChange={e => updateField('newProjects', e.target.value)}
+                    onChange={val => updateField('newProjects', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-newProjects')}
                     placeholder="C. PT Harta Putramas Santosa (HTPS)..."
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    height={190}
+                    dataField="newProjects"
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -3225,14 +3301,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
-                    <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
-                      {data.existingProjects}
+                    <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#f8fafc' }}>
+                      {data.existingProjects?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.existingProjects }} style={{ lineHeight: 1.4 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.existingProjects}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>New Projects</td>
-                    <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
-                      {data.newProjects}
+                    <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#fffbeb' }}>
+                      {data.newProjects?.includes('<') ? (
+                        <div dangerouslySetInnerHTML={{ __html: data.newProjects }} style={{ lineHeight: 1.4 }} />
+                      ) : (
+                        <div style={{ whiteSpace: 'pre-line' }}>{data.newProjects}</div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
