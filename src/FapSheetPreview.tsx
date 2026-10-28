@@ -435,8 +435,40 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       mainBusiness: pick(raw.mainBusiness, prof.mainBusiness, ''),
       establishmentActNo: pick(raw.establishmentActNo, cust.establishmentActNo, ''),
       establishmentDate: formatDate(pick(raw.establishmentDate, cust.establishmentDate, '')),
-      experienceYears: pick(raw.experienceYears, prof.experienceYears, ''),
-      experienceMonths: pick(raw.experienceMonths, prof.experienceMonths, ''),
+      experienceYears: (() => {
+        const val = pick(raw.experienceYears, prof.experienceYears, '');
+        if (val !== '' && val != null) return val;
+        const eDate = pick(raw.establishmentDate, cust.establishmentDate, '');
+        if (!eDate) return '';
+        const parts = String(eDate).slice(0, 10).split('-').map(Number);
+        if (parts.length === 3 && parts[0] > 1900) {
+          const dob = new Date(parts[0], parts[1] - 1, parts[2]);
+          const today = new Date();
+          let y = today.getFullYear() - dob.getFullYear();
+          let m = today.getMonth() - dob.getMonth();
+          if (today.getDate() < dob.getDate()) m--;
+          if (m < 0) { y--; m += 12; }
+          return Math.max(0, y);
+        }
+        return '';
+      })(),
+      experienceMonths: (() => {
+        const val = pick(raw.experienceMonths, prof.experienceMonths, '');
+        if (val !== '' && val != null) return val;
+        const eDate = pick(raw.establishmentDate, cust.establishmentDate, '');
+        if (!eDate) return '';
+        const parts = String(eDate).slice(0, 10).split('-').map(Number);
+        if (parts.length === 3 && parts[0] > 1900) {
+          const dob = new Date(parts[0], parts[1] - 1, parts[2]);
+          const today = new Date();
+          let y = today.getFullYear() - dob.getFullYear();
+          let m = today.getMonth() - dob.getMonth();
+          if (today.getDate() < dob.getDate()) m--;
+          if (m < 0) { y--; m += 12; }
+          return Math.max(0, m);
+        }
+        return '';
+      })(),
       latestDeedNo: pick(raw.latestDeedNo, prof.latestDeedNo, ''),
       latestDeedDate: formatDate(pick(raw.latestDeedDate, prof.latestDeedDate, '')),
       nib: pick(raw.nib, cust.nib, ''),

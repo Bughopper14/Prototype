@@ -14,6 +14,7 @@ import {initializeFinancialStatements,saveFinancialStatements} from './mysql-fin
 import {initPreAnalysisStore,getPreAnalysisData,savePreAnalysisData} from './pre-analysis-store';
 import {mergeLegal,deedTransition,reviewStatus,deedBaseline,canEditLegal,saveSingleDeed} from '../src/deed-workflow';
 import {validateWrite} from '../src/input-validation';
+import {experienceFromEstablishmentDate} from '../src/experience';
 import 'dotenv/config';
 import express,{type Request,type Response,type NextFunction} from 'express';
 import bcrypt from 'bcryptjs';
@@ -749,6 +750,9 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
       if (!sNew && !sOld) return;
 
       if (isNumber) {
+        if (key === 'experienceMonths' && ((sOld === '0' && !sNew) || (sNew === '0' && !sOld))) {
+          return;
+        }
         if (!sNew && sOld) {
           diffs.push({ field: key, label, oldValue: sOld, newValue: '— (Kosong di dokumen)' });
           return;
@@ -849,6 +853,17 @@ async function compareFapDocumentOcr(id: string, fileName: string, currentApp: a
     compareField('mainBusiness', 'Bidang Usaha Utama', currentApp.mainBusiness, extracted.mainBusiness);
     compareField('establishmentActNo', 'Nomor Akta Pendirian', currentApp.establishmentActNo || currentApp.legal?.establishmentActNo, extracted.establishmentActNo);
     compareField('establishmentDate', 'Tanggal Akta Pendirian', currentApp.establishmentDate || currentApp.legal?.establishmentDate, extracted.establishmentDate);
+    
+    const estDateForExp = currentApp.establishmentDate || currentApp.customer?.establishmentDate || currentApp.legal?.establishmentDate;
+    let sysExpYears: any = currentApp.experienceYears ?? currentApp.customer?.experienceYears ?? '';
+    let sysExpMonths: any = currentApp.experienceMonths ?? currentApp.customer?.experienceMonths ?? '';
+    if ((sysExpYears === '' || sysExpYears == null) && estDateForExp) {
+      const expCalc = experienceFromEstablishmentDate(estDateForExp);
+      sysExpYears = expCalc.experienceYears;
+      sysExpMonths = expCalc.experienceMonths;
+    }
+    compareField('experienceYears', 'Pengalaman Usaha (Tahun)', sysExpYears, extracted.experienceYears, true);
+    compareField('experienceMonths', 'Pengalaman Usaha (Bulan)', sysExpMonths, extracted.experienceMonths, true);
     compareField('latestDeedNo', 'Nomor Akta Perubahan Terakhir', currentApp.latestDeedNo || currentApp.legal?.latestDeedNo, extracted.latestDeedNo);
     compareField('latestDeedDate', 'Tanggal Akta Perubahan Terakhir', currentApp.latestDeedDate || currentApp.legal?.latestDeedDate, extracted.latestDeedDate);
     compareField('repaymentSource', 'Sumber Pengembalian', currentApp.repaymentSource, extracted.repaymentSource);

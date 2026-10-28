@@ -1072,8 +1072,8 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
   rw: draft.rw,
   postalCode: draft.postalCode,
   mainBusiness: draft.mainBusiness,
-  experienceYears: draft.experienceYears,
-  experienceMonths: draft.experienceMonths,
+  experienceYears: (draft.experienceYears != null && draft.experienceYears !== '') ? draft.experienceYears : (liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate).years : ''),
+  experienceMonths: (draft.experienceMonths != null && draft.experienceMonths !== '') ? draft.experienceMonths : (liveEstablishmentDate ? calculateAgeYearsMonths(liveEstablishmentDate).months : ''),
   latestDeedNo: draft.latestDeedNo,
   latestDeedDate: draft.latestDeedDate,
   phoneFax: draft.phoneFax,
@@ -2295,6 +2295,19 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
 
   const liveFapData: FapSheetData = useMemo(() => {
     const docPic = a.pic || a.customer?.pic || {};
+    const estDate = a.customer?.establishmentDate || a.establishmentDate || '';
+    const autoExp = estDate ? calculateAgeYearsMonths(estDate) : null;
+    const finalExpYears = (a.customer?.experienceYears != null && a.customer?.experienceYears !== '')
+      ? a.customer.experienceYears
+      : (a.experienceYears != null && a.experienceYears !== '')
+        ? a.experienceYears
+        : (autoExp ? autoExp.years : '');
+    const finalExpMonths = (a.customer?.experienceMonths != null && a.customer?.experienceMonths !== '')
+      ? a.customer.experienceMonths
+      : (a.experienceMonths != null && a.experienceMonths !== '')
+        ? a.experienceMonths
+        : (autoExp ? autoExp.months : '');
+
     return {
       fapNumber: a.fapNumber || '-',
       applicationDate: a.applicationDate || new Date().toISOString(),
@@ -2311,8 +2324,8 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       city: a.customer?.city || a.city || '',
       province: a.customer?.province || a.province || '',
       postalCode: a.customer?.postalCode || a.postalCode || '',
-      experienceYears: a.customer?.experienceYears ?? a.experienceYears ?? '',
-      experienceMonths: a.customer?.experienceMonths ?? a.experienceMonths ?? '',
+      experienceYears: finalExpYears,
+      experienceMonths: finalExpMonths,
       mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
       latestDeedNo: a.latestDeedNo || '',
       latestDeedDate: a.latestDeedDate || '',
@@ -2376,8 +2389,8 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       repaymentSource: ext.repaymentSource || '',
       locationStatus: ext.locationStatus || '',
       mainBusiness: ext.mainBusiness || '',
-      experienceYears: ext.experienceYears || '',
-      experienceMonths: ext.experienceMonths || '',
+      experienceYears: ext.experienceYears != null ? ext.experienceYears : '',
+      experienceMonths: ext.experienceMonths != null ? ext.experienceMonths : '',
       picName: ext.picName || '',
       position: ext.picPosition || ext.position || '',
       phone: ext.picPhone || ext.phone || '',

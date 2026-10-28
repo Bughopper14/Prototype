@@ -1561,6 +1561,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         "npwp": "",
         "establishmentActNo": "",
         "establishmentDate": "",
+        "experienceYears": "",
+        "experienceMonths": "",
         "latestDeedNo": "",
         "latestDeedDate": "",
         "companyAddress": "",
@@ -1739,6 +1741,60 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                 if m_dt:
                     data["establishmentDate"] = normalize_date_to_iso(m_dt.group(1))
                     break
+
+        # 7.5 Experience Years & Months
+        if l_exp:
+            exp_line_boxes = [b for b in p1 if abs(b["yc"] - l_exp["yc"]) <= 0.018 and b["xc"] >= 0.23 and b["xc"] <= 0.45]
+            exp_line_boxes.sort(key=lambda b: b["xc"])
+
+            idx_year_lbl = -1
+            idx_month_lbl = -1
+            for i, b in enumerate(exp_line_boxes):
+                if re.search(r'\b(years?|vears?|thn|tahun)\b', b["text"], re.IGNORECASE):
+                    idx_year_lbl = i
+                if re.search(r'\b(months?|bln|bulan)\b', b["text"], re.IGNORECASE):
+                    idx_month_lbl = i
+
+            year_val = ""
+            month_val = ""
+
+            if idx_year_lbl > 0:
+                prev = exp_line_boxes[idx_year_lbl - 1]
+                m = re.search(r'\b(\d{1,3})\b', prev["text"])
+                if m:
+                    year_val = m.group(1)
+            if not year_val and idx_year_lbl >= 0:
+                m = re.search(r'(\d{1,3})\s*(?:years?|vears?|thn|tahun)', exp_line_boxes[idx_year_lbl]["text"], re.IGNORECASE)
+                if m:
+                    year_val = m.group(1)
+            if not year_val:
+                for b in exp_line_boxes:
+                    if 0.24 <= b["xc"] <= 0.295:
+                        m = re.search(r'\b(\d{1,3})\b', b["text"])
+                        if m:
+                            year_val = m.group(1)
+                            break
+
+            if idx_month_lbl > 0:
+                prev = exp_line_boxes[idx_month_lbl - 1]
+                if prev != (exp_line_boxes[idx_year_lbl] if idx_year_lbl >= 0 else None):
+                    m = re.search(r'\b(\d{1,3})\b', prev["text"])
+                    if m:
+                        month_val = m.group(1)
+            if not month_val and idx_month_lbl >= 0:
+                m = re.search(r'(\d{1,3})\s*(?:months?|bln|bulan)', exp_line_boxes[idx_month_lbl]["text"], re.IGNORECASE)
+                if m:
+                    month_val = m.group(1)
+            if not month_val:
+                for b in exp_line_boxes:
+                    if 0.31 <= b["xc"] <= 0.36:
+                        m = re.search(r'\b(\d{1,3})\b', b["text"])
+                        if m:
+                            month_val = m.group(1)
+                            break
+
+            data["experienceYears"] = year_val
+            data["experienceMonths"] = month_val
 
         # 8. Latest Amendment Deed & Date
         if l_latest_deed:
@@ -1966,6 +2022,15 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         m = re.search(r'(?:tanggal\s+akta(?:\s+pendirian)?|establishment\s+date)\s*[:=]?\s*(\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', combined_full_text, re.IGNORECASE)
         if m:
             data["establishmentDate"] = normalize_date_to_iso(m.group(1))
+
+    if not data["experienceYears"]:
+        m = re.search(r'(?:pengalaman|experience)[^\n\r]*?(\d+)\s*(?:years?|vears?|thn|tahun)', combined_full_text, re.IGNORECASE)
+        if m:
+            data["experienceYears"] = m.group(1)
+    if not data["experienceMonths"]:
+        m = re.search(r'(?:years?|vears?|thn|tahun)[^\n\r]*?(\d+)\s*(?:months?|bln|bulan)', combined_full_text, re.IGNORECASE)
+        if m:
+            data["experienceMonths"] = m.group(1)
 
     if not data["picName"]:
         m = re.search(r'(?:nama\s+pic|contact\s+person|penanggung\s+jawab|pic\s+name)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
