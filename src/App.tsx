@@ -248,15 +248,15 @@ function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSu
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) {
-      setError('Semua field wajib diisi.');
+      setError('All fields are required.');
       return;
     }
     if (newPassword.length < 6) {
-      setError('Password baru minimal 6 karakter.');
+      setError('New password must be at least 6 characters.');
       return;
     }
     if (newPassword !== confirmPassword) {
-      setError('Konfirmasi password tidak cocok.');
+      setError('Password confirmation does not match.');
       return;
     }
     setLoading(true);
@@ -269,12 +269,12 @@ function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSu
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
-        throw new Error(data.error || 'Gagal mengubah password.');
+        throw new Error(data.error || 'Failed to change password.');
       }
-      onSuccess('Password berhasil diubah.');
+      onSuccess('Password changed successfully.');
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan saat mengubah password.');
+      setError(err.message || 'An error occurred while changing password.');
     } finally {
       setLoading(false);
     }
@@ -291,7 +291,7 @@ function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSu
             required
             value={currentPassword}
             onChange={e => setCurrentPassword(e.target.value)}
-            placeholder="Masukkan password saat ini"
+            placeholder="Enter current password"
           />
         </label>
         <label style={{ marginBottom: '14px' }}>
@@ -301,7 +301,7 @@ function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSu
             required
             value={newPassword}
             onChange={e => setNewPassword(e.target.value)}
-            placeholder="Minimal 6 karakter"
+            placeholder="Minimum 6 characters"
           />
         </label>
         <label style={{ marginBottom: '18px' }}>
@@ -311,16 +311,16 @@ function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSu
             required
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
-            placeholder="Ulangi password baru"
+            placeholder="Re-enter new password"
           />
         </label>
         <div className="modal-actions" style={{ padding: '16px 0 0 0', background: 'transparent', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
           <button type="button" className="button" onClick={onClose} disabled={loading}>
-            Batal
+            Cancel
           </button>
           <button type="submit" className="button primary" disabled={loading} style={{ background: '#002c5f', borderColor: '#002c5f' }}>
             {loading ? <Loader2 className="spin" size={15} /> : <Key size={15} />}
-            <span>Simpan Password</span>
+            <span>Save Password</span>
           </button>
         </div>
       </form>
@@ -470,12 +470,12 @@ export default function App(){
           </div>
           <div className="crm-brand-text">
             <span className="crm-brand-title">CRM Dashboard</span>
-            <span className="crm-brand-subtitle">LOGIN SEBAGAI {roleDisplay.toUpperCase()}</span>
+            <span className="crm-brand-subtitle">LOGGED IN AS {roleDisplay.toUpperCase()}</span>
           </div>
         </div>
 
         <div className="crm-nav-actions">
-          <a href={getGalleryUrl()} className="btn-apps-hub" title="Kembali ke Gallery Aplikasi">
+          <a href={getGalleryUrl()} className="btn-apps-hub" title="Back to Applications Gallery">
             <LayoutGrid size={15} color="#ff9900" />
             <span>Apps Hub</span>
           </a>
@@ -483,7 +483,7 @@ export default function App(){
             type="button"
             className="btn-burger-menu"
             onClick={() => setSidebarOpen(true)}
-            title="Buka Menu Navigasi"
+            title="Open Navigation Menu"
             aria-label="Open navigation menu"
           >
             <Menu size={22} color="#ffffff" />
@@ -521,11 +521,11 @@ export default function App(){
           <a
             href={getGalleryUrl()}
             className="sidebar-gallery-btn"
-            title="Kembali ke Gallery Aplikasi"
+            title="Back to Applications Gallery"
             style={{ margin: '8px 12px 14px 12px' }}
           >
             <ArrowLeft size={16} />
-            <span>Kembali ke Gallery</span>
+            <span>Back to Gallery</span>
           </a>
 
           <div className="workspace" style={{ margin: '0 12px 16px 12px' }}>
@@ -582,7 +582,7 @@ export default function App(){
           </div>
 
           <div className="drawer-actions">
-            <a href={getGalleryUrl()} className="btn-apps-hub drawer-action-btn" title="Kembali ke Apps Hub">
+            <a href={getGalleryUrl()} className="btn-apps-hub drawer-action-btn" title="Back to Apps Hub">
               <LayoutGrid size={15} color="#ff9900" />
               <span>Apps Hub</span>
             </a>
@@ -613,7 +613,7 @@ export default function App(){
               type="button"
               className="icon-button topbar-drawer-btn"
               onClick={() => setSidebarOpen(true)}
-              title="Menu Navigasi"
+              title="Navigation Menu"
               aria-label="Open navigation menu"
             >
               <Menu size={18} color="#002c5f" />
@@ -685,7 +685,7 @@ export default function App(){
                           Applications: 'Manage every application, from first contact to final approval.',
                           'Document desk': 'Keep every document complete, verified, and ready for review.',
                           Customers: 'Your customer relationships, connected to every application.',
-                          'Customize master data': 'Pengaturan master data aplikasi.',
+                          'Customize master data': 'Application master data configuration.',
                           Notifications: 'Deed review and approval results that need follow-up.',
                           Activity: 'A transparent record of application decisions and updates.'
                         } as any
@@ -926,7 +926,7 @@ function CustomerDirectory({
               <dt>NPWP</dt><dd>{c.npwp || '—'}</dd>
               <dt title="Waktu aplikasi pertama kali dibuat">App 1st</dt>
               <dd style={{ color: c.firstAppTs ? '#1e40af' : '#94a3b8', fontWeight: c.firstAppTs ? 600 : 400 }}>
-                {c.firstAppTs ? date(c.firstAppTs) : 'Belum ada'}
+                {c.firstAppTs ? date(c.firstAppTs) : 'None'}
               </dd>
             </dl>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
@@ -946,7 +946,7 @@ function CustomerDirectory({
         <div className="empty" style={{ padding: '40px 20px', textAlign: 'center' }}>
           <Search size={28} style={{ color: '#94a3b8', marginBottom: '8px' }} />
           <h3>Tidak ada customer ditemukan</h3>
-          <p>Coba gunakan kata kunci pencarian yang lain.</p>
+          <p>Try using different search keywords.</p>
         </div>
       )}
     </section>
@@ -1324,9 +1324,9 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
       });
       handleApproveDocument(res?.application);
       setFapComparisonModal(null);
-      notify('Dokumen FAP telah disetujui. Customer & PIC dikunci, beralih ke tahap Pre-analysis.');
+      notify('FAP document approved. Customer & PIC details locked, proceeding to Pre-analysis.');
     } catch (err: any) {
-      notify('Gagal menyetujui dokumen: ' + err.message);
+      notify('Failed to approve document: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -1337,7 +1337,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
       await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST');
     } catch {}
     setFapComparisonModal(null);
-    notify('Perbedaan data dicatat. Anda dapat mereview dan mencatat remarks pada tab Dokumen.');
+    notify('Data discrepancies noted. You may review and record remarks in the Documents tab.');
   };
  async function submitCustomerDetail(){
   setError('');
@@ -1606,7 +1606,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
 
  async function save(){
    if (isFapLocked && (tab === 0 || tab === 5)) {
-     setError('FAP Stage telah dikunci karena aplikasi telah berada pada tahap Pre-analysis. Perubahan data tidak diizinkan.');
+     setError('FAP Stage is locked because the application has advanced to Pre-analysis. Data changes are not allowed.');
      return;
    }
    setBusy(true);
@@ -2112,13 +2112,13 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
   return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked && [0, 1, 5].includes(tab) && (
     <div className="stage-readonly-banner" style={{marginBottom:16, background:'#ecfdf5', borderColor:'#a7f3d0', color:'#065f46'}}>
       <Lock size={16}/>
-      <span><strong>FAP Stage Telah Dikunci:</strong> Aplikasi telah berada pada tahap <strong>Pre-analysis</strong>. Seluruh data FAP Stage ({tab===0?'Customer & PIC':tab===5?'Legal':tab===1?'Stakeholders':'FAP'}) terkunci permanen dan tidak dapat diubah kembali.</span>
+      <span><strong>FAP Stage Locked:</strong> Application is now in <strong>Pre-analysis</strong> stage. All FAP Stage data ({tab===0?'Customer & PIC':tab===5?'Legal':tab===1?'Stakeholders':'FAP'}) is permanently locked and cannot be edited.</span>
     </div>
   )}{tab===0&&<>
   {!isFapLocked && customerDetailLocked && (
     <div className="stage-readonly-banner" style={{marginBottom:16,background:'#ecfdf5',borderColor:'#a7f3d0',color:'#065f46'}}>
       <Lock size={16}/>
-      <span><strong>Customer &amp; PIC Telah Dikunci:</strong> Dokumen fisik FAP telah disetujui pada tab Dokumen. Form Customer &amp; PIC dikunci dan tidak mengubah data sistem sebelum beralih ke tahap Pre-analysis.</span>
+      <span><strong>Customer &amp; PIC Locked:</strong> Physical FAP document has been approved in Documents tab. Customer &amp; PIC form is locked without altering system records before proceeding to Pre-analysis.</span>
     </div>
   )}
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
@@ -2160,7 +2160,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (isFapLocked && [0, 5, 1].includes(tab)) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>FAP Stage Dikunci</span> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Dikunci</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>=6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit data FAP Stage dan lanjutkan ke tahap <strong>Pre-analysis</strong>?</p><p className="muted">Setelah disubmit, tab Pre-analysis (Business & banks, Financial statements, Documents) akan dibuka untuk pengisian informasi bisnis dan keuangan.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit ke Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (isFapLocked && [0, 5, 1].includes(tab)) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>FAP Stage Locked</span> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Locked</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit FAP Stage data and proceed to <strong>Pre-analysis</strong>?</p><p className="muted">Once submitted, the Pre-analysis stage (Business & banks, Financial statements, Documents) will be unlocked for data entry.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit to Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
     {fapComparisonModal && (
       <FapComparisonModal
         comparison={fapComparisonModal}
@@ -2274,10 +2274,10 @@ function FapComparisonModal({
           </div>
 
           <div style={{fontSize:'12px', color:'#64748b', lineHeight:1.5}}>
-            Konfirmasi verifikasi dokumen fisik FAP:
+            Physical FAP document verification confirmation:
             <ul style={{margin:'6px 0 0 18px', padding:0}}>
-              <li><strong>Setujui Dokumen:</strong> TIDAK akan mengubah data sistem/database. Semua perbedaan dicatat pada Remarks, dan bagian Customer &amp; PIC akan dikunci sebelum beralih ke Pre-analysis.</li>
-              <li><strong>Review Remarks:</strong> Menutup modal dan tetap pada form untuk mereview atau menambahkan catatan remarks.</li>
+              <li><strong>Approve Document:</strong> Will NOT alter system/database records. All discrepancies are noted in Remarks, and Customer &amp; PIC sections will be locked before proceeding to Pre-analysis.</li>
+              <li><strong>Review Remarks:</strong> Closes modal and stays on the document to review or add remarks.</li>
             </ul>
           </div>
         </div>
@@ -2290,7 +2290,7 @@ function FapComparisonModal({
             onClick={onCorrect} 
             style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
           >
-            <Pencil size={14} /> Review Remarks / Batal
+            <Pencil size={14} /> Review Remarks / Cancel
           </button>
           <button 
             type="button" 
@@ -2299,7 +2299,7 @@ function FapComparisonModal({
             onClick={() => onApprove(comparison.extractedData)} 
             style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
           >
-            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Setujui Dokumen (Kunci Customer &amp; PIC)
+            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Approve Document (Lock Customer &amp; PIC)
           </button>
         </div>
       </div>
@@ -2411,6 +2411,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
   const [fapComparison, setFapComparison] = useState<any>(null);
   const [fapRemarks, setFapRemarks] = useState<string>('');
   const [remarksSaveStatus, setRemarksSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle');
+  const [confirmApproveFapOpen, setConfirmApproveFapOpen] = useState<boolean>(false);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
   const [isFapOcrScanning, setIsFapOcrScanning] = useState<boolean>(false);
@@ -3013,14 +3014,14 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
       const updated = res?.application || (await api(`/applications/${a.id}`));
       setFapComparison(null);
-      notify('Dokumen fisik FAP telah disetujui. Bagian Customer & PIC dikunci, beralih ke tahap Pre-analysis.');
+      notify('Physical FAP document approved. Customer & PIC details locked, proceeding to Pre-analysis.');
       if (onApproveDocument) {
         onApproveDocument(updated);
       } else {
         onChange({ ...updated, customerDetailLocked: true, stage: 'Pre-analysis' });
       }
     } catch (err: any) {
-      setError('Gagal menyetujui dokumen: ' + err.message);
+      setError('Failed to approve document: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -3034,9 +3035,9 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
         remarks: fapRemarks
       });
       setFapComparison(null);
-      notify('Catatan remarks disimpan. Tetap pada dokumen saat ini.');
+      notify('Remarks saved. Staying on the current document.');
     } catch (err: any) {
-      setError('Gagal menutup perbandingan data: ' + err.message);
+      setError('Failed to dismiss data comparison: ' + err.message);
     } finally {
       setBusy(false);
     }
@@ -3143,7 +3144,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
             {isFapLocked ? (
               <div className="stage-readonly-banner" style={{margin:'0 0 16px 0', background:'#ecfdf5', borderColor:'#a7f3d0', color:'#065f46', borderRadius:'8px'}}>
                 <Lock size={18} />
-                <span><strong>Dokumen FAP Telah Dikunci:</strong> Aplikasi telah berada pada tahap <strong>Pre-analysis</strong>. Dokumen FAP fisik telah diverifikasi dan disetujui. File dokumen FAP terkunci permanen (tidak dapat diupload ulang atau dihapus).</span>
+                <span><strong>FAP Document Locked:</strong> Application is now in <strong>Pre-analysis</strong> stage. Physical FAP document has been verified and approved. FAP document file is permanently locked (cannot be re-uploaded or deleted).</span>
               </div>
             ) : canUpload && (
               <label className="fap-dropzone-full" onClick={e => e.stopPropagation()}>
@@ -3588,18 +3589,19 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
                     isFapLocked ? (
                       <div className="fap-diff-actions-bar" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px', background:'#ecfdf5', padding:'12px 18px', border:'1px solid #a7f3d0', borderRadius:'8px', marginTop:'14px', flexWrap:'wrap'}}>
                         <span style={{fontSize:'12.5px', color:'#065f46', lineHeight:1.4, flex:1, minWidth:'280px', display:'inline-flex', alignItems:'center', gap:'8px'}}>
-                          <Lock size={16} /> Dokumen fisik FAP telah disetujui &amp; diverifikasi. Seluruh data FAP Stage terkunci permanen pada tahap Pre-analysis.
+                          <Lock size={16} /> Physical FAP document has been approved &amp; verified. All FAP Stage data is permanently locked in Pre-analysis.
                         </span>
                         <div className="fap-diff-actions-right" style={{display:'flex', alignItems:'center', gap:'10px', flexShrink:0}}>
                           <span style={{display:'inline-flex', alignItems:'center', gap:'6px', color:'#059669', fontWeight:600, fontSize:'13px', background:'#ffffff', padding:'6px 14px', borderRadius:'6px', border:'1px solid #a7f3d0'}}>
-                            <CheckCircle size={15}/> Dokumen Telah Disetujui (Terkunci)
+                            <CheckCircle size={15}/> Document Approved (Locked)
                           </span>
                         </div>
                       </div>
                     ) : (
+                      <>
                       <div className="fap-diff-actions-bar" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:'16px', background:'#f8fafc', padding:'12px 18px', border:'1px solid #e2e8f0', borderRadius:'8px', marginTop:'14px', flexWrap:'wrap'}}>
                         <span style={{fontSize:'12.5px', color:'#475569', lineHeight:1.4, flex:1, minWidth:'280px'}}>
-                          Perbedaan dokumen fisik FAP dicatat pada kolom Remarks di atas. Menyetujui dokumen ini <strong>TIDAK akan mengubah data sistem/database</strong>, dan akan <strong>mengunci bagian Customer &amp; PIC</strong> sebelum melanjutkan ke tahap Pre-analysis.
+                          Physical FAP document discrepancies are recorded in the Remarks section above. Approving this document will <strong>NOT alter system/database records</strong>, and will <strong>lock Customer &amp; PIC details</strong> before proceeding to Pre-analysis.
                         </span>
                         <div className="fap-diff-actions-right" style={{display:'flex', alignItems:'center', gap:'10px', flexShrink:0}}>
                           <button
@@ -3608,23 +3610,80 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
                             disabled={busy}
                             onClick={handleDismissFapChanges}
                             style={{display:'inline-flex', alignItems:'center', gap:'6px'}}
-                            title="Simpan catatan perbedaan dan tetap berada pada tab dokumen"
+                            title="Save remarks notes and stay on the current document"
                           >
-                            <Pencil size={14} /> Review Remarks / Tetap di Dokumen
+                            <Pencil size={14} /> Review Remarks / Stay on Document
                           </button>
                           <button
                             type="button"
                             className="button primary"
                             disabled={busy}
-                            onClick={() => handleApproveFapChanges()}
+                            onClick={() => setConfirmApproveFapOpen(true)}
                             style={{display:'inline-flex', alignItems:'center', gap:'6px', background:'#059669', borderColor:'#059669'}}
-                            title="Setujui verifikasi dokumen dan kunci form Customer & PIC"
+                            title="Approve document verification and lock Customer & PIC details"
                           >
                             {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-                            Setujui Dokumen (Kunci Customer &amp; PIC)
+                            Approve Document (Lock Customer &amp; PIC)
                           </button>
                         </div>
                       </div>
+                      {confirmApproveFapOpen && (
+                        <Modal title="Confirm Document Approval" onClose={() => setConfirmApproveFapOpen(false)}>
+                          <div className="modal-body" style={{ minWidth: '320px', maxWidth: '480px', padding: '24px 28px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                              <div style={{
+                                width: '42px',
+                                height: '42px',
+                                borderRadius: '50%',
+                                background: '#ecfdf5',
+                                color: '#059669',
+                                border: '1px solid #a7f3d0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <CheckCircle size={22} />
+                              </div>
+                              <div>
+                                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>Are you sure?</h3>
+                                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748b' }}>{a.customer?.companyName || 'Company'} · {a.fapNumber}</p>
+                              </div>
+                            </div>
+                            <p style={{ fontSize: '13.5px', color: '#334155', lineHeight: 1.6, margin: '0 0 12px' }}>
+                              Are you sure you want to approve this physical FAP document?
+                            </p>
+                            <p style={{ fontSize: '12.5px', color: '#64748b', lineHeight: 1.5, margin: 0, background: '#f8fafc', padding: '10px 14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                              Customer &amp; PIC sections will be locked, and you will proceed directly to the <strong>Pre-analysis</strong> stage.
+                            </p>
+                          </div>
+                          <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', padding: '16px 24px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                            <button
+                              type="button"
+                              className="button"
+                              onClick={() => setConfirmApproveFapOpen(false)}
+                              disabled={busy}
+                              style={{ minWidth: '80px', fontWeight: 600 }}
+                            >
+                              No
+                            </button>
+                            <button
+                              type="button"
+                              className="button primary"
+                              disabled={busy}
+                              onClick={async () => {
+                                setConfirmApproveFapOpen(false);
+                                await handleApproveFapChanges();
+                              }}
+                              style={{ minWidth: '90px', background: '#059669', borderColor: '#059669', fontWeight: 600 }}
+                            >
+                              {busy ? <Loader2 size={15} className="spin" /> : <CheckCircle size={15} />}
+                              Yes
+                            </button>
+                          </div>
+                        </Modal>
+                      )}
+                      </>
                     )
                   )}
                 </>
@@ -6140,7 +6199,7 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
   />
 </div></></div><div className="modal-actions"><button className="button" onClick={()=>setEditing(null)}>{editorLocked?'Close':'Cancel'}</button>{!editorLocked&&<button className="button primary" onClick={saveDeed} disabled={!complete || isDuplicateDeedNumber}><Save size={15}/>Save Deed</button>}</div></Modal>;})()}
  {shareholderCountDeed&&<Modal title="Shareholder Count" onClose={()=>setShareholderCountDeed(null)}><ShareholderCountContent rows={rowsFor(deeds.find(x=>x.id===shareholderCountDeed))}/><div className="modal-actions"><button className="button primary" onClick={()=>setShareholderCountDeed(null)}>Close</button></div></Modal>}
- {stakeholderList&&<Modal title="Stakeholders on this deed" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Klik untuk melihat detail lengkap stakeholder"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% shares · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="View full stakeholder details"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'View':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">No stakeholders on this deed yet.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Close</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER",idType:'NONE'}});setStakeholderList(null);}}><Plus size={15}/>Tambah shareholder</button></div></Modal>}
+ {stakeholderList&&<Modal title="Stakeholders on this deed" onClose={()=>setStakeholderList(null)}><div className="modal-body"><div className="legal-stakeholder-list">{rowsFor(deeds.find(x=>x.id===stakeholderList)).map((r,i)=><div className="legal-stakeholder-item interactive-stakeholder-card" key={r.id||i} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="Click to view full stakeholder details"><div className="legal-stakeholder-item-info"><div className="legal-stakeholder-avatar">{(r.name||r.firstName||'S').charAt(0).toUpperCase()}</div><div><b>{r.name||[r.firstName,r.lastName].filter(Boolean).join(' ')||`Stakeholder ${i+1}`}</b><small>{label(r.stakeholderType)} · {Number(r.sharePercentage||0).toFixed(2)}% shares · {label(r.representativeType||'SHAREHOLDER')}</small></div></div><div className="legal-row-buttons" onClick={e=>e.stopPropagation()}><button type="button" className="button small" style={{background:'#f8fafc',color:'#002060',borderColor:'#cbd5e1'}} onClick={()=>setViewStakeholderDetail({deedId:stakeholderList,index:i,stakeholder:r})} title="View full stakeholder details"><Eye size={13} style={{marginRight:'4px'}}/>Detail</button><button type="button" className="button small" onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:i,value:stakeholderEditorValues(r)});setStakeholderList(null);}}><Pencil size={13} style={{marginRight:'4px'}}/>{listLocked?'View':'Edit'}</button>{!listLocked&&<button type="button" className="button small legal-delete-button" onClick={()=>{setDeleteStakeholder({deedId:stakeholderList,index:i});setStakeholderList(null);}}><Trash2 size={13}/>Delete</button>}</div></div>)}{!rowsFor(deeds.find(x=>x.id===stakeholderList)).length&&<div className="empty-small">No stakeholders on this deed yet.</div>}</div></div><div className="modal-actions"><button className="button" onClick={()=>setStakeholderList(null)}>Close</button><button className="button primary" disabled={listLocked} onClick={()=>{setStakeholderModal({deedId:stakeholderList,index:-1,value:{...blank(stakeholderFields),representativeType:"SHAREHOLDER",idType:'NONE'}});setStakeholderList(null);}}><Plus size={15}/>Add shareholder</button></div></Modal>}
  {stakeholderModal && (
     <StakeholderModalDialog
       modal={stakeholderModal}

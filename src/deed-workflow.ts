@@ -1,5 +1,5 @@
 import {validateInput} from './input-validation';
-export const deedReviewLabels:Record<string,string>={DRAFT:'Draft',PENDING_CHECK:'Menunggu Arianti',PENDING_APPROVAL:'Menunggu Dellatra',APPROVED:'Disetujui',REJECTED:'Ditolak'};
+export const deedReviewLabels:Record<string,string>={DRAFT:'Draft',PENDING_CHECK:'Pending BS Check',PENDING_APPROVAL:'Pending Head BS Approval',APPROVED:'Disetujui',REJECTED:'Ditolak'};
 export class DeedWorkflowError extends Error{constructor(message:string,public status=422){super(message);}}
 const assert=(ok:unknown,message:string,status=422)=>{if(!ok)throw new DeedWorkflowError(message,status);};
 const fields=['id','type','source','createdAt','deedNumber','deedDate','ministerialDecreeNumber','ministerialDecreeDate','remarks','remarkCategoryId','remarkCategoryIds','categoryRemarks','infoAdded','parties','stakeholders'];

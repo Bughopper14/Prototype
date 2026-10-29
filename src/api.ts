@@ -32,8 +32,8 @@ async function remoteApi(path:string,method='GET',body?:any){
       return null;
     }
     const loginPath = window.location.pathname.startsWith('/crm-dashboard') ? '/crm-dashboard/' : (window.location.pathname.startsWith('/crm') ? '/crm/' : '/login');
-    window.location.replace(loginPath+'?timeout=1&reason='+encodeURIComponent('Sesi Anda telah berakhir. Silakan login kembali.'));
-    throw new Error('Sesi Anda telah berakhir. Mengalihkan ke login...');
+    window.location.replace(loginPath+'?timeout=1&reason='+encodeURIComponent('Your session has expired. Please log in again.'));
+    throw new Error('Your session has expired. Redirecting to login...');
   }
 
   const text=await response.text();
@@ -42,8 +42,8 @@ async function remoteApi(path:string,method='GET',body?:any){
   if(!response.ok){
     if(data?.code==='SESSION_TIMEOUT'||data?.code==='NO_SESSION'||data?.code==='SESSION_EXPIRED'){
       const loginPath = window.location.pathname.startsWith('/crm-dashboard') ? '/crm-dashboard/' : (window.location.pathname.startsWith('/crm') ? '/crm/' : '/login');
-      window.location.replace(loginPath+'?timeout=1&reason='+encodeURIComponent(data.error||'Sesi Anda telah berakhir. Silakan login kembali.'));
-      throw new Error(data.error||'Sesi berakhir');
+      window.location.replace(loginPath+'?timeout=1&reason='+encodeURIComponent(data.error||'Your session has expired. Please log in again.'));
+      throw new Error(data.error||'Session expired');
     }
     throw new Error(data.errors?.length?data.errors.map((x:any)=>`${x.field}: ${x.detail}`).join('\n'):data.message||data.error||'Request failed');
   }

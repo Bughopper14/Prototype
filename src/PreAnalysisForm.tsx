@@ -144,7 +144,7 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
     }
   });
   if (gs.holding.management) {
-    lines.push(`  - Pengurus: ${gs.holding.management}`);
+    lines.push(`  - Management: ${gs.holding.management}`);
   }
   (gs.subsidiaries || []).forEach(sub => {
     if (sub.name) {
@@ -156,7 +156,7 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
         }
       });
       if (sub.management) {
-        lines.push(`  - Pengurus: ${sub.management}`);
+        lines.push(`  - Management: ${sub.management}`);
       }
     }
   });
@@ -1702,7 +1702,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           gap: '4px'
                         }}
                       >
-                        + Tambah Anak Perusahaan
+                        + Add Subsidiary
                       </button>
                     </div>
 
@@ -1752,7 +1752,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         </div>
                       </div>
                       <div style={{ marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Pengurus / Catatan Manajemen</label>
+                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Management / Management Notes</label>
                         <input
                           type="text"
                           value={currentGroupStructure.holding?.management || ''}
@@ -1772,7 +1772,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             onClick={addHoldingShareholder}
                             style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '3px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                           >
-                            + Tambah Saham
+                            + Add Shareholder
                           </button>
                         </div>
                         {(currentGroupStructure.holding?.shareholders || []).map((sh, sIdx) => (
@@ -1805,7 +1805,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="button"
                               onClick={() => removeHoldingShareholder(sIdx)}
                               style={{ padding: '2px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.68rem' }}
-                              title="Hapus"
+                              title="Delete"
                             >
                               ✕
                             </button>
@@ -1830,7 +1830,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               onClick={() => removeSubsidiary(subIdx)}
                               style={{ fontSize: '0.65rem', padding: '1px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
                             >
-                              Hapus Entitas
+                              Delete Entity
                             </button>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
@@ -1869,7 +1869,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             </div>
                           </div>
                           <div style={{ marginBottom: '6px' }}>
-                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Pengurus / Manajemen</label>
+                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Management</label>
                             <input
                               type="text"
                               value={sub.management || ''}
