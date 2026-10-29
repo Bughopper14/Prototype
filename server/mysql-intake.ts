@@ -436,7 +436,7 @@ export async function transitionIntake(id:string,action:string,actor:{name:strin
   );
   const submitLock = await getSubmitLock(id);
   if(submitLock.isLocked){
-    throw mysqlError('Tombol submit terkunci (is_locked=1). Unggah dokumen FAP Stage terlebih dahulu di tab Documents.', 422);
+    throw mysqlError('Please upload the signed FAP Stage document in the Documents tab first.', 422);
   }
   if(docRows.length>0){
    const missingDocNames=docRows.map((r:any)=>r.document_name).join(', ');
