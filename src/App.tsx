@@ -607,42 +607,7 @@ export default function App(){
 
       {/* 3. Main Workspace (Full width, margin-left: 0) */}
       <main>
-        <header className="topbar">
-          <div className="breadcrumb">
-            <button
-              type="button"
-              className="icon-button topbar-drawer-btn"
-              onClick={() => setSidebarOpen(true)}
-              title="Navigation Menu"
-              aria-label="Open navigation menu"
-            >
-              <Menu size={18} color="#002c5f" />
-            </button>
-            <span>Workspace</span>
-            <ChevronRight size={14} />
-            <b>{selected ? 'Application details' : page}</b>
-          </div>
-          <button
-            type="button"
-            className="notification-bell"
-            aria-label="Notifikasi"
-            onClick={() => navigate('Notifications')}
-          >
-            <Bell size={19} />
-            {notifications.some(n => !n.readAt) && <span>{notifications.filter(n => !n.readAt).length}</span>}
-          </button>
-          <div className="topbar-right">
-            <span className="live-dot" />Indonesia <span className="divider" />{' '}
-            <span>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-            <span className="role-chip">
-              {import.meta.env.VITE_DEMO_MODE === 'true'
-                ? 'PUBLIC DEMO'
-                : checkIsAdmin(user)
-                ? 'ADMIN'
-                : user.roleBadge || user.displayRole || user.role}
-            </span>
-          </div>
-        </header>
+
 
         <div className="content">
           {globalError && (
