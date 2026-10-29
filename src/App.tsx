@@ -552,29 +552,6 @@ export default function App(){
      setLoading(false);
    }
  }
-  if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
-  if(!user)return <Login onLogin={setUser}/>;
-  const navigate=(p:string)=>{setPage(p);setSelected(null);setSidebarOpen(false);};
-
-  const handleLogout = async (e?: React.MouseEvent) => {
-    if (e) e.preventDefault();
-    if (window.location.pathname.startsWith('/crm-dashboard')) {
-      window.location.href = '/logout';
-      return;
-    }
-    try {
-      await api('/auth/logout', 'POST');
-    } catch {}
-    setUser(null);
-    setSelected(null);
-    setPage('Overview');
-    setRows([]);
-    setCustomers([]);
-    setNotifications([]);
-  };
-
-  const roleDisplay = user?.displayRole || (checkIsAdmin(user) ? 'Administrator' : user?.role === 'MKT' ? 'Marketing' : label(user?.role || ''));
-
   const crmNavDefinitions = [
     { name: 'Overview', icon: LayoutDashboard, color: '#38bdf8', authority: 'crm_view_overview', count: null },
     { name: 'Applications', icon: Files, color: '#fbbf24', authority: 'crm_view_applications', count: rows.length },
@@ -597,6 +574,29 @@ export default function App(){
       }
     }
   }, [user, page]);
+
+  if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
+  if(!user)return <Login onLogin={setUser}/>;
+  const navigate=(p:string)=>{setPage(p);setSelected(null);setSidebarOpen(false);};
+
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (window.location.pathname.startsWith('/crm-dashboard')) {
+      window.location.href = '/logout';
+      return;
+    }
+    try {
+      await api('/auth/logout', 'POST');
+    } catch {}
+    setUser(null);
+    setSelected(null);
+    setPage('Overview');
+    setRows([]);
+    setCustomers([]);
+    setNotifications([]);
+  };
+
+  const roleDisplay = user?.displayRole || (checkIsAdmin(user) ? 'Administrator' : user?.role === 'MKT' ? 'Marketing' : label(user?.role || ''));
 
 
   function startNewApplication(preselectedCustomerId?: string) {
@@ -940,7 +940,7 @@ function CustomerDirectory({
   rows: any[];
   user: any;
   open: (id: string) => void;
-  startNewApplication: (customerId?: string) => void;
+  startNewApplication?: (customerId?: string) => void;
   notify: (msg: string) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -1069,7 +1069,7 @@ function CustomerDirectory({
             onClick={() => {
               const a = rows.find(r => r.customer_id === c.id);
               if (a) open(a.id);
-              else if (user.role === 'MKT' || checkIsAdmin(user)) startNewApplication(c.id);
+              else if (user.role === 'MKT' || checkIsAdmin(user)) startNewApplication?.(c.id);
               else notify('This customer has no applications yet. Use New application to create one.');
             }}
           >
