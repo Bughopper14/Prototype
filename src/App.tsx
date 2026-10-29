@@ -4,7 +4,7 @@ import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard} from 'lucide-react';
+import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard,Key} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {
   FapSheetPreview,
@@ -238,49 +238,168 @@ export function checkIsAdmin(u: any): boolean {
     String(u.email || '').toLowerCase() === 'axel@liugongfinance.com'
   );
 }
-export default function App(){
- const [notifications,setNotifications]=useState<any[]>([]);
- const [user,setUser]=useState<any>(null),[ready,setReady]=useState(false),[page,setPage]=useState('Overview'),[rows,setRows]=useState<any[]>([]),[customers,setCustomers]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[detailTab,setDetailTab]=useState(0),[newOpen,setNewOpen]=useState(false),[toast,setToast]=useState(''),[globalError,setGlobalError]=useState(''),[mobile,setMobile]=useState(false),[loading,setLoading]=useState(false);
- const notify=(s:string)=>{setToast(s);setTimeout(()=>setToast(''),4500);};
- async function load(){setLoading(true);try{const [r,c,m,n]=await Promise.all([api('/applications'),api('/customers'),api('/master-data'),api('/notifications')]);setNotifications(n);setMasterData(m);setRows(r);setCustomers(c);setGlobalError('');}catch(e:any){setGlobalError(e.message);}finally{setLoading(false);}}
- useEffect(()=>{
-   api('/auth/me')
-     .then(u=>{
-       if(!u || (!u.username && !u.name && !u.id && !u.email)){
-         if(window.location.pathname.startsWith('/crm-dashboard')){
-           window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
-                   }
-                 } else {
-                   setUser(u);
-                 }
-               })
-               .catch(()=>{
-                 if(window.location.pathname.startsWith('/crm-dashboard')){
-                   window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
-       }
-     })
-     .finally(()=>setReady(true));
- },[]);
- useEffect(()=>{if(user)load();},[user]);
- useEffect(()=>{if(!user)return;let live=true;const refresh=()=>api('/notifications').then(n=>{if(live)setNotifications(n);}).catch(()=>{});const timer=setInterval(refresh,15000);window.addEventListener('storage',refresh);return()=>{live=false;clearInterval(timer);window.removeEventListener('storage',refresh);};},[user]);
- async function readNotification(id:string){try{await api('/notifications/'+id+'/read','PATCH',{});setNotifications(await api('/notifications'));}catch(e:any){setGlobalError(e.message);}}
- async function open(id:string,tab?:number){
-  setLoading(true);
-  try{
-    const app = await api('/applications/'+id);
-    const isPre = (app.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(app.status);
-    const resolvedTab = tab !== undefined ? tab : (isPre ? 8 : 0);
-    setDetailTab(resolvedTab);
-    setSelected(app);
-  }catch(e:any){
-    setGlobalError(e.message);
-  }finally{
-    setLoading(false);
-  }
+function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (msg: string) => void }) {
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword) {
+      setError('Semua field wajib diisi.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password baru minimal 6 karakter.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setError('Konfirmasi password tidak cocok.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) {
+        throw new Error(data.error || 'Gagal mengubah password.');
+      }
+      onSuccess('Password berhasil diubah.');
+      onClose();
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan saat mengubah password.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal title="Change Password" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="modal-body" style={{ minWidth: '320px', maxWidth: '440px', padding: '24px 28px' }}>
+        {error && <div className="error" style={{ marginBottom: '14px' }}>{error}</div>}
+        <label style={{ marginBottom: '14px' }}>
+          Current Password
+          <input
+            type="password"
+            required
+            value={currentPassword}
+            onChange={e => setCurrentPassword(e.target.value)}
+            placeholder="Masukkan password saat ini"
+          />
+        </label>
+        <label style={{ marginBottom: '14px' }}>
+          New Password
+          <input
+            type="password"
+            required
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            placeholder="Minimal 6 karakter"
+          />
+        </label>
+        <label style={{ marginBottom: '18px' }}>
+          Confirm New Password
+          <input
+            type="password"
+            required
+            value={confirmPassword}
+            onChange={e => setConfirmPassword(e.target.value)}
+            placeholder="Ulangi password baru"
+          />
+        </label>
+        <div className="modal-actions" style={{ padding: '16px 0 0 0', background: 'transparent', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <button type="button" className="button" onClick={onClose} disabled={loading}>
+            Batal
+          </button>
+          <button type="submit" className="button primary" disabled={loading} style={{ background: '#002c5f', borderColor: '#002c5f' }}>
+            {loading ? <Loader2 className="spin" size={15} /> : <Key size={15} />}
+            <span>Simpan Password</span>
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
 }
- if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
- if(!user)return <Login onLogin={setUser}/>;
- const navigate=(p:string)=>{setPage(p);setSelected(null);setMobile(false);};
+
+export default function App(){
+  const [notifications,setNotifications]=useState<any[]>([]);
+  const [user,setUser]=useState<any>(null),[ready,setReady]=useState(false),[page,setPage]=useState('Overview'),[rows,setRows]=useState<any[]>([]),[customers,setCustomers]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[detailTab,setDetailTab]=useState(0),[newOpen,setNewOpen]=useState(false),[toast,setToast]=useState(''),[globalError,setGlobalError]=useState(''),[sidebarOpen,setSidebarOpen]=useState(false),[changePasswordOpen,setChangePasswordOpen]=useState(false),[loading,setLoading]=useState(false);
+  const notify=(s:string)=>{setToast(s);setTimeout(()=>setToast(''),4500);};
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  async function load(){setLoading(true);try{const [r,c,m,n]=await Promise.all([api('/applications'),api('/customers'),api('/master-data'),api('/notifications')]);setNotifications(n);setMasterData(m);setRows(r);setCustomers(c);setGlobalError('');}catch(e:any){setGlobalError(e.message);}finally{setLoading(false);}}
+  useEffect(()=>{
+    api('/auth/me')
+      .then(u=>{
+        if(!u || (!u.username && !u.name && !u.id && !u.email)){
+          if(window.location.pathname.startsWith('/crm-dashboard')){
+            window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
+          }
+        } else {
+          setUser(u);
+        }
+      })
+      .catch(()=>{
+        if(window.location.pathname.startsWith('/crm-dashboard')){
+          window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
+        }
+      })
+      .finally(()=>setReady(true));
+  },[]);
+  useEffect(()=>{if(user)load();},[user]);
+  useEffect(()=>{if(!user)return;let live=true;const refresh=()=>api('/notifications').then(n=>{if(live)setNotifications(n);}).catch(()=>{});const timer=setInterval(refresh,15000);window.addEventListener('storage',refresh);return()=>{live=false;clearInterval(timer);window.removeEventListener('storage',refresh);};},[user]);
+  async function readNotification(id:string){try{await api('/notifications/'+id+'/read','PATCH',{});setNotifications(await api('/notifications'));}catch(e:any){setGlobalError(e.message);}}
+  async function open(id:string,tab?:number){
+   setLoading(true);
+   try{
+     const app = await api('/applications/'+id);
+     const isPre = (app.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(app.status);
+     const resolvedTab = tab !== undefined ? tab : (isPre ? 8 : 0);
+     setDetailTab(resolvedTab);
+     setSelected(app);
+   }catch(e:any){
+     setGlobalError(e.message);
+   }finally{
+     setLoading(false);
+   }
+ }
+  if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
+  if(!user)return <Login onLogin={setUser}/>;
+  const navigate=(p:string)=>{setPage(p);setSelected(null);setSidebarOpen(false);};
+
+  const handleLogout = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    if (window.location.pathname.startsWith('/crm-dashboard')) {
+      window.location.href = '/logout';
+      return;
+    }
+    try {
+      await api('/auth/logout', 'POST');
+    } catch {}
+    setUser(null);
+    setSelected(null);
+    setPage('Overview');
+    setRows([]);
+    setCustomers([]);
+    setNotifications([]);
+  };
+
+  const roleDisplay = user?.displayRole || (checkIsAdmin(user) ? 'Administrator' : user?.role === 'MKT' ? 'Marketing' : label(user?.role || ''));
+
   function startNewApplication(preselectedCustomerId?: string) {
     const isAdminUser = checkIsAdmin(user);
     if (!isAdminUser && user?.role !== 'MKT') {
@@ -333,8 +452,307 @@ export default function App(){
     setSelected(newAppDraft);
   }
 
-  return <div className="shell">{mobile&&<div className="sidebar-backdrop" onClick={()=>setMobile(false)} aria-label="Close navigation"/>}<aside className={'sidebar '+(mobile?'mobile-open':'')}><div className="sidebar-header"><Brand/><button className="icon-button sidebar-close" onClick={()=>setMobile(false)} aria-label="Close menu"><X size={20}/></button></div><a href={getGalleryUrl()} className="sidebar-gallery-btn" title="Kembali ke Gallery Aplikasi"><ArrowLeft size={16}/><span>Kembali ke Gallery</span></a><div className="workspace"><div className="workspace-logo"><Building2 size={18}/></div><div><b>Origination workspace</b><small>Indonesia operations</small></div><ChevronDown size={14}/></div><div className="nav-label">WORKSPACE</div><nav>{[[LayoutDashboard,'Overview'],[Files,'Applications'],[FolderCheck,'Document desk'],[Users,'Customers'],[Settings2,'Customize master data'],[Bell,'Notifications'],[Activity,'Activity']].map(([Icon,name]:any)=><button key={name} className={page===name?'active':''} onClick={()=>navigate(name)}><Icon size={19}/><span>{name}</span>{name==='Notifications'&&notifications.some(n=>!n.readAt)&&<em>{notifications.filter(n=>!n.readAt).length}</em>}{name==='Applications'&&<em>{rows.length}</em>}{name==='Customers'&&<em>{customers.length}</em>}</button>)}</nav><div className="sidebar-bottom"><a href={getGalleryUrl()} className="sidebar-gallery-btn-bottom" title="Kembali ke Gallery Aplikasi"><LayoutGrid size={15}/><span>Kembali ke Gallery</span></a><div className="security-note"><ShieldCheck size={20}/><div><b>Every step, accounted for.</b><small>Secure documents. Clear decisions.</small></div></div><button className="user-block" onClick={async()=>{if(window.location.pathname.startsWith('/crm-dashboard')){window.location.href='/logout';return;}await api('/auth/logout','POST');setUser(null);setSelected(null);setPage('Overview');setRows([]);setCustomers([]);setNotifications([]);}} title="Sign out"><span className="avatar">{user.name.split(' ').map((s:string)=>s[0]).slice(0,2).join('')}</span><span><b>{user.name}</b><small>{user.displayRole || (checkIsAdmin(user) ? 'Administrator' : user.role === 'MKT' ? 'Marketing' : label(user.role))} · Sign out</small></span><LogOut size={16}/></button></div></aside><main><header className="topbar"><div className="breadcrumb"><button className="icon-button mobile-toggle" onClick={()=>setMobile(!mobile)}><Menu size={20}/></button><span>Workspace</span><ChevronRight size={14}/><b>{selected?'Application details':page}</b></div><button className="notification-bell" aria-label="Notifikasi" onClick={()=>navigate('Notifications')}><Bell size={19}/>{notifications.some(n=>!n.readAt)&&<span>{notifications.filter(n=>!n.readAt).length}</span>}</button><div className="topbar-right"><span className="live-dot"/>Indonesia <span className="divider"/> <span>{new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</span><span className="role-chip">{import.meta.env.VITE_DEMO_MODE === 'true' ? 'PUBLIC DEMO' : (checkIsAdmin(user) ? 'ADMIN' : (user.roleBadge || user.displayRole || user.role))}</span></div></header><div className="content">{globalError&&<div className="error">{globalError}<button onClick={load}>Retry</button></div>}{loading&&<div className="loading-strip"/>}{selected?<Detail value={selected} user={user} customers={customers} initialTab={detailTab} onBack={()=>{setSelected(null);load();}} onChange={v=>{setSelected(v);load();}} onCustomerCreated={c=>setCustomers(prev=>[c,...prev])} notify={notify}/>:<><div className="page-heading"><div><div className="eyebrow">{page==='Overview'?'A CLEAR VIEW. A CONFIDENT NEXT STEP.':'LOAN ORIGINATION & MANAGEMENT'}</div><h1>{page==='Overview'?'Portfolio overview':page==='Notifications'?'Notifikasi':page}</h1><p>{({Overview:'Welcome back, '+user.name.split(' ')[0]+'. Here’s where your financing stands.',Applications:'Manage every application, from first contact to final approval.','Document desk':'Keep every document complete, verified, and ready for review.',Customers:'Your customer relationships, connected to every application.','Customize master data':'Pengaturan master data aplikasi.',Notifications:'Deed review and approval results that need follow-up.',Activity:'A transparent record of application decisions and updates.'} as any)[page]}</p></div>{(page==='Overview'||page==='Applications')&&<button className="button primary" onClick={()=>(user.role==='MKT'||checkIsAdmin(user))?startNewApplication():notify('Application creation is available for Marketing (MKT) and Administrator accounts.')}><Plus size={17}/>New application</button>}</div>{page==='Overview'&&<Overview rows={rows} user={user} open={open} navigate={navigate}/ >}{page==='Applications'&&<ApplicationTable rows={rows} open={open}/ >}{page==='Document desk'&&<DocumentDesk rows={rows} open={open} user={user}/ >}{page==='Customers'&&<CustomerDirectory customers={customers} rows={rows} user={user} open={open} startNewApplication={startNewApplication} notify={notify}/>}{page==='Customize master data'&&<MasterDataPage/>}{page==='Notifications'&&<NotificationsPage items={notifications} onRead={readNotification} onOpen={id=>open(id,5)}/>}{page==='Activity'&&<ActivityPage rows={rows} open={open}/>}</> }<footer><span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span><span>Origination workspace <i/> All amounts in IDR</span></footer></div></main>{toast&&<div className="toast"><CheckCheck size={18}/>{toast}</div>}</div>;
+  return (
+    <div className="shell shell-column">
+      {/* 1. Global Top Navbar (Gambar 3) */}
+      <header className="crm-top-navbar">
+        <div className="crm-nav-brand">
+          <div className="crm-brand-badge">
+            <img
+              src="/static/img/logo.png"
+              alt="LiuGong Logo"
+              style={{ height: '22px', width: 'auto' }}
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src =
+                  'https://www.static-src.com/wcsstore/Indraprastha/images/brandlogo//BRD-28844/liugong-logo.png';
+              }}
+            />
+          </div>
+          <div className="crm-brand-text">
+            <span className="crm-brand-title">CRM Dashboard</span>
+            <span className="crm-brand-subtitle">LOGIN SEBAGAI {roleDisplay.toUpperCase()}</span>
+          </div>
+        </div>
+
+        <div className="crm-nav-actions">
+          <a href={getGalleryUrl()} className="btn-apps-hub" title="Kembali ke Gallery Aplikasi">
+            <LayoutGrid size={15} color="#ff9900" />
+            <span>Apps Hub</span>
+          </a>
+          <button
+            type="button"
+            className="btn-burger-menu"
+            onClick={() => setSidebarOpen(true)}
+            title="Buka Menu Navigasi"
+            aria-label="Open navigation menu"
+          >
+            <Menu size={22} color="#ffffff" />
+          </button>
+        </div>
+      </header>
+
+      {/* 2. Offcanvas Navigation Drawer Backdrop & Drawer (Gambar 2 & 4) */}
+      {sidebarOpen && (
+        <div
+          className="crm-sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation overlay"
+        />
+      )}
+
+      <aside className={'crm-sidebar-drawer ' + (sidebarOpen ? 'drawer-open' : '')} aria-label="Main Navigation">
+        <div className="drawer-header">
+          <div className="drawer-brand-wrap">
+            <ShieldCheck size={20} color="#ff9900" />
+            <span className="drawer-title">CRM Dashboard</span>
+          </div>
+          <button
+            type="button"
+            className="drawer-close-btn"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Close menu"
+            title="Close navigation"
+          >
+            <X size={20} color="#ffffff" />
+          </button>
+        </div>
+
+        <div className="drawer-body">
+          <a
+            href={getGalleryUrl()}
+            className="sidebar-gallery-btn"
+            title="Kembali ke Gallery Aplikasi"
+            style={{ margin: '8px 12px 14px 12px' }}
+          >
+            <ArrowLeft size={16} />
+            <span>Kembali ke Gallery</span>
+          </a>
+
+          <div className="workspace" style={{ margin: '0 12px 16px 12px' }}>
+            <div className="workspace-logo"><Building2 size={18} /></div>
+            <div>
+              <b>Origination workspace</b>
+              <small>Indonesia operations</small>
+            </div>
+            <ChevronDown size={14} />
+          </div>
+
+          <div className="nav-label" style={{ padding: '0 16px', marginBottom: '8px' }}>WORKSPACE</div>
+
+          <nav>
+            {[
+              [LayoutDashboard, 'Overview', '#38bdf8'],
+              [Files, 'Applications', '#fbbf24'],
+              [FolderCheck, 'Document desk', '#34d399'],
+              [Users, 'Customers', '#60a5fa'],
+              [Settings2, 'Customize master data', '#c084fc'],
+              [Bell, 'Notifications', '#fb7185'],
+              [Activity, 'Activity', '#a3e635']
+            ].map(([Icon, name, iconColor]: any) => (
+              <button
+                key={name}
+                type="button"
+                className={'drawer-nav-item ' + (page === name ? 'active' : '')}
+                onClick={() => {
+                  navigate(name);
+                  setSidebarOpen(false);
+                }}
+              >
+                <Icon size={19} style={{ color: page === name ? '#002c5f' : iconColor, flexShrink: 0 }} />
+                <span>{name}</span>
+                {name === 'Notifications' && notifications.some(n => !n.readAt) && (
+                  <em>{notifications.filter(n => !n.readAt).length}</em>
+                )}
+                {name === 'Applications' && <em>{rows.length}</em>}
+                {name === 'Customers' && <em>{customers.length}</em>}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="drawer-footer">
+          <div className="drawer-user-info">
+            <div className="drawer-avatar">
+              {(user.name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="drawer-user-meta">
+              <div className="drawer-user-name" title={user.name}>{user.name}</div>
+              <small className="drawer-user-role">{checkIsAdmin(user) ? 'System Administrator' : roleDisplay}</small>
+            </div>
+          </div>
+
+          <div className="drawer-actions">
+            <a href={getGalleryUrl()} className="btn-apps-hub drawer-action-btn" title="Kembali ke Apps Hub">
+              <LayoutGrid size={15} color="#ff9900" />
+              <span>Apps Hub</span>
+            </a>
+            <button
+              type="button"
+              className="btn-drawer-outline"
+              onClick={() => {
+                setSidebarOpen(false);
+                setChangePasswordOpen(true);
+              }}
+            >
+              <Key size={15} color="#ff9900" />
+              <span>Change Password</span>
+            </button>
+            <a href="/logout" className="btn-drawer-danger" onClick={handleLogout}>
+              <LogOut size={15} />
+              <span>Logout</span>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      {/* 3. Main Workspace (Full width, margin-left: 0) */}
+      <main>
+        <header className="topbar">
+          <div className="breadcrumb">
+            <button
+              type="button"
+              className="icon-button topbar-drawer-btn"
+              onClick={() => setSidebarOpen(true)}
+              title="Menu Navigasi"
+              aria-label="Open navigation menu"
+            >
+              <Menu size={18} color="#002c5f" />
+            </button>
+            <span>Workspace</span>
+            <ChevronRight size={14} />
+            <b>{selected ? 'Application details' : page}</b>
+          </div>
+          <button
+            type="button"
+            className="notification-bell"
+            aria-label="Notifikasi"
+            onClick={() => navigate('Notifications')}
+          >
+            <Bell size={19} />
+            {notifications.some(n => !n.readAt) && <span>{notifications.filter(n => !n.readAt).length}</span>}
+          </button>
+          <div className="topbar-right">
+            <span className="live-dot" />Indonesia <span className="divider" />{' '}
+            <span>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span className="role-chip">
+              {import.meta.env.VITE_DEMO_MODE === 'true'
+                ? 'PUBLIC DEMO'
+                : checkIsAdmin(user)
+                ? 'ADMIN'
+                : user.roleBadge || user.displayRole || user.role}
+            </span>
+          </div>
+        </header>
+
+        <div className="content">
+          {globalError && (
+            <div className="error">
+              {globalError}
+              <button onClick={load}>Retry</button>
+            </div>
+          )}
+          {loading && <div className="loading-strip" />}
+          {selected ? (
+            <Detail
+              value={selected}
+              user={user}
+              customers={customers}
+              initialTab={detailTab}
+              onBack={() => {
+                setSelected(null);
+                load();
+              }}
+              onChange={v => {
+                setSelected(v);
+                load();
+              }}
+              onCustomerCreated={c => setCustomers(prev => [c, ...prev])}
+              notify={notify}
+            />
+          ) : (
+            <>
+              <div className="page-heading">
+                <div>
+                  <div className="eyebrow">
+                    {page === 'Overview' ? 'A CLEAR VIEW. A CONFIDENT NEXT STEP.' : 'LOAN ORIGINATION & MANAGEMENT'}
+                  </div>
+                  <h1>{page === 'Overview' ? 'Portfolio overview' : page === 'Notifications' ? 'Notifikasi' : page}</h1>
+                  <p>
+                    {
+                      (
+                        {
+                          Overview: `Welcome back, ${user.name.split(' ')[0]}. Here’s where your financing stands.`,
+                          Applications: 'Manage every application, from first contact to final approval.',
+                          'Document desk': 'Keep every document complete, verified, and ready for review.',
+                          Customers: 'Your customer relationships, connected to every application.',
+                          'Customize master data': 'Pengaturan master data aplikasi.',
+                          Notifications: 'Deed review and approval results that need follow-up.',
+                          Activity: 'A transparent record of application decisions and updates.'
+                        } as any
+                      )[page]
+                    }
+                  </p>
+                </div>
+                {(page === 'Overview' || page === 'Applications') && (
+                  <button
+                    className="button primary"
+                    onClick={() =>
+                      user.role === 'MKT' || checkIsAdmin(user)
+                        ? startNewApplication()
+                        : notify('Application creation is available for Marketing (MKT) and Administrator accounts.')
+                    }
+                  >
+                    <Plus size={17} />New application
+                  </button>
+                )}
+              </div>
+              {page === 'Overview' && <Overview rows={rows} user={user} open={open} navigate={navigate} />}
+              {page === 'Applications' && <ApplicationTable rows={rows} open={open} />}
+              {page === 'Document desk' && <DocumentDesk rows={rows} open={open} user={user} />}
+              {page === 'Customers' && (
+                <CustomerDirectory
+                  customers={customers}
+                  rows={rows}
+                  user={user}
+                  open={open}
+                  startNewApplication={startNewApplication}
+                  notify={notify}
+                />
+              )}
+              {page === 'Customize master data' && <MasterDataPage />}
+              {page === 'Notifications' && (
+                <NotificationsPage items={notifications} onRead={readNotification} onOpen={id => open(id, 5)} />
+              )}
+              {page === 'Activity' && <ActivityPage rows={rows} open={open} />}
+            </>
+          )}
+          <footer>
+            <span>© {new Date().getFullYear()} PT LiuGong Finance Indonesia</span>
+            <span>
+              Origination workspace <i /> All amounts in IDR
+            </span>
+          </footer>
+        </div>
+      </main>
+
+      {/* Change Password Modal */}
+      {changePasswordOpen && (
+        <ChangePasswordModal
+          onClose={() => setChangePasswordOpen(false)}
+          onSuccess={msg => notify(msg)}
+        />
+      )}
+
+      {toast && (
+        <div className="toast">
+          <CheckCheck size={18} />
+          {toast}
+        </div>
+      )}
+    </div>
+  );
 }
+
 function Overview({rows,user,open,navigate}:{rows:any[],user:any,open:(id:string,tab?:number)=>void,navigate:(p:string)=>void}){const needs=rows.filter(r=>user.role==='MKT'?['DRAFT','RETURNED'].includes(r.status)||(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='REJECTED'):user.role==='BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_CHECK'):user.role==='HEAD_BS'?(r.legal?.deeds||[]).some((d:any)=>reviewStatus(d)==='PENDING_APPROVAL'):user.role==='CA'||user.role==='LEGAL'?r.status==='IN_CA_LEGAL_REVIEW':user.role==='COMMITTEE'?r.status==='CREDIT_COMMITTEE_REVIEW':false);const total=rows.reduce((s,r)=>s+Number(r.financing_value||0),0),approved=rows.filter(r=>r.status==='APPROVED'),review=rows.filter(r=>['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW'].includes(r.status));const stages=[['DRAFT','Draft'],['SUBMITTED_TO_BS','BS verification'],['IN_CA_LEGAL_REVIEW','CA & Legal'],['CREDIT_COMMITTEE_REVIEW','Committee'],['APPROVED','Approved']];return <><div className="stats-grid">{[[BriefcaseBusiness,'Total applications',String(rows.length),'Across all branches'],[Wallet,'Financing portfolio',money(total,true),'Total requested financing'],[Clock,'In review',String(review.length),'Moving through the workflow'],[ShieldCheck,'Approved financing',money(approved.reduce((s,r)=>s+Number(r.financing_value),0),true),approved.length+' approved applications']].map(([Icon,title,value,sub]:any,i)=><div className={'stat-card stat-'+i} key={title}><div className="stat-top"><span>{title}</span><Icon size={18}/></div><strong>{value}</strong><small>{i===3?<span className="tiny-brand"><Check size={13}/></span>:<span className="stat-dot"/>}{sub}</small></div>)}</div><div className="overview-mid"><section className="panel pipeline"><div className="panel-head"><div><h2>Application pipeline</h2><p>From opportunity to approval</p></div><span className="subtle-chip">All applications <ChevronDown size={13}/></span></div><div className="pipeline-chart">{stages.map(([s,l],i)=>{const count=rows.filter(r=>r.status===s||(s==='SUBMITTED_TO_BS'&&r.status==='BS_VERIFIED')).length;return <button className="pipeline-stage" key={s} onClick={()=>navigate('Applications')}><div className="bar-top"><strong>{String(count).padStart(2,'0')}</strong><span>{rows.length?Math.round(count/rows.length*100):0}%</span></div><div className="bar-track"><div style={{height:Math.max(8,count/Math.max(1,...stages.map(([s])=>rows.filter(r=>r.status===s).length))*100)+'%'}} className={'bar bar-'+i}/></div><span>{l}</span></button>;})}</div><div className="pipeline-foot"><span><i/> {review.length} applications are currently under review</span><button className="text-link" onClick={()=>navigate('Applications')}>View pipeline <ArrowRight size={14}/></button></div></section><section className="attention panel"><div className="panel-head"><h2>Needs attention</h2><span className="count-pill">{needs.length}</span></div>{needs.slice(0,3).map(r=><button className="attention-item" key={r.id} onClick={()=>open(r.id,['BS','HEAD_BS'].includes(user.role)||r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?5:0)}><span className={'attention-icon '+(r.status==='RETURNED'?'orange':'')}><AlertCircle size={18}/></span><div><b>{user.role==='BS'?'Review deed document':user.role==='HEAD_BS'?'Approve deed document':user.role==='MKT'?r.legal?.deeds?.some((d:any)=>reviewStatus(d)==='REJECTED')?'Fix the rejected deed':r.status==='RETURNED'?'Application returned':'Complete your draft':'Review application'}</b><span>{r.company_name}</span><small>{r.fap_number}</small></div><ChevronRight size={16}/></button>)}{!needs.length&&<div className="empty-small">You’re all caught up.</div>}<div className="attention-bottom"><ShieldCheck size={17}/><span>Complete documents keep financing moving.</span></div></section></div><ApplicationTable rows={rows} open={open} compact onViewAll={()=>navigate('Applications')}/></>;}
 function ApplicationTable({rows,open,compact=false,documentMode=false,onViewAll}:{rows:any[],open:(id:string)=>void,compact?:boolean,documentMode?:boolean,onViewAll?:()=>void}){const [search,setSearch]=useState(''),[status,setStatus]=useState('ALL'),[branch,setBranch]=useState('ALL'),[start,setStart]=useState(''),[end,setEnd]=useState(''),[page,setPage]=useState(0),[dates,setDates]=useState(false);const filtered=rows.filter(r=>(r.company_name+' '+r.fap_number).toLowerCase().includes(search.toLowerCase())&&(status==='ALL'||r.status===status)&&(branch==='ALL'||r.branch_code===branch)&&(!start||String(r.application_date).slice(0,10)>=start)&&(!end||String(r.application_date).slice(0,10)<=end));useEffect(()=>setPage(0),[search,status,branch,start,end]);const count=compact?5:8;const visible=filtered.slice(page*count,(page+1)*count);function exportCsv(){const lines=[['FAP','Customer','Branch','Status','Financing IDR','Date'],...filtered.map(r=>[r.fap_number,r.company_name,r.branch_code,statusLabel[r.status],r.financing_value||0,String(r.application_date).slice(0,10)])];const csv=lines.map(r=>r.map(v=>'"'+String(v).replace(/^[=+@-]/,"' $&").replaceAll('"','""')+'"').join(',')).join('\r\n');const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='liugong-applications.csv';a.click();URL.revokeObjectURL(url);}return <section className="panel applications-panel"><div className="panel-head"><h2>{compact?'Recent applications':documentMode?'Document verification queue':'All applications'} <span>{rows.length}</span></h2>{compact?<button className="text-link" onClick={onViewAll}>View all applications <ArrowUpRight size={16}/></button>:<button className="button small" onClick={exportCsv}><Download size={15}/>Export</button>}</div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search applications" placeholder="Search company or FAP number…" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter status" value={status} onChange={e=>setStatus(e.target.value)}><option value="ALL">All statuses</option>{Object.entries(statusLabel).map(([s,l])=><option key={s} value={s}>{l}</option>)}</select><select aria-label="Filter branch" value={branch} onChange={e=>setBranch(e.target.value)}><option value="ALL">All branches</option>{[...new Set(rows.map(r=>r.branch_code))].sort().map(b=><option key={b}>{b}</option>)}</select><button className={'button small '+(dates?'selected':'')} onClick={()=>setDates(!dates)}><Settings2 size={15}/><span>Dates</span></button></div></div>{dates&&<div className="date-filter"><label>From <input type="date" value={start} onChange={e=>setStart(e.target.value)}/></label><label>To <input type="date" value={end} onChange={e=>setEnd(e.target.value)}/></label><button className="text-link" onClick={()=>{setStart('');setEnd('');}}>Clear dates</button></div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>COMPANY / APPLICATION</th><th>BRANCH</th><th>FINANCING AMOUNT</th><th>STATUS</th><th>DOCUMENTS</th><th>APPLICATION DATE</th><th/></tr></thead><tbody>{visible.map((r,i)=><tr key={r.id} onClick={()=>open(r.id)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter')open(r.id);}}><td><div className="company-cell"><span className={'company-icon tint-'+i%3}><Building2 size={18}/></span><div><b>{r.company_name}</b><small>{r.fap_number} <span>· {label(r.company_type)}</span></small></div></div></td><td><span className="branch">{r.branch_code}</span></td><td><b className="amount">{money(r.financing_value)}</b><small>{r.tenor_months?r.tenor_months+' months':'Proposal pending'}</small></td><td><Badge status={r.status}/></td><td><div className="doc-progress"><span><i style={{width:(r.verified_docs/Math.max(1,r.total_docs)*100)+'%'}}/></span><small>{r.verified_docs}/{r.total_docs}</small></div></td><td className="date-cell">{date(r.application_date)}</td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><Search size={26}/><h3>No applications found</h3><p>Try a different search or filter.</p></div>}</div><div className="table-foot"><span>Showing {filtered.length?page*count+1:0}–{Math.min((page+1)*count,filtered.length)} of {filtered.length} applications</span><div><button className="icon-button" aria-label="Previous page" disabled={!page} onClick={()=>setPage(page-1)}><ChevronLeft size={16}/></button><span className="page-number">{page+1}</span><button className="icon-button" aria-label="Next page" disabled={(page+1)*count>=filtered.length} onClick={()=>setPage(page+1)}><ChevronRight size={16}/></button></div></div></section>;}
 function CustomerDirectory({

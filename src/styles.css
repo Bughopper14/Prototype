@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap");
 
 html {
@@ -4555,4 +4556,407 @@ input.preana-input-greyed-out:focus {
   border-color: #94a3b8 !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+
+/* ==========================================================================
+   USER MANAGEMENT THEME & OFFCANVAS DRAWER (Outfitted for CRM Dashboard)
+   ========================================================================== */
+*, *::before, *::after,
+body, button, input, select, textarea, h1, h2, h3, h4, h5, h6, .shell {
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+}
+
+.shell {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+}
+
+main {
+  margin-left: 0 !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 !important;
+}
+
+.loading-strip {
+  left: 0 !important;
+}
+
+/* ===== TOP NAVBAR (Gambar 3) ===== */
+.crm-top-navbar {
+  background-color: #002c5f !important;
+  box-shadow: 0 4px 20px rgba(0, 44, 95, 0.15) !important;
+  border-bottom: 3px solid #ff9900 !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 24px !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+}
+
+.crm-nav-brand {
+  display: flex !important;
+  align-items: center !important;
+  text-decoration: none !important;
+  color: #ffffff !important;
+  gap: 12px !important;
+}
+
+.crm-brand-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #ffffff !important;
+  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.crm-brand-badge img {
+  height: 22px !important;
+  width: auto !important;
+  object-fit: contain !important;
+  display: block !important;
+}
+
+.crm-brand-text {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+}
+
+.crm-brand-title {
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  font-size: 1.05rem !important;
+  letter-spacing: -0.2px !important;
+  line-height: 1.15 !important;
+  margin: 0 !important;
+}
+
+.crm-brand-subtitle {
+  font-size: 0.65rem !important;
+  letter-spacing: 1px !important;
+  text-transform: uppercase !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  margin-top: 3px !important;
+}
+
+.crm-nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.btn-apps-hub {
+  color: #ffffff !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 8px !important;
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  transition: all 0.2s ease-in-out !important;
+  cursor: pointer !important;
+}
+
+.btn-apps-hub svg {
+  color: #ff9900 !important;
+  transition: color 0.2s ease-in-out !important;
+}
+
+.btn-apps-hub:hover {
+  color: #002c5f !important;
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-apps-hub:hover svg {
+  color: #002c5f !important;
+}
+
+.btn-burger-menu {
+  background: transparent !important;
+  border: 0 !important;
+  color: #ffffff !important;
+  padding: 6px !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 0.15s !important;
+}
+
+.btn-burger-menu:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* ===== OFFCANVAS SIDEBAR DRAWER (Gambar 2 & 4) ===== */
+.crm-sidebar-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  z-index: 9998 !important;
+  animation: sidebarFadeIn 0.2s ease-out !important;
+}
+
+aside.crm-sidebar-drawer {
+  width: 280px !important;
+  max-width: 85vw !important;
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  background-color: #002c5f !important;
+  color: #f1f5f9 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  padding: 0 !important;
+  z-index: 9999 !important;
+  box-shadow: 10px 0 35px rgba(0, 0, 0, 0.4) !important;
+  transform: translateX(-100%) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border-right: none !important;
+}
+
+aside.crm-sidebar-drawer.drawer-open {
+  transform: translateX(0) !important;
+}
+
+.drawer-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 16px 20px !important;
+  background-color: #001f42 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.drawer-brand-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.drawer-title {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+}
+
+.drawer-close-btn {
+  background: transparent !important;
+  border: 0 !important;
+  color: #ffffff !important;
+  padding: 6px !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s !important;
+}
+
+.drawer-close-btn:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+.drawer-body {
+  flex: 1 !important;
+  overflow-y: auto !important;
+  padding: 14px 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.drawer-body nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 4px !important;
+}
+
+.drawer-nav-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 12px 18px !important;
+  margin: 3px 12px !important;
+  border: 0 !important;
+  background: transparent !important;
+  text-align: left !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  border-radius: 8px !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  transition: background-color 0.2s, color 0.2s !important;
+  cursor: pointer !important;
+}
+
+.drawer-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+.drawer-nav-item.active {
+  background-color: #ff9900 !important;
+  color: #002c5f !important;
+  font-weight: 700 !important;
+}
+
+.drawer-nav-item.active svg {
+  color: #002c5f !important;
+}
+
+.drawer-nav-item em {
+  font-size: 10.5px !important;
+  font-style: normal !important;
+  margin-left: auto !important;
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  padding: 2px 8px !important;
+  font-weight: 700 !important;
+}
+
+.drawer-nav-item.active em {
+  background: #002c5f !important;
+  color: #ff9900 !important;
+}
+
+/* Drawer User Profile & Footer (Gambar 2) */
+.drawer-footer {
+  padding: 18px !important;
+  background-color: #001f42 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 14px !important;
+}
+
+.drawer-user-info {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.drawer-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background-color: #ff9900 !important;
+  color: #002c5f !important;
+  font-weight: 700 !important;
+  font-size: 1.05rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.drawer-user-meta {
+  overflow: hidden !important;
+}
+
+.drawer-user-name {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 13.5px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.drawer-user-role {
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-size: 11px !important;
+  display: block !important;
+}
+
+.drawer-actions {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.drawer-action-btn {
+  width: 100% !important;
+  justify-content: center !important;
+}
+
+.btn-drawer-outline {
+  width: 100% !important;
+  padding: 8px 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  transition: all 0.2s !important;
+  cursor: pointer !important;
+}
+
+.btn-drawer-outline:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border-color: #ffffff !important;
+}
+
+.btn-drawer-danger {
+  width: 100% !important;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  text-decoration: none !important;
+  transition: all 0.2s !important;
+  cursor: pointer !important;
+}
+
+.btn-drawer-danger:hover {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+
+.topbar-drawer-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-right: 6px !important;
+}
+
+.topbar {
+  height: 50px !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding: 0 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 20px !important;
 }
