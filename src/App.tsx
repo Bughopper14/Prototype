@@ -18,7 +18,7 @@ import { ActivityPage, EnhancedNotificationsPage } from './ActivityAndNotificati
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard,Key} from 'lucide-react';
+import {ShieldAlert,LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard,Key} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {
   FapSheetPreview,
@@ -252,6 +252,79 @@ export function checkIsAdmin(u: any): boolean {
     String(u.email || '').toLowerCase() === 'axel@liugongfinance.com'
   );
 }
+
+export function hasAuthority(u: any, authorityName: string): boolean {
+  if (!u) return false;
+  if (checkIsAdmin(u)) return true;
+  if (Array.isArray(u.authorities)) {
+    return u.authorities.includes(authorityName);
+  }
+  const roleCode = String(u.role || '').toUpperCase();
+  const defaults: Record<string, string[]> = {
+    MKT: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications', 'crm_create_application',
+      'crm_view_customers', 'crm_manage_customers', 'crm_view_notifications',
+      'crm_quick_add_master_option', 'crm_view_app_customer_pic', 'crm_edit_app_customer_pic',
+      'crm_workflow_submit'
+    ],
+    BS: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications', 'crm_view_document_desk',
+      'crm_manage_document_desk', 'crm_view_customers', 'crm_manage_customers', 'crm_view_master_data',
+      'crm_manage_master_data', 'crm_view_notifications', 'crm_view_activity',
+      'crm_quick_add_master_option', 'crm_view_app_customer_pic', 'crm_view_app_legal',
+      'crm_view_app_stakeholders', 'crm_view_app_business_banks', 'crm_view_app_financial',
+      'crm_view_app_documents', 'crm_view_app_financing_units', 'crm_view_app_activity',
+      'crm_edit_app_customer_pic', 'crm_edit_app_legal', 'crm_verify_app_documents',
+      'crm_workflow_verify_bs', 'crm_workflow_start_review'
+    ],
+    HEAD_BS: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications', 'crm_view_document_desk',
+      'crm_manage_document_desk', 'crm_view_customers', 'crm_manage_customers', 'crm_view_master_data',
+      'crm_manage_master_data', 'crm_view_notifications', 'crm_view_activity',
+      'crm_quick_add_master_option', 'crm_view_app_customer_pic', 'crm_view_app_legal',
+      'crm_view_app_stakeholders', 'crm_view_app_business_banks', 'crm_view_app_financial',
+      'crm_view_app_documents', 'crm_view_app_financing_units', 'crm_view_app_activity',
+      'crm_verify_app_documents', 'crm_workflow_verify_bs', 'crm_workflow_start_review'
+    ],
+    CA: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications', 'crm_view_document_desk',
+      'crm_view_customers', 'crm_view_notifications', 'crm_view_activity',
+      'crm_view_app_customer_pic', 'crm_view_app_legal', 'crm_view_app_stakeholders',
+      'crm_view_app_business_banks', 'crm_view_app_financial', 'crm_view_app_documents',
+      'crm_view_app_financing_units', 'crm_view_app_activity', 'crm_edit_app_business_banks',
+      'crm_edit_app_financial', 'crm_verify_app_documents', 'crm_workflow_signoff_ca', 'crm_workflow_return'
+    ],
+    LEGAL: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications', 'crm_view_document_desk',
+      'crm_view_customers', 'crm_view_notifications', 'crm_view_activity',
+      'crm_view_app_legal', 'crm_view_app_stakeholders', 'crm_view_app_business_banks',
+      'crm_view_app_financial', 'crm_edit_app_legal', 'crm_edit_app_stakeholders',
+      'crm_workflow_signoff_legal', 'crm_workflow_return'
+    ],
+    COMMITTEE: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications', 'crm_view_document_desk',
+      'crm_view_customers', 'crm_view_notifications', 'crm_view_activity',
+      'crm_view_app_customer_pic', 'crm_view_app_legal', 'crm_view_app_stakeholders',
+      'crm_view_app_business_banks', 'crm_view_app_financial', 'crm_view_app_documents',
+      'crm_view_app_financing_units', 'crm_view_app_activity', 'crm_workflow_committee', 'crm_workflow_return'
+    ],
+    QA: [
+      'access_crm_dashboard', 'crm_view_applications', 'crm_view_document_desk',
+      'crm_view_customers', 'crm_view_notifications', 'crm_view_activity',
+      'crm_view_app_customer_pic', 'crm_view_app_legal', 'crm_view_app_stakeholders',
+      'crm_view_app_business_banks', 'crm_view_app_financial', 'crm_view_app_documents',
+      'crm_view_app_financing_units', 'crm_view_app_activity', 'crm_workflow_start_review'
+    ],
+    FINANCE: [
+      'access_crm_dashboard', 'crm_view_overview', 'crm_view_applications',
+      'crm_view_app_financial', 'crm_view_app_documents', 'crm_view_app_financing_units',
+      'crm_view_app_activity', 'crm_edit_app_business_banks', 'crm_edit_app_financing_units',
+      'crm_edit_app_financial'
+    ]
+  };
+  return Boolean(defaults[roleCode]?.includes(authorityName));
+}
+
 function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (msg: string) => void }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -502,6 +575,30 @@ export default function App(){
 
   const roleDisplay = user?.displayRole || (checkIsAdmin(user) ? 'Administrator' : user?.role === 'MKT' ? 'Marketing' : label(user?.role || ''));
 
+  const crmNavDefinitions = [
+    { name: 'Overview', icon: LayoutDashboard, color: '#38bdf8', authority: 'crm_view_overview', count: null },
+    { name: 'Applications', icon: Files, color: '#fbbf24', authority: 'crm_view_applications', count: rows.length },
+    { name: 'Document desk', icon: FolderCheck, color: '#34d399', authority: 'crm_view_document_desk', count: null },
+    { name: 'Customers', icon: Users, color: '#60a5fa', authority: 'crm_view_customers', count: customers.length },
+    { name: 'Customize master data', icon: Settings2, color: '#c084fc', authority: 'crm_view_master_data', count: null },
+    { name: 'Notifications', icon: Bell, color: '#fb7185', authority: 'crm_view_notifications', count: unreadNotificationsCount },
+    { name: 'Activity', icon: Activity, color: '#a3e635', authority: 'crm_view_activity', count: unreadActivitiesCount }
+  ];
+
+  const allowedNavItems = crmNavDefinitions.filter(item => hasAuthority(user, item.authority));
+
+  useEffect(() => {
+    if (!user) return;
+    const currentNav = crmNavDefinitions.find(item => item.name === page);
+    if (currentNav && !hasAuthority(user, currentNav.authority)) {
+      const firstAllowed = crmNavDefinitions.find(item => hasAuthority(user, item.authority));
+      if (firstAllowed) {
+        setPage(firstAllowed.name);
+      }
+    }
+  }, [user, page]);
+
+
   function startNewApplication(preselectedCustomerId?: string) {
     const isAdminUser = checkIsAdmin(user);
     if (!isAdminUser && user?.role !== 'MKT') {
@@ -633,15 +730,7 @@ export default function App(){
 
 
           <nav>
-            {[
-              [LayoutDashboard, 'Overview', '#38bdf8'],
-              [Files, 'Applications', '#fbbf24'],
-              [FolderCheck, 'Document desk', '#34d399'],
-              [Users, 'Customers', '#60a5fa'],
-              [Settings2, 'Customize master data', '#c084fc'],
-              [Bell, 'Notifications', '#fb7185'],
-              [Activity, 'Activity', '#a3e635']
-            ].map(([Icon, name, iconColor]: any) => (
+            {allowedNavItems.map(({ name, icon: Icon, color, count }) => (
               <button
                 key={name}
                 type="button"
@@ -651,16 +740,11 @@ export default function App(){
                   setSidebarOpen(false);
                 }}
               >
-                <Icon size={20} style={{ color: page === name ? '#002c5f' : iconColor, flexShrink: 0 }} />
+                <Icon size={20} style={{ color: page === name ? '#002c5f' : color, flexShrink: 0 }} />
                 <span>{name}</span>
-                {name === 'Notifications' && unreadNotificationsCount > 0 && (
-                  <em>{unreadNotificationsCount}</em>
+                {Boolean(count && count > 0) && (
+                  <em>{count}</em>
                 )}
-                {name === 'Activity' && unreadActivitiesCount > 0 && (
-                  <em>{unreadActivitiesCount}</em>
-                )}
-                {name === 'Applications' && <em>{rows.length}</em>}
-                {name === 'Customers' && <em>{customers.length}</em>}
               </button>
             ))}
           </nav>
@@ -754,50 +838,64 @@ export default function App(){
                     }
                   </p>
                 </div>
-                {(page === 'Overview' || page === 'Applications') && (
+                {(page === 'Overview' || page === 'Applications') && hasAuthority(user, 'crm_create_application') && (
                   <button
                     className="button primary"
-                    onClick={() =>
-                      user.role === 'MKT' || checkIsAdmin(user)
-                        ? startNewApplication()
-                        : notify('Application creation is available for Marketing (MKT) and Administrator accounts.')
-                    }
+                    onClick={() => startNewApplication()}
                   >
                     <Plus size={17} />New application
                   </button>
                 )}
               </div>
-              {page === 'Overview' && <Overview rows={rows} user={user} open={open} navigate={navigate} />}
-              {page === 'Applications' && <ApplicationTable rows={rows} open={open} />}
-              {page === 'Document desk' && <DocumentDesk rows={rows} open={open} user={user} />}
-              {page === 'Customers' && (
-                <CustomerDirectory
-                  customers={customers}
-                  rows={rows}
-                  user={user}
-                  open={open}
-                  startNewApplication={startNewApplication}
-                  notify={notify}
-                />
-              )}
-              {page === 'Customize master data' && <MasterDataPage />}
-              {page === 'Notifications' && (
-                <EnhancedNotificationsPage
-                  notifications={allNotifications}
-                  readNotificationIds={readNotificationIds}
-                  onOpen={open}
-                  onMarkRead={handleMarkNotificationRead}
-                  onMarkAllRead={handleMarkAllNotificationsRead}
-                />
-              )}
-              {page === 'Activity' && (
-                <ActivityPage
-                  activities={activities}
-                  readActivityIds={readActivityIds}
-                  onOpen={open}
-                  onMarkRead={handleMarkActivityRead}
-                  onMarkAllRead={handleMarkAllActivitiesRead}
-                />
+              {crmNavDefinitions.find(i => i.name === page) && !hasAuthority(user, crmNavDefinitions.find(i => i.name === page)!.authority) ? (
+                <div style={{ textAlign: 'center', padding: '60px 20px', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', margin: '20px 0' }}>
+                  <ShieldAlert size={48} color="#ef4444" style={{ marginBottom: '16px' }} />
+                  <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>Akses Dibatasi</h2>
+                  <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '480px', margin: '0 auto 20px' }}>
+                    Akun Anda ({roleDisplay}) tidak memiliki izin ({crmNavDefinitions.find(i => i.name === page)?.authority}) untuk melihat halaman {page}.
+                  </p>
+                  <button className="button primary" onClick={() => {
+                    const firstAllowed = crmNavDefinitions.find(i => hasAuthority(user, i.authority));
+                    if (firstAllowed) setPage(firstAllowed.name);
+                  }}>
+                    Kembali ke Dashboard
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {page === 'Overview' && hasAuthority(user, 'crm_view_overview') && <Overview rows={rows} user={user} open={open} navigate={navigate} />}
+                  {page === 'Applications' && hasAuthority(user, 'crm_view_applications') && <ApplicationTable rows={rows} open={open} />}
+                  {page === 'Document desk' && hasAuthority(user, 'crm_view_document_desk') && <DocumentDesk rows={rows} open={open} user={user} />}
+                  {page === 'Customers' && hasAuthority(user, 'crm_view_customers') && (
+                    <CustomerDirectory
+                      customers={customers}
+                      rows={rows}
+                      user={user}
+                      open={open}
+                      startNewApplication={hasAuthority(user, 'crm_create_application') ? startNewApplication : undefined}
+                      notify={notify}
+                    />
+                  )}
+                  {page === 'Customize master data' && hasAuthority(user, 'crm_view_master_data') && <MasterDataPage />}
+                  {page === 'Notifications' && hasAuthority(user, 'crm_view_notifications') && (
+                    <EnhancedNotificationsPage
+                      notifications={allNotifications}
+                      readNotificationIds={readNotificationIds}
+                      onOpen={open}
+                      onMarkRead={handleMarkNotificationRead}
+                      onMarkAllRead={handleMarkAllNotificationsRead}
+                    />
+                  )}
+                  {page === 'Activity' && hasAuthority(user, 'crm_view_activity') && (
+                    <ActivityPage
+                      activities={activities}
+                      readActivityIds={readActivityIds}
+                      onOpen={open}
+                      onMarkRead={handleMarkActivityRead}
+                      onMarkAllRead={handleMarkAllActivitiesRead}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

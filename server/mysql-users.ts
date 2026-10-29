@@ -21,6 +21,46 @@ export async function initializeUsers(){
  }
 }
 export const publicUser=(u:any)=>({id:u.user_id??u.id,username:u.username,name:u.name,email:u.email,role:u.role,department:u.department,phone:u.phone,isActive:!!u.is_active,isAdmin:!!u.is_admin,isPlaceholder:!!u.is_placeholder,source:u.is_placeholder?'placeholder':'mysql'});
+export async function getAuthoritiesForActor(role: string, isAdmin: boolean, userId?: string | number): Promise<string[]> {
+  if (!pool) return [];
+  try {
+    if (isAdmin) {
+      const [allAuths] = await pool.query<any[]>('SELECT authority_name FROM authorities WHERE app_id = 2');
+      return allAuths.map((a: any) => a.authority_name);
+    }
+    if (userId) {
+      const numId = Number(userId);
+      if (!isNaN(numId) && numId > 0) {
+        const [directRows] = await pool.query<any[]>(`
+          SELECT DISTINCT au.authority_name
+          FROM user_app_roles uar
+          JOIN role_authorities ra ON uar.role_id = ra.role_id
+          JOIN authorities au ON ra.authority_id = au.id
+          WHERE uar.user_id = ? AND (uar.app_id = 2 OR au.app_id = 2)
+        `, [numId]);
+        if (directRows && directRows.length > 0) {
+          return directRows.map((r: any) => r.authority_name);
+        }
+      }
+    }
+    const cleanRole = String(role || 'MKT').toUpperCase();
+    const [authRows] = await pool.query<any[]>(`
+      SELECT DISTINCT au.authority_name
+      FROM roles r
+      JOIN role_authorities ra ON r.id = ra.role_id
+      JOIN authorities au ON ra.authority_id = au.id
+      WHERE r.app_id = 2 AND (
+        UPPER(r.role_name) = ? OR 
+        UPPER(r.role_name) LIKE ? OR 
+        UPPER(r.role_name) LIKE ?
+      )
+    `, [cleanRole, `%(${cleanRole})%`, `%${cleanRole}%`]);
+    return authRows.map((a: any) => a.authority_name);
+  } catch (err) {
+    console.warn('[!] Failed to query authorities:', err);
+    return [];
+  }
+}
 export async function userCount(){if(!pool)return 0;const [r]=await pool.query<any[]>('SELECT COUNT(*) n FROM crm_users WHERE is_placeholder=0');return Number(r[0].n);}
 export async function findUser(login:string,byId=false){if(!pool)return null;const [r]=await pool.execute<any[]>(byId?'SELECT * FROM crm_users WHERE user_id=?':'SELECT * FROM crm_users WHERE email=? OR username=?',byId?[login]:[login.toLowerCase(),login]);return r[0]||null;}
 export async function createUser(body:any,bootstrap=false){
