@@ -136,7 +136,7 @@ def main():
 
         if dtype_clean == "fap":
             from ocr_handler import extract_fap
-            extracted, tagged = extract_fap(boxes, pdf_path=str(p) if p.suffix.lower() == '.pdf' else None)
+            extracted, tagged = extract_fap(boxes, pdf_path=str(p))
             detected_type = "fap"
         elif dtype_clean == "ktp":
             from ocr_handler import extract_ktp_nib_style

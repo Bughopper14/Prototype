@@ -344,7 +344,7 @@ export function FapSheetPreviewClassic(props: FapSheetPreviewProps & { onSwitchT
       if (lowerKey === 'picphone' && (dField === 'phone' || dField === 'picphone')) return true;
       if (lowerKey === 'position' && (dField === 'picposition' || dField === 'position')) return true;
       if (lowerKey === 'picposition' && (dField === 'picposition' || dField === 'position')) return true;
-      if (lowerKey === 'picemail' && (dField === 'picemail' || dField === 'email')) return true;
+      if (lowerKey === 'picemail' && dField === 'picemail') return true;
       if (lowerKey === 'establishmentactno' && (dField === 'establishmentactno' || dField === 'deedno')) return true;
       return false;
     });

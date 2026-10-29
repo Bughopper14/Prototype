@@ -630,16 +630,7 @@ export default function App(){
             <span>Back to Gallery</span>
           </a>
 
-          <div className="workspace" style={{ margin: '0 12px 16px 12px' }}>
-            <div className="workspace-logo"><Building2 size={18} /></div>
-            <div>
-              <b>Origination workspace</b>
-              <small>Indonesia operations</small>
-            </div>
-            <ChevronDown size={14} />
-          </div>
 
-          <div className="nav-label" style={{ padding: '0 16px', marginBottom: '8px' }}>WORKSPACE</div>
 
           <nav>
             {[
@@ -660,7 +651,7 @@ export default function App(){
                   setSidebarOpen(false);
                 }}
               >
-                <Icon size={19} style={{ color: page === name ? '#002c5f' : iconColor, flexShrink: 0 }} />
+                <Icon size={20} style={{ color: page === name ? '#002c5f' : iconColor, flexShrink: 0 }} />
                 <span>{name}</span>
                 {name === 'Notifications' && unreadNotificationsCount > 0 && (
                   <em>{unreadNotificationsCount}</em>
@@ -2518,7 +2509,7 @@ function FapRemarksTinyMCE({
           toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
           content_style: `
             body { 
-              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
               font-size: 13px; 
               line-height: 1.6; 
               color: #0f172a; 
@@ -2991,10 +2982,10 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
       experienceYears: ext.experienceYears != null ? ext.experienceYears : '',
       experienceMonths: ext.experienceMonths != null ? ext.experienceMonths : '',
       picName: ext.picName || '',
-      position: ext.picPosition || ext.position || '',
-      phone: ext.picPhone || ext.phone || '',
-      picEmail: ext.picEmail || ext.email || '',
-      currentAddress: ext.picAddress || ext.currentAddress || '',
+      position: ext.picPosition || '',
+      phone: ext.picPhone || '',
+      picEmail: ext.picEmail || '',
+      currentAddress: ext.picAddress || ext.picCurrentAddress || '',
       picCity: ext.picCity || '',
       picProvince: ext.picProvince || '',
       picPostalCode: ext.picPostalCode || '',
@@ -5838,7 +5829,7 @@ function DeedRemarksTinyMCE({
           toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat | help',
           content_style: `
             body { 
-              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
               font-size: 13.5px; 
               line-height: 1.6; 
               color: #0f172a; 

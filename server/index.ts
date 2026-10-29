@@ -822,15 +822,9 @@ export function computeFapDiffs(currentApp: any, extracted: any): Array<{ field:
     sysExpMonths = expCalc.experienceMonths;
   }
 
-  // Calculate document experience (fallback to extracted.establishmentDate if not directly extracted)
-  const docEstDate = extracted.establishmentDate;
-  let docExpYears: any = (extracted.experienceYears !== undefined && extracted.experienceYears !== null && extracted.experienceYears !== '') ? extracted.experienceYears : '';
-  let docExpMonths: any = (extracted.experienceMonths !== undefined && extracted.experienceMonths !== null && extracted.experienceMonths !== '') ? extracted.experienceMonths : '';
-  if (docExpYears === '' && docEstDate) {
-    const docCalc = experienceFromEstablishmentDate(docEstDate);
-    docExpYears = docCalc.experienceYears;
-    docExpMonths = docCalc.experienceMonths;
-  }
+  // Document experience: strictly reflect the physical document boxes (empty if unfilled in document)
+  let docExpYears: any = (extracted.experienceYears !== undefined && extracted.experienceYears !== null && extracted.experienceYears !== '') ? String(extracted.experienceYears) : '';
+  let docExpMonths: any = (extracted.experienceMonths !== undefined && extracted.experienceMonths !== null && extracted.experienceMonths !== '') ? String(extracted.experienceMonths) : '';
 
   compareField('experienceYears', 'Pengalaman Usaha (Tahun)', sysExpYears, docExpYears, true);
   compareField('experienceMonths', 'Pengalaman Usaha (Bulan)', sysExpMonths, docExpMonths, true);

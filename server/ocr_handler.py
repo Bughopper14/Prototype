@@ -1488,6 +1488,94 @@ def extract_nib(boxes: list) -> tuple:
 
     return data, boxes
 
+def extract_experience_boxes_from_image(file_path: str, l_exp: dict, p1_boxes: list) -> tuple:
+    if not file_path or not os.path.exists(file_path):
+        return "", ""
+    try:
+        import re, cv2, numpy as np
+        page_bgr = None
+        if file_path.lower().endswith('.pdf'):
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                import fitz
+            doc = fitz.open(file_path)
+            if len(doc) > 0:
+                pix = doc[0].get_pixmap(matrix=fitz.Matrix(300.0/72.0, 300.0/72.0), alpha=False)
+                page_bgr = cv2.cvtColor(np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n), cv2.COLOR_RGB2BGR)
+            doc.close()
+        else:
+            page_bgr = cv2.imread(file_path)
+
+        if page_bgr is None:
+            return "", ""
+
+        h, w, _ = page_bgr.shape
+        exp_boxes = [b for b in p1_boxes if abs(b.get('yc', 0) - l_exp.get('yc', 0)) <= 0.009 and b.get('xc', 0) > l_exp.get('x1', 0)]
+        l_years = next((b for b in exp_boxes if re.search(r'\b(years?|vears?)\b', b.get('text', ''), re.IGNORECASE)), None)
+        l_months = next((b for b in exp_boxes if re.search(r'\b(months?|bln|bulan)\b', b.get('text', ''), re.IGNORECASE)), None)
+
+        if l_years:
+            g1_x1 = int(l_exp['x2'] * w)
+            g1_x2 = int(l_years['x1'] * w)
+        else:
+            g1_x1 = int(l_exp['x2'] * w)
+            g1_x2 = g1_x1 + int(0.08 * w)
+
+        if l_years and l_months:
+            g2_x1 = int(l_years['x2'] * w)
+            g2_x2 = int(l_months['x1'] * w)
+        elif l_years:
+            g2_x1 = int(l_years['x2'] * w)
+            g2_x2 = g2_x1 + int(0.06 * w)
+        else:
+            g2_x1 = g1_x2 + int(0.02 * w)
+            g2_x2 = g2_x1 + int(0.06 * w)
+
+        y_center = int(l_exp['yc'] * h)
+        row_y1 = max(0, y_center - int(0.015 * h))
+        row_y2 = min(h, y_center + int(0.015 * h))
+
+        c1 = page_bgr[row_y1:row_y2, max(0, g1_x1):min(w, g1_x2)]
+        c2 = page_bgr[row_y1:row_y2, max(0, g2_x1):min(w, g2_x2)]
+
+        def read_digit(crop):
+            if crop is None or crop.size == 0:
+                return ""
+            gray = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+            _, th = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
+            contours, _ = cv2.findContours(th, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            valid = []
+            for cnt in contours:
+                bx, by, bw, bh = cv2.boundingRect(cnt)
+                # Digit character glyph filter for 200-300 DPI
+                if 4 <= bw <= 30 and 7 <= bh <= 30 and cv2.contourArea(cnt) >= 10:
+                    valid.append((bx, by, bw, bh))
+            if not valid:
+                return ""
+            valid.sort(key=lambda b: b[0])
+            min_x = min(b[0] for b in valid)
+            min_y = min(b[1] for b in valid)
+            max_x = max(b[0] + b[2] for b in valid)
+            max_y = max(b[1] + b[3] for b in valid)
+            char_crop = crop[min_y:max_y, min_x:max_x]
+
+            engine = OCREngine.get_engine()
+            padded = cv2.copyMakeBorder(char_crop, 8, 8, 8, 8, cv2.BORDER_CONSTANT, value=[255, 255, 255])
+            res = engine.text_recognizer([padded])
+            if res and res[0] and res[0][0]:
+                raw_t = res[0][0][0]
+                digits = re.findall(r'\d+', raw_t)
+                return ''.join(digits) if digits else ""
+            return ""
+
+        r_y = read_digit(c1)
+        r_m = read_digit(c2)
+        return r_y, r_m
+    except Exception as exp_err:
+        print(f"[OCR] Experience box digit extraction error: {exp_err}")
+        return "", ""
+
 def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tuple:
     import re
     texts = []
@@ -1902,6 +1990,12 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                             month_val = m.group(1)
                             break
 
+            if (not year_val or not month_val) and pdf_path and l_exp:
+                img_y, img_m = extract_experience_boxes_from_image(pdf_path, l_exp, p1)
+                if not year_val and img_y:
+                    year_val = img_y
+                if not month_val and img_m:
+                    month_val = img_m
             data["experienceYears"] = year_val
             data["experienceMonths"] = month_val
 
@@ -2113,10 +2207,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         if m:
             data["phoneFax"] = m.group(1).strip()
 
-    if not data["email"]:
-        m_emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b', combined_full_text)
-        if m_emails:
-            data["email"] = m_emails[0]
+    # Note: Company email is strictly collected from its designated box on Page 1.
+    # If the box is empty in the document, data["email"] remains empty.
 
     if not data["mainBusiness"]:
         m = re.search(r'(?:bidang\s+usaha|main\s+business|kegiatan\s+usaha)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
@@ -2305,7 +2397,7 @@ def scan_document_ocr(file_storage, doc_type: str = "auto", app_id: str = None, 
             extracted, tagged = extract_nib(boxes)
             detected_type = "nib"
         elif dtype_clean == "fap":
-            extracted, tagged = extract_fap(boxes, pdf_path=str(temp_path) if temp_path.suffix.lower() == '.pdf' else None)
+            extracted, tagged = extract_fap(boxes, pdf_path=str(temp_path))
             detected_type = "fap"
         else:
             obj, tagged = InformationExtractor.extract_generic(boxes)
