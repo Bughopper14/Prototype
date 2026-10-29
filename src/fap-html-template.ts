@@ -1882,9 +1882,9 @@ td
     table.fap-page-2-start {
         border-top: none !important;
     }
-    table.fap-page-2-start > tbody > tr:first-child > td:not(.xl70),
-    table.fap-page-2-start > tr:first-child > td:not(.xl70) {
-        border-top: 1.0pt solid windowtext !important;
+    table.fap-page-2-start > tbody > tr:first-child > td,
+    table.fap-page-2-start > tr:first-child > td {
+        border-top: none !important;
     }
     table.fap-page-2-start > tbody > tr:first-child > td.xl70,
     table.fap-page-2-start > tr:first-child > td.xl70,
@@ -4333,7 +4333,7 @@ SwUGAAAAAAQABAD1AAAAnAYAAAAA
 </table>
 </span></td>
 <td class="xl148" style="width:24pt" width="32"></td>
-<td class="xl123" style="border-top:1.0pt solid windowtext"> </td>
+<td class="xl123" style="border-top:none"> </td>
 <td class="xl132" style="width:104pt" width="138">Company Profile</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
