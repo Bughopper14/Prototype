@@ -1,6 +1,20 @@
 import { Editor } from '@tinymce/tinymce-react';
 import {createPortal} from 'react-dom';
-import {DeedReviewDialog,NotificationsPage} from './deed-review-ui';
+import {DeedReviewDialog} from './deed-review-ui';
+import {
+  getStoredActivities,
+  getReadActivityIds,
+  saveReadActivityIds,
+  getStoredNotifications,
+  saveStoredNotifications,
+  getReadNotificationIds,
+  saveReadNotificationIds,
+  recordSystemActivity,
+  ensureInitialActivitySeeds,
+  type SystemActivity,
+  type SystemNotificationItem
+} from './system-activity';
+import { ActivityPage, EnhancedNotificationsPage } from './ActivityAndNotificationsView';
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
@@ -330,6 +344,94 @@ function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSu
 
 export default function App(){
   const [notifications,setNotifications]=useState<any[]>([]);
+  const [activities,setActivities]=useState<SystemActivity[]>(()=>getStoredActivities());
+  const [readActivityIds,setReadActivityIds]=useState<Set<string>>(()=>getReadActivityIds());
+  const [readNotificationIds,setReadNotificationIds]=useState<Set<string>>(()=>getReadNotificationIds());
+
+  useEffect(() => {
+    const updateState = () => {
+      setActivities(getStoredActivities());
+      setReadActivityIds(getReadActivityIds());
+      setReadNotificationIds(getReadNotificationIds());
+    };
+    window.addEventListener('crm-activity-state-change', updateState);
+    window.addEventListener('crm-notification-state-change', updateState);
+    return () => {
+      window.removeEventListener('crm-activity-state-change', updateState);
+      window.removeEventListener('crm-notification-state-change', updateState);
+    };
+  }, []);
+
+  const allNotifications = useMemo<SystemNotificationItem[]>(() => {
+    const local = getStoredNotifications();
+    const serverFormatted: SystemNotificationItem[] = (notifications || []).map((n: any) => ({
+      id: n.id,
+      applicationId: n.applicationId,
+      fapNumber: n.fapNumber,
+      companyName: n.companyName || 'Application',
+      section: 'Legal',
+      tabIndex: 5,
+      title: n.title,
+      message: n.message,
+      priority: 'normal',
+      taskType: 'Deed Review',
+      createdAt: n.createdAt,
+      readAt: n.readAt
+    }));
+    const map = new Map<string, SystemNotificationItem>();
+    for (const item of local) map.set(item.id, item);
+    for (const item of serverFormatted) map.set(item.id, item);
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [notifications]);
+
+  const unreadNotificationsCount = allNotifications.filter(
+    n => !n.readAt && !readNotificationIds.has(n.id)
+  ).length;
+  const unreadActivitiesCount = activities.filter(
+    a => !a.read && !readActivityIds.has(a.id)
+  ).length;
+
+  const handleMarkActivityRead = (id: string) => {
+    setReadActivityIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      saveReadActivityIds(next);
+      return next;
+    });
+  };
+
+  const handleMarkAllActivitiesRead = () => {
+    const allIds = new Set(activities.map(a => a.id));
+    setReadActivityIds(allIds);
+    saveReadActivityIds(allIds);
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    setReadNotificationIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      saveReadNotificationIds(next);
+      return next;
+    });
+    try {
+      await api('/notifications/' + id + '/read', 'PATCH', {});
+    } catch {}
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    const allIds = new Set(allNotifications.map(n => n.id));
+    setReadNotificationIds(allIds);
+    saveReadNotificationIds(allIds);
+    for (const n of notifications) {
+      if (!n.readAt) {
+        try {
+          await api('/notifications/' + n.id + '/read', 'PATCH', {});
+        } catch {}
+      }
+    }
+  };
   const [user,setUser]=useState<any>(null),[ready,setReady]=useState(false),[page,setPage]=useState('Overview'),[rows,setRows]=useState<any[]>([]),[customers,setCustomers]=useState<any[]>([]),[selected,setSelected]=useState<any>(null),[detailTab,setDetailTab]=useState(0),[newOpen,setNewOpen]=useState(false),[toast,setToast]=useState(''),[globalError,setGlobalError]=useState(''),[sidebarOpen,setSidebarOpen]=useState(false),[changePasswordOpen,setChangePasswordOpen]=useState(false),[loading,setLoading]=useState(false);
   const notify=(s:string)=>{setToast(s);setTimeout(()=>setToast(''),4500);};
 
@@ -341,7 +443,7 @@ export default function App(){
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  async function load(){setLoading(true);try{const [r,c,m,n]=await Promise.all([api('/applications'),api('/customers'),api('/master-data'),api('/notifications')]);setNotifications(n);setMasterData(m);setRows(r);setCustomers(c);setGlobalError('');}catch(e:any){setGlobalError(e.message);}finally{setLoading(false);}}
+  async function load(){setLoading(true);try{const [r,c,m,n]=await Promise.all([api('/applications'),api('/customers'),api('/master-data'),api('/notifications')]);setNotifications(n);setMasterData(m);setRows(r);setCustomers(c);ensureInitialActivitySeeds(r, user);setActivities(getStoredActivities());setGlobalError('');}catch(e:any){setGlobalError(e.message);}finally{setLoading(false);}}
   useEffect(()=>{
     api('/auth/me')
       .then(u=>{
@@ -560,8 +662,11 @@ export default function App(){
               >
                 <Icon size={19} style={{ color: page === name ? '#002c5f' : iconColor, flexShrink: 0 }} />
                 <span>{name}</span>
-                {name === 'Notifications' && notifications.some(n => !n.readAt) && (
-                  <em>{notifications.filter(n => !n.readAt).length}</em>
+                {name === 'Notifications' && unreadNotificationsCount > 0 && (
+                  <em>{unreadNotificationsCount}</em>
+                )}
+                {name === 'Activity' && unreadActivitiesCount > 0 && (
+                  <em>{unreadActivitiesCount}</em>
                 )}
                 {name === 'Applications' && <em>{rows.length}</em>}
                 {name === 'Customers' && <em>{customers.length}</em>}
@@ -686,9 +791,23 @@ export default function App(){
               )}
               {page === 'Customize master data' && <MasterDataPage />}
               {page === 'Notifications' && (
-                <NotificationsPage items={notifications} onRead={readNotification} onOpen={id => open(id, 5)} />
+                <EnhancedNotificationsPage
+                  notifications={allNotifications}
+                  readNotificationIds={readNotificationIds}
+                  onOpen={open}
+                  onMarkRead={handleMarkNotificationRead}
+                  onMarkAllRead={handleMarkAllNotificationsRead}
+                />
               )}
-              {page === 'Activity' && <ActivityPage rows={rows} open={open} />}
+              {page === 'Activity' && (
+                <ActivityPage
+                  activities={activities}
+                  readActivityIds={readActivityIds}
+                  onOpen={open}
+                  onMarkRead={handleMarkActivityRead}
+                  onMarkAllRead={handleMarkAllActivitiesRead}
+                />
+              )}
             </>
           )}
           <footer>
@@ -1094,6 +1213,24 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
    };
    const application=await api('/applications','POST',safePayload);
    notify(`Application created successfully with number ${application.fapNumber}`);
+   try {
+     recordSystemActivity({
+       applicationId: application.id,
+       fapNumber: application.fapNumber,
+       companyName: finalCompanyName,
+       section: 'Customer & PIC',
+       tabIndex: 0,
+       actionType: 'CREATE',
+       title: `Created new application for ${finalCompanyName}`,
+       details: `Initiated FAP Stage (${application.fapNumber || 'Draft'}), Category: ${customerCategory === 'EXISTING' ? 'Existing Customer' : 'New Customer'}. Ready for data entry.`,
+       actionBy: user?.name || 'System User',
+       userRole: user?.role || 'MKT',
+       createNotification: true,
+       notificationMessage: `New application ${application.fapNumber || ''} created for ${finalCompanyName}. Ready for review.`
+     });
+   } catch (actErr) {
+     console.error('Activity record error:', actErr);
+   }
    let fullApp: any;
    try {
      fullApp = await api(`/applications/${application.id}`);
@@ -1279,6 +1416,24 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
     if (onChange) onChange(nextApp);
     setActiveStage('Pre-analysis');
     setTab(8);
+    try {
+      recordSystemActivity({
+        applicationId: a.id,
+        fapNumber: a.fapNumber,
+        companyName: a.customer?.companyName || draft.customer?.companyName || 'Application',
+        section: 'Documents',
+        tabIndex: 8,
+        actionType: 'APPROVE',
+        title: `Approved Document & Locked Customer/PIC for ${a.customer?.companyName || draft.customer?.companyName || 'Application'}`,
+        details: 'Physical FAP document approved. Customer & PIC locked, application advanced to Pre-analysis.',
+        actionBy: user?.name || 'System User',
+        userRole: user?.role || 'BS',
+        createNotification: true,
+        notificationMessage: `Application ${a.fapNumber || ''} for ${a.customer?.companyName || 'Debtor'} advanced to Pre-analysis stage.`
+      });
+    } catch (actErr) {
+      console.error('Activity record error:', actErr);
+    }
   };
 
   const handleApproveFapChangesInDetail = async (extractedData?: any) => {
@@ -1510,7 +1665,13 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
     setCustomerDraft(sanitizeCustomer(structuredClone(a.customer)));
   }
  },[a]);
- useEffect(()=>setTab(initialTab),[initialTab,a.id]);
+ useEffect(()=>{
+   if(initialTab!==undefined){
+     setTab(initialTab);
+     if(initialTab===8)setActiveStage('Pre-analysis');
+     else if([0,5,1].includes(initialTab)&&!isPreAnalysisReached)setActiveStage('FAP Stage');
+   }
+ },[initialTab,a.id]);
  const isFapStage = activeStage === 'FAP Stage';
  const fapChk = (a.documentChecks || []).find((d: any) => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase() === 'fap');
  const hasSignedFap = Boolean(fapChk && Array.isArray(fapChk.files) && fapChk.files.length > 0);
@@ -1650,6 +1811,42 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
      setCustomerDraft((prev:any)=>({...prev,...customerPayload}));
      onChange(nextApp);
      notify('Changes saved successfully');
+     try {
+       const tabNamesList: Record<number, string> = {
+         0: 'Customer & PIC',
+         1: 'Stakeholders',
+         2: 'Business & banks',
+         3: 'Financing & units',
+         4: 'Financial statements',
+         5: 'Legal',
+         6: 'Documents',
+         8: 'Pre Analysis form'
+       };
+       const activeSectionName = tabNamesList[tab] || 'Application details';
+       let changeSnippet = `Updated ${activeSectionName} data.`;
+       if (tab === 0) changeSnippet = `Saved company profile, contact details, NIB (${customerPayload.nib || 'N/A'}), and NPWP (${customerPayload.npwp || 'N/A'}).`;
+       else if (tab === 1) changeSnippet = `Saved share ownership and stakeholder list.`;
+       else if (tab === 2) changeSnippet = `Updated business operations, industry segment, and bank reference info.`;
+       else if (tab === 3 || tab === 4) changeSnippet = `Updated financing value (${money(draft.proposal?.financingValue)}) and equipment unit terms.`;
+       else if (tab === 5) changeSnippet = `Updated legal deeds and shareholder registers.`;
+       else if (tab === 6) changeSnippet = `Updated document desk checklist records.`;
+       else if (tab === 8) changeSnippet = `Saved Pre-Analysis evaluation, greyed-out checklist, and TinyMCE remarks.`;
+
+       recordSystemActivity({
+         applicationId: a.id,
+         fapNumber: a.fapNumber,
+         companyName: resolvedName,
+         section: activeSectionName,
+         tabIndex: tab,
+         actionType: 'UPDATE',
+         title: `Updated ${activeSectionName} for ${resolvedName}`,
+         details: changeSnippet,
+         actionBy: user?.name || 'System User',
+         userRole: user?.role || 'User'
+       });
+     } catch (actErr) {
+       console.error('Activity record error:', actErr);
+     }
    }catch(e:any){
      setError(e.message||'Failed to save changes.');
    }finally{
@@ -2125,7 +2322,25 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (isFapLocked && [0, 5, 1].includes(tab)) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>FAP Stage Locked</span> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Locked</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>notify('Pre-Analysis saved successfully')} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit FAP Stage data and proceed to <strong>Pre-analysis</strong>?</p><p className="muted">Once submitted, the Pre-analysis stage (Business & banks, Financial statements, Documents) will be unlocked for data entry.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit to Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (isFapLocked && [0, 5, 1].includes(tab)) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>FAP Stage Locked</span> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Locked</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>{
+  notify('Pre-Analysis saved successfully');
+  try {
+    recordSystemActivity({
+      applicationId: a.id,
+      fapNumber: a.fapNumber,
+      companyName: a.customer?.companyName || draft.customer?.companyName || 'Application',
+      section: 'Pre Analysis form',
+      tabIndex: 8,
+      actionType: 'UPDATE',
+      title: `Updated Pre-Analysis Form for ${a.customer?.companyName || draft.customer?.companyName || 'Application'}`,
+      details: 'Saved credit remarks, active vs proposed contract terms, and evaluation checks.',
+      actionBy: user?.name || 'System User',
+      userRole: user?.role || 'CA'
+    });
+  } catch (actErr) {
+    console.error('Activity record error:', actErr);
+  }
+}} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Tombol submit terkunci di database (is_locked = 1). Please upload the FAP Stage document in the Documents tab first.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit FAP Stage data and proceed to <strong>Pre-analysis</strong>?</p><p className="muted">Once submitted, the Pre-analysis stage (Business & banks, Financial statements, Documents) will be unlocked for data entry.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span><b>Submit Button Locked:</b> FAP Stage form document not yet uploaded di tab Documents (is_locked = 1). Please upload the document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit to Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
     {fapComparisonModal && (
       <FapComparisonModal
         comparison={fapComparisonModal}
@@ -4086,7 +4301,7 @@ function Documents({a,user,onChange,notify,filterStage,onApproveDocument,isFapLo
   );
 }
 function Audit({logs}:{logs:any[]}){return <div className="audit-list">{logs.map(l=><div className="audit-item" key={l.id}><span className="audit-icon"><Activity size={16}/></span><div><b>{l.actionBy}</b><span className="audit-role">{l.userRole}</span><p>{l.comments}</p><small>{statusLabel[l.previousStatus]} <ArrowRight size={12}/> {statusLabel[l.newStatus]} <span>·</span> {new Date(l.actionTimestamp).toLocaleString('en-GB')}</small></div></div>)}{!logs.length&&<div className="empty-small">No activity yet.</div>}</div>;}
-function ActivityPage({rows,open}:{rows:any[],open:(id:string)=>void}){const [logs,setLogs]=useState<any[]>([]),[error,setError]=useState('');useEffect(()=>{Promise.all(rows.map(r=>api('/applications/'+r.id))).then(details=>setLogs(details.flatMap(a=>a.approvalLogs.map((l:any)=>({...l,companyName:a.customer.companyName}))).sort((a,b)=>new Date(b.actionTimestamp).getTime()-new Date(a.actionTimestamp).getTime()))).catch(e=>setError(e.message));},[rows]);return <section className="panel"><div className="panel-head"><h2>Recent activity</h2><span className="subtle-chip">All applications</span></div>{error&&<div className="error">{error}</div>}{logs.map(l=><div key={l.id} className="activity-entry"><button className="text-link" onClick={()=>open(l.applicationId)}>{l.companyName}<ArrowUpRight size={14}/></button><Audit logs={[l]}/></div>)}</section>;}
+// legacy ActivityPage replaced by Enhanced ActivityPage component from ActivityAndNotificationsView
 
 function DocumentDesk({rows,open,user}:{rows:any[],open:(id:string,tab?:number)=>void,user:any}){const [items,setItems]=useState<any[]>([]),[search,setSearch]=useState(''),[department,setDepartment]=useState(['BS','CA','LEGAL'].includes(user.role)?user.role:'ALL'),[status,setStatus]=useState('OPEN'),[error,setError]=useState('');useEffect(()=>{api('/document-desk').then(setItems).catch(e=>setError(e.message));},[rows]);const visible=items.filter(d=>(status==='ALL'||(status==='OPEN'?d.status!=='VERIFIED':d.status==='VERIFIED'))&&(department==='ALL'||d.assigned_role===department)&&(d.company_name+' '+d.fap_number+' '+d.document_name).toLowerCase().includes(search.toLowerCase()));const openCount=items.filter(d=>d.status!=='VERIFIED').length;return <><div className="stats-grid"><div className="stat-card"><div className="stat-top">Documents to review</div><strong>{openCount}</strong><small>Checklist items awaiting completion or verification</small></div><div className="stat-card"><div className="stat-top">Verified documents</div><strong>{items.length-openCount}</strong><small>Checklist items marked verified</small></div><div className="stat-card"><div className="stat-top">Applications</div><strong>{new Set(items.map(d=>d.application_id)).size}</strong><small>Applications with document checklists</small></div></div><section className="panel applications-panel"><div className="panel-head"><h2>Document checklist queue <span>{visible.length}</span></h2><span className="subtle-chip">Open an item to review its documents</span></div><div className="table-toolbar"><div className="search"><Search size={17}/><input aria-label="Search documents" placeholder="Search company, FAP, or document..." value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="filters"><select aria-label="Filter document status" value={status} onChange={e=>setStatus(e.target.value)}><option value="OPEN">Needs action</option><option value="VERIFIED">Verified</option><option value="ALL">All documents</option></select><select aria-label="Filter assigned department" value={department} onChange={e=>setDepartment(e.target.value)}><option value="ALL">All departments</option>{['BS','CA','LEGAL'].map(r=><option value={r} key={r}>{label(r)}</option>)}</select></div></div>{error&&<div className="error">{error}</div>}<div className="table-scroll"><table className="data-table"><thead><tr><th>DOCUMENT</th><th>COMPANY / FAP</th><th>OWNER</th><th>REQUIRED</th><th>FILES</th><th>STATUS</th><th/></tr></thead><tbody>{visible.map(d=><tr key={d.checklist_id} onClick={()=>open(d.application_id,6)} tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' ')open(d.application_id,6);}}><td><b>{d.document_name}</b><small>{d.document_code}</small></td><td><div className="company-cell"><div><b>{d.company_name}</b><small>{d.fap_number}</small></div></div></td><td><span className="branch">{label(d.assigned_role)}</span></td><td>{d.is_mandatory?'Yes':'No'}</td><td>{d.file_count||0}</td><td><Badge status={d.status}/></td><td><ChevronRight size={16}/></td></tr>)}</tbody></table>{!visible.length&&<div className="empty"><FolderCheck size={26}/><h3>No checklist items found</h3><p>Try another filter or search.</p></div>}</div></section></>;}
 

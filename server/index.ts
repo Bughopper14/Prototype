@@ -630,6 +630,15 @@ app.get('/api/v1/master-mandatory', getMandatoryHandler);
 app.put('/api/v1/mandatory', putMandatoryHandler);
 app.put('/api/v1/master-mandatory', putMandatoryHandler);
 
+app.post('/api/v1/user-activity', async (req, res) => {
+  try {
+    const { action } = req.body || {};
+    res.json({ ok: true, action });
+  } catch {
+    res.json({ ok: false });
+  }
+});
+
 app.get('/api/v1/activity', async (_req, res) => {
   try {
     if (pool) {

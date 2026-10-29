@@ -3367,7 +3367,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
                     <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
                       {(data.uboInfo || data.ubo)?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.uboInfo || data.ubo }} style={{ lineHeight: 1.45 }} />
+                        <div dangerouslySetInnerHTML={{ __html: data.uboInfo || data.ubo || '' }} style={{ lineHeight: 1.45 }} />
                       ) : (
                         <div style={{ whiteSpace: 'pre-line' }}>{data.uboInfo || data.ubo}</div>
                       )}
