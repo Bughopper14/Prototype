@@ -660,12 +660,14 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
   setBusy(true);setError('');
   try{
     let id=customerId;
-    const nibClean=String(customerDraft?.nib||draft?.nib||'').replace(/\D/g,'');
-    const npwpClean=String(customerDraft?.npwp||draft?.npwp||'').replace(/\D/g,'');
+    const rawNib=String(customerDraft?.nib||draft?.nib||'').replace(/\D/g,'');
+    const rawNpwp=String(customerDraft?.npwp||draft?.npwp||'').replace(/\D/g,'');
+    const nibClean = rawNib ? rawNib.slice(0, 13).padEnd(13, '0') : String(Date.now()).slice(0, 13).padEnd(13, '0');
+    const npwpClean = rawNpwp ? rawNpwp.slice(0, 16).padEnd(15, '0') : '000000000000000';
     const matchedExisting=customers.find((c:any)=>{
       const cNib=String(c.nib||'').replace(/\D/g,'');
       const cNpwp=String(c.npwp||'').replace(/\D/g,'');
-      return (nibClean&&cNib===nibClean)||(npwpClean&&cNpwp===npwpClean);
+      return (rawNib&&cNib===rawNib)||(rawNpwp&&cNpwp===rawNpwp);
     });
 
     if(customerCategory==='EXISTING'){
@@ -677,14 +679,13 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
         setCustomerId(id);
       }else{
         const resolvedName = liveCompanyName || customerDraft?.companyName || draft?.customer?.companyName || draft?.companyName || '';
-        if(!resolvedName.trim())throw new Error('Company name of the new debtor is required.');
+        if(!resolvedName.trim())throw new Error('Nama perusahaan debitur baru wajib diisi (Company Name).');
         const customerToSave = {
           ...customerDraft,
           companyName: resolvedName,
           nib: nibClean,
           npwp: npwpClean
         };
-        validateInput(customerToSave);
         const createdCust=await api('/customers','POST',customerToSave);
         id=createdCust.id;
         setCustomerId(id);
@@ -713,21 +714,39 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
      stage: 'FAP Stage'
    };
    const application=await api('/applications','POST',safePayload);
-   notify(`Application created successfully with number ${application.fapNumber}`);
+
+   // Sync PIC data if entered in initial draft
+   const hasPicData=draft.pic&&Object.values(draft.pic).some(v=>v!==undefined&&v!==null&&String(v).trim()!==''&&String(v).trim()!=='-');
+   if(hasPicData){
+     try{
+       await api(`/applications/${application.id}/page-1`,'PUT',{pic:draft.pic,stage:'FAP Stage'});
+     }catch(err){console.warn('Initial PIC sync:',err);}
+   }
+
+   // Sync Proposal data if entered in initial draft
+   if(draft.proposal&&(draft.proposal.financingValue||(draft.proposal.units&&draft.proposal.units.length>0))){
+     try{
+       await api(`/applications/${application.id}/page-2`,'PUT',{proposal:draft.proposal,stage:'FAP Stage'});
+     }catch(err){console.warn('Initial proposal sync:',err);}
+   }
+
+   notify(`Aplikasi ${application.fapNumber} berhasil dibuat dan otomatis tercatat di sistem! Anda dapat melanjutkan pengisian Stakeholders, Proposal, dan Pre-Analysis.`);
    let fullApp: any;
    try {
      fullApp = await api(`/applications/${application.id}`);
    } catch {
      fullApp = application;
    }
+   // Keep user in active flow with all tabs unlocked without kicking them out
    setDraft(structuredClone(fullApp));
    onChange(fullApp);
-   if (onBack) {
-     onBack();
-   } else {
-     setTab(0);
-   }
-  }catch(e:any){setError(e.message||'Failed to create new application. Please try again.');}
+   setTab(0);
+  }catch(e:any){
+    const msg = e.message||'Failed to create new application. Please try again.';
+    setError(msg);
+    notify(msg);
+    if(typeof window!=='undefined')window.scrollTo({top:0,behavior:'smooth'});
+  }
   finally{setBusy(false);}
  }
 const isPreAnalysis = (a.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(a.status);

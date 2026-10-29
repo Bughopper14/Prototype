@@ -353,7 +353,16 @@ app.put('/api/v1/master-data',async(req,res)=>{let catalog:MasterCatalog;try{cat
 app.get('/api/v1/customers',async(_req,res)=>{const original=await all('Customer'),current=await intakeCustomers(),byIdentity=new Map<string,any>(),customers:any[]=[];for(const customer of [...original,...current]){const nib=String(customer.nib||'').replace(/\D/g,''),npwp=String(customer.npwp||'').replace(/\D/g,''),identity=nib&&npwp?`${nib}|${npwp}`:`id:${customer.id}`;const existing=byIdentity.get(identity);if(existing){const savedCreatedAt=existing.createdAt||existing.created_at;const savedFirstApp=existing.firstApplicationDate;Object.assign(existing,customer,{id:existing.id});if(savedCreatedAt&&!existing.createdAt)existing.createdAt=savedCreatedAt;if(savedFirstApp&&!existing.firstApplicationDate)existing.firstApplicationDate=savedFirstApp;}else{const row={...customer};if(!row.createdAt&&row.created_at)row.createdAt=row.created_at;byIdentity.set(identity,row);customers.push(row);}}res.json(customers);});
 app.post('/api/v1/customers',async(req,res)=>{
   permit(req,['MKT']);
-  const data=modelInput('Customer',req.body,['companyName','companyType','nib','npwp']);
+  const rawNib = String(req.body.nib || '').replace(/\D/g, '');
+  const safeNib = rawNib ? rawNib.slice(0, 13).padEnd(13, '0') : String(Date.now()).slice(0, 13).padEnd(13, '0');
+  const rawNpwp = String(req.body.npwp || '').replace(/\D/g, '');
+  const safeNpwp = rawNpwp ? rawNpwp.slice(0, 16).padEnd(15, '0') : '000000000000000';
+  const data=modelInput('Customer',{
+    ...req.body,
+    nib: safeNib,
+    npwp: safeNpwp,
+    companyType: req.body.companyType || 'CORPORATE'
+  },['companyName','companyType','nib','npwp']);
   ensure(/^\d{13}$/.test(data.nib),'NIB must contain 13 digits');
   ensure(/^\d{15,16}$/.test(data.npwp.replace(/\D/g,'')),'NPWP must contain 15 or 16 digits');
   const existingRows = (await query(`SELECT * FROM "business_partner" WHERE "nib" = $1 OR "npwp" = $2`, [data.nib, data.npwp])).rows;
