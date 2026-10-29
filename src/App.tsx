@@ -18,7 +18,7 @@ import { ActivityPage, EnhancedNotificationsPage } from './ActivityAndNotificati
 import {publishedDeeds,reviewStatus,deedPending,deedReviewLabels,canEditLegal,deedData} from './deed-workflow';
 import {inputLimits,fieldInputError,validateInput} from './input-validation';
 import {useEffect,useState,useRef,useMemo,type ReactNode} from 'react';
-import {ShieldAlert,LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard,Key} from 'lucide-react';
+import {Archive,ShieldAlert,LayoutGrid,ScanLine,Eye,Copy,Sparkles,ArrowUpRight,ArrowRight,ArrowLeft,Plus,Search,Bell,LayoutDashboard,Files,FolderCheck,Users,Activity,Settings2,ChevronRight,ChevronLeft,ChevronDown,Download,Building2,MoreHorizontal,Pencil,Check,CheckCheck,Clock,FileText,ShieldCheck,LogOut,BriefcaseBusiness,Wallet,TrendingUp,AlertCircle,AlertTriangle,X,Upload,UploadCloud,RefreshCw,RotateCw,ZoomIn,ZoomOut,ExternalLink,Save,Trash2,Menu,Loader2,Columns,FileSpreadsheet,Lock,Printer,CheckCircle,Maximize2,Minimize2,Globe,CreditCard,Key} from 'lucide-react';
 import {NibOcrModal} from './NibOcrModal';
 import {
   FapSheetPreview,
@@ -1495,13 +1495,33 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
     }
   };
 
-  const [customerDetailLocked, setCustomerDetailLocked] = useState<boolean>(() => Boolean(a.customerDetailLocked || localStorage.getItem(`crm_locked_customer_${a.id}`) === 'true'));
+  const [customerDetailLocked, setCustomerDetailLocked] = useState<boolean>(false);
+  const [archiveModalOpen, setArchiveModalOpen] = useState<boolean>(false);
+  const [archivesList, setArchivesList] = useState<any[]>([]);
+  const [loadingArchives, setLoadingArchives] = useState<boolean>(false);
+  const [selectedArchiveIdx, setSelectedArchiveIdx] = useState<number>(0);
+
+  const openArchiveViewer = async () => {
+    setLoadingArchives(true);
+    setArchiveModalOpen(true);
+    try {
+      const res = await api(`/applications/${a.id}/fap-archive`);
+      if (res?.archives) {
+        setArchivesList(res.archives);
+        setSelectedArchiveIdx(0);
+      }
+    } catch (err: any) {
+      notify('Failed to load FAP submission archive: ' + err.message);
+    } finally {
+      setLoadingArchives(false);
+    }
+  };
 
   const handleApproveDocument = (updatedApp?: any) => {
-    localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
-    setCustomerDetailLocked(true);
-    const nextApp = { ...(updatedApp || a), customerDetailLocked: true, stage: 'Pre-analysis' };
-    setDraft((prev: any) => ({ ...prev, ...nextApp, customerDetailLocked: true }));
+    localStorage.removeItem(`crm_locked_customer_${a.id}`);
+    setCustomerDetailLocked(false);
+    const nextApp = { ...(updatedApp || a), customerDetailLocked: false, stage: 'Pre-analysis' };
+    setDraft((prev: any) => ({ ...prev, ...nextApp, customerDetailLocked: false }));
     if (onChange) onChange(nextApp);
     setActiveStage('Pre-analysis');
     setTab(8);
@@ -1780,11 +1800,12 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
  const tabOrder = stageTabOrder;
 
  const isAdminUser = checkIsAdmin(user);
- const isFapLocked = Boolean(isPreAnalysisReached);
- const canLegal = !isFapLocked && (isAdminUser || canEditLegal(user, a));
- const canEditCustomerPic = !isFapLocked && !customerDetailLocked && (isAdminUser || (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status))));
- const canEdit = isAdminUser || (user.role === 'MKT' && (Boolean(draft.isNew) || ['DRAFT', 'RETURNED'].includes(a.status)));
- const canFinance = isAdminUser || (user.role === 'MKT' && ['DRAFT', 'RETURNED'].includes(a.status)) || (user.role === 'CA' && a.status === 'IN_CA_LEGAL_REVIEW');
+ // FAP Stage is fully editable at all times per specification
+ const isFapLocked = false;
+ const canLegal = true;
+ const canEditCustomerPic = true;
+ const canEdit = true;
+ const canFinance = true;
  
  async function submitFapStage(){
    setBusy(true);setError('');
@@ -1820,11 +1841,8 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
  }
 
  async function save(){
-   if (isFapLocked && (tab === 0 || tab === 5)) {
-     setError('FAP Stage is locked because the application has advanced to Pre-analysis. Data changes are not allowed.');
-     return;
-   }
-   setBusy(true);
+    // FAP Stage is fully editable per specification
+    setBusy(true);
    setError('');
    try{
      const stakeholdersChanged=JSON.stringify(draft.stakeholders)!==JSON.stringify(a.stakeholders);
@@ -2360,25 +2378,19 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
     </div>
   );
 
-  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{isFapLocked && [0, 1, 5].includes(tab) && (
-    <div className="stage-readonly-banner" style={{marginBottom:16, background:'#ecfdf5', borderColor:'#a7f3d0', color:'#065f46'}}>
-      <Lock size={16}/>
-      <span><strong>FAP Stage Locked:</strong> Application is now in <strong>Pre-analysis</strong> stage. All FAP Stage data ({tab===0?'Customer & PIC':tab===5?'Legal':tab===1?'Stakeholders':'FAP'}) is permanently locked and cannot be edited.</span>
-    </div>
-  )}{tab===0&&<>
-  {!isFapLocked && customerDetailLocked && (
-    <div className="stage-readonly-banner" style={{marginBottom:16,background:'#ecfdf5',borderColor:'#a7f3d0',color:'#065f46'}}>
-      <Lock size={16}/>
-      <span><strong>Customer &amp; PIC Locked:</strong> Physical FAP document has been approved in Documents tab. Customer &amp; PIC form is locked without altering system records before proceeding to Pre-analysis.</span>
-    </div>
-  )}
+  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<>
+  
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
       <Building2 size={18}/>
       <span><b>{customerCategory==='EXISTING'?(selectedCustomer?.companyName||'No debtor selected'):(liveCompanyName||'New Applicant')}</b> · NIB {customerCategory==='EXISTING'?(selectedCustomer?.nib||'—'):(liveNib||'—')} · NPWP {customerCategory==='EXISTING'?(selectedCustomer?.npwp||'—'):(liveNpwp||'—')}</span>
-      {customerDetailLocked&&<span className="subtle-chip locked-chip" style={{display:'inline-flex',alignItems:'center',gap:'4px',color:'#047857',background:'#ecfdf5',borderColor:'#a7f3d0',fontWeight:600}}><Lock size={13}/> Locked</span>}
+      
     </div>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
+            <button type="button" className="button small" style={{background:'#f8fafc',color:'#002c5f',borderColor:'#cbd5e1',display:'inline-flex',alignItems:'center',gap:6}} onClick={openArchiveViewer} title="View immutable FAP submission archive, OCR differences, notes, and document storage path">
+        <Archive size={14}/>
+        <span>Submission Archive &amp; OCR</span>
+      </button>
       <div className="fap-tab-layout-toggle" style={{margin:0}}>
         <button type="button" className={`fap-tab-toggle-btn ${sideBySide?'active':''}`} onClick={()=>setSideBySide(s=>!s)} title={sideBySide?"Close Side-by-side":"Open Side-by-side Live FAP"}><Columns size={14}/>{sideBySide?"Side-by-side Live FAP (Active)":"Open Side-by-side FAP"}</button>
       </div>
@@ -2411,7 +2423,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
       {renderCustomerDetailSections()}
     </div>
   )}
-</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : (isFapLocked && [0, 5, 1].includes(tab)) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>FAP Stage Locked</span> : (tab===0&&customerDetailLocked) ? <span className="subtle-chip" style={{color:'#065f46',background:'#ecfdf5',borderColor:'#a7f3d0'}}><Lock size={14}/>Customer &amp; PIC Locked</span> : !(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab===0?canEditCustomerPic:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0?canEditCustomerPic:tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Please upload the signed FAP Stage document in the Documents tab first to proceed.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>{
+</>}{tab===1&&<><StakeholderDeedView legal={draft.legal||{}} application={a} fallbackRows={draft.stakeholders}/></>}{tab===2&&<div className="business-sections"><section className="business-section"><Repeater title="Bank Facilities" description="Existing company credit facilities and loans." fields={bankFields} rows={draft.bankReferences} disabled={!canEdit} carousel onChange={bankReferences=>setDraft({...draft,bankReferences})}/></section><section className="business-section"><div className="business-section-heading"><div><h3>Financing Details</h3><p className="muted">Set the financing value, tenor, and terms.</p></div></div><Fields fields={proposalFields} value={p} disabled={!canFinance} onChange={proposal=>setDraft({...draft,proposal})}/><div className="simulation"><div><Wallet size={22}/><span>Estimated monthly installment<strong>{money(monthly)}</strong></span></div><p>Reducing balance estimate. Excludes fees, insurance, and taxes.<br/>Net principal: {money(principal)} · {p.paymentMethod||'In Arrear'}</p></div></section><section className="business-section"><Repeater title="Equipment Units" description="Register details for each financed equipment unit." fields={unitFields} rows={p.units||[]} disabled={!canFinance} onChange={units=>setDraft({...draft,proposal:{...p,units}})}/></section></div>}{tab===4&&<FinancialEditor rows={draft.financialStatements} disabled={!canFinance} onChange={financialStatements=>setDraft({...draft,financialStatements})}/>}{tab===5&&<LegalEditor value={draft.legal||{}} application={a} stakeholders={draft.stakeholders} disabled={!canLegal} user={user} onReview={beginDeedReview} onChange={legal=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}} onStakeholdersChange={(legal,stakeholders)=>{const sync=deriveDeedSync(legal,a);const updCustomer={...(draft.customer||{}),establishmentActNo:sync.establishmentActNo||draft.customer?.establishmentActNo||"",establishmentDate:sync.establishmentDate||draft.customer?.establishmentDate||""};if(sync.establishmentActNo)setCustomerDraft((prev:any)=>({...prev,...updCustomer}));setDraft({...draft,legal,stakeholders,latestDeedNo:sync.latestDeedNo||draft.latestDeedNo||"",latestDeedDate:sync.latestDeedDate||draft.latestDeedDate||"",experienceYears:sync.experienceYears,experienceMonths:sync.experienceMonths,customer:sync.establishmentActNo?updCustomer:(draft.customer||{})});}}/>}</div><div className="form-bottom-actions"><div className="form-bottom-left">{draft.isNew ? <button type="button" className="button" onClick={onBack}><ArrowLeft size={15}/>Cancel / Return to Workspace</button> : null}</div><div className="form-bottom-right">{draft.isNew ? <button type="button" className="button primary" disabled={busy} onClick={saveNewApplication}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save & Create Application</button> : (tab===0||tab===2||tab===3||tab===4||tab===5)&&<button className="button primary" disabled={busy} onClick={tab===5?()=>setSaveConfirm(true):save}>{busy?<Loader2 size={15} className="spin"/>:<Save size={15}/>}Save changes</button>}{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Please upload the signed FAP Stage document in the Documents tab first to proceed.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{isSubmitFap?'Submit':({SUBMIT_TO_BS:'Submit to BS',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div></section>}{tab===8&&<PreAnalysisForm applicationId={a.id} application={a} customer={draft.customer} pic={draft.pic} profile={draft} onSaved={()=>{
   notify('Pre-Analysis saved successfully');
   try {
     recordSystemActivity({
@@ -2437,6 +2449,17 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
         onApprove={handleApproveFapChangesInDetail}
         onCorrect={handleCorrectFapDataInDetail}
         busy={busy}
+      />
+    )}
+    {archiveModalOpen && (
+      <FapArchiveModal
+        application={a}
+        archives={archivesList}
+        loading={loadingArchives}
+        selectedIndex={selectedArchiveIdx}
+        onSelectIndex={setSelectedArchiveIdx}
+        onClose={() => setArchiveModalOpen(false)}
+        notify={notify}
       />
     )}</>;
 }
@@ -6509,3 +6532,231 @@ function LegalEditor({value,application,stakeholders,onChange,onStakeholdersChan
 }
 
 function ShareholderCountContent({rows}:{rows:any[]}){const owners=rows.filter(r=>Number(r.sharePercentage)>0),total=owners.reduce((sum,r)=>sum+Number(r.sharePercentage||0),0),name=(r:any,i:number)=>[r.firstName,r.middleName,r.lastName].filter(Boolean).join(' ')||r.name||`Shareholder ${i+1}`;return <div className="modal-body shareholder-count-modal"><div className="shareholder-count-top"><div><small>SHAREHOLDER COUNT</small><strong>{owners.length}</strong><span>Dihitung dari Percentage share &gt; 0</span></div><div><small>TOTAL OWNERSHIP</small><strong className={total>100.01?'text-red':'text-brand'}>{total.toFixed(2)}%</strong><span>{total>100.01?'Exceeds maximum limit of 100%':'Maximum 100% (not required to be 100%)'}</span></div></div>{owners.length?<div className="shareholder-count-list">{owners.map((r,i)=><div key={r.id||i}><span><b>{String(i+1).padStart(2,'0')}</b>{name(r,i)}</span><strong>{Number(r.sharePercentage).toFixed(2)}%</strong></div>)}</div>:<div className="empty-small">No stakeholders with share percentage greater than 0 on this deed.</div>}<p className="legal-ownership-rule">Total share percentage on the deed must not exceed 100%. Stakeholder data does not need to reach 100% (partial ownership portions may be recorded).</p><p className="field-note">Count and percentage follow Stakeholder data on this deed. Change share percentage via the Stakeholders button on the deed row.</p></div>;}
+
+
+function FapArchiveModal({
+  application,
+  archives,
+  loading,
+  selectedIndex,
+  onSelectIndex,
+  onClose,
+  notify
+}: {
+  application: any;
+  archives: any[];
+  loading: boolean;
+  selectedIndex: number;
+  onSelectIndex: (i: number) => void;
+  onClose: () => void;
+  notify: (msg: string) => void;
+}) {
+  const current = archives[selectedIndex] || null;
+  const [copied, setCopied] = useState(false);
+  const [showSnapshotJson, setShowSnapshotJson] = useState(false);
+
+  const handleCopyPath = (pathText: string) => {
+    if (!pathText) return;
+    navigator.clipboard.writeText(pathText);
+    setCopied(true);
+    notify('Storage path copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const discrepancies = Array.isArray(current?.ocr_discrepancies) ? current.ocr_discrepancies : [];
+
+  return (
+    <Modal title="FAP Stage Submission Archive (Immutable Database Records)" onClose={onClose} className="modal-fap-comparison">
+      <div className="modal-body" style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, background: '#f1f5f9', padding: '12px 16px', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 15, color: '#002060' }}>
+              {application.customer?.companyName || application.companyName || 'Application'} · {application.fapNumber || 'FAP Intake'}
+            </div>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+              Permanent snapshot saved when FAP Stage was submitted to Pre-analysis.
+            </div>
+          </div>
+          <span className="subtle-chip" style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <ShieldCheck size={14} /> Immutable (DB Trigger Protected)
+          </span>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#64748b' }}>
+            <Loader2 size={24} className="spin" style={{ margin: '0 auto 8px' }} />
+            <div>Loading submission archives from database...</div>
+          </div>
+        ) : archives.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', background: '#fafafa', borderRadius: 8, border: '1px dashed #cbd5e1' }}>
+            <Archive size={28} style={{ color: '#94a3b8', margin: '0 auto 8px' }} />
+            <h4 style={{ margin: '0 0 4px', color: '#334155' }}>Belum ada arsip submit untuk aplikasi ini</h4>
+            <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
+              Data snapshot FAP, catatan remarks, perbandingan OCR, dan lokasi penyimpanan dokumen akan otomatis tersimpan secara permanen ketika FAP Stage di-submit dan beralih ke Pre-analysis.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Version / snapshot selector if more than 1 */}
+            {archives.length > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', padding: '8px 12px', borderRadius: 6, border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Select Submission Snapshot:</span>
+                <select
+                  value={selectedIndex}
+                  onChange={e => onSelectIndex(Number(e.target.value))}
+                  style={{ padding: '4px 8px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1' }}
+                >
+                  {archives.map((arc, idx) => (
+                    <option key={arc.id || idx} value={idx}>
+                      Snapshot #{archives.length - idx} — {new Date(arc.submitted_at || arc.created_at).toLocaleString('en-GB')} by {arc.submitted_by_user_name || 'System'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Snapshot Metadata Banner */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, background: '#ffffff', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Submitted At</span>
+                <strong style={{ fontSize: 13, color: '#0f172a' }}>{new Date(current.submitted_at || current.created_at).toLocaleString('en-GB')}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Submitted By</span>
+                <strong style={{ fontSize: 13, color: '#0f172a' }}>{current.submitted_by_user_name || 'System'}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Target Stage</span>
+                <strong style={{ fontSize: 13, color: '#047857' }}>{current.stage_at_submission || 'PRE_ANALYSIS'}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: 11, color: '#64748b', textTransform: 'uppercase', fontWeight: 600, display: 'block' }}>Database Archive ID</span>
+                <span style={{ fontSize: 11, fontFamily: 'monospace', color: '#475569' }}>{current.id}</span>
+              </div>
+            </div>
+
+            {/* Document Storage Location Card */}
+            <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700, fontSize: 13, color: '#002060' }}>
+                  <FolderCheck size={16} />
+                  <span>Lokasi Penyimpanan Dokumen (Physical Document Storage Path)</span>
+                </div>
+                {current.ocr_document_path && (
+                  <button
+                    type="button"
+                    className="button small"
+                    style={{ fontSize: 11, padding: '3px 8px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                    onClick={() => handleCopyPath(current.ocr_document_path)}
+                  >
+                    {copied ? <Check size={12} style={{ color: '#10b981' }} /> : <Copy size={12} />}
+                    <span>{copied ? 'Copied!' : 'Copy Path'}</span>
+                  </button>
+                )}
+              </div>
+              <div style={{ background: '#ffffff', padding: '8px 12px', borderRadius: 6, border: '1px solid #cbd5e1', fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all', color: current.ocr_document_path ? '#0f172a' : '#94a3b8' }}>
+                {current.ocr_document_path || 'Lokasi dokumen fisik: Belum terindeks pada direktori server atau diunggah secara virtual'}
+              </div>
+              {current.ocr_document_filename && (
+                <div style={{ marginTop: 6, fontSize: 11, color: '#64748b' }}>
+                  Nama File Dokumen: <strong>{current.ocr_document_filename}</strong>
+                </div>
+              )}
+            </div>
+
+            {/* Document Comparison Remarks */}
+            <div style={{ background: '#fefce8', padding: 14, borderRadius: 8, border: '1px solid #fef08a' }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#854d0e', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <FileText size={16} />
+                <span>Remarks &amp; Notes Tambahan dari Perbandingan Dokumen</span>
+              </div>
+              <div style={{ fontSize: 13, color: '#713f12', background: '#ffffff', padding: '10px 12px', borderRadius: 6, border: '1px solid #fef08a', minHeight: 40, whiteSpace: 'pre-wrap' }}>
+                {current.comparison_remarks || 'Tidak ada catatan khusus / keterangan remarks tambahan saat verifikasi dokumen FAP.'}
+              </div>
+            </div>
+
+            {/* OCR Discrepancies / Differences Table */}
+            <div style={{ background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#002060', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <ScanLine size={16} />
+                  <span>Perbandingan System FAP vs Hasil Dokumen OCR ({discrepancies.length} perbedaan)</span>
+                </div>
+                <span className="subtle-chip" style={{ fontSize: 11 }}>
+                  {discrepancies.length === 0 ? '✓ Matched / No Discrepancy' : `${discrepancies.length} Field(s) Differ`}
+                </span>
+              </div>
+
+              {discrepancies.length === 0 ? (
+                <div style={{ padding: '16px', background: '#ecfdf5', borderRadius: 6, border: '1px solid #a7f3d0', color: '#065f46', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <CheckCheck size={18} style={{ color: '#059669' }} />
+                  <span>Semua kolom data sistem FAP yang dibandingkan telah sesuai atau tidak ditemukan perbedaan dengan dokumen fisik OCR.</span>
+                </div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                        <th style={{ padding: '8px 10px', color: '#475569', fontWeight: 600 }}>Field Name</th>
+                        <th style={{ padding: '8px 10px', color: '#002060', fontWeight: 600 }}>System FAP Record</th>
+                        <th style={{ padding: '8px 10px', color: '#b45309', fontWeight: 600 }}>Scanned Document (OCR)</th>
+                        <th style={{ padding: '8px 10px', color: '#475569', fontWeight: 600, width: 100 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {discrepancies.map((diff: any, i: number) => (
+                        <tr key={diff.field || i} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '8px 10px', fontWeight: 600, color: '#334155' }}>
+                            {diff.label || diff.field}
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#0f172a', background: '#f8fafc' }}>
+                            {diff.oldValue || diff.systemValue || '—'}
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#b45309', background: '#fffbeb', fontWeight: 500 }}>
+                            {diff.newValue || diff.ocrValue || '—'}
+                          </td>
+                          <td style={{ padding: '8px 10px' }}>
+                            <span style={{ display: 'inline-block', padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700, background: '#fef3c7', color: '#92400e' }}>
+                              DIFFERENT
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* System FAP Snapshot Collapsible Viewer */}
+            <div style={{ background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: '#334155' }}>
+                  Arsip Lengkap Snapshot FAP System Data (JSON Payload)
+                </span>
+                <button
+                  type="button"
+                  className="button small"
+                  style={{ fontSize: 11 }}
+                  onClick={() => setShowSnapshotJson(s => !s)}
+                >
+                  {showSnapshotJson ? 'Hide JSON Snapshot' : 'View Full JSON Snapshot'}
+                </button>
+              </div>
+              {showSnapshotJson && (
+                <pre style={{ marginTop: 10, background: '#0f172a', color: '#f8fafc', padding: 12, borderRadius: 6, fontSize: 11, maxHeight: 300, overflowY: 'auto', fontFamily: 'monospace' }}>
+                  {JSON.stringify(current.fap_stage_data, null, 2)}
+                </pre>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="modal-actions">
+        <button type="button" className="button primary" onClick={onClose}>
+          Tutup Arsip
+        </button>
+      </div>
+    </Modal>
+  );
+}

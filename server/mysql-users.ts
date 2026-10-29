@@ -72,7 +72,7 @@ export async function createUser(body:any,bootstrap=false){
 }
 export async function auditTable(table:string){
  if(!pool||!/^[\w$]+$/.test(table))return;
- const portalTables = new Set(['applications', 'audit_logs', 'authorities', 'role_authorities', 'roles', 'session_logs', 'user_app_roles', 'users', 'vapid_keys', 'web_push_subscriptions', 'crm_users']);
+ const portalTables = new Set(['applications', 'audit_logs', 'authorities', 'role_authorities', 'roles', 'session_logs', 'user_app_roles', 'users', 'vapid_keys', 'web_push_subscriptions', 'crm_users', 'fap_submission_archive']);
  if (portalTables.has(table)) return;
  let [cols]=await pool.query<any[]>('SELECT COLUMN_NAME,DATA_TYPE,CHARACTER_MAXIMUM_LENGTH FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=? ORDER BY ORDINAL_POSITION',[table]);
  const [keys]=await pool.query<any[]>("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME IN ('created_by','updated_by') AND REFERENCED_TABLE_NAME IS NOT NULL",[table]);

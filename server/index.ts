@@ -41,10 +41,12 @@ import {defaultMasterCatalog,validateMasterCatalog,type MasterCatalog} from '../
 import {checkMysql,readMenu,writeMenu,pool} from './mysql-store';
 import {initializeIntake,listIntake,intakeDetail,intakeCustomers,createIntake,saveCustomerPic,transitionIntake} from './mysql-intake';
 import {initializeLegal,saveLegal,migrateStakeholderLocationNames} from './mysql-legal';
+import {initializeFapArchive,recordFapSubmissionArchive,getFapSubmissionArchives,getFapSubmissionArchiveDetail} from './mysql-fap-archive';
 import {ensure,Problem,modelInput,validateStakeholders,validateFinancials,validateProposal,checklistTemplate,fapNumber,ratios,installment} from './domain';
 await initialize();await seed();
 await initializeUsers();
 await initializeIntake();
+await initializeFapArchive();
 await initializeLegal();
 await initializeBusiness();
 await initializeFinancialStatements();
@@ -290,7 +292,7 @@ app.post('/api/v1/intake/drafts',async(req,res)=>{ensure(req.actor.isAdmin||req.
 app.get('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const appRecord=await intakeDetail(id)||(await detail(id).catch(()=>null));const data=await getPreAnalysisData(id,appRecord);res.json({success:true,data});});
 app.put('/api/v1/applications/:id/pre-analysis',async(req,res)=>{const id=String(req.params.id);const data=req.body;await savePreAnalysisData(id,data);res.json({success:true,data});});
 app.get('/api/v1/applications/:id',async(req,res,next)=>{const detail=await intakeDetail(String(req.params.id));if(detail)return res.json(detail);next();});
-app.put('/api/v1/applications/:id/business',async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);const fallback=a?null:await detail(id);a=a||fallback;const marketing=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT')&&['DRAFT','RETURNED'].includes(a.status),finance=(req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='CA')&&a.status==='IN_CA_LEGAL_REVIEW';ensure(req.actor.isAdmin||req.actor.role==='ADMIN'||marketing||finance,'Business information is locked at this workflow stage',403);if(fallback)await saveCustomerPic(id,{profile:fallback},fallback);await saveBusiness(id,{...req.body,...(finance?{projects:a.projects,bankReferences:a.bankReferences}:{})});res.json(await intakeDetail(id));});
+app.put('/api/v1/applications/:id/business',async(req,res)=>{const id=String(req.params.id);let a=await intakeDetail(id);const fallback=a?null:await detail(id);a=a||fallback;const marketing=req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='MKT',finance=req.actor.isAdmin||req.actor.role==='ADMIN'||req.actor.role==='CA';ensure(marketing||finance,'Business information is locked at this workflow stage',403);if(fallback)await saveCustomerPic(id,{profile:fallback},fallback);await saveBusiness(id,{...req.body,...(finance?{projects:a.projects,bankReferences:a.bankReferences}:{})});res.json(await intakeDetail(id));});
 async function checkIsPreAnalysis(id: string, existing?: any): Promise<boolean> {
   const a = existing || (await intakeDetail(id));
   if (!a) return false;
@@ -309,20 +311,19 @@ app.put('/api/v1/applications/:id/page-1',async(req,res,next)=>{
   const id=String(req.params.id);
   const existing=await intakeDetail(id);
   if(!existing)return next();
-  if (await checkIsPreAnalysis(id, existing)) {
-    return res.status(403).json({ error: 'FAP Stage is locked because the application has advanced to Pre-analysis.' });
-  }
+  // FAP Stage is fully editable at all times
+  // checkIsPreAnalysis lock removed per specification
   if(Array.isArray(req.body.projects)){try{await saveBusiness(id,{projects:req.body.projects});}catch(e:any){console.warn('saveBusiness projects error:',e);}}
   res.json(await saveCustomerPic(id,req.body));
 });
-app.put('/api/v1/applications/:id/stage',async(req,res)=>{const id=String(req.params.id);const stage=String(req.body.stage||'Pre-analysis');if(stage==='Pre-analysis'){try{const lock=await getSubmitLock(id);if(lock.isLocked){return res.status(403).json({error:'Please upload the signed FAP Stage document in the Documents tab first.'});}}catch{}}try{if(pool){const dbStage=stage==='Pre-analysis'?'PRE_ANALYSIS':'FAP_STAGE';await pool.query('UPDATE application_submit_lock SET stage=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[dbStage,id]);await pool.query('UPDATE applications SET stage=? WHERE id=?',[stage,id]);}}catch{}res.json({success:true,stage});});
+app.put('/api/v1/applications/:id/stage',async(req,res)=>{const id=String(req.params.id);const stage=String(req.body.stage||'Pre-analysis');if(stage==='Pre-analysis'){try{const lock=await getSubmitLock(id);if(lock.isLocked){return res.status(403).json({error:'Please upload the signed FAP Stage document in the Documents tab first.'});}}catch{}}try{if(pool){const dbStage=stage==='Pre-analysis'?'PRE_ANALYSIS':'FAP_STAGE';await pool.query('UPDATE application_submit_lock SET stage=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',[dbStage,id]);await pool.query('UPDATE applications SET stage=? WHERE id=?',[stage,id]);}}catch{}
+if(stage==='Pre-analysis'){try{const currentApp=await intakeDetail(id);await recordFapSubmissionArchive(id,currentApp,req.actor,req.body?.remarks);}catch(archErr){console.error('recordFapSubmissionArchive error on stage update:',archErr);}}
+res.json({success:true,stage});});
 app.put(['/api/v1/applications/:id/legal/draft','/api/v1/applications/:id/page-legal'],async(req,res,next)=>{
   const id=String(req.params.id);
   let a=await intakeDetail(id);
   if(!a)return next();
-  if (await checkIsPreAnalysis(id, a)) {
-    return res.status(403).json({ error: 'Legal data in FAP Stage is locked because the application has advanced to Pre-analysis.' });
-  }
+  // Legal data in FAP Stage is fully editable at all times
   ensure(canEditLegal(req.actor,a),'Legal information is locked at this workflow stage',403);
   const legalData=req.body.legal||(req.body.deeds?req.body:(Array.isArray(req.body)?{deeds:req.body}:{}));
   if(req.body.stakeholders&&Array.isArray(legalData?.deeds)){
@@ -963,14 +964,7 @@ app.post('/api/v1/applications/:id/documents/upload',upload.single('file'),async
   const formattedFileName = `${cleanBase}_${appHash}_${dateStamp}${ext}`;
 
   if(await intakeDetail(id)){
-    if (await checkIsPreAnalysis(id)) {
-      const docs = await readApplicationDocuments(id);
-      const targetCheck = docs.find(d => String(d.id) === String(req.body.checklistId));
-      const isFap = targetCheck && (String(targetCheck.documentCode).toUpperCase() === 'FAP' || String(targetCheck.documentName).toLowerCase().includes('fap'));
-      if (isFap) {
-        return res.status(403).json({ error: 'FAP Stage documents are locked because the application has advanced to Pre-analysis.' });
-      }
-    }
+    // Documents in FAP Stage are fully manageable at all times
     const result=await uploadApplicationDocument(id,String(req.body.checklistId),{...file,originalname:formattedFileName},req.actor.id,async key=>{
       if(s3)await s3.send(new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,Body:file.buffer,ContentType:file.mimetype,ServerSideEncryption:'AES256'}));
       else{
@@ -1224,8 +1218,15 @@ app.post('/api/v1/applications/:id/fap-changes/approve', async (req, res) => {
     }
   }
 
+  // Record immutable snapshot to fap_submission_archive
+  try {
+    await recordFapSubmissionArchive(id, current, req.actor, req.body?.remarks);
+  } catch (archErr) {
+    console.error('recordFapSubmissionArchive error on fap approve:', archErr);
+  }
+
   const updated = await intakeDetail(id);
-  res.json({ success: true, application: updated, customerDetailLocked: true });
+  res.json({ success: true, application: updated, customerDetailLocked: false });
 });
 
 app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
@@ -1245,17 +1246,30 @@ app.post('/api/v1/applications/:id/fap-changes/dismiss', async (req, res) => {
   res.json({ success: true });
 });
 
+app.get('/api/v1/applications/:id/fap-archive', async (req, res) => {
+  const id = String(req.params.id);
+  const archives = await getFapSubmissionArchives(id);
+  res.json({ success: true, archives });
+});
+
+app.get('/api/v1/fap-archive/:archiveId', async (req, res) => {
+  const archive = await getFapSubmissionArchiveDetail(String(req.params.archiveId));
+  if (!archive) return res.status(404).json({ error: 'FAP archive not found' });
+  res.json({ success: true, archive });
+});
+
+app.all(['/api/v1/applications/:id/fap-archive', '/api/v1/fap-archive/:archiveId'], (req, res, next) => {
+  if (['PUT', 'POST', 'PATCH', 'DELETE'].includes(req.method)) {
+    return res.status(403).json({ error: 'Data arsip FAP submission bersifat permanen dan tidak dapat diubah atau dihapus (immutable).' });
+  }
+  next();
+});
+
 app.delete(['/api/v1/applications/:id/documents/files/:fileId', '/api/v1/applications/:id/documents/:fileId'],async(req,res)=>{
  permit(req,['MKT','BS','CA','LEGAL','COMMITTEE']);
  const id=String(req.params.id),fileId=String(req.params.fileId);
  if(await intakeDetail(id)){
-  if (await checkIsPreAnalysis(id)) {
-    const docs = await readApplicationDocuments(id);
-    const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
-    if (fapCheck && fapCheck.files?.some((f: any) => String(f.id) === fileId)) {
-      return res.status(403).json({ error: 'FAP Stage documents are locked because the application has advanced to Pre-analysis.' });
-    }
-  }
+  // FAP documents can be modified or updated as needed
   await deleteApplicationDocumentFile(id,fileId,removeStoredDocument);
   const docs = await readApplicationDocuments(id);
   const fapCheck = docs.find(d => String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase().includes('fap'));
@@ -1311,6 +1325,3 @@ app.use((error:any,req:Request,res:Response,_next:NextFunction)=>{
   console.error('API Handled Error:', error.code, error.message, error.detail, error);
   let status=error.status||500,message=error.message,errors=error.errors||[];if(error instanceof z.ZodError){status=422;message='Validation failed';errors=error.issues.map(x=>({field:x.path.join('.'),detail:x.message}));}else if(error.code==='ER_DUP_ENTRY'){status=409;message='Username/email atau data unik sudah digunakan';}else if(error.code==='23505'){status=409;message='A record with these unique details already exists';}else if(['23514','23502','22001','22003','22007','22P02'].includes(error.code)){status=422;message='One or more fields contain an invalid value';}else if(error.code==='23503'){status=422;message='Referenced record was not found';}else if(error instanceof multer.MulterError){status=422;message=error.code==='LIMIT_FILE_SIZE'?'File exceeds the 20 MB limit':error.message;}if(status>=500){console.error(error);message='An unexpected server error occurred';}res.status(status).type('application/problem+json').json({type:'about:blank',title:message,status,statusCode:status,error:status===422?'Unprocessable Entity':message,message,errors,timestamp:new Date().toISOString()});});
 const port=Number(process.env.PORT||3001);app.listen(port,'0.0.0.0',()=>console.log(`LiuGong API running at http://0.0.0.0:${port}`));
-
-
-
