@@ -34,7 +34,7 @@ export function ActivityPage({
   onMarkRead,
   onMarkAllRead
 }: ActivityPageProps) {
-  const [filter, setFilter] = useState<'unread' | 'all'>('unread');
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [search, setSearch] = useState('');
 
   const unreadList = activities.filter(a => !a.read && !readActivityIds.has(a.id));
@@ -165,6 +165,40 @@ export function ActivityPage({
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
+            onClick={() => setFilter('all')}
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 20,
+              border: '1px solid',
+              borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
+              background: filter === 'all' ? '#002c5f' : '#ffffff',
+              color: filter === 'all' ? '#ffffff' : '#475569',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>All History</span>
+            <span
+              style={{
+                background: filter === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+                color: filter === 'all' ? '#ffffff' : '#334155',
+                padding: '1px 7px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700
+              }}
+            >
+              {activities.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setFilter('unread')}
             style={{
               padding: '6px 14px',
@@ -197,40 +231,6 @@ export function ActivityPage({
                 {unreadList.length}
               </span>
             ) : null}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '6px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 20,
-              border: '1px solid',
-              borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
-              background: filter === 'all' ? '#002c5f' : '#ffffff',
-              color: filter === 'all' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <span>All History</span>
-            <span
-              style={{
-                background: filter === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
-                color: filter === 'all' ? '#ffffff' : '#334155',
-                padding: '1px 7px',
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700
-              }}
-            >
-              {activities.length}
-            </span>
           </button>
         </div>
 
@@ -468,7 +468,7 @@ export function ActivityPage({
                   </button>
                 )}
 
-                {isUnread && (
+                {isUnread ? (
                   <button
                     type="button"
                     onClick={() => onMarkRead(item.id)}
@@ -485,11 +485,26 @@ export function ActivityPage({
                       alignItems: 'center',
                       gap: 4
                     }}
-                    title="Mark this activity as seen (hides from Unread)"
+                    title="Mark this activity as seen (clears sidebar unread badge)"
                   >
                     <Check size={13} />
                     <span>Mark seen</span>
                   </button>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 11,
+                      color: '#94a3b8',
+                      padding: '5px 10px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <CheckCheck size={14} style={{ color: '#10b981' }} />
+                    <span>Seen</span>
+                  </span>
                 )}
               </div>
             </article>
@@ -556,7 +571,7 @@ export function EnhancedNotificationsPage({
   onMarkRead,
   onMarkAllRead
 }: EnhancedNotificationsPageProps) {
-  const [filter, setFilter] = useState<'unread' | 'all'>('unread');
+  const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [search, setSearch] = useState('');
 
   const unreadList = notifications.filter(n => !n.readAt && !readNotificationIds.has(n.id));
@@ -667,6 +682,39 @@ export function EnhancedNotificationsPage({
         <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
+            onClick={() => setFilter('all')}
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 20,
+              border: '1px solid',
+              borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
+              background: filter === 'all' ? '#002c5f' : '#ffffff',
+              color: filter === 'all' ? '#ffffff' : '#475569',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8
+            }}
+          >
+            <span>All Notifications</span>
+            <span
+              style={{
+                background: filter === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+                color: filter === 'all' ? '#ffffff' : '#334155',
+                padding: '1px 7px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700
+              }}
+            >
+              {notifications.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setFilter('unread')}
             style={{
               padding: '6px 14px',
@@ -698,39 +746,6 @@ export function EnhancedNotificationsPage({
                 {unreadList.length}
               </span>
             )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '6px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 20,
-              border: '1px solid',
-              borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
-              background: filter === 'all' ? '#002c5f' : '#ffffff',
-              color: filter === 'all' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8
-            }}
-          >
-            <span>All Notifications</span>
-            <span
-              style={{
-                background: filter === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
-                color: filter === 'all' ? '#ffffff' : '#334155',
-                padding: '1px 7px',
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700
-              }}
-            >
-              {notifications.length}
-            </span>
           </button>
         </div>
 
@@ -931,7 +946,7 @@ export function EnhancedNotificationsPage({
                   </button>
                 )}
 
-                {isUnread && (
+                {isUnread ? (
                   <button
                     type="button"
                     onClick={() => onMarkRead(item.id)}
@@ -948,11 +963,26 @@ export function EnhancedNotificationsPage({
                       alignItems: 'center',
                       gap: 4
                     }}
-                    title="Mark this notification as read"
+                    title="Mark this notification as read (clears sidebar unread badge)"
                   >
                     <Check size={13} />
                     <span>Mark as read</span>
                   </button>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      fontSize: 11,
+                      color: '#94a3b8',
+                      padding: '5px 10px',
+                      fontWeight: 500
+                    }}
+                  >
+                    <CheckCheck size={14} style={{ color: '#10b981' }} />
+                    <span>Read</span>
+                  </span>
                 )}
               </div>
             </article>
