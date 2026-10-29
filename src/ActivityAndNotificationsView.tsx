@@ -523,12 +523,16 @@ export function ActivityPage({
               <CheckCircle2 size={24} />
             </div>
             <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
-              {filter === 'unread' ? 'All caught up!' : 'No activities found'}
+              {filter === 'unread'
+                ? 'All caught up!'
+                : (activities.length === 0 ? 'No activity history yet' : 'No activities found')}
             </h3>
             <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
               {filter === 'unread'
-                ? 'No unread activity tasks. Click "All History" to review past updates.'
-                : 'No activities match the current search filter.'}
+                ? 'No unread activity tasks.'
+                : (activities.length === 0
+                    ? 'Real-time application changes and updates will be logged here automatically.'
+                    : 'No activities match the current search filter.')}
             </p>
           </div>
         )}
@@ -982,12 +986,16 @@ export function EnhancedNotificationsPage({
               <CheckCircle2 size={24} />
             </div>
             <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
-              {filter === 'unread' ? 'All caught up!' : 'No notifications found'}
+              {filter === 'unread'
+                ? 'All caught up!'
+                : (notifications.length === 0 ? 'No notifications yet' : 'No notifications found')}
             </h3>
             <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
               {filter === 'unread'
-                ? 'No unread notification tasks. Click "All Notifications" to view past history.'
-                : 'No notifications match the current search filter.'}
+                ? 'No unread notification tasks.'
+                : (notifications.length === 0
+                    ? 'Important reminders and required actions will appear here automatically.'
+                    : 'No notifications match the current search filter.')}
             </p>
           </div>
         )}

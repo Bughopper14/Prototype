@@ -1,6 +1,7 @@
 /**
  * Unified Activity & Notification Tracker for Liugong CRM Dashboard
  * Supports real-time logging, persistent unread state, section linking, and WhatsApp-like dismissal.
+ * NOTE: Strictly records genuine user actions — NO dummy or placeholder template data.
  */
 
 export interface SystemActivity {
@@ -79,7 +80,18 @@ export function getStoredActivities(): SystemActivity[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(ACTIVITY_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: SystemActivity[] = JSON.parse(raw);
+    // Filter out any template/seed/placeholder items
+    const cleaned = parsed.filter(a => 
+      !a.id.startsWith('seed-') && 
+      !a.companyName?.includes('Company #') && 
+      !a.title?.includes('Company #')
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return [];
   }
@@ -88,7 +100,12 @@ export function getStoredActivities(): SystemActivity[] {
 export function saveStoredActivities(activities: SystemActivity[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(activities.slice(0, 200)));
+    const cleanList = activities.filter(a => 
+      !a.id.startsWith('seed-') && 
+      !a.companyName?.includes('Company #') && 
+      !a.title?.includes('Company #')
+    );
+    localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(cleanList.slice(0, 200)));
     window.dispatchEvent(new CustomEvent('crm-activity-state-change'));
   } catch {}
 }
@@ -97,7 +114,18 @@ export function getStoredNotifications(): SystemNotificationItem[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed: SystemNotificationItem[] = JSON.parse(raw);
+    // Filter out any template/seed/placeholder items
+    const cleaned = parsed.filter(n => 
+      !n.id.startsWith('seed-') && 
+      !n.companyName?.includes('Company #') && 
+      !n.title?.includes('Company #')
+    );
+    if (cleaned.length !== parsed.length) {
+      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
   } catch {
     return [];
   }
@@ -106,13 +134,18 @@ export function getStoredNotifications(): SystemNotificationItem[] {
 export function saveStoredNotifications(notifications: SystemNotificationItem[]) {
   if (typeof window === 'undefined') return;
   try {
-    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(notifications.slice(0, 150)));
+    const cleanList = notifications.filter(n => 
+      !n.id.startsWith('seed-') && 
+      !n.companyName?.includes('Company #') && 
+      !n.title?.includes('Company #')
+    );
+    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(cleanList.slice(0, 150)));
     window.dispatchEvent(new CustomEvent('crm-notification-state-change'));
   } catch {}
 }
 
 /**
- * Record a new system activity and optional notification task
+ * Record a new real system activity and optional notification task
  */
 export function recordSystemActivity(params: {
   applicationId?: string;
@@ -168,150 +201,28 @@ export function recordSystemActivity(params: {
 }
 
 /**
- * Generate initial seed activities from existing applications if storage is empty
+ * Purges all template/seed placeholders and ensures only authentic activities exist.
  */
-export function ensureInitialActivitySeeds(applications: any[], currentUser: any) {
-  if (typeof window === 'undefined' || !applications || applications.length === 0) return;
-  const existing = getStoredActivities();
-  if (existing.length >= 5) return;
+export function purgePlaceholderData() {
+  if (typeof window === 'undefined') return;
+  try {
+    getStoredActivities();
+    getStoredNotifications();
+  } catch {}
+}
 
-  const seeds: SystemActivity[] = [];
-  const notifSeeds: SystemNotificationItem[] = [];
+// Automatically purge legacy placeholders on module execution
+if (typeof window !== 'undefined') {
+  try {
+    purgePlaceholderData();
+  } catch {}
+}
 
-  applications.slice(0, 10).forEach((app: any, idx: number) => {
-    const comp = app.customer?.companyName || app.companyName || `Company #${idx + 1}`;
-    const fap = app.fapNumber || `FAP-2026-000${idx + 1}`;
-    const baseDate = new Date(Date.now() - (idx * 3600 * 1000 * 4 + 1800000)).toISOString();
-
-    if (idx === 0) {
-      seeds.push({
-        id: 'seed-act-0',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Pre Analysis form',
-        tabIndex: 8,
-        actionType: 'UPDATE',
-        title: `Updated Pre-Analysis Form for ${comp}`,
-        details: 'Updated credit remarks, financial evaluation, and contract risk summary.',
-        actionBy: currentUser?.name || 'Keith Santoso',
-        userRole: 'CA',
-        timestamp: baseDate,
-        read: false
-      });
-      notifSeeds.push({
-        id: 'seed-notif-0',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Pre Analysis form',
-        tabIndex: 8,
-        title: `Pre-Analysis Review Needed for ${comp}`,
-        message: `${fap} — Pre-Analysis draft requires credit committee evaluation.`,
-        priority: 'high',
-        taskType: 'Pre-Analysis Evaluation',
-        createdAt: baseDate,
-        readAt: null
-      });
-    } else if (idx === 1) {
-      seeds.push({
-        id: 'seed-act-1',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Documents',
-        tabIndex: 6,
-        actionType: 'APPROVE',
-        title: `Approved Document & Locked Customer/PIC for ${comp}`,
-        details: 'Physical FAP Document signed & verified. Application successfully unlocked for Pre-analysis.',
-        actionBy: 'Andi Wijaya',
-        userRole: 'BS',
-        timestamp: baseDate,
-        read: false
-      });
-      notifSeeds.push({
-        id: 'seed-notif-1',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Documents',
-        tabIndex: 6,
-        title: `Document Checklist Action for ${comp}`,
-        message: `${fap} — Document checklist ready for branch head verification.`,
-        priority: 'normal',
-        taskType: 'Document Verification',
-        createdAt: baseDate,
-        readAt: null
-      });
-    } else if (idx === 2) {
-      seeds.push({
-        id: 'seed-act-2',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Legal',
-        tabIndex: 5,
-        actionType: 'UPDATE',
-        title: `Saved Establishment Deed for ${comp}`,
-        details: 'Entered notarial deed data, ministerial decree number, and updated stakeholder ownership.',
-        actionBy: 'Dewi Lestari',
-        userRole: 'LEGAL',
-        timestamp: baseDate,
-        read: false
-      });
-      notifSeeds.push({
-        id: 'seed-notif-2',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Legal',
-        tabIndex: 5,
-        title: `Deed Verification Follow-up for ${comp}`,
-        message: `${fap} — Legal deed registered. Verification is pending for shareholder structure.`,
-        priority: 'normal',
-        taskType: 'Legal Review',
-        createdAt: baseDate,
-        readAt: null
-      });
-    } else if (idx === 3) {
-      seeds.push({
-        id: 'seed-act-3',
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: 'Customer & PIC',
-        tabIndex: 0,
-        actionType: 'CREATE',
-        title: `Created New Application for ${comp}`,
-        details: `Initial FAP intake initiated for branch ${app.branchCode || 'JKT01'}, Customer category: Corporate.`,
-        actionBy: currentUser?.name || 'Marketing Officer',
-        userRole: 'MKT',
-        timestamp: baseDate,
-        read: false
-      });
-    } else {
-      seeds.push({
-        id: `seed-act-${idx}`,
-        applicationId: app.id,
-        fapNumber: fap,
-        companyName: comp,
-        section: idx % 2 === 0 ? 'Financing & units' : 'Financial statements',
-        tabIndex: idx % 2 === 0 ? 4 : 4,
-        actionType: 'UPDATE',
-        title: idx % 2 === 0 ? `Updated Financing Proposal for ${comp}` : `Updated Financial Statements for ${comp}`,
-        details: idx % 2 === 0 ? 'Adjusted equipment quantities and unit financing terms.' : 'Audited financial statements and financial ratio calculations updated.',
-        actionBy: 'Financing Analyst',
-        userRole: 'CA',
-        timestamp: baseDate,
-        read: idx > 4 // Mark older ones as already read so initially there are unread items
-      });
-    }
-  });
-
-  saveStoredActivities([...seeds, ...existing]);
-
-  const existingNotifs = getStoredNotifications();
-  if (existingNotifs.length < 3) {
-    saveStoredNotifications([...notifSeeds, ...existingNotifs]);
-  }
+/**
+ * No placeholder or template seeding.
+ * Kept for interface compatibility with existing call sites.
+ */
+export function ensureInitialActivitySeeds(_applications: any[], _currentUser: any) {
+  // Purposely empty: No template or placeholder data is seeded.
+  // Activities and notifications are strictly generated from authentic user actions.
 }
