@@ -215,6 +215,7 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     holdingGroup: '',
     projectName: '',
     projectLocation: '',
+    hasExistingProjects: true,
     existingProjects: '',
     newProjects: '',
     projectNameLocation: '',
@@ -229,6 +230,7 @@ export function createBlankPreAnalysisData(appId: string, appRecord?: any, preAn
     ubo: '',
     uboInfo: '',
     uboInformation: '',
+    hasGroupStructure: true,
     groupStructure: {
       holding: {
         name: '',
@@ -301,6 +303,7 @@ export const DEFAULT_PRE_ANALYSIS_DATA = {
   holdingGroup: 'STAR GROUP (PT Sentosa Abadi Raja)',
   projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
   projectLocation: 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
+  hasExistingProjects: true,
   existingProjects: 'A. PT Handalan Putramas Santosa (HPS) - Existing Project:\n1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging (Start Nov 2025)\n4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project (Start Dec 2024)\n\nB. PT Pangan Sejahtera Santosa (PASS) - Existing Project:\n1. PT Sinar Sosro - FMCG Distributor (Start 2022)\n2. PT FKS Pangan Nusantara (Start 2022)\n3. PT Perfetti Van Melle (Start 2022)\n4. PT Mondelez Indonesia Trading (Start 2022)',
   newProjects: 'C. PT Harta Putramas Santosa (HTPS) - NEW Project:\n1. PT Industrial Forest Plantation - Harvesting Project (Est. Sept/Oct 2026, Kalimantan Timur)\n2. PT SBA Wood Industries - Land Clearing (Est. Oct 2026, Lebong Hitam)\n3. RAPP - Mayawana (For next year)',
   projectNameLocation: 'STAR GROUP (PT Sentosa Abadi Raja) - Land Clearing, Wood Hauling & Harvesting | Sumatera & Kalimantan',
@@ -352,6 +355,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   - PT STAR (99,997%), Leonard Santosa (0,003%)
 • PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
   - PT STAR (99,98%), Leonard Santosa (0,02%)`,
+  hasGroupStructure: true,
   groupStructure: DEFAULT_GROUP_STRUCTURE,
 
   milestones: [

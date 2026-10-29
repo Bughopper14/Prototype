@@ -183,6 +183,7 @@ export interface PreAnalysisData {
   holdingGroup: string;
   projectName: string;
   projectLocation: string;
+  hasExistingProjects?: boolean;
   existingProjects: string;
   newProjects: string;
   projectNameLocation?: string;
@@ -202,6 +203,7 @@ export interface PreAnalysisData {
   businessDevBackground?: string;
   operationalTeamInfo?: string;
   uboInformation?: string;
+  hasGroupStructure?: boolean;
   groupStructure?: GroupStructureData;
   milestones: MilestoneItem[];
   existingFincoBackup: string;
@@ -281,6 +283,7 @@ export const defaultInitialData: PreAnalysisData = {
   holdingGroup: 'STAR GROUP (PT Sentosa Abadi Raja)',
   projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
   projectLocation: 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
+  hasExistingProjects: true,
   existingProjects: `A. PT Handalan Putramas Santosa (HPS) (Existing Project):
 1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
 2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
@@ -345,6 +348,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   - PT STAR (99,997%), Leonard Santosa (0,003%)
 • PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
   - PT STAR (99,98%), Leonard Santosa (0,02%)`,
+  hasGroupStructure: true,
   groupStructure: DEFAULT_GROUP_STRUCTURE,
   milestones: [
     { year: '2022', milestone: "PT Pangan Sejahtera Santosa (PASS) established – Started the Group's business through urban FMCG distribution and supported major FMCG principals." },
@@ -721,6 +725,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const currentGroupStructure = useMemo<GroupStructureData>(() => {
     return data.groupStructure || DEFAULT_GROUP_STRUCTURE;
   }, [data.groupStructure]);
+
+  const hasExistingProjects = data.hasExistingProjects !== undefined
+    ? Boolean(data.hasExistingProjects)
+    : (data.existingProjects ? data.existingProjects.trim().length > 0 : true);
+
+  const hasGroupStructure = data.hasGroupStructure !== undefined
+    ? Boolean(data.hasGroupStructure)
+    : true;
 
   const syncStructureIntoData = (prev: PreAnalysisData, newGs: GroupStructureData): PreAnalysisData => {
     const narrative = formatGroupStructureAsNarrative(newGs);
@@ -1450,19 +1462,89 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                 </div>
-                <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span>Existing Projects (Proyek Yang Sedang Berjalan - PT HPS & PT PASS)</span>
-                    <span style={{ fontSize: '0.68rem', color: '#166534', background: '#dcfce7', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>Active Contracts</span>
-                  </label>
-                  <PreAnalysisRichEditor
-                    value={data.existingProjects || ''}
-                    onChange={val => updateField('existingProjects', val)}
-                    onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
-                    placeholder="A. PT Handalan Putramas Santosa (HPS)..."
-                    height={220}
-                    dataField="existingProjects"
-                  />
+                <div style={{ background: '#ffffff', border: '1px solid ' + (hasExistingProjects ? '#cbd5e1' : '#e2e8f0'), borderRadius: '6px', padding: '10px', transition: 'all 0.2s' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasExistingProjects ? '8px' : '0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', margin: 0 }}>
+                        Existing Projects (Proyek Yang Sedang Berjalan)
+                      </label>
+                      {hasExistingProjects ? (
+                        <span style={{ fontSize: '0.68rem', color: '#166534', background: '#dcfce7', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                          Active Contracts (Ada)
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.68rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                          Tidak Ada / Dinonaktifkan
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Toggle Switch */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.72rem', color: hasExistingProjects ? '#15803d' : '#64748b', fontWeight: 600 }}>
+                        {hasExistingProjects ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={hasExistingProjects}
+                        title={hasExistingProjects ? 'Klik untuk menonaktifkan Existing Projects' : 'Klik untuk mengaktifkan Existing Projects'}
+                        onClick={() => updateField('hasExistingProjects', !hasExistingProjects)}
+                        style={{
+                          position: 'relative',
+                          width: '38px',
+                          height: '20px',
+                          background: hasExistingProjects ? '#16a34a' : '#cbd5e1',
+                          borderRadius: '20px',
+                          border: 'none',
+                          padding: 0,
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s',
+                          display: 'inline-block',
+                          outline: 'none',
+                          flexShrink: 0
+                        }}
+                      >
+                        <span
+                          style={{
+                            position: 'absolute',
+                            top: '2px',
+                            left: hasExistingProjects ? '20px' : '2px',
+                            width: '16px',
+                            height: '16px',
+                            background: '#ffffff',
+                            borderRadius: '50%',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                            transition: 'left 0.2s'
+                          }}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {hasExistingProjects ? (
+                    <div style={{ marginTop: '6px' }}>
+                      <PreAnalysisRichEditor
+                        value={data.existingProjects || ''}
+                        onChange={val => updateField('existingProjects', val)}
+                        onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
+                        placeholder="A. PT Handalan Putramas Santosa (HPS)..."
+                        height={220}
+                        dataField="existingProjects"
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ padding: '8px 10px', background: '#f8fafc', borderRadius: '4px', fontSize: '0.72rem', color: '#64748b', marginTop: '6px', border: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Existing Projects dinonaktifkan (tidak ada proyek berjalan). Kolom ini tidak akan dicetak atau ditampilkan pada formulir Digital Twin.</span>
+                      <button
+                        type="button"
+                        onClick={() => updateField('hasExistingProjects', true)}
+                        style={{ fontSize: '0.7rem', color: '#0284c7', background: 'transparent', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Aktifkan
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -1675,38 +1757,109 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     height={220}
                     dataField="uboInformation"
                   />
-                  <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: '#f8fafc', marginTop: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: hasGroupStructure ? '#f8fafc' : '#f1f5f9', marginTop: '6px', transition: 'all 0.2s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasGroupStructure ? '8px' : '0' }}>
                       <div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a' }}>
-                          Bagan Struktur Kepemilikan Saham Group (Input System)
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>Bagan Struktur Kepemilikan Saham Group (Input System)</span>
+                          {hasGroupStructure ? (
+                            <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                              Aktif
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.65rem', background: '#e2e8f0', color: '#64748b', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                              Tidak Ada / Dinonaktifkan
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                          Input entitas holding & anak perusahaan. Diagram hierarki visual otomatis ter-generate di Digital Twin (Halaman 3).
+                          {hasGroupStructure 
+                            ? 'Input entitas holding & anak perusahaan. Diagram hierarki visual otomatis ter-generate di Digital Twin (Halaman 3).'
+                            : 'Struktur kepemilikan group dinonaktifkan. Bagan diagram tidak akan dicetak atau ditampilkan pada Digital Twin form.'}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={addSubsidiary}
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          padding: '4px 10px',
-                          borderRadius: '4px',
-                          background: '#0284c7',
-                          color: '#ffffff',
-                          border: 'none',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        + Add Subsidiary
-                      </button>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Toggle Switch */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '0.72rem', color: hasGroupStructure ? '#15803d' : '#64748b', fontWeight: 600 }}>
+                            {hasGroupStructure ? 'Aktif' : 'Nonaktif'}
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={hasGroupStructure}
+                            title={hasGroupStructure ? 'Klik untuk menonaktifkan Bagan Struktur Group' : 'Klik untuk mengaktifkan Bagan Struktur Group'}
+                            onClick={() => updateField('hasGroupStructure', !hasGroupStructure)}
+                            style={{
+                              position: 'relative',
+                              width: '38px',
+                              height: '20px',
+                              background: hasGroupStructure ? '#16a34a' : '#cbd5e1',
+                              borderRadius: '20px',
+                              border: 'none',
+                              padding: 0,
+                              cursor: 'pointer',
+                              transition: 'background-color 0.2s',
+                              display: 'inline-block',
+                              outline: 'none',
+                              flexShrink: 0
+                            }}
+                          >
+                            <span
+                              style={{
+                                position: 'absolute',
+                                top: '2px',
+                                left: hasGroupStructure ? '20px' : '2px',
+                                width: '16px',
+                                height: '16px',
+                                background: '#ffffff',
+                                borderRadius: '50%',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                                transition: 'left 0.2s'
+                              }}
+                            />
+                          </button>
+                        </div>
+
+                        {hasGroupStructure && (
+                          <button
+                            type="button"
+                            onClick={addSubsidiary}
+                            style={{
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              padding: '4px 10px',
+                              borderRadius: '4px',
+                              background: '#0284c7',
+                              color: '#ffffff',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            + Add Subsidiary
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    {/* 1. HOLDING COMPANY (ENTITAS INDUK) */}
+                    {!hasGroupStructure ? (
+                      <div style={{ padding: '8px 10px', background: '#ffffff', borderRadius: '4px', fontSize: '0.72rem', color: '#64748b', marginTop: '6px', border: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Bagan struktur group dinonaktifkan. Diagram hierarki visual tidak akan dicetak atau ditampilkan pada Digital Twin form.</span>
+                        <button
+                          type="button"
+                          onClick={() => updateField('hasGroupStructure', true)}
+                          style={{ fontSize: '0.7rem', color: '#0284c7', background: 'transparent', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontWeight: 600 }}
+                        >
+                          Aktifkan
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {/* 1. HOLDING COMPANY (ENTITAS INDUK) */}
                     <div style={{ background: '#ffffff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '10px', marginBottom: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', marginBottom: '8px' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a' }}>
@@ -1931,6 +2084,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         </div>
                       ))}
                     </div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -3275,16 +3430,18 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       {data.projectLocation || '-'}
                     </td>
                   </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
-                    <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#f8fafc' }}>
-                      {data.existingProjects?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.existingProjects }} style={{ lineHeight: 1.4 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.existingProjects}</div>
-                      )}
-                    </td>
-                  </tr>
+                  {hasExistingProjects && (
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
+                      <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#f8fafc' }}>
+                        {data.existingProjects?.includes('<') ? (
+                          <div dangerouslySetInnerHTML={{ __html: data.existingProjects }} style={{ lineHeight: 1.4 }} />
+                        ) : (
+                          <div style={{ whiteSpace: 'pre-line' }}>{data.existingProjects}</div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>New Projects</td>
                     <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#fffbeb' }}>
@@ -3418,18 +3575,23 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       UBO Information
                     </td>
                     <td id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
-                      <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: '8px', lineHeight: 1.4 }}>
-                        {data.uboInformation?.includes('<') ? (
-                          <div dangerouslySetInnerHTML={{ __html: data.uboInformation }} />
-                        ) : (
-                          <div style={{ whiteSpace: 'pre-line' }}>{data.uboInformation}</div>
-                        )}
-                      </div>
-                      {/* Dynamic Corporate Group Structure Diagram */}
-                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: '6px' }}>
-                        <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
-                          BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
+                      {data.uboInformation ? (
+                        <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: hasGroupStructure ? '8px' : '0', lineHeight: 1.4 }}>
+                          {data.uboInformation?.includes('<') ? (
+                            <div dangerouslySetInnerHTML={{ __html: data.uboInformation }} />
+                          ) : (
+                            <div style={{ whiteSpace: 'pre-line' }}>{data.uboInformation}</div>
+                          )}
                         </div>
+                      ) : (!hasGroupStructure ? (
+                        <span style={{ fontSize: '8pt', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
+                      ) : null)}
+                      {/* Dynamic Corporate Group Structure Diagram */}
+                      {hasGroupStructure && (
+                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: data.uboInformation ? '6px' : '0' }}>
+                          <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
+                            BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
+                          </div>
 
                         {/* LEVEL 1: HOLDING ENTITY (CENTERED) */}
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -3551,6 +3713,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           </div>
                         )}
                       </div>
+                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
