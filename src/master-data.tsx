@@ -870,9 +870,16 @@ function getInitialMandatoryRules(): any[] {
 let mandatoryCatalogCache: any[] = getInitialMandatoryRules();
 let mandatoryMapCache = new Map<string, boolean>();
 
-export function getSectionAliases(secName: string): string[] {
+export const normalizeStage = (st?: string): 'FAP' | 'PRE-AN' => {
+  const s = String(st || '').toUpperCase().trim();
+  return (s === 'PRE-AN' || s === 'PRE' || s.includes('PRE')) ? 'PRE-AN' : 'FAP';
+};
+
+export function getSectionAliases(secName: string, stage?: string): string[] {
   const norm = (secName || '').toLowerCase().trim();
   const aliases: string[] = [norm];
+  const stg = stage ? normalizeStage(stage) : '';
+
   if (norm.includes('debtor') || norm.includes('identity') || norm.includes('classification') || norm.includes('customer') || norm.startsWith('01')) {
     aliases.push('customer', 'debtor', 'identity', 'classification', '01');
   }
@@ -885,7 +892,11 @@ export function getSectionAliases(secName: string): string[] {
   if (norm.includes('pic') || norm.includes('contact') || norm.startsWith('04')) {
     aliases.push('pic', 'contact', '04');
   }
-  if (norm.includes('project') || norm.includes('industry') || norm.includes('segmentation') || norm.startsWith('05')) {
+  if (stg === 'FAP' || (!stg && (norm.includes('active') || norm.includes('segmentation') || norm.startsWith('05')))) {
+    aliases.push('projects', 'project', 'industry', 'segmentation', '05');
+  } else if (stg === 'PRE-AN') {
+    aliases.push('project_information', 'project information', 'pre_project');
+  } else {
     aliases.push('projects', 'project', 'industry', 'segmentation', '05');
   }
   return aliases;
@@ -896,12 +907,22 @@ function buildMandatoryMap(rules: any[]) {
   for (const r of rules) {
     if (!r) continue;
     const isMandatory = Boolean(r.mandatory);
-    const fKey = String(r.field_key || '');
+    const fKey = String(r.field_key || '').trim();
     const sec = String(r.section || '').trim();
+    const stg = normalizeStage(r.stage);
     if (fKey) {
+      // Stage-scoped entries:
+      map.set(`${stg}:*:${fKey}`, isMandatory);
+      if (sec) {
+        const aliases = getSectionAliases(sec, stg);
+        for (const al of aliases) {
+          map.set(`${stg}:${al}:${fKey}`, isMandatory);
+        }
+      }
+      // Global fallback (only if stage is not specified)
       map.set(`*:${fKey}`, isMandatory);
       if (sec) {
-        const aliases = getSectionAliases(sec);
+        const aliases = getSectionAliases(sec, stg);
         for (const al of aliases) {
           map.set(`${al}:${fKey}`, isMandatory);
         }
@@ -964,26 +985,55 @@ export function useMandatoryRules() {
 }
 
 export function isFieldMandatory(rules: any[], section: string | undefined, fieldKey: string, defaultRequired?: boolean, stage?: string): boolean {
-  if (!mandatoryMapCache.size && rules && rules.length) {
+  if (rules && rules.length) {
     mandatoryMapCache = buildMandatoryMap(rules);
+  } else if (!mandatoryMapCache.size && mandatoryCatalogCache.length) {
+    mandatoryMapCache = buildMandatoryMap(mandatoryCatalogCache);
   }
-  if (!mandatoryMapCache.size) return false;
+  if (!mandatoryMapCache.size) return Boolean(defaultRequired);
+
   const normSec = (section || '').toLowerCase().trim();
+  const normStg = stage ? normalizeStage(stage) : '';
+
+  if (normStg) {
+    if (normSec) {
+      const directKey = `${normStg}:${normSec}:${fieldKey}`;
+      if (mandatoryMapCache.has(directKey)) {
+        return mandatoryMapCache.get(directKey)!;
+      }
+      const aliases = getSectionAliases(normSec, normStg);
+      for (const al of aliases) {
+        const aliasKey = `${normStg}:${al}:${fieldKey}`;
+        if (mandatoryMapCache.has(aliasKey)) {
+          return mandatoryMapCache.get(aliasKey)!;
+        }
+      }
+    }
+    const stageWildKey = `${normStg}:*:${fieldKey}`;
+    if (mandatoryMapCache.has(stageWildKey)) {
+      return mandatoryMapCache.get(stageWildKey)!;
+    }
+  }
+
   if (normSec) {
-    if (mandatoryMapCache.has(`${normSec}:${fieldKey}`)) {
-      return mandatoryMapCache.get(`${normSec}:${fieldKey}`)!;
+    const directKey = `${normSec}:${fieldKey}`;
+    if (mandatoryMapCache.has(directKey)) {
+      return mandatoryMapCache.get(directKey)!;
     }
     const aliases = getSectionAliases(normSec);
     for (const al of aliases) {
-      if (mandatoryMapCache.has(`${al}:${fieldKey}`)) {
-        return mandatoryMapCache.get(`${al}:${fieldKey}`)!;
+      const aliasKey = `${al}:${fieldKey}`;
+      if (mandatoryMapCache.has(aliasKey)) {
+        return mandatoryMapCache.get(aliasKey)!;
       }
     }
   }
+
   if (mandatoryMapCache.has(`*:${fieldKey}`)) {
     return mandatoryMapCache.get(`*:${fieldKey}`)!;
   }
-  return false;
+
+  return Boolean(defaultRequired);
 }
 
 export const cleanWilayahStr = (s: string) => String(s || '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
