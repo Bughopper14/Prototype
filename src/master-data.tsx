@@ -1621,7 +1621,7 @@ export function MasterDataPage(){
   const currentCategoryTitle = selected === 'master_mandatory'
     ? 'Field Mandatory (FAP & PRE-AN)'
     : selected === 'location'
-      ? 'Konfigurasi Lokasi'
+      ? 'Indonesian Region'
       : group.name;
 
   async function handleDelete(item:MasterItem){
@@ -1654,16 +1654,6 @@ export function MasterDataPage(){
             <span className="master-selected-chip">{currentCategoryTitle}</span>
           </div>
         </div>
-
-        <button
-          type="button"
-          className="button small"
-          onClick={() => { setBurgerSearch(''); setBurgerOpen(true); }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
-        >
-          <Layers size={14} />
-          <span>Buka Menu Master</span>
-        </button>
       </div>
 
       {/* Pop-up Burger Menu Drawer */}
@@ -1723,9 +1713,9 @@ export function MasterDataPage(){
               )}
 
               {/* LOKASI */}
-              {(!burgerSearch || 'konfigurasi lokasi location country province city'.includes(burgerSearch.toLowerCase())) && (
+              {(!burgerSearch || 'indonesian region lokasi location country province city wilayah'.includes(burgerSearch.toLowerCase())) && (
                 <div className="master-burger-group">
-                  <h4>LOKASI</h4>
+                  <h4>INDONESIAN REGION</h4>
                   <button
                     type="button"
                     className={`master-burger-item ${selected === 'location' ? 'active' : ''}`}
@@ -1733,7 +1723,7 @@ export function MasterDataPage(){
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <MapPin size={15} color="#002060" />
-                      <span>Konfigurasi Lokasi</span>
+                      <span>Indonesian Region</span>
                     </div>
                   </button>
                 </div>
@@ -1883,5 +1873,5 @@ function LocationConfiguration(){
  const levels:{key:string,parent?:MasterItem,items:MasterItem[],selected?:MasterItem}[]=[];
  for(const key of groups){const parent=levels.length?levels.at(-1)?.selected:country;const items=parent?(data[key]||[]).filter(x=>x.parentValue===parent.value||!x.parentValue):[];const selected=items.find(x=>x.value===path[key]&&x.active)||items.find(x=>x.active);levels.push({key,parent,items,selected});}
  const select=(key:string,value:string)=>setPath(old=>{const next={...old,[key]:value};for(const child of groups.slice(groups.indexOf(key)+1))delete next[child];return next;});
- return <div className="location-config"><div className="location-config-toolbar"><div><span className="location-eyebrow"><MapPin size={14}/>LOCATION CONFIGURATION</span><h3>Location configuration</h3><p>Select regions from left to right to manage nested location data.</p></div><div className="location-country"><label>Country<select aria-label="Country lokasi" value={country?.value||''} onChange={e=>{setCountry(e.target.value);setPath({});}}><option value="">Select country</option>{countries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label><button className="button small" aria-label="Edit country" disabled={!country} onClick={()=>setEditing({key:'country',item:country})}><Pencil size={14}/></button><button className="button small" onClick={()=>setEditing({key:'country'})}><Plus size={14}/>Country</button></div></div><div className="location-config-controls"><div className="location-breadcrumb">{[country,...levels.map(x=>x.selected)].filter(Boolean).map((x,i)=><span key={i}>{i>0&&<ChevronRight size={12}/>}<b>{x?.name}</b></span>)}</div><div className="location-search"><Search size={14}/><input aria-label="Search region" placeholder="Search region..." value={search} onChange={e=>setSearch(e.target.value)}/></div><label className="checkbox"><input type="checkbox" checked={showInactive} onChange={e=>setShowInactive(e.target.checked)}/>Show inactive</label></div><div className="location-columns">{levels.map(({key,parent,items,selected},index)=>{const title=masterGroups.find(g=>g.key===key)!.name,visible=items.filter(x=>(showInactive||x.active)&&x.name.toLowerCase().includes(search.toLowerCase()));return <section className="location-column" key={key} aria-label={title}><header><div><span className="location-step">{index+1}</span><h4>{title}</h4><span className="location-item-count">{items.filter(x=>x.active).length}</span></div><button className="location-add" aria-label={`Add ${title}`} title={parent?`Tambah ${title}`:'Select parent region first'} disabled={!parent} onClick={()=>setEditing({key,parent:parent?.value})}><Plus size={17}/></button></header><div className="location-parent-caption">{parent?.name||'Select parent region'}</div><div className="location-column-scroll"><table><thead><tr><th>NAME</th>{key==='province'&&<th>REGION</th>}{key==='village'&&<th>ZIP CODE</th>}<th/></tr></thead><tbody>{visible.map(x=><tr key={x.value} className={(selected?.value===x.value?'selected ':'')+(!x.active?'inactive':'')}><td><button className="location-select-row" disabled={!x.active} aria-pressed={selected?.value===x.value} onClick={()=>select(key,x.value)}><b>{x.name}</b>{!x.active&&<span>Inactive</span>}</button></td>{key==='province'&&<td>{x.region||'—'}</td>}{key==='village'&&<td>{data.postalCode.find(p=>p.value===x.zipCode)?.name||x.zipCode||'—'}</td>}<td><button className="location-edit" aria-label={`Edit ${x.name}`} onClick={()=>setEditing({key,item:x,parent:parent?.value})}><Pencil size={13}/></button></td></tr>)}</tbody></table>{!visible.length&&<div className="location-empty">{!parent?'Select a region in the previous column.':search?'No matching regions.':`No ${title.toLowerCase()} for ${parent.name}.`}</div>}</div></section>;})}</div><div className="location-config-footer"><span>Active options are available in application forms. Use Edit to update data or deactivate regions.</span><button className="button small" onClick={()=>setEditing({key:'postalCode',parent:levels.find(x=>x.key==='city')?.selected?.value})}><Plus size={14}/>Add ZIP code</button></div>{editing&&<MasterItemDialog key={editing.key+':'+(editing.item?.value||'new')} groupKey={editing.key} item={editing.item} parentValue={editing.parent} onClose={()=>setEditing(null)} onSaved={item=>{if(editing.key==='country'){setCountry(item.value);setPath({});}else if(groups.includes(editing.key))select(editing.key,item.value);}}/>}</div>;
+ return <div className="location-config"><div className="location-config-toolbar"><div><span className="location-eyebrow"><MapPin size={14}/>INDONESIAN REGION</span><h3>Indonesian Region</h3><p>Select regions from left to right to manage nested location data.</p></div><div className="location-country"><label>Country<select aria-label="Country lokasi" value={country?.value||''} onChange={e=>{setCountry(e.target.value);setPath({});}}><option value="">Select country</option>{countries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label><button className="button small" aria-label="Edit country" disabled={!country} onClick={()=>setEditing({key:'country',item:country})}><Pencil size={14}/></button><button className="button small" onClick={()=>setEditing({key:'country'})}><Plus size={14}/>Country</button></div></div><div className="location-config-controls"><div className="location-breadcrumb">{[country,...levels.map(x=>x.selected)].filter(Boolean).map((x,i)=><span key={i}>{i>0&&<ChevronRight size={12}/>}<b>{x?.name}</b></span>)}</div><div className="location-search"><Search size={14}/><input aria-label="Search region" placeholder="Search region..." value={search} onChange={e=>setSearch(e.target.value)}/></div><label className="checkbox"><input type="checkbox" checked={showInactive} onChange={e=>setShowInactive(e.target.checked)}/>Show inactive</label></div><div className="location-columns">{levels.map(({key,parent,items,selected},index)=>{const title=masterGroups.find(g=>g.key===key)!.name,visible=items.filter(x=>(showInactive||x.active)&&x.name.toLowerCase().includes(search.toLowerCase()));return <section className="location-column" key={key} aria-label={title}><header><div><span className="location-step">{index+1}</span><h4>{title}</h4><span className="location-item-count">{items.filter(x=>x.active).length}</span></div><button className="location-add" aria-label={`Add ${title}`} title={parent?`Tambah ${title}`:'Select parent region first'} disabled={!parent} onClick={()=>setEditing({key,parent:parent?.value})}><Plus size={17}/></button></header><div className="location-parent-caption">{parent?.name||'Select parent region'}</div><div className="location-column-scroll"><table><thead><tr><th>NAME</th>{key==='province'&&<th>REGION</th>}{key==='village'&&<th>ZIP CODE</th>}<th/></tr></thead><tbody>{visible.map(x=><tr key={x.value} className={(selected?.value===x.value?'selected ':'')+(!x.active?'inactive':'')}><td><button className="location-select-row" disabled={!x.active} aria-pressed={selected?.value===x.value} onClick={()=>select(key,x.value)}><b>{x.name}</b>{!x.active&&<span>Inactive</span>}</button></td>{key==='province'&&<td>{x.region||'—'}</td>}{key==='village'&&<td>{data.postalCode.find(p=>p.value===x.zipCode)?.name||x.zipCode||'—'}</td>}<td><button className="location-edit" aria-label={`Edit ${x.name}`} onClick={()=>setEditing({key,item:x,parent:parent?.value})}><Pencil size={13}/></button></td></tr>)}</tbody></table>{!visible.length&&<div className="location-empty">{!parent?'Select a region in the previous column.':search?'No matching regions.':`No ${title.toLowerCase()} for ${parent.name}.`}</div>}</div></section>;})}</div><div className="location-config-footer"><span>Active options are available in application forms. Use Edit to update data or deactivate regions.</span><button className="button small" onClick={()=>setEditing({key:'postalCode',parent:levels.find(x=>x.key==='city')?.selected?.value})}><Plus size={14}/>Add ZIP code</button></div>{editing&&<MasterItemDialog key={editing.key+':'+(editing.item?.value||'new')} groupKey={editing.key} item={editing.item} parentValue={editing.parent} onClose={()=>setEditing(null)} onSaved={item=>{if(editing.key==='country'){setCountry(item.value);setPath({});}else if(groups.includes(editing.key))select(editing.key,item.value);}}/>}</div>;
 }
