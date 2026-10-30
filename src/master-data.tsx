@@ -1101,15 +1101,15 @@ export function MasterItemDialog({groupKey,item,onClose,onSaved,parentValue}:{gr
  const data=useMasterData(),group=masterGroups.find(x=>x.key===groupKey)!;
  const [draft,setDraft]=useState<MasterItem>(item?{...item}:{value:'',name:'',active:true,parentValue:group.parent?(data[group.parent].find(x=>x.value===parentValue||x.name===parentValue)?.value||(groupKey==='province'?data.country.find(x=>x.active)?.value:'')||''):'',role:'BS',required:false,timing:'arrear'}),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{const escape=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!busy)onClose();};window.addEventListener('keydown',escape);return()=>window.removeEventListener('keydown',escape);},[busy,onClose]);
- async function save(){setBusy(true);setError('');try{if((locationGroups.has(groupKey)||groupKey==='postalCode'||equipmentChildren.has(groupKey))&&group.parent&&!draft.parentValue)throw new Error('Pilih '+masterGroups.find(x=>x.key===group.parent)?.name+' terlebih dahulu.');const value=locationGroups.has(groupKey)?item?.value||crypto.randomUUID():draft.value.trim()||draft.name.trim(),row={...draft,value,name:draft.name.trim()};const next={...data,[groupKey]:item?data[groupKey].map(x=>x.value===item.value&&(groupKey!=='postalCode'||x.parentValue===item.parentValue)?row:x):[...data[groupKey],row]};await saveCatalog(next);onSaved?.(row);onClose();}catch(e:any){setError(e.message);try{const latest=await api('/master-data');setMasterData(latest);}catch{} }finally{setBusy(false);}}
+ async function save(){setBusy(true);setError('');try{if((locationGroups.has(groupKey)||groupKey==='postalCode'||equipmentChildren.has(groupKey))&&group.parent&&!draft.parentValue)throw new Error('Please select '+masterGroups.find(x=>x.key===group.parent)?.name+' first.');const value=locationGroups.has(groupKey)?item?.value||crypto.randomUUID():draft.value.trim()||draft.name.trim(),row={...draft,value,name:draft.name.trim()};const next={...data,[groupKey]:item?data[groupKey].map(x=>x.value===item.value&&(groupKey!=='postalCode'||x.parentValue===item.parentValue)?row:x):[...data[groupKey],row]};await saveCatalog(next);onSaved?.(row);onClose();}catch(e:any){setError(e.message);try{const latest=await api('/master-data');setMasterData(latest);}catch{} }finally{setBusy(false);}}
  return createPortal(<div className="modal-scrim master-modal-scrim"><section className="modal" role="dialog" aria-modal="true" aria-label={`${item?'Edit':'Add'} ${group.name}`}><div className="modal-head"><h2>{item?'Edit':'Add'} · {group.name}</h2><button className="icon-button" disabled={busy} onClick={onClose} aria-label="Close"><X size={20}/></button></div><div className="modal-body"><div className="formgrid"><label>Option name<input autoFocus maxLength={150} value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})}/></label>{!locationGroups.has(groupKey)&&<label>Code / value<input disabled={!!item} maxLength={150} placeholder="Auto-generated from name if empty" value={draft.value} onChange={e=>setDraft({...draft,value:e.target.value})}/></label>}{group.parent&&<label>{masterGroups.find(x=>x.key===group.parent)?.name}<select value={draft.parentValue||''} onChange={e=>setDraft({...draft,parentValue:e.target.value,...(groupKey==='village'?{zipCode:''}:{})})}><option value="">{locationGroups.has(groupKey)||groupKey==='postalCode'||equipmentChildren.has(groupKey)?'Select parent':'All / No parent'}</option>{data[group.parent].filter(x=>x.active||x.value===draft.parentValue).map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label>}{groupKey==='province'&&<label>Region<input maxLength={100} placeholder="Region name (optional)" value={draft.region||''} onChange={e=>setDraft({...draft,region:e.target.value})}/></label>}{groupKey==='village'&&<label>ZIP code<select aria-label="ZIP code" value={draft.zipCode||''} onChange={e=>setDraft({...draft,zipCode:e.target.value})}><option value="">Select ZIP code (optional)</option>{data.postalCode.filter(x=>x.value===draft.zipCode||x.active&&(!x.parentValue||x.parentValue===data.district.find(d=>d.value===draft.parentValue)?.parentValue)).map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label>}<label>Status<select value={draft.active?'active':'inactive'} onChange={e=>setDraft({...draft,active:e.target.value==='active'})}><option value="active">Active</option><option value="inactive">Inactive</option></select></label>{groupKey==='documents'&&<><label>Review department<select value={draft.role} onChange={e=>setDraft({...draft,role:e.target.value})}>{['BS','CA','LEGAL'].map(x=><option key={x}>{x}</option>)}</select></label><label>Mandatory document<select value={draft.required?'yes':'no'} onChange={e=>setDraft({...draft,required:e.target.value==='yes'})}><option value="yes">Mandatory</option><option value="no">Optional</option></select></label></>}{groupKey==='paymentMethod'&&<label>Payment timing rule<select value={draft.timing} onChange={e=>setDraft({...draft,timing:e.target.value})}><option value="arrear">Paid in arrear (end of period)</option><option value="advance">Paid in advance (start of period)</option></select></label>}</div>{error&&<div className="error" role="alert">{error}</div>}<p className="master-help">Active options will appear in form dropdowns. Deactivating an option does not delete existing application records.</p></div><div className="modal-actions"><button className="button" disabled={busy} onClick={onClose}>Cancel</button><button className="button primary" disabled={busy||!draft.name.trim()} onClick={save}><Save size={15}/>{busy?'Saving…':'Save selection'}</button></div></section></div>,document.body);
 }
 
 export function MasterSelect({fieldKey,value,record,disabled,required,onChange,placeholder,onFocus}:{fieldKey:string,value:string,record:any,disabled:boolean,required?:boolean,onChange:(v:string)=>void,placeholder?:string,onFocus?:()=>void}){
  const data=useMasterData(),entries=masterEntries(data,fieldKey,record)||[],group=masterGroups.find(g=>g.key===masterKey(fieldKey))!,cleanVal=(value==='-'||(fieldKey==='postalCode'&&value==='00000'))?'':value,existing=data[group.key]?.find(x=>matchesMasterItem(x, cleanVal)),selectedValue=existing?.value||cleanVal,storeName=group.key==='province'||group.key==='city'||group.key==='district'||group.key==='village';
  const select=(id:string)=>{const item=entries.find(x=>x.value===id)||data[group.key]?.find(x=>x.value===id);onChange(storeName&&item?item.name:id);};
- const emptyLabel = placeholder || (group.key === 'remarkCategoryId' ? 'Pilih Kategori' : `Pilih ${group.name}`);
- return <select required={required} disabled={disabled} value={selectedValue} onFocus={onFocus} onChange={e=>select(e.target.value)}><option value="">{emptyLabel}</option>{selectedValue&&!entries.some(x=>x.value===selectedValue)&&<option value={selectedValue}>{existing?.name||value}{existing&&!existing.active?' · Tidak aktif':''}</option>}{entries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select>;
+ const emptyLabel = placeholder || (group.key === 'remarkCategoryId' ? 'Select Category' : `Select ${group.name}`);
+ return <select required={required} disabled={disabled} value={selectedValue} onFocus={onFocus} onChange={e=>select(e.target.value)}><option value="">{emptyLabel}</option>{selectedValue&&!entries.some(x=>x.value===selectedValue)&&<option value={selectedValue}>{existing?.name||value}{existing&&!existing.active?' · Inactive':''}</option>}{entries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select>;
 }
 
 export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:boolean, onLogActivity?:(msg:string)=>void}){
@@ -1185,9 +1185,9 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
       }
       const label = item.field_label || item.field_key;
       const stageName = ((item.stage || 'FAP').toUpperCase() === 'PRE-AN' || (item.stage || 'FAP').toUpperCase() === 'PRE') ? 'PRE-AN' : 'FAP';
-      const msg = `[${stageName}] Kolom "${label}" successfully updated to ${nextVal ? 'Mandatory (1)' : 'Optional (0)'}.`;
+      const msg = `[${stageName}] Field "${label}" successfully updated to ${nextVal ? 'Mandatory (1)' : 'Optional (0)'}.`;
       setToast(msg);
-      onLogActivity?.(`Mengubah status mandatory [${stageName}] kolom ${label} (${item.field_key}) menjadi ${nextVal ? 'Wajib' : 'Opsional'}`);
+      onLogActivity?.(`Updated mandatory status for [${stageName}] field ${label} (${item.field_key}) to ${nextVal ? 'Mandatory' : 'Optional'}`);
       setTimeout(() => setToast(''), 3500);
     } catch (e: any) {
       alert('Failed to update mandatory status: ' + e.message);
@@ -1202,7 +1202,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         <div>
           <h3 style={{ fontSize: 18, color: '#002060', fontWeight: 700 }}>Field Mandatory</h3>
           <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0) untuk <b>FAP</b> dan <b>PRE-AN</b>. Perubahan langsung tersimpan ke database dan otomatis menampilkan tanda bintang merah (*) pada form.
+            Manage column rules for whether a field is mandatory (1) or optional (0) for <b>FAP</b> and <b>PRE-AN</b>. Changes are saved directly to the database and automatically display a red asterisk (*) on form labels.
           </p>
         </div>
       </div>
@@ -1230,7 +1230,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         <div className="search" style={{ margin: 0, flex: '1 1 240px', maxWidth: 360 }}>
           <Search size={16} />
           <input
-            placeholder="Cari label, field key, section, stage..."
+            placeholder="Search label, field key, section, stage..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -1256,7 +1256,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             }}
             aria-label="Filter Stage"
           >
-            <option value="ALL">Semua Stage (FAP & PRE-AN) ({rules.length})</option>
+            <option value="ALL">All Stages (FAP & PRE-AN) ({rules.length})</option>
             <option value="FAP">FAP ({fapRules.length})</option>
             <option value="PRE-AN">PRE-AN ({preRules.length})</option>
           </select>
@@ -1278,11 +1278,11 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
               cursor: 'pointer',
               minWidth: 280
             }}
-            aria-label="Filter Bagian / Section"
+            aria-label="Filter Section"
           >
             {stageFilter === 'FAP' ? (
               <>
-                <option value="ALL">Semua Bagian FAP ({fapRules.length})</option>
+                <option value="ALL">All FAP Sections ({fapRules.length})</option>
                 {MANDATORY_SECTIONS_FAP.map(sec => {
                   const count = fapRules.filter(r => resolveRuleSection(r) === sec).length;
                   return (
@@ -1294,7 +1294,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
               </>
             ) : stageFilter === 'PRE-AN' ? (
               <>
-                <option value="ALL">Semua Bagian PRE-AN ({preRules.length})</option>
+                <option value="ALL">All PRE-AN Sections ({preRules.length})</option>
                 {MANDATORY_SECTIONS_PRE.map(sec => {
                   const count = preRules.filter(r => resolveRuleSection(r) === sec).length;
                   return (
@@ -1306,7 +1306,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
               </>
             ) : (
               <>
-                <option value="ALL">Semua Bagian ({rules.length})</option>
+                <option value="ALL">All Sections ({rules.length})</option>
                 <optgroup label="FAP">
                   {MANDATORY_SECTIONS_FAP.map(sec => {
                     const count = fapRules.filter(r => resolveRuleSection(r) === sec).length;
@@ -1340,9 +1340,9 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             style={{ fontSize: 11, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff' }}
             aria-label="Filter Status Mandatory"
           >
-            <option value="ALL">Semua Status</option>
-            <option value="1">Hanya Wajib (1)</option>
-            <option value="0">Hanya Opsional (0)</option>
+            <option value="ALL">All Status</option>
+            <option value="1">Mandatory Only (1)</option>
+            <option value="0">Optional Only (0)</option>
           </select>
         </div>
       </div>
@@ -1361,22 +1361,22 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         marginBottom: 16,
         alignItems: 'center'
       }}>
-        <span>Total Kolom: <b>{rules.length}</b></span>
+        <span>Total Fields: <b>{rules.length}</b></span>
         <span>•</span>
         <span style={{ color: '#0284c7', fontWeight: 600 }}>
-          FAP: <b>{fapRules.length}</b> ({fapMandatoryCount} Wajib)
+          FAP: <b>{fapRules.length}</b> ({fapMandatoryCount} Mandatory)
         </span>
         <span>•</span>
         <span style={{ color: '#b45309', fontWeight: 600 }}>
-          PRE-AN: <b>{preRules.length}</b> ({preMandatoryCount} Wajib)
+          PRE-AN: <b>{preRules.length}</b> ({preMandatoryCount} Mandatory)
         </span>
         <span>•</span>
         <span style={{ color: '#dc2626', fontWeight: 600 }}>
-          * Total Wajib (1): <b>{mandatoryCount}</b>
+          * Total Mandatory (1): <b>{mandatoryCount}</b>
         </span>
         <span>•</span>
         <span style={{ color: '#64748b' }}>
-          Total Opsional (0): <b>{rules.length - mandatoryCount}</b>
+          Total Optional (0): <b>{rules.length - mandatoryCount}</b>
         </span>
       </div>
 
@@ -1386,11 +1386,11 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
               <th style={{ width: 45, textAlign: 'center', padding: '12px 8px' }}>NO</th>
               <th style={{ width: 140, textAlign: 'center', padding: '12px 10px' }}>STAGE</th>
-              <th style={{ width: 260, minWidth: 260, textAlign: 'left', padding: '12px 14px' }}>BAGIAN (SECTION)</th>
-              <th style={{ minWidth: 220, textAlign: 'left', padding: '12px 14px' }}>NAMA FIELD (LABEL)</th>
-              <th style={{ width: 190, minWidth: 190, textAlign: 'left', padding: '12px 14px' }}>KODE KOLOM (FIELD KEY)</th>
-              <th style={{ textAlign: 'center', width: 150, padding: '12px 14px' }}>STATUS MANDATORY</th>
-              {canManage && <th style={{ textAlign: 'center', width: 190, padding: '12px 14px' }}>AKSI</th>}
+              <th style={{ width: 260, minWidth: 260, textAlign: 'left', padding: '12px 14px' }}>SECTION</th>
+              <th style={{ minWidth: 220, textAlign: 'left', padding: '12px 14px' }}>FIELD LABEL</th>
+              <th style={{ width: 190, minWidth: 190, textAlign: 'left', padding: '12px 14px' }}>FIELD KEY</th>
+              <th style={{ textAlign: 'center', width: 150, padding: '12px 14px' }}>MANDATORY STATUS</th>
+              {canManage && <th style={{ textAlign: 'center', width: 190, padding: '12px 14px' }}>ACTION</th>}
             </tr>
           </thead>
           <tbody>
@@ -1484,7 +1484,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                         padding: '3px 9px',
                         borderRadius: 9999
                       }}>
-                        * Wajib (1)
+                        * Mandatory (1)
                       </span>
                     ) : (
                       <span style={{
@@ -1497,7 +1497,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                         padding: '3px 9px',
                         borderRadius: 9999
                       }}>
-                        Opsional (0)
+                        Optional (0)
                       </span>
                     )}
                   </td>
@@ -1513,16 +1513,16 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                           title={x.mandatory ? 'Change to optional (0)' : 'Make mandatory (1)'}
                         >
                           {busyId === x.id ? (
-                            'Menyimpan...'
+                            'Saving...'
                           ) : x.mandatory ? (
                             <>
                               <X size={12} style={{ marginRight: 3 }} />
-                              Set Opsional (0)
+                              Set Optional (0)
                             </>
                           ) : (
                             <>
                               <Check size={12} style={{ marginRight: 3 }} />
-                              Set Wajib (1)
+                              Set Mandatory (1)
                             </>
                           )}
                         </button>
@@ -1532,7 +1532,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                           className="button small"
                           style={{ fontSize: 11, padding: '4px 8px' }}
                           onClick={() => setEditingItem(x)}
-                          title="Edit aturan kolom"
+                          title="Edit field rule"
                         >
                           <Pencil size={12} />
                         </button>
@@ -1545,7 +1545,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
           </tbody>
         </table>
         {!visible.length && (
-          <div className="empty-small">Tidak ada kolom yang cocok dengan pencarian atau filter.</div>
+          <div className="empty-small">No fields match the search or filter.</div>
         )}
       </div>
 
@@ -1570,32 +1570,32 @@ function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: (
     <div className="modal-scrim master-modal-scrim">
       <section className="modal" role="dialog" aria-modal="true" aria-label={`Edit Mandatory · ${item.field_label}`}>
         <div className="modal-head">
-          <h2>Edit Aturan Mandatory · {item.field_label}</h2>
+          <h2>Edit Mandatory Rule · {item.field_label}</h2>
           <button className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button>
         </div>
         <div className="modal-body">
           <div className="formgrid">
-            <label>Stage Aplikasi
+            <label>Application Stage
               <input disabled value={isPre ? 'PRE-AN' : 'FAP'} />
             </label>
-            <label>Bagian (Section)
+            <label>Section
               <input disabled value={resolveRuleSection(item)} />
             </label>
             <label>Field Label
               <input disabled value={item.field_label} />
             </label>
-            <label>Kode Kolom (Field Key)
+            <label>Field Key
               <input disabled value={item.field_key} />
             </label>
-            <label>Status Mandatory di Database
+            <label>Mandatory Status in Database
               <select value={val} onChange={e => setVal(Number(e.target.value))}>
-                <option value={0}>0 — Opsional (Tidak wajib diisi)</option>
-                <option value={1}>1 — Wajib (Harus diisi, tanda bintang merah *)</option>
+                <option value={0}>0 — Optional (Not required)</option>
+                <option value={1}>1 — Mandatory (Required, red asterisk *)</option>
               </select>
             </label>
           </div>
           <p className="master-help">
-            Jika diatur ke <b>Wajib (1)</b>, sistem akan memvalidasi pengisian kolom ini sebelum submit aplikasi, dan otomatis menampilkan tanda bintang merah (*) di label form.
+            If set to <b>Mandatory (1)</b>, the system validates this column before application submission, and automatically displays a red asterisk (*) on form labels.
           </p>
         </div>
         <div className="modal-actions">
@@ -1643,14 +1643,14 @@ export function MasterDataPage(){
             type="button"
             className="master-burger-toggle-btn"
             onClick={() => { setBurgerSearch(''); setBurgerOpen(true); }}
-            title="Klik untuk membuka daftar master data (burger menu pop-up)"
+            title="Click to open master data catalog menu"
           >
             <Menu size={18} />
-            <span>Daftar Master Data</span>
+            <span>Master Data Catalog</span>
           </button>
 
           <div className="master-selected-indicator">
-            <span className="master-selected-label">Kategori Aktif:</span>
+            <span className="master-selected-label">Active Category:</span>
             <span className="master-selected-chip">{currentCategoryTitle}</span>
           </div>
         </div>
@@ -1663,19 +1663,19 @@ export function MasterDataPage(){
             className="master-burger-drawer"
             role="dialog"
             aria-modal="true"
-            aria-label="Daftar Master Data"
+            aria-label="Master Data Catalog"
             onClick={e => e.stopPropagation()}
           >
             <div className="master-burger-drawer-head">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Menu size={18} color="#002060" />
-                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#002060' }}>Daftar Master Data</h3>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#002060' }}>Master Data Catalog</h3>
               </div>
               <button
                 type="button"
                 className="master-burger-close-btn"
                 onClick={() => setBurgerOpen(false)}
-                aria-label="Tutup menu"
+                aria-label="Close menu"
               >
                 <X size={18} />
               </button>
@@ -1684,7 +1684,7 @@ export function MasterDataPage(){
             <div className="master-burger-drawer-search">
               <Search size={14} color="#64748b" />
               <input
-                placeholder="Cari jenis master data..."
+                placeholder="Search master catalog..."
                 value={burgerSearch}
                 onChange={e => setBurgerSearch(e.target.value)}
                 autoFocus
@@ -1692,10 +1692,10 @@ export function MasterDataPage(){
             </div>
 
             <div className="master-burger-drawer-content" role="navigation">
-              {/* ATURAN FORM */}
-              {(!burgerSearch || 'field mandatory aturan form fap pre'.includes(burgerSearch.toLowerCase())) && (
+              {/* FORM RULES */}
+              {(!burgerSearch || 'field mandatory form rules fap pre'.includes(burgerSearch.toLowerCase())) && (
                 <div className="master-burger-group">
-                  <h4>ATURAN FORM</h4>
+                  <h4>FORM RULES</h4>
                   <button
                     type="button"
                     className={`master-burger-item ${selected === 'master_mandatory' ? 'active' : ''}`}
@@ -1773,7 +1773,7 @@ export function MasterDataPage(){
             <div className="section-title">
               <div>
                 <h3 style={{ fontSize: 18, color: '#002060', fontWeight: 700 }}>{group.name}</h3>
-                <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Kelola pilihan dropdown untuk {group.section}.</p>
+                <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Manage dropdown choices for {group.section}.</p>
               </div>
               <button className="button primary small" onClick={() => setEditing(null)}>
                 <Plus size={15} /> Add data
@@ -1788,7 +1788,7 @@ export function MasterDataPage(){
               <Search size={16} />
               <input
                 aria-label="Cari master data"
-                placeholder={locationGroups.has(selected) ? 'Cari nama…' : 'Cari nama atau kode…'}
+                placeholder={locationGroups.has(selected) ? 'Search name…' : 'Search name or code…'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -1798,16 +1798,16 @@ export function MasterDataPage(){
                 <thead>
                   <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                     <th>NAME</th>
-                    {!locationGroups.has(selected) && <th>KODE / NILAI</th>}
-                    {group.parent && <th>INDUK</th>}
+                    {!locationGroups.has(selected) && <th>CODE / VALUE</th>}
+                    {group.parent && <th>PARENT</th>}
                     {selected === 'documents' && (
                       <>
-                        <th>DEPARTEMEN</th>
-                        <th>WAJIB</th>
+                        <th>DEPARTMENT</th>
+                        <th>MANDATORY</th>
                       </>
                     )}
                     <th>STATUS</th>
-                    <th style={{ textAlign: 'center' }}>AKSI</th>
+                    <th style={{ textAlign: 'center' }}>ACTION</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1816,17 +1816,17 @@ export function MasterDataPage(){
                       <td style={{ fontWeight: 600, color: '#0f172a' }}>{x.name}</td>
                       {!locationGroups.has(selected) && <td><code>{x.value}</code></td>}
                       {group.parent && (
-                        <td>{data[group.parent].find(p => p.value === x.parentValue)?.name || 'Semua'}</td>
+                        <td>{data[group.parent].find(p => p.value === x.parentValue)?.name || 'All'}</td>
                       )}
                       {selected === 'documents' && (
                         <>
                           <td>{x.role}</td>
-                          <td>{x.required ? 'Wajib' : 'Opsional'}</td>
+                          <td>{x.required ? 'Mandatory' : 'Optional'}</td>
                         </>
                       )}
                       <td>
                         <span className={'deed-validity ' + (x.active ? 'active' : 'inactive')}>
-                          {x.active ? 'Aktif' : 'Tidak aktif'}
+                          {x.active ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }}>
@@ -1873,5 +1873,5 @@ function LocationConfiguration(){
  const levels:{key:string,parent?:MasterItem,items:MasterItem[],selected?:MasterItem}[]=[];
  for(const key of groups){const parent=levels.length?levels.at(-1)?.selected:country;const items=parent?(data[key]||[]).filter(x=>x.parentValue===parent.value||!x.parentValue):[];const selected=items.find(x=>x.value===path[key]&&x.active)||items.find(x=>x.active);levels.push({key,parent,items,selected});}
  const select=(key:string,value:string)=>setPath(old=>{const next={...old,[key]:value};for(const child of groups.slice(groups.indexOf(key)+1))delete next[child];return next;});
- return <div className="location-config"><div className="location-config-toolbar"><div><span className="location-eyebrow"><MapPin size={14}/>INDONESIAN REGION</span><h3>Indonesian Region</h3><p>Select regions from left to right to manage nested location data.</p></div><div className="location-country"><label>Country<select aria-label="Country lokasi" value={country?.value||''} onChange={e=>{setCountry(e.target.value);setPath({});}}><option value="">Select country</option>{countries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label><button className="button small" aria-label="Edit country" disabled={!country} onClick={()=>setEditing({key:'country',item:country})}><Pencil size={14}/></button><button className="button small" onClick={()=>setEditing({key:'country'})}><Plus size={14}/>Country</button></div></div><div className="location-config-controls"><div className="location-breadcrumb">{[country,...levels.map(x=>x.selected)].filter(Boolean).map((x,i)=><span key={i}>{i>0&&<ChevronRight size={12}/>}<b>{x?.name}</b></span>)}</div><div className="location-search"><Search size={14}/><input aria-label="Search region" placeholder="Search region..." value={search} onChange={e=>setSearch(e.target.value)}/></div><label className="checkbox"><input type="checkbox" checked={showInactive} onChange={e=>setShowInactive(e.target.checked)}/>Show inactive</label></div><div className="location-columns">{levels.map(({key,parent,items,selected},index)=>{const title=masterGroups.find(g=>g.key===key)!.name,visible=items.filter(x=>(showInactive||x.active)&&x.name.toLowerCase().includes(search.toLowerCase()));return <section className="location-column" key={key} aria-label={title}><header><div><span className="location-step">{index+1}</span><h4>{title}</h4><span className="location-item-count">{items.filter(x=>x.active).length}</span></div><button className="location-add" aria-label={`Add ${title}`} title={parent?`Tambah ${title}`:'Select parent region first'} disabled={!parent} onClick={()=>setEditing({key,parent:parent?.value})}><Plus size={17}/></button></header><div className="location-parent-caption">{parent?.name||'Select parent region'}</div><div className="location-column-scroll"><table><thead><tr><th>NAME</th>{key==='province'&&<th>REGION</th>}{key==='village'&&<th>ZIP CODE</th>}<th/></tr></thead><tbody>{visible.map(x=><tr key={x.value} className={(selected?.value===x.value?'selected ':'')+(!x.active?'inactive':'')}><td><button className="location-select-row" disabled={!x.active} aria-pressed={selected?.value===x.value} onClick={()=>select(key,x.value)}><b>{x.name}</b>{!x.active&&<span>Inactive</span>}</button></td>{key==='province'&&<td>{x.region||'—'}</td>}{key==='village'&&<td>{data.postalCode.find(p=>p.value===x.zipCode)?.name||x.zipCode||'—'}</td>}<td><button className="location-edit" aria-label={`Edit ${x.name}`} onClick={()=>setEditing({key,item:x,parent:parent?.value})}><Pencil size={13}/></button></td></tr>)}</tbody></table>{!visible.length&&<div className="location-empty">{!parent?'Select a region in the previous column.':search?'No matching regions.':`No ${title.toLowerCase()} for ${parent.name}.`}</div>}</div></section>;})}</div><div className="location-config-footer"><span>Active options are available in application forms. Use Edit to update data or deactivate regions.</span><button className="button small" onClick={()=>setEditing({key:'postalCode',parent:levels.find(x=>x.key==='city')?.selected?.value})}><Plus size={14}/>Add ZIP code</button></div>{editing&&<MasterItemDialog key={editing.key+':'+(editing.item?.value||'new')} groupKey={editing.key} item={editing.item} parentValue={editing.parent} onClose={()=>setEditing(null)} onSaved={item=>{if(editing.key==='country'){setCountry(item.value);setPath({});}else if(groups.includes(editing.key))select(editing.key,item.value);}}/>}</div>;
+ return <div className="location-config"><div className="location-config-toolbar"><div><span className="location-eyebrow"><MapPin size={14}/>INDONESIAN REGION</span><h3>Indonesian Region</h3><p>Select regions from left to right to manage nested location data.</p></div><div className="location-country"><label>Country<select aria-label="Country location" value={country?.value||''} onChange={e=>{setCountry(e.target.value);setPath({});}}><option value="">Select country</option>{countries.map(x=><option key={x.value} value={x.value}>{x.name}</option>)}</select></label><button className="button small" aria-label="Edit country" disabled={!country} onClick={()=>setEditing({key:'country',item:country})}><Pencil size={14}/></button><button className="button small" onClick={()=>setEditing({key:'country'})}><Plus size={14}/>Country</button></div></div><div className="location-config-controls"><div className="location-breadcrumb">{[country,...levels.map(x=>x.selected)].filter(Boolean).map((x,i)=><span key={i}>{i>0&&<ChevronRight size={12}/>}<b>{x?.name}</b></span>)}</div><div className="location-search"><Search size={14}/><input aria-label="Search region" placeholder="Search region..." value={search} onChange={e=>setSearch(e.target.value)}/></div><label className="checkbox"><input type="checkbox" checked={showInactive} onChange={e=>setShowInactive(e.target.checked)}/>Show inactive</label></div><div className="location-columns">{levels.map(({key,parent,items,selected},index)=>{const title=masterGroups.find(g=>g.key===key)!.name,visible=items.filter(x=>(showInactive||x.active)&&x.name.toLowerCase().includes(search.toLowerCase()));return <section className="location-column" key={key} aria-label={title}><header><div><span className="location-step">{index+1}</span><h4>{title}</h4><span className="location-item-count">{items.filter(x=>x.active).length}</span></div><button className="location-add" aria-label={`Add ${title}`} title={parent?`Add ${title}`:'Select parent region first'} disabled={!parent} onClick={()=>setEditing({key,parent:parent?.value})}><Plus size={17}/></button></header><div className="location-parent-caption">{parent?.name||'Select parent region'}</div><div className="location-column-scroll"><table><thead><tr><th>NAME</th>{key==='province'&&<th>REGION</th>}{key==='village'&&<th>ZIP CODE</th>}<th/></tr></thead><tbody>{visible.map(x=><tr key={x.value} className={(selected?.value===x.value?'selected ':'')+(!x.active?'inactive':'')}><td><button className="location-select-row" disabled={!x.active} aria-pressed={selected?.value===x.value} onClick={()=>select(key,x.value)}><b>{x.name}</b>{!x.active&&<span>Inactive</span>}</button></td>{key==='province'&&<td>{x.region||'—'}</td>}{key==='village'&&<td>{data.postalCode.find(p=>p.value===x.zipCode)?.name||x.zipCode||'—'}</td>}<td><button className="location-edit" aria-label={`Edit ${x.name}`} onClick={()=>setEditing({key,item:x,parent:parent?.value})}><Pencil size={13}/></button></td></tr>)}</tbody></table>{!visible.length&&<div className="location-empty">{!parent?'Select a region in the previous column.':search?'No matching regions.':`No ${title.toLowerCase()} for ${parent.name}.`}</div>}</div></section>;})}</div><div className="location-config-footer"><span>Active options are available in application forms. Use Edit to update data or deactivate regions.</span><button className="button small" onClick={()=>setEditing({key:'postalCode',parent:levels.find(x=>x.key==='city')?.selected?.value})}><Plus size={14}/>Add ZIP code</button></div>{editing&&<MasterItemDialog key={editing.key+':'+(editing.item?.value||'new')} groupKey={editing.key} item={editing.item} parentValue={editing.parent} onClose={()=>setEditing(null)} onSaved={item=>{if(editing.key==='country'){setCountry(item.value);setPath({});}else if(groups.includes(editing.key))select(editing.key,item.value);}}/>}</div>;
 }
