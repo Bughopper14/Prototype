@@ -1391,11 +1391,11 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         </span>
         <span>•</span>
         <span style={{ color: '#dc2626', fontWeight: 600 }}>
-          * Total Mandatory (1): <b>{mandatoryCount}</b>
+          * Total Mandatory: <b>{mandatoryCount}</b>
         </span>
         <span>•</span>
         <span style={{ color: '#64748b' }}>
-          Total Optional (0): <b>{rules.length - mandatoryCount}</b>
+          Total Optional: <b>{rules.length - mandatoryCount}</b>
         </span>
       </div>
 
