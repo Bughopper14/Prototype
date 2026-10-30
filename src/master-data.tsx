@@ -22,7 +22,78 @@ export function setMasterData(data:{catalog:MasterCatalog,revision:number}){
 }
 export function useMasterData(){const [data,setData]=useState(catalog);useEffect(()=>{const update=()=>setData(catalog);window.addEventListener('master-data-updated',update);return()=>window.removeEventListener('master-data-updated',update);},[]);return data;}
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v5';
+
+// Automatically clear obsolete cache versions
+try {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.removeItem('liugong_mandatory_rules_cache');
+    localStorage.removeItem('liugong_mandatory_rules_cache_v2');
+    localStorage.removeItem('liugong_mandatory_rules_cache_v3');
+    localStorage.removeItem('liugong_mandatory_rules_cache_v4');
+  }
+} catch {}
+
+export const MANDATORY_SECTIONS = [
+  '01 Debtor Identity & Classification',
+  '02 Registration Office & Company Domicile',
+  '03 Business Profile & Deed Legality',
+  '04 Primary Contact / Person in Charge (PIC)',
+  '05 Industry Segmentation & Active Projects'
+] as const;
+
+export function resolveRuleSection(rule: { id?: number; section?: string; field_key?: string }): string {
+  const fKey = String(rule?.field_key || '');
+  const sec = String(rule?.section || '').toLowerCase();
+  const id = Number(rule?.id || 0);
+
+  if (rule?.section && /^0[1-5]\s/.test(rule.section)) {
+    return rule.section;
+  }
+
+  // 04 Primary Contact / Person in Charge (PIC)
+  if (
+    sec.includes('pic') ||
+    sec.includes('contact') ||
+    (id >= 25 && id <= 37) ||
+    ['picName', 'position', 'phone'].includes(fKey) ||
+    (fKey === 'currentAddress')
+  ) {
+    return '04 Primary Contact / Person in Charge (PIC)';
+  }
+
+  // 01 Debtor Identity & Classification
+  if (
+    ['companyName', 'companyType', 'nib', 'nibDate', 'npwp', 'sktNo', 'sppkpNo', 'customerStatus', 'customerCategory'].includes(fKey) ||
+    sec.includes('customer') ||
+    sec.includes('debtor') ||
+    sec.includes('identity') ||
+    id === 2 || (id >= 38 && id <= 43)
+  ) {
+    return '01 Debtor Identity & Classification';
+  }
+
+  // 05 Industry Segmentation & Active Projects
+  if (
+    ['industrySegment', 'businessRole', 'projectOwner', 'projectLocation', 'projectRole', 'contractStatus'].includes(fKey) ||
+    sec.includes('industry') ||
+    sec.includes('project') ||
+    id === 19 || id === 20
+  ) {
+    return '05 Industry Segmentation & Active Projects';
+  }
+
+  // 03 Business Profile & Deed Legality
+  if (
+    ['mainBusiness', 'experienceYears', 'experienceMonths', 'repaymentSource', 'establishmentActNo', 'establishmentDate', 'latestDeedNo', 'latestDeedDate', 'assetSummaryHeLiuGong', 'assetSummaryTruckLiuGong', 'assetSummaryHeNonLiuGong', 'assetSummaryTruckNonLiuGong'].includes(fKey) ||
+    (id >= 10 && id <= 12) || (id >= 14 && id <= 18) || (id >= 21 && id <= 24)
+  ) {
+    return '03 Business Profile & Deed Legality';
+  }
+
+  // 02 Registration Office & Company Domicile
+  return '02 Registration Office & Company Domicile';
+}
 
 function getInitialMandatoryRules(): any[] {
   try {
@@ -30,7 +101,9 @@ function getInitialMandatoryRules(): any[] {
       const raw = localStorage.getItem(MANDATORY_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(r => ({ ...r, section: resolveRuleSection(r) }));
+        }
       }
     }
   } catch {}
@@ -84,11 +157,12 @@ function buildMandatoryMap(rules: any[]) {
 mandatoryMapCache = buildMandatoryMap(mandatoryCatalogCache);
 
 export function setMandatoryRules(data: any[]) {
-  mandatoryCatalogCache = data;
-  mandatoryMapCache = buildMandatoryMap(data);
+  const normalized = (data || []).map(r => ({ ...r, section: resolveRuleSection(r) }));
+  mandatoryCatalogCache = normalized;
+  mandatoryMapCache = buildMandatoryMap(normalized);
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem(MANDATORY_STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(MANDATORY_STORAGE_KEY, JSON.stringify(normalized));
     }
   } catch {}
   window.dispatchEvent(new Event('mandatory-updated'));
@@ -112,16 +186,16 @@ export function fetchMandatoryRules(): Promise<any[]> {
 }
 
 export function useMandatoryRules() {
-  const [rules, setRules] = useState<any[]>(mandatoryCatalogCache);
+  const [rules, setRules] = useState<any[]>(() => mandatoryCatalogCache.map(r => ({ ...r, section: resolveRuleSection(r) })));
   useEffect(() => {
     let active = true;
-    if (!mandatoryCatalogCache.length) {
-      fetchMandatoryRules().then(data => {
-        if (active) setRules(data);
-      });
-    }
+    fetchMandatoryRules().then(data => {
+      if (active && Array.isArray(data)) {
+        setRules(data.map(r => ({ ...r, section: resolveRuleSection(r) })));
+      }
+    });
     const handleUpdate = () => {
-      if (active) setRules([...mandatoryCatalogCache]);
+      if (active) setRules(mandatoryCatalogCache.map(r => ({ ...r, section: resolveRuleSection(r) })));
     };
     window.addEventListener('mandatory-updated', handleUpdate);
     return () => {
@@ -129,7 +203,7 @@ export function useMandatoryRules() {
       window.removeEventListener('mandatory-updated', handleUpdate);
     };
   }, []);
-  return rules;
+  return rules.map(r => ({ ...r, section: resolveRuleSection(r) }));
 }
 
 export function isFieldMandatory(rules: any[], section: string | undefined, fieldKey: string, defaultRequired?: boolean): boolean {
@@ -421,22 +495,32 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {sections.map(sec => {
-            const count = sec === 'ALL' ? rules.length : rules.filter(x => x.section === sec).length;
-            const label = sectionShortLabels[sec] || (sec === 'ALL' ? 'Semua Bagian' : sec);
-            return (
-              <button
-                key={sec}
-                type="button"
-                className={selectedSection === sec ? 'button small primary' : 'button small'}
-                onClick={() => setSelectedSection(sec)}
-                style={{ fontSize: 11, padding: '5px 10px' }}
-              >
-                {label} ({count})
-              </button>
-            );
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <select
+            value={selectedSection}
+            onChange={e => setSelectedSection(e.target.value)}
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              padding: '6px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              background: '#ffffff',
+              color: '#0f172a',
+              cursor: 'pointer',
+              minWidth: 280
+            }}
+          >
+            <option value="ALL">Semua Bagian ({rules.length})</option>
+            {MANDATORY_SECTIONS.map(sec => {
+              const count = rules.filter(x => x.section === sec).length;
+              return (
+                <option key={sec} value={sec}>
+                  {sec} ({count})
+                </option>
+              );
+            })}
+          </select>
         </div>
 
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
