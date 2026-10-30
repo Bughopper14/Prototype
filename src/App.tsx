@@ -2018,33 +2018,37 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
                 <b style={{fontSize:'0.875rem',color:activeFieldKey==='fapNumber'?'#2563eb':'#0f172a'}}>{draft.isNew ? 'Generated automatically upon saving' : (draft.fapNumber || a.fapNumber || '—')}</b>
               </div>
             </div>
-            <div className="customer-category-selector-box" style={{marginBottom:16}}>
-              <label className="customer-category-select" style={{marginTop:0,marginBottom:0,width:'100%'}} onClick={()=>handleTriggerFieldSync('customerCategory','header')}>
+            <div className="customer-category-selector-box" style={{marginBottom:16,width:'100%'}}>
+              <label className="customer-category-label" style={{display:'block',fontWeight:600,fontSize:'0.82rem',color:'#334155',marginBottom:6}} onClick={()=>handleTriggerFieldSync('customerCategory','header')}>
                 Customer Category
-                <select 
-                  value={customerCategory} 
-                  disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
-                  onFocus={()=>handleTriggerFieldSync('customerCategory','header')}
-                  onChange={e => {
-                    changeCategory(e.target.value);
-                    handleTriggerFieldSync(e.target.value==='EXISTING'?'fap-cell-custExisting':'fap-cell-custNew','header');
-                  }}
-                >
-                  <option value="EXISTING">Existing Customer</option>
-                  <option value="NEW">New Customer</option>
-                </select>
               </label>
+              <select 
+                className="customer-category-select-input"
+                value={customerCategory} 
+                disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
+                onFocus={()=>handleTriggerFieldSync('customerCategory','header')}
+                onChange={e => {
+                  changeCategory(e.target.value);
+                  handleTriggerFieldSync(e.target.value==='EXISTING'?'fap-cell-custExisting':'fap-cell-custNew','header');
+                }}
+                style={{width:'100%',display:'block',boxSizing:'border-box',padding:'10px 12px',borderRadius:8,border:'1px solid #cbd5e1',background:'#ffffff',fontSize:'0.875rem',color:'#0f172a',cursor:'pointer'}}
+              >
+                <option value="EXISTING">Existing Customer</option>
+                <option value="NEW">New Customer</option>
+              </select>
             </div>
             {customerCategory === 'EXISTING' ? (
               <>
-                <div className="existing-customer-picker" style={{marginBottom:16}}>
-                  <label style={{marginTop:0,marginBottom:0,width:'100%'}}>
+                <div className="existing-customer-picker" style={{marginBottom:16,width:'100%'}}>
+                  <label className="existing-customer-label" style={{display:'block',fontWeight:600,fontSize:'0.82rem',color:'#334155',marginBottom:6}}>
                     Existing Customer
-                    <select 
-                      value={customerId} 
-                      disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
-                      onFocus={()=>handleTriggerFieldSync('companyName','customer')}
-                      onChange={e => {
+                  </label>
+                  <select 
+                    className="existing-customer-select-input"
+                    value={customerId} 
+                    disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                    onFocus={()=>handleTriggerFieldSync('companyName','customer')}
+                    onChange={e => {
                         const cid = e.target.value;
                         handleTriggerFieldSync('companyName','customer');
                         setCustomerId(cid);
@@ -2077,7 +2081,6 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
                       <option value="">Select an Existing Customer</option>
                       {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
                     </select>
-                  </label>
                 </div>
                 <div className="new-customer-fields-block" style={{marginTop:12}}>
                   <Fields 
