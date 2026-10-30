@@ -1257,8 +1257,22 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
     });
 
     if(customerCategory==='EXISTING'){
-      if(!selectedCustomer&&!matchedExisting)throw new Error('Please select an existing customer first.');
       id=selectedCustomer?.id||matchedExisting?.id;
+      if(!id){
+        const resolvedName = liveCompanyName || customerDraft?.companyName || draft?.customer?.companyName || draft?.companyName || '';
+        if(!resolvedName.trim())throw new Error('Company name of the debtor is required.');
+        const customerToSave = {
+          ...customerDraft,
+          companyName: resolvedName,
+          nib: nibClean,
+          npwp: npwpClean
+        };
+        validateInput(customerToSave);
+        const createdCust=await api('/customers','POST',customerToSave);
+        id=createdCust.id;
+        setCustomerId(id);
+        if(onCustomerCreated)onCustomerCreated(createdCust);
+      }
     }else{
       if(matchedExisting){
         id=matchedExisting.id;
@@ -2037,98 +2051,38 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
                 <option value="NEW">New Customer</option>
               </select>
             </div>
-            {customerCategory === 'EXISTING' ? (
-              <>
-                <div className="existing-customer-picker" style={{marginBottom:16,width:'100%'}}>
-                  <label className="existing-customer-label" style={{display:'block',fontWeight:600,fontSize:'0.82rem',color:'#334155',marginBottom:6}}>
-                    Existing Customer
-                  </label>
-                  <select 
-                    className="existing-customer-select-input"
-                    value={customerId} 
-                    disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
-                    onFocus={()=>handleTriggerFieldSync('companyName','customer')}
-                    onChange={e => {
-                        const cid = e.target.value;
-                        handleTriggerFieldSync('companyName','customer');
-                        setCustomerId(cid);
-                        setError('');
-                        const cust = customers.find((c: any) => c.id === cid);
-                        if (cust) {
-                          setCustomerDraft(cust);
-                          setDraft((prev: any) => ({
-                            ...prev,
-                            customerId: cid,
-                            customer: cust,
-                            companyName: cust.companyName || prev.companyName,
-                            companyType: cust.companyType || prev.companyType,
-                            nib: cust.nib || prev.nib,
-                            npwp: cust.npwp || prev.npwp,
-                            establishmentActNo: cust.establishmentActNo || prev.establishmentActNo,
-                            establishmentDate: cust.establishmentDate || prev.establishmentDate,
-                            nibDate: cust.nibDate || prev.nibDate,
-                          }));
-                        } else {
-                          setCustomerDraft(blank(customerFields));
-                          setDraft((prev: any) => ({
-                            ...prev,
-                            customerId: '',
-                            customer: null,
-                          }));
-                        }
-                      }}
-                    >
-                      <option value="">Select an Existing Customer</option>
-                      {customers.map((c: any) => <option value={c.id} key={c.id}>{c.companyName}</option>)}
-                    </select>
-                </div>
-                <div className="new-customer-fields-block" style={{marginTop:12}}>
-                  <Fields 
-                    fields={fapCustomerFields} 
-                    value={selectedCustomer || customerDraft || blank(customerFields)} 
-                    disabled={true} 
-                    onChange={() => {}} 
-                    section="customer"
-                    onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
-                    onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
-                    activeFieldKey={activeFieldKey}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="new-customer-fields-block" style={{marginTop:12}}>
-                <Fields 
-                  fields={fapCustomerFields} 
-                  onNibOcr={canEditCustomerPic ? () => setNibOcrOpen(true) : undefined}
-                  value={customerDraft} 
-                  disabled={!canEditCustomerPic} 
-                  section="customer"
-                  onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
-                  onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
-                  activeFieldKey={activeFieldKey}
-                  onChange={c => {
-                    setCustomerDraft(c);
-                    // Sync establishment deed to latestDeed and experience if no deeds in legal yet
-                    const legalDeeds:any[] = Array.isArray(draft.legal?.deeds) ? draft.legal.deeds : [];
-                    const hasLegalEstablishment = legalDeeds.some((d:any)=>d.type==='establishment');
-                    const hasLegalAmendment = legalDeeds.some((d:any)=>d.type==='amendment');
-                    const estDate = String(c.establishmentDate||'').slice(0,10);
-                    const exp = calculateAgeYearsMonths(estDate);
-                    setDraft((prev: any) => ({
-                      ...prev,
-                      customer: c,
-                      // If no establishment deed in legal yet, use manual input as latest
-                      ...(!hasLegalAmendment && !hasLegalEstablishment ? {
-                        latestDeedNo: c.establishmentActNo || prev.latestDeedNo || '',
-                        latestDeedDate: estDate || prev.latestDeedDate || '',
-                      } : {}),
-                      // Experience always calculated from establishmentDate
-                      ...(estDate ? {experienceYears: exp.years, experienceMonths: exp.months} : {}),
-                    }));
-                  }} 
-                />
-              </div>
-            )}
+            <div className="new-customer-fields-block" style={{marginTop:12}}>
+              <Fields 
+                fields={fapCustomerFields} 
+                onNibOcr={canEditCustomerPic ? () => setNibOcrOpen(true) : undefined}
+                value={customerDraft} 
+                disabled={!canEditCustomerPic} 
+                section="customer"
+                onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
+                onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
+                activeFieldKey={activeFieldKey}
+                onChange={c => {
+                  setCustomerDraft(c);
+                  // Sync establishment deed to latestDeed and experience if no deeds in legal yet
+                  const legalDeeds:any[] = Array.isArray(draft.legal?.deeds) ? draft.legal.deeds : [];
+                  const hasLegalEstablishment = legalDeeds.some((d:any)=>d.type==='establishment');
+                  const hasLegalAmendment = legalDeeds.some((d:any)=>d.type==='amendment');
+                  const estDate = String(c.establishmentDate||'').slice(0,10);
+                  const exp = calculateAgeYearsMonths(estDate);
+                  setDraft((prev: any) => ({
+                    ...prev,
+                    customer: c,
+                    // If no establishment deed in legal yet, use manual input as latest
+                    ...(!hasLegalAmendment && !hasLegalEstablishment ? {
+                      latestDeedNo: c.establishmentActNo || prev.latestDeedNo || '',
+                      latestDeedDate: estDate || prev.latestDeedDate || '',
+                    } : {}),
+                    // Experience always calculated from establishmentDate
+                    ...(estDate ? {experienceYears: exp.years, experienceMonths: exp.months} : {}),
+                  }));
+                }} 
+              />
+            </div>
           </div>
         )}
       </div>
