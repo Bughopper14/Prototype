@@ -605,9 +605,6 @@ app.put('/api/v1/applications/:id/page-legal',async(req,res)=>{const id=String(r
 
 let cachedMandatoryRules: any[] | null = null;
 const getMandatoryHandler = async (_req: any, res: any) => {
-  if (cachedMandatoryRules) {
-    return res.json(cachedMandatoryRules);
-  }
   if (!pool) return res.json([]);
   try {
     const [rows] = await pool.query<any[]>('SELECT id, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY section, id');

@@ -338,9 +338,14 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
     return { color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' };
   };
 
-  const distinctSections = Array.from(new Set(rules.map(x => x.section).filter(Boolean)));
-  distinctSections.sort();
-  const sections = ['ALL', ...distinctSections];
+  const sections = [
+    'ALL',
+    '01 Debtor Identity & Classification',
+    '02 Registration Office & Company Domicile',
+    '03 Business Profile & Deed Legality',
+    '04 Primary Contact / Person in Charge (PIC)',
+    '05 Industry Segmentation & Active Projects'
+  ];
 
   const visible = rules.filter(x => {
     const matchSection = selectedSection === 'ALL' || x.section === selectedSection;
