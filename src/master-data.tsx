@@ -571,7 +571,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
               <th style={{ minWidth: 220, textAlign: 'left', padding: '12px 14px' }}>NAMA FIELD (LABEL)</th>
               <th style={{ width: 190, minWidth: 190, textAlign: 'left', padding: '12px 14px' }}>KODE KOLOM (FIELD KEY)</th>
               <th style={{ textAlign: 'center', width: 150, padding: '12px 14px' }}>STATUS MANDATORY</th>
-              {canManage && <th style={{ textAlign: 'right', width: 190, padding: '12px 14px' }}>AKSI</th>}
+              {canManage && <th style={{ textAlign: 'center', width: 190, padding: '12px 14px' }}>AKSI</th>}
             </tr>
           </thead>
           <tbody>
@@ -642,8 +642,8 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                     )}
                   </td>
                   {canManage && (
-                    <td style={{ textAlign: 'right', padding: '12px 14px', verticalAlign: 'middle' }}>
-                      <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                    <td style={{ textAlign: 'center', padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'center' }}>
                         <button
                           type="button"
                           disabled={busyId === x.id}
