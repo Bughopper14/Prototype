@@ -2019,10 +2019,8 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
               </div>
             </div>
             <div className="customer-category-selector-box" style={{marginBottom:16}}>
-              <div style={{marginBottom:4}}>
-                <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Customer Category</span>
-              </div>
-              <label className="customer-category-select" style={{marginTop:0}} onClick={()=>handleTriggerFieldSync('customerCategory','header')}>
+              <label className="customer-category-select" style={{marginTop:0,marginBottom:0,width:'100%'}} onClick={()=>handleTriggerFieldSync('customerCategory','header')}>
+                Customer Category
                 <select 
                   value={customerCategory} 
                   disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))} 
@@ -2040,10 +2038,8 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
             {customerCategory === 'EXISTING' ? (
               <>
                 <div className="existing-customer-picker" style={{marginBottom:16}}>
-                  <div style={{marginBottom:4}}>
-                    <span className="field-label" style={{fontWeight:600,fontSize:'0.82rem',color:'#334155'}}>Existing Customer</span>
-                  </div>
-                  <label style={{marginTop:0}}>
+                  <label style={{marginTop:0,marginBottom:0,width:'100%'}}>
+                    Existing Customer
                     <select 
                       value={customerId} 
                       disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
