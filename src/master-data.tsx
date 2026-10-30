@@ -22,36 +22,43 @@ export function setMasterData(data:{catalog:MasterCatalog,revision:number}){
 }
 export function useMasterData(){const [data,setData]=useState(catalog);useEffect(()=>{const update=()=>setData(catalog);window.addEventListener('master-data-updated',update);return()=>window.removeEventListener('master-data-updated',update);},[]);return data;}
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v5';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v6';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
+    for (let i = 1; i <= 5; i++) {
+      localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
+    }
     localStorage.removeItem('liugong_mandatory_rules_cache');
-    localStorage.removeItem('liugong_mandatory_rules_cache_v2');
-    localStorage.removeItem('liugong_mandatory_rules_cache_v3');
-    localStorage.removeItem('liugong_mandatory_rules_cache_v4');
   }
 } catch {}
 
 export const MANDATORY_SECTIONS = [
-  '01 Debtor Identity & Classification',
-  '02 Registration Office & Company Domicile',
-  '03 Business Profile & Deed Legality',
-  '04 Primary Contact / Person in Charge (PIC)',
-  '05 Industry Segmentation & Active Projects'
+  'Debtor Identity & Classification',
+  'Registration Office & Company Domicile',
+  'Business Profile & Deed Legality',
+  'Primary Contact / Person in Charge (PIC)',
+  'Industry Segmentation & Active Projects'
 ] as const;
+
+export function cleanSectionName(sec: string): string {
+  if (!sec) return '';
+  return String(sec).replace(/^0[1-5]\s*/, '').trim();
+}
 
 export function resolveRuleSection(rule: { id?: number; section?: string; field_key?: string }): string {
   const fKey = String(rule?.field_key || '');
-  const sec = String(rule?.section || '').toLowerCase();
+  const rawSec = cleanSectionName(String(rule?.section || ''));
+  const sec = rawSec.toLowerCase();
   const id = Number(rule?.id || 0);
 
-  if (rule?.section && /^0[1-5]\s/.test(rule.section)) {
-    return rule.section;
+  // Exact match to one of MANDATORY_SECTIONS
+  for (const s of MANDATORY_SECTIONS) {
+    if (rawSec === s) return s;
   }
 
-  // 04 Primary Contact / Person in Charge (PIC)
+  // 4. Primary Contact / Person in Charge (PIC)
   if (
     sec.includes('pic') ||
     sec.includes('contact') ||
@@ -59,10 +66,10 @@ export function resolveRuleSection(rule: { id?: number; section?: string; field_
     ['picName', 'position', 'phone'].includes(fKey) ||
     (fKey === 'currentAddress')
   ) {
-    return '04 Primary Contact / Person in Charge (PIC)';
+    return 'Primary Contact / Person in Charge (PIC)';
   }
 
-  // 01 Debtor Identity & Classification
+  // 1. Debtor Identity & Classification
   if (
     ['companyName', 'companyType', 'nib', 'nibDate', 'npwp', 'sktNo', 'sppkpNo', 'customerStatus', 'customerCategory'].includes(fKey) ||
     sec.includes('customer') ||
@@ -70,29 +77,30 @@ export function resolveRuleSection(rule: { id?: number; section?: string; field_
     sec.includes('identity') ||
     id === 2 || (id >= 38 && id <= 43)
   ) {
-    return '01 Debtor Identity & Classification';
+    return 'Debtor Identity & Classification';
   }
 
-  // 05 Industry Segmentation & Active Projects
+  // 5. Industry Segmentation & Active Projects
   if (
     ['industrySegment', 'businessRole', 'projectOwner', 'projectLocation', 'projectRole', 'contractStatus'].includes(fKey) ||
     sec.includes('industry') ||
     sec.includes('project') ||
     id === 19 || id === 20
   ) {
-    return '05 Industry Segmentation & Active Projects';
+    return 'Industry Segmentation & Active Projects';
   }
 
-  // 03 Business Profile & Deed Legality
+  // 3. Business Profile & Deed Legality
   if (
     ['mainBusiness', 'experienceYears', 'experienceMonths', 'repaymentSource', 'establishmentActNo', 'establishmentDate', 'latestDeedNo', 'latestDeedDate', 'assetSummaryHeLiuGong', 'assetSummaryTruckLiuGong', 'assetSummaryHeNonLiuGong', 'assetSummaryTruckNonLiuGong'].includes(fKey) ||
-    (id >= 10 && id <= 12) || (id >= 14 && id <= 18) || (id >= 21 && id <= 24)
+    (id >= 10 && id <= 12) || (id >= 14 && id <= 18) || (id >= 21 && id <= 24) ||
+    sec.includes('business') || sec.includes('deed') || sec.includes('legality')
   ) {
-    return '03 Business Profile & Deed Legality';
+    return 'Business Profile & Deed Legality';
   }
 
-  // 02 Registration Office & Company Domicile
-  return '02 Registration Office & Company Domicile';
+  // 2. Registration Office & Company Domicile
+  return 'Registration Office & Company Domicile';
 }
 
 function getInitialMandatoryRules(): any[] {
@@ -392,34 +400,27 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
     '05 Industry Segmentation & Active Projects': '05 Industry & Projects'
   };
 
-  const getSectionBadgeStyle = (sec: string) => {
-    const s = String(sec || '');
-    if (s.startsWith('01') || s.includes('Debtor') || s.includes('Identity')) {
+    const getSectionBadgeStyle = (sec: string) => {
+    const s = String(sec || '').toLowerCase();
+    if (s.includes('debtor') || s.includes('identity') || s.includes('classification')) {
       return { color: '#3730a3', bg: '#eef2ff', border: '#c7d2fe' };
     }
-    if (s.startsWith('02') || s.includes('Domicile') || s.includes('Office')) {
+    if (s.includes('domicile') || s.includes('office') || s.includes('registration')) {
       return { color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' };
     }
-    if (s.startsWith('03') || s.includes('Business') || s.includes('Legality')) {
+    if (s.includes('business') || s.includes('legality') || s.includes('deed')) {
       return { color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
     }
-    if (s.startsWith('04') || s.includes('PIC') || s.includes('Primary Contact')) {
+    if (s.includes('pic') || s.includes('contact') || s.includes('primary contact')) {
       return { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' };
     }
-    if (s.startsWith('05') || s.includes('Industry') || s.includes('Projects')) {
+    if (s.includes('industry') || s.includes('projects') || s.includes('segmentation')) {
       return { color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' };
     }
     return { color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' };
   };
 
-  const sections = [
-    'ALL',
-    '01 Debtor Identity & Classification',
-    '02 Registration Office & Company Domicile',
-    '03 Business Profile & Deed Legality',
-    '04 Primary Contact / Person in Charge (PIC)',
-    '05 Industry Segmentation & Active Projects'
-  ];
+  const sections = ['ALL', ...MANDATORY_SECTIONS];
 
   const visible = rules.filter(x => {
     const matchSection = selectedSection === 'ALL' || x.section === selectedSection;
@@ -502,18 +503,18 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             style={{
               fontSize: 12,
               fontWeight: 600,
-              padding: '6px 12px',
+              padding: '7px 14px',
               borderRadius: 6,
               border: '1px solid var(--border)',
               background: '#ffffff',
               color: '#0f172a',
               cursor: 'pointer',
-              minWidth: 280
+              minWidth: 310
             }}
           >
             <option value="ALL">Semua Bagian ({rules.length})</option>
             {MANDATORY_SECTIONS.map(sec => {
-              const count = rules.filter(x => x.section === sec).length;
+              const count = rules.map(r => resolveRuleSection(r)).filter(s => s === sec).length;
               return (
                 <option key={sec} value={sec}>
                   {sec} ({count})
@@ -562,122 +563,125 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
       </div>
 
       <div className="table-scroll">
-        <table className="data-table master-table">
+        <table className="data-table master-table" style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', tableLayout: 'auto' }}>
           <thead>
-            <tr>
-              <th style={{ width: 40 }}>NO</th>
-              <th>BAGIAN (SECTION)</th>
-              <th>NAMA FIELD (LABEL)</th>
-              <th>KODE KOLOM (FIELD KEY)</th>
-              <th style={{ textAlign: 'center', width: 140 }}>STATUS MANDATORY</th>
-              {canManage && <th style={{ textAlign: 'right', width: 190 }}>AKSI</th>}
+            <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
+              <th style={{ width: 45, textAlign: 'center', padding: '12px 8px' }}>NO</th>
+              <th style={{ width: 280, minWidth: 280, textAlign: 'left', padding: '12px 14px' }}>BAGIAN (SECTION)</th>
+              <th style={{ minWidth: 220, textAlign: 'left', padding: '12px 14px' }}>NAMA FIELD (LABEL)</th>
+              <th style={{ width: 190, minWidth: 190, textAlign: 'left', padding: '12px 14px' }}>KODE KOLOM (FIELD KEY)</th>
+              <th style={{ textAlign: 'center', width: 150, padding: '12px 14px' }}>STATUS MANDATORY</th>
+              {canManage && <th style={{ textAlign: 'right', width: 190, padding: '12px 14px' }}>AKSI</th>}
             </tr>
           </thead>
           <tbody>
-            {visible.map((x, idx) => (
-              <tr key={x.id}>
-                <td style={{ color: '#9ca3af', fontSize: 11 }}>{idx + 1}</td>
-                <td>
-                  {(() => {
-                    const st = getSectionBadgeStyle(x.section);
-                    return (
+            {visible.map((x, idx) => {
+              const secName = resolveRuleSection(x);
+              const st = getSectionBadgeStyle(secName);
+              return (
+                <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: 11, padding: '12px 8px' }}>
+                    {idx + 1}
+                  </td>
+                  <td style={{ width: 280, minWidth: 280, padding: '12px 14px', verticalAlign: 'middle' }}>
+                    <span style={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: '0.02em',
+                      lineHeight: 1.35,
+                      color: st.color,
+                      background: st.bg,
+                      border: `1px solid ${st.border}`,
+                      padding: '4px 9px',
+                      borderRadius: 5,
+                      display: 'inline-block',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
+                      maxWidth: 270
+                    }}>
+                      {secName}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 14px', verticalAlign: 'middle', fontWeight: 600, color: '#0f172a', fontSize: 12 }}>
+                    {x.field_label}
+                  </td>
+                  <td style={{ padding: '12px 14px', verticalAlign: 'middle', width: 190, minWidth: 190 }}>
+                    <code style={{ fontSize: 11, background: '#f1f5f9', padding: '3px 7px', borderRadius: 4, color: '#334155', fontFamily: 'monospace' }}>
+                      {x.field_key}
+                    </code>
+                  </td>
+                  <td style={{ textAlign: 'center', padding: '12px 14px', verticalAlign: 'middle' }}>
+                    {x.mandatory ? (
                       <span style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        textTransform: 'uppercase',
-                        color: st.color,
-                        background: st.bg,
-                        border: `1px solid ${st.border}`,
-                        padding: '3px 8px',
-                        borderRadius: 5,
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 4
+                        gap: 4,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#b91c1c',
+                        background: '#fef2f2',
+                        border: '1px solid #fecaca',
+                        padding: '3px 9px',
+                        borderRadius: 9999
                       }}>
-                        {x.section}
+                        * Wajib (1)
                       </span>
-                    );
-                  })()}
-                </td>
-                <td style={{ fontWeight: 600, color: '#0f172a' }}>
-                  {x.field_label}
-                </td>
-                <td>
-                  <code style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, color: '#334155' }}>
-                    {x.field_key}
-                  </code>
-                </td>
-                <td style={{ textAlign: 'center' }}>
-                  {x.mandatory ? (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: '#b91c1c',
-                      background: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      padding: '2px 8px',
-                      borderRadius: 9999
-                    }}>
-                      * Wajib (1)
-                    </span>
-                  ) : (
-                    <span style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      fontSize: 11,
-                      color: '#64748b',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      padding: '2px 8px',
-                      borderRadius: 9999
-                    }}>
-                      Opsional (0)
-                    </span>
-                  )}
-                </td>
-                {canManage && (
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        disabled={busyId === x.id}
-                        className={x.mandatory ? 'button small' : 'button primary small'}
-                        style={{ fontSize: 11, padding: '3px 8px' }}
-                        onClick={() => handleToggle(x)}
-                        title={x.mandatory ? 'Change to optional (0)' : 'Make mandatory (1)'}
-                      >
-                        {busyId === x.id ? (
-                          'Menyimpan...'
-                        ) : x.mandatory ? (
-                          <>
-                            <X size={12} style={{ marginRight: 3 }} />
-                            Set Opsional (0)
-                          </>
-                        ) : (
-                          <>
-                            <Check size={12} style={{ marginRight: 3 }} />
-                            Set Wajib (1)
-                          </>
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={busyId === x.id}
-                        className="button small"
-                        style={{ fontSize: 11, padding: '3px 7px' }}
-                        onClick={() => setEditingItem(x)}
-                        title="Edit aturan kolom"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                    </div>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        fontSize: 11,
+                        color: '#64748b',
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        padding: '3px 9px',
+                        borderRadius: 9999
+                      }}>
+                        Opsional (0)
+                      </span>
+                    )}
                   </td>
-                )}
-              </tr>
-            ))}
+                  {canManage && (
+                    <td style={{ textAlign: 'right', padding: '12px 14px', verticalAlign: 'middle' }}>
+                      <div style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          disabled={busyId === x.id}
+                          className={x.mandatory ? 'button small' : 'button primary small'}
+                          style={{ fontSize: 11, padding: '4px 10px' }}
+                          onClick={() => handleToggle(x)}
+                          title={x.mandatory ? 'Change to optional (0)' : 'Make mandatory (1)'}
+                        >
+                          {busyId === x.id ? (
+                            'Menyimpan...'
+                          ) : x.mandatory ? (
+                            <>
+                              <X size={12} style={{ marginRight: 3 }} />
+                              Set Opsional (0)
+                            </>
+                          ) : (
+                            <>
+                              <Check size={12} style={{ marginRight: 3 }} />
+                              Set Wajib (1)
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busyId === x.id}
+                          className="button small"
+                          style={{ fontSize: 11, padding: '4px 8px' }}
+                          onClick={() => setEditingItem(x)}
+                          title="Edit aturan kolom"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {!visible.length && (
@@ -711,7 +715,7 @@ function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: (
         <div className="modal-body">
           <div className="formgrid">
             <label>Bagian (Section)
-              <input disabled value={item.section} />
+              <input disabled value={resolveRuleSection(item)} />
             </label>
             <label>Field Label
               <input disabled value={item.field_label} />
