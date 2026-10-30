@@ -40,17 +40,41 @@ function getInitialMandatoryRules(): any[] {
 let mandatoryCatalogCache: any[] = getInitialMandatoryRules();
 let mandatoryMapCache = new Map<string, boolean>();
 
+export function getSectionAliases(secName: string): string[] {
+  const norm = (secName || '').toLowerCase().trim();
+  const aliases: string[] = [norm];
+  if (norm.includes('debtor') || norm.includes('identity') || norm.includes('classification') || norm.includes('customer') || norm.startsWith('01')) {
+    aliases.push('customer', 'debtor', 'identity', 'classification', '01');
+  }
+  if (norm.includes('domicile') || norm.includes('office') || norm.includes('registration') || norm.includes('company') || norm.startsWith('02')) {
+    aliases.push('company', 'office', 'domicile', 'registration', '02', 'profile');
+  }
+  if (norm.includes('business') || norm.includes('deed') || norm.includes('legality') || norm.startsWith('03')) {
+    aliases.push('business', 'legality', 'deed', 'profile', '03');
+  }
+  if (norm.includes('pic') || norm.includes('contact') || norm.startsWith('04')) {
+    aliases.push('pic', 'contact', '04');
+  }
+  if (norm.includes('project') || norm.includes('industry') || norm.includes('segmentation') || norm.startsWith('05')) {
+    aliases.push('projects', 'project', 'industry', 'segmentation', '05');
+  }
+  return aliases;
+}
+
 function buildMandatoryMap(rules: any[]) {
   const map = new Map<string, boolean>();
   for (const r of rules) {
     if (!r) continue;
     const isMandatory = Boolean(r.mandatory);
     const fKey = String(r.field_key || '');
-    const sec = String(r.section || '').toLowerCase();
+    const sec = String(r.section || '').trim();
     if (fKey) {
       map.set(`*:${fKey}`, isMandatory);
       if (sec) {
-        map.set(`${sec}:${fKey}`, isMandatory);
+        const aliases = getSectionAliases(sec);
+        for (const al of aliases) {
+          map.set(`${al}:${fKey}`, isMandatory);
+        }
       }
     }
   }
@@ -113,24 +137,15 @@ export function isFieldMandatory(rules: any[], section: string | undefined, fiel
     mandatoryMapCache = buildMandatoryMap(rules);
   }
   if (!mandatoryMapCache.size) return false;
-  const normSec = (section || '').toLowerCase();
+  const normSec = (section || '').toLowerCase().trim();
   if (normSec) {
     if (mandatoryMapCache.has(`${normSec}:${fieldKey}`)) {
       return mandatoryMapCache.get(`${normSec}:${fieldKey}`)!;
     }
-    if (normSec.includes('profile')) {
-      for (const [k, v] of mandatoryMapCache) {
-        if (k.endsWith(`:${fieldKey}`) && k.includes('profile')) return v;
-      }
-    }
-    if (normSec.includes('pic')) {
-      for (const [k, v] of mandatoryMapCache) {
-        if (k.endsWith(`:${fieldKey}`) && k.includes('pic')) return v;
-      }
-    }
-    if (normSec.includes('customer')) {
-      for (const [k, v] of mandatoryMapCache) {
-        if (k.endsWith(`:${fieldKey}`) && k.includes('customer')) return v;
+    const aliases = getSectionAliases(normSec);
+    for (const al of aliases) {
+      if (mandatoryMapCache.has(`${al}:${fieldKey}`)) {
+        return mandatoryMapCache.get(`${al}:${fieldKey}`)!;
       }
     }
   }
@@ -294,7 +309,38 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
   const [toast, setToast] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
 
-  const sections = ['ALL', 'Company Profile', 'Primary Contact (PIC)', 'Customer'];
+  const sectionShortLabels: Record<string, string> = {
+    'ALL': 'Semua Bagian',
+    '01 Debtor Identity & Classification': '01 Debtor Identity',
+    '02 Registration Office & Company Domicile': '02 Office & Domicile',
+    '03 Business Profile & Deed Legality': '03 Business & Legality',
+    '04 Primary Contact / Person in Charge (PIC)': '04 PIC',
+    '05 Industry Segmentation & Active Projects': '05 Industry & Projects'
+  };
+
+  const getSectionBadgeStyle = (sec: string) => {
+    const s = String(sec || '');
+    if (s.startsWith('01') || s.includes('Debtor') || s.includes('Identity')) {
+      return { color: '#3730a3', bg: '#eef2ff', border: '#c7d2fe' };
+    }
+    if (s.startsWith('02') || s.includes('Domicile') || s.includes('Office')) {
+      return { color: '#047857', bg: '#ecfdf5', border: '#a7f3d0' };
+    }
+    if (s.startsWith('03') || s.includes('Business') || s.includes('Legality')) {
+      return { color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
+    }
+    if (s.startsWith('04') || s.includes('PIC') || s.includes('Primary Contact')) {
+      return { color: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' };
+    }
+    if (s.startsWith('05') || s.includes('Industry') || s.includes('Projects')) {
+      return { color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' };
+    }
+    return { color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' };
+  };
+
+  const distinctSections = Array.from(new Set(rules.map(x => x.section).filter(Boolean)));
+  distinctSections.sort();
+  const sections = ['ALL', ...distinctSections];
 
   const visible = rules.filter(x => {
     const matchSection = selectedSection === 'ALL' || x.section === selectedSection;
@@ -373,7 +419,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {sections.map(sec => {
             const count = sec === 'ALL' ? rules.length : rules.filter(x => x.section === sec).length;
-            const label = sec === 'ALL' ? 'Semua Bagian' : sec === 'Primary Contact (PIC)' ? 'PIC' : sec;
+            const label = sectionShortLabels[sec] || (sec === 'ALL' ? 'Semua Bagian' : sec);
             return (
               <button
                 key={sec}
@@ -443,18 +489,26 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
               <tr key={x.id}>
                 <td style={{ color: '#9ca3af', fontSize: 11 }}>{idx + 1}</td>
                 <td>
-                  <span style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    color: x.section === 'Primary Contact (PIC)' ? '#1d4ed8' : x.section === 'Customer' ? '#6d28d9' : '#047857',
-                    background: x.section === 'Primary Contact (PIC)' ? '#eff6ff' : x.section === 'Customer' ? '#f5f3ff' : '#ecfdf5',
-                    padding: '2px 7px',
-                    borderRadius: 4,
-                    display: 'inline-block'
-                  }}>
-                    {x.section}
-                  </span>
+                  {(() => {
+                    const st = getSectionBadgeStyle(x.section);
+                    return (
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        color: st.color,
+                        background: st.bg,
+                        border: `1px solid ${st.border}`,
+                        padding: '3px 8px',
+                        borderRadius: 5,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}>
+                        {x.section}
+                      </span>
+                    );
+                  })()}
                 </td>
                 <td style={{ fontWeight: 600, color: '#0f172a' }}>
                   {x.field_label}

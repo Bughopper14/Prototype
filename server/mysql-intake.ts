@@ -178,7 +178,7 @@ export async function intakeDetail(id:string){
  const [docRows]=await pool.execute<any[]>(`SELECT COALESCE(MAX(is_mandatory), 0) AS is_doc_mandatory FROM application_document_checklist WHERE application_id = ?`,[id]);
  const [mandatoryList]=await pool.query<any[]>('SELECT section, field_key, field_label, mandatory FROM master_mandatory');
  const mandatoryConfig={
-   customerPic:mandatoryList.some(r=>['Company Profile','Primary Contact (PIC)','Customer'].includes(r.section)&&Boolean(r.mandatory)),
+   customerPic:mandatoryList.some(r=>(Boolean(r.section) && r.section !== 'Financing' && r.section !== 'Financial Statements' && r.section !== 'Legal')&&Boolean(r.mandatory)),
    financing:mandatoryList.some(r=>r.section==='Financing'&&Boolean(r.mandatory)),
    financialStatements:mandatoryList.some(r=>r.section==='Financial Statements'&&Boolean(r.mandatory)),
    legal:mandatoryList.some(r=>r.section==='Legal'&&Boolean(r.mandatory)),
@@ -412,7 +412,7 @@ export async function transitionIntake(id:string,action:string,actor:{name:strin
 
   // 1. Check mandatory constraints from mandatory table
   const [mandatoryList]=await pool.query<any[]>('SELECT section, field_key, field_label, mandatory FROM master_mandatory WHERE mandatory = 1');
-  const picMandatory=mandatoryList.filter(m=>m.section==='Primary Contact (PIC)').map(m=>m.field_key);
+  const picMandatory=mandatoryList.filter(m=>(m.section==='Primary Contact (PIC)' || m.section.includes('PIC') || m.section.includes('Primary Contact'))).map(m=>m.field_key);
   if(picMandatory.length){
    const [picRows]=await pool.execute<any[]>('SELECT * FROM customer_pic WHERE application_id = ?',[id]);
    const picRow=picRows[0];
