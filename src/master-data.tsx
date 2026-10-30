@@ -737,12 +737,12 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
   }
 ];
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v20';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v25';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 19; i++) {
+    for (let i = 1; i <= 24; i++) {
       localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
     }
     localStorage.removeItem('liugong_mandatory_rules_cache');
@@ -750,7 +750,7 @@ try {
       const demoRaw = localStorage.getItem('liugong_demo_state');
       if (demoRaw) {
         const demoObj = JSON.parse(demoRaw);
-        if (demoObj && demoObj.mandatoryRules && !demoObj.mandatoryRules.some((r: any) => r.stage === 'PRE-AN')) {
+        if (demoObj && demoObj.mandatoryRules && (!demoObj.mandatoryRules.some((r: any) => r.stage === 'PRE-AN') || !demoObj.mandatoryRules.some((r: any) => r.field_key === 'nibDate'))) {
           delete demoObj.mandatoryRules;
           localStorage.setItem('liugong_demo_state', JSON.stringify(demoObj));
         }
@@ -858,7 +858,7 @@ function getInitialMandatoryRules(): any[] {
       const raw = localStorage.getItem(MANDATORY_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length >= 80) {
+        if (Array.isArray(parsed) && parsed.length === DEFAULT_MANDATORY_RULES.length && parsed.some((x: any) => x.field_key === 'nibDate')) {
           return parsed.map(normalizeRule);
         }
       }

@@ -182,6 +182,18 @@ app.post('/api/v1/auth/login',async(req,res)=>{const key=req.ip||'local',entry=a
 app.post('/api/v1/auth/logout',(_req,res)=>{res.clearCookie('los_session',{path:'/'});res.json({ok:true});});
 app.get('/api/v1/health',(_req,res)=>res.json({status:'ok'}));
 app.get('/api/v1/mysql/health',async(_req,res)=>{await checkMysql();res.json({status:'ok',database:process.env.MYSQL_DATABASE});});
+
+let cachedMandatoryRules: any[] | null = null;
+const getMandatoryHandler = async (_req: any, res: any) => {
+  if (!pool) return res.json([]);
+  try {
+    const [rows] = await pool.query<any[]>('SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY stage, section, id');
+    cachedMandatoryRules = rows;
+    res.json(rows);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+};
+app.get('/api/v1/mandatory', getMandatoryHandler);
+app.get('/api/v1/master-mandatory', getMandatoryHandler);
 app.get('/api/v1/wilayah/reverse-lookup',async(req,res)=>{
   const {kelurahan,kecamatan,postalCode}=req.query as Record<string,string>;
   const clean=(s:any)=>String(s||'').replace(/[^A-Za-z0-9]/g,'').toUpperCase();
@@ -283,7 +295,7 @@ app.get('/api/v1/wilayah/reverse-lookup',async(req,res)=>{
     res.status(500).json({error:err.message||String(err)});
   }
 });
-app.use('/api',async(req,res,next)=>{try{const isOcrScan=req.path.startsWith('/v1/ocr/scan')||req.path.includes('fap-comparison');const token=(req.headers.cookie||'').split('; ').find(x=>x.startsWith('los_session='))?.slice(12);if(!token&&isOcrScan){req.actor={id:'ocr-scanner',name:'OCR Scanner',email:'system@los.local',role:'MKT',isAdmin:false} as any;return next();}ensure(token,'Please sign in',401);const decoded=jwt.verify(token,jwtSecret,{audience:'los-api'}) as Actor;const actual=['mysql','placeholder'].includes(decoded.source||'')?await findUser(decoded.id,true):null;const user=actual?publicUser(actual):decoded.source==='mysql'?null:(await query('SELECT id,name,email,role FROM users WHERE id=$1',[decoded.id])).rows[0];ensure(user&&(!actual||actual.is_active),'Session is no longer valid',401);const placeholder=pool?(!actual||!!actual.is_placeholder):false;req.actor=placeholder?{...user,source:'placeholder'}:user;if(decoded.role==='ADMIN'||(decoded as any).isAdmin||req.actor.email==='admin@liugong.local'||req.actor.email==='axel@liugongfinance.com'){req.actor.isAdmin=true;req.actor.role='ADMIN';}if(pool&&req.actor){const {getAuthoritiesForActor}=await import('./mysql-users');req.actor.authorities=await getAuthoritiesForActor(req.actor.role,Boolean(req.actor.isAdmin),req.actor.id);}if(placeholder&&!['GET','HEAD','OPTIONS'].includes(req.method)&&!req.actor.isAdmin)throw new Problem(403,'Akun placeholder hanya untuk melihat. Perubahan memerlukan user MySQL aktif.');mysqlActor.run(placeholder?null:actual?.user_id||null,()=>next());}catch(e){next(e instanceof Problem?e:new Problem(401,'Session expired. Please sign in again.'));}});
+app.use('/api',async(req,res,next)=>{try{const isPublicGet = req.method === 'GET' && (req.path === '/v1/mandatory' || req.path === '/v1/master-mandatory');if(isPublicGet)return next();const isOcrScan=req.path.startsWith('/v1/ocr/scan')||req.path.includes('fap-comparison');const token=(req.headers.cookie||'').split('; ').find(x=>x.startsWith('los_session='))?.slice(12);if(!token&&isOcrScan){req.actor={id:'ocr-scanner',name:'OCR Scanner',email:'system@los.local',role:'MKT',isAdmin:false} as any;return next();}ensure(token,'Please sign in',401);const decoded=jwt.verify(token,jwtSecret,{audience:'los-api'}) as Actor;const actual=['mysql','placeholder'].includes(decoded.source||'')?await findUser(decoded.id,true):null;const user=actual?publicUser(actual):decoded.source==='mysql'?null:(await query('SELECT id,name,email,role FROM users WHERE id=$1',[decoded.id])).rows[0];ensure(user&&(!actual||actual.is_active),'Session is no longer valid',401);const placeholder=pool?(!actual||!!actual.is_placeholder):false;req.actor=placeholder?{...user,source:'placeholder'}:user;if(decoded.role==='ADMIN'||(decoded as any).isAdmin||req.actor.email==='admin@liugong.local'||req.actor.email==='axel@liugongfinance.com'){req.actor.isAdmin=true;req.actor.role='ADMIN';}if(pool&&req.actor){const {getAuthoritiesForActor}=await import('./mysql-users');req.actor.authorities=await getAuthoritiesForActor(req.actor.role,Boolean(req.actor.isAdmin),req.actor.id);}if(placeholder&&!['GET','HEAD','OPTIONS'].includes(req.method)&&!req.actor.isAdmin)throw new Problem(403,'Akun placeholder hanya untuk melihat. Perubahan memerlukan user MySQL aktif.');mysqlActor.run(placeholder?null:actual?.user_id||null,()=>next());}catch(e){next(e instanceof Problem?e:new Problem(401,'Session expired. Please sign in again.'));}});
 app.get('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);const {pool}=await import('./mysql-store');const [users]=await pool!.query<any[]>('SELECT * FROM crm_users ORDER BY created_at');res.json(users.map(publicUser));});
 app.post('/api/v1/users',async(req,res)=>{ensure(req.actor.isAdmin,'Only administrator can manage users',403);res.status(201).json(await createUser(req.body));});
 app.get('/api/v1/workspace-data/:menu',async(req,res)=>res.json(await readMenu(String(req.params.menu))));
@@ -603,15 +615,6 @@ app.put('/api/v1/applications/:id/page-legal',async(req,res)=>{const id=String(r
   }await q('UPDATE applications SET legal=$1,updated_at=CURRENT_TIMESTAMP WHERE id=$2',[JSON.stringify(legal),id]);await q('DELETE FROM review_signoffs WHERE application_id=$1 AND role=$2',[id,'LEGAL']);await insert('ApprovalLog',{applicationId:id,actionBy:req.actor.name,userRole:req.actor.role,previousStatus:a.status,newStatus:a.status,comments:'Legal information updated'},q);});res.json(await detail(id));});
 
 
-let cachedMandatoryRules: any[] | null = null;
-const getMandatoryHandler = async (_req: any, res: any) => {
-  if (!pool) return res.json([]);
-  try {
-    const [rows] = await pool.query<any[]>('SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY stage, section, id');
-    cachedMandatoryRules = rows;
-    res.json(rows);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-};
 const putMandatoryHandler = async (req: any, res: any) => {
   if (!pool) return res.status(503).json({ error: 'MySQL is not configured' });
   try {
@@ -630,8 +633,6 @@ const putMandatoryHandler = async (req: any, res: any) => {
     res.json(rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
 };
-app.get('/api/v1/mandatory', getMandatoryHandler);
-app.get('/api/v1/master-mandatory', getMandatoryHandler);
 app.put('/api/v1/mandatory', putMandatoryHandler);
 app.put('/api/v1/master-mandatory', putMandatoryHandler);
 
