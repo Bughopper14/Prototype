@@ -22,12 +22,711 @@ export function setMasterData(data:{catalog:MasterCatalog,revision:number}){
 }
 export function useMasterData(){const [data,setData]=useState(catalog);useEffect(()=>{const update=()=>setData(catalog);window.addEventListener('master-data-updated',update);return()=>window.removeEventListener('master-data-updated',update);},[]);return data;}
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v7';
+export const DEFAULT_MANDATORY_RULES: any[] = [
+  {
+    "id": 1,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "branchCode",
+    "field_label": "Branch",
+    "mandatory": 1
+  },
+  {
+    "id": 2,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "customerStatus",
+    "field_label": "Customer relationship",
+    "mandatory": 1
+  },
+  {
+    "id": 3,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "companyAddress",
+    "field_label": "Company address",
+    "mandatory": 1
+  },
+  {
+    "id": 4,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "province",
+    "field_label": "Province",
+    "mandatory": 1
+  },
+  {
+    "id": 5,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "city",
+    "field_label": "City",
+    "mandatory": 1
+  },
+  {
+    "id": 6,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "postalCode",
+    "field_label": "Postal code",
+    "mandatory": 1
+  },
+  {
+    "id": 7,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "phoneFax",
+    "field_label": "Phone / fax",
+    "mandatory": 0
+  },
+  {
+    "id": 8,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "email",
+    "field_label": "Company email",
+    "mandatory": 0
+  },
+  {
+    "id": 9,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "website",
+    "field_label": "Website",
+    "mandatory": 0
+  },
+  {
+    "id": 10,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "mainBusiness",
+    "field_label": "Main business",
+    "mandatory": 0
+  },
+  {
+    "id": 11,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "experienceYears",
+    "field_label": "Experience · years",
+    "mandatory": 1
+  },
+  {
+    "id": 12,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "experienceMonths",
+    "field_label": "Experience · months",
+    "mandatory": 1
+  },
+  {
+    "id": 13,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "locationStatus",
+    "field_label": "Business premises",
+    "mandatory": 0
+  },
+  {
+    "id": 14,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "repaymentSource",
+    "field_label": "Source of repayment",
+    "mandatory": 0
+  },
+  {
+    "id": 15,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "establishmentActNo",
+    "field_label": "Establishment Deed No",
+    "mandatory": 1
+  },
+  {
+    "id": 16,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "establishmentDate",
+    "field_label": "Established deed date",
+    "mandatory": 1
+  },
+  {
+    "id": 17,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "latestDeedNo",
+    "field_label": "Latest deed number",
+    "mandatory": 0
+  },
+  {
+    "id": 18,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "latestDeedDate",
+    "field_label": "Latest deed date",
+    "mandatory": 0
+  },
+  {
+    "id": 19,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "industrySegment",
+    "field_label": "Industry",
+    "mandatory": 0
+  },
+  {
+    "id": 20,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "businessRole",
+    "field_label": "Business role",
+    "mandatory": 0
+  },
+  {
+    "id": 21,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "assetSummaryHeLiuGong",
+    "field_label": "LiuGong heavy equipment owned",
+    "mandatory": 0
+  },
+  {
+    "id": 22,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "assetSummaryTruckLiuGong",
+    "field_label": "LiuGong trucks owned",
+    "mandatory": 0
+  },
+  {
+    "id": 23,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "assetSummaryHeNonLiuGong",
+    "field_label": "Other heavy equipment owned",
+    "mandatory": 0
+  },
+  {
+    "id": 24,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "assetSummaryTruckNonLiuGong",
+    "field_label": "Other trucks owned",
+    "mandatory": 0
+  },
+  {
+    "id": 44,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "district",
+    "field_label": "Kecamatan",
+    "mandatory": 0
+  },
+  {
+    "id": 45,
+    "stage": "FAP",
+    "section": "Company Profile",
+    "field_key": "village",
+    "field_label": "Kelurahan / Desa",
+    "mandatory": 0
+  },
+  {
+    "id": 38,
+    "stage": "FAP",
+    "section": "Customer",
+    "field_key": "companyName",
+    "field_label": "Company name",
+    "mandatory": 1
+  },
+  {
+    "id": 39,
+    "stage": "FAP",
+    "section": "Customer",
+    "field_key": "companyType",
+    "field_label": "Business category",
+    "mandatory": 1
+  },
+  {
+    "id": 40,
+    "stage": "FAP",
+    "section": "Customer",
+    "field_key": "nib",
+    "field_label": "NIB · 13 digits",
+    "mandatory": 1
+  },
+  {
+    "id": 41,
+    "stage": "FAP",
+    "section": "Customer",
+    "field_key": "npwp",
+    "field_label": "NPWP",
+    "mandatory": 1
+  },
+  {
+    "id": 42,
+    "stage": "FAP",
+    "section": "Customer",
+    "field_key": "sktNo",
+    "field_label": "SKT number",
+    "mandatory": 0
+  },
+  {
+    "id": 43,
+    "stage": "FAP",
+    "section": "Customer",
+    "field_key": "sppkpNo",
+    "field_label": "SPPKP number",
+    "mandatory": 0
+  },
+  {
+    "id": 25,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "picName",
+    "field_label": "Contact name",
+    "mandatory": 0
+  },
+  {
+    "id": 26,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "position",
+    "field_label": "Position",
+    "mandatory": 0
+  },
+  {
+    "id": 27,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "phone",
+    "field_label": "Phone number",
+    "mandatory": 0
+  },
+  {
+    "id": 28,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "email",
+    "field_label": "Email",
+    "mandatory": 0
+  },
+  {
+    "id": 29,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "country",
+    "field_label": "Country",
+    "mandatory": 0
+  },
+  {
+    "id": 30,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "province",
+    "field_label": "Province",
+    "mandatory": 0
+  },
+  {
+    "id": 31,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "city",
+    "field_label": "Kota / Kabupaten",
+    "mandatory": 0
+  },
+  {
+    "id": 32,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "district",
+    "field_label": "Kecamatan",
+    "mandatory": 0
+  },
+  {
+    "id": 33,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "village",
+    "field_label": "Kelurahan / Desa",
+    "mandatory": 0
+  },
+  {
+    "id": 34,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "rt",
+    "field_label": "RT",
+    "mandatory": 0
+  },
+  {
+    "id": 35,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "rw",
+    "field_label": "RW",
+    "mandatory": 0
+  },
+  {
+    "id": 36,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "currentAddress",
+    "field_label": "Alamat lengkap",
+    "mandatory": 0
+  },
+  {
+    "id": 37,
+    "stage": "FAP",
+    "section": "Primary Contact (PIC)",
+    "field_key": "postalCode",
+    "field_label": "ZIP code",
+    "mandatory": 0
+  },
+  {
+    "id": 79,
+    "stage": "PRE-AN",
+    "section": "Cross-Check with Dealer / LMI",
+    "field_key": "dealerCheck",
+    "field_label": "Dealer Payment & Performance Check",
+    "mandatory": 1
+  },
+  {
+    "id": 80,
+    "stage": "PRE-AN",
+    "section": "Cross-Check with Dealer / LMI",
+    "field_key": "topDealerToCustomer",
+    "field_label": "TOP Dealer to Customer",
+    "mandatory": 0
+  },
+  {
+    "id": 81,
+    "stage": "PRE-AN",
+    "section": "Cross-Check with Dealer / LMI",
+    "field_key": "topLmiToDealer",
+    "field_label": "TOP LMI to Dealer",
+    "mandatory": 0
+  },
+  {
+    "id": 82,
+    "stage": "PRE-AN",
+    "section": "Cross-Check with Dealer / LMI",
+    "field_key": "lmiArCheck",
+    "field_label": "LMI Internal AR Check",
+    "mandatory": 1
+  },
+  {
+    "id": 83,
+    "stage": "PRE-AN",
+    "section": "Cross-Check with Dealer / LMI",
+    "field_key": "applicantPefindoCheck",
+    "field_label": "Applicant Pefindo Check",
+    "mandatory": 1
+  },
+  {
+    "id": 67,
+    "stage": "PRE-AN",
+    "section": "Customer & Group Background",
+    "field_key": "companyBackground",
+    "field_label": "Company Background",
+    "mandatory": 0
+  },
+  {
+    "id": 68,
+    "stage": "PRE-AN",
+    "section": "Customer & Group Background",
+    "field_key": "uboInfo",
+    "field_label": "Ultimate Beneficial Owner (UBO)",
+    "mandatory": 0
+  },
+  {
+    "id": 69,
+    "stage": "PRE-AN",
+    "section": "Customer & Group Background",
+    "field_key": "businessDevBackground",
+    "field_label": "Business Development Background",
+    "mandatory": 0
+  },
+  {
+    "id": 70,
+    "stage": "PRE-AN",
+    "section": "Customer & Group Background",
+    "field_key": "existingFincoBackup",
+    "field_label": "Existing Finco Backup",
+    "mandatory": 1
+  },
+  {
+    "id": 71,
+    "stage": "PRE-AN",
+    "section": "Equipment Possibility of Success",
+    "field_key": "equipmentJobFit",
+    "field_label": "Equipment-to-Job Fit",
+    "mandatory": 1
+  },
+  {
+    "id": 72,
+    "stage": "PRE-AN",
+    "section": "Equipment Possibility of Success",
+    "field_key": "utilizationDuration",
+    "field_label": "Utilization vs Project Duration",
+    "mandatory": 1
+  },
+  {
+    "id": 73,
+    "stage": "PRE-AN",
+    "section": "Equipment Possibility of Success",
+    "field_key": "priorLiugongExperience",
+    "field_label": "Prior LiuGong Experience",
+    "mandatory": 0
+  },
+  {
+    "id": 74,
+    "stage": "PRE-AN",
+    "section": "Equipment Possibility of Success",
+    "field_key": "serviceAgreementFmc",
+    "field_label": "Have Service Agreement / FMC",
+    "mandatory": 1
+  },
+  {
+    "id": 84,
+    "stage": "PRE-AN",
+    "section": "Expert Judgement Conclusion",
+    "field_key": "recommendation",
+    "field_label": "Credit Recommendation",
+    "mandatory": 1
+  },
+  {
+    "id": 85,
+    "stage": "PRE-AN",
+    "section": "Expert Judgement Conclusion",
+    "field_key": "proposedBy",
+    "field_label": "Proposed By (Pengusul)",
+    "mandatory": 1
+  },
+  {
+    "id": 86,
+    "stage": "PRE-AN",
+    "section": "Expert Judgement Conclusion",
+    "field_key": "reviewedBy",
+    "field_label": "Reviewed By (Reviewer)",
+    "mandatory": 1
+  },
+  {
+    "id": 87,
+    "stage": "PRE-AN",
+    "section": "Expert Judgement Conclusion",
+    "field_key": "approvedBy",
+    "field_label": "Approved By (Approver)",
+    "mandatory": 1
+  },
+  {
+    "id": 46,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "preAnalysisNo",
+    "field_label": "Pre-Analysis No",
+    "mandatory": 1
+  },
+  {
+    "id": 47,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "preAnalysisDate",
+    "field_label": "Pre-Analysis Date",
+    "mandatory": 1
+  },
+  {
+    "id": 48,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "customerProjectName",
+    "field_label": "Customer / Project Name",
+    "mandatory": 1
+  },
+  {
+    "id": 49,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "taxId",
+    "field_label": "Tax ID (NPWP)",
+    "mandatory": 1
+  },
+  {
+    "id": 50,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "fapNumber",
+    "field_label": "FAP Number",
+    "mandatory": 1
+  },
+  {
+    "id": 51,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "leadSource",
+    "field_label": "Lead Source",
+    "mandatory": 1
+  },
+  {
+    "id": 52,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "customerArea",
+    "field_label": "Customer Area",
+    "mandatory": 1
+  },
+  {
+    "id": 53,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "dealerPic",
+    "field_label": "Dealer PIC",
+    "mandatory": 1
+  },
+  {
+    "id": 54,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "lmiPic",
+    "field_label": "LMI PIC",
+    "mandatory": 1
+  },
+  {
+    "id": 55,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "lfiPic",
+    "field_label": "LFI PIC",
+    "mandatory": 1
+  },
+  {
+    "id": 56,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "customerPic",
+    "field_label": "Customer PIC",
+    "mandatory": 1
+  },
+  {
+    "id": 57,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "equity",
+    "field_label": "Equity",
+    "mandatory": 0
+  },
+  {
+    "id": 58,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "paidUpCapital",
+    "field_label": "Paid up Capital",
+    "mandatory": 0
+  },
+  {
+    "id": 59,
+    "stage": "PRE-AN",
+    "section": "General Information",
+    "field_key": "sourceOfRepayment",
+    "field_label": "Source of Repayment",
+    "mandatory": 1
+  },
+  {
+    "id": 60,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "holdingGroup",
+    "field_label": "Holding Group / Parent Company",
+    "mandatory": 0
+  },
+  {
+    "id": 61,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "projectName",
+    "field_label": "Project Name (Nama Objek Proyek)",
+    "mandatory": 1
+  },
+  {
+    "id": 62,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "projectLocation",
+    "field_label": "Project Location (Lokasi Proyek)",
+    "mandatory": 1
+  },
+  {
+    "id": 63,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "customerRole",
+    "field_label": "Role of Customer",
+    "mandatory": 1
+  },
+  {
+    "id": 64,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "otherContractors",
+    "field_label": "Other Contractor work in same bowheer",
+    "mandatory": 0
+  },
+  {
+    "id": 65,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "projectStatus",
+    "field_label": "Project Status",
+    "mandatory": 1
+  },
+  {
+    "id": 66,
+    "stage": "PRE-AN",
+    "section": "Project Information",
+    "field_key": "financingSchemeRequested",
+    "field_label": "Financing Scheme Requested",
+    "mandatory": 1
+  },
+  {
+    "id": 75,
+    "stage": "PRE-AN",
+    "section": "Unit Delivery Status & QA Check",
+    "field_key": "deliveryStatus",
+    "field_label": "Delivery Status",
+    "mandatory": 1
+  },
+  {
+    "id": 76,
+    "stage": "PRE-AN",
+    "section": "Unit Delivery Status & QA Check",
+    "field_key": "deliveryDate",
+    "field_label": "Delivery Date",
+    "mandatory": 0
+  },
+  {
+    "id": 77,
+    "stage": "PRE-AN",
+    "section": "Unit Delivery Status & QA Check",
+    "field_key": "qaIlinkComment",
+    "field_label": "QA Comment — iLink/GPS Check",
+    "mandatory": 0
+  },
+  {
+    "id": 78,
+    "stage": "PRE-AN",
+    "section": "Unit Delivery Status & QA Check",
+    "field_key": "qaConclusion",
+    "field_label": "QA Conclusion",
+    "mandatory": 1
+  }
+];
+
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v8';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 6; i++) {
+    for (let i = 1; i <= 7; i++) {
       localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
     }
     localStorage.removeItem('liugong_mandatory_rules_cache');
@@ -67,7 +766,7 @@ export function resolveRuleSection(rule: { id?: number; stage?: string; section?
   const rawSec = cleanSectionName(String(rule?.section || ''));
   const fKey = String(rule?.field_key || '');
 
-  if (stage === 'PRE') {
+  if (stage === 'PRE-AN' || stage === 'PRE') {
     for (const s of MANDATORY_SECTIONS_PRE) {
       if (rawSec.toLowerCase() === s.toLowerCase()) return s;
     }
@@ -140,13 +839,13 @@ function getInitialMandatoryRules(): any[] {
       const raw = localStorage.getItem(MANDATORY_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed) && parsed.length >= 80) {
           return parsed.map(r => ({ ...r, section: resolveRuleSection(r) }));
         }
       }
     }
   } catch {}
-  return [];
+  return DEFAULT_MANDATORY_RULES.map(r => ({ ...r, section: resolveRuleSection(r) }));
 }
 
 let mandatoryCatalogCache: any[] = getInitialMandatoryRules();
@@ -416,7 +1115,7 @@ export function MasterSelect({fieldKey,value,record,disabled,required,onChange,p
 export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:boolean, onLogActivity?:(msg:string)=>void}){
   const rules = useMandatoryRules();
   const [search, setSearch] = useState('');
-  const [stageFilter, setStageFilter] = useState<'ALL' | 'FAP' | 'PRE'>('ALL');
+  const [stageFilter, setStageFilter] = useState<'ALL' | 'FAP' | 'PRE-AN'>('ALL');
   const [selectedSection, setSelectedSection] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | '1' | '0'>('ALL');
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -426,7 +1125,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
   const getSectionBadgeStyle = (sec: string, stage?: string) => {
     const s = String(sec || '').toLowerCase();
     const st = String(stage || '').toUpperCase();
-    if (st === 'PRE') {
+    if (st === 'PRE-AN' || st === 'PRE') {
       if (s.includes('general')) return { color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' };
       if (s.includes('project')) return { color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' };
       if (s.includes('customer') || s.includes('group') || s.includes('background')) return { color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' };
@@ -455,7 +1154,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
   };
 
   const fapRules = rules.filter(r => (r.stage || 'FAP').toUpperCase() === 'FAP');
-  const preRules = rules.filter(r => (r.stage || '').toUpperCase() === 'PRE');
+  const preRules = rules.filter(r => { const s = (r.stage || '').toUpperCase(); return s === 'PRE-AN' || s === 'PRE'; });
   const fapMandatoryCount = fapRules.filter(r => r.mandatory).length;
   const preMandatoryCount = preRules.filter(r => r.mandatory).length;
   const mandatoryCount = rules.filter(x => x.mandatory).length;
@@ -470,7 +1169,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
       String(x.field_label || '').toLowerCase().includes(q) ||
       String(x.field_key || '').toLowerCase().includes(q) ||
       String(x.section || '').toLowerCase().includes(q) ||
-      (rStage === 'PRE' && (q.includes('pre') || q.includes('analysis'))) ||
+      ((rStage === 'PRE-AN' || rStage === 'PRE') && (q.includes('pre') || q.includes('analysis'))) ||
       (rStage === 'FAP' && (q.includes('fap') || q.includes('stage')));
     return matchStage && matchSection && matchStatus && matchSearch;
   });
@@ -485,7 +1184,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         setMandatoryRules(res);
       }
       const label = item.field_label || item.field_key;
-      const stageName = (item.stage || 'FAP').toUpperCase() === 'PRE' ? 'Pre Analysis' : 'FAP Stage';
+      const stageName = ((item.stage || 'FAP').toUpperCase() === 'PRE-AN' || (item.stage || 'FAP').toUpperCase() === 'PRE') ? 'PRE-AN' : 'FAP';
       const msg = `[${stageName}] Kolom "${label}" successfully updated to ${nextVal ? 'Mandatory (1)' : 'Optional (0)'}.`;
       setToast(msg);
       onLogActivity?.(`Mengubah status mandatory [${stageName}] kolom ${label} (${item.field_key}) menjadi ${nextVal ? 'Wajib' : 'Opsional'}`);
@@ -498,12 +1197,12 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
   }
 
   return (
-    <div className="master-content" style={{ width: '100%', padding: '20px 0' }}>
+    <div className="master-content" style={{ width: '100%', padding: '24px 32px', boxSizing: 'border-box' }}>
       <div className="section-title">
         <div>
           <h3 style={{ fontSize: 18, color: '#002060', fontWeight: 700 }}>Field Mandatory</h3>
           <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0) untuk <b>FAP Stage (FAP)</b> dan <b>Pre Analysis (PRE)</b>. Perubahan langsung tersimpan ke database dan otomatis menampilkan tanda bintang merah (*) pada form.
+            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0) untuk <b>FAP</b> dan <b>PRE-AN</b>. Perubahan langsung tersimpan ke database dan otomatis menampilkan tanda bintang merah (*) pada form.
           </p>
         </div>
       </div>
@@ -557,9 +1256,9 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             }}
             aria-label="Filter Stage"
           >
-            <option value="ALL">Semua Stage (FAP & PRE) ({rules.length})</option>
-            <option value="FAP">FAP Stage (FAP) ({fapRules.length})</option>
-            <option value="PRE">Pre Analysis (PRE) ({preRules.length})</option>
+            <option value="ALL">Semua Stage (FAP & PRE-AN) ({rules.length})</option>
+            <option value="FAP">FAP ({fapRules.length})</option>
+            <option value="PRE-AN">PRE-AN ({preRules.length})</option>
           </select>
         </div>
 
@@ -593,9 +1292,9 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                   );
                 })}
               </>
-            ) : stageFilter === 'PRE' ? (
+            ) : stageFilter === 'PRE-AN' ? (
               <>
-                <option value="ALL">Semua Bagian Pre Analysis ({preRules.length})</option>
+                <option value="ALL">Semua Bagian PRE-AN ({preRules.length})</option>
                 {MANDATORY_SECTIONS_PRE.map(sec => {
                   const count = preRules.filter(r => resolveRuleSection(r) === sec).length;
                   return (
@@ -608,7 +1307,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             ) : (
               <>
                 <option value="ALL">Semua Bagian ({rules.length})</option>
-                <optgroup label="FAP STAGE (FAP)">
+                <optgroup label="FAP">
                   {MANDATORY_SECTIONS_FAP.map(sec => {
                     const count = fapRules.filter(r => resolveRuleSection(r) === sec).length;
                     return (
@@ -618,7 +1317,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                     );
                   })}
                 </optgroup>
-                <optgroup label="PRE ANALYSIS (PRE)">
+                <optgroup label="PRE-AN">
                   {MANDATORY_SECTIONS_PRE.map(sec => {
                     const count = preRules.filter(r => resolveRuleSection(r) === sec).length;
                     return (
@@ -665,11 +1364,11 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         <span>Total Kolom: <b>{rules.length}</b></span>
         <span>•</span>
         <span style={{ color: '#0284c7', fontWeight: 600 }}>
-          FAP Stage: <b>{fapRules.length}</b> ({fapMandatoryCount} Wajib)
+          FAP: <b>{fapRules.length}</b> ({fapMandatoryCount} Wajib)
         </span>
         <span>•</span>
         <span style={{ color: '#b45309', fontWeight: 600 }}>
-          Pre Analysis: <b>{preRules.length}</b> ({preMandatoryCount} Wajib)
+          PRE-AN: <b>{preRules.length}</b> ({preMandatoryCount} Wajib)
         </span>
         <span>•</span>
         <span style={{ color: '#dc2626', fontWeight: 600 }}>
@@ -698,7 +1397,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             {visible.map((x, idx) => {
               const secName = resolveRuleSection(x);
               const rStage = (x.stage || 'FAP').toUpperCase();
-              const isPre = rStage === 'PRE';
+              const isPre = rStage === 'PRE-AN' || rStage === 'PRE';
               const st = getSectionBadgeStyle(secName, rStage);
               return (
                 <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
@@ -722,7 +1421,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                         boxShadow: '0 1px 2px rgba(180, 83, 9, 0.06)'
                       }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', display: 'inline-block' }} />
-                        PRE · Pre Analysis
+                        PRE-AN
                       </span>
                     ) : (
                       <span style={{
@@ -740,7 +1439,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                         boxShadow: '0 1px 2px rgba(29, 78, 216, 0.06)'
                       }}>
                         <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
-                        FAP · FAP Stage
+                        FAP
                       </span>
                     )}
                   </td>
@@ -866,7 +1565,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
 
 function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: () => void, onSaved: (status: number) => void }) {
   const [val, setVal] = useState<number>(item.mandatory ? 1 : 0);
-  const isPre = (item.stage || 'FAP').toUpperCase() === 'PRE';
+  const isPre = (item.stage || 'FAP').toUpperCase() === 'PRE-AN' || (item.stage || 'FAP').toUpperCase() === 'PRE';
   return createPortal(
     <div className="modal-scrim master-modal-scrim">
       <section className="modal" role="dialog" aria-modal="true" aria-label={`Edit Mandatory · ${item.field_label}`}>
@@ -877,7 +1576,7 @@ function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: (
         <div className="modal-body">
           <div className="formgrid">
             <label>Stage Aplikasi
-              <input disabled value={isPre ? 'Pre Analysis (PRE)' : 'FAP Stage (FAP)'} />
+              <input disabled value={isPre ? 'PRE-AN' : 'FAP'} />
             </label>
             <label>Bagian (Section)
               <input disabled value={resolveRuleSection(item)} />
@@ -920,7 +1619,7 @@ export function MasterDataPage(){
   const visible=(data[selected]||[]).filter(x=>(x.name+' '+x.value).toLowerCase().includes(search.toLowerCase()));
 
   const currentCategoryTitle = selected === 'master_mandatory'
-    ? 'Field Mandatory (FAP & PRE)'
+    ? 'Field Mandatory (FAP & PRE-AN)'
     : selected === 'location'
       ? 'Konfigurasi Lokasi'
       : group.name;
@@ -938,7 +1637,7 @@ export function MasterDataPage(){
   return (
     <section className="panel master-page" style={{ width: '100%' }}>
       {/* Panel Header with Burger Menu Toggle */}
-      <div className="panel-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+      <div className="panel-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, padding: '18px 32px' }}>
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
           <button
             type="button"
@@ -1080,7 +1779,7 @@ export function MasterDataPage(){
         </div>
       ) : (
         <div className="master-page-layout">
-          <div className="master-content" style={{ width: '100%', padding: '20px 0' }}>
+          <div className="master-content" style={{ width: '100%', padding: '24px 32px', boxSizing: 'border-box' }}>
             <div className="section-title">
               <div>
                 <h3 style={{ fontSize: 18, color: '#002060', fontWeight: 700 }}>{group.name}</h3>

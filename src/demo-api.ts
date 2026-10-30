@@ -3,6 +3,7 @@ import {profileFields} from './fields';
 import {mergeLegal,deedTransition,deedBaseline,canEditLegal,reviewStatus,saveSingleDeed} from './deed-workflow';
 import {validateWrite} from './input-validation';
 import {defaultMasterCatalog,validateMasterCatalog} from './master-catalog';
+import {DEFAULT_MANDATORY_RULES} from './master-data';
 import {nextFapNumber} from './fap-number';
 const key='liugong-los-public-demo-v1';const fileUrls=new Map<string,string>();
 const roles:any=[['MKT','Marketing'],['BS','Business Support'],['HEAD_BS','Head BS'],['CA','Credit Analyst'],['LEGAL','Legal'],['COMMITTEE','Credit Committee']];
@@ -75,6 +76,20 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
     } catch {}
     return { ok: true, message: 'Seluruh 6 skenario dummy berhasil dimuat ulang dengan data lengkap!' };
   }
+if(path==='/mandatory'&&method==='GET'){
+  return copy(s.mandatoryRules || DEFAULT_MANDATORY_RULES);
+}
+if(path==='/mandatory'&&method==='PUT'){
+  const { id, mandatory } = body;
+  const list = s.mandatoryRules ? copy(s.mandatoryRules) : copy(DEFAULT_MANDATORY_RULES);
+  const idx = list.findIndex((r: any) => r.id === id);
+  if (idx !== -1) {
+    list[idx] = { ...list[idx], mandatory: mandatory ? 1 : 0 };
+    s.mandatoryRules = list;
+    save(s);
+  }
+  return copy(list);
+}
 if(path==='/master-data'&&method==='GET'){
   const def=defaultMasterCatalog();
   if(!s.masterData){

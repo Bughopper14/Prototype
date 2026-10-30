@@ -549,7 +549,7 @@ function PreAnalysisRichEditor({
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const mandatoryRules = useMandatoryRules();
   const reqMark = (fieldKey: string, section: string = 'General Information') => {
-    const isReq = isFieldMandatory(mandatoryRules, section, fieldKey, false, 'PRE');
+    const isReq = isFieldMandatory(mandatoryRules, section, fieldKey, false, 'PRE-AN');
     return isReq ? <span style={{ color: '#ef4444', fontWeight: 700, marginLeft: 3 }}>*</span> : null;
   };
   const [data, setData] = useState<PreAnalysisData>(() => {
