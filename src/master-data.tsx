@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react';
 import {createPortal} from 'react-dom';
-import {Plus,Pencil,Search,Settings2,X,Save,MapPin,ChevronRight,Check,Trash2} from 'lucide-react';
+import {Plus,Pencil,Search,Settings2,X,Save,MapPin,ChevronRight,Check,Trash2,Menu,Layers} from 'lucide-react';
 import {api} from './api';
 import {defaultMasterCatalog,masterGroups,masterKey,validateMasterCatalog,type MasterCatalog,type MasterItem} from './master-catalog';
 
@@ -22,19 +22,19 @@ export function setMasterData(data:{catalog:MasterCatalog,revision:number}){
 }
 export function useMasterData(){const [data,setData]=useState(catalog);useEffect(()=>{const update=()=>setData(catalog);window.addEventListener('master-data-updated',update);return()=>window.removeEventListener('master-data-updated',update);},[]);return data;}
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v6';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v7';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 6; i++) {
       localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
     }
     localStorage.removeItem('liugong_mandatory_rules_cache');
   }
 } catch {}
 
-export const MANDATORY_SECTIONS = [
+export const MANDATORY_SECTIONS_FAP = [
   'Debtor Identity & Classification',
   'Registration Office & Company Domicile',
   'Business Profile & Deed Legality',
@@ -42,21 +42,52 @@ export const MANDATORY_SECTIONS = [
   'Industry Segmentation & Active Projects'
 ] as const;
 
+export const MANDATORY_SECTIONS_PRE = [
+  'General Information',
+  'Project Information',
+  'Customer & Group Background',
+  'Equipment Possibility of Success',
+  'Unit Delivery Status & QA Check',
+  'Cross-Check with Dealer / LMI',
+  'Expert Judgement Conclusion'
+] as const;
+
+export const MANDATORY_SECTIONS = [
+  ...MANDATORY_SECTIONS_FAP,
+  ...MANDATORY_SECTIONS_PRE
+] as const;
+
 export function cleanSectionName(sec: string): string {
   if (!sec) return '';
-  return String(sec).replace(/^0[1-5]\s*/, '').trim();
+  return String(sec).replace(/^(?:0[1-9]|[1-9])\.\s*|^(?:0[1-9]|[1-9])\s*/, '').trim();
 }
 
-export function resolveRuleSection(rule: { id?: number; section?: string; field_key?: string }): string {
-  const fKey = String(rule?.field_key || '');
+export function resolveRuleSection(rule: { id?: number; stage?: string; section?: string; field_key?: string }): string {
+  const stage = String(rule?.stage || 'FAP').toUpperCase();
   const rawSec = cleanSectionName(String(rule?.section || ''));
-  const sec = rawSec.toLowerCase();
-  const id = Number(rule?.id || 0);
+  const fKey = String(rule?.field_key || '');
 
-  // Exact match to one of MANDATORY_SECTIONS
-  for (const s of MANDATORY_SECTIONS) {
+  if (stage === 'PRE') {
+    for (const s of MANDATORY_SECTIONS_PRE) {
+      if (rawSec.toLowerCase() === s.toLowerCase()) return s;
+    }
+    const sec = rawSec.toLowerCase();
+    if (sec.includes('general')) return 'General Information';
+    if (sec.includes('project')) return 'Project Information';
+    if (sec.includes('customer') || sec.includes('group') || sec.includes('background')) return 'Customer & Group Background';
+    if (sec.includes('equipment') || sec.includes('possibility')) return 'Equipment Possibility of Success';
+    if (sec.includes('delivery') || sec.includes('qa')) return 'Unit Delivery Status & QA Check';
+    if (sec.includes('cross') || sec.includes('check') || sec.includes('dealer') || sec.includes('lmi')) return 'Cross-Check with Dealer / LMI';
+    if (sec.includes('conclusion') || sec.includes('expert') || sec.includes('judgement') || sec.includes('recommendation')) return 'Expert Judgement Conclusion';
+    return rawSec || 'General Information';
+  }
+
+  // FAP stage sections resolution:
+  for (const s of MANDATORY_SECTIONS_FAP) {
     if (rawSec === s) return s;
   }
+  const sec = rawSec.toLowerCase();
+  const id = Number(rule?.id || 0);
 
   // 4. Primary Contact / Person in Charge (PIC)
   if (
@@ -214,7 +245,7 @@ export function useMandatoryRules() {
   return rules.map(r => ({ ...r, section: resolveRuleSection(r) }));
 }
 
-export function isFieldMandatory(rules: any[], section: string | undefined, fieldKey: string, defaultRequired?: boolean): boolean {
+export function isFieldMandatory(rules: any[], section: string | undefined, fieldKey: string, defaultRequired?: boolean, stage?: string): boolean {
   if (!mandatoryMapCache.size && rules && rules.length) {
     mandatoryMapCache = buildMandatoryMap(rules);
   }
@@ -385,23 +416,26 @@ export function MasterSelect({fieldKey,value,record,disabled,required,onChange,p
 export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:boolean, onLogActivity?:(msg:string)=>void}){
   const rules = useMandatoryRules();
   const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useState<'ALL' | 'FAP' | 'PRE'>('ALL');
   const [selectedSection, setSelectedSection] = useState('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | '1' | '0'>('ALL');
   const [busyId, setBusyId] = useState<number | null>(null);
   const [toast, setToast] = useState('');
   const [editingItem, setEditingItem] = useState<any | null>(null);
 
-  const sectionShortLabels: Record<string, string> = {
-    'ALL': 'Semua Bagian',
-    '01 Debtor Identity & Classification': '01 Debtor Identity',
-    '02 Registration Office & Company Domicile': '02 Office & Domicile',
-    '03 Business Profile & Deed Legality': '03 Business & Legality',
-    '04 Primary Contact / Person in Charge (PIC)': '04 PIC',
-    '05 Industry Segmentation & Active Projects': '05 Industry & Projects'
-  };
-
-    const getSectionBadgeStyle = (sec: string) => {
+  const getSectionBadgeStyle = (sec: string, stage?: string) => {
     const s = String(sec || '').toLowerCase();
+    const st = String(stage || '').toUpperCase();
+    if (st === 'PRE') {
+      if (s.includes('general')) return { color: '#0369a1', bg: '#f0f9ff', border: '#bae6fd' };
+      if (s.includes('project')) return { color: '#4338ca', bg: '#eef2ff', border: '#c7d2fe' };
+      if (s.includes('customer') || s.includes('group') || s.includes('background')) return { color: '#0f766e', bg: '#f0fdfa', border: '#99f6e4' };
+      if (s.includes('equipment')) return { color: '#b45309', bg: '#fffbeb', border: '#fde68a' };
+      if (s.includes('delivery') || s.includes('qa')) return { color: '#c2410c', bg: '#fff7ed', border: '#ffedd5' };
+      if (s.includes('cross') || s.includes('check') || s.includes('dealer') || s.includes('lmi')) return { color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' };
+      if (s.includes('conclusion') || s.includes('expert') || s.includes('recommendation')) return { color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8' };
+      return { color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd' };
+    }
     if (s.includes('debtor') || s.includes('identity') || s.includes('classification')) {
       return { color: '#3730a3', bg: '#eef2ff', border: '#c7d2fe' };
     }
@@ -420,17 +454,25 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
     return { color: '#475569', bg: '#f1f5f9', border: '#cbd5e1' };
   };
 
-  const sections = ['ALL', ...MANDATORY_SECTIONS];
+  const fapRules = rules.filter(r => (r.stage || 'FAP').toUpperCase() === 'FAP');
+  const preRules = rules.filter(r => (r.stage || '').toUpperCase() === 'PRE');
+  const fapMandatoryCount = fapRules.filter(r => r.mandatory).length;
+  const preMandatoryCount = preRules.filter(r => r.mandatory).length;
+  const mandatoryCount = rules.filter(x => x.mandatory).length;
 
   const visible = rules.filter(x => {
+    const rStage = (x.stage || 'FAP').toUpperCase();
+    const matchStage = stageFilter === 'ALL' || rStage === stageFilter;
     const matchSection = selectedSection === 'ALL' || x.section === selectedSection;
     const matchStatus = statusFilter === 'ALL' || (statusFilter === '1' ? Boolean(x.mandatory) : !x.mandatory);
     const q = search.trim().toLowerCase();
     const matchSearch = !q ||
       String(x.field_label || '').toLowerCase().includes(q) ||
       String(x.field_key || '').toLowerCase().includes(q) ||
-      String(x.section || '').toLowerCase().includes(q);
-    return matchSection && matchStatus && matchSearch;
+      String(x.section || '').toLowerCase().includes(q) ||
+      (rStage === 'PRE' && (q.includes('pre') || q.includes('analysis'))) ||
+      (rStage === 'FAP' && (q.includes('fap') || q.includes('stage')));
+    return matchStage && matchSection && matchStatus && matchSearch;
   });
 
   async function handleToggle(item: any, forceStatus?: number) {
@@ -443,9 +485,10 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         setMandatoryRules(res);
       }
       const label = item.field_label || item.field_key;
-      const msg = `Kolom "${label}" successfully updated to ${nextVal ? 'Mandatory (1)' : 'Optional (0)'}.`;
+      const stageName = (item.stage || 'FAP').toUpperCase() === 'PRE' ? 'Pre Analysis' : 'FAP Stage';
+      const msg = `[${stageName}] Kolom "${label}" successfully updated to ${nextVal ? 'Mandatory (1)' : 'Optional (0)'}.`;
       setToast(msg);
-      onLogActivity?.(`Mengubah status mandatory kolom ${label} (${item.field_key}) menjadi ${nextVal ? 'Wajib' : 'Opsional'}`);
+      onLogActivity?.(`Mengubah status mandatory [${stageName}] kolom ${label} (${item.field_key}) menjadi ${nextVal ? 'Wajib' : 'Opsional'}`);
       setTimeout(() => setToast(''), 3500);
     } catch (e: any) {
       alert('Failed to update mandatory status: ' + e.message);
@@ -454,15 +497,13 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
     }
   }
 
-  const mandatoryCount = rules.filter(x => x.mandatory).length;
-
   return (
-    <div className="master-content">
+    <div className="master-content" style={{ width: '100%', padding: '20px 0' }}>
       <div className="section-title">
         <div>
-          <h3>Field Mandatory</h3>
-          <p className="muted">
-            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0). Perubahan langsung disimpan dan otomatis menampilkan tanda bintang merah (*) pada form aplikasi.
+          <h3 style={{ fontSize: 18, color: '#002060', fontWeight: 700 }}>Field Mandatory</h3>
+          <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            Kelola aturan kolom apakah wajib diisi (1) atau opsional (0) untuk <b>FAP Stage (FAP)</b> dan <b>Pre Analysis (PRE)</b>. Perubahan langsung tersimpan ke database dan otomatis menampilkan tanda bintang merah (*) pada form.
           </p>
         </div>
       </div>
@@ -485,18 +526,45 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         </div>
       )}
 
-      {/* Filter Chips and Search Controls */}
+      {/* Filter and Search Controls */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
         <div className="search" style={{ margin: 0, flex: '1 1 240px', maxWidth: 360 }}>
           <Search size={16} />
           <input
-            placeholder="Cari label field atau kode kolom..."
+            placeholder="Cari label, field key, section, stage..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Stage Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <select
+            value={stageFilter}
+            onChange={e => {
+              setStageFilter(e.target.value as any);
+              setSelectedSection('ALL');
+            }}
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              padding: '7px 12px',
+              borderRadius: 6,
+              border: '1px solid var(--border)',
+              background: '#ffffff',
+              color: '#002060',
+              cursor: 'pointer'
+            }}
+            aria-label="Filter Stage"
+          >
+            <option value="ALL">Semua Stage (FAP & PRE) ({rules.length})</option>
+            <option value="FAP">FAP Stage (FAP) ({fapRules.length})</option>
+            <option value="PRE">Pre Analysis (PRE) ({preRules.length})</option>
+          </select>
+        </div>
+
+        {/* Section Filter */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <select
             value={selectedSection}
             onChange={e => setSelectedSection(e.target.value)}
@@ -509,26 +577,69 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
               background: '#ffffff',
               color: '#0f172a',
               cursor: 'pointer',
-              minWidth: 310
+              minWidth: 280
             }}
+            aria-label="Filter Bagian / Section"
           >
-            <option value="ALL">Semua Bagian ({rules.length})</option>
-            {MANDATORY_SECTIONS.map(sec => {
-              const count = rules.map(r => resolveRuleSection(r)).filter(s => s === sec).length;
-              return (
-                <option key={sec} value={sec}>
-                  {sec} ({count})
-                </option>
-              );
-            })}
+            {stageFilter === 'FAP' ? (
+              <>
+                <option value="ALL">Semua Bagian FAP ({fapRules.length})</option>
+                {MANDATORY_SECTIONS_FAP.map(sec => {
+                  const count = fapRules.filter(r => resolveRuleSection(r) === sec).length;
+                  return (
+                    <option key={sec} value={sec}>
+                      {sec} ({count})
+                    </option>
+                  );
+                })}
+              </>
+            ) : stageFilter === 'PRE' ? (
+              <>
+                <option value="ALL">Semua Bagian Pre Analysis ({preRules.length})</option>
+                {MANDATORY_SECTIONS_PRE.map(sec => {
+                  const count = preRules.filter(r => resolveRuleSection(r) === sec).length;
+                  return (
+                    <option key={sec} value={sec}>
+                      {sec} ({count})
+                    </option>
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                <option value="ALL">Semua Bagian ({rules.length})</option>
+                <optgroup label="FAP STAGE (FAP)">
+                  {MANDATORY_SECTIONS_FAP.map(sec => {
+                    const count = fapRules.filter(r => resolveRuleSection(r) === sec).length;
+                    return (
+                      <option key={`fap-${sec}`} value={sec}>
+                        FAP · {sec} ({count})
+                      </option>
+                    );
+                  })}
+                </optgroup>
+                <optgroup label="PRE ANALYSIS (PRE)">
+                  {MANDATORY_SECTIONS_PRE.map(sec => {
+                    const count = preRules.filter(r => resolveRuleSection(r) === sec).length;
+                    return (
+                      <option key={`pre-${sec}`} value={sec}>
+                        PRE · {sec} ({count})
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              </>
+            )}
           </select>
         </div>
 
+        {/* Status Filter */}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value as any)}
-            style={{ fontSize: 11, padding: '4px 8px', borderRadius: 6, border: '1px solid var(--border)' }}
+            style={{ fontSize: 11, padding: '6px 10px', borderRadius: 6, border: '1px solid var(--border)', background: '#fff' }}
+            aria-label="Filter Status Mandatory"
           >
             <option value="ALL">Semua Status</option>
             <option value="1">Hanya Wajib (1)</option>
@@ -542,32 +653,41 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
         display: 'flex',
         flexWrap: 'wrap',
         gap: 16,
-        padding: '10px 14px',
+        padding: '10px 16px',
         background: '#f8fafc',
         border: '1px solid #e2e8f0',
-        borderRadius: 6,
-        fontSize: 11,
+        borderRadius: 8,
+        fontSize: 12,
         color: '#475569',
         marginBottom: 16,
         alignItems: 'center'
       }}>
         <span>Total Kolom: <b>{rules.length}</b></span>
         <span>•</span>
-        <span style={{ color: '#dc2626', fontWeight: 600 }}>
-          * Wajib (1): <b>{mandatoryCount}</b>
+        <span style={{ color: '#0284c7', fontWeight: 600 }}>
+          FAP Stage: <b>{fapRules.length}</b> ({fapMandatoryCount} Wajib)
         </span>
         <span>•</span>
-        <span style={{ color: '#475569' }}>
-          Opsional (0): <b>{rules.length - mandatoryCount}</b>
+        <span style={{ color: '#b45309', fontWeight: 600 }}>
+          Pre Analysis: <b>{preRules.length}</b> ({preMandatoryCount} Wajib)
+        </span>
+        <span>•</span>
+        <span style={{ color: '#dc2626', fontWeight: 600 }}>
+          * Total Wajib (1): <b>{mandatoryCount}</b>
+        </span>
+        <span>•</span>
+        <span style={{ color: '#64748b' }}>
+          Total Opsional (0): <b>{rules.length - mandatoryCount}</b>
         </span>
       </div>
 
       <div className="table-scroll">
-        <table className="data-table master-table" style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', tableLayout: 'auto' }}>
+        <table className="data-table master-table" style={{ width: '100%', minWidth: 1040, borderCollapse: 'collapse', tableLayout: 'auto' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #e2e8f0', background: '#f8fafc' }}>
               <th style={{ width: 45, textAlign: 'center', padding: '12px 8px' }}>NO</th>
-              <th style={{ width: 280, minWidth: 280, textAlign: 'left', padding: '12px 14px' }}>BAGIAN (SECTION)</th>
+              <th style={{ width: 140, textAlign: 'center', padding: '12px 10px' }}>STAGE</th>
+              <th style={{ width: 260, minWidth: 260, textAlign: 'left', padding: '12px 14px' }}>BAGIAN (SECTION)</th>
               <th style={{ minWidth: 220, textAlign: 'left', padding: '12px 14px' }}>NAMA FIELD (LABEL)</th>
               <th style={{ width: 190, minWidth: 190, textAlign: 'left', padding: '12px 14px' }}>KODE KOLOM (FIELD KEY)</th>
               <th style={{ textAlign: 'center', width: 150, padding: '12px 14px' }}>STATUS MANDATORY</th>
@@ -577,13 +697,54 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
           <tbody>
             {visible.map((x, idx) => {
               const secName = resolveRuleSection(x);
-              const st = getSectionBadgeStyle(secName);
+              const rStage = (x.stage || 'FAP').toUpperCase();
+              const isPre = rStage === 'PRE';
+              const st = getSectionBadgeStyle(secName, rStage);
               return (
                 <tr key={x.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                   <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: 11, padding: '12px 8px' }}>
                     {idx + 1}
                   </td>
-                  <td style={{ width: 280, minWidth: 280, padding: '12px 14px', verticalAlign: 'middle' }}>
+                  <td style={{ textAlign: 'center', padding: '12px 10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                    {isPre ? (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        color: '#92400e',
+                        background: '#fef3c7',
+                        border: '1px solid #fde68a',
+                        padding: '3px 8px',
+                        borderRadius: 9999,
+                        letterSpacing: '0.02em',
+                        boxShadow: '0 1px 2px rgba(180, 83, 9, 0.06)'
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#d97706', display: 'inline-block' }} />
+                        PRE · Pre Analysis
+                      </span>
+                    ) : (
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        color: '#1d4ed8',
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        padding: '3px 8px',
+                        borderRadius: 9999,
+                        letterSpacing: '0.02em',
+                        boxShadow: '0 1px 2px rgba(29, 78, 216, 0.06)'
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
+                        FAP · FAP Stage
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ width: 260, minWidth: 260, padding: '12px 14px', verticalAlign: 'middle' }}>
                     <span style={{
                       fontSize: 10,
                       fontWeight: 700,
@@ -597,7 +758,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
                       display: 'inline-block',
                       whiteSpace: 'normal',
                       wordBreak: 'break-word',
-                      maxWidth: 270
+                      maxWidth: 250
                     }}>
                       {secName}
                     </span>
@@ -705,6 +866,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
 
 function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: () => void, onSaved: (status: number) => void }) {
   const [val, setVal] = useState<number>(item.mandatory ? 1 : 0);
+  const isPre = (item.stage || 'FAP').toUpperCase() === 'PRE';
   return createPortal(
     <div className="modal-scrim master-modal-scrim">
       <section className="modal" role="dialog" aria-modal="true" aria-label={`Edit Mandatory · ${item.field_label}`}>
@@ -714,6 +876,9 @@ function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: (
         </div>
         <div className="modal-body">
           <div className="formgrid">
+            <label>Stage Aplikasi
+              <input disabled value={isPre ? 'Pre Analysis (PRE)' : 'FAP Stage (FAP)'} />
+            </label>
             <label>Bagian (Section)
               <input disabled value={resolveRuleSection(item)} />
             </label>
@@ -731,7 +896,7 @@ function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: (
             </label>
           </div>
           <p className="master-help">
-            Jika diatur ke <b>Wajib (1)</b>, sistem akan memvalidasi pengisian kolom ini sebelum submit aplikasi ke BS, dan menampilkan tanda bintang merah (*) di label form.
+            Jika diatur ke <b>Wajib (1)</b>, sistem akan memvalidasi pengisian kolom ini sebelum submit aplikasi, dan otomatis menampilkan tanda bintang merah (*) di label form.
           </p>
         </div>
         <div className="modal-actions">
@@ -747,10 +912,18 @@ function EditMandatoryDialog({ item, onClose, onSaved }: { item: any, onClose: (
 }
 
 export function MasterDataPage(){
-  const data=useMasterData(),[selected,setSelected]=useState('location'),[search,setSearch]=useState(''),[editing,setEditing]=useState<MasterItem|null|undefined>(undefined);
+  const data=useMasterData(),[selected,setSelected]=useState('master_mandatory'),[search,setSearch]=useState(''),[editing,setEditing]=useState<MasterItem|null|undefined>(undefined);
+  const [burgerOpen, setBurgerOpen] = useState(false);
+  const [burgerSearch, setBurgerSearch] = useState('');
   const mandatoryRules=useMandatoryRules();
   const group=masterGroups.find(g=>g.key===selected)||masterGroups[0];
   const visible=(data[selected]||[]).filter(x=>(x.name+' '+x.value).toLowerCase().includes(search.toLowerCase()));
+
+  const currentCategoryTitle = selected === 'master_mandatory'
+    ? 'Field Mandatory (FAP & PRE)'
+    : selected === 'location'
+      ? 'Konfigurasi Lokasi'
+      : group.name;
 
   async function handleDelete(item:MasterItem){
     if(!confirm(`Delete "${item.name}" from ${group.name}?`))return;
@@ -763,95 +936,243 @@ export function MasterDataPage(){
   }
 
   return (
-    <section className="panel master-page">
-      <div className="panel-head">
-        <h2>Daftar master data</h2>
-        <label className="master-type-picker">Pilih master data
-          <select value={selected} onChange={e=>{setSelected(e.target.value);setSearch('');}}>
-            <option value="location">Konfigurasi lokasi</option>
-            <optgroup label="ATURAN FORM">
-              <option value="master_mandatory">Field Mandatory</option>
-            </optgroup>
-            {[...new Set(masterGroups.map(x=>x.section))].map(section=><optgroup key={section} label={section}>{masterGroups.filter(x=>x.section===section).map(g=><option key={g.key} value={g.key}>{g.name}</option>)}</optgroup>)}
-          </select>
-        </label>
+    <section className="panel master-page" style={{ width: '100%' }}>
+      {/* Panel Header with Burger Menu Toggle */}
+      <div className="panel-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <button
+            type="button"
+            className="master-burger-toggle-btn"
+            onClick={() => { setBurgerSearch(''); setBurgerOpen(true); }}
+            title="Klik untuk membuka daftar master data (burger menu pop-up)"
+          >
+            <Menu size={18} />
+            <span>Daftar Master Data</span>
+          </button>
+
+          <div className="master-selected-indicator">
+            <span className="master-selected-label">Kategori Aktif:</span>
+            <span className="master-selected-chip">{currentCategoryTitle}</span>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="button small"
+          onClick={() => { setBurgerSearch(''); setBurgerOpen(true); }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#f8fafc', color: '#1e293b', border: '1px solid #cbd5e1' }}
+        >
+          <Layers size={14} />
+          <span>Buka Menu Master</span>
+        </button>
       </div>
 
-      {selected==='location'?<LocationConfiguration/>:(
-        <div className="master-page-layout">
-          <div className="master-group-nav" role="navigation" aria-label="Jenis master data">
-            <div key="aturan-mandatory">
-              <h3>ATURAN FORM</h3>
+      {/* Pop-up Burger Menu Drawer */}
+      {burgerOpen && createPortal(
+        <div className="master-burger-scrim" onClick={() => setBurgerOpen(false)}>
+          <aside
+            className="master-burger-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Daftar Master Data"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="master-burger-drawer-head">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Menu size={18} color="#002060" />
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#002060' }}>Daftar Master Data</h3>
+              </div>
               <button
-                className={selected==='master_mandatory'?'active':''}
-                onClick={()=>{setSelected('master_mandatory');setSearch('');}}
+                type="button"
+                className="master-burger-close-btn"
+                onClick={() => setBurgerOpen(false)}
+                aria-label="Tutup menu"
               >
-                <span>Field Mandatory</span>
-                <span style={{
-                  background: mandatoryRules.some(x=>x.mandatory)?'#fee2e2':'#f3f4f6',
-                  color: mandatoryRules.some(x=>x.mandatory)?'#b91c1c':'#6b7280',
-                  padding:'1px 6px',
-                  borderRadius:9999,
-                  fontWeight:600
-                }}>
-                  {mandatoryRules.filter(x=>x.mandatory).length} / {mandatoryRules.length}
-                </span>
+                <X size={18} />
               </button>
             </div>
-            {[...new Set(masterGroups.map(x=>x.section))].map(section=><div key={section}><h3>{section}</h3>{masterGroups.filter(x=>x.section===section).map(g=><button className={selected===g.key?'active':''} key={g.key} onClick={()=>{setSelected(g.key);setSearch('');}}>{g.name}<span>{data[g.key]?.filter(x=>x.active).length||0}</span></button>)}</div>)}
-          </div>
 
-          {selected==='master_mandatory' ? (
-            <MasterMandatoryView />
-          ) : (
-            <div className="master-content">
-              <div className="section-title">
-                <div>
-                  <h3>{group.name}</h3>
-                  <p className="muted">Kelola pilihan dropdown untuk {group.section}.</p>
+            <div className="master-burger-drawer-search">
+              <Search size={14} color="#64748b" />
+              <input
+                placeholder="Cari jenis master data..."
+                value={burgerSearch}
+                onChange={e => setBurgerSearch(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="master-burger-drawer-content" role="navigation">
+              {/* ATURAN FORM */}
+              {(!burgerSearch || 'field mandatory aturan form fap pre'.includes(burgerSearch.toLowerCase())) && (
+                <div className="master-burger-group">
+                  <h4>ATURAN FORM</h4>
+                  <button
+                    type="button"
+                    className={`master-burger-item ${selected === 'master_mandatory' ? 'active' : ''}`}
+                    onClick={() => { setSelected('master_mandatory'); setSearch(''); setBurgerOpen(false); }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Settings2 size={15} color="#002060" />
+                      <span>Field Mandatory</span>
+                    </div>
+                    <span className="master-burger-badge mandatory">
+                      {mandatoryRules.filter(x => x.mandatory).length} / {mandatoryRules.length}
+                    </span>
+                  </button>
                 </div>
-                <button className="button primary small" onClick={()=>setEditing(null)}><Plus size={15}/>Add data</button>
+              )}
+
+              {/* LOKASI */}
+              {(!burgerSearch || 'konfigurasi lokasi location country province city'.includes(burgerSearch.toLowerCase())) && (
+                <div className="master-burger-group">
+                  <h4>LOKASI</h4>
+                  <button
+                    type="button"
+                    className={`master-burger-item ${selected === 'location' ? 'active' : ''}`}
+                    onClick={() => { setSelected('location'); setSearch(''); setBurgerOpen(false); }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <MapPin size={15} color="#002060" />
+                      <span>Konfigurasi Lokasi</span>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* OTHER GROUPS: LEGAL, ADDRESS, CUSTOMER, etc. */}
+              {[...new Set(masterGroups.map(x => x.section))].map(section => {
+                const filteredItems = masterGroups
+                  .filter(x => x.section === section)
+                  .filter(g => !burgerSearch || g.name.toLowerCase().includes(burgerSearch.toLowerCase()) || section.toLowerCase().includes(burgerSearch.toLowerCase()));
+                if (!filteredItems.length) return null;
+                return (
+                  <div key={section} className="master-burger-group">
+                    <h4>{section}</h4>
+                    {filteredItems.map(g => (
+                      <button
+                        key={g.key}
+                        type="button"
+                        className={`master-burger-item ${selected === g.key ? 'active' : ''}`}
+                        onClick={() => { setSelected(g.key); setSearch(''); setBurgerOpen(false); }}
+                      >
+                        <span>{g.name}</span>
+                        <span className="master-burger-badge">
+                          {data[g.key]?.filter(x => x.active).length || 0}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        </div>,
+        document.body
+      )}
+
+      {/* Main Content Area - Full Width */}
+      {selected === 'location' ? (
+        <LocationConfiguration />
+      ) : selected === 'master_mandatory' ? (
+        <div className="master-page-layout">
+          <MasterMandatoryView />
+        </div>
+      ) : (
+        <div className="master-page-layout">
+          <div className="master-content" style={{ width: '100%', padding: '20px 0' }}>
+            <div className="section-title">
+              <div>
+                <h3 style={{ fontSize: 18, color: '#002060', fontWeight: 700 }}>{group.name}</h3>
+                <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Kelola pilihan dropdown untuk {group.section}.</p>
               </div>
-              {group.key==='documents'&&<p className="master-help">Document types, review departments, and mandatory flags apply to new applications. Newly added document types also appear in existing application checklists without altering existing files.</p>}
-              <div className="search">
-                <Search size={16}/>
-                <input aria-label="Cari master data" placeholder={locationGroups.has(selected)?"Cari nama…":"Cari nama atau kode…"} value={search} onChange={e=>setSearch(e.target.value)}/>
-              </div>
-              <div className="table-scroll">
-                <table className="data-table master-table">
-                  <thead>
-                    <tr>
-                      <th>NAME</th>
-                      {!locationGroups.has(selected)&&<th>KODE / NILAI</th>}
-                      {group.parent&&<th>INDUK</th>}
-                      {selected==='documents'&&<><th>DEPARTEMEN</th><th>WAJIB</th></>}
-                      <th>STATUS</th>
-                      <th>AKSI</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visible.map(x=><tr key={x.value}>
-                      <td>{x.name}</td>
-                      {!locationGroups.has(selected)&&<td>{x.value}</td>}
-                      {group.parent&&<td>{data[group.parent].find(p=>p.value===x.parentValue)?.name||'Semua'}</td>}
-                      {selected==='documents'&&<><td>{x.role}</td><td>{x.required?'Wajib':'Opsional'}</td></>}
-                      <td><span className={'deed-validity '+(x.active?'active':'inactive')}>{x.active?'Aktif':'Tidak aktif'}</span></td>
+              <button className="button primary small" onClick={() => setEditing(null)}>
+                <Plus size={15} /> Add data
+              </button>
+            </div>
+            {group.key === 'documents' && (
+              <p className="master-help">
+                Document types, review departments, and mandatory flags apply to new applications. Newly added document types also appear in existing application checklists without altering existing files.
+              </p>
+            )}
+            <div className="search" style={{ margin: '14px 0', maxWidth: 400 }}>
+              <Search size={16} />
+              <input
+                aria-label="Cari master data"
+                placeholder={locationGroups.has(selected) ? 'Cari nama…' : 'Cari nama atau kode…'}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div className="table-scroll">
+              <table className="data-table master-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                    <th>NAME</th>
+                    {!locationGroups.has(selected) && <th>KODE / NILAI</th>}
+                    {group.parent && <th>INDUK</th>}
+                    {selected === 'documents' && (
+                      <>
+                        <th>DEPARTEMEN</th>
+                        <th>WAJIB</th>
+                      </>
+                    )}
+                    <th>STATUS</th>
+                    <th style={{ textAlign: 'center' }}>AKSI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map(x => (
+                    <tr key={x.value} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ fontWeight: 600, color: '#0f172a' }}>{x.name}</td>
+                      {!locationGroups.has(selected) && <td><code>{x.value}</code></td>}
+                      {group.parent && (
+                        <td>{data[group.parent].find(p => p.value === x.parentValue)?.name || 'Semua'}</td>
+                      )}
+                      {selected === 'documents' && (
+                        <>
+                          <td>{x.role}</td>
+                          <td>{x.required ? 'Wajib' : 'Opsional'}</td>
+                        </>
+                      )}
                       <td>
-                        <div style={{display:'inline-flex',gap:6,alignItems:'center'}}>
-                          <button className="button small" onClick={()=>setEditing(x)}><Pencil size={13}/>Edit</button>
-                          <button className="button small legal-delete-button" onClick={()=>handleDelete(x)} title={`Delete ${x.name}`}><Trash2 size={13}/>Delete</button>
+                        <span className={'deed-validity ' + (x.active ? 'active' : 'inactive')}>
+                          {x.active ? 'Aktif' : 'Tidak aktif'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'center' }}>
+                          <button className="button small" onClick={() => setEditing(x)}>
+                            <Pencil size={13} /> Edit
+                          </button>
+                          <button
+                            className="button small legal-delete-button"
+                            onClick={() => handleDelete(x)}
+                            title={`Delete ${x.name}`}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
                         </div>
                       </td>
-                    </tr>)}
-                  </tbody>
-                </table>
-                {!visible.length&&<div className="empty-small">No options yet. Click Add data to create one.</div>}
-              </div>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {!visible.length && (
+                <div className="empty-small">No options yet. Click Add data to create one.</div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
-      {editing!==undefined&&<MasterItemDialog key={selected} groupKey={selected} item={editing||undefined} onClose={()=>setEditing(undefined)}/>}
+      {editing !== undefined && (
+        <MasterItemDialog
+          key={selected}
+          groupKey={selected}
+          item={editing || undefined}
+          onClose={() => setEditing(undefined)}
+        />
+      )}
     </section>
   );
 }

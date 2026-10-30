@@ -176,7 +176,7 @@ export async function intakeDetail(id:string){
  const legal=await readLegal(id);
  const pic=pics[0]?{...Object.fromEntries(picFields.map(f=>[f.key,databaseValue(pics[0][picColumn(f.key)],f.type)])),district:pics[0].district_name||pics[0].kecamatan,village:pics[0].village_name||pics[0].kelurahan,id:pics[0].id,createdAt:pics[0].created_at,updatedAt:pics[0].updated_at}:null;
  const [docRows]=await pool.execute<any[]>(`SELECT COALESCE(MAX(is_mandatory), 0) AS is_doc_mandatory FROM application_document_checklist WHERE application_id = ?`,[id]);
- const [mandatoryList]=await pool.query<any[]>('SELECT section, field_key, field_label, mandatory FROM master_mandatory');
+ const [mandatoryList]=await pool.query<any[]>('SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory');
  const mandatoryConfig={
    customerPic:mandatoryList.some(r=>(Boolean(r.section) && r.section !== 'Financing' && r.section !== 'Financial Statements' && r.section !== 'Legal')&&Boolean(r.mandatory)),
    financing:mandatoryList.some(r=>r.section==='Financing'&&Boolean(r.mandatory)),

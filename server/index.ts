@@ -607,7 +607,7 @@ let cachedMandatoryRules: any[] | null = null;
 const getMandatoryHandler = async (_req: any, res: any) => {
   if (!pool) return res.json([]);
   try {
-    const [rows] = await pool.query<any[]>('SELECT id, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY section, id');
+    const [rows] = await pool.query<any[]>('SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY stage, section, id');
     cachedMandatoryRules = rows;
     res.json(rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -615,7 +615,7 @@ const getMandatoryHandler = async (_req: any, res: any) => {
 const putMandatoryHandler = async (req: any, res: any) => {
   if (!pool) return res.status(503).json({ error: 'MySQL is not configured' });
   try {
-    const { id, section, fieldKey, field_key, mandatory } = req.body;
+    const { id, stage, section, fieldKey, field_key, mandatory } = req.body;
     const isMandatory = mandatory === 1 || mandatory === true || mandatory === '1' ? 1 : 0;
     if (id !== undefined && id !== null) {
       await pool.execute('UPDATE master_mandatory SET mandatory=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', [isMandatory, id]);
@@ -625,7 +625,7 @@ const putMandatoryHandler = async (req: any, res: any) => {
         await pool.execute('UPDATE master_mandatory SET mandatory=?, updated_at=CURRENT_TIMESTAMP WHERE section=? AND field_key=?', [isMandatory, section, fKey]);
       }
     }
-    const [rows] = await pool.query<any[]>('SELECT id, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY section, id');
+    const [rows] = await pool.query<any[]>('SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY stage, section, id');
     cachedMandatoryRules = rows;
     res.json(rows);
   } catch (e: any) { res.status(500).json({ error: e.message }); }

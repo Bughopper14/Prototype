@@ -38,6 +38,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { api } from './api';
+import { useMandatoryRules, isFieldMandatory } from './master-data';
 
 export interface MilestoneItem {
   year: string;
@@ -546,6 +547,11 @@ function PreAnalysisRichEditor({
 }
 
 export function PreAnalysisForm(props: PreAnalysisFormProps) {
+  const mandatoryRules = useMandatoryRules();
+  const reqMark = (fieldKey: string, section: string = 'General Information') => {
+    const isReq = isFieldMandatory(mandatoryRules, section, fieldKey, false, 'PRE');
+    return isReq ? <span style={{ color: '#ef4444', fontWeight: 700, marginLeft: 3 }}>*</span> : null;
+  };
   const [data, setData] = useState<PreAnalysisData>(() => {
     return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
   });
@@ -1256,7 +1262,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Lead Source</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Lead Source{reqMark('leadSource', 'General Information')}</label>
                   <input
                     type="text"
                     name="leadSource"
@@ -1294,7 +1300,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Dealer PIC</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Dealer PIC{reqMark('dealerPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="dealerPic"
@@ -1306,7 +1312,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI PIC</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI PIC{reqMark('lmiPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="lmiPic"
@@ -1318,7 +1324,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LFI PIC</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LFI PIC{reqMark('lfiPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="lfiPic"
@@ -1330,7 +1336,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Customer PIC</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Customer PIC{reqMark('customerPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="customerPic"
@@ -1366,7 +1372,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Source of Repayment</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Source of Repayment{reqMark('sourceOfRepayment', 'General Information')}</label>
                   <input
                     type="text"
                     name="sourceOfRepayment"
@@ -1436,7 +1442,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name (Nama Objek Proyek)</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name (Nama Objek Proyek){reqMark('projectName', 'Project Information')}</label>
                     <input
                       type="text"
                       name="projectName"
@@ -1449,7 +1455,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Location (Lokasi Proyek)</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Location (Lokasi Proyek){reqMark('projectLocation', 'Project Information')}</label>
                     <input
                       type="text"
                       name="projectLocation"
@@ -1562,7 +1568,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Role of Customer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Role of Customer{reqMark('customerRole', 'Project Information')}</label>
                     <input
                       type="text"
                       name="customerRole"
@@ -1607,7 +1613,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Status</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Status{reqMark('projectStatus', 'Project Information')}</label>
                   <input
                     type="text"
                     name="projectStatus"
@@ -1629,7 +1635,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Financing Scheme Requested</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Financing Scheme Requested{reqMark('financingSchemeRequested', 'Project Information')}</label>
                   <input
                     type="text"
                     name="financingSchemeRequested"
@@ -2214,7 +2220,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equipment-to-Job Fit</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equipment-to-Job Fit{reqMark('equipmentJobFit', 'Equipment Possibility of Success')}</label>
                     <input
                       type="text"
                       name="equipmentJobFit"
@@ -2226,7 +2232,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Utilization vs Project Duration</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Utilization vs Project Duration{reqMark('utilizationDuration', 'Equipment Possibility of Success')}</label>
                     <input
                       type="text"
                       name="utilizationDuration"
@@ -2401,7 +2407,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Status</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Status{reqMark('deliveryStatus', 'Unit Delivery Status & QA Check')}</label>
                     <input
                       type="text"
                       name="deliveryStatus"
@@ -2438,7 +2444,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Conclusion</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Conclusion{reqMark('qaConclusion', 'Unit Delivery Status & QA Check')}</label>
                   <input
                     type="text"
                     name="qaConclusion"
@@ -2535,7 +2541,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI Internal AR Check</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI Internal AR Check{reqMark('lmiArCheck', 'Cross-Check with Dealer / LMI')}</label>
                   <input
                     type="text"
                     name="lmiArCheck"
@@ -2769,7 +2775,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>RECOMMENDATION</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>RECOMMENDATION{reqMark('recommendation', 'Expert Judgement Conclusion')}</label>
                   <input
                     type="text"
                     name="recommendation"
