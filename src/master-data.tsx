@@ -737,12 +737,12 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
   }
 ];
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v12';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v20';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 11; i++) {
+    for (let i = 1; i <= 19; i++) {
       localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
     }
     localStorage.removeItem('liugong_mandatory_rules_cache');
@@ -804,6 +804,7 @@ export function resolveRuleSection(rule: { id?: number; stage?: string; section?
   const rawSec = cleanSectionName(String(rule?.section || ''));
   const fKey = String(rule?.field_key || '');
 
+  // Pre-Analysis Stage Resolution
   if (stage === 'PRE-AN' || stage === 'PRE' || (rule?.id && rule.id > 47)) {
     for (const s of MANDATORY_SECTIONS_PRE) {
       if (rawSec.toLowerCase() === s.toLowerCase()) return s;
@@ -819,55 +820,35 @@ export function resolveRuleSection(rule: { id?: number; stage?: string; section?
     return rawSec || 'General Information';
   }
 
-  // FAP stage sections resolution (Exact 5 sections from form cards):
+  // FAP Stage Resolution (Exact 5 sections)
+  // 1. If rule already has an official section name, respect it!
   for (const s of MANDATORY_SECTIONS_FAP) {
-    if (rawSec === s) return s;
+    if (rawSec.toLowerCase() === s.toLowerCase()) return s;
   }
-  const sec = rawSec.toLowerCase();
-  const id = Number(rule?.id || 0);
 
-  // 1. Debtor Identity & Classification (8 fields: id 1-8)
-  if (
-    ['customerCategory', 'companyName', 'companyType', 'nib', 'nibDate', 'npwp', 'establishmentActNo', 'establishmentDate'].includes(fKey) ||
-    (id >= 1 && id <= 8) ||
-    sec.includes('debtor') ||
-    sec.includes('identity') ||
-    sec.includes('classification')
-  ) {
+  const sec = rawSec.toLowerCase();
+
+  // Seksi 1: Debtor Identity & Classification (Exact 8 fields from form card 01)
+  if (['customerCategory', 'companyName', 'companyType', 'nib', 'nibDate', 'npwp', 'establishmentActNo', 'establishmentDate'].includes(fKey)) {
     return 'Debtor Identity & Classification';
   }
 
-  // 4. Primary Contact / Person in Charge (PIC) (13 fields: id 31-43)
-  if (
-    (id >= 31 && id <= 43) ||
-    ['picName', 'position', 'phone', 'currentAddress'].includes(fKey) ||
-    sec.includes('pic') ||
-    sec.includes('contact') ||
-    sec.includes('primary')
-  ) {
-    return 'Primary Contact / Person in Charge (PIC)';
-  }
-
-  // 5. Industry Segmentation & Active Projects (4 fields: id 44-47)
-  if (
-    ['projectOwner', 'projectLocation', 'projectRole', 'contractStatus'].includes(fKey) ||
-    (id >= 44 && id <= 47) ||
-    sec.includes('project contracts') ||
-    sec.includes('active projects')
-  ) {
+  // Seksi 5: Industry Segmentation & Active Projects (Exact 4 fields from form card 05)
+  if (['projectOwner', 'projectLocation', 'projectRole', 'contractStatus'].includes(fKey)) {
     return 'Industry Segmentation & Active Projects';
   }
 
-  // 3. Business Profile & Deed Legality (8 fields: id 23-30)
-  if (
-    ['mainBusiness', 'repaymentSource', 'industrySegment', 'businessRole', 'experienceYears', 'experienceMonths', 'latestDeedNo', 'latestDeedDate'].includes(fKey) ||
-    (id >= 23 && id <= 30) ||
-    sec.includes('business') || sec.includes('deed') || sec.includes('legality')
-  ) {
+  // Seksi 3: Business Profile & Deed Legality (Exact 8 fields from form card 03)
+  if (['mainBusiness', 'repaymentSource', 'industrySegment', 'businessRole', 'experienceYears', 'experienceMonths', 'latestDeedNo', 'latestDeedDate'].includes(fKey)) {
     return 'Business Profile & Deed Legality';
   }
 
-  // 2. Registration Office & Company Domicile (14 fields: id 9-22)
+  // Seksi 4: Primary Contact / Person in Charge (PIC) (Exact 13 fields from form card 04)
+  if (['picName', 'position', 'phone', 'currentAddress', 'country'].includes(fKey) || sec.includes('pic') || sec.includes('contact')) {
+    return 'Primary Contact / Person in Charge (PIC)';
+  }
+
+  // Seksi 2: Registration Office & Company Domicile (Exact 14 fields from form card 02)
   return 'Registration Office & Company Domicile';
 }
 
