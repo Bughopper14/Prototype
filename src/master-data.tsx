@@ -26,325 +26,45 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
   {
     "id": 1,
     "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "branchCode",
-    "field_label": "Branch",
-    "mandatory": 1
+    "section": "Debtor Identity & Classification",
+    "field_key": "customerCategory",
+    "field_label": "Customer Category",
+    "mandatory": 0
   },
   {
     "id": 2,
     "stage": "FAP",
     "section": "Debtor Identity & Classification",
-    "field_key": "customerStatus",
-    "field_label": "Customer relationship",
+    "field_key": "companyName",
+    "field_label": "Company Name",
     "mandatory": 1
   },
   {
     "id": 3,
     "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "companyAddress",
-    "field_label": "Company address",
+    "section": "Debtor Identity & Classification",
+    "field_key": "companyType",
+    "field_label": "Business Category",
     "mandatory": 1
   },
   {
     "id": 4,
     "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "province",
-    "field_label": "Province",
+    "section": "Debtor Identity & Classification",
+    "field_key": "nib",
+    "field_label": "NIB",
     "mandatory": 1
   },
   {
     "id": 5,
     "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "city",
-    "field_label": "City",
-    "mandatory": 1
+    "section": "Debtor Identity & Classification",
+    "field_key": "nibDate",
+    "field_label": "NIB Established Date",
+    "mandatory": 0
   },
   {
     "id": 6,
-    "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "postalCode",
-    "field_label": "Postal code",
-    "mandatory": 1
-  },
-  {
-    "id": 7,
-    "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "phoneFax",
-    "field_label": "Phone / fax",
-    "mandatory": 0
-  },
-  {
-    "id": 8,
-    "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "email",
-    "field_label": "Company email",
-    "mandatory": 0
-  },
-  {
-    "id": 9,
-    "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "website",
-    "field_label": "Website",
-    "mandatory": 0
-  },
-  {
-    "id": 10,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "mainBusiness",
-    "field_label": "Main business",
-    "mandatory": 0
-  },
-  {
-    "id": 11,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "experienceYears",
-    "field_label": "Experience · years",
-    "mandatory": 1
-  },
-  {
-    "id": 12,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "experienceMonths",
-    "field_label": "Experience · months",
-    "mandatory": 1
-  },
-  {
-    "id": 13,
-    "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
-    "field_key": "locationStatus",
-    "field_label": "Business premises",
-    "mandatory": 0
-  },
-  {
-    "id": 14,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "repaymentSource",
-    "field_label": "Source of repayment",
-    "mandatory": 0
-  },
-  {
-    "id": 15,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "establishmentActNo",
-    "field_label": "Establishment Deed No",
-    "mandatory": 1
-  },
-  {
-    "id": 16,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "establishmentDate",
-    "field_label": "Established deed date",
-    "mandatory": 1
-  },
-  {
-    "id": 17,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "latestDeedNo",
-    "field_label": "Latest deed number",
-    "mandatory": 0
-  },
-  {
-    "id": 18,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "latestDeedDate",
-    "field_label": "Latest deed date",
-    "mandatory": 0
-  },
-  {
-    "id": 19,
-    "stage": "FAP",
-    "section": "Industry Segmentation & Active Projects",
-    "field_key": "industrySegment",
-    "field_label": "Industry",
-    "mandatory": 0
-  },
-  {
-    "id": 20,
-    "stage": "FAP",
-    "section": "Industry Segmentation & Active Projects",
-    "field_key": "businessRole",
-    "field_label": "Business role",
-    "mandatory": 0
-  },
-  {
-    "id": 21,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "assetSummaryHeLiuGong",
-    "field_label": "LiuGong heavy equipment owned",
-    "mandatory": 0
-  },
-  {
-    "id": 22,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "assetSummaryTruckLiuGong",
-    "field_label": "LiuGong trucks owned",
-    "mandatory": 0
-  },
-  {
-    "id": 23,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "assetSummaryHeNonLiuGong",
-    "field_label": "Other heavy equipment owned",
-    "mandatory": 0
-  },
-  {
-    "id": 24,
-    "stage": "FAP",
-    "section": "Business Profile & Deed Legality",
-    "field_key": "assetSummaryTruckNonLiuGong",
-    "field_label": "Other trucks owned",
-    "mandatory": 0
-  },
-  {
-    "id": 25,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "picName",
-    "field_label": "Contact name",
-    "mandatory": 0
-  },
-  {
-    "id": 26,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "position",
-    "field_label": "Position",
-    "mandatory": 0
-  },
-  {
-    "id": 27,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "phone",
-    "field_label": "Phone number",
-    "mandatory": 0
-  },
-  {
-    "id": 28,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "email",
-    "field_label": "Email",
-    "mandatory": 0
-  },
-  {
-    "id": 29,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "country",
-    "field_label": "Country",
-    "mandatory": 0
-  },
-  {
-    "id": 30,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "province",
-    "field_label": "Province",
-    "mandatory": 0
-  },
-  {
-    "id": 31,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "city",
-    "field_label": "Kota / Kabupaten",
-    "mandatory": 0
-  },
-  {
-    "id": 32,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "district",
-    "field_label": "Kecamatan",
-    "mandatory": 0
-  },
-  {
-    "id": 33,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "village",
-    "field_label": "Kelurahan / Desa",
-    "mandatory": 0
-  },
-  {
-    "id": 34,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "rt",
-    "field_label": "RT",
-    "mandatory": 0
-  },
-  {
-    "id": 35,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "rw",
-    "field_label": "RW",
-    "mandatory": 0
-  },
-  {
-    "id": 36,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "currentAddress",
-    "field_label": "Alamat lengkap",
-    "mandatory": 0
-  },
-  {
-    "id": 37,
-    "stage": "FAP",
-    "section": "Primary Contact / Person in Charge (PIC)",
-    "field_key": "postalCode",
-    "field_label": "ZIP code",
-    "mandatory": 0
-  },
-  {
-    "id": 38,
-    "stage": "FAP",
-    "section": "Debtor Identity & Classification",
-    "field_key": "companyName",
-    "field_label": "Company name",
-    "mandatory": 1
-  },
-  {
-    "id": 39,
-    "stage": "FAP",
-    "section": "Debtor Identity & Classification",
-    "field_key": "companyType",
-    "field_label": "Business category",
-    "mandatory": 1
-  },
-  {
-    "id": 40,
-    "stage": "FAP",
-    "section": "Debtor Identity & Classification",
-    "field_key": "nib",
-    "field_label": "NIB · 13 digits",
-    "mandatory": 1
-  },
-  {
-    "id": 41,
     "stage": "FAP",
     "section": "Debtor Identity & Classification",
     "field_key": "npwp",
@@ -352,39 +72,383 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 42,
+    "id": 7,
+    "stage": "FAP",
+    "section": "Debtor Identity & Classification",
+    "field_key": "establishmentActNo",
+    "field_label": "Establishment Deed Number",
+    "mandatory": 1
+  },
+  {
+    "id": 8,
+    "stage": "FAP",
+    "section": "Debtor Identity & Classification",
+    "field_key": "establishmentDate",
+    "field_label": "Establishment Deed Date",
+    "mandatory": 1
+  },
+  {
+    "id": 9,
     "stage": "FAP",
     "section": "Debtor Identity & Classification",
     "field_key": "sktNo",
-    "field_label": "SKT number",
+    "field_label": "SKT Number",
+    "mandatory": 0
+  },
+  {
+    "id": 10,
+    "stage": "FAP",
+    "section": "Debtor Identity & Classification",
+    "field_key": "sppkpNo",
+    "field_label": "SPPKP Number",
+    "mandatory": 0
+  },
+  {
+    "id": 11,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "branchCode",
+    "field_label": "Branch",
+    "mandatory": 1
+  },
+  {
+    "id": 12,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "customerStatus",
+    "field_label": "Customer Relationship",
+    "mandatory": 1
+  },
+  {
+    "id": 13,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "locationStatus",
+    "field_label": "Business Premises",
+    "mandatory": 0
+  },
+  {
+    "id": 14,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "companyAddress",
+    "field_label": "Company Address",
+    "mandatory": 1
+  },
+  {
+    "id": 15,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "province",
+    "field_label": "Province",
+    "mandatory": 1
+  },
+  {
+    "id": 16,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "city",
+    "field_label": "City",
+    "mandatory": 1
+  },
+  {
+    "id": 17,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "district",
+    "field_label": "District",
+    "mandatory": 0
+  },
+  {
+    "id": 18,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "village",
+    "field_label": "Village / Sub-District",
+    "mandatory": 0
+  },
+  {
+    "id": 19,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "rt",
+    "field_label": "RT",
+    "mandatory": 0
+  },
+  {
+    "id": 20,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "rw",
+    "field_label": "RW",
+    "mandatory": 0
+  },
+  {
+    "id": 21,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "postalCode",
+    "field_label": "Postal Code",
+    "mandatory": 1
+  },
+  {
+    "id": 22,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "phoneFax",
+    "field_label": "Phone / Fax",
+    "mandatory": 0
+  },
+  {
+    "id": 23,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "email",
+    "field_label": "Company Email",
+    "mandatory": 0
+  },
+  {
+    "id": 24,
+    "stage": "FAP",
+    "section": "Registration Office & Company Domicile",
+    "field_key": "website",
+    "field_label": "Website",
+    "mandatory": 0
+  },
+  {
+    "id": 25,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "mainBusiness",
+    "field_label": "Main Business",
+    "mandatory": 0
+  },
+  {
+    "id": 26,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "repaymentSource",
+    "field_label": "Source of Repayment",
+    "mandatory": 0
+  },
+  {
+    "id": 27,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "industrySegment",
+    "field_label": "Industry",
+    "mandatory": 0
+  },
+  {
+    "id": 28,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "businessRole",
+    "field_label": "Business Role",
+    "mandatory": 0
+  },
+  {
+    "id": 29,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "experienceYears",
+    "field_label": "Experience · Years",
+    "mandatory": 1
+  },
+  {
+    "id": 30,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "experienceMonths",
+    "field_label": "Experience · Months",
+    "mandatory": 1
+  },
+  {
+    "id": 31,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "latestDeedNo",
+    "field_label": "Latest Deed Number",
+    "mandatory": 0
+  },
+  {
+    "id": 32,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "latestDeedDate",
+    "field_label": "Latest Deed Date",
+    "mandatory": 0
+  },
+  {
+    "id": 33,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "assetSummaryHeLiuGong",
+    "field_label": "LiuGong Heavy Equipment Owned",
+    "mandatory": 0
+  },
+  {
+    "id": 34,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "assetSummaryTruckLiuGong",
+    "field_label": "LiuGong Trucks Owned",
+    "mandatory": 0
+  },
+  {
+    "id": 35,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "assetSummaryHeNonLiuGong",
+    "field_label": "Other Heavy Equipment Owned",
+    "mandatory": 0
+  },
+  {
+    "id": 36,
+    "stage": "FAP",
+    "section": "Business Profile & Deed Legality",
+    "field_key": "assetSummaryTruckNonLiuGong",
+    "field_label": "Other Trucks Owned",
+    "mandatory": 0
+  },
+  {
+    "id": 37,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "picName",
+    "field_label": "Contact Name",
+    "mandatory": 0
+  },
+  {
+    "id": 38,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "position",
+    "field_label": "Position",
+    "mandatory": 0
+  },
+  {
+    "id": 39,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "phone",
+    "field_label": "Phone Number",
+    "mandatory": 0
+  },
+  {
+    "id": 40,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "email",
+    "field_label": "Email",
+    "mandatory": 0
+  },
+  {
+    "id": 41,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "country",
+    "field_label": "Country",
+    "mandatory": 0
+  },
+  {
+    "id": 42,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "province",
+    "field_label": "Province",
     "mandatory": 0
   },
   {
     "id": 43,
     "stage": "FAP",
-    "section": "Debtor Identity & Classification",
-    "field_key": "sppkpNo",
-    "field_label": "SPPKP number",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "city",
+    "field_label": "City / Regency",
     "mandatory": 0
   },
   {
     "id": 44,
     "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
+    "section": "Primary Contact / Person in Charge (PIC)",
     "field_key": "district",
-    "field_label": "Kecamatan",
+    "field_label": "District",
     "mandatory": 0
   },
   {
     "id": 45,
     "stage": "FAP",
-    "section": "Registration Office & Company Domicile",
+    "section": "Primary Contact / Person in Charge (PIC)",
     "field_key": "village",
-    "field_label": "Kelurahan / Desa",
+    "field_label": "Village / Sub-District",
     "mandatory": 0
   },
   {
     "id": 46,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "rt",
+    "field_label": "RT",
+    "mandatory": 0
+  },
+  {
+    "id": 47,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "rw",
+    "field_label": "RW",
+    "mandatory": 0
+  },
+  {
+    "id": 48,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "postalCode",
+    "field_label": "ZIP Code",
+    "mandatory": 0
+  },
+  {
+    "id": 49,
+    "stage": "FAP",
+    "section": "Primary Contact / Person in Charge (PIC)",
+    "field_key": "currentAddress",
+    "field_label": "Full Address",
+    "mandatory": 0
+  },
+  {
+    "id": 50,
+    "stage": "FAP",
+    "section": "Industry Segmentation & Active Projects",
+    "field_key": "projectOwner",
+    "field_label": "Project Owner",
+    "mandatory": 0
+  },
+  {
+    "id": 51,
+    "stage": "FAP",
+    "section": "Industry Segmentation & Active Projects",
+    "field_key": "projectLocation",
+    "field_label": "Location",
+    "mandatory": 1
+  },
+  {
+    "id": 52,
+    "stage": "FAP",
+    "section": "Industry Segmentation & Active Projects",
+    "field_key": "projectRole",
+    "field_label": "Role In Project",
+    "mandatory": 0
+  },
+  {
+    "id": 53,
+    "stage": "FAP",
+    "section": "Industry Segmentation & Active Projects",
+    "field_key": "contractStatus",
+    "field_label": "Contract Status",
+    "mandatory": 0
+  },
+  {
+    "id": 54,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "preAnalysisNo",
@@ -392,7 +456,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 47,
+    "id": 55,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "preAnalysisDate",
@@ -400,7 +464,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 48,
+    "id": 56,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "customerProjectName",
@@ -408,7 +472,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 49,
+    "id": 57,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "taxId",
@@ -416,7 +480,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 50,
+    "id": 58,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "fapNumber",
@@ -424,7 +488,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 51,
+    "id": 59,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "leadSource",
@@ -432,7 +496,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 52,
+    "id": 60,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "customerArea",
@@ -440,7 +504,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 53,
+    "id": 61,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "dealerPic",
@@ -448,7 +512,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 54,
+    "id": 62,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "lmiPic",
@@ -456,7 +520,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 55,
+    "id": 63,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "lfiPic",
@@ -464,7 +528,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 56,
+    "id": 64,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "customerPic",
@@ -472,7 +536,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 57,
+    "id": 65,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "equity",
@@ -480,7 +544,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 58,
+    "id": 66,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "paidUpCapital",
@@ -488,7 +552,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 59,
+    "id": 67,
     "stage": "PRE-AN",
     "section": "General Information",
     "field_key": "sourceOfRepayment",
@@ -496,7 +560,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 60,
+    "id": 68,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "holdingGroup",
@@ -504,7 +568,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 61,
+    "id": 69,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "projectName",
@@ -512,7 +576,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 62,
+    "id": 70,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "projectLocation",
@@ -520,7 +584,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 63,
+    "id": 71,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "customerRole",
@@ -528,7 +592,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 64,
+    "id": 72,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "otherContractors",
@@ -536,7 +600,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 65,
+    "id": 73,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "projectStatus",
@@ -544,7 +608,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 66,
+    "id": 74,
     "stage": "PRE-AN",
     "section": "Project Information",
     "field_key": "financingSchemeRequested",
@@ -552,7 +616,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 67,
+    "id": 75,
     "stage": "PRE-AN",
     "section": "Customer & Group Background",
     "field_key": "companyBackground",
@@ -560,7 +624,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 68,
+    "id": 76,
     "stage": "PRE-AN",
     "section": "Customer & Group Background",
     "field_key": "uboInfo",
@@ -568,7 +632,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 69,
+    "id": 77,
     "stage": "PRE-AN",
     "section": "Customer & Group Background",
     "field_key": "businessDevBackground",
@@ -576,7 +640,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 70,
+    "id": 78,
     "stage": "PRE-AN",
     "section": "Customer & Group Background",
     "field_key": "existingFincoBackup",
@@ -584,7 +648,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 71,
+    "id": 79,
     "stage": "PRE-AN",
     "section": "Equipment Possibility of Success",
     "field_key": "equipmentJobFit",
@@ -592,7 +656,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 72,
+    "id": 80,
     "stage": "PRE-AN",
     "section": "Equipment Possibility of Success",
     "field_key": "utilizationDuration",
@@ -600,7 +664,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 73,
+    "id": 81,
     "stage": "PRE-AN",
     "section": "Equipment Possibility of Success",
     "field_key": "priorLiugongExperience",
@@ -608,7 +672,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 74,
+    "id": 82,
     "stage": "PRE-AN",
     "section": "Equipment Possibility of Success",
     "field_key": "serviceAgreementFmc",
@@ -616,7 +680,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 75,
+    "id": 83,
     "stage": "PRE-AN",
     "section": "Unit Delivery Status & QA Check",
     "field_key": "deliveryStatus",
@@ -624,7 +688,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 76,
+    "id": 84,
     "stage": "PRE-AN",
     "section": "Unit Delivery Status & QA Check",
     "field_key": "deliveryDate",
@@ -632,7 +696,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 77,
+    "id": 85,
     "stage": "PRE-AN",
     "section": "Unit Delivery Status & QA Check",
     "field_key": "qaIlinkComment",
@@ -640,7 +704,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 78,
+    "id": 86,
     "stage": "PRE-AN",
     "section": "Unit Delivery Status & QA Check",
     "field_key": "qaConclusion",
@@ -648,7 +712,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 79,
+    "id": 87,
     "stage": "PRE-AN",
     "section": "Cross-Check with Dealer / LMI",
     "field_key": "dealerCheck",
@@ -656,7 +720,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 80,
+    "id": 88,
     "stage": "PRE-AN",
     "section": "Cross-Check with Dealer / LMI",
     "field_key": "topDealerToCustomer",
@@ -664,7 +728,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 81,
+    "id": 89,
     "stage": "PRE-AN",
     "section": "Cross-Check with Dealer / LMI",
     "field_key": "topLmiToDealer",
@@ -672,7 +736,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 0
   },
   {
-    "id": 82,
+    "id": 90,
     "stage": "PRE-AN",
     "section": "Cross-Check with Dealer / LMI",
     "field_key": "lmiArCheck",
@@ -680,7 +744,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 83,
+    "id": 91,
     "stage": "PRE-AN",
     "section": "Cross-Check with Dealer / LMI",
     "field_key": "applicantPefindoCheck",
@@ -688,7 +752,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 84,
+    "id": 92,
     "stage": "PRE-AN",
     "section": "Expert Judgement Conclusion",
     "field_key": "recommendation",
@@ -696,7 +760,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 85,
+    "id": 93,
     "stage": "PRE-AN",
     "section": "Expert Judgement Conclusion",
     "field_key": "proposedBy",
@@ -704,7 +768,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 86,
+    "id": 94,
     "stage": "PRE-AN",
     "section": "Expert Judgement Conclusion",
     "field_key": "reviewedBy",
@@ -712,7 +776,7 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
     "mandatory": 1
   },
   {
-    "id": 87,
+    "id": 95,
     "stage": "PRE-AN",
     "section": "Expert Judgement Conclusion",
     "field_key": "approvedBy",
@@ -721,12 +785,12 @@ export const DEFAULT_MANDATORY_RULES: any[] = [
   }
 ];
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v10';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v11';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 9; i++) {
+    for (let i = 1; i <= 10; i++) {
       localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
     }
     localStorage.removeItem('liugong_mandatory_rules_cache');
@@ -774,7 +838,7 @@ export function cleanSectionName(sec: string): string {
 
 export function normalizeRule(r: any) {
   if (!r) return r;
-  const rawStage = String(r.stage || (r.id >= 46 ? 'PRE-AN' : 'FAP')).toUpperCase();
+  const rawStage = String(r.stage || (r.id > 53 ? 'PRE-AN' : 'FAP')).toUpperCase();
   const normalizedStage = (rawStage === 'PRE-AN' || rawStage === 'PRE') ? 'PRE-AN' : 'FAP';
   const stageRule = { ...r, stage: normalizedStage };
   return {
@@ -784,11 +848,11 @@ export function normalizeRule(r: any) {
 }
 
 export function resolveRuleSection(rule: { id?: number; stage?: string; section?: string; field_key?: string }): string {
-  const stage = String(rule?.stage || 'FAP').toUpperCase();
+  const stage = String(rule?.stage || (rule?.id && rule.id > 53 ? 'PRE-AN' : 'FAP')).toUpperCase();
   const rawSec = cleanSectionName(String(rule?.section || ''));
   const fKey = String(rule?.field_key || '');
 
-  if (stage === 'PRE-AN' || stage === 'PRE') {
+  if (stage === 'PRE-AN' || stage === 'PRE' || (rule?.id && rule.id > 53)) {
     for (const s of MANDATORY_SECTIONS_PRE) {
       if (rawSec.toLowerCase() === s.toLowerCase()) return s;
     }
@@ -810,42 +874,42 @@ export function resolveRuleSection(rule: { id?: number; stage?: string; section?
   const sec = rawSec.toLowerCase();
   const id = Number(rule?.id || 0);
 
-  // 4. Primary Contact / Person in Charge (PIC)
-  if (
-    sec.includes('pic') ||
-    sec.includes('contact') ||
-    (id >= 25 && id <= 37) ||
-    ['picName', 'position', 'phone'].includes(fKey) ||
-    (fKey === 'currentAddress')
-  ) {
-    return 'Primary Contact / Person in Charge (PIC)';
-  }
-
   // 1. Debtor Identity & Classification
   if (
-    ['companyName', 'companyType', 'nib', 'nibDate', 'npwp', 'sktNo', 'sppkpNo', 'customerStatus', 'customerCategory'].includes(fKey) ||
-    sec.includes('customer') ||
+    ['customerCategory', 'companyName', 'companyType', 'nib', 'nibDate', 'npwp', 'establishmentActNo', 'establishmentDate', 'sktNo', 'sppkpNo'].includes(fKey) ||
+    (id >= 1 && id <= 10) ||
     sec.includes('debtor') ||
     sec.includes('identity') ||
-    id === 2 || (id >= 38 && id <= 43)
+    sec.includes('classification')
   ) {
     return 'Debtor Identity & Classification';
   }
 
+  // 4. Primary Contact / Person in Charge (PIC)
+  if (
+    (id >= 37 && id <= 49) ||
+    ['picName', 'position', 'phone', 'currentAddress'].includes(fKey) ||
+    sec.includes('pic') ||
+    sec.includes('contact') ||
+    sec.includes('primary')
+  ) {
+    return 'Primary Contact / Person in Charge (PIC)';
+  }
+
   // 5. Industry Segmentation & Active Projects
   if (
-    ['industrySegment', 'businessRole', 'projectOwner', 'projectLocation', 'projectRole', 'contractStatus'].includes(fKey) ||
-    sec.includes('industry') ||
-    sec.includes('project') ||
-    id === 19 || id === 20
+    ['projectOwner', 'projectLocation', 'projectRole', 'contractStatus'].includes(fKey) ||
+    (id >= 50 && id <= 53) ||
+    sec.includes('project contracts') ||
+    sec.includes('active projects')
   ) {
     return 'Industry Segmentation & Active Projects';
   }
 
   // 3. Business Profile & Deed Legality
   if (
-    ['mainBusiness', 'experienceYears', 'experienceMonths', 'repaymentSource', 'establishmentActNo', 'establishmentDate', 'latestDeedNo', 'latestDeedDate', 'assetSummaryHeLiuGong', 'assetSummaryTruckLiuGong', 'assetSummaryHeNonLiuGong', 'assetSummaryTruckNonLiuGong'].includes(fKey) ||
-    (id >= 10 && id <= 12) || (id >= 14 && id <= 18) || (id >= 21 && id <= 24) ||
+    ['mainBusiness', 'repaymentSource', 'industrySegment', 'businessRole', 'experienceYears', 'experienceMonths', 'latestDeedNo', 'latestDeedDate', 'assetSummaryHeLiuGong', 'assetSummaryTruckLiuGong', 'assetSummaryHeNonLiuGong', 'assetSummaryTruckNonLiuGong'].includes(fKey) ||
+    (id >= 25 && id <= 36) ||
     sec.includes('business') || sec.includes('deed') || sec.includes('legality')
   ) {
     return 'Business Profile & Deed Legality';
