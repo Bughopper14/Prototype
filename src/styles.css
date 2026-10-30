@@ -4986,3 +4986,29 @@ aside.crm-sidebar-drawer.drawer-open {
   justify-content: space-between !important;
   gap: 20px !important;
 }
+
+/* PreAnalysis & Accordion Form Labels - Keep asterisks inline beside the title */
+.pre-analysis-container label,
+.fap-accordion-group label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-bottom: 4px;
+}
+
+.pre-analysis-container label.label-space-between,
+.fap-accordion-group label.label-space-between {
+  display: flex !important;
+  justify-content: space-between !important;
+}
+
+.pre-analysis-container .field-required,
+.fap-accordion-group .field-required {
+  display: inline !important;
+  margin-left: 3px !important;
+  color: #ef4444 !important;
+  font-weight: 700 !important;
+  vertical-align: baseline !important;
+}

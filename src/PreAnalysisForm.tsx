@@ -550,7 +550,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const mandatoryRules = useMandatoryRules();
   const reqMark = (fieldKey: string, section: string = 'General Information') => {
     const isReq = isFieldMandatory(mandatoryRules, section, fieldKey, false, 'PRE-AN');
-    return isReq ? <span style={{ color: '#ef4444', fontWeight: 700, marginLeft: 3 }}>*</span> : null;
+    return isReq ? (
+      <span
+        className="field-required"
+        aria-label="Required"
+        style={{
+          color: '#ef4444',
+          fontWeight: 700,
+          marginLeft: '4px',
+          display: 'inline',
+          lineHeight: 1,
+          verticalAlign: 'baseline'
+        }}
+      >
+        *
+      </span>
+    ) : null;
   };
   const [data, setData] = useState<PreAnalysisData>(() => {
     return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
@@ -1286,7 +1301,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Dealer PIC{reqMark('dealerPic', 'General Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Dealer PIC{reqMark('dealerPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="dealerPic"
@@ -1298,7 +1313,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI PIC{reqMark('lmiPic', 'General Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>LMI PIC{reqMark('lmiPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="lmiPic"
@@ -1310,7 +1325,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LFI PIC{reqMark('lfiPic', 'General Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>LFI PIC{reqMark('lfiPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="lfiPic"
@@ -1322,7 +1337,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Customer PIC{reqMark('customerPic', 'General Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Customer PIC{reqMark('customerPic', 'General Information')}</label>
                   <input
                     type="text"
                     name="customerPic"
@@ -1334,7 +1349,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equity</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Equity</label>
                   <input
                     type="text"
                     name="equity"
@@ -1346,7 +1361,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Paid up Capital</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Paid up Capital</label>
                   <input
                     type="text"
                     name="paidUpCapital"
@@ -1358,7 +1373,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Source of Repayment{reqMark('sourceOfRepayment', 'General Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Source of Repayment{reqMark('sourceOfRepayment', 'General Information')}</label>
                   <input
                     type="text"
                     name="sourceOfRepayment"
@@ -1428,7 +1443,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name (Nama Objek Proyek){reqMark('projectName', 'Project Information')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Name (Nama Objek Proyek){reqMark('projectName', 'Project Information')}</label>
                     <input
                       type="text"
                       name="projectName"
@@ -1441,7 +1456,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Location (Lokasi Proyek){reqMark('projectLocation', 'Project Information')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Location (Lokasi Proyek){reqMark('projectLocation', 'Project Information')}</label>
                     <input
                       type="text"
                       name="projectLocation"
@@ -1554,7 +1569,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Role of Customer{reqMark('customerRole', 'Project Information')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '6px' }}>Role of Customer{reqMark('customerRole', 'Project Information')}</label>
                     <input
                       type="text"
                       name="customerRole"
@@ -1566,7 +1581,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Other Contractor work in the same bowheer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '6px' }}>Other Contractor work in the same bowheer</label>
                     <input
                       type="text"
                       name="otherContractors"
@@ -1579,7 +1594,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Owner</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Owner</label>
                   <PreAnalysisRichEditor
                     value={data.projectOwner || ''}
                     onChange={val => updateField('projectOwner', val)}
@@ -1599,7 +1614,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Status{reqMark('projectStatus', 'Project Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Status{reqMark('projectStatus', 'Project Information')}</label>
                   <input
                     type="text"
                     name="projectStatus"
@@ -1621,7 +1636,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Financing Scheme Requested{reqMark('financingSchemeRequested', 'Project Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Financing Scheme Requested{reqMark('financingSchemeRequested', 'Project Information')}</label>
                   <input
                     type="text"
                     name="financingSchemeRequested"
@@ -2149,7 +2164,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Existing Finco Backup</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Existing Finco Backup{reqMark('existingFincoBackup', 'Customer & Group Background')}</label>
                   <input
                     type="text"
                     name="existingFincoBackup"
@@ -2206,7 +2221,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equipment-to-Job Fit{reqMark('equipmentJobFit', 'Equipment Possibility of Success')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Equipment-to-Job Fit{reqMark('equipmentJobFit', 'Equipment Possibility of Success')}</label>
                     <input
                       type="text"
                       name="equipmentJobFit"
@@ -2218,7 +2233,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Utilization vs Project Duration{reqMark('utilizationDuration', 'Equipment Possibility of Success')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Utilization vs Project Duration{reqMark('utilizationDuration', 'Equipment Possibility of Success')}</label>
                     <input
                       type="text"
                       name="utilizationDuration"
@@ -2323,7 +2338,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Prior LiuGong Experience</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Prior LiuGong Experience</label>
                     <input
                       type="text"
                       name="priorLiugongExperience"
@@ -2335,7 +2350,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Have Service Agreement / FMC</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Have Service Agreement / FMC{reqMark('serviceAgreementFmc', 'Equipment Possibility of Success')}</label>
                     <input
                       type="text"
                       name="serviceAgreementFmc"
@@ -2393,7 +2408,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Status{reqMark('deliveryStatus', 'Unit Delivery Status & QA Check')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Delivery Status{reqMark('deliveryStatus', 'Unit Delivery Status & QA Check')}</label>
                     <input
                       type="text"
                       name="deliveryStatus"
@@ -2405,7 +2420,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Date</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Delivery Date</label>
                     <input
                       type="text"
                       name="deliveryDate"
@@ -2418,7 +2433,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Comment — iLink/GPS Performance Check</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>QA Comment — iLink/GPS Performance Check</label>
                   <input
                     type="text"
                     name="qaIlinkComment"
@@ -2430,7 +2445,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Conclusion{reqMark('qaConclusion', 'Unit Delivery Status & QA Check')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>QA Conclusion{reqMark('qaConclusion', 'Unit Delivery Status & QA Check')}</label>
                   <input
                     type="text"
                     name="qaConclusion"
@@ -2502,7 +2517,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from Dealer to Customer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>TOP from Dealer to Customer</label>
                     <input
                       type="text"
                       name="topDealerToCustomer"
@@ -2514,7 +2529,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from LMI to Dealer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>TOP from LMI to Dealer</label>
                     <input
                       type="text"
                       name="topLmiToDealer"
@@ -2527,7 +2542,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI Internal AR Check{reqMark('lmiArCheck', 'Cross-Check with Dealer / LMI')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>LMI Internal AR Check{reqMark('lmiArCheck', 'Cross-Check with Dealer / LMI')}</label>
                   <input
                     type="text"
                     name="lmiArCheck"
@@ -2751,7 +2766,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Brief Note</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Brief Note</label>
                   <PreAnalysisRichEditor
                     value={data.briefNote || ''}
                     onChange={val => updateField('briefNote', val)}
@@ -2761,7 +2776,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>RECOMMENDATION{reqMark('recommendation', 'Expert Judgement Conclusion')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>RECOMMENDATION{reqMark('recommendation', 'Expert Judgement Conclusion')}</label>
                   <input
                     type="text"
                     name="recommendation"
@@ -2950,7 +2965,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Pengusul :</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Nama & Jabatan Pengusul :{reqMark('proposedBy', 'Expert Judgement Conclusion')}</label>
                       <textarea
                         rows={2}
                         name="proposedBy"
@@ -2992,7 +3007,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Reviewer :</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Nama & Jabatan Reviewer :{reqMark('reviewedBy', 'Expert Judgement Conclusion')}</label>
                       <textarea
                         rows={2}
                         name="reviewedBy"
@@ -3034,7 +3049,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Approver :</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Nama & Jabatan Approver :{reqMark('approvedBy', 'Expert Judgement Conclusion')}</label>
                       <textarea
                         rows={2}
                         name="approvedBy"
