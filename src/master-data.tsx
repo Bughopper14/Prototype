@@ -1325,7 +1325,7 @@ export function MasterMandatoryView({canManage=true, onLogActivity}:{canManage?:
             }}
             aria-label="Filter Stage"
           >
-            <option value="ALL">All Stages (FAP & PRE-AN) ({rules.length})</option>
+            <option value="ALL">ALL STAGES ({rules.length})</option>
             <option value="FAP">FAP ({fapRules.length})</option>
             <option value="PRE-AN">PRE-AN ({preRules.length})</option>
           </select>
