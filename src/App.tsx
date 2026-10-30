@@ -115,7 +115,7 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
   const master=useMasterData();
   const mandatoryRules=useMandatoryRules();
   return <div className={`formgrid ${className||''}`}>{fields.map(f=>{
-    const isRequired=isFieldMandatory(mandatoryRules,section,f.key,f.required);
+    const isRequired=isFieldMandatory(mandatoryRules,section,f.key,f.required,'FAP');
     const rawVal=value?.[f.key];
     const isPlaceholderDash=String(rawVal??'').trim()==='-';
     const isPlaceholderZip=f.key==='postalCode'&&String(rawVal??'').trim()==='00000';

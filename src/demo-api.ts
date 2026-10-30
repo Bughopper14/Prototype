@@ -77,7 +77,11 @@ export async function demoApi(path:string,method='GET',body?:any):Promise<any>{v
     return { ok: true, message: 'Seluruh 6 skenario dummy berhasil dimuat ulang dengan data lengkap!' };
   }
 if(path==='/mandatory'&&method==='GET'){
-  return copy(s.mandatoryRules || DEFAULT_MANDATORY_RULES);
+  if (!s.mandatoryRules || !Array.isArray(s.mandatoryRules) || !s.mandatoryRules.some((r: any) => r.stage === 'PRE-AN')) {
+    s.mandatoryRules = DEFAULT_MANDATORY_RULES;
+    save(s);
+  }
+  return copy(s.mandatoryRules);
 }
 if(path==='/mandatory'&&method==='PUT'){
   const { id, mandatory } = body;
