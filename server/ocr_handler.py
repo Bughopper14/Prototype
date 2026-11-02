@@ -1691,6 +1691,9 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         if norm_c in boilerplate_exact:
             return ""
 
+        if key in ('applicationDate', 'branchCode', 'customerStatus', 'customerCategory', 'companyType', 'fapNumber'):
+            return cleaned
+
         if key in ('postalCode', 'picPostalCode'):
             m = re.search(r'\b\d{5}\b', cleaned)
             return m.group(0) if m else ""
@@ -1743,6 +1746,9 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         return int(clean) if clean else None
 
     data = {
+        "fapNumber": "",
+        "applicationDate": "",
+        "branchCode": "",
         "companyName": "",
         "customerCategory": "",
         "companyType": "",
@@ -1843,6 +1849,139 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
             matched = [b for b in matched if re.search(r'[A-Za-z0-9]', b["text"])]
             matched.sort(key=lambda b: (round(b["yc"], 2), b["xc"]))
             return join_tokens([b["text"] for b in matched])
+
+        # 0. Header Area Labels & Extraction (No. Register, Date, Branch, Customer Category, Company Type)
+        l_reg = find_label(p1, r'no\.?\s*register|register\s*:', 0.50, 0.90)
+        l_date = find_label(p1, r'tangga[li]|date', 0.10, 0.25)
+        l_branch = find_label(p1, r'cabang|branch', 0.10, 0.25)
+        l_new = find_label(p1, r'customer\s*baru|new\s*cust', 0.25, 0.42)
+        l_old = find_label(p1, r'customer\s*lama|existing\s*cust', 0.25, 0.42)
+        l_corp = find_label(p1, r'corporate', 0.48, 0.65)
+        l_comm = find_label(p1, r'commercial', 0.48, 0.65)
+        l_micro = find_label(p1, r'micro', 0.68, 0.85)
+        l_liugong = find_label(p1, r'liugong|jugong', 0.68, 0.85)
+
+        # 0a. No. Register / FAP Number
+        if l_reg:
+            for b in p1:
+                if b["xc"] > l_reg["x2"] and b["xc"] < 0.95 and abs(b["yc"] - l_reg["yc"]) <= 0.02:
+                    m = re.search(r'([A-Za-z0-9]+/[A-Za-z0-9]+/[A-Za-z0-9]+/[A-Za-z0-9]+|\d{3,}/[A-Za-z0-9/_-]+)', b["text"])
+                    if m:
+                        data["fapNumber"] = m.group(1).strip()
+                        break
+
+        # 0b. Application Date (Tanggal/Date) & 0c. Branch Code (Cabang/Branch)
+        val_col1 = [b for b in p1 if 0.18 <= b["xc"] <= 0.28 and b["yc"] <= 0.12]
+        val_col1.sort(key=lambda b: b["yc"])
+        for b in val_col1:
+            m = re.search(r'(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2})', b["text"])
+            if m and not data["applicationDate"]:
+                data["applicationDate"] = normalize_date_to_iso(m.group(1))
+            else:
+                txt = b["text"].strip()
+                if not re.search(r'\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}', txt):
+                    clean_br = re.sub(r'[^A-Za-z0-9]', '', txt).upper()
+                    if len(clean_br) >= 2 and not clean_br.isdigit():
+                        data["branchCode"] = clean_br
+                    elif len(clean_br) >= 2 and not data["branchCode"]:
+                        data["branchCode"] = clean_br
+
+        # 0d. Checkbox Detection for Customer Status (New vs Existing) and Company Type (Corporate, Commercial, Micro, LiuGong User)
+        gray_p1 = None
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                import cv2
+                import numpy as np
+                if pdf_path.lower().endswith('.pdf'):
+                    import pymupdf as fitz
+                    pdoc = fitz.open(pdf_path)
+                    pp = pdoc[0]
+                    pix = pp.get_pixmap(matrix=fitz.Matrix(160.0 / 72.0, 160.0 / 72.0), alpha=False)
+                    img = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n)
+                    gray_p1 = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+                    pdoc.close()
+                else:
+                    loaded = cv2.imread(pdf_path, cv2.IMREAD_GRAYSCALE)
+                    if loaded is not None:
+                        gray_p1 = loaded
+            except Exception as img_err:
+                print(f"[OCR] Header checkbox image load note: {img_err}")
+
+        if gray_p1 is not None:
+            gh, gw = gray_p1.shape[:2]
+            y_r1_top = min(l["y1"] for l in [l_date, l_new, l_corp, l_micro] if l) if any([l_date, l_new, l_corp, l_micro]) else 0.060
+            y_r1_bot = min(l["y1"] for l in [l_branch, l_old, l_comm, l_liugong] if l) if any([l_branch, l_old, l_comm, l_liugong]) else 0.080
+            y_r2_top = y_r1_bot
+            y_r2_bot = max(l["y2"] for l in [l_branch, l_old, l_comm, l_liugong] if l) if any([l_branch, l_old, l_comm, l_liugong]) else 0.100
+
+            def get_cell_ink(x_start, x_end, y_start, y_end):
+                px1 = int(x_start * gw) + 4
+                px2 = int(x_end * gw) - 4
+                py1 = int(y_start * gh) + 3
+                py2 = int(y_end * gh) - 3
+                if py2 <= py1 or px2 <= px1:
+                    return 0
+                cell = gray_p1[py1:py2, px1:px2]
+                _, bin_c = cv2.threshold(cell, 195, 255, cv2.THRESH_BINARY_INV)
+                return int(np.count_nonzero(bin_c))
+
+            x_c2_s = (l_new["x2"] + 0.005) if l_new else 0.365
+            x_c2_e = (l_corp["x1"] - 0.06) if l_corp else 0.445
+            x_c3_s = (l_corp["x2"] + 0.005) if l_corp else 0.600
+            x_c3_e = (l_micro["x1"] - 0.06) if l_micro else 0.665
+            x_c4_s = (l_micro["x2"] + 0.005) if l_micro else 0.775
+            x_c4_e = x_c4_s + 0.05
+
+            ink_new = get_cell_ink(x_c2_s, x_c2_e, y_r1_top, y_r1_bot)
+            ink_old = get_cell_ink(x_c2_s, x_c2_e, y_r2_top, y_r2_bot)
+            ink_corp = get_cell_ink(x_c3_s, x_c3_e, y_r1_top, y_r1_bot)
+            ink_comm = get_cell_ink(x_c3_s, x_c3_e, y_r2_top, y_r2_bot)
+            ink_micro = get_cell_ink(x_c4_s, x_c4_e, y_r1_top, y_r1_bot)
+            ink_liugong = get_cell_ink(x_c4_s, x_c4_e, y_r2_top, y_r2_bot)
+
+            if ink_new > ink_old and ink_new >= 5:
+                data["customerStatus"] = "NEW"
+                data["customerCategory"] = "NEW"
+            elif ink_old > ink_new and ink_old >= 5:
+                data["customerStatus"] = "EXISTING"
+                data["customerCategory"] = "EXISTING"
+
+            type_candidates = [
+                ("CORPORATE", ink_corp),
+                ("COMMERCIAL", ink_comm),
+                ("MICRO", ink_micro),
+                ("LIUGONG_USER", ink_liugong)
+            ]
+            best_type = ""
+            max_type_ink = 4
+            for t_name, ink_val in type_candidates:
+                if ink_val > max_type_ink:
+                    max_type_ink = ink_val
+                    best_type = t_name
+            if best_type:
+                data["companyType"] = best_type
+
+        # Fallback text-based checkbox detection
+        if not data.get("customerStatus"):
+            for b in p1:
+                if b["yc"] <= 0.12 and any(ch in b["text"] for ch in ['✓', '✔', 'v', 'V', 'x', 'X']):
+                    if 0.35 <= b["xc"] <= 0.46:
+                        if b["yc"] < ((l_old["y1"] if l_old else 0.08)):
+                            data["customerStatus"] = "NEW"
+                            data["customerCategory"] = "NEW"
+                        else:
+                            data["customerStatus"] = "EXISTING"
+                            data["customerCategory"] = "EXISTING"
+                    elif 0.58 <= b["xc"] <= 0.68:
+                        if b["yc"] < ((l_comm["y1"] if l_comm else 0.08)):
+                            data["companyType"] = "CORPORATE"
+                        else:
+                            data["companyType"] = "COMMERCIAL"
+                    elif 0.76 <= b["xc"] <= 0.86:
+                        if b["yc"] < ((l_liugong["y1"] if l_liugong else 0.08)):
+                            data["companyType"] = "MICRO"
+                        else:
+                            data["companyType"] = "LIUGONG_USER"
 
         # Left Column Labels
         l_comp_name = find_label(p1, r'company.*?n[ao]me|nama\s*perusahaan|ueeyesnsad', 0.05, 0.30)

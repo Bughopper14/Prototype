@@ -312,12 +312,12 @@ export function FapSheetPreviewApproved2025(props: FapSheetPreviewProps) {
     printFapDocument(d.fapNumber);
   };
 
-  const isCustNew = d.customerStatus === 'NEW';
-  const isCustExisting = d.customerStatus === 'EXISTING' || !isCustNew;
+  const isCustNew = d.customerStatus === 'NEW' || d.customerCategory === 'NEW';
+  const isCustExisting = d.customerStatus === 'EXISTING' || d.customerCategory === 'EXISTING';
   const isCorp = d.companyType === 'CORPORATE';
   const isComm = d.companyType === 'COMMERCIAL';
-  const isMicro = d.companyType === 'MICRO';
-  const isLiugongUser = d.companyType === 'LIUGONG_USER';
+  const isMicro = d.companyType === 'MICRO' || d.companyType === 'MIKRO';
+  const isLiugongUser = d.companyType === 'LIUGONG_USER' || d.companyType === 'LIUGONG_USED';
 
   const showRibbon = !props.hideToolbar && !props.isComparison;
 

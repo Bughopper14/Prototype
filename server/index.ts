@@ -794,6 +794,10 @@ export function computeFapDiffs(currentApp: any, extracted: any): Array<{ field:
     });
   };
 
+  compareField('applicationDate', 'Tanggal / Application Date', currentApp.applicationDate, extracted.applicationDate);
+  compareField('branchCode', 'Cabang / Branch Code', currentApp.branchCode, extracted.branchCode);
+  compareField('customerStatus', 'Status Debitur (New / Existing)', currentApp.customerStatus || currentApp.customerCategory, extracted.customerStatus);
+  compareField('companyType', 'Tipe Perusahaan / Segmen', currentApp.customer?.companyType || currentApp.companyType, extracted.companyType);
   compareField('companyName', 'Nama Perusahaan', currentApp.customer?.companyName || currentApp.companyName, extracted.companyName);
   compareField('nib', 'Nomor Induk Berusaha (NIB)', currentApp.customer?.nib || currentApp.nib, extracted.nib);
   compareField('npwp', 'NPWP Perusahaan', currentApp.customer?.npwp || currentApp.npwp, extracted.npwp);

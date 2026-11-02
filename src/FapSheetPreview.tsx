@@ -532,24 +532,33 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       }
     };
 
+    const formatFapDate = (dateStr?: string) => {
+      if (!dateStr) return '';
+      const m = String(dateStr).trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      if (m) return `${m[3].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[1]}`;
+      return String(dateStr).trim();
+    };
+
     setText('fap-cell-fapNumber', d.fapNumber);
-    setText('fap-cell-applicationDate', d.applicationDate);
+    setText('fap-cell-applicationDate', formatFapDate(d.applicationDate));
     setText('fap-cell-branchCode', d.branchCode);
 
-    if (props.diffSide === 'ocr' && !d.customerStatus) {
+    const custStatusUpper = String(d.customerStatus || '').toUpperCase();
+    if (props.diffSide === 'ocr' && !custStatusUpper) {
       setText('fap-cell-custNew', '');
       setText('fap-cell-custExisting', '');
     } else {
-      const isNew = d.customerStatus.includes('NEW');
-      const isExisting = d.customerStatus.includes('EXISTING') || d.customerStatus.includes('LAMA');
+      const isNew = custStatusUpper.includes('NEW') || custStatusUpper.includes('BARU');
+      const isExisting = custStatusUpper.includes('EXISTING') || custStatusUpper.includes('LAMA');
       setText('fap-cell-custNew', isNew ? '✓' : '');
       setText('fap-cell-custExisting', isExisting ? '✓' : '');
     }
 
-    const isCorp = d.companyType.includes('CORPORATE') || d.companyType.includes('PT') || d.companyType.includes('PERSEROAN');
-    const isComm = d.companyType.includes('COMMERCIAL') || d.companyType.includes('CV') || d.companyType.includes('FIRMA');
-    const isMicro = d.companyType.includes('MICRO') || d.companyType.includes('MIKRO');
-    const isLiuGongUser = d.companyType.includes('LIUGONG') || d.companyType.includes('USER');
+    const compTypeUpper = String(d.companyType || '').toUpperCase();
+    const isCorp = compTypeUpper.includes('CORPORATE') || compTypeUpper.includes('PT') || compTypeUpper.includes('PERSEROAN');
+    const isComm = compTypeUpper.includes('COMMERCIAL') || compTypeUpper.includes('CV') || compTypeUpper.includes('FIRMA');
+    const isMicro = compTypeUpper.includes('MICRO') || compTypeUpper.includes('MIKRO');
+    const isLiuGongUser = compTypeUpper.includes('LIUGONG') || compTypeUpper.includes('USER') || compTypeUpper.includes('USED');
 
     setText('fap-cell-corporate', isCorp ? '✓' : '');
     setText('fap-cell-commercial', isComm ? '✓' : '');

@@ -327,10 +327,12 @@ export function FapSheetPreviewClassic(props: FapSheetPreviewProps & { onSwitchT
     printFapDocument(d.fapNumber);
   };
 
-  const isCustNew = d.customerStatus === 'NEW';
-  const isCustExisting = d.customerStatus === 'EXISTING' || !isCustNew;
+  const isCustNew = d.customerStatus === 'NEW' || d.customerCategory === 'NEW';
+  const isCustExisting = d.customerStatus === 'EXISTING' || d.customerCategory === 'EXISTING';
   const isCorp = d.companyType === 'CORPORATE';
   const isComm = d.companyType === 'COMMERCIAL';
+  const isMicro = d.companyType === 'MICRO' || d.companyType === 'MIKRO';
+  const isLiugongUser = d.companyType === 'LIUGONG_USER' || d.companyType === 'LIUGONG_USED';
 
   const showRibbon = !props.hideToolbar && !props.isComparison;
 
@@ -524,11 +526,11 @@ export function FapSheetPreviewClassic(props: FapSheetPreviewProps & { onSwitchT
               <div className="exact-matrix-box">
                 <div className="exact-matrix-row">
                   <span className="exact-matrix-lbl">Micro</span>
-                  <span className="exact-matrix-chk">☐</span>
+                  <span className="exact-matrix-chk">{isMicro ? '☑' : '☐'}</span>
                 </div>
                 <div className="exact-matrix-row">
                   <span className="exact-matrix-lbl">LiuGong Used</span>
-                  <span className="exact-matrix-chk">☐</span>
+                  <span className="exact-matrix-chk">{isLiugongUser ? '☑' : '☐'}</span>
                 </div>
               </div>
             </div>
