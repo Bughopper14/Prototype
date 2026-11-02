@@ -13,7 +13,7 @@ const fapProfile=['branchCode','companyAddress','province','city','district','vi
 const fapFields=[...customerFields.filter(f=>fapCustomer.includes(f.key)),...profileFields.filter(f=>fapProfile.includes(f.key))];
 const preFields=[...customerFields.filter(f=>!fapCustomer.includes(f.key)),...profileFields.filter(f=>f.key!=='customerStatus'&&!fapProfile.includes(f.key)&&!fapCustomer.includes(f.key))];
 const directoryFields=[...customerFields,...profileFields.filter(f=>f.key!=='customerStatus')];
-const appTables=['legal_stakeholder','akta_pendirian','akta_perubahan','daftar_akta','equipment_units','financing_detail','bank_facilities','project_contract','customer_pic','new_application_fap_stage','new_application_pre_analisis','all_applications'];
+const appTables=['legal_stakeholder','daftar_akta','equipment_units','financing_detail','bank_facilities','project_contract','customer_pic','new_application_fap_stage','new_application_pre_analisis','all_applications'];
 const column=(s:string)=>s.replace(/[A-Z]/g,c=>'_'+c.toLowerCase());
 const picColumn=(s:string)=>s==='district'?'kecamatan':s==='village'?'kelurahan':s==='currentAddress'?'alamat_pic':column(s);
 const same=(a:any,b:any)=>String(a??'')===String(b??'');
