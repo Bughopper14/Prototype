@@ -542,6 +542,9 @@ export default function App(){
    setLoading(true);
    try{
      const app = await api('/applications/'+id);
+     if (!app.projects || app.projects.length === 0) {
+       app.projects = [blank(projectFields)];
+     }
      const isPre = (app.stage === 'Pre-analysis') || ['SUBMITTED_TO_BS','BS_VERIFIED','IN_CA_LEGAL_REVIEW','CREDIT_COMMITTEE_REVIEW','APPROVED'].includes(app.status);
      const resolvedTab = tab !== undefined ? tab : (isPre ? 8 : 0);
      setDetailTab(resolvedTab);
@@ -638,7 +641,7 @@ export default function App(){
       website: '',
       pic: blank(picFields),
       stakeholders: [],
-      projects: [],
+      projects: [blank(projectFields)],
       bankReferences: [],
       proposal: { ...blank(proposalFields), units: [] },
       financialStatements: [],
@@ -1362,7 +1365,13 @@ useEffect(()=>{
   if(isPre && tab === 0) setTab(8);
 },[a.id,a.stage,a.status]);
 const [reviewDeedId,setReviewDeedId]=useState<string|null>(null);
-const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(structuredClone(a)),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
+const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(() => {
+  const base = structuredClone(a);
+  if (!base.projects || base.projects.length === 0) {
+    base.projects = [blank(projectFields)];
+  }
+  return base;
+}),[busy,setBusy]=useState(false),[error,setError]=useState(''),[transition,setTransition]=useState(''),[comments,setComments]=useState(''),[saveConfirm,setSaveConfirm]=useState(false),[sideBySide,setSideBySide]=useState(true);
  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
    'fap-preview-sec-header': true,
    'fap-preview-sec-company': true,
@@ -1773,6 +1782,9 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>(s
 
  useEffect(()=>{
   const base = structuredClone(a);
+  if (!base.projects || base.projects.length === 0) {
+    base.projects = [blank(projectFields)];
+  }
   // Sync deed fields from legal when loading existing data
   if(a.legal){
     const sync = deriveDeedSync(a.legal, a);
