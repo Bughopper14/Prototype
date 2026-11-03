@@ -40,7 +40,7 @@ export function ActivityPage({
   subtitle = 'Live record of application changes, form submissions, and section updates.',
   emptyMessage
 }: ActivityPageProps) {
-  const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  const [filter, setFilter] = useState<'all' | 'unread'>('unread');
   const [search, setSearch] = useState('');
 
   const unreadList = activities.filter(a => !a.read && !readActivityIds.has(a.id));
@@ -169,40 +169,7 @@ export function ActivityPage({
         }}
       >
         <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '6px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              borderRadius: 20,
-              border: '1px solid',
-              borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
-              background: filter === 'all' ? '#002c5f' : '#ffffff',
-              color: filter === 'all' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              transition: 'all 0.15s ease'
-            }}
-          >
-            <span>All History</span>
-            <span
-              style={{
-                background: filter === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
-                color: filter === 'all' ? '#ffffff' : '#334155',
-                padding: '1px 7px',
-                borderRadius: 999,
-                fontSize: 11,
-                fontWeight: 700
-              }}
-            >
-              {activities.length}
-            </span>
-          </button>
-
+          {/* 1. Unread Activities on the Left */}
           <button
             type="button"
             onClick={() => setFilter('unread')}
@@ -223,20 +190,57 @@ export function ActivityPage({
             }}
           >
             <span>Unread Activities</span>
-            {unreadList.length > 0 ? (
-              <span
-                style={{
-                  background: filter === 'unread' ? '#ff9900' : '#e2e8f0',
-                  color: filter === 'unread' ? '#ffffff' : '#334155',
-                  padding: '1px 7px',
-                  borderRadius: 999,
-                  fontSize: 11,
-                  fontWeight: 700
-                }}
-              >
-                {unreadList.length}
-              </span>
-            ) : null}
+            <span
+              style={{
+                background: filter === 'unread'
+                  ? (unreadList.length > 0 ? '#ff9900' : 'rgba(255,255,255,0.25)')
+                  : (unreadList.length > 0 ? '#ff9900' : '#e2e8f0'),
+                color: filter === 'unread'
+                  ? '#ffffff'
+                  : (unreadList.length > 0 ? '#ffffff' : '#334155'),
+                padding: '1px 7px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700
+              }}
+            >
+              {unreadList.length}
+            </span>
+          </button>
+
+          {/* 2. All Activity History on the Right */}
+          <button
+            type="button"
+            onClick={() => setFilter('all')}
+            style={{
+              padding: '6px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              borderRadius: 20,
+              border: '1px solid',
+              borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
+              background: filter === 'all' ? '#002c5f' : '#ffffff',
+              color: filter === 'all' ? '#ffffff' : '#475569',
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              transition: 'all 0.15s ease'
+            }}
+          >
+            <span>All Activity History</span>
+            <span
+              style={{
+                background: filter === 'all' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+                color: filter === 'all' ? '#ffffff' : '#334155',
+                padding: '1px 7px',
+                borderRadius: 999,
+                fontSize: 11,
+                fontWeight: 700
+              }}
+            >
+              {activities.length}
+            </span>
           </button>
         </div>
 
@@ -636,6 +640,30 @@ export function ActivityPage({
                     ? 'Real-time application changes and updates will be logged here automatically.'
                     : 'No activities match the current search filter.')}
             </p>
+            {filter === 'unread' && activities.length > 0 && (
+              <div style={{ marginTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => setFilter('all')}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '7px 16px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: '#002c5f',
+                    background: '#ffffff',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                  }}
+                >
+                  View All Activity History ({activities.length})
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
