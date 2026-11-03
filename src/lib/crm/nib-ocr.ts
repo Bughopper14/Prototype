@@ -1,4 +1,3 @@
-import Tesseract from 'tesseract.js';
 import {defaultMasterCatalog, type MasterCatalog, type MasterItem} from '@/lib/shared/master-catalog';
 
 export interface ParsedNibData {
@@ -462,6 +461,8 @@ export async function extractNibTextFromDocument(dataUrl: string, fileName?: str
                    dataUrl.includes('1209260000012');
 
   try {
+    // tesseract.js is large: load it only when an OCR scan actually runs.
+    const {default: Tesseract} = await import('tesseract.js');
     const ocrPromise = Tesseract.recognize(dataUrl, 'eng');
     const timeoutPromise = new Promise<{ data: { text: string } }>((_, reject) =>
       setTimeout(() => reject(new Error('OCR Timeout')), 6000)

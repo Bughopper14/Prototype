@@ -11,8 +11,15 @@ import {saveDocumentMasters} from '@/lib/server/db/repositories/document-masters
 import {get, put} from '../router';
 import {invalidateMasterData, masterData, masterDataGzip} from '../context';
 
+/**
+ * The catalog is ~15 MB of JSON (every Indonesian village), so it is sent gzip-compressed and validated with an ETag
+ * tied to the catalog revision: unchanged data costs a 304 instead of a 3 MB download.
+ */
 get('/master-data', async (req, res) => {
   const data = await masterData();
+  const etag = `W/"master-${data.revision}-${masterDataGzip(data).length}"`;
+  res.setHeader('ETag', etag).setHeader('Cache-Control', 'private, no-cache');
+  if (req.headers.get('if-none-match') === etag) return res.status(304).end();
   if (String(req.headers.get('accept-encoding') || '').includes('gzip')) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8').setHeader('Content-Encoding', 'gzip');
     return res.send(masterDataGzip(data));

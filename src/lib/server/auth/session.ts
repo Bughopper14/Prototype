@@ -109,6 +109,7 @@ export async function createSessionRecord(userId: number, admin: boolean, ip: st
 }
 
 export async function endSession(sid: string) {
+  for (const [token, entry] of sessionCache) if (entry.actor.sessionId === sid) sessionCache.delete(token);
   await pool.query('UPDATE session_logs SET logout_time = NOW() WHERE session_id = ? AND logout_time IS NULL', [sid]);
 }
 
@@ -133,12 +134,30 @@ async function syncCrmUser(u: {id: number; username: string; email: string; name
 
 export type SessionCheck = {ok: true; actor: Actor} | {ok: false; reason: string};
 
+/**
+ * Validating a session costs several queries (user, role, timeout, session log, authorities). A request burst from
+ * one page would repeat them dozens of times, so a successful check is reused for a few seconds. Force-logout and
+ * role changes therefore take effect within CACHE_MS.
+ */
+const CACHE_MS = 15_000;
+const g = globalThis as unknown as {__sessionCache?: Map<string, {actor: Actor; until: number}>};
+const sessionCache = (g.__sessionCache ??= new Map());
 
 /** Validates the JWT, the DB session (force logout, lifetime, inactivity) and builds the CRM actor. */
 export async function authenticate(token: string | null): Promise<SessionCheck> {
   if (!token) return {ok: false, reason: 'Please sign in'};
-  return verifySession(token);
+  const hit = sessionCache.get(token);
+  if (hit && hit.until > Date.now()) return {ok: true, actor: hit.actor};
+  const result = await verifySession(token);
+  if (result.ok) {
+    if (sessionCache.size > 500) for (const [key, value] of sessionCache) if (value.until < Date.now()) sessionCache.delete(key);
+    sessionCache.set(token, {actor: result.actor, until: Date.now() + CACHE_MS});
+  } else sessionCache.delete(token);
+  return result;
 }
+
+/** Drops cached checks, e.g. right after logout. */
+export const clearSessionCache = () => sessionCache.clear();
 
 async function verifySession(token: string): Promise<SessionCheck> {
   let payload: {uid: number; sid: string};

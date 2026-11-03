@@ -2,7 +2,7 @@ import {z} from 'zod';
 import {ensure, Problem} from '../../domain';
 import {many, one, exec, tx} from '../../db/query';
 import {hashPassword} from '../../auth/password';
-import {logAudit, type Actor} from '../../auth/session';
+import {clearSessionCache, logAudit, type Actor} from '../../auth/session';
 import {del, get, post, put} from '../router';
 
 const APP = 'User Management';
@@ -124,12 +124,14 @@ post('/um/users/:id/force-logout', guarded(async req => {
   ensure(user, 'User not found', 404);
   await exec('UPDATE users SET force_logout_at = NOW() WHERE id = ?', [id]);
   await exec('UPDATE session_logs SET is_invalidated = 1, logout_time = NOW() WHERE user_id = ? AND (logout_time IS NULL OR is_invalidated = 0)', [id]);
+  clearSessionCache();
   await audit(req.actor, `Force Logged Out User: ${user.username} (ID: ${id})`);
   return {success: true, message: `Berhasil mengeluarkan paksa user ${user.username}.`};
 }));
 
 post('/um/sessions/:sessionId/terminate', guarded(async req => {
   await exec('UPDATE session_logs SET is_invalidated = 1, logout_time = NOW() WHERE session_id = ?', [req.params.sessionId]);
+  clearSessionCache();
   await audit(req.actor, `Terminated Active Session: ${req.params.sessionId}`);
   return {success: true, message: 'Sesi berhasil dihentikan.'};
 }));
