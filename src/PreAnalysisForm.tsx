@@ -290,7 +290,8 @@ export function PreAnalysisRichEditor({
   return (
     <div
       data-field={dataField}
-      onClick={onFocus}
+      onClick={() => { if (onFocus) onFocus(); }}
+      onFocus={() => { if (onFocus) onFocus(); }}
       style={{
         borderRadius: '6px',
         overflow: 'hidden',
@@ -321,12 +322,15 @@ export function PreAnalysisRichEditor({
           setup: (editor: any) => {
             let userReady = false;
             editor.on('init', () => {
-              setTimeout(() => { userReady = true; }, 1000);
+              setTimeout(() => { userReady = true; }, 400);
             });
             editor.on('focus', () => {
               if (userReady && onFocus) onFocus();
             });
             editor.on('click', () => {
+              if (onFocus) onFocus();
+            });
+            editor.on('mousedown', () => {
               if (onFocus) onFocus();
             });
           },
@@ -838,10 +842,16 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       setTimeout(() => {
         const targetSelector = fieldKey.startsWith('slik-')
           ? `#preana-form-entity-${fieldKey.replace('slik-', '')}, [data-field="${fieldKey}"]`
-          : `[name="${fieldKey}"], [data-field="${fieldKey}"]`;
+          : `#preana-form-${fieldKey}, [name="${fieldKey}"], [data-field="${fieldKey}"]`;
         const targetEl = document.querySelector(targetSelector) as HTMLElement;
         if (targetEl) {
           targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetEl.classList.remove('fap-preview-sync-highlight');
+          void targetEl.offsetWidth;
+          targetEl.classList.add('fap-preview-sync-highlight');
+          setTimeout(() => {
+            targetEl.classList.remove('fap-preview-sync-highlight');
+          }, 2500);
           targetEl.focus();
         }
       }, 100);
@@ -1152,6 +1162,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         updates.applicantPefindoCheck = updated.noRecordRemarks;
       }
     }
+    autoSyncPreview(`slik-${idx}`);
     setData(prev => ({ ...prev, ...updates }));
   };
 
@@ -2422,7 +2433,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     </div>
                   </div>
                 </div>
-                <div>
+                <div id="preana-form-milestones" data-field="milestones" tabIndex={-1}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Milestones</label>
                     <button
@@ -2457,6 +2468,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   copy[idx] = { ...copy[idx], year: e.target.value };
                                   updateField('milestones', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-milestones')}
+                                placeholder="Year"
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
@@ -2469,6 +2482,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   copy[idx] = { ...copy[idx], milestone: e.target.value };
                                   updateField('milestones', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-milestones')}
+                                placeholder="Milestone description"
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
@@ -2563,7 +2578,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
 
                 {/* Current Unit Composition Table */}
-                <div>
+                <div id="preana-form-unitComposition" data-field="unitComposition" tabIndex={-1}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Current Unit Composition (Total: {totalUnits} units)</label>
                     <button
@@ -2599,6 +2614,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   copy[idx] = { ...copy[idx], kategoriAset: e.target.value };
                                   updateField('unitComposition', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-unitComposition')}
+                                placeholder="Asset Category"
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
@@ -2611,6 +2628,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   copy[idx] = { ...copy[idx], brand: e.target.value };
                                   updateField('unitComposition', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-unitComposition')}
+                                placeholder="Brand"
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
@@ -2623,6 +2642,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   copy[idx] = { ...copy[idx], qty: Number(e.target.value) || 0 };
                                   updateField('unitComposition', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-unitComposition')}
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
@@ -2864,6 +2884,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         key={idx}
                         id={`preana-form-entity-${idx}`}
                         data-field={`slik-${idx}`}
+                        tabIndex={-1}
                         style={{
                           marginTop: idx > 0 ? '14px' : '6px',
                           border: '1px solid #cbd5e1',
@@ -3085,6 +3106,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             <PreAnalysisRichEditor
                               value={review.noRecordRemarks || ''}
                               onChange={val => updateEntityReview(idx, { noRecordRemarks: val })}
+                              onFocus={() => scrollToPreviewElement(`preana-preview-cell-slik-${idx}`)}
+                              dataField={`slik-${idx}-noRecordRemarks`}
                               height={140}
                               placeholder="Enter notes / reason for no existing credit records (e.g. newly established entity / no bank or finco facilities yet)..."
                             />
@@ -4188,9 +4211,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       </div>
                     </td>
                   </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <tr
+                    id="preana-preview-cell-milestones"
+                    onClick={() => handlePreviewCellClick('milestones', 'sec3')}
+                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer' }}
+                  >
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Milestones</td>
-                    <td id="preana-preview-cell-unitComposition" onClick={() => handlePreviewCellClick('unitComposition', 'sec4')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
+                    <td style={{ padding: '4px 6px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9' }}>
@@ -4243,7 +4270,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Utilization vs Project Duration</td>
                     <td id="preana-preview-cell-utilizationDuration" onClick={() => handlePreviewCellClick('utilizationDuration', 'sec4')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.utilizationDuration}</td>
                   </tr>
-                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                  <tr
+                    id="preana-preview-cell-unitComposition"
+                    onClick={() => handlePreviewCellClick('unitComposition', 'sec4')}
+                    style={{ borderBottom: '1px solid #e2e8f0', cursor: 'pointer' }}
+                  >
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Current Unit Composition</td>
                     <td style={{ padding: '4px 6px' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
