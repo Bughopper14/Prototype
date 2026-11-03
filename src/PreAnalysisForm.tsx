@@ -366,6 +366,14 @@ export function PreAnalysisRichEditor({
   );
 }
 
+export const getTodaySignatureDate = (): string => {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  return `${dd} / ${mm} / ${yyyy}`;
+};
+
 export interface PreAnalysisData {
   entitySlikReviews?: Record<string, EntitySlikReview>;
   preAnalysisNo: string;
@@ -447,6 +455,7 @@ export interface PreAnalysisData {
   proposedBy: string;
   reviewedBy: string;
   approvedBy: string;
+  signatureDate?: string;
 }
 
 export const DEFAULT_COMPETITION_TABLE: CompetitionItem[] = [
@@ -762,9 +771,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
   const initialDataRef = useRef<any>(null);
   const isInitialMountRef = useRef(true);
+  const todayDateStr = getTodaySignatureDate();
   const [data, setData] = useState<PreAnalysisData>(() => {
-    return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
+    const initial = syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
+    initial.signatureDate = todayDateStr;
+    return initial;
   });
+  const signatureDateToDisplay = data.signatureDate || todayDateStr;
 
   const isRecommended = data.recommendation ? (!data.recommendation.toUpperCase().includes("NOT") && data.recommendation.toUpperCase().includes("RECOMMEND")) : false;
 
@@ -895,6 +908,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       .then(res => {
         if (isMounted && res && res.success && res.data) {
           const raw = res.data;
+          const today = getTodaySignatureDate();
+          // Always ensure signature date reflects today's current date when opening document
+          raw.signatureDate = today;
           setData(prev => ({ ...prev, ...raw }));
           initialDataRef.current = structuredClone(raw);
         }
@@ -3434,6 +3450,71 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     </span>
                   </div>
 
+                  {/* Signature Date Controls (Auto-updates to current date on open) */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: '10px',
+                      marginBottom: '14px',
+                      background: '#f8fafc',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1.5px solid #cbd5e1'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#1e3a8a' }}>
+                        Signature Date:
+                      </label>
+                      <input
+                        type="text"
+                        name="signatureDate"
+                        data-field="signatureDate"
+                        value={signatureDateToDisplay}
+                        onChange={e => updateField('signatureDate', e.target.value)}
+                        onFocus={() => scrollToPreviewElement('preana-preview-cell-proposedBy')}
+                        placeholder="DD / MM / YYYY"
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.8rem',
+                          borderRadius: '4px',
+                          border: '1px solid #cbd5e1',
+                          width: '140px',
+                          fontWeight: 700,
+                          color: '#0f172a'
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#16a34a', background: '#f0fdf4', border: '1px solid #bbf7d0', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
+                        ✓ Auto-updates to today's date on open
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const today = getTodaySignatureDate();
+                          updateField('signatureDate', today);
+                          scrollToPreviewElement('preana-preview-cell-proposedBy');
+                        }}
+                        style={{
+                          fontSize: '0.72rem',
+                          padding: '3px 10px',
+                          borderRadius: '4px',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          cursor: 'pointer',
+                          fontWeight: 600
+                        }}
+                      >
+                        Reset to Today ({todayDateStr})
+                      </button>
+                    </div>
+                  </div>
+
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     {/* Propose by Card */}
                     <div style={{
@@ -4640,7 +4721,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
                           {(data.proposedBy || '').split('\n').slice(1).join('\n')}
                         </div>
-                        <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
+                        <div style={{ fontSize: '7.5pt', color: '#0f172a', marginTop: '6px', fontWeight: 600 }}>Date: {signatureDateToDisplay}</div>
                       </td>
                       <td
                         id="preana-preview-cell-reviewedBy"
@@ -4653,7 +4734,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
                           {(data.reviewedBy || '').split('\n').slice(1).join('\n')}
                         </div>
-                        <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
+                        <div style={{ fontSize: '7.5pt', color: '#0f172a', marginTop: '6px', fontWeight: 600 }}>Date: {signatureDateToDisplay}</div>
                       </td>
                       <td
                         id="preana-preview-cell-approvedBy"
@@ -4666,7 +4747,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <div style={{ fontSize: '8pt', color: '#1e293b', marginTop: '2px', whiteSpace: 'pre-line' }}>
                           {(data.approvedBy || '').split('\n').slice(1).join('\n')}
                         </div>
-                        <div style={{ fontSize: '7pt', color: '#64748b', marginTop: '6px' }}>Date: ____ / ____ / 2026</div>
+                        <div style={{ fontSize: '7.5pt', color: '#0f172a', marginTop: '6px', fontWeight: 600 }}>Date: {signatureDateToDisplay}</div>
                       </td>
                     </tr>
                   </tbody>
