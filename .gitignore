@@ -23,3 +23,5 @@ update-mandatory-fields.cjs
 server/create-fap-form.cjs
 .pglite/
 TestCase/
+
+scratch/

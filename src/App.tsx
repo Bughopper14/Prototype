@@ -58,6 +58,20 @@ export function getGalleryUrl(): string {
   }
   return '/gallery';
 }
+export function getLoginUrl(reason?: string): string {
+  if (typeof window === 'undefined') return '/login';
+  const reasonParam = reason ? `?timeout=1&reason=${encodeURIComponent(reason)}` : '';
+  if (window.location.port === '5173') {
+    return `http://${window.location.hostname}:8086/login${reasonParam}`;
+  }
+  return `/login${reasonParam}`;
+}
+
+export function redirectToGlobalLogin(reason?: string): void {
+  if (typeof window === 'undefined') return;
+  window.location.replace(getLoginUrl(reason));
+}
+
 const statusLabel:Record<string,string>={DRAFT:'Draft',SUBMITTED_TO_BS:'BS verification',BS_VERIFIED:'BS verified',IN_CA_LEGAL_REVIEW:'CA & Legal review',CREDIT_COMMITTEE_REVIEW:'Committee review',APPROVED:'Approved',REJECTED:'Rejected',RETURNED:'Returned'};
 const money=(n:any,compact=false)=>new Intl.NumberFormat('en-US',{style:'currency',currency:'IDR',maximumFractionDigits:0,...(compact?{notation:'compact' as const}:{})}).format(Number(n)||0).replace('IDR','Rp');
 const date=(d:any)=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
@@ -237,7 +251,6 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
 }
 function Repeater({title,fields,rows,onChange,disabled=false,description,carousel=false,section,onFieldFocus,onFieldSync,activeFieldKey}:{title:string,fields:Field[],rows:any[],onChange:(v:any[])=>void,disabled?:boolean,description?:string,carousel?:boolean,section?:string,onFieldFocus?:(k:string,section?:string)=>void,onFieldSync?:(k:string,section?:string)=>void,activeFieldKey?:string|null}){const [activeIndex,setActiveIndex]=useState(0);const currentIndex=Math.min(activeIndex,Math.max(rows.length-1,0));const addRow=()=>{onChange([...rows,blank(fields)]);setActiveIndex(rows.length);};const removeRow=(index:number)=>{onChange(rows.filter((_,j)=>j!==index));setActiveIndex(Math.min(currentIndex,Math.max(rows.length-2,0)));};return <><div className="section-title"><div><h3>{toTitleCase(title)}</h3>{description&&<p className="muted repeater-description">{description}</p>}</div>{!disabled&&<button className="button small" onClick={addRow}><Plus size={15}/>Add {title.toLowerCase()==='equipment units'?'unit':'row'}</button>}</div>{carousel&&rows.length>0&&<div className="repeater-carousel-controls"><button className="button small" disabled={currentIndex===0} onClick={()=>setActiveIndex(i=>Math.max(i-1,0))}><ChevronLeft size={15}/>Previous</button><span>{currentIndex+1} of {rows.length}</span><button className="button small" disabled={currentIndex>=rows.length-1} onClick={()=>setActiveIndex(i=>Math.min(i+1,rows.length-1))}>Next<ChevronRight size={15}/></button></div>}{rows.length===0&&<div className="empty-small">No entries yet.</div>}{(carousel?rows.slice(currentIndex,currentIndex+1):rows).map((r,i)=>{const rowIndex=carousel?currentIndex:i;return <div className="repeat" key={rowIndex}><div className="repeat-top"><span>{toTitleCase(title)} / {String(rowIndex+1).padStart(2,'0')}</span>{!disabled&&<button className="icon-button danger" aria-label="Remove row" onClick={()=>removeRow(rowIndex)}><Trash2 size={15}/></button>}</div><Fields fields={fields} value={r} disabled={disabled} section={section||title.toLowerCase()} onFieldFocus={onFieldFocus} onFieldSync={onFieldSync} activeFieldKey={activeFieldKey} onChange={v=>onChange(rows.map((x,j)=>rowIndex===j?v:x))}/></div>})}</>;}
 function Modal({title,children,onClose,className=""}:{title:string,children:ReactNode,onClose:()=>void,className?:string}){return <div className="modal-scrim" onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}><section className={`modal ${className}`} role="dialog" aria-modal="true" aria-label={title}><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose} aria-label="Close"><X size={20}/></button></div>{children}</section></div>;}
-function Login({onLogin}:{onLogin:(u:any)=>void}){const [email,setEmail]=useState('mkt@liugong.local'),[password,setPassword]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);return <div className="login"><div className="login-story"><Brand/><div><span className="eyebrow">LIUGONG FINANCE INDONESIA</span><h1>Moving business.<br/>Building possibilities.</h1><p>A single workspace for equipment financing,<br/>from the first application to the final decision.</p><div className="login-lines"><span/><span/><span/></div></div><small>Loan origination & document management</small></div><div className="login-form"><span className="eyebrow">YOUR ORIGINATION WORKSPACE</span><h2>Welcome back</h2><p>Sign in to keep business moving.</p><form onSubmit={async e=>{e.preventDefault();setBusy(true);setError('');try{onLogin(await api('/auth/login','POST',{email,password}));}catch(e:any){setError(e.message);}finally{setBusy(false);}}}><label>Email address<input type="email" autoComplete="username" required value={email} onChange={e=>setEmail(e.target.value)}/></label><label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>{error&&<div className="error">{error}</div>}<button className="button primary" disabled={busy}>{busy?<Loader2 className="spin" size={16}/>:null}Sign in <ArrowRight size={17}/></button></form><div className="demo-note"><strong>Public interactive demo · synthetic data</strong><p>Choose a department. Changes are saved only in this browser.</p><div className="role-pills">{['MKT','BS','HEAD_BS','CA','LEGAL','COMMITTEE'].map(r=><button key={r} onClick={()=>{setEmail(r==='BS'?'arianti@liugong.local':r==='HEAD_BS'?'dellatra@liugong.local':r.toLowerCase()+'@liugong.local');setPassword('LiuGong2026!');}}>{r==='BS'?'Arianti / BS':r==='HEAD_BS'?'Dellatra / Head BS':r}</button>)}</div><small>Demo password: LiuGong2026! · Use synthetic information only.</small></div></div></div>;}
 function Brand(){return <div className="brand"><div className="brand-mark">L<span>G</span></div><div><strong>LIUGONG</strong><small>FINANCE INDONESIA</small></div></div>;}
 export function checkIsAdmin(u: any): boolean {
   if (!u) return false;
@@ -521,17 +534,13 @@ export default function App(){
     api('/auth/me')
       .then(u=>{
         if(!u || (!u.username && !u.name && !u.id && !u.email)){
-          if(window.location.pathname.startsWith('/crm-dashboard')){
-            window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
-          }
+          redirectToGlobalLogin('Your session has expired. Please log in again.');
         } else {
           setUser(u);
         }
       })
       .catch(()=>{
-        if(window.location.pathname.startsWith('/crm-dashboard')){
-          window.location.replace('/login?timeout=1&reason=' + encodeURIComponent('Your session has expired. Please log in again.'));
-        }
+        redirectToGlobalLogin('Your session has expired. Please log in again.');
       })
       .finally(()=>setReady(true));
   },[]);
@@ -579,24 +588,28 @@ export default function App(){
   }, [user, page]);
 
   if(!ready)return <div className="loading-screen"><Loader2 className="spin"/>Opening your workspace…</div>;
-  if(!user)return <Login onLogin={setUser}/>;
+  if(!user) {
+    redirectToGlobalLogin();
+    return (
+      <div className="loading-screen">
+        <Loader2 className="spin" size={24} />
+        Redirecting to Portal Login...
+      </div>
+    );
+  }
   const navigate=(p:string)=>{setPage(p);setSelected(null);setSidebarOpen(false);};
 
   const handleLogout = async (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    if (window.location.pathname.startsWith('/crm-dashboard')) {
-      window.location.href = '/logout';
-      return;
-    }
     try {
       await api('/auth/logout', 'POST');
     } catch {}
-    setUser(null);
-    setSelected(null);
-    setPage('Overview');
-    setRows([]);
-    setCustomers([]);
-    setNotifications([]);
+    const port = window.location.port;
+    if (port === '5173') {
+      window.location.href = `http://${window.location.hostname}:8086/logout`;
+    } else {
+      window.location.href = '/logout';
+    }
   };
 
   const roleDisplay = user?.displayRole || (checkIsAdmin(user) ? 'Administrator' : user?.role === 'MKT' ? 'Marketing' : label(user?.role || ''));
