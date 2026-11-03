@@ -25,6 +25,9 @@ interface ActivityPageProps {
   onOpen: (applicationId: string, tabIndex?: number) => void;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
+  title?: string;
+  subtitle?: string;
+  emptyMessage?: string;
 }
 
 export function ActivityPage({
@@ -32,7 +35,10 @@ export function ActivityPage({
   readActivityIds,
   onOpen,
   onMarkRead,
-  onMarkAllRead
+  onMarkAllRead,
+  title = 'Recent System Activity',
+  subtitle = 'Live record of application changes, form submissions, and section updates.',
+  emptyMessage
 }: ActivityPageProps) {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [search, setSearch] = useState('');
@@ -114,10 +120,10 @@ export function ActivityPage({
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: '#0f172a' }}>
-                Recent System Activity
+                {title}
               </h2>
               <p style={{ margin: '2px 0 0', fontSize: 13, color: '#64748b' }}>
-                Live record of application changes, form submissions, and section updates.
+                {subtitle}
               </p>
             </div>
           </div>
@@ -439,12 +445,12 @@ export function ActivityPage({
                   alignItems: 'flex-end'
                 }}
               >
-                {item.applicationId && (
+                {(item.applicationId || item.tabIndex !== undefined) && (
                   <button
                     type="button"
                     onClick={() => {
                       onMarkRead(item.id);
-                      onOpen(item.applicationId!, item.tabIndex !== undefined ? item.tabIndex : 0);
+                      onOpen(item.applicationId || '', item.tabIndex !== undefined ? item.tabIndex : 0);
                     }}
                     style={{
                       display: 'inline-flex',
@@ -540,7 +546,7 @@ export function ActivityPage({
             <h3 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 700, color: '#1e293b' }}>
               {filter === 'unread'
                 ? 'All caught up!'
-                : (activities.length === 0 ? 'No activity history yet' : 'No activities found')}
+                : (activities.length === 0 ? (emptyMessage || 'No activity history yet') : 'No activities found')}
             </h3>
             <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
               {filter === 'unread'

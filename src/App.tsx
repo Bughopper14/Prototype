@@ -130,7 +130,6 @@ function Fields({fields,value,onChange,disabled=false,className,section,onSelect
       'projectLocation',
       'projectRole',
       'position',
-      'companyName',
       'repaymentSource',
       'name',
       'firstName',
@@ -1851,6 +1850,100 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>((
    }
  }
  
+  const [localActivities, setLocalActivities] = useState<SystemActivity[]>(() => getStoredActivities());
+  const [localReadIds, setLocalReadIds] = useState<Set<string>>(() => getReadActivityIds());
+
+  useEffect(() => {
+    const handleActivitySync = () => {
+      setLocalActivities(getStoredActivities());
+      setLocalReadIds(getReadActivityIds());
+    };
+    window.addEventListener('crm-activity-state-change', handleActivitySync);
+    return () => {
+      window.removeEventListener('crm-activity-state-change', handleActivitySync);
+    };
+  }, []);
+
+  const applicationActivities = useMemo(() => {
+    const currentAppId = String(a.id || '');
+    const currentFapNo = String(a.fapNumber || '').trim().toLowerCase();
+    const currentCompanyName = String(a.customer?.companyName || draft.customer?.companyName || liveCompanyName || '').trim().toLowerCase();
+
+    const matched = localActivities.filter(act => {
+      if (act.applicationId && String(act.applicationId) === currentAppId) return true;
+      if (act.fapNumber && currentFapNo && String(act.fapNumber).trim().toLowerCase() === currentFapNo) return true;
+      if (!act.applicationId && !act.fapNumber && act.companyName && currentCompanyName) {
+        if (String(act.companyName).trim().toLowerCase() === currentCompanyName) return true;
+      }
+      return false;
+    });
+
+    const existingTitles = new Set(matched.map(m => `${m.title}_${m.timestamp}`));
+    const workflowLogs: SystemActivity[] = (a.approvalLogs || []).map((l: any, idx: number) => {
+      const timestamp = l.actionTimestamp ? new Date(l.actionTimestamp).toISOString() : new Date().toISOString();
+      const actionLabel = statusLabel[l.newStatus] || l.newStatus || 'Updated';
+      const title = `Workflow: ${actionLabel} by ${l.actionBy || 'User'}`;
+      return {
+        id: `app-log-${l.id || idx}-${currentAppId}`,
+        applicationId: a.id,
+        fapNumber: a.fapNumber,
+        companyName: a.customer?.companyName || draft.customer?.companyName || 'Application',
+        section: 'Documents',
+        tabIndex: 6,
+        actionType: (l.newStatus === 'APPROVED' ? 'APPROVE' : l.newStatus?.includes('SUBMIT') ? 'SUBMIT' : 'UPDATE') as any,
+        title,
+        details: l.comments
+          ? `Comments: "${l.comments}" (Transition: ${statusLabel[l.previousStatus] || l.previousStatus} ➔ ${statusLabel[l.newStatus] || l.newStatus})`
+          : `Application moved to ${statusLabel[l.newStatus] || l.newStatus}.`,
+        actionBy: l.actionBy || 'System',
+        userRole: l.userRole || 'Workflow',
+        timestamp,
+        read: true
+      };
+    }).filter((wl: any) => !existingTitles.has(`${wl.title}_${wl.timestamp}`));
+
+    return [...matched, ...workflowLogs].sort(
+      (x, y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime()
+    );
+  }, [localActivities, a.id, a.fapNumber, a.customer?.companyName, draft.customer?.companyName, liveCompanyName, a.approvalLogs]);
+
+  const handleMarkAppActivityRead = (id: string) => {
+    setLocalReadIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      saveReadActivityIds(next);
+      return next;
+    });
+  };
+
+  const handleMarkAllAppActivitiesRead = () => {
+    setLocalReadIds(prev => {
+      const next = new Set(prev);
+      for (const act of applicationActivities) {
+        next.add(act.id);
+      }
+      saveReadActivityIds(next);
+      return next;
+    });
+    notify('All activities for this application marked as seen');
+  };
+
+  const handleOpenSectionFromActivity = (_appId: string, targetTabIndex?: number) => {
+    if (targetTabIndex !== undefined) {
+      if (targetTabIndex === 8) {
+        setActiveStage('Pre-analysis');
+      } else if ([0, 5, 1].includes(targetTabIndex)) {
+        if (activeStage !== 'FAP Stage' && !isPreAnalysisReached) {
+          setActiveStage('FAP Stage');
+        }
+      } else if ([2, 4].includes(targetTabIndex)) {
+        setActiveStage('Pre-analysis');
+      }
+      setTab(targetTabIndex);
+      setError('');
+    }
+  };
+
  let actions:string[]=[];
  if(checkIsAdmin(user)) {
    if(['DRAFT','RETURNED'].includes(a.status)) actions=['SUBMIT_TO_BS'];
@@ -2343,7 +2436,7 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>((
     </div>
   );
 
-  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<>
+  return <><button className="text-link back-link" onClick={onBack}><ArrowLeft size={15}/>Back to workspace</button><div className="detail-heading"><IconBox><Building2 size={25}/></IconBox><div><div className="eyebrow">{draft.isNew ? <span>NEW APPLICATION · FAP INTAKE</span> : a.fapNumber ? <>{a.fapNumber}{a.branchCode && <span> / {a.branchCode}</span>}</> : a.branchCode || null}</div><div style={{display:'flex',alignItems:'center',gap:'10px',flexWrap:'wrap'}}><h1>{liveCompanyName || (draft.isNew ? "New Financing Application" : "Financing Application")}</h1><span className={`stage-pill-indicator ${currentAppStage==='FAP Stage'?'stage-fap':'stage-preanalysis'}`}>Active Stage: {currentAppStage}</span></div><p>{draft.isNew ? <>FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || "Draft"} <span>·</span> {new Date().toLocaleDateString("en-GB")}</> : <>{label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'} <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}</>}</p></div><Badge status={draft.isNew ? "DRAFT" : a.status}/></div><div className="chevron-stepper">{['FAP Stage','Pre-analysis','ICLF'].map((st,i)=><div key={st} className={`chevron-step ${i===0?'first':''} ${activeStage===st?'active':'inactive'}`} style={{cursor:draft.isNew&&st!=='FAP Stage'?'not-allowed':'pointer'}} title={draft.isNew&&st!=='FAP Stage'?'Please save the application first':`Switch to ${st} view tab`} onClick={()=>{if(draft.isNew&&st!=='FAP Stage'){notify('Please save the application (FAP Stage) first to unlock the next stage.');return;}setActiveStage(st);if(tab!==7){if(st==='FAP Stage')setTab(0);else if(st==='Pre-analysis')setTab(8);else if(st==='ICLF')setTab(6);}}}>{st}</div>)}</div><div className="detail-summary"><div><span>Proposed Financing</span><b>{money(draft.proposal?.financingValue||a.proposal?.financingValue)}</b></div><div><span>Financing Term</span><b>{(draft.proposal?.tenorMonths||a.proposal?.tenorMonths)||'—'} months</b></div><div><span>Customer Category</span><b>{customerCategory==='EXISTING'?'Existing Customer':customerCategory==='NEW'?'New Customer':label(a.customer?.companyType||'—')}</b></div><div><span>Documents Verified</span><b>{a.documentChecks?`${a.documentChecks.filter((d:any)=>d.status==='VERIFIED').length} / ${a.documentChecks.length}`:'0 / 0'}</b></div></div><div className="detail-tabs">{tabOrder.map(id=><button key={tabs[id]} className={tab===id?'active':''} onClick={()=>{if(draft.isNew&&id!==0){notify('Please save the application (FAP Stage) before opening other tabs.');return;}setTab(id);setError('');}} title={draft.isNew&&id!==0?'Save application first':undefined} style={draft.isNew&&id!==0?{opacity:0.6,cursor:'not-allowed'}:undefined}>{tabs[id]}</button>)}</div>{error&&<div className="error">{error}</div>}{tab<6&&<section className="panel form-panel"><div className="panel-head"><div><h2>{tabs[tab]}</h2><p>{['Company profile and primary point of contact','View ownership and stakeholder information. Edit these fields in Legal.','Business details, bank facilities, financing terms, and equipment units','Equipment, financing terms, and estimated monthly installment','Three years of financial performance. All figures in IDR.','Deeds, related parties, and ownership structure.'][tab]}</p></div>{!(tab===1?false:tab===5?canLegal:tab===2?canFinance:tab<3?canEdit:canFinance)&&<span className="subtle-chip"><ShieldCheck size={14}/>Read only</span>}</div><div className="form-body">{tab===0&&<>
   
   <div className="customer-reference" style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'10px'}}>
     <div style={{display:'flex',alignItems:'center',gap:'8px'}}>
@@ -2406,7 +2499,33 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>((
   } catch (actErr) {
     console.error('Activity record error:', actErr);
   }
-}} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&<section className="panel"><div className="panel-head"><h2>Application audit trail</h2><span className="subtle-chip"><ShieldCheck size={14}/>Append-only record</span></div><Audit logs={a.approvalLogs}/>{a.signoffs.length>0&&<div className="signoffs">{a.signoffs.map((s:any)=><div key={s.role}><CheckCheck size={16}/>{s.role} signed off by {s.actor} · {date(s.signed_at)}</div>)}</div>}</section>}{(tab>6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Please upload the signed FAP Stage document in the Documents tab first to proceed.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit FAP Stage data and proceed to <strong>Pre-analysis</strong>?</p><p className="muted">Once submitted, the Pre-analysis stage (Business & banks, Financial statements, Documents) will be unlocked for data entry.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span>Please upload the signed FAP form document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit to Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
+}} notify={notify} registerSave={(fn)=>{preAnalysisSaveRef.current=fn;}} onSavingChange={setPreAnalysisSaving}/>}{tab===6&&<Documents a={a} user={user} onChange={onChange} notify={notify} filterStage={activeStage} onApproveDocument={handleApproveDocument} isFapLocked={isFapLocked}/>}{tab===7&&(
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <ActivityPage
+      activities={applicationActivities}
+      readActivityIds={localReadIds}
+      onOpen={handleOpenSectionFromActivity}
+      onMarkRead={handleMarkAppActivityRead}
+      onMarkAllRead={handleMarkAllAppActivitiesRead}
+      title="Recent System Activity"
+      subtitle={`Live record of application changes, form submissions, and section updates for ${a.fapNumber || liveCompanyName || 'this application'}.`}
+      emptyMessage="No activity history for this application yet"
+    />
+    {a.signoffs && a.signoffs.length > 0 && (
+      <section className="panel" style={{ padding: '16px 20px', borderRadius: 10 }}>
+        <h4 style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#0f172a' }}>Signoff Records</h4>
+        <div className="signoffs">
+          {a.signoffs.map((s: any) => (
+            <div key={s.role}>
+              <CheckCheck size={16} />
+              {s.role} signed off by {s.actor} · {date(s.signed_at)}
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+  </div>
+)}{(tab>6&&tab!==8&&actions.length>0)&&<div className="form-bottom-actions"><div className="form-bottom-left"></div><div className="form-bottom-right">{actions.length>0&&<div className="workflow-buttons">{actions.map(action=>{const isSubmitFap=isFapStage&&action==='SUBMIT_TO_BS';const isActionLocked=(isSubmitFap||action==='SUBMIT_TO_BS')&&isSubmitLocked;return <button key={action} className={'button '+(action==='RETURN'||action==='REJECT_COMMITTEE'?'':'primary')} disabled={isActionLocked} title={isActionLocked?"Please upload the signed FAP Stage document in the Documents tab first to proceed.":undefined} onClick={()=>{if(isSubmitFap){setSubmitFapConfirm(true);}else{setComments('');setTransition(action);setError('');}}}>{isActionLocked&&<Lock size={13} style={{marginRight:4}}/>}{({SUBMIT_TO_BS:'Submit',VERIFY_BS:'Complete BS verification',START_REVIEW:'Start CA & Legal review',RECOMMEND_CA:'Sign off · CA',RECOMMEND_LEGAL:'Sign off · Legal',APPROVE_COMMITTEE:'Approve',REJECT_COMMITTEE:'Reject',RETURN:'Return'} as any)[action]}{!['RETURN','REJECT_COMMITTEE'].includes(action)&&<ArrowRight size={14}/>}</button>;})}</div>}</div></div>}{reviewDeedId&&<DeedReviewDialog application={a} user={user} deedId={reviewDeedId} onClose={()=>setReviewDeedId(null)} onUpdated={onChange}/ >}{saveConfirm&&<Modal title="Save Legal changes" onClose={()=>setSaveConfirm(false)}><div className="modal-body"><p>Save deed changes and Stakeholders on this application?</p></div><div className="modal-actions"><button className="button" onClick={()=>setSaveConfirm(false)}>Cancel</button><button className="button primary" onClick={()=>{setSaveConfirm(false);save();}}><Save size={15}/>Save changes</button></div></Modal>}{submitFapConfirm&&<Modal title="Submit FAP Stage" onClose={()=>setSubmitFapConfirm(false)}><div className="modal-body"><p className="muted">{a.customer?.companyName||draft.customer?.companyName} · {a.fapNumber}</p><p>Submit FAP Stage data and proceed to <strong>Pre-analysis</strong>?</p><p className="muted">Once submitted, the Pre-analysis stage (Business & banks, Financial statements, Documents) will be unlocked for data entry.</p>{isSubmitLocked&&<div className="error" style={{display:'flex',alignItems:'center',gap:6,marginBottom:12}}><Lock size={15}/> <span>Please upload the signed FAP form document on the Documents tab first to unlock the submit button.</span></div>}{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setSubmitFapConfirm(false)}>Cancel</button><button className="button primary" disabled={busy||isSubmitLocked} onClick={submitFapStage}>{busy?<Loader2 size={15} className="spin"/>:<ArrowRight size={15}/>}Submit to Pre-analysis</button></div></Modal>}{transition&&<Modal title={label(transition)} onClose={()=>setTransition('')}><div className="modal-body"><p className="muted">{a.customer.companyName} · {a.fapNumber}</p><p>Required information and documents will be checked before this action is recorded.</p><label>Decision notes<textarea rows={4} value={comments} onChange={e=>setComments(e.target.value)} placeholder="Add context for the next reviewer…"/></label>{error&&<div className="error">{error}</div>}</div><div className="modal-actions"><button className="button" onClick={()=>setTransition('')}>Cancel</button><button className="button primary" disabled={busy} onClick={async()=>{setBusy(true);setError('');try{onChange(await api(`/applications/${a.id}/transition`,'POST',{action:transition,comments}));setTransition('');notify('Workflow action recorded');}catch(e:any){setError(e.message);}finally{setBusy(false);}}}>Confirm {label(transition).toLowerCase()}</button></div></Modal>}<NibOcrModal open={nibOcrOpen} onClose={()=>setNibOcrOpen(false)} onApply={handleApplyNibOcr} notify={notify}/>
     {fapComparisonModal && (
       <FapComparisonModal
         comparison={fapComparisonModal}

@@ -1,8 +1,11 @@
 export type Field={key:string,label:string,type?:string,options?:string[],optionLabels?:Record<string,string>,wide?:boolean,required?:boolean,unit?:string};
 const f=(key:string,label:string,type='text',options?:string[]):Field=>({key,label,type,options});
 
-const LOWERCASE_WORDS = new Set(['at', 'in', 'or', 'of']);
-const UPPERCASE_WORDS = new Set(['rt', 'rw', 'ktp', 'npwp', 'nib', 'pic', 'fap', 'cfo', 'ceo', 'coo', 'los', 'crm', 'id', 'zip']);
+const LOWERCASE_WORDS = new Set(['at', 'in', 'or', 'of', 'dan', 'yang', 'di', 'ke', 'dari']);
+const UPPERCASE_WORDS = new Set([
+  'rt', 'rw', 'ktp', 'npwp', 'nib', 'pic', 'fap', 'cfo', 'ceo', 'coo', 'los', 'crm', 'id', 'zip',
+  'pt', 'cv', 'ud', 'tbk', 'llc', 'ltd', 'inc', 'corp', 'bumn', 'bumd', 'pma', 'pmdn', 'blu', 'perum', 'koperasi'
+]);
 
 export function toTitleCase(str: string): string {
   if (!str) return '';

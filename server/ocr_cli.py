@@ -97,6 +97,13 @@ def main():
                             b["page_width"] = pix.w
                             b["page_height"] = pix.h
                             boxes.append(b)
+
+                        # Fast-path for NIB: Page 1 always contains NIB number and core company identity
+                        if is_nib_doc and p_boxes:
+                            import re
+                            p_text = " ".join((b.get("text") or "") for b in p_boxes)
+                            if re.search(r"\b\d{13}\b", p_text):
+                                break
                 doc.close()
             except Exception as pdf_err:
                 sys.stderr.write(f"[OCR_CLI] Multi-page PDF extraction note: {pdf_err}\n")
@@ -105,25 +112,31 @@ def main():
         if not boxes:
             if img_to_process is None:
                 raw_img, page_count = DocumentPreprocessor.load_document(p)
-                oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(raw_img)
-                deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-                img_to_process = deskewed_img
-            else:
-                oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(img_to_process)
-                deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
-                img_to_process = deskewed_img
+                img_to_process = raw_img
 
-            # Prioritize RapidOCR (OCREngine)
-            boxes = OCREngine.process_image(img_to_process)
+            # Optimize resolution for image OCR: max dimension 1800px ensures crisp text with optimal speed
+            h, w = img_to_process.shape[:2]
+            max_dim = max(h, w)
+            if max_dim > 1800:
+                scale = 1800.0 / max_dim
+                proc_img = cv2.resize(img_to_process, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+            else:
+                proc_img = img_to_process
+
+            # Fast-path RapidOCR directly
+            boxes = OCREngine.process_image(proc_img)
+            if not boxes:
+                oriented_img, rot_angle = DocumentPreprocessor.auto_orient_image(proc_img)
+                deskewed_img, skew_angle = DocumentPreprocessor.deskew_image(oriented_img)
+                boxes = OCREngine.process_image(deskewed_img)
             if not boxes:
                 from ocr_handler import TesseractEngine
-                boxes = TesseractEngine.process_image(img_to_process)
-            h, w = img_to_process.shape[:2]
+                boxes = TesseractEngine.process_image(proc_img)
+            h, w = proc_img.shape[:2]
             for b in boxes:
                 b["page"] = 1
                 b["page_width"] = w
                 b["page_height"] = h
-
         dtype_clean = (doc_type or "auto").strip().lower()
         if dtype_clean in ["auto", "none", ""]:
             full_b_text = " ".join((b.get("text") or "") for b in boxes)
