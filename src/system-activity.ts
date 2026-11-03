@@ -238,7 +238,7 @@ export function computeApplicationDiff(params: {
   details: string;
   summaryTitle: string;
 } {
-  const { tab, beforeApp = {}, draft = {}, customerPayload = {}, resolvedName, customerCategory } = params;
+  const { tab, beforeApp = {}, draft = {}, customerPayload = {}, customerDraft = {}, resolvedName, customerCategory } = params;
   const changes: ActivityChangeItem[] = [];
   const tabNamesList: Record<number, string> = {
     0: 'Customer & PIC',
@@ -255,8 +255,8 @@ export function computeApplicationDiff(params: {
   if (tab === 0) {
     const oldCust = beforeApp.customer || {};
     const oldPic = beforeApp.pic || {};
-    const newCust = { ...(draft.customer || {}), ...(customerPayload || {}) };
-    const newPic = draft.pic || {};
+    const newCust = { ...(draft.customer || {}), ...(customerDraft || {}), ...(customerPayload || {}) };
+    const newPic = { ...(draft.pic || {}), ...(draft.contact || {}) };
 
     const checkField = (label: string, field: string, oldVal: any, newVal: any) => {
       const sOld = cleanVal(oldVal);
@@ -272,15 +272,19 @@ export function computeApplicationDiff(params: {
     };
 
     checkField('Company Name', 'companyName', oldCust.companyName || beforeApp.companyName, resolvedName || newCust.companyName);
-    checkField('Company Type', 'companyType', oldCust.companyType || beforeApp.companyType, newCust.companyType);
-    checkField('NIB', 'nib', oldCust.nib || beforeApp.nib, newCust.nib);
-    checkField('NPWP', 'npwp', oldCust.npwp || beforeApp.npwp, newCust.npwp);
-    checkField('NIB Date', 'nibDate', oldCust.nibDate, newCust.nibDate);
-    checkField('Deed No.', 'establishmentActNo', oldCust.establishmentActNo || beforeApp.establishmentActNo, newCust.establishmentActNo);
-    checkField('Deed Date', 'establishmentDate', oldCust.establishmentDate || beforeApp.establishmentDate, newCust.establishmentDate);
+    checkField('Company Type', 'companyType', oldCust.companyType || beforeApp.companyType, newCust.companyType || draft.companyType);
+    checkField('NIB', 'nib', oldCust.nib || beforeApp.nib, newCust.nib || draft.nib);
+    checkField('NPWP', 'npwp', oldCust.npwp || beforeApp.npwp, newCust.npwp || draft.npwp);
+    checkField('NIB Date', 'nibDate', oldCust.nibDate || beforeApp.nibDate, newCust.nibDate || draft.nibDate);
+    checkField('Deed No.', 'establishmentActNo', oldCust.establishmentActNo || beforeApp.establishmentActNo, newCust.establishmentActNo || draft.establishmentActNo);
+    checkField('Deed Date', 'establishmentDate', oldCust.establishmentDate || beforeApp.establishmentDate, newCust.establishmentDate || draft.establishmentDate);
     checkField('Company Address', 'companyAddress', oldCust.companyAddress || beforeApp.companyAddress, newCust.companyAddress || draft.companyAddress);
     checkField('City', 'city', oldCust.city || beforeApp.city, newCust.city || draft.city);
     checkField('Province', 'province', oldCust.province || beforeApp.province, newCust.province || draft.province);
+    checkField('District', 'district', oldCust.district || beforeApp.district, newCust.district || draft.district);
+    checkField('Village', 'village', oldCust.village || beforeApp.village, newCust.village || draft.village);
+    checkField('RT', 'rt', oldCust.rt || beforeApp.rt, newCust.rt || draft.rt);
+    checkField('RW', 'rw', oldCust.rw || beforeApp.rw, newCust.rw || draft.rw);
     checkField('Postal Code', 'postalCode', oldCust.postalCode || beforeApp.postalCode, newCust.postalCode || draft.postalCode);
     checkField('Phone / Fax', 'phoneFax', oldCust.phoneFax || beforeApp.phoneFax, newCust.phoneFax || draft.phoneFax);
     checkField('Email', 'email', oldCust.email || beforeApp.email, newCust.email || draft.email);
@@ -289,13 +293,16 @@ export function computeApplicationDiff(params: {
     }
     checkField('Industry Segment', 'industrySegment', beforeApp.industrySegment, draft.industrySegment);
     checkField('Business Role', 'businessRole', beforeApp.businessRole, draft.businessRole);
+    checkField('Premises Ownership', 'locationStatus', beforeApp.locationStatus, draft.locationStatus);
+    checkField('Repayment Source', 'repaymentSource', beforeApp.repaymentSource, draft.repaymentSource);
 
     // PIC checks
-    checkField('PIC Name', 'picName', oldPic.name || oldPic.picName, newPic.name || newPic.picName);
+    checkField('PIC Name', 'picName', oldPic.name || oldPic.picName || oldPic.contactName, newPic.name || newPic.picName || newPic.contactName);
     checkField('PIC Position', 'picPosition', oldPic.position || oldPic.picPosition, newPic.position || newPic.picPosition);
-    checkField('PIC Mobile', 'picMobile', oldPic.mobile || oldPic.picMobile, newPic.mobile || newPic.picMobile);
+    checkField('PIC Phone', 'picPhone', oldPic.phone || oldPic.mobilePhone || oldPic.mobile || oldPic.picMobile, newPic.phone || newPic.mobilePhone || newPic.mobile || newPic.picMobile);
     checkField('PIC Email', 'picEmail', oldPic.email || oldPic.picEmail, newPic.email || newPic.picEmail);
-    checkField('PIC ID Card', 'picIdCard', oldPic.idCard || oldPic.picIdCard, newPic.idCard || newPic.picIdCard);
+    checkField('PIC Address', 'picAddress', oldPic.currentAddress || oldPic.address, newPic.currentAddress || newPic.address);
+    checkField('PIC ID Card', 'picIdCard', oldPic.idCard || oldPic.picIdCard || oldPic.idNumber, newPic.idCard || newPic.picIdCard || newPic.idNumber);
   } else if (tab === 1) {
     const oldStakeholders = Array.isArray(beforeApp.stakeholders) ? beforeApp.stakeholders : [];
     const newStakeholders = Array.isArray(draft.stakeholders) ? draft.stakeholders : [];
