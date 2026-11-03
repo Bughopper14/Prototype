@@ -3650,8 +3650,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
-                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      {data.uboInfo || data.ubo}
+                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
+                      {renderRichHtml(data.uboInfo || data.ubo)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3683,8 +3683,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       UBO Information
                     </td>
                     <td id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
-                      <div style={{ fontSize: '8.5pt', color: '#1e293b', whiteSpace: 'pre-line', marginBottom: '8px', lineHeight: 1.4 }}>
-                        {data.uboInformation}
+                      <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: '8px', lineHeight: 1.4 }}>
+                        {renderRichHtml(data.uboInformation)}
                       </div>
                       {/* Dynamic Corporate Group Structure Diagram */}
                       <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: '6px' }}>
