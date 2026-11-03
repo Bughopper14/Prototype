@@ -73,16 +73,22 @@ export interface CompetitionItem {
 
 export interface GroupShareholder {
   name: string;
-  percentage: string;
+  percentage?: string;
   role?: string;
+  position?: string;
+  shareClass?: string;
+  numberOfShares?: string;
+  total?: string;
 }
 
 export interface GroupEntity {
   name: string;
+  subtitle?: string;
   authorizedCapital: string;
   paidUpCapital: string;
   shareholders: GroupShareholder[];
   management?: string;
+  borderColor?: string;
 }
 
 export interface GroupStructureData {
@@ -92,46 +98,57 @@ export interface GroupStructureData {
 
 export const DEFAULT_GROUP_STRUCTURE: GroupStructureData = {
   holding: {
-    name: 'PT STAR (PT Sentosa Abadi Raja)',
-    authorizedCapital: 'Rp 240 Miliar',
-    paidUpCapital: 'Rp 60 Miliar',
+    name: 'PT STAR',
+    subtitle: '(PT Santosa Abadi Raja)',
+    authorizedCapital: 'Rp. 240,000,000,000',
+    paidUpCapital: 'Rp. 60,000,000,000',
+    borderColor: '#1e3a8a',
     shareholders: [
-      { name: 'Hansen Santosa', percentage: '54%', role: 'Presiden Direktur' },
-      { name: 'Leonard Santosa', percentage: '34%', role: 'Direktur' },
-      { name: 'Oky Santosa', percentage: '12%', role: 'Komisaris' }
+      { name: 'HANSEN SANTOSA', position: 'President Director', role: 'President Director', shareClass: '-', numberOfShares: '324,000', total: 'Rp. 32,400,000,000', percentage: '54%' },
+      { name: 'LEONARD SANTOSA', position: 'Director', role: 'Director', shareClass: '-', numberOfShares: '204,000', total: 'Rp. 20,400,000,000', percentage: '34%' },
+      { name: 'OKY SANTOSA', position: 'Commissioner', role: 'Commissioner', shareClass: '-', numberOfShares: '72,000', total: 'Rp. 7,200,000,000', percentage: '12%' }
     ],
     management: 'Presdir: Hansen Santosa | Direktur: Leonard Santosa | Komisaris: Oky Santosa'
   },
   subsidiaries: [
     {
-      name: 'PT PASS (PT Pangan Sejahtera Sentosa)',
-      authorizedCapital: 'Rp 40 Miliar',
-      paidUpCapital: 'Rp 10 Miliar',
+      name: 'PT PASS',
+      subtitle: '(PT Pangan Sejahtera Santosa)',
+      authorizedCapital: 'Rp. 50,000,000,000',
+      paidUpCapital: 'Rp. 17,500,000,000',
+      borderColor: '#0284c7',
       shareholders: [
-        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
-        { name: 'Leonard Santosa', percentage: '1%', role: 'Direktur' }
+        { name: 'LEONARD SANTOSA', position: 'Director', role: 'Director', shareClass: '-', numberOfShares: '10', total: 'Rp. 1,000,000', percentage: '<1%' },
+        { name: 'HANSEN SANTOSA', position: 'Commissioner', role: 'Commissioner', shareClass: '-', numberOfShares: '-', total: 'Rp. 0', percentage: '0%' },
+        { name: 'PT SANTOSA ABADI RAJA', position: 'Legal Entity', role: 'Legal Entity', shareClass: '-', numberOfShares: '174,990', total: 'Rp. 17,499,000,000', percentage: '99.99%' }
       ],
-      management: 'Komisaris: Hansen Santosa'
+      management: 'Direktur: Leonard Santosa | Komisaris: Hansen Santosa'
     },
     {
-      name: 'PT HPS (PT Handalan Putra Sentosa)',
-      authorizedCapital: 'Rp 160 Miliar',
-      paidUpCapital: 'Rp 40 Miliar',
+      name: 'PT HPS',
+      subtitle: '(PT Handalan Putra Santosa)',
+      authorizedCapital: 'Rp. 130,000,000,000',
+      paidUpCapital: 'Rp. 32,500,000,000',
+      borderColor: '#dc2626',
       shareholders: [
-        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
-        { name: 'Hansen Santosa', percentage: '1%', role: 'Presdir' }
+        { name: 'LEONARD SANTOSA', position: 'Director', role: 'Director', shareClass: '-', numberOfShares: '10', total: 'Rp. 1,000,000', percentage: '<1%' },
+        { name: 'HANSEN SANTOSA', position: 'Commissioner', role: 'Commissioner', shareClass: '-', numberOfShares: '-', total: 'Rp. 0', percentage: '0%' },
+        { name: 'PT SANTOSA ABADI RAJA', position: 'Legal Entity', role: 'Legal Entity', shareClass: '-', numberOfShares: '324,990', total: 'Rp. 32,499,000,000', percentage: '99.99%' }
       ],
-      management: 'Direktur: Leonard Santosa'
+      management: 'Direktur: Leonard Santosa | Komisaris: Hansen Santosa'
     },
     {
-      name: 'PT HTPS (PT Harta Putramas Sentosa)',
-      authorizedCapital: 'Rp 80 Miliar',
-      paidUpCapital: 'Rp 20 Miliar',
+      name: 'PT HTPS',
+      subtitle: '(PT Harta Putramas Santosa)',
+      authorizedCapital: 'Rp. 500,000,000',
+      paidUpCapital: 'Rp. 500,000,000',
+      borderColor: '#16a34a',
       shareholders: [
-        { name: 'PT STAR', percentage: '99%', role: 'Holding' },
-        { name: 'Hansen Santosa', percentage: '1%', role: 'Presdir' }
+        { name: 'HANSEN SANTOSA', position: 'Commissioner', role: 'Commissioner', shareClass: '-', numberOfShares: '-', total: 'Rp. 0', percentage: '0%' },
+        { name: 'LEONARD SANTOSA', position: 'Director', role: 'Director', shareClass: '-', numberOfShares: '1', total: 'Rp. 100,000', percentage: '<1%' },
+        { name: 'PT SANTOSA ABADI RAJA', position: 'Legal Entity', role: 'Legal Entity', shareClass: '-', numberOfShares: '4,999', total: 'Rp. 499,900,000', percentage: '99.98%' }
       ],
-      management: 'Direktur: Leonard Santosa'
+      management: 'Komisaris: Hansen Santosa | Direktur: Leonard Santosa'
     }
   ]
 };
@@ -281,6 +298,10 @@ export function PreAnalysisRichEditor({
         background: '#ffffff'
       }}
     >
+      <style>{`
+        .tox .tox-statusbar__path { display: none !important; }
+        .tox-statusbar__path { display: none !important; }
+      `}</style>
       <Editor
         licenseKey="gpl"
         tinymceScriptSrc={tinymceSrc}
@@ -291,6 +312,8 @@ export function PreAnalysisRichEditor({
           height: height,
           menubar: false,
           placeholder: placeholder,
+          branding: false,
+          elementpath: false,
           plugins: [
             'advlist', 'autolink', 'lists', 'link', 'charmap',
             'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -869,7 +892,63 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const currentGroupStructure = useMemo<GroupStructureData>(() => {
-    return data.groupStructure || DEFAULT_GROUP_STRUCTURE;
+    const base = data.groupStructure || DEFAULT_GROUP_STRUCTURE;
+    const defHolding = DEFAULT_GROUP_STRUCTURE.holding;
+    
+    // Always map shareholders through default to ensure position, shareClass, numberOfShares, total exist
+    const holdingSh = defHolding.shareholders.map((defSh, idx) => {
+      const userSh = base.holding?.shareholders?.[idx];
+      return {
+        ...defSh,
+        ...(userSh || {}),
+        name: userSh?.name || defSh.name,
+        position: userSh?.position || userSh?.role || defSh.position,
+        shareClass: userSh?.shareClass || defSh.shareClass || '-',
+        numberOfShares: userSh?.numberOfShares || (userSh?.percentage ? defSh.numberOfShares : defSh.numberOfShares),
+        total: userSh?.total || defSh.total
+      };
+    });
+
+    const subsidiaries = DEFAULT_GROUP_STRUCTURE.subsidiaries.map((defSub, sIdx) => {
+      const userSub = base.subsidiaries?.[sIdx];
+      const subSh = defSub.shareholders.map((defSh, idx) => {
+        const userSh = userSub?.shareholders?.[idx];
+        return {
+          ...defSh,
+          ...(userSh || {}),
+          name: userSh?.name || defSh.name,
+          position: userSh?.position || userSh?.role || defSh.position,
+          shareClass: userSh?.shareClass || defSh.shareClass || '-',
+          numberOfShares: userSh?.numberOfShares || (userSh?.percentage ? defSh.numberOfShares : defSh.numberOfShares),
+          total: userSh?.total || defSh.total
+        };
+      });
+
+      return {
+        ...defSub,
+        ...(userSub || {}),
+        name: defSub.name,
+        subtitle: defSub.subtitle,
+        authorizedCapital: defSub.authorizedCapital,
+        paidUpCapital: defSub.paidUpCapital,
+        borderColor: defSub.borderColor,
+        shareholders: subSh
+      };
+    });
+
+    return {
+      holding: {
+        ...defHolding,
+        ...(base.holding || {}),
+        name: defHolding.name,
+        subtitle: defHolding.subtitle,
+        authorizedCapital: defHolding.authorizedCapital,
+        paidUpCapital: defHolding.paidUpCapital,
+        borderColor: defHolding.borderColor,
+        shareholders: holdingSh
+      },
+      subsidiaries
+    };
   }, [data.groupStructure]);
 
   const sisterCompanyName = useMemo(() => {
@@ -1039,7 +1118,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const sh = [...(gs.holding.shareholders || []), { name: '', percentage: '', role: '' }];
+      const sh = [...(gs.holding.shareholders || []), { name: '', position: '', role: '', shareClass: '-', numberOfShares: '', total: '' }];
       const updatedGs: GroupStructureData = {
         ...gs,
         holding: { ...gs.holding, shareholders: sh }
@@ -1132,7 +1211,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
-      const sh = [...(subs[subIdx].shareholders || []), { name: '', percentage: '', role: '' }];
+      const sh = [...(subs[subIdx].shareholders || []), { name: '', position: '', role: '', shareClass: '-', numberOfShares: '', total: '' }];
       subs[subIdx] = { ...subs[subIdx], shareholders: sh };
       const updatedGs: GroupStructureData = {
         ...gs,
@@ -2046,30 +2125,51 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           </button>
                         </div>
                         {(currentGroupStructure.holding?.shareholders || []).map((sh, sIdx) => (
-                          <div key={sIdx} style={{ display: 'flex', gap: '6px', marginBottom: '4px', alignItems: 'center' }}>
+                          <div key={sIdx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 0.6fr 1fr 1.3fr auto', gap: '4px', marginBottom: '4px', alignItems: 'center' }}>
                             <input
                               type="text"
                               value={sh.name}
                               onChange={e => updateHoldingShareholder(sIdx, 'name', e.target.value)}
                               onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                              placeholder="Nama Pemegang Saham"
-                              style={{ flex: '1 1 45%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                              placeholder="Name (e.g. HANSEN SANTOSA)"
+                              title="Name"
+                              style={{ padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                             />
                             <input
                               type="text"
-                              value={sh.percentage}
-                              onChange={e => updateHoldingShareholder(sIdx, 'percentage', e.target.value)}
+                              value={sh.position || sh.role || ''}
+                              onChange={e => updateHoldingShareholder(sIdx, 'position', e.target.value)}
                               onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                              placeholder="%"
-                              style={{ width: '55px', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                              placeholder="Position (e.g. President Director)"
+                              title="Position"
+                              style={{ padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                             />
                             <input
                               type="text"
-                              value={sh.role || ''}
-                              onChange={e => updateHoldingShareholder(sIdx, 'role', e.target.value)}
+                              value={sh.shareClass || '-'}
+                              onChange={e => updateHoldingShareholder(sIdx, 'shareClass', e.target.value)}
                               onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                              placeholder="Jabatan"
-                              style={{ flex: '1 1 35%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                              placeholder="Class"
+                              title="Share Class"
+                              style={{ padding: '3px 4px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                            />
+                            <input
+                              type="text"
+                              value={sh.numberOfShares || sh.percentage || ''}
+                              onChange={e => updateHoldingShareholder(sIdx, 'numberOfShares', e.target.value)}
+                              onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
+                              placeholder="Shares (e.g. 324,000)"
+                              title="Number of Shares"
+                              style={{ padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'right' }}
+                            />
+                            <input
+                              type="text"
+                              value={sh.total || ''}
+                              onChange={e => updateHoldingShareholder(sIdx, 'total', e.target.value)}
+                              onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
+                              placeholder="Total (e.g. Rp. 32,400,000,000)"
+                              title="Total Amount"
+                              style={{ padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'right' }}
                             />
                             <button
                               type="button"
@@ -2163,30 +2263,51 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               </button>
                             </div>
                             {(sub.shareholders || []).map((sh, sIdx) => (
-                              <div key={sIdx} style={{ display: 'flex', gap: '4px', marginBottom: '3px', alignItems: 'center' }}>
+                              <div key={sIdx} style={{ display: 'grid', gridTemplateColumns: '1.5fr 1.2fr 0.6fr 1fr 1.3fr auto', gap: '4px', marginBottom: '3px', alignItems: 'center' }}>
                                 <input
                                   type="text"
                                   value={sh.name}
                                   onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'name', e.target.value)}
                                   onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                                  placeholder="Nama Pemilik / PT"
-                                  style={{ flex: '1 1 45%', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                                  placeholder="Name / Entity"
+                                  title="Name"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                                 />
                                 <input
                                   type="text"
-                                  value={sh.percentage}
-                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'percentage', e.target.value)}
+                                  value={sh.position || sh.role || ''}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'position', e.target.value)}
                                   onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                                  placeholder="%"
-                                  style={{ width: '50px', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                                  placeholder="Position (e.g. Director)"
+                                  title="Position"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                                 />
                                 <input
                                   type="text"
-                                  value={sh.role || ''}
-                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'role', e.target.value)}
+                                  value={sh.shareClass || '-'}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'shareClass', e.target.value)}
                                   onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                                  placeholder="Jabatan"
-                                  style={{ flex: '1 1 35%', padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
+                                  placeholder="Class"
+                                  title="Share Class"
+                                  style={{ padding: '2px 4px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'center' }}
+                                />
+                                <input
+                                  type="text"
+                                  value={sh.numberOfShares || sh.percentage || ''}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'numberOfShares', e.target.value)}
+                                  onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
+                                  placeholder="Shares"
+                                  title="Number of Shares"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'right' }}
+                                />
+                                <input
+                                  type="text"
+                                  value={sh.total || ''}
+                                  onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'total', e.target.value)}
+                                  onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
+                                  placeholder="Total (Rp)"
+                                  title="Total Amount"
+                                  style={{ padding: '2px 5px', fontSize: '0.7rem', borderRadius: '3px', border: '1px solid #cbd5e1', textAlign: 'right' }}
                                 />
                                 <button
                                   type="button"
@@ -2669,7 +2790,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
 
                   {groupSubsidiaries.map((sub, idx) => {
-                    const fullEntityName = sub.name || `Entitas #${idx + 1}`;
+                    const fullEntityName = sub.subtitle ? `${sub.name} ${sub.subtitle}` : (sub.name || `Entitas #${idx + 1}`);
                     const review = getEntityReview(idx, fullEntityName);
                     const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
 
@@ -3734,61 +3855,110 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>
-                      UBO Information
-                    </td>
-                    <td id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
-                      <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: '8px', lineHeight: 1.4 }}>
-                        {renderRichHtml(data.uboInformation)}
+                    <td colSpan={2} id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '100%', padding: '8px 10px', cursor: 'pointer' }}>
+                      <div style={{ fontWeight: 700, fontSize: '9pt', color: '#1e3a8a', marginBottom: '6px' }}>
+                        UBO Information (Bagan Struktur Kepemilikan & Legalitas Saham Group)
                       </div>
-                      {/* Dynamic Corporate Group Structure Diagram */}
-                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: '6px' }}>
-                        <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
+                      {data.uboInformation && (
+                        <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: '10px', lineHeight: 1.4 }}>
+                          {renderRichHtml(data.uboInformation)}
+                        </div>
+                      )}
+
+                      {/* Corporate Group Structure Diagram matching Image 3 with full Shareholding Tables */}
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 10px', background: '#f8fafc' }}>
+                        <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.03em', textAlign: 'center', marginBottom: '10px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
                           BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
                         </div>
 
-                        {/* LEVEL 1: HOLDING ENTITY (CENTERED) */}
+                        {/* LEVEL 1: HOLDING ENTITY (PT STAR) CENTERED */}
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
                           <div style={{
-                            width: '320px',
-                            background: '#f8fafc',
-                            border: '1.5px solid #1e3a8a',
-                            borderRadius: '5px',
+                            width: '450px',
+                            maxWidth: '100%',
+                            background: '#ffffff',
+                            border: `2px solid ${currentGroupStructure.holding?.borderColor || '#1e3a8a'}`,
+                            borderRadius: '8px',
                             overflow: 'hidden',
-                            boxShadow: '0 2px 4px rgba(30, 58, 138, 0.08)'
+                            boxShadow: '0 2px 5px rgba(30, 58, 138, 0.08)'
                           }}>
-                            <div style={{ background: '#1e3a8a', color: '#ffffff', padding: '4px 8px', fontSize: '8.5pt', fontWeight: 800, textAlign: 'center' }}>
-                              {currentGroupStructure.holding?.name || 'HOLDING COMPANY'}
-                            </div>
-                            <div style={{ padding: '6px 8px', fontSize: '8pt', color: '#0f172a' }}>
-                              <div style={{ fontWeight: 700, color: '#334155', marginBottom: '3px', fontSize: '7.5pt' }}>
-                                PEMEGANG SAHAM:
+                            {/* Card Header */}
+                            <div style={{ padding: '6px 8px 4px 8px', textAlign: 'center', background: '#ffffff' }}>
+                              <div style={{ fontSize: '11pt', fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.2 }}>
+                                {currentGroupStructure.holding?.name || 'PT STAR'}
                               </div>
-                              <ul style={{ margin: '0 0 4px 0', paddingLeft: '14px', lineHeight: 1.3 }}>
-                                {(currentGroupStructure.holding?.shareholders || []).map((sh, idx) => (
-                                  <li key={idx} style={{ fontSize: '7.5pt' }}>
-                                    <strong>{sh.name}</strong> ({sh.percentage}){sh.role ? ` - ${sh.role}` : ''}
-                                  </li>
-                                ))}
-                              </ul>
-                              {currentGroupStructure.holding?.management && (
-                                <div style={{ fontSize: '7.5pt', color: '#475569', borderTop: '1px dotted #e2e8f0', paddingTop: '3px', marginTop: '3px' }}>
-                                  {currentGroupStructure.holding.management}
+                              {currentGroupStructure.holding?.subtitle && (
+                                <div style={{ fontSize: '7.8pt', fontWeight: 600, color: '#475569', marginTop: '1px' }}>
+                                  {currentGroupStructure.holding.subtitle}
                                 </div>
                               )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', background: '#eff6ff', padding: '3px 6px', borderRadius: '3px', marginTop: '4px', fontSize: '7pt', color: '#1e40af', fontWeight: 600 }}>
-                                <span>Modal Dasar: {currentGroupStructure.holding?.authorizedCapital || '-'}</span>
-                                <span>Modal Disetor: {currentGroupStructure.holding?.paidUpCapital || '-'}</span>
+                            </div>
+
+                            {/* Shareholding Composition Banner */}
+                            <div style={{
+                              background: '#0f294a',
+                              color: '#ffffff',
+                              fontSize: '7.5pt',
+                              fontWeight: 700,
+                              textAlign: 'center',
+                              padding: '3px 6px',
+                              letterSpacing: '0.03em'
+                            }}>
+                              Shareholding Composition
+                            </div>
+
+                            {/* 5-Column Table */}
+                            <div style={{ padding: '4px 6px' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '6.8pt', lineHeight: 1.25 }}>
+                                <thead>
+                                  <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1', color: '#1e293b' }}>
+                                    <th style={{ padding: '3px 4px', textAlign: 'left', fontWeight: 700 }}>Name</th>
+                                    <th style={{ padding: '3px 4px', textAlign: 'left', fontWeight: 700 }}>Position</th>
+                                    <th style={{ padding: '3px 2px', textAlign: 'center', fontWeight: 700 }}>Share Class</th>
+                                    <th style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 700 }}>Number of Shares</th>
+                                    <th style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 700 }}>Total</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(currentGroupStructure.holding?.shareholders || []).map((sh, idx) => (
+                                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '3px 4px', fontWeight: 600, color: '#0f172a' }}>{sh.name}</td>
+                                      <td style={{ padding: '3px 4px', color: '#475569' }}>{sh.position || sh.role || '-'}</td>
+                                      <td style={{ padding: '3px 2px', textAlign: 'center', color: '#64748b' }}>{sh.shareClass || '-'}</td>
+                                      <td style={{ padding: '3px 4px', textAlign: 'right', color: '#0f172a' }}>{sh.numberOfShares || sh.percentage || '-'}</td>
+                                      <td style={{ padding: '3px 4px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{sh.total || '-'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Bottom Capital Summary */}
+                            <div style={{
+                              padding: '4px 8px 6px 8px',
+                              borderTop: '1px solid #e2e8f0',
+                              background: '#f8fafc',
+                              fontSize: '7pt',
+                              lineHeight: 1.35,
+                              color: '#1e293b'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontWeight: 700 }}>Authorized Capital</span>
+                                <span>{currentGroupStructure.holding?.authorizedCapital || '-'}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ fontWeight: 700 }}>Issued and Paid-up Capital</span>
+                                <span>{currentGroupStructure.holding?.paidUpCapital || '-'}</span>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* CONNECTOR STEM & BRANCH LINES */}
+                        {/* CONNECTOR STEM & BRANCH LINES WITH ARROWS */}
                         {(currentGroupStructure.subsidiaries || []).length > 0 && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', margin: '0 auto' }}>
                             {/* Vertical stem from holding */}
-                            <div style={{ width: '2px', height: '14px', background: '#1e3a8a' }} />
+                            <div style={{ width: '2px', height: '16px', background: '#1e3a8a' }} />
                             
                             {/* Horizontal bar spanning children */}
                             {(currentGroupStructure.subsidiaries || []).length > 1 ? (
@@ -3807,15 +3977,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             }}>
                               {(currentGroupStructure.subsidiaries || []).map((_, idx) => (
                                 <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                  <div style={{ width: '2px', height: '12px', background: '#1e3a8a' }} />
-                                  <div style={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: '5px solid #1e3a8a' }} />
+                                  <div style={{ width: '2px', height: '14px', background: '#1e3a8a' }} />
+                                  <div style={{ width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '6px solid #1e3a8a' }} />
                                 </div>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* LEVEL 2: SUBSIDIARIES GRID */}
+                        {/* LEVEL 2: 3 SUBSIDIARIES GRID WITH SHAREHOLDING TABLES */}
                         {(currentGroupStructure.subsidiaries || []).length > 0 && (
                           <div style={{
                             display: 'grid',
@@ -3823,47 +3993,93 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             gap: '8px',
                             marginTop: '2px'
                           }}>
-                            {(currentGroupStructure.subsidiaries || []).map((sub, sIdx) => (
-                              <div
-                                key={sIdx}
-                                style={{
-                                  background: '#f8fafc',
-                                  border: '1px solid #0369a1',
-                                  borderRadius: '4px',
-                                  overflow: 'hidden',
-                                  display: 'flex',
-                                  flexDirection: 'column',
-                                  boxShadow: '0 1px 3px rgba(3, 105, 161, 0.08)'
-                                }}
-                              >
-                                <div style={{ background: '#0284c7', color: '#ffffff', padding: '3px 6px', fontSize: '7.5pt', fontWeight: 700, textAlign: 'center' }}>
-                                  {sub.name || `Anak Perusahaan #${sIdx + 1}`}
-                                </div>
-                                <div style={{ padding: '6px', fontSize: '7.5pt', color: '#0f172a', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                                  <div>
-                                    <div style={{ fontWeight: 700, color: '#475569', fontSize: '7pt', marginBottom: '2px' }}>
-                                      PEMEGANG SAHAM:
+                            {(currentGroupStructure.subsidiaries || []).map((sub, sIdx) => {
+                              const border = sub.borderColor || (sIdx === 0 ? '#0284c7' : sIdx === 1 ? '#dc2626' : '#16a34a');
+                              return (
+                                <div
+                                  key={sIdx}
+                                  style={{
+                                    background: '#ffffff',
+                                    border: `2px solid ${border}`,
+                                    borderRadius: '8px',
+                                    overflow: 'hidden',
+                                    boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                                    display: 'flex',
+                                    flexDirection: 'column'
+                                  }}
+                                >
+                                  {/* Sub Header */}
+                                  <div style={{ padding: '6px 6px 3px 6px', textAlign: 'center', background: '#ffffff' }}>
+                                    <div style={{ fontSize: '10pt', fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.2 }}>
+                                      {sub.name || `PT Entitas #${sIdx + 1}`}
                                     </div>
-                                    <ul style={{ margin: '0 0 4px 0', paddingLeft: '12px', lineHeight: 1.25 }}>
-                                      {(sub.shareholders || []).map((sh, shIdx) => (
-                                        <li key={shIdx} style={{ fontSize: '7pt' }}>
-                                          <strong>{sh.name}</strong> ({sh.percentage}){sh.role ? ` - ${sh.role}` : ''}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                    {sub.management && (
-                                      <div style={{ fontSize: '7pt', color: '#475569', borderTop: '1px dotted #e2e8f0', paddingTop: '2px', marginTop: '2px' }}>
-                                        {sub.management}
+                                    {sub.subtitle && (
+                                      <div style={{ fontSize: '7.2pt', fontWeight: 600, color: '#475569', marginTop: '1px' }}>
+                                        {sub.subtitle}
                                       </div>
                                     )}
                                   </div>
-                                  <div style={{ background: '#f0f9ff', padding: '3px 4px', borderRadius: '3px', marginTop: '4px', fontSize: '6.5pt', color: '#0369a1', fontWeight: 600 }}>
-                                    <div>M. Dasar: {sub.authorizedCapital || '-'}</div>
-                                    <div>M. Disetor: {sub.paidUpCapital || '-'}</div>
+
+                                  {/* Sub Banner */}
+                                  <div style={{
+                                    background: '#0f294a',
+                                    color: '#ffffff',
+                                    fontSize: '7pt',
+                                    fontWeight: 700,
+                                    textAlign: 'center',
+                                    padding: '2px 4px',
+                                    letterSpacing: '0.02em'
+                                  }}>
+                                    Shareholding Composition
+                                  </div>
+
+                                  {/* 5-Column Table */}
+                                  <div style={{ padding: '3px 4px', flex: 1 }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '6.4pt', lineHeight: 1.2 }}>
+                                      <thead>
+                                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #cbd5e1', color: '#1e293b' }}>
+                                          <th style={{ padding: '2px 3px', textAlign: 'left', fontWeight: 700 }}>Name</th>
+                                          <th style={{ padding: '2px 3px', textAlign: 'left', fontWeight: 700 }}>Position</th>
+                                          <th style={{ padding: '2px 2px', textAlign: 'center', fontWeight: 700 }}>Share Class</th>
+                                          <th style={{ padding: '2px 3px', textAlign: 'right', fontWeight: 700 }}>Number of Shares</th>
+                                          <th style={{ padding: '2px 3px', textAlign: 'right', fontWeight: 700 }}>Total</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {(sub.shareholders || []).map((sh, idx) => (
+                                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                            <td style={{ padding: '2px 3px', fontWeight: 600, color: '#0f172a' }}>{sh.name}</td>
+                                            <td style={{ padding: '2px 3px', color: '#475569' }}>{sh.position || sh.role || '-'}</td>
+                                            <td style={{ padding: '2px 2px', textAlign: 'center', color: '#64748b' }}>{sh.shareClass || '-'}</td>
+                                            <td style={{ padding: '2px 3px', textAlign: 'right', color: '#0f172a' }}>{sh.numberOfShares || sh.percentage || '-'}</td>
+                                            <td style={{ padding: '2px 3px', textAlign: 'right', fontWeight: 600, color: '#0f172a' }}>{sh.total || '-'}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+
+                                  {/* Bottom Capital Summary */}
+                                  <div style={{
+                                    padding: '3px 6px 5px 6px',
+                                    borderTop: '1px solid #e2e8f0',
+                                    background: '#f8fafc',
+                                    fontSize: '6.6pt',
+                                    lineHeight: 1.3,
+                                    color: '#1e293b'
+                                  }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <span style={{ fontWeight: 700 }}>Authorized Capital</span>
+                                      <span>{sub.authorizedCapital || '-'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <span style={{ fontWeight: 700 }}>Issued and Paid-up Capital</span>
+                                      <span>{sub.paidUpCapital || '-'}</span>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -4041,7 +4257,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>SLIK/Bureau Highlight</td>
                     <td style={{ padding: '4px 6px' }}>
                       {groupSubsidiaries.map((sub, idx) => {
-                        const fullEntityName = sub.name || `Entitas #${idx + 1}`;
+                        const fullEntityName = sub.subtitle ? `${sub.name} ${sub.subtitle}` : (sub.name || `Entitas #${idx + 1}`);
                         const review = getEntityReview(idx, fullEntityName);
                         const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
 

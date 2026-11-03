@@ -3190,6 +3190,8 @@ label.field-active-sync .field-label {
 /* TinyMCE GPL / Clean UI */
 .tox-notifications-container,
 .tox-statusbar__branding,
+.tox-statusbar__path,
+.tox .tox-statusbar__path,
 .tox-promotion {
   display: none !important;
 }
