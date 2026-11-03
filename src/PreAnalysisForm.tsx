@@ -277,7 +277,22 @@ export function PreAnalysisRichEditor({
   height?: number;
   dataField?: string;
 }) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const tinymceSrc = getStaticAssetUrl("tinymce/tinymce.min.js");
+
+  const triggerEditorFocus = () => {
+    if (wrapperRef.current) {
+      wrapperRef.current.classList.remove('fap-preview-sync-highlight');
+      void wrapperRef.current.offsetWidth;
+      wrapperRef.current.classList.add('fap-preview-sync-highlight');
+      setTimeout(() => {
+        wrapperRef.current?.classList.remove('fap-preview-sync-highlight');
+      }, 2500);
+    }
+    if (onFocus) {
+      onFocus();
+    }
+  };
 
   const initialHtml = useMemo(() => {
     if (!value) return '';
@@ -289,19 +304,24 @@ export function PreAnalysisRichEditor({
 
   return (
     <div
+      ref={wrapperRef}
+      id={dataField ? `preana-form-${dataField}` : undefined}
       data-field={dataField}
-      onClick={() => { if (onFocus) onFocus(); }}
-      onFocus={() => { if (onFocus) onFocus(); }}
+      className="preana-rich-editor-wrapper"
+      onClick={() => triggerEditorFocus()}
+      onFocus={() => triggerEditorFocus()}
       style={{
         borderRadius: '6px',
         overflow: 'hidden',
         border: '1px solid #cbd5e1',
-        background: '#ffffff'
+        background: '#ffffff',
+        transition: 'all 0.2s ease'
       }}
     >
       <style>{`
         .tox .tox-statusbar__path { display: none !important; }
         .tox-statusbar__path { display: none !important; }
+        .tox-statusbar__path-item { display: none !important; }
       `}</style>
       <Editor
         licenseKey="gpl"
@@ -322,16 +342,16 @@ export function PreAnalysisRichEditor({
           setup: (editor: any) => {
             let userReady = false;
             editor.on('init', () => {
-              setTimeout(() => { userReady = true; }, 400);
+              setTimeout(() => { userReady = true; }, 300);
             });
             editor.on('focus', () => {
-              if (userReady && onFocus) onFocus();
+              if (userReady) triggerEditorFocus();
             });
             editor.on('click', () => {
-              if (onFocus) onFocus();
+              triggerEditorFocus();
             });
             editor.on('mousedown', () => {
-              if (onFocus) onFocus();
+              triggerEditorFocus();
             });
           },
           plugins: [
@@ -818,8 +838,18 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     });
   };
 
+  const highlightElement = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.classList.remove('fap-preview-sync-highlight');
+    void el.offsetWidth;
+    el.classList.add('fap-preview-sync-highlight');
+    setTimeout(() => {
+      el.classList.remove('fap-preview-sync-highlight');
+    }, 2500);
+  };
+
   // Sync scroll & highlight helper
-  const scrollToPreviewElement = (elementId: string) => {
+  const scrollToPreviewElement = (elementId: string, formTriggerElOrKey?: HTMLElement | string) => {
     if (isInitialMountRef.current) return;
     if (viewMode === 'original-pdf') {
       setViewMode('digital-twin');
@@ -828,14 +858,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       const el = document.getElementById(elementId);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.remove('fap-preview-sync-highlight');
-        void el.offsetWidth;
-        el.classList.add('fap-preview-sync-highlight');
-        setTimeout(() => {
-          el.classList.remove('fap-preview-sync-highlight');
-        }, 2500);
+        highlightElement(el);
       }
     }, 50);
+
+    if (formTriggerElOrKey) {
+      if (typeof formTriggerElOrKey === 'string') {
+        const sel = formTriggerElOrKey.startsWith('slik-')
+          ? `#preana-form-entity-${formTriggerElOrKey.replace('slik-', '')}, [data-field="${formTriggerElOrKey}"]`
+          : `#preana-form-${formTriggerElOrKey}, [name="${formTriggerElOrKey}"], [data-field="${formTriggerElOrKey}"]`;
+        const formEl = document.querySelector(sel) as HTMLElement;
+        if (formEl) highlightElement(formEl);
+      } else if (formTriggerElOrKey instanceof HTMLElement) {
+        const highlightTarget = formTriggerElOrKey.closest('[data-field]') as HTMLElement || formTriggerElOrKey;
+        highlightElement(highlightTarget);
+      }
+    }
   };
 
   const handleTriggerSync = (secId: string, previewSecId: string) => {
@@ -851,20 +889,24 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         formTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
+
+    // Also highlight the preview cell itself
+    const previewCell = document.getElementById('preana-preview-cell-' + fieldKey);
+    if (previewCell) {
+      highlightElement(previewCell);
+    }
+
     if (fieldKey) {
       setTimeout(() => {
-        const targetSelector = fieldKey.startsWith('slik-')
-          ? `#preana-form-entity-${fieldKey.replace('slik-', '')}, [data-field="${fieldKey}"]`
-          : `#preana-form-${fieldKey}, [name="${fieldKey}"], [data-field="${fieldKey}"]`;
+        let lookupKey = fieldKey;
+        if (fieldKey === 'projectNameLocation') lookupKey = 'projectName';
+        const targetSelector = lookupKey.startsWith('slik-')
+          ? `#preana-form-entity-${lookupKey.replace('slik-', '')}, [data-field="${lookupKey}"]`
+          : `#preana-form-${lookupKey}, [name="${lookupKey}"], [data-field="${lookupKey}"]`;
         const targetEl = document.querySelector(targetSelector) as HTMLElement;
         if (targetEl) {
           targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          targetEl.classList.remove('fap-preview-sync-highlight');
-          void targetEl.offsetWidth;
-          targetEl.classList.add('fap-preview-sync-highlight');
-          setTimeout(() => {
-            targetEl.classList.remove('fap-preview-sync-highlight');
-          }, 2500);
+          highlightElement(targetEl);
           targetEl.focus();
         }
       }, 100);
@@ -1517,7 +1559,26 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   return (
     <div className="fap-detail-split-container pre-analysis-container" style={{ height: 'calc(100vh - 170px)', minHeight: '620px', overflow: 'hidden' }}>
       {/* LEFT COLUMN: 50% EDITABLE FORM */}
-      <div className="fap-detail-form-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingRight: '8px' }}>
+      <div
+        className="fap-detail-form-col"
+        onFocusCapture={(e) => {
+          if (isInitialMountRef.current) return;
+          const target = e.target as HTMLElement;
+          if (target && target.matches('input, textarea, select, button, [data-field]')) {
+            const formEl = (target.closest('[data-field]') as HTMLElement) || target;
+            highlightElement(formEl);
+          }
+        }}
+        onClickCapture={(e) => {
+          if (isInitialMountRef.current) return;
+          const target = e.target as HTMLElement;
+          if (target && target.matches('input, textarea, select, button, [data-field]')) {
+            const formEl = (target.closest('[data-field]') as HTMLElement) || target;
+            highlightElement(formEl);
+          }
+        }}
+        style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', overflowY: 'auto', overflowX: 'hidden', paddingRight: '8px' }}
+      >
         {/* Sticky Action Header */}
         <div style={{
           display: 'flex',
@@ -2149,7 +2210,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     placeholder="STAR GROUP Corporate Ownership Structure..."
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '6px', lineHeight: 1.35 }}
                   />
-                  <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: '#f8fafc', marginTop: '6px' }}>
+                  <div id="preana-form-group-structure-builder" data-field="uboInformation" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: '#f8fafc', marginTop: '6px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <div>
                         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a' }}>
@@ -3167,7 +3228,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {/* Good Project & Good Customer Toggles */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                  <div style={{ padding: '10px', borderRadius: '6px', border: `1px solid ${data.goodProject ? '#86efac' : '#fca5a5'}`, background: data.goodProject ? '#f0fdf4' : '#fef2f2' }}>
+                  <div data-field="goodProject" style={{ padding: '10px', borderRadius: '6px', border: `1px solid ${data.goodProject ? '#86efac' : '#fca5a5'}`, background: data.goodProject ? '#f0fdf4' : '#fef2f2' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: data.goodProject ? '#15803d' : '#b91c1c' }}>
                         Good Project? {data.goodProject ? 'YES' : 'NO'}
@@ -3192,7 +3253,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
 
-                  <div style={{ padding: '10px', borderRadius: '6px', border: `1px solid ${data.goodCustomer ? '#86efac' : '#fca5a5'}`, background: data.goodCustomer ? '#f0fdf4' : '#fef2f2' }}>
+                  <div data-field="goodCustomer" style={{ padding: '10px', borderRadius: '6px', border: `1px solid ${data.goodCustomer ? '#86efac' : '#fca5a5'}`, background: data.goodCustomer ? '#f0fdf4' : '#fef2f2' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 700, color: data.goodCustomer ? '#15803d' : '#b91c1c' }}>
                         Good Customer? {data.goodCustomer ? 'YES' : 'NO'}

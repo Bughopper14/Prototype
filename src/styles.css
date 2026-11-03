@@ -1538,12 +1538,18 @@ button:focus-visible, a:focus-visible {
   }
 }
 
-.fap-preview-sync-highlight {
+.fap-preview-sync-highlight,
+.preana-rich-editor-wrapper.fap-preview-sync-highlight,
+div[data-field].fap-preview-sync-highlight,
+input.fap-preview-sync-highlight,
+textarea.fap-preview-sync-highlight,
+select.fap-preview-sync-highlight {
   animation: fapPreviewPulse 2.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   outline: 2px solid #2563eb !important;
   outline-offset: 3px !important;
-  border-radius: 4px !important;
-  transition: all 0.3s ease !important;
+  border-radius: 6px !important;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.25) !important;
+  transition: all 0.25s ease !important;
 }
 
 /* Accordion Container & Cards */
