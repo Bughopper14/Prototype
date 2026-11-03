@@ -157,20 +157,20 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
   if (!gs || !gs.holding) return '';
   const lines: string[] = [];
   const hName = gs.holding.name || 'Holding Company';
-  const hCap = `Modal Dasar: ${gs.holding.authorizedCapital || '-'}, Modal Disetor: ${gs.holding.paidUpCapital || '-'}`;
+  const hCap = `Authorized Capital: ${gs.holding.authorizedCapital || '-'}, Paid-up Capital: ${gs.holding.paidUpCapital || '-'}`;
   lines.push(`CORPORATE SHAREHOLDING & GOVERNANCE STRUCTURE:`);
-  lines.push(`• ${hName} (Holding Parent): ${hCap}`);
+  lines.push(`• ${hName} (Parent Holding): Authorized Capital: ${gs.holding.authorizedCapital || "-"}, Paid-up Capital: ${gs.holding.paidUpCapital || "-"}`);
   (gs.holding.shareholders || []).forEach(sh => {
     if (sh.name) {
       lines.push(`  - ${sh.name} (${sh.percentage || '-'}${sh.role ? ` - ${sh.role}` : ''})`);
     }
   });
   if (gs.holding.management) {
-    lines.push(`  - Pengurus: ${gs.holding.management}`);
+    lines.push(`  - Management: ${gs.holding.management}`);
   }
   (gs.subsidiaries || []).forEach(sub => {
     if (sub.name) {
-      const sCap = `Modal Dasar: ${sub.authorizedCapital || '-'}, Modal Disetor: ${sub.paidUpCapital || '-'}`;
+      const sCap = `Authorized Capital: ${sub.authorizedCapital || '-'}, Paid-up Capital: ${sub.paidUpCapital || '-'}`;
       lines.push(`• ${sub.name}: ${sCap}`);
       (sub.shareholders || []).forEach(sh => {
         if (sh.name) {
@@ -178,7 +178,7 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
         }
       });
       if (sub.management) {
-        lines.push(`  - Pengurus: ${sub.management}`);
+        lines.push(`  - Management: ${sub.management}`);
       }
     }
   });
@@ -314,6 +314,10 @@ export function PreAnalysisRichEditor({
           placeholder: placeholder,
           branding: false,
           elementpath: false,
+          setup: (editor: any) => {
+            editor.on('focus', () => { if (onFocus) onFocus(); });
+            editor.on('click', () => { if (onFocus) onFocus(); });
+          },
           plugins: [
             'advlist', 'autolink', 'lists', 'link', 'charmap',
             'searchreplace', 'visualblocks', 'code', 'fullscreen',
@@ -519,15 +523,15 @@ End-2025 | PT HTPS Established – Harvesting Business
 - Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
   operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
   uboInformation: `STAR GROUP Corporate Shareholding & Governance Structure:
-• PT Sentosa Abadi Raja (Holding Company): Modal Dasar Rp 240 M, Modal Disetor Rp 60 M
+• PT Sentosa Abadi Raja (Holding Company): Authorized Capital IDR 240B, Paid-up Capital IDR 60B
   - Hansen Santosa (54% - Presiden Direktur)
   - Leonard Santosa (34% - Direktur)
   - Oky Santosa (12% - Komisaris)
-• PT Pangan Sejahtera Santosa (PASS - FMCG): Modal Dasar Rp 50 M, Modal Disetor Rp 17,5 M
+• PT Pangan Sejahtera Santosa (PASS - FMCG): Authorized Capital IDR 50B, Paid-up Capital IDR 17.5B
   - PT STAR (99,994%), Leonard Santosa (0,006%)
-• PT Handalan Putramas Santosa (HPS - Sister Co): Modal Dasar Rp 130 M, Modal Disetor Rp 32,5 M
+• PT Handalan Putramas Santosa (HPS - Sister Co): Authorized Capital IDR 130B, Paid-up Capital IDR 32.5B
   - PT STAR (99,997%), Leonard Santosa (0,003%)
-• PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
+• PT Harta Putramas Santosa (HTPS - Applicant): Authorized Capital IDR 500M, Paid-up Capital IDR 500M
   - PT STAR (99,98%), Leonard Santosa (0,02%)`,
   groupStructure: DEFAULT_GROUP_STRUCTURE,
   milestones: [
@@ -702,7 +706,7 @@ function computePreAnalysisDiffs(oldData: any, newData: any) {
       section: 'Pre Analysis form',
       subSection: 'Credit Evaluation & Analyst Remarks',
       field: 'creditRemarks',
-      label: 'Catatan Analisis Kredit & Mitigasi Risiko',
+      label: 'Credit Analysis Notes & Risk Mitigation',
       oldValue: 'Drafting initial evaluation',
       newValue: 'Saved credit analyst evaluation, risk flags, and qualitative remarks.'
     });
@@ -710,7 +714,7 @@ function computePreAnalysisDiffs(oldData: any, newData: any) {
       section: 'Pre Analysis form',
       subSection: 'Facility Structure & Proposed Terms',
       field: 'proposedTerms',
-      label: 'Verifikasi Syarat Fasilitas Kredit',
+      label: 'Credit Facility Terms Verification',
       oldValue: 'Pending term verification',
       newValue: 'Verified active vs proposed credit facility terms.'
     });
@@ -764,7 +768,24 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   });
 
   const toggleSection = (id: string) => {
-    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
+    setOpenSections(prev => {
+      const nextOpen = !prev[id];
+      if (nextOpen) {
+        const secMap: Record<string, string> = {
+          sec1: 'preana-preview-sec-1',
+          sec2: 'preana-preview-sec-2',
+          sec3: 'preana-preview-sec-3',
+          sec4: 'preana-preview-sec-4',
+          sec5: 'preana-preview-sec-5',
+          sec6: 'preana-preview-sec-6',
+          sec7: 'preana-preview-sec-7'
+        };
+        if (secMap[id]) {
+          scrollToPreviewElement(secMap[id]);
+        }
+      }
+      return { ...prev, [id]: nextOpen };
+    });
   };
 
   // Sync scroll & highlight helper
@@ -862,10 +883,23 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     }
   });
 
+  const scrollDebounceRef = useRef<any>(null);
+
+  const autoSyncPreview = (fieldKey: string) => {
+    if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
+    scrollDebounceRef.current = setTimeout(() => {
+      const targetId = 'preana-preview-cell-' + fieldKey;
+      if (document.getElementById(targetId)) {
+        scrollToPreviewElement(targetId);
+      }
+    }, 250);
+  };
+
   const updateField = (key: keyof PreAnalysisData, val: any) => {
     if (viewMode === 'original-pdf') {
       setViewMode('digital-twin');
     }
+    autoSyncPreview(key);
     setData(prev => {
       const next: PreAnalysisData = { ...prev, [key]: val };
       if (key === 'uboInfo') {
@@ -991,7 +1025,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (existing) {
       return {
         ...existing,
-        entityName: entityName || existing.entityName || `Entitas #${idx + 1}`
+        entityName: entityName || existing.entityName || `Entity #${idx + 1}`
       };
     }
     const isSister = /sister|handalan|hps/i.test(entityName) || (groupSubsidiaries.length >= 2 && idx === 1);
@@ -1033,7 +1067,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
     return {
       id: `sub-${idx}`,
-      entityName: entityName || `PT Entitas #${idx + 1}`,
+      entityName: entityName || `PT Entity #${idx + 1}`,
       hasRecord: false,
       noRecordRemarks: '<p>Belum ada fasilitas kredit perbankan / leasing (No Record)</p>',
       lenderExposures: [],
@@ -1443,17 +1477,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec1', 'preana-preview-sec-1');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec1 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -1736,17 +1759,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec2', 'preana-preview-sec-2');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec2 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -1929,17 +1941,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec3', 'preana-preview-sec-3');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec3 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -1958,7 +1959,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background (Profil Singkat Entitas & Holding)</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background (Brief Entity & Holding Profile)</label>
                   <PreAnalysisRichEditor
                     value={data.companyBackground || ''}
                     onChange={val => updateField('companyBackground', val)}
@@ -1996,7 +1997,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Information (Field Team Readiness & Harvesting Personnel)</label>
                   <PreAnalysisRichEditor
                     value={data.operationalTeamInfo || ''}
                     onChange={val => updateField('operationalTeamInfo', val)}
@@ -2008,10 +2009,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>
-                      UBO Information (Bagan Struktur Kepemilikan & Legalitas Saham Group)
+                      UBO Information (Group Shareholding Structure & Legal Profile)
                     </label>
                     <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600, background: '#dbeafe', padding: '1px 6px', borderRadius: '3px' }}>
-                      Kolom Terpisah Sebelum Milestones
+                      Separate Section Before Milestones
                     </span>
                   </div>
                   <textarea
@@ -2028,10 +2029,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <div>
                         <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a' }}>
-                          Bagan Struktur Kepemilikan Saham Group (Input System)
+                          Group Shareholding Structure Chart (Input System)
                         </div>
                         <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                          Input entitas holding & anak perusahaan. Diagram hierarki visual otomatis ter-generate di Digital Twin (Halaman 3).
+                          Input holding and subsidiary entities. The visual hierarchy tree is automatically generated in the Digital Twin preview.
                         </div>
                       </div>
                       <button
@@ -2051,7 +2052,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           gap: '4px'
                         }}
                       >
-                        + Tambah Anak Perusahaan
+                        + Add Subsidiary
                       </button>
                     </div>
 
@@ -2059,7 +2060,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <div style={{ background: '#ffffff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '10px', marginBottom: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', marginBottom: '8px' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a' }}>
-                          🏢 Entitas Induk (Holding Company)
+                          🏢 Parent Entity (Holding Company)
                         </span>
                         <span style={{ fontSize: '0.65rem', background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
                           Level 1 Parent
@@ -2067,7 +2068,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
                         <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Nama Perusahaan Holding</label>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Holding Company Name</label>
                           <input
                             type="text"
                             value={currentGroupStructure.holding?.name || ''}
@@ -2078,7 +2079,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           />
                         </div>
                         <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Modal Dasar</label>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Authorized Capital</label>
                           <input
                             type="text"
                             value={currentGroupStructure.holding?.authorizedCapital || ''}
@@ -2089,7 +2090,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           />
                         </div>
                         <div>
-                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Modal Disetor</label>
+                          <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Paid-up Capital</label>
                           <input
                             type="text"
                             value={currentGroupStructure.holding?.paidUpCapital || ''}
@@ -2101,7 +2102,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         </div>
                       </div>
                       <div style={{ marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Pengurus / Catatan Manajemen</label>
+                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Management / Board of Directors</label>
                         <input
                           type="text"
                           value={currentGroupStructure.holding?.management || ''}
@@ -2115,13 +2116,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       {/* Holding Shareholders */}
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>Pemegang Saham Induk</span>
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>Parent Shareholders</span>
                           <button
                             type="button"
                             onClick={addHoldingShareholder}
                             style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '3px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                           >
-                            + Tambah Saham
+                            + Add Shareholder
                           </button>
                         </div>
                         {(currentGroupStructure.holding?.shareholders || []).map((sh, sIdx) => (
@@ -2175,7 +2176,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="button"
                               onClick={() => removeHoldingShareholder(sIdx)}
                               style={{ padding: '2px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.68rem' }}
-                              title="Hapus"
+                              title="Delete"
                             >
                               ✕
                             </button>
@@ -2187,36 +2188,36 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     {/* 2. SUBSIDIARY ENTITIES (ANAK PERUSAHAAN) */}
                     <div>
                       <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                        🔗 Anak Perusahaan ({currentGroupStructure.subsidiaries?.length || 0} Entitas)
+                        🔗 Subsidiaries ({currentGroupStructure.subsidiaries?.length || 0} Entities)
                       </div>
                       {(currentGroupStructure.subsidiaries || []).map((sub, subIdx) => (
                         <div key={subIdx} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '10px', marginBottom: '8px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px', marginBottom: '6px' }}>
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#0369a1' }}>
-                              Anak Perusahaan #{subIdx + 1}: {sub.name ? sub.name.split('(')[0] : 'Entitas Baru'}
+                              Subsidiary #{subIdx + 1}: {sub.name ? sub.name.split('(')[0] : 'New Entity'}
                             </span>
                             <button
                               type="button"
                               onClick={() => removeSubsidiary(subIdx)}
                               style={{ fontSize: '0.65rem', padding: '1px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
                             >
-                              Hapus Entitas
+                              Delete Entity
                             </button>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
                             <div>
-                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Nama Perusahaan</label>
+                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Company Name</label>
                               <input
                                 type="text"
                                 value={sub.name}
                                 onChange={e => updateSubsidiaryField(subIdx, 'name', e.target.value)}
                                 onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
-                                placeholder="e.g. PT Anak Perusahaan"
+                                placeholder="e.g. PT Subsidiary Company"
                                 style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', borderRadius: '3px', border: '1px solid #cbd5e1' }}
                               />
                             </div>
                             <div>
-                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Modal Dasar</label>
+                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Authorized Capital</label>
                               <input
                                 type="text"
                                 value={sub.authorizedCapital || ''}
@@ -2227,7 +2228,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               />
                             </div>
                             <div>
-                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Modal Disetor</label>
+                              <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Paid-up Capital</label>
                               <input
                                 type="text"
                                 value={sub.paidUpCapital || ''}
@@ -2239,7 +2240,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             </div>
                           </div>
                           <div style={{ marginBottom: '6px' }}>
-                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Pengurus / Manajemen</label>
+                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Management / Board</label>
                             <input
                               type="text"
                               value={sub.management || ''}
@@ -2253,13 +2254,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           {/* Subsidiary Shareholders */}
                           <div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
-                              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#475569' }}>Pemegang Saham</span>
+                              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#475569' }}>Shareholders</span>
                               <button
                                 type="button"
                                 onClick={() => addSubsidiaryShareholder(subIdx)}
                                 style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '2px', background: '#f0f9ff', color: '#0284c7', border: '1px solid #bae6fd', cursor: 'pointer' }}
                               >
-                                + Saham
+                                + Shareholder
                               </button>
                             </div>
                             {(sub.shareholders || []).map((sh, sIdx) => (
@@ -2430,17 +2431,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec4', 'preana-preview-sec-4');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec4 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -2494,8 +2484,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                       <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                         <tr>
-                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Kategori Aset</th>
-                          <th style={{ width: '25%', padding: '6px 8px', textAlign: 'left' }}>Merk</th>
+                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Asset Category</th>
+                          <th style={{ width: '25%', padding: '6px 8px', textAlign: 'left' }}>Brand</th>
                           <th style={{ width: '18%', padding: '6px 8px', textAlign: 'right' }}>Qty</th>
                           <th style={{ width: '40px', padding: '6px 8px' }}></th>
                         </tr>
@@ -2617,17 +2607,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec5', 'preana-preview-sec-5');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec5 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -2711,17 +2690,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec6', 'preana-preview-sec-6');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec6 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -2786,11 +2754,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 {/* Per-PT from Subsection 3 Group Structure with Toggle YES/NO */}
                 <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                   <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a', marginBottom: '8px' }}>
-                    DAFTAR ENTITAS GROUP UNTUK SLIK / BUREAU REVIEW:
+                    GROUP ENTITY LIST FOR SLIK / BUREAU REVIEW:
                   </div>
 
                   {groupSubsidiaries.map((sub, idx) => {
-                    const fullEntityName = sub.subtitle ? `${sub.name} ${sub.subtitle}` : (sub.name || `Entitas #${idx + 1}`);
+                    const fullEntityName = sub.subtitle ? `${sub.name} ${sub.subtitle}` : (sub.name || `Entity #${idx + 1}`);
                     const review = getEntityReview(idx, fullEntityName);
                     const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
 
@@ -2831,7 +2799,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           {/* Toggle Yes/No Buttons */}
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
                             <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569' }}>
-                              Gunakan Tabel Row Labels?
+                              Use Table Row Labels?
                             </span>
                             <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid #cbd5e1', overflow: 'hidden', background: '#e2e8f0' }}>
                               <button
@@ -2920,7 +2888,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                             copy[lIdx] = { ...copy[lIdx], lender: e.target.value };
                                             updateEntityReview(idx, { lenderExposures: copy });
                                           }}
-                                          placeholder="Nama Finco / Bank"
+                                          placeholder="Lender / Finco Name"
                                           style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                                         />
                                       </td>
@@ -2986,7 +2954,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 value={review.pefindoNotes || ''}
                                 onChange={val => updateEntityReview(idx, { pefindoNotes: val })}
                                 height={150}
-                                placeholder="Catatan analisis SLIK / Pefindo..."
+                                placeholder="SLIK / Pefindo analysis notes..."
                               />
                             </div>
 
@@ -2998,7 +2966,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 value={review.pefindoTerms || ''}
                                 onChange={val => updateEntityReview(idx, { pefindoTerms: val })}
                                 height={130}
-                                placeholder="Ketentuan komersial pada finco lain..."
+                                placeholder="Commercial terms on other fincos..."
                               />
                             </div>
                           </div>
@@ -3006,13 +2974,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           /* NO: Show Remarks column with TinyMCE */
                           <div>
                             <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px', display: 'block' }}>
-                              Remarks / Alasan Tidak Ada Record (No Record)
+                              Remarks / Reason for No SLIK Records
                             </label>
                             <PreAnalysisRichEditor
                               value={review.noRecordRemarks || ''}
                               onChange={val => updateEntityReview(idx, { noRecordRemarks: val })}
                               height={140}
-                              placeholder="Tuliskan keterangan / alasan tidak ada fasilitas (contoh: Perusahaan baru berdiri / belum ada fasilitas kredit finco atau bank)..."
+                              placeholder="Enter notes / reason for no existing credit records (e.g. newly established entity / no bank or finco facilities yet)..."
                             />
                           </div>
                         )}
@@ -3045,17 +3013,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </span>
               </div>
               <div className="fap-acc-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <button
-                  type="button"
-                  className="fap-acc-sync-btn"
-                  title="Sync preview document to this section"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleTriggerSync('sec7', 'preana-preview-sec-7');
-                  }}
-                >
-                  <Eye size={12} /> Sync View
-                </button>
                 <span className={`fap-acc-chevron ${openSections.sec7 ? 'rotate' : ''}`}>
                   <ChevronDown size={16} />
                 </span>
@@ -3326,7 +3283,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                     <div>
                       <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a' }}>Area Tanda Tangan & Otorisasi Komite</span>
-                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Kolom tanda tangan diperluas untuk otorisasi formal (Propose, Review, Approve)</div>
+                      <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Signature columns for formal executive authorization (Proposed, Reviewed, Approved)</div>
                     </div>
                     <span style={{ fontSize: '0.7rem', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                       3 Komite Wajib
@@ -3343,7 +3300,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>1. Propose by :</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>1. Proposed by :</span>
                         <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>
                           Marketing / Sales
                         </span>
@@ -3363,7 +3320,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Pengusul :</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Proposed By (Name & Title) :</label>
                       <textarea
                         rows={2}
                         name="proposedBy"
@@ -3405,7 +3362,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Reviewer :</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Reviewed By (Name & Title) :</label>
                       <textarea
                         rows={2}
                         name="reviewedBy"
@@ -3447,7 +3404,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Approver :</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Approved By (Name & Title) :</label>
                       <textarea
                         rows={2}
                         name="approvedBy"
@@ -3857,7 +3814,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td colSpan={2} id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '100%', padding: '8px 10px', cursor: 'pointer' }}>
                       <div style={{ fontWeight: 700, fontSize: '9pt', color: '#1e3a8a', marginBottom: '6px' }}>
-                        UBO Information (Bagan Struktur Kepemilikan & Legalitas Saham Group)
+                        UBO Information (Group Shareholding Structure & Legal Profile)
                       </div>
                       {data.uboInformation && (
                         <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: '10px', lineHeight: 1.4 }}>
@@ -3868,7 +3825,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       {/* Corporate Group Structure Diagram matching Image 3 with full Shareholding Tables */}
                       <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '12px 10px', background: '#f8fafc' }}>
                         <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.03em', textAlign: 'center', marginBottom: '10px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
-                          BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
+                          GROUP SHAREHOLDING STRUCTURE CHART
                         </div>
 
                         {/* LEVEL 1: HOLDING ENTITY (PT STAR) CENTERED */}
@@ -4011,7 +3968,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                   {/* Sub Header */}
                                   <div style={{ padding: '6px 6px 3px 6px', textAlign: 'center', background: '#ffffff' }}>
                                     <div style={{ fontSize: '10pt', fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em', lineHeight: 1.2 }}>
-                                      {sub.name || `PT Entitas #${sIdx + 1}`}
+                                      {sub.name || `PT Entity #${sIdx + 1}`}
                                     </div>
                                     {sub.subtitle && (
                                       <div style={{ fontSize: '7.2pt', fontWeight: 600, color: '#475569', marginTop: '1px' }}>
@@ -4087,7 +4044,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Milestones</td>
-                    <td style={{ padding: '4px 6px' }}>
+                    <td id="preana-preview-cell-unitComposition" onClick={() => handlePreviewCellClick('unitComposition', 'sec4')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9' }}>
@@ -4146,8 +4103,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8.5pt' }}>
                         <thead>
                           <tr style={{ background: '#f1f5f9' }}>
-                            <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Kategori Aset</th>
-                            <th style={{ width: '25%', padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Merk</th>
+                            <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Asset Category</th>
+                            <th style={{ width: '25%', padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Brand</th>
                             <th style={{ width: '18%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Qty</th>
                           </tr>
                         </thead>
@@ -4257,7 +4214,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>SLIK/Bureau Highlight</td>
                     <td style={{ padding: '4px 6px' }}>
                       {groupSubsidiaries.map((sub, idx) => {
-                        const fullEntityName = sub.subtitle ? `${sub.name} ${sub.subtitle}` : (sub.name || `Entitas #${idx + 1}`);
+                        const fullEntityName = sub.subtitle ? `${sub.name} ${sub.subtitle}` : (sub.name || `Entity #${idx + 1}`);
                         const review = getEntityReview(idx, fullEntityName);
                         const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
 
@@ -4350,14 +4307,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
+                  <tr id="preana-preview-cell-goodProject" onClick={() => handlePreviewCellClick('goodProjectNote', 'sec7')} style={{ cursor: 'pointer' }}>
                     <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', fontWeight: 700 }}>Good Project?</td>
                     <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: data.goodProject ? '#16a34a' : '#dc2626' }}>
                       {data.goodProject ? 'Yes' : 'No'}
                     </td>
                     <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0' }}>{data.goodProjectNote}</td>
                   </tr>
-                  <tr>
+                  <tr id="preana-preview-cell-goodCustomer" onClick={() => handlePreviewCellClick('goodCustomerNote', 'sec7')} style={{ cursor: 'pointer' }}>
                     <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', fontWeight: 700 }}>Good Customer?</td>
                     <td style={{ padding: '4px 6px', border: '1px solid #e2e8f0', textAlign: 'center', fontWeight: 700, color: data.goodCustomer ? '#16a34a' : '#dc2626' }}>
                       {data.goodCustomer ? 'Yes' : 'No'}
@@ -4367,7 +4324,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </tbody>
               </table>
 
-              <div style={{ marginBottom: '10px', fontSize: '9pt' }}>
+              <div id="preana-preview-cell-briefNote" onClick={() => handlePreviewCellClick('briefNote', 'sec7')} style={{ marginBottom: '10px', fontSize: '9pt', cursor: 'pointer' }}>
                 <span style={{ fontWeight: 700 }}>Brief Note:</span>
                 <div style={{ whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b' }}>
                   {renderRichHtml(data.briefNote)}
@@ -4396,7 +4353,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               </div>
 
               {/* Suggestion Bullet Points */}
-              <div style={{ marginBottom: '14px', fontSize: '8.5pt' }}>
+              <div id="preana-preview-cell-suggestions" onClick={() => handlePreviewCellClick('suggestions', 'sec7')} style={{ marginBottom: '14px', fontSize: '8.5pt', cursor: 'pointer' }}>
                 <span style={{ fontWeight: 700 }}>Suggestion:</span>
                 <ul style={{ margin: '4px 0 0 0', paddingLeft: '20px' }}>
                   {(data.suggestions || []).map((s, idx) => (
@@ -4406,7 +4363,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               </div>
 
               {/* Competition Information Table */}
-              <div style={{ marginTop: '14px', marginBottom: '16px' }}>
+              <div id="preana-preview-cell-competitionTable" onClick={() => handlePreviewCellClick('competitionTable', 'sec7')} style={{ marginTop: '14px', marginBottom: '16px', cursor: 'pointer' }}>
                 <div style={{ fontWeight: 700, fontSize: '9pt', marginBottom: '4px' }}>
                   Competition Information
                 </div>
