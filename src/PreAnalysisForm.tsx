@@ -1040,56 +1040,46 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     const base = data.groupStructure || DEFAULT_GROUP_STRUCTURE;
     const defHolding = DEFAULT_GROUP_STRUCTURE.holding;
     
-    // Holding shareholders: merge with default if index matches default, otherwise use user's
-    const holdingSh = (base.holding?.shareholders && base.holding.shareholders.length > 0)
-      ? base.holding.shareholders.map((userSh, idx) => {
-          const defSh = defHolding.shareholders[idx];
-          return {
-            ...(defSh || {}),
-            ...userSh,
-            name: userSh.name !== undefined ? userSh.name : (defSh?.name || ''),
-            position: userSh.position || userSh.role || defSh?.position || '',
-            shareClass: userSh.shareClass || defSh?.shareClass || '-',
-            numberOfShares: userSh.numberOfShares || defSh?.numberOfShares || '',
-            total: userSh.total || defSh?.total || ''
-          };
-        })
+    // Holding shareholders: preserve user's data completely without fallback resurrection
+    const holdingSh = (base.holding?.shareholders)
+      ? base.holding.shareholders.map(userSh => ({
+          name: userSh.name ?? '',
+          position: userSh.position ?? userSh.role ?? '',
+          role: userSh.role ?? userSh.position ?? '',
+          shareClass: userSh.shareClass ?? '',
+          numberOfShares: userSh.numberOfShares ?? userSh.percentage ?? '',
+          total: userSh.total ?? '',
+          percentage: userSh.percentage ?? ''
+        }))
       : defHolding.shareholders;
-
-    // Subsidiaries: MUST use base.subsidiaries if present, otherwise default
-    const rawSubs = (base.subsidiaries && base.subsidiaries.length > 0)
-      ? base.subsidiaries
-      : DEFAULT_GROUP_STRUCTURE.subsidiaries;
 
     const defaultColors = ['#0284c7', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#e11d48'];
 
+    const rawSubs = base.subsidiaries !== undefined
+      ? base.subsidiaries
+      : DEFAULT_GROUP_STRUCTURE.subsidiaries;
+
     const subsidiaries = rawSubs.map((userSub, sIdx) => {
-      const defSub = DEFAULT_GROUP_STRUCTURE.subsidiaries[sIdx];
-      const color = userSub.borderColor || (defSub ? defSub.borderColor : defaultColors[sIdx % defaultColors.length]);
+      const color = userSub.borderColor || defaultColors[sIdx % defaultColors.length];
       
-      const subSh = (userSub.shareholders && userSub.shareholders.length > 0)
-        ? userSub.shareholders.map((userSh, idx) => {
-            const defSh = defSub?.shareholders?.[idx];
-            return {
-              ...(defSh || {}),
-              ...userSh,
-              name: userSh.name !== undefined ? userSh.name : (defSh?.name || ''),
-              position: userSh.position || userSh.role || defSh?.position || '',
-              shareClass: userSh.shareClass || defSh?.shareClass || '-',
-              numberOfShares: userSh.numberOfShares || defSh?.numberOfShares || '',
-              total: userSh.total || defSh?.total || ''
-            };
-          })
-        : (defSub ? defSub.shareholders : []);
+      const subSh = (userSub.shareholders || []).map(userSh => ({
+        name: userSh.name ?? '',
+        position: userSh.position ?? userSh.role ?? '',
+        role: userSh.role ?? userSh.position ?? '',
+        shareClass: userSh.shareClass ?? '',
+        numberOfShares: userSh.numberOfShares ?? userSh.percentage ?? '',
+        total: userSh.total ?? '',
+        percentage: userSh.percentage ?? ''
+      }));
 
       return {
         ...userSub,
-        name: userSub.name !== undefined ? userSub.name : (defSub?.name || `PT Subsidiary #${sIdx + 1}`),
-        subtitle: userSub.subtitle !== undefined ? userSub.subtitle : (defSub?.subtitle || ''),
-        authorizedCapital: userSub.authorizedCapital !== undefined ? userSub.authorizedCapital : (defSub?.authorizedCapital || 'Rp. 0'),
-        paidUpCapital: userSub.paidUpCapital !== undefined ? userSub.paidUpCapital : (defSub?.paidUpCapital || 'Rp. 0'),
+        name: userSub.name ?? '',
+        subtitle: userSub.subtitle ?? '',
+        authorizedCapital: userSub.authorizedCapital ?? '',
+        paidUpCapital: userSub.paidUpCapital ?? '',
         borderColor: color,
-        management: userSub.management || defSub?.management || '',
+        management: userSub.management ?? '',
         shareholders: subSh
       };
     });
@@ -1098,11 +1088,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       holding: {
         ...defHolding,
         ...(base.holding || {}),
-        name: base.holding?.name !== undefined ? base.holding.name : defHolding.name,
-        subtitle: base.holding?.subtitle !== undefined ? base.holding.subtitle : defHolding.subtitle,
-        authorizedCapital: base.holding?.authorizedCapital !== undefined ? base.holding.authorizedCapital : defHolding.authorizedCapital,
-        paidUpCapital: base.holding?.paidUpCapital !== undefined ? base.holding.paidUpCapital : defHolding.paidUpCapital,
+        name: base.holding?.name ?? defHolding.name,
+        subtitle: base.holding?.subtitle ?? defHolding.subtitle,
+        authorizedCapital: base.holding?.authorizedCapital ?? defHolding.authorizedCapital,
+        paidUpCapital: base.holding?.paidUpCapital ?? defHolding.paidUpCapital,
         borderColor: base.holding?.borderColor || defHolding.borderColor,
+        management: base.holding?.management ?? defHolding.management,
         shareholders: holdingSh
       },
       subsidiaries
@@ -1265,6 +1256,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = [...(gs.holding.shareholders || [])];
       sh[idx] = { ...sh[idx], [field]: val };
+      if (field === 'position') sh[idx].role = val;
+      if (field === 'role') sh[idx].position = val;
       const updatedGs: GroupStructureData = {
         ...gs,
         holding: { ...gs.holding, shareholders: sh }
@@ -1277,7 +1270,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const sh = [...(gs.holding.shareholders || []), { name: '', position: '', role: '', shareClass: '-', numberOfShares: '', total: '' }];
+      const sh = [...(gs.holding.shareholders || []), { name: '', position: '', role: '', shareClass: '', numberOfShares: '', total: '' }];
       const updatedGs: GroupStructureData = {
         ...gs,
         holding: { ...gs.holding, shareholders: sh }
@@ -1310,18 +1303,16 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       
       const newIdx = currentSubs.length;
       const color = defaultColors[newIdx % defaultColors.length];
-      const holdingName = baseGs.holding?.name ? baseGs.holding.name.split('(')[0].trim() : 'PT SANTOSA ABADI RAJA';
       
       const newSub: GroupEntity = {
-        name: `PT Entity #${newIdx + 1}`,
-        subtitle: `(Subsidiary #${newIdx + 1})`,
-        authorizedCapital: 'Rp. 50,000,000,000',
-        paidUpCapital: 'Rp. 12,500,000,000',
+        name: '',
+        subtitle: '',
+        authorizedCapital: '',
+        paidUpCapital: '',
         borderColor: color,
-        management: 'Direktur: - | Komisaris: -',
+        management: '',
         shareholders: [
-          { name: holdingName, position: 'Legal Entity', role: 'Legal Entity', shareClass: '-', numberOfShares: '990', total: 'Rp. 12,375,000,000' },
-          { name: 'DIRECTOR / SHAREHOLDER', position: 'Director', role: 'Director', shareClass: '-', numberOfShares: '10', total: 'Rp. 125,000,000' }
+          { name: '', position: '', role: '', shareClass: '', numberOfShares: '', total: '' }
         ]
       };
 
@@ -1330,18 +1321,16 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         subsidiaries: [...currentSubs, newSub]
       };
 
-      // Also ensure entitySlikReviews for the new index is ready in Section 6
+      // Ensure entitySlikReviews for the new index is ready in Section 6 as fresh blank entity
       const nextReviews = { ...(prev.entitySlikReviews || {}) };
       if (!nextReviews[String(newIdx)]) {
         nextReviews[String(newIdx)] = {
           id: `sub-${newIdx}`,
-          entityName: newSub.name,
-          hasRecord: true,
-          lenderExposures: [
-            { lender: 'Bank Mandiri', plafond: '5.000.000.000,00', rate: '8,50', notes: 'Term Loan' }
-          ],
-          pefindoNotes: '<p>SLIK / Bureau highlight checked - smooth facility operations.</p>',
-          pefindoTerms: '<p>Commercial terms benchmarked to existing banking partners.</p>',
+          entityName: '',
+          hasRecord: false,
+          lenderExposures: [],
+          pefindoNotes: '',
+          pefindoTerms: '',
           noRecordRemarks: ''
         };
       }
@@ -1393,6 +1382,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
         : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
       const sh = [...(currentSubs[subIdx]?.shareholders || [])];
       sh[sIdx] = { ...sh[sIdx], [field]: val };
+      if (field === 'position') sh[sIdx].role = val;
+      if (field === 'role') sh[sIdx].position = val;
       currentSubs[subIdx] = { ...currentSubs[subIdx], shareholders: sh };
       const updatedGs: GroupStructureData = {
         ...gs,
@@ -1409,7 +1400,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       const currentSubs = (gs.subsidiaries && gs.subsidiaries.length > 0)
         ? [...gs.subsidiaries]
         : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
-      const sh = [...(currentSubs[subIdx]?.shareholders || []), { name: '', position: '', role: '', shareClass: '-', numberOfShares: '', total: '' }];
+      const sh = [...(currentSubs[subIdx]?.shareholders || []), { name: '', position: '', role: '', shareClass: '', numberOfShares: '', total: '' }];
       currentSubs[subIdx] = { ...currentSubs[subIdx], shareholders: sh };
       const updatedGs: GroupStructureData = {
         ...gs,
@@ -2332,7 +2323,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             />
                             <input
                               type="text"
-                              value={sh.shareClass || '-'}
+                              value={sh.shareClass || ''}
                               onChange={e => updateHoldingShareholder(sIdx, 'shareClass', e.target.value)}
                               onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                               placeholder="Class"
@@ -2470,7 +2461,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 />
                                 <input
                                   type="text"
-                                  value={sh.shareClass || '-'}
+                                  value={sh.shareClass || ''}
                                   onChange={e => updateSubsidiaryShareholder(subIdx, sIdx, 'shareClass', e.target.value)}
                                   onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                                   placeholder="Class"
