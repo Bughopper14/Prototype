@@ -22,8 +22,14 @@ export class ApiResponse {
   private payload: BodyInit | null = null;
   private sent = false;
 
-  status(code: number) { this.statusCode = code; return this; }
-  setHeader(name: string, value: string) { this.headers.set(name, value); return this; }
+  status(code: number) {
+    this.statusCode = code;
+    return this;
+  }
+  setHeader(name: string, value: string) {
+    this.headers.set(name, value);
+    return this;
+  }
   json(data: unknown) {
     this.headers.set('Content-Type', 'application/json; charset=utf-8');
     this.payload = JSON.stringify(data);
@@ -35,11 +41,20 @@ export class ApiResponse {
     this.sent = true;
     return this;
   }
-  hasHeader(name: string) { return this.headers.has(name); }
+  hasHeader(name: string) {
+    return this.headers.has(name);
+  }
   /** Finishes the response without a body (e.g. 304). */
-  end() { this.sent = true; return this; }
-  get isSent() { return this.sent; }
-  toResponse() { return new Response(this.payload, {status: this.statusCode, headers: this.headers}); }
+  end() {
+    this.sent = true;
+    return this;
+  }
+  get isSent() {
+    return this.sent;
+  }
+  toResponse() {
+    return new Response(this.payload, {status: this.statusCode, headers: this.headers});
+  }
 }
 
 export type Handler = (req: ApiRequest, res: ApiResponse) => Promise<unknown> | unknown;
@@ -49,7 +64,10 @@ const routes: Route[] = [];
 
 function compile(pattern: string) {
   const keys: string[] = [];
-  const source = pattern.replace(/\/:([A-Za-z]+)/g, (_m, key) => { keys.push(key); return '/([^/]+)'; });
+  const source = pattern.replace(/\/:([A-Za-z]+)/g, (_m, key) => {
+    keys.push(key);
+    return '/([^/]+)';
+  });
   return {regex: new RegExp(`^${source}/?$`), keys};
 }
 
@@ -74,7 +92,9 @@ export function match(method: string, path: string) {
     const m = route.regex.exec(path);
     if (!m) continue;
     const params: Record<string, string> = {};
-    route.keys.forEach((key, i) => { params[key] = decodeURIComponent(m[i + 1]); });
+    route.keys.forEach((key, i) => {
+      params[key] = decodeURIComponent(m[i + 1]);
+    });
     return {route, params};
   }
   return null;
@@ -92,7 +112,16 @@ export function problemResponse(error: any) {
   } else if (error?.code === 'ER_DUP_ENTRY') {
     status = 409;
     message = 'Username/email atau data unik sudah digunakan';
-  } else if (['ER_BAD_NULL_ERROR', 'ER_DATA_TOO_LONG', 'ER_TRUNCATED_WRONG_VALUE', 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD', 'ER_WARN_DATA_OUT_OF_RANGE', 'ER_DATA_OUT_OF_RANGE'].includes(error?.code)) {
+  } else if (
+    [
+      'ER_BAD_NULL_ERROR',
+      'ER_DATA_TOO_LONG',
+      'ER_TRUNCATED_WRONG_VALUE',
+      'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD',
+      'ER_WARN_DATA_OUT_OF_RANGE',
+      'ER_DATA_OUT_OF_RANGE',
+    ].includes(error?.code)
+  ) {
     status = 422;
     message = 'One or more fields contain an invalid value';
   } else if (['ER_NO_REFERENCED_ROW_2', 'ER_ROW_IS_REFERENCED_2'].includes(error?.code)) {
@@ -103,11 +132,19 @@ export function problemResponse(error: any) {
     console.error('API error:', error);
     message = 'An unexpected server error occurred';
   }
-  return new Response(JSON.stringify({
-    type: 'about:blank', title: message, status, statusCode: status,
-    error: status === 422 ? 'Unprocessable Entity' : message, message, errors,
-    timestamp: new Date().toISOString(),
-  }), {status, headers: {'Content-Type': 'application/problem+json'}});
+  return new Response(
+    JSON.stringify({
+      type: 'about:blank',
+      title: message,
+      status,
+      statusCode: status,
+      error: status === 422 ? 'Unprocessable Entity' : message,
+      message,
+      errors,
+      timestamp: new Date().toISOString(),
+    }),
+    {status, headers: {'Content-Type': 'application/problem+json'}},
+  );
 }
 
 export const notFound = () => new Problem(404, 'Endpoint not found');

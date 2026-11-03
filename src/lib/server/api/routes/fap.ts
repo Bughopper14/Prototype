@@ -4,11 +4,22 @@ import {Problem} from '../../domain';
 import {requireRole} from '../../auth/session';
 import {exec} from '../../db/query';
 import {intakeDetail} from '@/lib/server/db/repositories/intake';
-import {getSubmitLock, readApplicationDocuments, saveFapComparison, saveFapRemarks, syncSubmitLock} from '@/lib/server/db/repositories/documents';
-import {getFapSubmissionArchiveDetail, getFapSubmissionArchives, recordFapSubmissionArchive} from '@/lib/server/db/repositories/fap-archive';
+import {
+  getSubmitLock,
+  readApplicationDocuments,
+  saveFapComparison,
+  saveFapRemarks,
+  syncSubmitLock,
+} from '@/lib/server/db/repositories/documents';
+import {
+  getFapSubmissionArchiveDetail,
+  getFapSubmissionArchives,
+  recordFapSubmissionArchive,
+} from '@/lib/server/db/repositories/fap-archive';
 import {computeFapDiffs} from '../../domain/fap-diff';
 import {del, get, patch, post, put} from '../router';
-import {documentsDir, runOcr} from '../context';
+import {documentsDir} from '@/lib/server/storage';
+import {runOcr} from '@/lib/server/ocr/runner';
 
 const REVIEW_ROLES = ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE'];
 
@@ -18,12 +29,18 @@ export const isFapChecklist = (d: any) =>
 async function locateDocument(fileName: string) {
   const base = path.basename(fileName);
   const exact = path.join(documentsDir, base);
-  try { if ((await fs.stat(exact)).isFile()) return exact; } catch { /* fall through to prefix match */ }
+  try {
+    if ((await fs.stat(exact)).isFile()) return exact;
+  } catch {
+    /* fall through to prefix match */
+  }
   const prefix = base.split('_[')[0];
   try {
     const match = (await fs.readdir(documentsDir)).find(f => f.startsWith(prefix));
     if (match) return path.join(documentsDir, match);
-  } catch { /* documents dir does not exist yet */ }
+  } catch {
+    /* documents dir does not exist yet */
+  }
   return exact;
 }
 
@@ -38,7 +55,14 @@ export async function compareFapDocumentOcr(id: string, fileName: string, curren
       const ocr = await runOcr(await locateDocument(fileName), 'fap', 120000);
       const extracted = ocr.data || {};
       const diffs = computeFapDiffs(currentApp, extracted);
-      const comparison = {isFap: true, hasDifferences: diffs.length > 0, diffs, extractedData: extracted, fileName, comparedAt: new Date().toISOString()};
+      const comparison = {
+        isFap: true,
+        hasDifferences: diffs.length > 0,
+        diffs,
+        extractedData: extracted,
+        fileName,
+        comparedAt: new Date().toISOString(),
+      };
       await saveFapComparison(id, comparison);
       return comparison;
     } catch (err) {
@@ -47,7 +71,11 @@ export async function compareFapDocumentOcr(id: string, fileName: string, curren
     }
   })();
   inFlight.set(id, task);
-  try { return await task; } finally { inFlight.delete(id); }
+  try {
+    return await task;
+  } finally {
+    inFlight.delete(id);
+  }
 }
 
 const latestFapFile = async (id: string) => {
@@ -86,9 +114,15 @@ post('/applications/:id/fap-comparison/run', async (req, res) => {
   requireRole(req.actor, REVIEW_ROLES);
   const id = req.params.id;
   const currentApp = await intakeDetail(id);
-  if (!currentApp) { res.status(404); return {error: 'Application not found'}; }
+  if (!currentApp) {
+    res.status(404);
+    return {error: 'Application not found'};
+  }
   const {file} = await latestFapFile(id);
-  if (!file) { res.status(400); return {error: 'Belum ada dokumen FAP yang diunggah'}; }
+  if (!file) {
+    res.status(400);
+    return {error: 'Belum ada dokumen FAP yang diunggah'};
+  }
   return {success: true, comparison: await compareFapDocumentOcr(id, file.fileName, currentApp)};
 });
 
@@ -104,11 +138,20 @@ post('/applications/:id/fap-changes/approve', async (req, res) => {
   requireRole(req.actor, REVIEW_ROLES);
   const id = req.params.id;
   const current = await intakeDetail(id);
-  if (!current) { res.status(404); return {error: 'Application not found'}; }
+  if (!current) {
+    res.status(404);
+    return {error: 'Application not found'};
+  }
   await clearFapDifferences(id, req.body?.remarks);
-  await exec("UPDATE application_submit_lock SET stage='PRE_ANALYSIS', is_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?", [id]);
-  try { await recordFapSubmissionArchive(id, current, req.actor, req.body?.remarks); }
-  catch (e) { console.error('recordFapSubmissionArchive error on fap approve:', e); }
+  await exec(
+    "UPDATE application_submit_lock SET stage='PRE_ANALYSIS', is_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?",
+    [id],
+  );
+  try {
+    await recordFapSubmissionArchive(id, current, req.actor, req.body?.remarks);
+  } catch (e) {
+    console.error('recordFapSubmissionArchive error on fap approve:', e);
+  }
   return {success: true, application: await intakeDetail(id), customerDetailLocked: false};
 });
 
@@ -119,12 +162,24 @@ post('/applications/:id/fap-changes/dismiss', async req => {
 
 /* ---------- immutable submission archive ---------- */
 
-get('/applications/:id/fap-archive', async req => ({success: true, archives: await getFapSubmissionArchives(req.params.id)}));
+get('/applications/:id/fap-archive', async req => ({
+  success: true,
+  archives: await getFapSubmissionArchives(req.params.id),
+}));
 get('/fap-archive/:archiveId', async (req, res) => {
   const archive = await getFapSubmissionArchiveDetail(req.params.archiveId);
-  if (!archive) { res.status(404); return {error: 'FAP archive not found'}; }
+  if (!archive) {
+    res.status(404);
+    return {error: 'FAP archive not found'};
+  }
   return {success: true, archive};
 });
 
-const immutable = () => { throw new Problem(403, 'Data arsip FAP submission bersifat permanen dan tidak dapat diubah atau dihapus (immutable).'); };
-for (const register of [put, post, patch, del]) register(['/applications/:id/fap-archive', '/fap-archive/:archiveId'], immutable);
+const immutable = () => {
+  throw new Problem(
+    403,
+    'Data arsip FAP submission bersifat permanen dan tidak dapat diubah atau dihapus (immutable).',
+  );
+};
+for (const register of [put, post, patch, del])
+  register(['/applications/:id/fap-archive', '/fap-archive/:archiveId'], immutable);

@@ -1,8 +1,34 @@
 import React, {useState, useRef, useEffect} from 'react';
-import {X, Upload, ScanLine, Sparkles, CheckCircle2, Copy, FileText, Check, Loader2, Calendar, Mail, Phone, MapPin, Hash, FileSearch, RefreshCw, Building2, ZoomIn, ZoomOut, RotateCw, Maximize2} from 'lucide-react';
-import {api} from '@/lib/crm/api';
-import {extractNibTextFromDocument, extractWilayahFromAddressAndText, normalizeWilayahInput} from '@/lib/crm/nib-ocr';
-import {useMasterData} from '@/components/crm/master-data/master-data';
+import {
+  X,
+  Upload,
+  ScanLine,
+  Sparkles,
+  CheckCircle2,
+  Copy,
+  FileText,
+  Check,
+  Loader2,
+  Calendar,
+  Mail,
+  Phone,
+  MapPin,
+  Hash,
+  FileSearch,
+  RefreshCw,
+  Building2,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Maximize2,
+} from 'lucide-react';
+import {api} from '@/lib/client/api';
+import {
+  extractNibTextFromDocument,
+  extractWilayahFromAddressAndText,
+  normalizeWilayahInput,
+} from '@/lib/client/nib-ocr';
+import {useMasterData} from '@/components/crm/master-data/MasterData';
 
 export interface NibOcrModalProps {
   open: boolean;
@@ -27,7 +53,14 @@ export interface NibOcrModalProps {
   existingFileName?: string;
 }
 
-export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUrl, existingFileName }: NibOcrModalProps) {
+export function NibOcrModal({
+  open,
+  onClose,
+  onApply,
+  notify,
+  existingDocumentUrl,
+  existingFileName,
+}: NibOcrModalProps) {
   const master = useMasterData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -53,7 +86,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
     postalCode: '',
     province: '',
     rt: '',
-    rw: ''
+    rw: '',
   });
 
   // Reset state when modal opens
@@ -80,7 +113,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
     setOcrLoading(true);
     const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
     setFileType(isPdf ? 'pdf' : 'image');
-    
+
     try {
       const objectUrl = URL.createObjectURL(f);
       setFileUrl(objectUrl);
@@ -93,19 +126,25 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'nib');
-      
+
       const res = await api('/ocr/scan', 'POST', uploadPayload);
       if (res && res.data) {
         const d = res.data;
-        const newNib = String(d.nib || '').replace(/\D/g, '').slice(0, 13);
+        const newNib = String(d.nib || '')
+          .replace(/\D/g, '')
+          .slice(0, 13);
         const newCompanyName = String(d.company_name || d.companyName || '').trim();
-        const rawAddress = String(d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '').trim();
-        
+        const rawAddress = String(
+          d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '',
+        ).trim();
+
         let newProvince = String(d.provinsi || d.province || '').trim();
         let newCity = String(d.kota || d.city || d.cityRegency || '').trim();
         let newDistrict = String(d.kecamatan || d.district || '').trim();
         let newVillage = String(d.kel_desa || d.village || d.kelurahan || '').trim();
-        let newPostal = String(d.kode_pos || d.postalCode || '').replace(/\D/g, '').slice(0, 5);
+        let newPostal = String(d.kode_pos || d.postalCode || '')
+          .replace(/\D/g, '')
+          .slice(0, 5);
         let newRt = String(d.rt || '').trim();
         let newRw = String(d.rw || '').trim();
 
@@ -113,7 +152,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
         const w = extractWilayahFromAddressAndText(
           `${rawAddress} ${newProvince} ${newCity} ${newDistrict} ${newVillage}`,
           rawAddress,
-          master
+          master,
         );
         newProvince = w.province || normalizeWilayahInput(newProvince);
         newCity = w.city || normalizeWilayahInput(newCity);
@@ -125,7 +164,9 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
 
         const newEmail = String(d.email || '').trim();
         const newPhone = String(d.phone || d.phoneFax || '').trim();
-        const rawTanggal = String(d.tanggal_terbit || d.establishmentDate || d.nibIssuedDate || d.issueDate || d.tanggalTerbit || '').trim();
+        const rawTanggal = String(
+          d.tanggal_terbit || d.establishmentDate || d.nibIssuedDate || d.issueDate || d.tanggalTerbit || '',
+        ).trim();
         let newTanggal = rawTanggal;
         const isoMatch = rawTanggal.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
         if (isoMatch) {
@@ -150,7 +191,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
           phone: newPhone,
           tanggalTerbit: newTanggal,
           rt: newRt,
-          rw: newRw
+          rw: newRw,
         });
         setRawText(rawAddress || JSON.stringify(d, null, 2));
         if (notify) {
@@ -190,7 +231,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
             postalCode: extracted.postalCode || '',
             province: extracted.province || '',
             rt: extracted.rt || '',
-            rw: extracted.rw || ''
+            rw: extracted.rw || '',
           });
           if (notify) {
             notify(`✓ Document ${f.name} parsed via client-side OCR engine`);
@@ -237,7 +278,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
     formData.postalCode,
     formData.email,
     formData.phone,
-    formData.tanggalTerbit
+    formData.tanggalTerbit,
   ].filter(Boolean).length;
 
   const handleApply = () => {
@@ -255,9 +296,9 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
   const hasData = filledCount > 0;
 
   return (
-    <div 
-      className="modal-scrim nib-ocr-modal-overlay" 
-      onClick={onClose} 
+    <div
+      className="modal-scrim nib-ocr-modal-overlay"
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
@@ -273,11 +314,11 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
         alignItems: 'center',
         justifyContent: 'center',
         padding: '16px',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
       }}
     >
-      <div 
-        className="modal nib-ocr-modal" 
+      <div
+        className="modal nib-ocr-modal"
         onClick={e => e.stopPropagation()}
         style={{
           width: 'min(1820px, 98vw)',
@@ -292,24 +333,34 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
           boxShadow: '0 25px 60px -15px rgba(15, 23, 42, 0.45)',
           overflow: 'hidden',
           position: 'relative',
-          zIndex: 100000
+          zIndex: 100000,
         }}
       >
         {/* MODAL HEADER */}
-        <div style={{
-          padding: '14px 24px',
-          borderBottom: '1px solid #e2e8f0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#f8fafc',
-          flexShrink: 0
-        }}>
-          <div style={{display:'flex', alignItems:'center', gap: 12}}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 8, background: '#2563eb', 
-              color: '#ffffff', display:'flex', alignItems:'center', justifyContent:'center'
-            }}>
+        <div
+          style={{
+            padding: '14px 24px',
+            borderBottom: '1px solid #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#f8fafc',
+            flexShrink: 0,
+          }}
+        >
+          <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: 8,
+                background: '#2563eb',
+                color: '#ffffff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               <ScanLine size={22} />
             </div>
             <div>
@@ -317,38 +368,49 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                 Upload & Scan NIB Document · Auto-Fill OCR
               </h3>
               <p style={{margin: '2px 0 0 0', fontSize: '0.82rem', color: '#64748b'}}>
-                Automatically extract NIB number, company name, domicile address, administrative regions, contacts, and issue date.
+                Automatically extract NIB number, company name, domicile address, administrative regions,
+                contacts, and issue date.
               </p>
             </div>
           </div>
-          <button 
-            type="button" 
-            onClick={onClose} 
+          <button
+            type="button"
+            onClick={onClose}
             className="icon-button"
             aria-label="Close"
-            style={{background:'transparent', border:'none', cursor:'pointer', color:'#64748b', padding: 6}}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: '#64748b',
+              padding: 6,
+            }}
           >
             <X size={22} />
           </button>
         </div>
 
         {/* STATUS NOTIFICATION BAR (ABOVE DOCUMENT VIEWER & OCR RESULTS) */}
-        <div style={{
-          padding: '12px 24px 0 24px',
-          flexShrink: 0
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '9px 16px',
-            borderRadius: 8,
-            fontSize: '0.82rem',
-            fontWeight: 500,
-            background: ocrLoading ? '#eff6ff' : hasData ? '#f0fdf4' : '#f1f5f9',
-            border: `1px solid ${ocrLoading ? '#bfdbfe' : hasData ? '#bbf7d0' : '#e2e8f0'}`,
-            color: ocrLoading ? '#2563eb' : hasData ? '#166534' : '#64748b'
-          }}>
+        <div
+          style={{
+            padding: '12px 24px 0 24px',
+            flexShrink: 0,
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '9px 16px',
+              borderRadius: 8,
+              fontSize: '0.82rem',
+              fontWeight: 500,
+              background: ocrLoading ? '#eff6ff' : hasData ? '#f0fdf4' : '#f1f5f9',
+              border: `1px solid ${ocrLoading ? '#bfdbfe' : hasData ? '#bbf7d0' : '#e2e8f0'}`,
+              color: ocrLoading ? '#2563eb' : hasData ? '#166534' : '#64748b',
+            }}
+          >
             {ocrLoading ? (
               <>
                 <Loader2 size={16} className="spin" />
@@ -369,61 +431,111 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
         </div>
 
         {/* MODAL BODY (50% LEFT VIEWER, 50% RIGHT FORM) */}
-        <div style={{
-          padding: '12px 24px 18px 24px',
-          overflow: 'hidden',
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
-          gap: 22,
-          flex: '1 1 auto',
-          minHeight: 0
-        }}>
+        <div
+          style={{
+            padding: '12px 24px 18px 24px',
+            overflow: 'hidden',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)',
+            gap: 22,
+            flex: '1 1 auto',
+            minHeight: 0,
+          }}
+        >
           {/* LEFT: UPLOAD & FILE ZONE (50% VIEW) */}
-          <div style={{display:'flex', flexDirection:'column', gap: 12, height: '100%', minHeight: 0, minWidth: 0}}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 12,
+              height: '100%',
+              minHeight: 0,
+              minWidth: 0,
+            }}
+          >
             {fileUrl ? (
-              <div style={{
-                background: '#0f172a',
-                border: '1px solid #cbd5e1',
-                borderRadius: 10,
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                flex: '1 1 0',
-                minHeight: 0
-              }}>
-                {/* TOOLBAR */}
-                <div style={{
+              <div
+                style={{
+                  background: '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 10,
+                  overflow: 'hidden',
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 14px',
-                  background: '#1e293b',
-                  borderBottom: '1px solid #334155',
-                  flexShrink: 0
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, maxWidth: '50%' }}>
+                  flexDirection: 'column',
+                  flex: '1 1 0',
+                  minHeight: 0,
+                }}
+              >
+                {/* TOOLBAR */}
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 14px',
+                    background: '#1e293b',
+                    borderBottom: '1px solid #334155',
+                    flexShrink: 0,
+                  }}
+                >
+                  <div style={{display: 'flex', alignItems: 'center', gap: 8, maxWidth: '50%'}}>
                     <FileText size={16} color="#60a5fa" />
-                    <span style={{ fontSize: '0.8rem', color: '#f8fafc', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <span
+                      style={{
+                        fontSize: '0.8rem',
+                        color: '#f8fafc',
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       {fileName || 'NIB Document'}
                     </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
                     <button
                       type="button"
                       onClick={() => setZoom(z => Math.max(0.5, Number((z - 0.15).toFixed(2))))}
                       title="Zoom Out"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '5px 9px', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        background: '#334155',
+                        border: 'none',
+                        color: '#f8fafc',
+                        padding: '5px 9px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
                     >
                       <ZoomOut size={14} />
                     </button>
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', minWidth: 44, textAlign: 'center', fontWeight: 600 }}>
+                    <span
+                      style={{
+                        fontSize: '0.8rem',
+                        color: '#94a3b8',
+                        minWidth: 44,
+                        textAlign: 'center',
+                        fontWeight: 600,
+                      }}
+                    >
                       {Math.round(zoom * 100)}%
                     </span>
                     <button
                       type="button"
                       onClick={() => setZoom(z => Math.min(3, Number((z + 0.15).toFixed(2))))}
                       title="Zoom In"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '5px 9px', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        background: '#334155',
+                        border: 'none',
+                        color: '#f8fafc',
+                        padding: '5px 9px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
                     >
                       <ZoomIn size={14} />
                     </button>
@@ -431,15 +543,36 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                       type="button"
                       onClick={() => setRotation(r => (r + 90) % 360)}
                       title="Rotate 90°"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '5px 9px', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        background: '#334155',
+                        border: 'none',
+                        color: '#f8fafc',
+                        padding: '5px 9px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
                     >
                       <RotateCw size={14} />
                     </button>
                     <button
                       type="button"
-                      onClick={() => { setZoom(1); setRotation(0); }}
+                      onClick={() => {
+                        setZoom(1);
+                        setRotation(0);
+                      }}
                       title="Reset Zoom"
-                      style={{ background: '#334155', border: 'none', color: '#f8fafc', padding: '5px 9px', borderRadius: 5, cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      style={{
+                        background: '#334155',
+                        border: 'none',
+                        color: '#f8fafc',
+                        padding: '5px 9px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                      }}
                     >
                       <Maximize2 size={14} />
                     </button>
@@ -447,7 +580,19 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       title="Replace Document"
-                      style={{ background: '#2563eb', border: 'none', color: '#ffffff', padding: '5px 10px', borderRadius: 5, cursor: 'pointer', fontSize: '0.74rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                      style={{
+                        background: '#2563eb',
+                        border: 'none',
+                        color: '#ffffff',
+                        padding: '5px 10px',
+                        borderRadius: 5,
+                        cursor: 'pointer',
+                        fontSize: '0.74rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
                     >
                       <RefreshCw size={12} /> Replace
                     </button>
@@ -455,34 +600,45 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                 </div>
 
                 {/* PREVIEW CANVAS */}
-                <div style={{
-                  flex: '1 1 0',
-                  minHeight: 0,
-                  height: '100%',
-                  overflow: fileType === 'pdf' ? 'hidden' : 'auto',
-                  display: 'flex',
-                  alignItems: 'stretch',
-                  justifyContent: 'stretch',
-                  background: '#090d16',
-                  padding: 0,
-                  position: 'relative'
-                }}>
+                <div
+                  style={{
+                    flex: '1 1 0',
+                    minHeight: 0,
+                    height: '100%',
+                    overflow: fileType === 'pdf' ? 'hidden' : 'auto',
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    justifyContent: 'stretch',
+                    background: '#090d16',
+                    padding: 0,
+                    position: 'relative',
+                  }}
+                >
                   {fileType === 'pdf' ? (
                     <iframe
                       key={`${fileUrl}-${Math.round(zoom * 100)}`}
                       src={`${fileUrl}#toolbar=0&navpanes=0&zoom=${Math.round(zoom * 100)}`}
-                      style={{ width: '100%', height: '100%', border: 'none', background: '#ffffff', minHeight: '100%', display: 'block' }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                        background: '#ffffff',
+                        minHeight: '100%',
+                        display: 'block',
+                      }}
                       title="NIB PDF Preview"
                     />
                   ) : (
-                    <div style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minWidth: '100%',
-                      minHeight: '100%',
-                      margin: 'auto'
-                    }}>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '100%',
+                        minHeight: '100%',
+                        margin: 'auto',
+                      }}
+                    >
                       <img
                         src={fileUrl}
                         alt="NIB Preview"
@@ -492,7 +648,7 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                           width: zoom > 1 ? `${Math.round(zoom * 100)}%` : 'auto',
                           objectFit: 'contain',
                           transform: `rotate(${rotation}deg)`,
-                          transition: 'width 0.15s ease, transform 0.15s ease'
+                          transition: 'width 0.15s ease, transform 0.15s ease',
                         }}
                       />
                     </div>
@@ -500,32 +656,57 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                 </div>
 
                 {/* BOTTOM ACTION */}
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 14px',
-                  background: '#1e293b',
-                  borderTop: '1px solid #334155',
-                  flexShrink: 0
-                }}>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 14px',
+                    background: '#1e293b',
+                    borderTop: '1px solid #334155',
+                    flexShrink: 0,
+                  }}
+                >
+                  <span style={{fontSize: '0.75rem', color: '#94a3b8'}}>
                     Previewing {fileType?.toUpperCase()} · Zoom: {Math.round(zoom * 100)}%
                   </span>
                   <button
                     type="button"
-                    onClick={() => { setFileUrl(null); setFileName(''); setFileType(null); }}
-                    style={{ background: 'none', border: 'none', color: '#f87171', fontSize: '0.75rem', cursor: 'pointer', fontWeight: 600 }}
+                    onClick={() => {
+                      setFileUrl(null);
+                      setFileName('');
+                      setFileType(null);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#f87171',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                    }}
                   >
                     Remove Document
                   </button>
                 </div>
               </div>
             ) : (
-              <div 
-                onDragOver={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-                onDragEnter={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }}
-                onDragLeave={e => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }}
+              <div
+                onDragOver={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(true);
+                }}
+                onDragEnter={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(true);
+                }}
+                onDragLeave={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsDragging(false);
+                }}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
@@ -543,18 +724,26 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 16
+                  gap: 16,
                 }}
               >
-                <div style={{
-                  width: 64, height: 64, borderRadius: '50%', background: isDragging ? '#dbeafe' : '#e0f2fe',
-                  color: '#2563eb', display:'flex', alignItems:'center', justifyContent:'center',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)'
-                }}>
+                <div
+                  style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    background: isDragging ? '#dbeafe' : '#e0f2fe',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.12)',
+                  }}
+                >
                   <Upload size={32} />
                 </div>
                 <div>
-                  <b style={{fontSize: '1.05rem', color: '#0f172a', display:'block', marginBottom: 4}}>
+                  <b style={{fontSize: '1.05rem', color: '#0f172a', display: 'block', marginBottom: 4}}>
                     {isDragging ? 'Drop NIB Document Here' : 'Click or Drag NIB File Here'}
                   </b>
                   <span style={{fontSize: '0.84rem', color: '#64748b'}}>
@@ -564,263 +753,466 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
                 <button
                   type="button"
                   className="button primary small"
-                  onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                  style={{ marginTop: 8 }}
+                  onClick={e => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  style={{marginTop: 8}}
                 >
-                  <Upload size={14} style={{ marginRight: 6 }} /> Browse File
+                  <Upload size={14} style={{marginRight: 6}} /> Browse File
                 </button>
               </div>
             )}
 
             {/* HIDDEN INPUT FOR FILE SELECTION */}
-            <input 
+            <input
               ref={fileInputRef}
-              type="file" 
+              type="file"
               accept="image/*,application/pdf"
               onChange={handleFileUpload}
-              style={{ display: 'none' }}
+              style={{display: 'none'}}
             />
-
           </div>
 
           {/* RIGHT: EXTRACTED FORM FIELDS PREVIEW */}
-          <div style={{
-            background: '#ffffff', border: '1px solid #e2e8f0',
-            borderRadius: 10, padding: '16px 20px', display:'flex', flexDirection:'column',
-            height: '100%', minHeight: 0
-          }}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #f1f5f9', paddingBottom: 10, marginBottom: 12, flexShrink: 0}}>
-              <h4 style={{margin: 0, fontSize: '0.92rem', fontWeight: 700, color: '#0f172a', display:'flex', alignItems:'center', gap: 6}}>
+          <div
+            style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              padding: '16px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              minHeight: 0,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                borderBottom: '1px solid #f1f5f9',
+                paddingBottom: 10,
+                marginBottom: 12,
+                flexShrink: 0,
+              }}
+            >
+              <h4
+                style={{
+                  margin: 0,
+                  fontSize: '0.92rem',
+                  fontWeight: 700,
+                  color: '#0f172a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
                 <Sparkles size={16} color="#2563eb" /> OCR Extracted Data
               </h4>
               <span style={{fontSize: '0.76rem', color: '#64748b'}}>Review & edit before applying</span>
             </div>
 
             {/* SCROLLABLE FORM FIELDS */}
-            <div style={{
-              flex: '1 1 0',
-              overflowY: 'auto',
-              paddingRight: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-              minHeight: 0
-            }}>
-
+            <div
+              style={{
+                flex: '1 1 0',
+                overflowY: 'auto',
+                paddingRight: '8px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+                minHeight: 0,
+              }}
+            >
               {/* FIELD 1: NIB NUMBER */}
               <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                  <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 4,
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                    }}
+                  >
                     <Hash size={13} color="#2563eb" /> NIB Number (13 Digits)
                   </label>
                   {formData.nib && (
-                    <button 
-                      type="button" 
-                      onClick={() => copyToClipboard('nib', formData.nib)} 
-                      style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('nib', formData.nib)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.72rem',
+                        color: '#2563eb',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
                     >
-                      {copiedKey === 'nib' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey === 'nib' ? <Check size={11} /> : <Copy size={11} />}
                       {copiedKey === 'nib' ? 'Copied' : 'Copy'}
                     </button>
                   )}
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.nib}
                   maxLength={13}
                   placeholder="e.g. 1209260000012"
                   onChange={e => setFormData({...formData, nib: e.target.value.replace(/\D/g, '')})}
                   style={{
-                    width: '100%', padding: '7px 10px', fontSize: '0.84rem',
-                    borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600,
-                    background: formData.nib ? '#f0f7ff' : '#ffffff'
+                    width: '100%',
+                    padding: '7px 10px',
+                    fontSize: '0.84rem',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    fontWeight: 600,
+                    background: formData.nib ? '#f0f7ff' : '#ffffff',
                   }}
                 />
               </div>
 
               {/* FIELD 2: COMPANY NAME */}
               <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                  <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 4,
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                    }}
+                  >
                     <Building2 size={13} color="#2563eb" /> Company Name
                   </label>
                   {formData.companyName && (
-                    <button 
-                      type="button" 
-                      onClick={() => copyToClipboard('companyName', formData.companyName)} 
-                      style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('companyName', formData.companyName)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.72rem',
+                        color: '#2563eb',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
                     >
-                      {copiedKey === 'companyName' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey === 'companyName' ? <Check size={11} /> : <Copy size={11} />}
                       {copiedKey === 'companyName' ? 'Copied' : 'Copy'}
                     </button>
                   )}
                 </div>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={formData.companyName}
                   placeholder="e.g. PT NUSANTARA MINING RESOURCES"
                   onChange={e => setFormData({...formData, companyName: e.target.value})}
                   style={{
-                    width: '100%', padding: '7px 10px', fontSize: '0.84rem',
-                    borderRadius: 6, border: '1px solid #cbd5e1', fontWeight: 600,
-                    background: formData.companyName ? '#f0f7ff' : '#ffffff'
+                    width: '100%',
+                    padding: '7px 10px',
+                    fontSize: '0.84rem',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    fontWeight: 600,
+                    background: formData.companyName ? '#f0f7ff' : '#ffffff',
                   }}
                 />
               </div>
 
               {/* FIELD 3: DOMICILE ADDRESS */}
               <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                  <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 4,
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                    }}
+                  >
                     <MapPin size={13} color="#2563eb" /> Company Address / Domicile
                   </label>
                   {formData.alamat && (
-                    <button 
-                      type="button" 
-                      onClick={() => copyToClipboard('alamat', formData.alamat)} 
-                      style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('alamat', formData.alamat)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.72rem',
+                        color: '#2563eb',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
                     >
-                      {copiedKey === 'alamat' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey === 'alamat' ? <Check size={11} /> : <Copy size={11} />}
                       {copiedKey === 'alamat' ? 'Copied' : 'Copy'}
                     </button>
                   )}
                 </div>
-                <textarea 
+                <textarea
                   rows={2}
                   value={formData.alamat}
                   placeholder="Full address as stated on the NIB document"
                   onChange={e => setFormData({...formData, alamat: e.target.value})}
                   style={{
-                    width: '100%', padding: '7px 10px', fontSize: '0.84rem',
-                    borderRadius: 6, border: '1px solid #cbd5e1', resize: 'vertical',
-                    background: formData.alamat ? '#f0f7ff' : '#ffffff'
+                    width: '100%',
+                    padding: '7px 10px',
+                    fontSize: '0.84rem',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    resize: 'vertical',
+                    background: formData.alamat ? '#f0f7ff' : '#ffffff',
                   }}
                 />
               </div>
 
               {/* ADMINISTRATIVE REGIONS (ALL IN ENGLISH, CLEAN 2-COLUMN GRID) */}
-              <div style={{
-                background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 8,
-                padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12
-              }}>
-                <span style={{fontSize: '0.76rem', fontWeight: 700, color: '#002060', textTransform: 'uppercase', letterSpacing: '0.04em'}}>
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  padding: '14px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: '0.76rem',
+                    fontWeight: 700,
+                    color: '#002060',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                  }}
+                >
                   Administrative Regions
                 </span>
 
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12}}>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12}}>
                   <div>
-                    <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    <label
+                      style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'block',
+                        marginBottom: 4,
+                      }}
+                    >
                       Province
                     </label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.province}
                       placeholder="e.g. DKI Jakarta"
                       onChange={e => setFormData({...formData, province: e.target.value})}
                       style={{
-                        width: '100%', padding: '6px 10px', fontSize: '0.82rem',
-                        borderRadius: 6, border: '1px solid #cbd5e1',
-                        background: formData.province ? '#f0f7ff' : '#ffffff'
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '0.82rem',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: formData.province ? '#f0f7ff' : '#ffffff',
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    <label
+                      style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'block',
+                        marginBottom: 4,
+                      }}
+                    >
                       City / Regency
                     </label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.city}
                       placeholder="e.g. South Jakarta"
                       onChange={e => setFormData({...formData, city: e.target.value})}
                       style={{
-                        width: '100%', padding: '6px 10px', fontSize: '0.82rem',
-                        borderRadius: 6, border: '1px solid #cbd5e1',
-                        background: formData.city ? '#f0f7ff' : '#ffffff'
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '0.82rem',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: formData.city ? '#f0f7ff' : '#ffffff',
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    <label
+                      style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'block',
+                        marginBottom: 4,
+                      }}
+                    >
                       District
                     </label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.district}
                       placeholder="e.g. Setiabudi"
                       onChange={e => setFormData({...formData, district: e.target.value})}
                       style={{
-                        width: '100%', padding: '6px 10px', fontSize: '0.82rem',
-                        borderRadius: 6, border: '1px solid #cbd5e1',
-                        background: formData.district ? '#f0f7ff' : '#ffffff'
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '0.82rem',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: formData.district ? '#f0f7ff' : '#ffffff',
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    <label
+                      style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'block',
+                        marginBottom: 4,
+                      }}
+                    >
                       Village / Sub-district
                     </label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.village}
                       placeholder="e.g. Karet Semanggi"
                       onChange={e => setFormData({...formData, village: e.target.value})}
                       style={{
-                        width: '100%', padding: '6px 10px', fontSize: '0.82rem',
-                        borderRadius: 6, border: '1px solid #cbd5e1',
-                        background: formData.village ? '#f0f7ff' : '#ffffff'
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '0.82rem',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: formData.village ? '#f0f7ff' : '#ffffff',
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    <label
+                      style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'block',
+                        marginBottom: 4,
+                      }}
+                    >
                       Postal / Zip Code
                     </label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={formData.postalCode}
                       placeholder="e.g. 12930"
-                      onChange={e => setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})}
+                      onChange={e =>
+                        setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})
+                      }
                       style={{
-                        width: '100%', padding: '6px 10px', fontSize: '0.82rem',
-                        borderRadius: 6, border: '1px solid #cbd5e1',
-                        background: formData.postalCode ? '#f0f7ff' : '#ffffff'
+                        width: '100%',
+                        padding: '6px 10px',
+                        fontSize: '0.82rem',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: formData.postalCode ? '#f0f7ff' : '#ffffff',
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{fontSize: '0.76rem', fontWeight: 600, color: '#334155', display:'block', marginBottom: 4}}>
+                    <label
+                      style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        color: '#334155',
+                        display: 'block',
+                        marginBottom: 4,
+                      }}
+                    >
                       RT / RW
                     </label>
-                    <div style={{display:'flex', gap: 6, alignItems:'center'}}>
-                      <input 
-                        type="text" 
+                    <div style={{display: 'flex', gap: 6, alignItems: 'center'}}>
+                      <input
+                        type="text"
                         value={formData.rt}
                         maxLength={3}
                         placeholder="RT 005"
                         onChange={e => setFormData({...formData, rt: e.target.value.replace(/\D/g, '')})}
                         style={{
-                          width: '50%', padding: '6px 10px', fontSize: '0.82rem',
-                          borderRadius: 6, border: '1px solid #cbd5e1',
-                          background: formData.rt ? '#f0f7ff' : '#ffffff'
+                          width: '50%',
+                          padding: '6px 10px',
+                          fontSize: '0.82rem',
+                          borderRadius: 6,
+                          border: '1px solid #cbd5e1',
+                          background: formData.rt ? '#f0f7ff' : '#ffffff',
                         }}
                       />
                       <span style={{color: '#94a3b8'}}>/</span>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={formData.rw}
                         maxLength={3}
                         placeholder="RW 003"
                         onChange={e => setFormData({...formData, rw: e.target.value.replace(/\D/g, '')})}
                         style={{
-                          width: '50%', padding: '6px 10px', fontSize: '0.82rem',
-                          borderRadius: 6, border: '1px solid #cbd5e1',
-                          background: formData.rw ? '#f0f7ff' : '#ffffff'
+                          width: '50%',
+                          padding: '6px 10px',
+                          fontSize: '0.82rem',
+                          borderRadius: 6,
+                          border: '1px solid #cbd5e1',
+                          background: formData.rw ? '#f0f7ff' : '#ffffff',
                         }}
                       />
                     </div>
@@ -829,37 +1221,63 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
               </div>
 
               {/* FIELD: EMAIL & PHONE NUMBER */}
-              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12}}>
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12}}>
                 <div>
-                  <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
+                  <label
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      marginBottom: 4,
+                    }}
+                  >
                     <Mail size={13} color="#2563eb" /> Company Email
                   </label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     value={formData.email}
                     placeholder="legal@company.co.id"
                     onChange={e => setFormData({...formData, email: e.target.value})}
                     style={{
-                      width: '100%', padding: '7px 10px', fontSize: '0.84rem',
-                      borderRadius: 6, border: '1px solid #cbd5e1',
-                      background: formData.email ? '#f0f7ff' : '#ffffff'
+                      width: '100%',
+                      padding: '7px 10px',
+                      fontSize: '0.84rem',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      background: formData.email ? '#f0f7ff' : '#ffffff',
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5, marginBottom: 4}}>
+                  <label
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      marginBottom: 4,
+                    }}
+                  >
                     <Phone size={13} color="#2563eb" /> Phone Number
                   </label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={formData.phone}
                     placeholder="021-xxxxxxxx"
                     onChange={e => setFormData({...formData, phone: e.target.value})}
                     style={{
-                      width: '100%', padding: '7px 10px', fontSize: '0.84rem',
-                      borderRadius: 6, border: '1px solid #cbd5e1',
-                      background: formData.phone ? '#f0f7ff' : '#ffffff'
+                      width: '100%',
+                      padding: '7px 10px',
+                      fontSize: '0.84rem',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      background: formData.phone ? '#f0f7ff' : '#ffffff',
                     }}
                   />
                 </div>
@@ -867,64 +1285,97 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
 
               {/* FIELD: TANGGAL TERBIT NIB */}
               <div>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: 4}}>
-                  <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display:'flex', alignItems:'center', gap: 5}}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: 4,
+                  }}
+                >
+                  <label
+                    style={{
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      color: '#334155',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                    }}
+                  >
                     <Calendar size={13} color="#2563eb" /> NIB Issued Date
                   </label>
                   {formData.tanggalTerbit && (
-                    <button 
-                      type="button" 
-                      onClick={() => copyToClipboard('tgl', formData.tanggalTerbit)} 
-                      style={{background:'none', border:'none', cursor:'pointer', fontSize:'0.72rem', color:'#2563eb', display:'inline-flex', alignItems:'center', gap: 3}}
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard('tgl', formData.tanggalTerbit)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '0.72rem',
+                        color: '#2563eb',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                      }}
                     >
-                      {copiedKey === 'tgl' ? <Check size={11}/> : <Copy size={11}/>}
+                      {copiedKey === 'tgl' ? <Check size={11} /> : <Copy size={11} />}
                       {copiedKey === 'tgl' ? 'Copied' : 'Copy'}
                     </button>
                   )}
                 </div>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={formData.tanggalTerbit}
                   onChange={e => setFormData({...formData, tanggalTerbit: e.target.value})}
                   style={{
-                    width: '100%', padding: '7px 10px', fontSize: '0.84rem',
-                    borderRadius: 6, border: '1px solid #cbd5e1',
-                    background: formData.tanggalTerbit ? '#f0f7ff' : '#ffffff'
+                    width: '100%',
+                    padding: '7px 10px',
+                    fontSize: '0.84rem',
+                    borderRadius: 6,
+                    border: '1px solid #cbd5e1',
+                    background: formData.tanggalTerbit ? '#f0f7ff' : '#ffffff',
                   }}
                 />
               </div>
-
             </div>
           </div>
         </div>
 
         {/* MODAL FOOTER */}
-        <div style={{
-          padding: '12px 24px',
-          borderTop: '1px solid #e2e8f0',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: '#f8fafc',
-          flexShrink: 0
-        }}>
-          <button 
-            type="button" 
+        <div
+          style={{
+            padding: '12px 24px',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#f8fafc',
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
             className="button"
             onClick={onClose}
-            style={{background:'#ffffff', borderColor:'#cbd5e1'}}
+            style={{background: '#ffffff', borderColor: '#cbd5e1'}}
           >
             Cancel
           </button>
-          <button 
-            type="button" 
+          <button
+            type="button"
             className="button primary"
             disabled={!hasData || ocrLoading}
             onClick={handleApply}
             style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: '#2563eb', borderColor: '#2563eb',
-              padding: '8px 18px', fontSize: '0.88rem'
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#2563eb',
+              borderColor: '#2563eb',
+              padding: '8px 18px',
+              fontSize: '0.88rem',
             }}
           >
             <Check size={16} />

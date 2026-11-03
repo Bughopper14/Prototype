@@ -10,20 +10,25 @@ const Loading = () => <div className="loading-screen">Loading…</div>;
 
 export const PreAnalysisForm = dynamic(
   () => import('@/components/crm/pre-analysis/PreAnalysisForm').then(m => m.PreAnalysisForm),
-  {ssr: false, loading: Loading});
+  {ssr: false, loading: Loading},
+);
 
 export const NibOcrModal = dynamic(
   () => import('@/components/crm/ocr/NibOcrModal').then(m => m.NibOcrModal),
-  {ssr: false, loading: Loading});
+  {ssr: false, loading: Loading},
+);
 
 export const FapSheetPreview = dynamic(
   () => import('@/components/crm/fap-preview/FapSheetPreview').then(m => m.FapSheetPreview),
-  {ssr: false, loading: Loading});
+  {ssr: false, loading: Loading},
+);
 
 export const ActivityPage = dynamic(
-  () => import('@/components/crm/activity/ActivityAndNotificationsView').then(m => m.ActivityPage),
-  {ssr: false, loading: Loading});
+  () => import('@/components/crm/activity/ActivityViews').then(m => m.ActivityPage),
+  {ssr: false, loading: Loading},
+);
 
 export const EnhancedNotificationsPage = dynamic(
-  () => import('@/components/crm/activity/ActivityAndNotificationsView').then(m => m.EnhancedNotificationsPage),
-  {ssr: false, loading: Loading});
+  () => import('@/components/crm/activity/ActivityViews').then(m => m.EnhancedNotificationsPage),
+  {ssr: false, loading: Loading},
+);

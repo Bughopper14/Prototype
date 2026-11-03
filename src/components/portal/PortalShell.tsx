@@ -7,7 +7,15 @@ import './portal.css';
 type Toast = {message: string; type: 'success' | 'error'} | null;
 
 /** Navbar, slide-in menu, change-password dialog and footer shared by every portal page. */
-export function PortalShell({name, children, wide = false}: {name: string; children: ReactNode; wide?: boolean}) {
+export function PortalShell({
+  name,
+  children,
+  wide = false,
+}: {
+  name: string;
+  children: ReactNode;
+  wide?: boolean;
+}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -16,7 +24,9 @@ export function PortalShell({name, children, wide = false}: {name: string; child
   const initial = (name || 'U').slice(0, 1).toUpperCase();
 
   useEffect(() => {
-    const close = (event: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false); };
+    const close = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) setMenuOpen(false);
+    };
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, []);
@@ -31,14 +41,21 @@ export function PortalShell({name, children, wide = false}: {name: string; child
     window.location.assign('/login');
   }
 
-  const openPassword = () => { setMenuOpen(false); setSidebarOpen(false); setPasswordOpen(true); };
+  const openPassword = () => {
+    setMenuOpen(false);
+    setSidebarOpen(false);
+    setPasswordOpen(true);
+  };
 
   return (
     <div className="pt">
       <nav className="pt-navbar">
         <div className="pt-navbar-inner">
           <a className="pt-brand" href="/gallery">
-            <div className="pt-brand-logo">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/img/logo.png" alt="LiuGong Finance Indonesia" /></div>
+            <div className="pt-brand-logo">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/img/logo.png" alt="LiuGong Finance Indonesia" />
+            </div>
             <div className="pt-brand-text-wrap">
               <span className="pt-brand-text">LiuGong Apps Portal</span>
               <span className="pt-brand-sub">Finance Indonesia</span>
@@ -47,7 +64,12 @@ export function PortalShell({name, children, wide = false}: {name: string; child
 
           <div className="pt-actions">
             <div className="pt-dropdown pt-desktop-only" ref={menuRef}>
-              <button className="pt-user-btn" type="button" aria-expanded={menuOpen} onClick={() => setMenuOpen(o => !o)}>
+              <button
+                className="pt-user-btn"
+                type="button"
+                aria-expanded={menuOpen}
+                onClick={() => setMenuOpen(o => !o)}
+              >
                 <div className="pt-avatar">{initial}</div>
                 <span>{name}</span>
                 <span className="caret" />
@@ -56,19 +78,35 @@ export function PortalShell({name, children, wide = false}: {name: string; child
                 <div className="pt-menu">
                   <div className="pt-menu-header">User Actions</div>
                   <a className="pt-menu-item" href="/gallery">
-                    <span className="pt-item-icon" style={{background: '#eff6ff', color: '#3b82f6'}}><i className="fas fa-th-large" /></span>Apps Hub
+                    <span className="pt-item-icon" style={{background: '#eff6ff', color: '#3b82f6'}}>
+                      <i className="fas fa-th-large" />
+                    </span>
+                    Apps Hub
                   </a>
                   <button className="pt-menu-item" type="button" onClick={openPassword}>
-                    <span className="pt-item-icon" style={{background: '#fffbeb', color: '#f59e0b'}}><i className="fas fa-key" /></span>Change Password
+                    <span className="pt-item-icon" style={{background: '#fffbeb', color: '#f59e0b'}}>
+                      <i className="fas fa-key" />
+                    </span>
+                    Change Password
                   </button>
                   <hr className="pt-menu-divider" />
                   <button className="pt-menu-item danger" type="button" onClick={logout}>
-                    <span className="pt-item-icon" style={{background: '#fef2f2', color: '#ef4444'}}><i className="fas fa-sign-out-alt" /></span>Logout
+                    <span className="pt-item-icon" style={{background: '#fef2f2', color: '#ef4444'}}>
+                      <i className="fas fa-sign-out-alt" />
+                    </span>
+                    Logout
                   </button>
                 </div>
               )}
             </div>
-            <button className="pt-hamburger" type="button" aria-label="Menu" onClick={() => setSidebarOpen(true)}><i className="fas fa-bars" /></button>
+            <button
+              className="pt-hamburger"
+              type="button"
+              aria-label="Menu"
+              onClick={() => setSidebarOpen(true)}
+            >
+              <i className="fas fa-bars" />
+            </button>
           </div>
         </div>
       </nav>
@@ -77,24 +115,56 @@ export function PortalShell({name, children, wide = false}: {name: string; child
       <aside className={`pt-sidebar${sidebarOpen ? ' open' : ''}`} aria-hidden={!sidebarOpen}>
         <div>
           <div className="pt-sidebar-head">
-            <h5><i className="fas fa-th-large" style={{color: '#ffc107', marginRight: 8}} />LiuGong Apps</h5>
-            <button className="pt-sidebar-close" type="button" aria-label="Close" onClick={() => setSidebarOpen(false)}><i className="fas fa-times" /></button>
+            <h5>
+              <i className="fas fa-th-large" style={{color: '#ffc107', marginRight: 8}} />
+              LiuGong Apps
+            </h5>
+            <button
+              className="pt-sidebar-close"
+              type="button"
+              aria-label="Close"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <i className="fas fa-times" />
+            </button>
           </div>
           <ul className="pt-nav">
-            <li><a className="active" href="/gallery"><i className="fas fa-th-large" style={{color: '#ffc107'}} />Apps Hub</a></li>
+            <li>
+              <a className="active" href="/gallery">
+                <i className="fas fa-th-large" style={{color: '#ffc107'}} />
+                Apps Hub
+              </a>
+            </li>
           </ul>
         </div>
         <div className="pt-sidebar-foot">
           <div className="pt-sidebar-user">
             <div className="circle">{initial}</div>
-            <div><h6>{name}</h6><small>Active User</small></div>
+            <div>
+              <h6>{name}</h6>
+              <small>Active User</small>
+            </div>
           </div>
-          <button className="pt-btn-outline" type="button" onClick={openPassword}><i className="fas fa-key" style={{color: '#ffc107'}} />Change Password</button>
-          <button className="pt-btn-danger" type="button" onClick={logout}><i className="fas fa-sign-out-alt" />Logout</button>
+          <button className="pt-btn-outline" type="button" onClick={openPassword}>
+            <i className="fas fa-key" style={{color: '#ffc107'}} />
+            Change Password
+          </button>
+          <button className="pt-btn-danger" type="button" onClick={logout}>
+            <i className="fas fa-sign-out-alt" />
+            Logout
+          </button>
         </div>
       </aside>
 
-      {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} onDone={message => { setPasswordOpen(false); setToast({message, type: 'success'}); }} />}
+      {passwordOpen && (
+        <ChangePasswordDialog
+          onClose={() => setPasswordOpen(false)}
+          onDone={message => {
+            setPasswordOpen(false);
+            setToast({message, type: 'success'});
+          }}
+        />
+      )}
 
       <main>
         <div className="pt-content">
@@ -110,7 +180,11 @@ export function PortalShell({name, children, wide = false}: {name: string; child
         </div>
       </footer>
 
-      {toast && <div className={`pt-toast ${toast.type}`} role="alert">{toast.message}</div>}
+      {toast && (
+        <div className={`pt-toast ${toast.type}`} role="alert">
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }
@@ -144,24 +218,49 @@ function ChangePasswordDialog({onClose, onDone}: {onClose: () => void; onDone: (
         <div className="pt-modal-bar" />
         <div className="pt-modal-head">
           <div className="pt-modal-title">
-            <div className="badge"><i className="fas fa-key" /></div>
-            <div><h5>Ganti Password</h5><small>Perbarui password akun Anda</small></div>
+            <div className="badge">
+              <i className="fas fa-key" />
+            </div>
+            <div>
+              <h5>Ganti Password</h5>
+              <small>Perbarui password akun Anda</small>
+            </div>
           </div>
-          <button type="button" className="pt-modal-close" aria-label="Close" onClick={onClose}><i className="fas fa-times" /></button>
+          <button type="button" className="pt-modal-close" aria-label="Close" onClick={onClose}>
+            <i className="fas fa-times" />
+          </button>
         </div>
         <div className="pt-modal-body">
-          <label className="pt-form-label" htmlFor="cp_current">Password Saat Ini</label>
+          <label className="pt-form-label" htmlFor="cp_current">
+            Password Saat Ini
+          </label>
           <input id="cp_current" name="current_password" type="password" className="pt-input" required />
-          <label className="pt-form-label" htmlFor="cp_new">Password Baru</label>
+          <label className="pt-form-label" htmlFor="cp_new">
+            Password Baru
+          </label>
           <input id="cp_new" name="new_password" type="password" className="pt-input" required />
-          <label className="pt-form-label" htmlFor="cp_confirm">Konfirmasi Password Baru</label>
+          <label className="pt-form-label" htmlFor="cp_confirm">
+            Konfirmasi Password Baru
+          </label>
           <input id="cp_confirm" name="confirm_password" type="password" className="pt-input" required />
           {error && <div className="pt-alert error">{error}</div>}
         </div>
         <div className="pt-modal-foot">
-          <button type="button" className="pt-btn-light" onClick={onClose}>Batal</button>
+          <button type="button" className="pt-btn-light" onClick={onClose}>
+            Batal
+          </button>
           <button className="pt-btn-primary" disabled={busy}>
-            {busy ? <><i className="fas fa-spinner fa-spin" style={{marginRight: 8}} />Menyimpan...</> : <><i className="fas fa-save" style={{marginRight: 8}} />Simpan Password</>}
+            {busy ? (
+              <>
+                <i className="fas fa-spinner fa-spin" style={{marginRight: 8}} />
+                Menyimpan...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-save" style={{marginRight: 8}} />
+                Simpan Password
+              </>
+            )}
           </button>
         </div>
       </form>

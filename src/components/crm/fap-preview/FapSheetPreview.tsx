@@ -1,10 +1,17 @@
 import {useState, useEffect, useRef, useMemo} from 'react';
 import {FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer} from 'lucide-react';
-import {FAP_EXCEL_HTML_TEMPLATE} from '@/lib/crm/fap-html-template';
-import {useMasterData} from '@/components/crm/master-data/master-data';
+import {FAP_EXCEL_HTML_TEMPLATE} from '@/lib/client/fap-html-template';
+import {useMasterData} from '@/components/crm/master-data/MasterData';
 
-import type {FapSheetData, FapSheetPreviewProps} from '@/lib/crm/fap-cells';
-import {FIELD_TO_CELL_ID_MAP, resolveFieldToCellId, SECTION_TO_CELL_IDS_MAP, SECTION_TO_SCROLL_TARGET_MAP, SECTION_TO_CELL_ID_MAP, CELL_ID_TO_SECTION_MAP} from '@/lib/crm/fap-cells';
+import type {FapSheetPreviewProps} from '@/lib/client/fap-cells';
+import {
+  FIELD_TO_CELL_ID_MAP,
+  resolveFieldToCellId,
+  SECTION_TO_CELL_IDS_MAP,
+  SECTION_TO_SCROLL_TARGET_MAP,
+  SECTION_TO_CELL_ID_MAP,
+  CELL_ID_TO_SECTION_MAP,
+} from '@/lib/client/fap-cells';
 
 export function FapSheetPreview(props: FapSheetPreviewProps) {
   const master = useMasterData();
@@ -61,10 +68,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     };
 
     return {
-      fapNumber: isOcrSide ? (raw.fapNumber || '') : pick(raw.fapNumber, app.fapNumber, '0006/AF/03/2026'),
-      applicationDate: isOcrSide ? (raw.applicationDate ? formatDate(raw.applicationDate) : '') : formatDate(pick(raw.applicationDate, app.applicationDate, new Date().toISOString())),
-      branchCode: isOcrSide ? (raw.branchCode || '') : pick(raw.branchCode, app.branchCode, 'JKT01'),
-      customerStatus: isOcrSide ? (raw.customerStatus || '').toUpperCase() : pick(raw.customerStatus, app.customerStatus, 'EXISTING').toUpperCase(),
+      fapNumber: isOcrSide ? raw.fapNumber || '' : pick(raw.fapNumber, app.fapNumber, '0006/AF/03/2026'),
+      applicationDate: isOcrSide
+        ? raw.applicationDate
+          ? formatDate(raw.applicationDate)
+          : ''
+        : formatDate(pick(raw.applicationDate, app.applicationDate, new Date().toISOString())),
+      branchCode: isOcrSide ? raw.branchCode || '' : pick(raw.branchCode, app.branchCode, 'JKT01'),
+      customerStatus: isOcrSide
+        ? (raw.customerStatus || '').toUpperCase()
+        : pick(raw.customerStatus, app.customerStatus, 'EXISTING').toUpperCase(),
       companyType: pick(raw.companyType, cust.companyType, '').toUpperCase(),
       companyName: pick(raw.companyName, cust.companyName, ''),
       companyAddress: pick(raw.companyAddress, prof.companyAddress, ''),
@@ -89,7 +102,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           let y = today.getFullYear() - dob.getFullYear();
           let m = today.getMonth() - dob.getMonth();
           if (today.getDate() < dob.getDate()) m--;
-          if (m < 0) { y--; m += 12; }
+          if (m < 0) {
+            y--;
+            m += 12;
+          }
           return Math.max(0, y);
         }
         return '';
@@ -109,7 +125,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           let y = today.getFullYear() - dob.getFullYear();
           let m = today.getMonth() - dob.getMonth();
           if (today.getDate() < dob.getDate()) m--;
-          if (m < 0) { y--; m += 12; }
+          if (m < 0) {
+            y--;
+            m += 12;
+          }
           return Math.max(0, m);
         }
         return '';
@@ -131,10 +150,19 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       picCity: resolveLoc('city', pick(raw.picCity, p.city, '')),
       picProvince: resolveLoc('province', pick(raw.picProvince, p.province, '')),
       picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
-      stakeholders: isOcrSide ? (raw.stakeholders || []) : sh,
-      projects: isOcrSide ? ((raw as any).projects || []) : proj,
+      stakeholders: isOcrSide ? raw.stakeholders || [] : sh,
+      projects: isOcrSide ? (raw as any).projects || [] : proj,
     };
-  }, [props.data, props.application, props.customer, props.profile, props.pic, props.stakeholders, props.projects, master]);
+  }, [
+    props.data,
+    props.application,
+    props.customer,
+    props.profile,
+    props.pic,
+    props.stakeholders,
+    props.projects,
+    master,
+  ]);
 
   // Push values into iframe DOM
   const syncIframeValues = () => {
@@ -160,13 +188,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     const setText = (id: string, text: any) => {
       const el = doc.getElementById(id);
       if (el) {
-        el.textContent = text !== undefined && text !== null && String(text).trim() !== '' ? String(text) : '';
+        el.textContent =
+          text !== undefined && text !== null && String(text).trim() !== '' ? String(text) : '';
       }
     };
 
     const formatFapDate = (dateStr?: string) => {
       if (!dateStr) return '';
-      const m = String(dateStr).trim().match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+      const m = String(dateStr)
+        .trim()
+        .match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
       if (m) return `${m[3].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[1]}`;
       return String(dateStr).trim();
     };
@@ -187,10 +218,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     }
 
     const compTypeUpper = String(d.companyType || '').toUpperCase();
-    const isCorp = compTypeUpper.includes('CORPORATE') || compTypeUpper.includes('PT') || compTypeUpper.includes('PERSEROAN');
-    const isComm = compTypeUpper.includes('COMMERCIAL') || compTypeUpper.includes('CV') || compTypeUpper.includes('FIRMA');
+    const isCorp =
+      compTypeUpper.includes('CORPORATE') ||
+      compTypeUpper.includes('PT') ||
+      compTypeUpper.includes('PERSEROAN');
+    const isComm =
+      compTypeUpper.includes('COMMERCIAL') || compTypeUpper.includes('CV') || compTypeUpper.includes('FIRMA');
     const isMicro = compTypeUpper.includes('MICRO') || compTypeUpper.includes('MIKRO');
-    const isLiuGongUser = compTypeUpper.includes('LIUGONG') || compTypeUpper.includes('USER') || compTypeUpper.includes('USED');
+    const isLiuGongUser =
+      compTypeUpper.includes('LIUGONG') || compTypeUpper.includes('USER') || compTypeUpper.includes('USED');
 
     setText('fap-cell-corporate', isCorp ? '✓' : '');
     setText('fap-cell-commercial', isComm ? '✓' : '');
@@ -248,10 +284,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
     // Attach click listeners to all data cells
     const cells = doc.querySelectorAll('[id^="fap-cell-"]');
-    cells.forEach((cell) => {
+    cells.forEach(cell => {
       (cell as HTMLElement).style.cursor = 'pointer';
       (cell as HTMLElement).title = 'Click to focus this field in form';
-      (cell as HTMLElement).onclick = (e) => {
+      (cell as HTMLElement).onclick = e => {
         e.stopPropagation();
         const id = (cell as HTMLElement).id;
         const matchedField = Object.entries(FIELD_TO_CELL_ID_MAP).find(([_, v]) => v === id)?.[0] || '';
@@ -273,13 +309,15 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
     if (props.diffs && props.diffs.length > 0) {
       props.diffs.forEach((item: any) => {
-        const cid = resolveFieldToCellId(item.field, undefined, props.data) || FIELD_TO_CELL_ID_MAP[item.field];
+        const cid =
+          resolveFieldToCellId(item.field, undefined, props.data) || FIELD_TO_CELL_ID_MAP[item.field];
         if (cid) {
           const el = doc.getElementById(cid);
           if (el) {
             el.classList.add('fap-diff-warning-cell');
             (el as HTMLElement).style.backgroundColor = props.diffSide === 'ocr' ? '#fff7ed' : '#fef2f2';
-            (el as HTMLElement).style.outline = props.diffSide === 'ocr' ? '2px solid #f97316' : '2px solid #ef4444';
+            (el as HTMLElement).style.outline =
+              props.diffSide === 'ocr' ? '2px solid #f97316' : '2px solid #ef4444';
           }
         }
       });
@@ -293,7 +331,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       if (box && comp && emailTd) {
         const emailTr = emailTd.closest('tr');
         if (emailTr) {
-          const h = (emailTr.offsetTop - comp.offsetTop) - 4;
+          const h = emailTr.offsetTop - comp.offsetTop - 4;
           if (h > 1000) {
             box.style.height = `${h}px`;
           }
@@ -323,9 +361,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     if (!props.activeSection && !props.activeField) return;
 
     if (props.activeSection === 'all') {
-      win.scrollTo({ top: 0, behavior: 'smooth' });
-      doc.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
-      doc.body.scrollTo({ top: 0, behavior: 'smooth' });
+      win.scrollTo({top: 0, behavior: 'smooth'});
+      doc.documentElement.scrollTo({top: 0, behavior: 'smooth'});
+      doc.body.scrollTo({top: 0, behavior: 'smooth'});
       return;
     }
 
@@ -333,7 +371,10 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     let scrollTargetCellId: string | null = null;
 
     if (props.activeField) {
-      const cid = resolveFieldToCellId(props.activeField, props.activeSection || undefined, props.data) || FIELD_TO_CELL_ID_MAP[props.activeField] || (props.activeField.startsWith('fap-cell-') ? props.activeField : null);
+      const cid =
+        resolveFieldToCellId(props.activeField, props.activeSection || undefined, props.data) ||
+        FIELD_TO_CELL_ID_MAP[props.activeField] ||
+        (props.activeField.startsWith('fap-cell-') ? props.activeField : null);
       if (cid) {
         cellIdsToHighlight.push(cid);
         scrollTargetCellId = cid;
@@ -369,9 +410,9 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       const currentScrollY = win.scrollY || doc.documentElement.scrollTop || doc.body.scrollTop || 0;
       const targetY = Math.max(0, currentScrollY + rect.top - 60);
 
-      win.scrollTo({ top: targetY, behavior: 'smooth' });
-      doc.documentElement.scrollTo({ top: targetY, behavior: 'smooth' });
-      doc.body.scrollTo({ top: targetY, behavior: 'smooth' });
+      win.scrollTo({top: targetY, behavior: 'smooth'});
+      doc.documentElement.scrollTo({top: targetY, behavior: 'smooth'});
+      doc.body.scrollTo({top: targetY, behavior: 'smooth'});
     }
 
     const timer = setTimeout(() => {
@@ -404,8 +445,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     return () => observer.disconnect();
   }, [props.externalZoom]);
 
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.05, Number((z - 0.05).toFixed(2))));
-  const handleZoomIn = () => setZoomLevel((z) => Math.min(1.5, Number((z + 0.05).toFixed(2))));
+  const handleZoomOut = () => setZoomLevel(z => Math.max(0.05, Number((z - 0.05).toFixed(2))));
+  const handleZoomIn = () => setZoomLevel(z => Math.min(1.5, Number((z + 0.05).toFixed(2))));
   const handleResetZoom = () => {
     if (containerRef.current) {
       const w = containerRef.current.clientWidth;
@@ -440,7 +481,20 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   };
 
   return (
-    <div className="excel-fap-viewer" ref={containerRef} style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: '#f1f5f9', borderRadius: '8px', overflow: 'hidden', border: '1px solid #cbd5e1' }}>
+    <div
+      className="excel-fap-viewer"
+      ref={containerRef}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        width: '100%',
+        background: '#f1f5f9',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        border: '1px solid #cbd5e1',
+      }}
+    >
       {!props.hideToolbar && (
         <div className="excel-fap-ribbon">
           {/* Top Utility Tier: Document Info, Zoom, Print */}
@@ -459,10 +513,16 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
             <div className="excel-ribbon-right">
               <div className="excel-zoom-controls">
-                <button onClick={handleZoomOut} title="Zoom Out"><ZoomOut size={13} /></button>
+                <button onClick={handleZoomOut} title="Zoom Out">
+                  <ZoomOut size={13} />
+                </button>
                 <span className="excel-zoom-btn-label">{Math.round(zoomLevel * 100)}%</span>
-                <button onClick={handleZoomIn} title="Zoom In"><ZoomIn size={13} /></button>
-                <button onClick={handleResetZoom} title="Reset Zoom"><RotateCcw size={13} /></button>
+                <button onClick={handleZoomIn} title="Zoom In">
+                  <ZoomIn size={13} />
+                </button>
+                <button onClick={handleResetZoom} title="Reset Zoom">
+                  <RotateCcw size={13} />
+                </button>
               </div>
               <button className="excel-print-btn" onClick={handlePrint} title="Print Document">
                 <Printer size={13} />
@@ -475,11 +535,11 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           <div className="excel-ribbon-sub-tier">
             <div className="excel-section-chips">
               {[
-                { id: 'fap-preview-sec-header', label: '1. Identity' },
-                { id: 'fap-preview-sec-company', label: '2. Domicile' },
-                { id: 'fap-preview-sec-business', label: '3. Profile' },
-                { id: 'fap-preview-sec-pic', label: '4. PIC' },
-                { id: 'fap-preview-sec-projects', label: '5. Projects' },
+                {id: 'fap-preview-sec-header', label: '1. Identity'},
+                {id: 'fap-preview-sec-company', label: '2. Domicile'},
+                {id: 'fap-preview-sec-business', label: '3. Profile'},
+                {id: 'fap-preview-sec-pic', label: '4. PIC'},
+                {id: 'fap-preview-sec-projects', label: '5. Projects'},
               ].map(chip => (
                 <button
                   key={chip.id}
@@ -497,13 +557,21 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       )}
 
       {/* Embedded Native HTML Template Frame */}
-      <div style={{ flex: 1, width: '100%', height: props.hideToolbar ? '100%' : 'calc(100% - 40px)', background: '#525659', overflow: 'hidden' }}>
+      <div
+        style={{
+          flex: 1,
+          width: '100%',
+          height: props.hideToolbar ? '100%' : 'calc(100% - 40px)',
+          background: '#525659',
+          overflow: 'hidden',
+        }}
+      >
         <iframe
           ref={iframeRef}
           srcDoc={FAP_EXCEL_HTML_TEMPLATE}
           title="Application Form APPROVED"
           onLoad={syncIframeValues}
-          style={{ width: '100%', height: '100%', border: 'none', background: '#525659', display: 'block' }}
+          style={{width: '100%', height: '100%', border: 'none', background: '#525659', display: 'block'}}
         />
       </div>
     </div>

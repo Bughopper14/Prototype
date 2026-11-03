@@ -12,4 +12,6 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = {matcher: ['/gallery/:path*', '/crm-dashboard/:path*', '/user-management/:path*', '/documents/:path*']};
+export const config = {
+  matcher: ['/gallery/:path*', '/crm-dashboard/:path*', '/user-management/:path*', '/documents/:path*'],
+};

@@ -9,7 +9,7 @@ import {saveFinanceMasters} from '@/lib/server/db/repositories/finance-masters';
 import {saveEquipmentMasters} from '@/lib/server/db/repositories/equipment-masters';
 import {saveDocumentMasters} from '@/lib/server/db/repositories/document-masters';
 import {get, put} from '../router';
-import {invalidateMasterData, masterData, masterDataGzip} from '../context';
+import {invalidateMasterData, masterData, masterDataGzip} from '@/lib/server/api/master-data-cache';
 
 /**
  * The catalog is ~15 MB of JSON (every Indonesian village), so it is sent gzip-compressed and validated with an ETag
@@ -29,17 +29,29 @@ get('/master-data', async (req, res) => {
 
 put('/master-data', async req => {
   let catalog: MasterCatalog;
-  try { catalog = validateMasterCatalog(req.body.catalog); } catch (e: any) { throw new Problem(422, e.message); }
+  try {
+    catalog = validateMasterCatalog(req.body.catalog);
+  } catch (e: any) {
+    throw new Problem(422, e.message);
+  }
 
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
     await conn.query('SELECT id FROM master_data WHERE id=1 FOR UPDATE');
     const previous = await masterData(conn, true);
-    ensure(req.body.revision === previous.revision, 'Master data telah berubah. Muat ulang lalu simpan kembali.', 409);
+    ensure(
+      req.body.revision === previous.revision,
+      'Master data telah berubah. Muat ulang lalu simpan kembali.',
+      409,
+    );
     for (const rows of Object.values(previous.catalog as Record<string, any[]>)) {
       const values = new Set((rows || []).map(x => x.value));
-      for (const row of rows || []) ensure(values.has(row.value), 'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.');
+      for (const row of rows || [])
+        ensure(
+          values.has(row.value),
+          'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.',
+        );
     }
     await saveLocations(catalog, previous.catalog);
     await saveCustomerMasters(catalog);
@@ -48,7 +60,9 @@ put('/master-data', async req => {
     await saveFinanceMasters(catalog);
     await saveEquipmentMasters(catalog);
     await saveDocumentMasters(catalog);
-    await conn.query('UPDATE master_data SET catalog=?,revision=revision+1 WHERE id=1', [JSON.stringify(catalog)]);
+    await conn.query('UPDATE master_data SET catalog=?,revision=revision+1 WHERE id=1', [
+      JSON.stringify(catalog),
+    ]);
     await conn.commit();
   } catch (e) {
     await conn.rollback();

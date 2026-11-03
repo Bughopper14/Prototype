@@ -15,12 +15,15 @@ async function main() {
   const {pool} = await import('@/lib/server/db/pool');
   const [result] = await pool.execute<any>(
     'INSERT INTO users (username, password_hash, full_name, is_active) VALUES (?, ?, ?, 1)',
-    [username, hashPassword(password), fullName]);
+    [username, hashPassword(password), fullName],
+  );
   const userId = result.insertId;
   if (admin) {
     await pool.execute(
       `INSERT IGNORE INTO user_app_roles (user_id, app_id, role_id)
-       SELECT ?, r.app_id, r.id FROM roles r WHERE r.role_name = 'Super Admin'`, [userId]);
+       SELECT ?, r.app_id, r.id FROM roles r WHERE r.role_name = 'Super Admin'`,
+      [userId],
+    );
   }
   console.log(`created user #${userId} (${username})${admin ? ' as Super Admin' : ''}`);
   await pool.end();

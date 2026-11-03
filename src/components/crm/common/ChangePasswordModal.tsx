@@ -1,10 +1,16 @@
 import {useState} from 'react';
 import {Save, Loader2, Key} from 'lucide-react';
-import {api} from '@/lib/crm/api';
+import {api} from '@/lib/client/api';
 import {label} from '@/lib/shared/fields';
-import {Modal} from '@/components/crm/common/ui';
+import {Modal} from '@/components/crm/common/SharedUi';
 
-export function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: (msg: string) => void }) {
+export function ChangePasswordModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: (msg: string) => void;
+}) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -30,8 +36,8 @@ export function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => voi
     try {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ current_password: currentPassword, new_password: newPassword })
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({current_password: currentPassword, new_password: newPassword}),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) {
@@ -48,9 +54,17 @@ export function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => voi
 
   return (
     <Modal title="Change Password" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="modal-body" style={{ minWidth: '320px', maxWidth: '440px', padding: '24px 28px' }}>
-        {error && <div className="error" style={{ marginBottom: '14px' }}>{error}</div>}
-        <label style={{ marginBottom: '14px' }}>
+      <form
+        onSubmit={handleSubmit}
+        className="modal-body"
+        style={{minWidth: '320px', maxWidth: '440px', padding: '24px 28px'}}
+      >
+        {error && (
+          <div className="error" style={{marginBottom: '14px'}}>
+            {error}
+          </div>
+        )}
+        <label style={{marginBottom: '14px'}}>
           Current Password
           <input
             type="password"
@@ -60,7 +74,7 @@ export function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => voi
             placeholder="Enter current password"
           />
         </label>
-        <label style={{ marginBottom: '14px' }}>
+        <label style={{marginBottom: '14px'}}>
           New Password
           <input
             type="password"
@@ -70,7 +84,7 @@ export function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => voi
             placeholder="Minimum 6 characters"
           />
         </label>
-        <label style={{ marginBottom: '18px' }}>
+        <label style={{marginBottom: '18px'}}>
           Confirm New Password
           <input
             type="password"
@@ -80,11 +94,26 @@ export function ChangePasswordModal({ onClose, onSuccess }: { onClose: () => voi
             placeholder="Re-enter new password"
           />
         </label>
-        <div className="modal-actions" style={{ padding: '16px 0 0 0', background: 'transparent', borderTop: '1px solid #e2e8f0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <div
+          className="modal-actions"
+          style={{
+            padding: '16px 0 0 0',
+            background: 'transparent',
+            borderTop: '1px solid #e2e8f0',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
+          }}
+        >
           <button type="button" className="button" onClick={onClose} disabled={loading}>
             Cancel
           </button>
-          <button type="submit" className="button primary" disabled={loading} style={{ background: '#002c5f', borderColor: '#002c5f' }}>
+          <button
+            type="submit"
+            className="button primary"
+            disabled={loading}
+            style={{background: '#002c5f', borderColor: '#002c5f'}}
+          >
             {loading ? <Loader2 className="spin" size={15} /> : <Key size={15} />}
             <span>Save Password</span>
           </button>

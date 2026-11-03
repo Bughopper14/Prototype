@@ -1,0 +1,10 @@
+.next
+node_modules
+public
+services
+storage
+db
+package-lock.json
+src/lib/client/fap-html-template.ts
+src/lib/client/fap-excel-data.ts
+src/lib/client/logo-data-uri.ts

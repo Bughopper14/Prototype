@@ -1,8 +1,14 @@
 import {z} from 'zod';
 import {pool} from '@/lib/server/db/pool';
-import {ready} from '@/lib/server/bootstrap';
+import {ready} from '@/lib/server/ready';
 import {verifyPassword} from '@/lib/server/auth/password';
-import {createSessionRecord, isAdminUser, logAudit, sessionCookie, signSession} from '@/lib/server/auth/session';
+import {
+  createSessionRecord,
+  isAdminUser,
+  logAudit,
+  sessionCookie,
+  signSession,
+} from '@/lib/server/auth/session';
 import {clientIp} from '@/lib/server/auth/guard';
 
 export const runtime = 'nodejs';
@@ -13,10 +19,14 @@ const MAX_ATTEMPTS = 10;
 const LOCK_MS = 15 * 60 * 1000;
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
-  new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers}});
+  new Response(JSON.stringify(body), {
+    status,
+    headers: {'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...headers},
+  });
 
 /** Only same-site relative paths may be used as a post-login destination. */
-const safeNext = (next?: string | null) => (next && next.startsWith('/') && !next.startsWith('//') ? next : '/gallery');
+const safeNext = (next?: string | null) =>
+  next && next.startsWith('/') && !next.startsWith('//') ? next : '/gallery';
 
 /** Browser form post fallback: answer with redirects instead of JSON. */
 const redirectTo = (location: string, headers: Record<string, string> = {}) =>
@@ -36,14 +46,21 @@ export async function POST(request: Request) {
     return fail('Too many login attempts. Try again in 15 minutes.', 429);
   }
 
-  const parsed = z.object({username: z.string().min(1), password: z.string().min(1), next: z.string().optional()}).safeParse(form ? Object.fromEntries(form) : await request.json().catch(() => ({})));
+  const parsed = z
+    .object({username: z.string().min(1), password: z.string().min(1), next: z.string().optional()})
+    .safeParse(form ? Object.fromEntries(form) : await request.json().catch(() => ({})));
   if (!parsed.success) return fail('Enter username and password', 422);
   const {username, password, next} = parsed.data;
 
-  const [rows] = await pool.query<any[]>('SELECT * FROM users WHERE username = ? AND is_active = 1', [username.trim()]);
+  const [rows] = await pool.query<any[]>('SELECT * FROM users WHERE username = ? AND is_active = 1', [
+    username.trim(),
+  ]);
   const user = rows[0];
   if (!user || !verifyPassword(password, user.password_hash)) {
-    attempts.set(key, {count: (entry && entry.until > Date.now() ? entry.count : 0) + 1, until: Date.now() + LOCK_MS});
+    attempts.set(key, {
+      count: (entry && entry.until > Date.now() ? entry.count : 0) + 1,
+      until: Date.now() + LOCK_MS,
+    });
     return fail('Invalid username or password', 401);
   }
   attempts.delete(key);
@@ -52,5 +69,7 @@ export async function POST(request: Request) {
   const sessionId = await createSessionRecord(user.id, admin, ip, request.headers.get('user-agent'));
   await logAudit(user.id, 'User Login', 'Portal Hub', ip);
   const cookie = {'Set-Cookie': sessionCookie(signSession(user.id, sessionId), request.headers)};
-  return isForm ? redirectTo(safeNext(next), cookie) : json({ok: true, redirect: safeNext(next)}, 200, cookie);
+  return isForm
+    ? redirectTo(safeNext(next), cookie)
+    : json({ok: true, redirect: safeNext(next)}, 200, cookie);
 }

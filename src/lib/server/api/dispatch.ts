@@ -1,7 +1,14 @@
 import {validateWrite} from '@/lib/shared/input-validation';
 import {Problem} from '../domain';
-import {ready} from '../bootstrap';
-import {SESSION_COOKIE, authenticate, readCookie, sessionCookie, withActor, type Actor} from '../auth/session';
+import {ready} from '../ready';
+import {
+  SESSION_COOKIE,
+  authenticate,
+  readCookie,
+  sessionCookie,
+  withActor,
+  type Actor,
+} from '../auth/session';
 import {ApiResponse, match, notFound, problemResponse, type ApiRequest, type UploadedFile} from './router';
 import './routes';
 
@@ -26,9 +33,17 @@ async function parseBody(request: Request): Promise<{body: any; file?: UploadedF
     const body: Record<string, any> = {};
     let file: UploadedFile | undefined;
     for (const [key, value] of form.entries()) {
-      if (typeof value === 'string') { body[key] = value; continue; }
+      if (typeof value === 'string') {
+        body[key] = value;
+        continue;
+      }
       if (value.size > 20 * 1024 * 1024) throw new Problem(422, 'File exceeds the 20 MB limit');
-      file = {buffer: Buffer.from(await value.arrayBuffer()), mimetype: value.type, originalname: value.name, size: value.size};
+      file = {
+        buffer: Buffer.from(await value.arrayBuffer()),
+        mimetype: value.type,
+        originalname: value.name,
+        size: value.size,
+      };
     }
     return {body, file};
   }
@@ -50,7 +65,11 @@ export async function dispatch(request: Request, segments: string[]): Promise<Re
 
     const {body, file} = await parseBody(request);
     if (WRITE_METHODS.has(request.method)) {
-      try { validateWrite(path, request.method, body); } catch (e: any) { throw new Problem(422, e.message); }
+      try {
+        validateWrite(path, request.method, body);
+      } catch (e: any) {
+        throw new Problem(422, e.message);
+      }
     }
 
     let actor: Actor | null = null;
@@ -59,7 +78,11 @@ export async function dispatch(request: Request, segments: string[]): Promise<Re
       if (!check.ok) {
         const res = new Response(JSON.stringify({error: check.reason, code: 'SESSION_TIMEOUT'}), {
           status: 401,
-          headers: {'Content-Type': 'application/json', 'Set-Cookie': sessionCookie(null, request.headers), 'Cache-Control': 'no-store'},
+          headers: {
+            'Content-Type': 'application/json',
+            'Set-Cookie': sessionCookie(null, request.headers),
+            'Cache-Control': 'no-store',
+          },
         });
         return res;
       }
@@ -67,8 +90,13 @@ export async function dispatch(request: Request, segments: string[]): Promise<Re
     }
 
     const req: ApiRequest = {
-      method: request.method, path, params: found.params,
-      query: Object.fromEntries(url.searchParams), body, headers: request.headers, file,
+      method: request.method,
+      path,
+      params: found.params,
+      query: Object.fromEntries(url.searchParams),
+      body,
+      headers: request.headers,
+      file,
       actor: actor as Actor,
     };
     const res = new ApiResponse();
