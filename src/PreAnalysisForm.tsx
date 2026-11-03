@@ -929,43 +929,56 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     const base = data.groupStructure || DEFAULT_GROUP_STRUCTURE;
     const defHolding = DEFAULT_GROUP_STRUCTURE.holding;
     
-    // Always map shareholders through default to ensure position, shareClass, numberOfShares, total exist
-    const holdingSh = defHolding.shareholders.map((defSh, idx) => {
-      const userSh = base.holding?.shareholders?.[idx];
-      return {
-        ...defSh,
-        ...(userSh || {}),
-        name: userSh?.name || defSh.name,
-        position: userSh?.position || userSh?.role || defSh.position,
-        shareClass: userSh?.shareClass || defSh.shareClass || '-',
-        numberOfShares: userSh?.numberOfShares || (userSh?.percentage ? defSh.numberOfShares : defSh.numberOfShares),
-        total: userSh?.total || defSh.total
-      };
-    });
+    // Holding shareholders: merge with default if index matches default, otherwise use user's
+    const holdingSh = (base.holding?.shareholders && base.holding.shareholders.length > 0)
+      ? base.holding.shareholders.map((userSh, idx) => {
+          const defSh = defHolding.shareholders[idx];
+          return {
+            ...(defSh || {}),
+            ...userSh,
+            name: userSh.name !== undefined ? userSh.name : (defSh?.name || ''),
+            position: userSh.position || userSh.role || defSh?.position || '',
+            shareClass: userSh.shareClass || defSh?.shareClass || '-',
+            numberOfShares: userSh.numberOfShares || defSh?.numberOfShares || '',
+            total: userSh.total || defSh?.total || ''
+          };
+        })
+      : defHolding.shareholders;
 
-    const subsidiaries = DEFAULT_GROUP_STRUCTURE.subsidiaries.map((defSub, sIdx) => {
-      const userSub = base.subsidiaries?.[sIdx];
-      const subSh = defSub.shareholders.map((defSh, idx) => {
-        const userSh = userSub?.shareholders?.[idx];
-        return {
-          ...defSh,
-          ...(userSh || {}),
-          name: userSh?.name || defSh.name,
-          position: userSh?.position || userSh?.role || defSh.position,
-          shareClass: userSh?.shareClass || defSh.shareClass || '-',
-          numberOfShares: userSh?.numberOfShares || (userSh?.percentage ? defSh.numberOfShares : defSh.numberOfShares),
-          total: userSh?.total || defSh.total
-        };
-      });
+    // Subsidiaries: MUST use base.subsidiaries if present, otherwise default
+    const rawSubs = (base.subsidiaries && base.subsidiaries.length > 0)
+      ? base.subsidiaries
+      : DEFAULT_GROUP_STRUCTURE.subsidiaries;
+
+    const defaultColors = ['#0284c7', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#e11d48'];
+
+    const subsidiaries = rawSubs.map((userSub, sIdx) => {
+      const defSub = DEFAULT_GROUP_STRUCTURE.subsidiaries[sIdx];
+      const color = userSub.borderColor || (defSub ? defSub.borderColor : defaultColors[sIdx % defaultColors.length]);
+      
+      const subSh = (userSub.shareholders && userSub.shareholders.length > 0)
+        ? userSub.shareholders.map((userSh, idx) => {
+            const defSh = defSub?.shareholders?.[idx];
+            return {
+              ...(defSh || {}),
+              ...userSh,
+              name: userSh.name !== undefined ? userSh.name : (defSh?.name || ''),
+              position: userSh.position || userSh.role || defSh?.position || '',
+              shareClass: userSh.shareClass || defSh?.shareClass || '-',
+              numberOfShares: userSh.numberOfShares || defSh?.numberOfShares || '',
+              total: userSh.total || defSh?.total || ''
+            };
+          })
+        : (defSub ? defSub.shareholders : []);
 
       return {
-        ...defSub,
-        ...(userSub || {}),
-        name: defSub.name,
-        subtitle: defSub.subtitle,
-        authorizedCapital: defSub.authorizedCapital,
-        paidUpCapital: defSub.paidUpCapital,
-        borderColor: defSub.borderColor,
+        ...userSub,
+        name: userSub.name !== undefined ? userSub.name : (defSub?.name || `PT Subsidiary #${sIdx + 1}`),
+        subtitle: userSub.subtitle !== undefined ? userSub.subtitle : (defSub?.subtitle || ''),
+        authorizedCapital: userSub.authorizedCapital !== undefined ? userSub.authorizedCapital : (defSub?.authorizedCapital || 'Rp. 0'),
+        paidUpCapital: userSub.paidUpCapital !== undefined ? userSub.paidUpCapital : (defSub?.paidUpCapital || 'Rp. 0'),
+        borderColor: color,
+        management: userSub.management || defSub?.management || '',
         shareholders: subSh
       };
     });
@@ -974,11 +987,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       holding: {
         ...defHolding,
         ...(base.holding || {}),
-        name: defHolding.name,
-        subtitle: defHolding.subtitle,
-        authorizedCapital: defHolding.authorizedCapital,
-        paidUpCapital: defHolding.paidUpCapital,
-        borderColor: defHolding.borderColor,
+        name: base.holding?.name !== undefined ? base.holding.name : defHolding.name,
+        subtitle: base.holding?.subtitle !== undefined ? base.holding.subtitle : defHolding.subtitle,
+        authorizedCapital: base.holding?.authorizedCapital !== undefined ? base.holding.authorizedCapital : defHolding.authorizedCapital,
+        paidUpCapital: base.holding?.paidUpCapital !== undefined ? base.holding.paidUpCapital : defHolding.paidUpCapital,
+        borderColor: base.holding?.borderColor || defHolding.borderColor,
         shareholders: holdingSh
       },
       subsidiaries
@@ -1176,24 +1189,54 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
   const addSubsidiary = () => {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
+    const defaultColors = ['#0284c7', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#e11d48'];
     setData(prev => {
-      const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const holdingName = gs.holding?.name ? gs.holding.name.split('(')[0].trim() : 'Holding';
+      const baseGs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
+      const currentSubs = (baseGs.subsidiaries && baseGs.subsidiaries.length > 0)
+        ? [...baseGs.subsidiaries]
+        : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
+      
+      const newIdx = currentSubs.length;
+      const color = defaultColors[newIdx % defaultColors.length];
+      const holdingName = baseGs.holding?.name ? baseGs.holding.name.split('(')[0].trim() : 'PT SANTOSA ABADI RAJA';
+      
       const newSub: GroupEntity = {
-        name: '',
-        authorizedCapital: '',
-        paidUpCapital: '',
+        name: `PT Entity #${newIdx + 1}`,
+        subtitle: `(Subsidiary #${newIdx + 1})`,
+        authorizedCapital: 'Rp. 50,000,000,000',
+        paidUpCapital: 'Rp. 12,500,000,000',
+        borderColor: color,
+        management: 'Direktur: - | Komisaris: -',
         shareholders: [
-          { name: holdingName, percentage: '99%', role: 'Holding' },
-          { name: '', percentage: '1%', role: 'Direktur' }
-        ],
-        management: ''
+          { name: holdingName, position: 'Legal Entity', role: 'Legal Entity', shareClass: '-', numberOfShares: '990', total: 'Rp. 12,375,000,000' },
+          { name: 'DIRECTOR / SHAREHOLDER', position: 'Director', role: 'Director', shareClass: '-', numberOfShares: '10', total: 'Rp. 125,000,000' }
+        ]
       };
+
       const updatedGs: GroupStructureData = {
-        ...gs,
-        subsidiaries: [...(gs.subsidiaries || []), newSub]
+        holding: baseGs.holding || DEFAULT_GROUP_STRUCTURE.holding,
+        subsidiaries: [...currentSubs, newSub]
       };
-      return syncStructureIntoData(prev, updatedGs);
+
+      // Also ensure entitySlikReviews for the new index is ready in Section 6
+      const nextReviews = { ...(prev.entitySlikReviews || {}) };
+      if (!nextReviews[String(newIdx)]) {
+        nextReviews[String(newIdx)] = {
+          id: `sub-${newIdx}`,
+          entityName: newSub.name,
+          hasRecord: true,
+          lenderExposures: [
+            { lender: 'Bank Mandiri', plafond: '5.000.000.000,00', rate: '8,50', notes: 'Term Loan' }
+          ],
+          pefindoNotes: '<p>SLIK / Bureau highlight checked - smooth facility operations.</p>',
+          pefindoTerms: '<p>Commercial terms benchmarked to existing banking partners.</p>',
+          noRecordRemarks: ''
+        };
+      }
+
+      const res = syncStructureIntoData(prev, updatedGs);
+      res.entitySlikReviews = nextReviews;
+      return res;
     });
   };
 
@@ -1201,7 +1244,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const subs = (gs.subsidiaries || []).filter((_, i) => i !== idx);
+      const currentSubs = (gs.subsidiaries && gs.subsidiaries.length > 0)
+        ? [...gs.subsidiaries]
+        : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
+      const subs = currentSubs.filter((_, i) => i !== idx);
       const updatedGs: GroupStructureData = {
         ...gs,
         subsidiaries: subs
@@ -1214,11 +1260,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const subs = [...(gs.subsidiaries || [])];
-      subs[idx] = { ...subs[idx], [field]: val };
+      const currentSubs = (gs.subsidiaries && gs.subsidiaries.length > 0)
+        ? [...gs.subsidiaries]
+        : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
+      currentSubs[idx] = { ...currentSubs[idx], [field]: val };
       const updatedGs: GroupStructureData = {
         ...gs,
-        subsidiaries: subs
+        subsidiaries: currentSubs
       };
       return syncStructureIntoData(prev, updatedGs);
     });
@@ -1228,13 +1276,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const subs = [...(gs.subsidiaries || [])];
-      const sh = [...(subs[subIdx].shareholders || [])];
+      const currentSubs = (gs.subsidiaries && gs.subsidiaries.length > 0)
+        ? [...gs.subsidiaries]
+        : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
+      const sh = [...(currentSubs[subIdx]?.shareholders || [])];
       sh[sIdx] = { ...sh[sIdx], [field]: val };
-      subs[subIdx] = { ...subs[subIdx], shareholders: sh };
+      currentSubs[subIdx] = { ...currentSubs[subIdx], shareholders: sh };
       const updatedGs: GroupStructureData = {
         ...gs,
-        subsidiaries: subs
+        subsidiaries: currentSubs
       };
       return syncStructureIntoData(prev, updatedGs);
     });
@@ -1244,12 +1294,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const subs = [...(gs.subsidiaries || [])];
-      const sh = [...(subs[subIdx].shareholders || []), { name: '', position: '', role: '', shareClass: '-', numberOfShares: '', total: '' }];
-      subs[subIdx] = { ...subs[subIdx], shareholders: sh };
+      const currentSubs = (gs.subsidiaries && gs.subsidiaries.length > 0)
+        ? [...gs.subsidiaries]
+        : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
+      const sh = [...(currentSubs[subIdx]?.shareholders || []), { name: '', position: '', role: '', shareClass: '-', numberOfShares: '', total: '' }];
+      currentSubs[subIdx] = { ...currentSubs[subIdx], shareholders: sh };
       const updatedGs: GroupStructureData = {
         ...gs,
-        subsidiaries: subs
+        subsidiaries: currentSubs
       };
       return syncStructureIntoData(prev, updatedGs);
     });
@@ -1259,12 +1311,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
-      const subs = [...(gs.subsidiaries || [])];
-      const sh = (subs[subIdx].shareholders || []).filter((_, i) => i !== sIdx);
-      subs[subIdx] = { ...subs[subIdx], shareholders: sh };
+      const currentSubs = (gs.subsidiaries && gs.subsidiaries.length > 0)
+        ? [...gs.subsidiaries]
+        : [...DEFAULT_GROUP_STRUCTURE.subsidiaries];
+      const sh = (currentSubs[subIdx]?.shareholders || []).filter((_, i) => i !== sIdx);
+      currentSubs[subIdx] = { ...currentSubs[subIdx], shareholders: sh };
       const updatedGs: GroupStructureData = {
         ...gs,
-        subsidiaries: subs
+        subsidiaries: currentSubs
       };
       return syncStructureIntoData(prev, updatedGs);
     });
@@ -3823,7 +3877,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       )}
 
                       {/* Corporate Group Structure Diagram matching Image 3 with full Shareholding Tables */}
-                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 6px', background: '#f8fafc' }}>
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '10px 6px', background: '#f8fafc', overflowX: 'auto' }}>
+                        <div style={{ minWidth: (currentGroupStructure.subsidiaries?.length || 0) > 3 ? `${(currentGroupStructure.subsidiaries?.length || 0) * 240}px` : '100%' }}>
                         <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.03em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
                           GROUP SHAREHOLDING STRUCTURE CHART
                         </div>
@@ -4062,6 +4117,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             })}
                           </div>
                         )}
+                        </div>
                       </div>
                     </td>
                   </tr>
