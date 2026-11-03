@@ -1,0 +1,24 @@
+{
+  "name": "Liugong Finance Portal",
+  "short_name": "Liugong Portal",
+  "description": "Portal Aplikasi Internal Liugong Finance Indonesia",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#002c5f",
+  "theme_color": "#002c5f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/img/logo_192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/img/logo_512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -205,6 +205,52 @@ Buka peramban web pada alamat: **http://127.0.0.1:4174**
 
 ---
 
+## 🏛️ Arsitektur Ekosistem LiugongApps (Ecosystem Overview)
+
+Repositori ini mencakup ekosistem aplikasi lengkap yang terintegrasi secara modular:
+
+```
+├── portal.py                     # Portal Hub Flask: Auth (/login), App Hub (/gallery), Web Push, Session Sync
+├── server.py                     # Waitress WSGI Dispatcher (Port 8086) menyatukan seluruh sub-aplikasi
+├── database_init.py              # Inisialisasi otomatis schema dan tabel database MySQL
+├── db_connector.py               # Database pool & connector untuk MySQL & MSSQL
+├── config.json                   # Konfigurasi database & session timeout
+├── templates/                    # Template Jinja2 Portal Hub
+│   ├── login.html                # Halaman Login Utama Portal Hub
+│   └── gallery.html              # Halaman App Hub / Gallery Aplikasi
+├── static/                       # Aset PWA, Manifest, Icons, Web Push & Session Watcher
+├── User_Management/              # Sub-aplikasi Manajemen Pengguna (/user-management)
+│   ├── app.py                    # Backend Flask User Management & RBAC
+│   ├── templates/                # Template Admin User Management
+│   └── static/                   # Styling & Script User Management
+├── CRM_Dashboard/                # Sub-aplikasi CRM Dashboard (/crm-dashboard)
+│   ├── app.py                    # Backend Flask Reverse-Proxy, SSO Resolver & OCR Gateways
+│   └── ...
+├── src/                          # Frontend React + TypeScript CRM Dashboard
+├── server/                       # Express REST API Server (Port 3002) untuk modul CRM
+└── scripts/                      # Utility & migrasi database
+```
+
+### 🚀 Cara Menjalankan Ekosistem Lengkap (Portal + User Management + CRM)
+
+```sh
+# 1. Instalasi dependensi Python
+pip install -r requirements.txt
+
+# 2. Instalasi dependensi Node.js
+npm install
+
+# 3. Build bundle frontend CRM Dashboard
+npm run build:dashboard
+
+# 4. Jalankan Server Ekosistem Utama
+start_server.bat
+# Atau: python server.py
+```
+Akses portal melalui peramban: **http://localhost:8086** (atau via IP Jaringan lokal).
+
+---
+
 ## 🔑 Akun Demo Cepat untuk Pengujian Alur CRM
 
 | Departemen | Email | Password |

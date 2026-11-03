@@ -17,6 +17,7 @@ Documents/
 server/temp_ocr_uploads/
 eng.traineddata
 *.txt
+!requirements.txt
 *.keith.*
 data-import/
 update-mandatory-fields.cjs

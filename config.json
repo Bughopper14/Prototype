@@ -1,0 +1,16 @@
+{
+    "database": {
+        "type": "mysql",
+        "host": "127.0.0.1",
+        "port": 3306,
+        "user": "root",
+        "password": "123987",
+        "name": "internaltest1"
+    },
+    "server": {
+        "port": 8086,
+        "inactivity_timeout_minutes": 15,
+        "max_session_lifetime_minutes": 120,
+        "secret_key": "LIUGONG_CLEAN_SECRET_KEY_2026"
+    }
+}

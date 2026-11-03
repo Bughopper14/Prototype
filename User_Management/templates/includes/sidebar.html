@@ -1,0 +1,85 @@
+<!-- Sidebar Offcanvas Include - User Management -->
+<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="sidebarOverlayMenu"
+     aria-labelledby="sidebarOverlayMenuLabel"
+     style="background-color: #002c5f !important; width: 280px; border-right: none;">
+    <div class="offcanvas-header border-bottom border-secondary" style="background-color: #001f42;">
+        <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2" id="sidebarOverlayMenuLabel">
+            <i class="fas fa-shield-alt text-warning"></i> User Management
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column justify-content-between">
+        <!-- Nav Links -->
+        <ul class="nav flex-column py-3" id="sidebarNavLinks">
+            <li class="nav-item">
+                <a class="nav-link py-3 px-4 d-flex align-items-center gap-3 text-white-50 {% if active_tab == 'users' %}active text-white{% endif %}"
+                   href="#" onclick="switchTab('users-tab'); return false;">
+                    <i class="fas fa-users text-warning" style="width: 20px;"></i>
+                    <span>Manage Users</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 px-4 d-flex align-items-center gap-3 text-white-50 {% if active_tab == 'apps' %}active text-white{% endif %}"
+                   href="#" onclick="switchTab('apps-tab'); return false;">
+                    <i class="fas fa-layer-group text-info" style="width: 20px;"></i>
+                    <span>Manage Apps</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 px-4 d-flex align-items-center gap-3 text-white-50 {% if active_tab == 'roles' %}active text-white{% endif %}"
+                   href="#" onclick="switchTab('roles-tab'); return false;">
+                    <i class="fas fa-user-tag text-success" style="width: 20px;"></i>
+                    <span>Manage Roles</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 px-4 d-flex align-items-center gap-3 text-white-50 {% if active_tab == 'authorities' %}active text-white{% endif %}"
+                   href="#" onclick="switchTab('authorities-tab'); return false;">
+                    <i class="fas fa-key text-warning" style="width: 20px;"></i>
+                    <span>Authorities</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 px-4 d-flex align-items-center gap-3 text-white-50 {% if active_tab == 'audit' %}active text-white{% endif %}"
+                   href="#" onclick="switchTab('audit-tab'); return false;">
+                    <i class="fas fa-history text-secondary" style="width: 20px;"></i>
+                    <span>Audit Logs</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link py-3 px-4 d-flex align-items-center gap-3 text-white-50 {% if active_tab == 'session' %}active text-white{% endif %}"
+                   href="#" onclick="switchTab('session-tab'); return false;">
+                    <i class="fas fa-sign-in-alt text-primary" style="width: 20px;"></i>
+                    <span>Session Logs</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- User Info & Actions Footer -->
+        <div class="p-4 border-top border-secondary" style="background-color: #001f42;">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning text-dark fw-bold"
+                     style="width: 40px; height: 40px; font-size: 1rem; flex-shrink: 0;">
+                    {{ full_name[0].upper() if full_name else 'U' }}
+                </div>
+                <div class="overflow-hidden">
+                    <h6 class="text-white mb-0 text-truncate fw-semibold">{{ full_name }}</h6>
+                    <small class="text-white-50 d-block" style="font-size: 0.72rem;">System Administrator</small>
+                </div>
+            </div>
+            <div class="d-grid gap-2">
+                <a class="btn-apps-hub btn-sm d-flex align-items-center justify-content-center gap-2" href="/">
+                    <i class="fas fa-th-large"></i> Apps Hub
+                </a>
+                <button class="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center gap-2"
+                        data-bs-toggle="modal" data-bs-target="#changePasswordModal"
+                        onclick="closeOffcanvas()">
+                    <i class="fas fa-key text-warning"></i> Change Password
+                </button>
+                <a class="btn btn-sm btn-danger d-flex align-items-center justify-content-center gap-2" href="/logout">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Administration - LiugongApps</title>
+    <meta name="description" content="User Management & System Administration panel for LiugongApps.">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="/user-management/static/css/user_management.css">
+</head>
+<body>
+
+{% include 'includes/navbar.html' %}
+{% set active_tab = 'users' %}
+{% include 'includes/sidebar.html' %}
+{% include 'includes/change_password_modal.html' %}
+
+<!-- ===== MAIN CONTENT ===== -->
+<div class="container-fluid px-3 px-md-4">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2">
+        <div>
+            <h4 class="fw-bold text-secondary mb-0">
+                <i class="fas fa-shield-alt text-warning me-2"></i>System Administration
+            </h4>
+            <small class="text-muted">Manage users, roles, authorities, and access control</small>
+        </div>
+        <div class="text-muted small d-none d-md-block">
+            Logged in as: <strong class="text-secondary">{{ full_name }}</strong>
+        </div>
+    </div>
+
+    <!-- TABS -->
+    <div class="card p-3">
+        <div class="tabs-scroll-container">
+            <ul class="nav nav-tabs mb-0" id="adminTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="users-tab" data-bs-toggle="tab"
+                            data-bs-target="#usersTab" type="button" role="tab">
+                        <i class="fas fa-users me-1"></i> Users <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">{{ users|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="apps-tab" data-bs-toggle="tab"
+                            data-bs-target="#appsTab" type="button" role="tab">
+                        <i class="fas fa-layer-group me-1"></i> Apps <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">{{ applications|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="roles-tab" data-bs-toggle="tab"
+                            data-bs-target="#rolesTab" type="button" role="tab">
+                        <i class="fas fa-user-tag me-1"></i> Roles <span class="badge bg-secondary-subtle text-secondary rounded-pill ms-1">{{ roles|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="authorities-tab" data-bs-toggle="tab"
+                            data-bs-target="#authoritiesTab" type="button" role="tab">
+                        <i class="fas fa-key me-1"></i> Authorities <span class="badge bg-primary text-white rounded-pill ms-1">{{ authorities|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="audit-tab" data-bs-toggle="tab"
+                            data-bs-target="#auditTab" type="button" role="tab">
+                        <i class="fas fa-history me-1"></i> Audit
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="session-tab" data-bs-toggle="tab"
+                            data-bs-target="#sessionTab" type="button" role="tab">
+                        <i class="fas fa-sign-in-alt me-1"></i> Sessions
+                    </button>
+                </li>
+            </ul>
+        </div>
+
+        <div class="tab-content" id="adminTabsContent">
+
+            <!-- ===== TAB: USERS ===== -->
+            <div class="tab-pane fade show active" id="usersTab" role="tabpanel">
+                <div class="py-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-secondary mb-0">
+                            <i class="fas fa-users me-2 text-primary"></i>Manage Users
+                        </h5>
+                        <button class="btn btn-primary btn-sm px-4" id="btnOpenAddUser">
+                            <i class="fas fa-plus me-1"></i> Tambah User
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle dataTable w-100" id="tblUsers">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Full Name</th>
+                                    <th>Email</th>
+                                    <th>Position</th>
+                                    <th>Session Expiry</th>
+                                    <th style="min-width: 250px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for u in users %}
+                                <tr>
+                                    <td><strong>{{ u.username }}</strong></td>
+                                    <td>{{ u.full_name }}</td>
+                                    <td>
+                                        {% if u.email %}
+                                        <a href="mailto:{{ u.email }}" class="text-secondary small">
+                                            <i class="fas fa-envelope me-1 text-muted"></i>{{ u.email }}
+                                        </a>
+                                        {% else %}
+                                        <span class="text-muted small">—</span>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge-position">{{ u.position or 'Staff' }}</span></td>
+                                    <td>
+                                        {% if u.session_timeout_minutes == 0 %}
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle px-2 py-1 rounded-pill fw-semibold">
+                                            <i class="fas fa-infinity me-1"></i>Unlimited
+                                        </span>
+                                        {% elif u.session_timeout_minutes %}
+                                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle px-2 py-1 rounded-pill fw-semibold">
+                                            <i class="fas fa-stopwatch me-1"></i>{{ u.session_timeout_minutes }} min
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle px-2 py-1 rounded-pill fw-semibold">
+                                            <i class="fas fa-clock me-1"></i>Default (15m)
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-1 flex-wrap">
+                                            <button class="btn btn-warning btn-sm btn-edit-user"
+                                                    data-id="{{ u.id }}"
+                                                    data-username="{{ u.username }}"
+                                                    data-fullname="{{ u.full_name }}"
+                                                    data-email="{{ u.email or '' }}"
+                                                    data-position="{{ u.position or 'Staff' }}">
+                                                <i class="fas fa-edit me-1"></i>Edit
+                                            </button>
+                                            <button class="btn btn-outline-secondary btn-sm btn-session-timeout"
+                                                    data-id="{{ u.id }}"
+                                                    data-username="{{ u.username }}"
+                                                    data-fullname="{{ u.full_name }}"
+                                                    data-timeout="{{ u.session_timeout_minutes if u.session_timeout_minutes is not none else 15 }}"
+                                                    title="Set Batas Waktu Sesi (Session Expired)">
+                                                <i class="fas fa-stopwatch me-1 text-warning"></i>Session
+                                            </button>
+                                            <button class="btn btn-outline-primary btn-sm btn-permissions"
+                                                    data-id="{{ u.id }}"
+                                                    data-fullname="{{ u.full_name }}">
+                                                <i class="fas fa-lock me-1"></i>Access
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm"
+                                                    onclick="forceLogoutUser({{ u.id }}, '{{ u.username }}')"
+                                                    title="Keluarkan Paksa Sesi User">
+                                                <i class="fas fa-power-off me-1"></i>Logout
+                                            </button>
+                                            <button class="btn btn-danger btn-sm"
+                                                    onclick="deleteEntity('users', {{ u.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: APPS ===== -->
+            <div class="tab-pane fade" id="appsTab" role="tabpanel">
+                <div class="py-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <h5 class="fw-bold text-secondary mb-0">
+                            <i class="fas fa-layer-group me-2 text-info"></i>Master Aplikasi
+                        </h5>
+                        <button class="btn btn-primary btn-sm px-4" id="btnOpenAddApp">
+                            <i class="fas fa-plus me-1"></i> Tambah Aplikasi
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle dataTable w-100" id="tblApps">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>App Name</th>
+                                    <th>URL Path</th>
+                                    <th>Description</th>
+                                    <th style="width: 80px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in applications %}
+                                <tr>
+                                    <td>
+                                        <i class="{{ a.icon_class }} me-2 text-primary"></i>
+                                        <strong>{{ a.app_name }}</strong>
+                                    </td>
+                                    <td><code class="text-secondary">{{ a.url_path }}</code></td>
+                                    <td><small class="text-muted">{{ a.description }}</small></td>
+                                    <td>
+                                        <button class="btn btn-danger btn-sm"
+                                                onclick="deleteEntity('applications', {{ a.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: ROLES ===== -->
+            <div class="tab-pane fade" id="rolesTab" role="tabpanel">
+                <div class="py-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="fw-bold text-secondary mb-0">
+                                <i class="fas fa-user-tag me-2 text-success"></i>Manage Roles
+                            </h5>
+                            <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill px-2 py-1 small fw-bold">
+                                {{ roles|length }} Roles
+                            </span>
+                        </div>
+                        <button class="btn btn-primary btn-sm px-4" id="btnOpenAddRole">
+                            <i class="fas fa-plus me-1"></i> Tambah Role
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle dataTable w-100" id="tblRoles">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Role Name</th>
+                                    <th>App</th>
+                                    <th>Authorities</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for r in roles %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center gap-1">
+                                            <strong>{{ r.role_name }}</strong>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle rounded-pill small ms-1" title="Jumlah otoritas yang diset untuk role ini">
+                                                {{ role_auths.get(r.id, []) | length }} otoritas
+                                            </span>
+                                        </div>
+                                        {% if r.description %}
+                                        <div class="text-muted small">{{ r.description }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td><span class="badge-app">{{ r.app_name }}</span></td>
+                                    <td>
+                                        <div class="mb-1 text-muted small fw-semibold">
+                                            <i class="fas fa-check-circle text-success me-1"></i>{{ role_auths.get(r.id, []) | length }} otoritas aktif:
+                                        </div>
+                                        {% for auth_id in role_auths.get(r.id, []) %}
+                                            {% for a in authorities if a.id == auth_id %}
+                                            <span class="badge-auth">{{ a.authority_name }}</span>
+                                            {% endfor %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-warning btn-sm btn-edit-role"
+                                                    type="button"
+                                                    onclick="openEditRoleBtn(this)"
+                                                    data-id="{{ r.id }}"
+                                                    data-name="{{ r.role_name }}"
+                                                    data-desc="{{ r.description or '' }}"
+                                                    data-auths='{{ role_auths.get(r.id, []) | tojson }}'>
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-danger btn-sm"
+                                                    type="button"
+                                                    onclick="deleteEntity('roles', {{ r.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: AUTHORITIES ===== -->
+            <div class="tab-pane fade" id="authoritiesTab" role="tabpanel">
+                <div class="py-2">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="fw-bold text-secondary mb-0">
+                                <i class="fas fa-key me-2 text-warning"></i>Otoritas (Rights)
+                            </h5>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle rounded-pill px-3 py-1 fs-6 fw-bold">
+                                <i class="fas fa-shield-alt me-1"></i>Total: {{ authorities|length }} Otoritas
+                            </span>
+                        </div>
+                        <button class="btn btn-primary btn-sm px-4" id="btnOpenAddAuth">
+                            <i class="fas fa-plus me-1"></i> Tambah Otoritas
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle dataTable w-100" id="tblAuths">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 50px;" class="text-center">#</th>
+                                    <th>Kode Otoritas</th>
+                                    <th>Aplikasi</th>
+                                    <th>Deskripsi</th>
+                                    <th style="width: 80px;" class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in authorities %}
+                                <tr>
+                                    <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+                                    <td><code>{{ a.authority_name }}</code></td>
+                                    <td><span class="badge-app">{{ a.app_name }}</span></td>
+                                    <td><small class="text-muted">{{ a.description }}</small></td>
+                                    <td class="text-center">
+                                        <button class="btn btn-danger btn-sm"
+                                                onclick="deleteEntity('authorities', {{ a.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: AUDIT LOGS ===== -->
+            <div class="tab-pane fade" id="auditTab" role="tabpanel">
+                <div class="py-2">
+                    <h5 class="fw-bold text-secondary mb-3">
+                        <i class="fas fa-history me-2"></i>Audit Logs
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle dataTable w-100" id="tblAudit">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Waktu</th>
+                                    <th>User</th>
+                                    <th>Aplikasi</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in audits %}
+                                <tr>
+                                    <td><small class="text-muted">{{ a.timestamp.strftime('%Y-%m-%d %H:%M:%S') if a.timestamp else '-' }}</small></td>
+                                    <td><strong>{{ a.username or 'System' }}</strong></td>
+                                    <td><span class="badge-app">{{ a.app_name }}</span></td>
+                                    <td><small>{{ a.action }}</small></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB: SESSION LOGS ===== -->
+            <div class="tab-pane fade" id="sessionTab" role="tabpanel">
+                <div class="py-2">
+                    <h5 class="fw-bold text-secondary mb-3">
+                        <i class="fas fa-sign-in-alt me-2"></i>Session Logs
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle dataTable w-100" id="tblSession">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Session ID</th>
+                                    <th>User</th>
+                                    <th>Aplikasi</th>
+                                    <th>Login Time</th>
+                                    <th>Status / Logout Time</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in sessions %}
+                                <tr>
+                                    <td><code class="text-muted small">{{ s.session_id[:8] }}...</code></td>
+                                    <td><strong>{{ s.username or '-' }}</strong></td>
+                                    <td><span class="badge-app">{{ s.app_name or 'Portal Apps' }}</span></td>
+                                    <td><small>{{ s.login_time.strftime('%Y-%m-%d %H:%M:%S') if s.login_time else '-' }}</small></td>
+                                    <td>
+                                        {% if s.is_invalidated %}
+                                        <span class="badge bg-danger text-white" style="font-size: 0.7rem;">Force Logged Out</span>
+                                        {% elif s.logout_time %}
+                                        <small>{{ s.logout_time.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+                                        {% else %}
+                                        <span class="badge bg-success text-white" style="font-size: 0.7rem;">Active</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if not s.logout_time and not s.is_invalidated %}
+                                        <button class="btn btn-outline-danger btn-sm py-0 px-2"
+                                                onclick="terminateSession('{{ s.session_id }}')"
+                                                title="Hentikan Sesi Ini">
+                                            <i class="fas fa-power-off me-1"></i>Terminate
+                                        </button>
+                                        {% else %}
+                                        <span class="text-muted small">—</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-content -->
+    </div><!-- /card -->
+</div><!-- /container -->
+
+<!-- ====================================================
+     MODALS (Custom Overlay)
+     ==================================================== -->
+
+<!-- Modal: Add User -->
+<div class="modal-overlay" id="modalAddUser">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeModal('modalAddUser')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-user-plus"></i></span> Tambah User Baru</h3>
+        <form id="formAddUser" onsubmit="submitForm(event, 'users', 'formAddUser')">
+            <input type="hidden" name="action" value="add">
+            <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
+            <div class="form-group"><label>Password</label><input type="password" name="password" required></div>
+            <div class="form-group"><label>Full Name</label><input type="text" name="full_name" required></div>
+            <div class="form-group"><label>Email</label><input type="email" name="email" placeholder="user@example.com"></div>
+            <div class="form-group"><label>Position / Jabatan</label><input type="text" name="position" placeholder="e.g. Credit Head" required></div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-2"></i>Simpan User</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit User -->
+<div class="modal-overlay" id="modalEditUser">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeModal('modalEditUser')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-user-edit"></i></span> Edit User</h3>
+        <form id="formEditUser" onsubmit="submitForm(event, 'users', 'formEditUser')">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="id" id="edit_user_id">
+            <div class="form-group"><label>Username</label><input type="text" name="username" id="edit_user_username" required></div>
+            <div class="form-group"><label>Password <small class="text-muted fw-normal">(Kosongkan jika tidak diubah)</small></label><input type="password" name="password" id="edit_user_password" placeholder="Leave empty to keep current"></div>
+            <div class="form-group"><label>Full Name</label><input type="text" name="full_name" id="edit_user_fullname" required></div>
+            <div class="form-group"><label>Email</label><input type="email" name="email" id="edit_user_email" placeholder="user@example.com"></div>
+            <div class="form-group"><label>Position / Jabatan</label><input type="text" name="position" id="edit_user_position" required></div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-2"></i>Simpan Perubahan</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Access Control (Permissions) -->
+<div class="modal-overlay" id="modalPermissions">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeModal('modalPermissions')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-lock"></i></span> Access Control: <span id="permUserName" class="text-warning" style="font-size: 1rem;"></span></h3>
+        <div id="permContainer">
+            <table class="perm-table">
+                <thead><tr><th>Application</th><th>Role Assignment</th></tr></thead>
+                <tbody id="permTableBody"></tbody>
+            </table>
+        </div>
+        <button class="btn btn-primary w-100 mt-4" id="btnSavePermissions">
+            <i class="fas fa-save me-2"></i>Save All Permissions
+        </button>
+    </div>
+</div>
+
+<!-- Modal: Add App -->
+<div class="modal-overlay" id="modalAddApp">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeModal('modalAddApp')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-rocket"></i></span> Tambah Aplikasi Baru</h3>
+        <form id="formAddApp" onsubmit="submitForm(event, 'applications', 'formAddApp')">
+            <input type="hidden" name="action" value="add">
+            <div class="form-group"><label>App Name</label><input type="text" name="app_name" required></div>
+            <div class="form-group"><label>URL Path <small class="text-muted fw-normal">(e.g. /my-app)</small></label><input type="text" name="url_path" required></div>
+            <div class="form-group"><label>Description</label><input type="text" name="description"></div>
+            <div class="form-group"><label>Icon Class <small class="text-muted fw-normal">(FontAwesome)</small></label><input type="text" name="icon_class" placeholder="fas fa-rocket"></div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-2"></i>Simpan Aplikasi</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Role -->
+<div class="modal-overlay" id="modalAddRole">
+    <div class="modal-container" style="max-width: 650px;">
+        <button class="modal-close" type="button" onclick="closeModal('modalAddRole')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-user-tag"></i></span> Tambah Role Baru</h3>
+        <form id="formAddRole" onsubmit="submitForm(event, 'roles', 'formAddRole')">
+            <input type="hidden" name="action" value="add">
+            <div class="form-group mb-2">
+                <label>Pilih Aplikasi</label>
+                <select name="app_id" id="add_role_app_id" required>
+                    <option value="">-- Pilih Aplikasi --</option>
+                    {% for a in applications %}<option value="{{ a.id }}">{{ a.app_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group mb-2"><label>Nama Role</label><input type="text" name="role_name" id="add_role_name" required></div>
+            <div class="form-group mb-3"><label>Deskripsi</label><input type="text" name="description" id="add_role_desc"></div>
+            <div class="form-group">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <label class="mb-0 fw-bold">Pilih Otoritas (Authorities)</label>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill border border-primary-subtle fw-bold px-2 py-1" id="add_role_auth_count">0 / {{ authorities|length }} dipilih</span>
+                </div>
+                
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" id="filterAddAuths" class="form-control form-control-sm" placeholder="Filter otoritas...">
+                    <button type="button" class="btn btn-outline-primary btn-sm flex-shrink-0" onclick="toggleAllAddRoleAuths(true)">Pilih Semua</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm flex-shrink-0" onclick="toggleAllAddRoleAuths(false)">Kosongkan</button>
+                </div>
+
+                <div class="checkbox-grid" id="add_role_auths_container" style="max-height: 280px;">
+                    {% for a in authorities %}
+                    <label class="auth-item-label" data-search="{{ a.authority_name | lower }} {{ a.app_name | lower }}">
+                        <input type="checkbox" name="authorities[]" class="add_auth_cb" value="{{ a.id }}">
+                        <span class="text-muted small">[{{ a.app_name }}]</span> <span class="auth-name-text">{{ a.authority_name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <button type="button" class="btn btn-light px-3" onclick="closeModal('modalAddRole')">Batal</button>
+                <button type="submit" id="btnSubmitAddRole" class="btn btn-primary px-4"><i class="fas fa-save me-2"></i>Simpan Role</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Edit Role -->
+<div class="modal-overlay" id="modalEditRole">
+    <div class="modal-container" style="max-width: 650px;">
+        <button class="modal-close" type="button" onclick="closeModal('modalEditRole')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-edit"></i></span> Edit Role & Otoritas</h3>
+        <form id="formEditRole" onsubmit="submitForm(event, 'roles', 'formEditRole')">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="role_id" id="edit_role_id">
+            <div class="form-group mb-2">
+                <label>Nama Role</label>
+                <input type="text" name="role_name" id="edit_role_name" required>
+            </div>
+            <div class="form-group mb-3">
+                <label>Deskripsi</label>
+                <input type="text" name="description" id="edit_role_desc">
+            </div>
+            <div class="form-group">
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                    <label class="mb-0 fw-bold">Pilih Otoritas (Authorities)</label>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill border border-primary-subtle fw-bold px-2 py-1" id="edit_role_auth_count">0 / {{ authorities|length }} dipilih</span>
+                </div>
+                
+                <div class="d-flex gap-2 mb-2">
+                    <input type="text" id="filterEditAuths" class="form-control form-control-sm" placeholder="Filter otoritas...">
+                    <button type="button" class="btn btn-outline-primary btn-sm flex-shrink-0" onclick="toggleAllRoleAuths(true)">Pilih Semua</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm flex-shrink-0" onclick="toggleAllRoleAuths(false)">Kosongkan</button>
+                </div>
+
+                <div class="checkbox-grid" id="edit_role_auths_container" style="max-height: 280px;">
+                    {% for a in authorities %}
+                    <label class="auth-item-label" data-search="{{ a.authority_name | lower }} {{ a.app_name | lower }}">
+                        <input type="checkbox" name="authorities[]" class="edit_auth_cb" value="{{ a.id }}">
+                        <span class="text-muted small">[{{ a.app_name }}]</span> <span class="auth-name-text">{{ a.authority_name }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <button type="button" class="btn btn-light px-3" onclick="closeModal('modalEditRole')">Batal</button>
+                <button type="submit" id="btnSubmitEditRole" class="btn btn-primary px-4"><i class="fas fa-save me-2"></i>Simpan Perubahan</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Add Authority -->
+<div class="modal-overlay" id="modalAddAuth">
+    <div class="modal-container">
+        <button class="modal-close" onclick="closeModal('modalAddAuth')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-key"></i></span> Tambah Otoritas</h3>
+        <form id="formAddAuth" onsubmit="submitForm(event, 'authorities', 'formAddAuth')">
+            <input type="hidden" name="action" value="add">
+            <div class="form-group">
+                <label>Pilih Aplikasi</label>
+                <select name="app_id" required>
+                    <option value="">-- Pilih Aplikasi --</option>
+                    {% for a in applications %}<option value="{{ a.id }}">{{ a.app_name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label>Kode Otoritas</label><input type="text" name="authority_name" required></div>
+            <div class="form-group"><label>Deskripsi</label><input type="text" name="description"></div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-save me-2"></i>Simpan Otoritas</button>
+        </form>
+    </div>
+</div>
+
+<!-- Modal: Set User Session Timeout -->
+<div class="modal-overlay" id="modalSessionTimeout">
+    <div class="modal-container" style="max-width: 480px;">
+        <button class="modal-close" onclick="closeModal('modalSessionTimeout')">&times;</button>
+        <h3><span class="modal-icon"><i class="fas fa-stopwatch text-warning"></i></span> Session Timeout: <span id="sessionTimeoutUserLabel" class="text-primary" style="font-size: 1.05rem; font-weight: 700;"></span></h3>
+        <p class="text-muted small mb-3">Atur batas waktu idle/inactivity sebelum sistem secara otomatis mengeluarkan (logout) sesi pengguna ini.</p>
+        
+        <form id="formSessionTimeout" onsubmit="submitSessionTimeout(event)">
+            <input type="hidden" id="session_timeout_user_id" name="user_id">
+            
+            <div class="form-group mb-3">
+                <label class="fw-bold mb-2">Preset Pilihan Cepat</label>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-timeout-preset" data-val="15">15 Menit (Default)</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-timeout-preset" data-val="30">30 Menit</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-timeout-preset" data-val="60">1 Jam (60m)</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm btn-timeout-preset" data-val="120">2 Jam (120m)</button>
+                    <button type="button" class="btn btn-outline-success btn-sm btn-timeout-preset fw-bold" data-val="0"><i class="fas fa-infinity me-1"></i>Unlimited (Tanpa Batas)</button>
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="fw-bold">Batas Waktu Inactivity (Menit)</label>
+                <div class="input-group">
+                    <input type="number" class="form-control" id="session_timeout_minutes" name="timeout_minutes" min="0" max="1440" required placeholder="0 untuk Unlimited">
+                    <span class="input-group-text">menit</span>
+                </div>
+                <small class="text-muted d-block mt-1">
+                    Isi <code>0</code> untuk <strong>Unlimited / Tanpa Expiration</strong> (sesi tidak akan pernah logout otomatis karena idle).
+                </small>
+            </div>
+
+            <div id="sessionTimeoutAlert" class="alert alert-info py-2 px-3 small d-flex align-items-center mb-3">
+                <i class="fas fa-info-circle me-2"></i>
+                <span id="sessionTimeoutDescription">Status timeout akan diperbarui segera.</span>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-end mt-4">
+                <button type="button" class="btn btn-light px-3" onclick="closeModal('modalSessionTimeout')">Batal</button>
+                <button type="submit" class="btn btn-primary px-4" id="btnSaveSessionTimeout"><i class="fas fa-save me-1"></i>Simpan Timeout</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ====================================================
+     SCRIPTS
+     ==================================================== -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+var SCRIPT_ROOT = {{ request.script_root | tojson }};
+var currentUserId = null;
+var totalAuthCount = {{ authorities|length }};
+
+// Switch tab by ID
+function switchTab(tabId) {
+    const tabEl = document.getElementById(tabId);
+    if (tabEl) {
+        new bootstrap.Tab(tabEl).show();
+        try { sessionStorage.setItem('activeAdminTab', tabId); } catch(e) {}
+    }
+    closeOffcanvasSidebar();
+}
+function closeOffcanvasSidebar() {
+    const el = document.getElementById('sidebarOverlayMenu');
+    if (el) {
+        const inst = bootstrap.Offcanvas.getInstance(el);
+        if (inst) inst.hide();
+    }
+}
+
+// Custom modal helpers
+function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) overlay.style.display = 'none';
+    });
+});
+
+$(document).ready(function() {
+    // Shared DataTable configuration
+    var dtConfig = {
+        pageLength: 10,
+        scrollX: false,
+        language: {
+            search: "Cari:",
+            lengthMenu: "Tampilkan _MENU_ data",
+            info: "Halaman _PAGE_ dari _PAGES_",
+            paginate: { next: "Next", previous: "Prev" }
+        },
+        drawCallback: function() {
+            if (window.innerWidth <= 767) {
+                document.querySelectorAll(
+                    '.dataTables_wrapper, .dataTables_scroll, .dataTables_scrollBody, .dataTables_scrollHead, .table-responsive'
+                ).forEach(function(el) {
+                    el.style.overflow = 'visible';
+                    el.style.height = 'auto';
+                    el.style.maxHeight = 'none';
+                });
+            }
+        }
+    };
+
+    // Init specific DataTables
+    $('#tblUsers').DataTable(dtConfig);
+    $('#tblApps').DataTable(dtConfig);
+    $('#tblRoles').DataTable(dtConfig);
+    
+    // Auths Table with dynamic row numbering
+    var authTable = $('#tblAuths').DataTable($.extend({}, dtConfig, {
+        columnDefs: [
+            { orderable: false, targets: [0, 4] }
+        ]
+    }));
+
+    authTable.on('order.dt search.dt', function () {
+        let i = 1;
+        authTable.cells(null, 0, { search: 'applied', order: 'applied' }).every(function () {
+            this.data(i++);
+        });
+    }).draw();
+
+    // Audit Logs - Sort by Waktu descending (index 0)
+    var auditConfig = $.extend({}, dtConfig, {
+        order: [[0, 'desc']]
+    });
+    $('#tblAudit').DataTable(auditConfig);
+
+    // Session Logs - Sort by Login Time descending (index 3)
+    var sessionConfig = $.extend({}, dtConfig, {
+        order: [[3, 'desc']]
+    });
+    $('#tblSession').DataTable(sessionConfig);
+
+    // Authority count helpers for role modals
+    $('#btnOpenAddUser').click(function() { openModal('modalAddUser'); });
+    $('#btnOpenAddApp').click(function() { openModal('modalAddApp'); });
+    $('#btnOpenAddRole').click(function() { 
+        $('#formAddRole')[0].reset();
+        $('.add_auth_cb').prop('checked', false);
+        $('#filterAddAuths').val('');
+        $('#add_role_auths_container .auth-item-label').show();
+        updateAddAuthCount();
+        openModal('modalAddRole'); 
+    });
+    $('#btnOpenAddAuth').click(function() { openModal('modalAddAuth'); });
+
+    $(document).on('change', '.add_auth_cb', function() {
+        updateAddAuthCount();
+    });
+
+    $(document).on('change', '.edit_auth_cb', function() {
+        updateEditAuthCount();
+    });
+
+    // Quick filter for authorities in add modal
+    $('#filterAddAuths').on('input', function() {
+        var query = $(this).val().toLowerCase().trim();
+        $('#add_role_auths_container .auth-item-label').each(function() {
+            var searchTxt = $(this).attr('data-search') || $(this).text().toLowerCase();
+            if (!query || searchTxt.indexOf(query) !== -1) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    $('#filterAddAuths').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Quick filter for authorities in edit modal
+    $('#filterEditAuths').on('input', function() {
+        var query = $(this).val().toLowerCase().trim();
+        $('#edit_role_auths_container .auth-item-label').each(function() {
+            var searchTxt = $(this).attr('data-search') || $(this).text().toLowerCase();
+            if (!query || searchTxt.indexOf(query) !== -1) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+    $('#filterEditAuths').on('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Edit User
+    $(document).on('click', '.btn-edit-user', function() {
+        var d = $(this).data();
+        $('#edit_user_id').val(d.id);
+        $('#edit_user_username').val(d.username);
+        $('#edit_user_password').val('');
+        $('#edit_user_fullname').val(d.fullname);
+        $('#edit_user_email').val(d.email || '');
+        $('#edit_user_position').val(d.position);
+        openModal('modalEditUser');
+    });
+
+    // Access Control (Permissions)
+    $(document).on('click', '.btn-permissions', function() {
+        openPermissions($(this).data('id'), $(this).data('fullname'));
+    });
+
+    // Edit Role
+    $(document).on('click', '.btn-edit-role', function() {
+        var d = $(this).data();
+        openEditRole(d.id, d.name, d.desc, d.auths);
+    });
+
+    // Save Permissions
+    $('#btnSavePermissions').click(function() {
+        var data = {};
+        $('select.role-sel').each(function() {
+            var val = $(this).val();
+            if (val) data[$(this).data('appid')] = val;
+        });
+        $.ajax({
+            url: SCRIPT_ROOT + '/api/user_permissions/' + currentUserId,
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(data),
+            success: function() { window.location.reload(); }
+        });
+    });
+
+    // Session Timeout button
+    $(document).on('click', '.btn-session-timeout', function() {
+        var d = $(this).data();
+        $('#session_timeout_user_id').val(d.id);
+        $('#sessionTimeoutUserLabel').text(d.fullname ? (d.fullname + ' (' + d.username + ')') : d.username);
+        var timeoutVal = parseInt(d.timeout);
+        if (isNaN(timeoutVal)) timeoutVal = 15;
+        $('#session_timeout_minutes').val(timeoutVal);
+        updateTimeoutDescription(timeoutVal);
+        openModal('modalSessionTimeout');
+    });
+
+    // Preset buttons
+    $(document).on('click', '.btn-timeout-preset', function() {
+        var val = parseInt($(this).data('val'));
+        $('#session_timeout_minutes').val(val);
+        updateTimeoutDescription(val);
+    });
+
+    // Dynamic timeout input change
+    $('#session_timeout_minutes').on('input change', function() {
+        var val = parseInt($(this).val());
+        updateTimeoutDescription(val);
+    });
+
+    // Tab sync & persistence
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+        var tid = $(this).attr('id');
+        if (tid) {
+            try { sessionStorage.setItem('activeAdminTab', tid); } catch(err) {}
+        }
+        if (window.innerWidth <= 767) {
+            document.querySelectorAll('.dataTables_wrapper, .table-responsive').forEach(function(el) {
+                el.style.overflow = 'visible';
+                el.style.height = 'auto';
+            });
+        }
+    });
+
+    // Auto-restore active tab on page load
+    try {
+        var savedTab = sessionStorage.getItem('activeAdminTab');
+        if (savedTab && document.getElementById(savedTab)) {
+            new bootstrap.Tab(document.getElementById(savedTab)).show();
+        }
+    } catch(err) {}
+});
+
+function updateTimeoutDescription(minutes) {
+    var descEl = $('#sessionTimeoutDescription');
+    var alertEl = $('#sessionTimeoutAlert');
+    if (isNaN(minutes) || minutes < 0) {
+        descEl.text('Silakan masukkan nilai menit yang valid.');
+        alertEl.removeClass('alert-success alert-warning alert-info').addClass('alert-warning');
+    } else if (minutes === 0) {
+        descEl.html('<strong>Unlimited:</strong> Sesi user ini tidak akan pernah logout otomatis karena idle.');
+        alertEl.removeClass('alert-info alert-warning').addClass('alert-success');
+    } else {
+        descEl.html('<strong>' + minutes + ' Menit:</strong> Sesi user akan otomatis logout jika tidak ada interaksi selama ' + minutes + ' menit.');
+        alertEl.removeClass('alert-success alert-warning').addClass('alert-info');
+    }
+}
+
+function submitSessionTimeout(e) {
+    e.preventDefault();
+    var userId = $('#session_timeout_user_id').val();
+    var minutes = $('#session_timeout_minutes').val();
+    var btn = $('#btnSaveSessionTimeout');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
+
+    $.ajax({
+        url: SCRIPT_ROOT + '/api/user/session_timeout',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            user_id: userId,
+            timeout_minutes: minutes
+        }),
+        success: function(res) {
+            btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Simpan Timeout');
+            if (res.success) {
+                window.location.reload();
+            } else {
+                alert('Gagal mengubah session timeout: ' + (res.error || 'Unknown error'));
+            }
+        },
+        error: function(err) {
+            btn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Simpan Timeout');
+            var errMsg = (err.responseJSON && err.responseJSON.error) ? err.responseJSON.error : 'Terjadi kesalahan sistem';
+            alert('Error: ' + errMsg);
+        }
+    });
+}
+
+function openPermissions(userId, userName) {
+    currentUserId = userId;
+    $('#permUserName').text(userName);
+    openModal('modalPermissions');
+    $('#permTableBody').html('<tr><td colspan="2" class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</td></tr>');
+
+    $.get(SCRIPT_ROOT + '/api/user_permissions/' + userId, function(res) {
+        var html = '';
+        res.applications.forEach(function(app) {
+            var currentRoleId = res.current_permissions[app.id] || '';
+            var roleOpts = '<option value="">-- No Access --</option>';
+            res.all_roles.filter(r => r.app_id == app.id).forEach(function(r) {
+                roleOpts += `<option value="${r.id}" ${r.id == currentRoleId ? 'selected' : ''}>${r.role_name}</option>`;
+            });
+            html += `<tr>
+                <td><strong>${app.app_name}</strong></td>
+                <td><select class="role-sel" data-appid="${app.id}">${roleOpts}</select></td>
+            </tr>`;
+        });
+        $('#permTableBody').html(html);
+    });
+}
+
+function openEditRoleBtn(btn) {
+    try {
+        var el = $(btn).closest('.btn-edit-role');
+        var id = el.data('id') || el.attr('data-id');
+        var name = el.data('name') || el.attr('data-name');
+        var desc = el.data('desc') || el.attr('data-desc') || '';
+        var auths = el.data('auths');
+        if (!auths) {
+            var raw = el.attr('data-auths');
+            try { auths = JSON.parse(raw); } catch(e) { auths = []; }
+        }
+        openEditRole(id, name, desc, auths);
+    } catch(err) {
+        console.error("Error in openEditRoleBtn:", err);
+    }
+}
+
+function updateAddAuthCount() {
+    var checkedCount = $('.add_auth_cb:checked').length;
+    var totalCount = (typeof totalAuthCount !== 'undefined' && totalAuthCount) ? totalAuthCount : $('.add_auth_cb').length;
+    $('#add_role_auth_count').text(checkedCount + ' / ' + totalCount + ' dipilih');
+}
+
+function toggleAllAddRoleAuths(selectAll) {
+    if (selectAll) {
+        $('.add_auth_cb:visible').prop('checked', true);
+    } else {
+        $('.add_auth_cb:visible').prop('checked', false);
+    }
+    updateAddAuthCount();
+}
+
+function updateEditAuthCount() {
+    var checkedCount = $('.edit_auth_cb:checked').length;
+    var totalCount = (typeof totalAuthCount !== 'undefined' && totalAuthCount) ? totalAuthCount : $('.edit_auth_cb').length;
+    $('#edit_role_auth_count').text(checkedCount + ' / ' + totalCount + ' dipilih');
+}
+
+function toggleAllRoleAuths(selectAll) {
+    if (selectAll) {
+        $('.edit_auth_cb:visible').prop('checked', true);
+    } else {
+        $('.edit_auth_cb:visible').prop('checked', false);
+    }
+    updateEditAuthCount();
+}
+
+function openEditRole(id, name, desc, auths) {
+    try {
+        $('#edit_role_id').val(id);
+        $('#edit_role_name').val(name);
+        $('#edit_role_desc').val(desc || '');
+        $('.edit_auth_cb').prop('checked', false);
+        $('#filterEditAuths').val('');
+        $('#edit_role_auths_container .auth-item-label').show();
+        
+        if (typeof auths === 'string') {
+            try { auths = JSON.parse(auths); } catch(e) { auths = []; }
+        }
+        
+        if (Array.isArray(auths) && auths.length) {
+            auths.forEach(function(authId) {
+                $('.edit_auth_cb[value="' + authId + '"]').prop('checked', true);
+            });
+        }
+        
+        updateEditAuthCount();
+        openModal('modalEditRole');
+    } catch(err) {
+        console.error("Error opening edit role:", err);
+        alert("Gagal membuka form edit: " + err.message);
+    }
+}
+
+
+function submitForm(e, entity, formId) {
+    if (e && e.preventDefault) e.preventDefault();
+    var formEl = document.getElementById(formId);
+    if (!formEl) {
+        console.error("Form element not found:", formId);
+        return false;
+    }
+
+    var submitBtn = formEl.querySelector('button[type="submit"]');
+    var originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Menyimpan...';
+    }
+
+    // Preserve active tab before reload
+    var activeTab = document.querySelector('#adminTabs .nav-link.active');
+    if (activeTab && activeTab.id) {
+        try { sessionStorage.setItem('activeAdminTab', activeTab.id); } catch(err) {}
+    } else if (entity === 'roles') {
+        try { sessionStorage.setItem('activeAdminTab', 'roles-tab'); } catch(err) {}
+    }
+
+    var formData = new FormData(formEl);
+    $.ajax({
+        url: SCRIPT_ROOT + '/api/admin/' + entity,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(res) {
+            if (res && res.success) {
+                var parentModal = $(formEl).closest('.modal-overlay');
+                if (parentModal.length) parentModal.hide();
+                window.location.reload();
+            } else {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnHtml;
+                }
+                alert("Gagal: " + (res && res.error ? res.error : "Gagal menyimpan perubahan."));
+            }
+        },
+        error: function(err) {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
+            var msg = "Server error";
+            if (err.responseJSON && err.responseJSON.error) {
+                msg = err.responseJSON.error;
+            } else if (err.responseText) {
+                try {
+                    var parsed = JSON.parse(err.responseText);
+                    if (parsed.error) msg = parsed.error;
+                } catch(e) {}
+            }
+            alert("Error: " + msg);
+        }
+    });
+    return false;
+}
+
+function deleteEntity(entity, id) {
+    if (confirm('Hapus item ini? Tindakan ini tidak dapat dibatalkan.')) {
+        var activeTab = document.querySelector('#adminTabs .nav-link.active');
+        if (activeTab && activeTab.id) {
+            try { sessionStorage.setItem('activeAdminTab', activeTab.id); } catch(err) {}
+        }
+        var formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('id', id);
+        $.ajax({
+            url: SCRIPT_ROOT + '/api/admin/' + entity,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(res) { if (res.success) window.location.reload(); }
+        });
+    }
+}
+</script>
+
+<script src="/user-management/static/js/user_management_global.js"></script>
+<script src="/static/js/session-watcher.js"></script>
+</body>
+</html>

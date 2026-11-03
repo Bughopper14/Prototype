@@ -1,0 +1,12 @@
+flask
+pyodbc
+waitress
+werkzeug
+pywebpush
+py-vapid
+cryptography
+mysql-connector-python
+requests
+Pillow
+pytesseract
+pdf2image

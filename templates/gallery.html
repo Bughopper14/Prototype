@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Liugong Apps">
+    <link rel="apple-touch-icon" href="/static/img/logo_192.png">
+    <title>Apps Hub - Liugong Finance Indonesia</title>
+    <meta name="description" content="Portal aplikasi internal Liugong Finance Indonesia.">
+    <link rel="icon" type="image/png" href="/static/img/logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* ===== GLOBAL ===== */
+        * { font-family: 'Outfit', sans-serif; box-sizing: border-box; }
+        body {
+            background: #f0f4f9;
+            color: #1e293b;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        main { flex: 1; }
+
+        /* ===== NAVBAR ===== */
+        .navbar {
+            background: linear-gradient(90deg, #001f42, #002c5f);
+            box-shadow: 0 4px 20px rgba(0, 44, 95, 0.2);
+            border-bottom: 3px solid #ff9900;
+            min-height: 64px;
+            padding: 0;
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: #fff !important;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+        .navbar-brand .brand-logo-box {
+            background: rgba(255, 255, 255, 0.92);
+            border-radius: 8px;
+            padding: 4px 10px;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .navbar-brand .brand-logo-box img { height: 28px; }
+        .navbar-brand .brand-text { font-size: 1.05rem; letter-spacing: -0.2px; }
+        .navbar-brand .brand-sub {
+            font-size: 0.68rem;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.5);
+            display: block;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            line-height: 1;
+        }
+
+        /* User avatar pill in navbar */
+        .user-menu-btn {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1.5px solid rgba(255, 255, 255, 0.25) !important;
+            color: #fff !important;
+            border-radius: 40px !important;
+            padding: 6px 16px 6px 8px !important;
+            font-size: 0.88rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .user-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.18) !important;
+            border-color: rgba(255, 255, 255, 0.5) !important;
+            transform: translateY(-1px);
+        }
+        .user-avatar-pill {
+            width: 30px; height: 30px;
+            background: linear-gradient(135deg, #ff9900, #ffb833);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            color: #002c5f;
+            font-weight: 800;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        /* Dropdown */
+        .dropdown-menu {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+            padding: 8px;
+            min-width: 220px;
+        }
+        .dropdown-header {
+            font-size: 0.68rem !important;
+            letter-spacing: 1px;
+            color: #94a3b8 !important;
+            padding: 6px 12px 4px !important;
+        }
+        .dropdown-item {
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: #334155;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.15s;
+        }
+        .dropdown-item:hover { background: #f1f5f9; color: #002c5f; }
+        .dropdown-item .item-icon {
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+        .dropdown-item.text-danger:hover { background: #fef2f2; color: #b91c1c; }
+        .dropdown-divider { margin: 6px 8px; border-color: #f1f5f9; }
+
+        /* Hamburger button */
+        .btn-hamburger {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            border-radius: 10px;
+            width: 38px; height: 38px;
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+        .btn-hamburger:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* ===== OFFCANVAS SIDEBAR ===== */
+        #sidebarOverlayMenu {
+            background-color: #002c5f !important;
+            width: 280px;
+        }
+        #sidebarOverlayMenu .offcanvas-header {
+            background-color: #001f42;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #sidebarOverlayMenu .nav-link {
+            transition: background-color 0.2s, color 0.2s;
+            border-radius: 8px;
+            margin: 4px 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.65);
+            padding: 12px 16px;
+        }
+        #sidebarOverlayMenu .nav-link:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: #fff;
+        }
+        #sidebarOverlayMenu .nav-link.active {
+            background-color: #ff9900 !important;
+            color: #002c5f !important;
+            font-weight: 600;
+        }
+        #sidebarOverlayMenu .nav-link.active i { color: #002c5f !important; }
+        .sidebar-footer {
+            background-color: #001f42;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* ===== PAGE CONTENT ===== */
+        .page-content { padding: 36px 20px 48px; }
+
+        /* Welcome Banner */
+        .welcome-section {
+            background: linear-gradient(135deg, #002c5f 0%, #003d7a 100%);
+            border-radius: 20px;
+            padding: 28px 32px;
+            color: white;
+            margin-bottom: 32px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 44, 95, 0.2);
+        }
+        .welcome-section::after {
+            content: '';
+            position: absolute;
+            right: -20px; top: -30px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(255, 153, 0, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+        .welcome-section .logo-bg {
+            position: absolute;
+            right: 20px; bottom: -10px;
+            opacity: 0.06;
+            height: 110px;
+        }
+        .welcome-section h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin: 0 0 4px;
+        }
+        .welcome-section p {
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin: 0;
+        }
+        .welcome-section .orange-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 153, 0, 0.2);
+            border: 1px solid rgba(255, 153, 0, 0.4);
+            color: #ffc44d;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            margin-bottom: 10px;
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 16px;
+        }
+
+        /* ===== APP CARDS ===== */
+        .app-card {
+            background: #fff;
+            border: none;
+            border-radius: 18px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+            padding: 28px 20px 22px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+        }
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #002c5f, #ff9900);
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+        .app-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 40px rgba(0, 44, 95, 0.12);
+            color: inherit;
+        }
+        .app-card:hover::before { opacity: 1; }
+
+        .app-icon-wrapper {
+            width: 70px; height: 70px;
+            border-radius: 18px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #e8f0ff, #dceeff);
+            color: #002c5f;
+            box-shadow: 0 4px 12px rgba(0, 44, 95, 0.1);
+            transition: all 0.25s;
+        }
+        .app-card:hover .app-icon-wrapper {
+            background: linear-gradient(135deg, #002c5f, #0050a0);
+            color: #ff9900;
+            box-shadow: 0 8px 20px rgba(0, 44, 95, 0.25);
+        }
+        .app-name {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #1e293b;
+            margin-bottom: 6px;
+        }
+        .app-desc {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            line-height: 1.5;
+            flex: 1;
+            margin-bottom: 14px;
+        }
+        .app-role-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            background: #f0f4ff;
+            color: #4f6fb0;
+            border-radius: 20px;
+            padding: 4px 12px;
+            border: 1px solid #dce8ff;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        .empty-state i { color: #cbd5e0; }
+
+        /* Toast */
+        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 1100; }
+        .toast { border-radius: 12px; border: none; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); }
+
+        /* ===== FOOTER ===== */
+        footer {
+            background-color: #001f42;
+            border-top: 3px solid #ff9900;
+            padding: 20px 0;
+        }
+        footer .footer-logo { height: 22px; opacity: 0.5; filter: brightness(0) invert(1); }
+        footer p { font-size: 0.8rem; color: rgba(255, 255, 255, 0.45); margin: 0; }
+        footer a { color: rgba(255, 255, 255, 0.5); text-decoration: none; transition: color 0.2s; }
+        footer a:hover { color: #ff9900; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 576px) {
+            .welcome-section { padding: 20px; }
+            .welcome-section h2 { font-size: 1.2rem; }
+            .page-content { padding: 20px 12px 32px; }
+            .app-card { padding: 20px 14px 16px; }
+            .app-icon-wrapper { width: 56px; height: 56px; font-size: 1.4rem; }
+            .app-name { font-size: 0.92rem; }
+            .app-desc { font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ===== NAVBAR ===== -->
+<nav class="navbar navbar-expand navbar-dark">
+    <div class="container-fluid px-4 d-flex align-items-center justify-content-between">
+        <!-- Logo / Brand -->
+        <a class="navbar-brand" href="/">
+            <div class="brand-logo-box">
+                <img src="/static/img/logo.png"
+                     alt="LiuGong Finance Indonesia"
+                     onerror="this.src='https://www.static-src.com/wcsstore/Indraprastha/images/brandlogo//BRD-28844/liugong-logo.png'">
+            </div>
+            <div class="d-none d-sm-block">
+                <span class="brand-text">LiuGong Apps Portal</span>
+                <span class="brand-sub">Finance Indonesia</span>
+            </div>
+        </a>
+
+        <!-- Right Actions -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Profile Dropdown (Desktop) -->
+            <div class="dropdown d-none d-md-block">
+                <button class="btn user-menu-btn dropdown-toggle" type="button"
+                        id="userMenuBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                    <div class="user-avatar-pill">
+                        {{ full_name[0].upper() if full_name else 'U' }}
+                    </div>
+                    <span>{{ full_name }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow mt-2" aria-labelledby="userMenuBtn">
+                    <li><h6 class="dropdown-header">USER ACTIONS</h6></li>
+                    <li>
+                        <a class="dropdown-item" href="/">
+                            <span class="item-icon" style="background:#eff6ff; color:#3b82f6;"><i class="fas fa-th-large"></i></span>
+                            Apps Hub
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
+                            <span class="item-icon" style="background:#fffbeb; color:#f59e0b;"><i class="fas fa-key"></i></span>
+                            Change Password
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item text-danger" href="/logout">
+                            <span class="item-icon" style="background:#fef2f2; color:#ef4444;"><i class="fas fa-sign-out-alt"></i></span>
+                            Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Hamburger (Mobile) -->
+            <button class="btn-hamburger" type="button"
+                    data-bs-toggle="offcanvas" data-bs-target="#sidebarOverlayMenu"
+                    aria-controls="sidebarOverlayMenu">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<!-- ===== OFFCANVAS SIDEBAR ===== -->
+<div class="offcanvas offcanvas-start text-bg-dark" tabindex="-1" id="sidebarOverlayMenu"
+     aria-labelledby="sidebarOverlayMenuLabel">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title fw-bold text-white" id="sidebarOverlayMenuLabel">
+            <i class="fas fa-th-large text-warning me-2"></i> LiuGong Apps
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-0 d-flex flex-column justify-content-between">
+        <!-- Nav Links -->
+        <ul class="nav flex-column py-3" id="sidebarNavLinks">
+            <li class="nav-item">
+                <a class="nav-link active d-flex align-items-center gap-3" href="/">
+                    <i class="fas fa-th-large text-warning" style="width:20px;"></i> Apps Hub
+                </a>
+            </li>
+        </ul>
+
+        <!-- User Info & Actions -->
+        <div class="p-4 sidebar-footer">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning text-dark fw-bold"
+                     style="width:40px; height:40px; flex-shrink:0;">
+                    {{ full_name[0].upper() if full_name else 'U' }}
+                </div>
+                <div>
+                    <h6 class="text-white mb-0">{{ full_name }}</h6>
+                    <small class="text-white-50 d-block" style="font-size:0.72rem;">Active User</small>
+                </div>
+            </div>
+            <div class="d-grid gap-2">
+                <button class="btn btn-sm btn-outline-light" data-bs-toggle="modal"
+                        data-bs-target="#changePasswordModal"
+                        onclick="closeOffcanvas()">
+                    <i class="fas fa-key text-warning me-1"></i> Change Password
+                </button>
+                <a class="btn btn-sm btn-danger" href="/logout">
+                    <i class="fas fa-sign-out-alt me-1"></i> Logout
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CHANGE PASSWORD MODAL ===== -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1"
+     aria-labelledby="changePasswordModalLabel" aria-hidden="true" style="z-index:1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.18);">
+            <div style="height:4px; background:linear-gradient(90deg,#002c5f,#ff9900); border-radius:20px 20px 0 0;"></div>
+            <div class="modal-header border-0 pb-0 pt-4 px-4">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:40px;height:40px;background:linear-gradient(135deg,#002c5f,#0050a0);border-radius:10px;display:flex;align-items:center;justify-content:center;color:#ff9900;">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="changePasswordModalLabel">Ganti Password</h5>
+                        <small class="text-muted">Perbarui password akun Anda</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="formChangePassword" onsubmit="submitChangePassword(event)">
+                <div class="modal-body px-4 py-3">
+                    <div class="mb-3">
+                        <label for="cp_current" class="form-label fw-semibold small text-secondary">Password Saat Ini</label>
+                        <input type="password" name="current_password" id="cp_current" class="form-control"
+                               style="border-radius:10px;" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="cp_new" class="form-label fw-semibold small text-secondary">Password Baru</label>
+                        <input type="password" name="new_password" id="cp_new" class="form-control"
+                               style="border-radius:10px;" required>
+                    </div>
+                    <div class="mb-2">
+                        <label for="cp_confirm" class="form-label fw-semibold small text-secondary">Konfirmasi Password Baru</label>
+                        <input type="password" id="cp_confirm" class="form-control"
+                               style="border-radius:10px;" required>
+                    </div>
+                    <div class="alert alert-danger d-none p-2 small mt-2" id="cpError" style="border-radius:8px;"></div>
+                    <div class="alert alert-success d-none p-2 small mt-2" id="cpSuccess" style="border-radius:8px;"></div>
+                </div>
+                <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light px-4" style="border-radius:10px;"
+                            data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary px-4" id="btnSavePass"
+                            style="border-radius:10px; background:#002c5f; border-color:#002c5f;">
+                        <i class="fas fa-save me-2"></i>Simpan Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TOAST ===== -->
+<div class="toast-container">
+    <div id="mainToast" class="toast align-items-center text-white border-0" role="alert"
+         aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody"></div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                    data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main>
+    <div class="page-content">
+        <div class="container">
+
+            <!-- Welcome Banner -->
+            <div class="welcome-section">
+                <img class="logo-bg"
+                     src="/static/img/logo.png" alt=""
+                     onerror="this.style.display='none'">
+                <div class="orange-pill">
+                    <i class="fas fa-circle" style="font-size:6px;"></i> Liugong Finance Indonesia
+                </div>
+                <h2>Selamat Datang, {{ full_name }}! 👋</h2>
+                <p>Pilih aplikasi di bawah ini untuk mulai bekerja.</p>
+            </div>
+
+            <!-- Aplikasi Tersedia -->
+            <p class="section-title">
+                <i class="fas fa-th-large me-2"></i>Aplikasi Tersedia
+            </p>
+            <div class="row g-4">
+                {% for app in apps %}
+                <div class="col-6 col-md-4 col-lg-3">
+                    <a href="{{ app.url_path }}" class="app-card">
+                        <div class="app-icon-wrapper">
+                            <i class="{{ app.icon_class }}"></i>
+                        </div>
+                        <div class="app-name">{{ app.app_name }}</div>
+                        <div class="app-desc">{{ app.description }}</div>
+                        <span class="app-role-badge">
+                            <i class="fas fa-user-tag me-1"></i>{{ app.role_name }}
+                        </span>
+                    </a>
+                </div>
+                {% else %}
+                <div class="col-12">
+                    <div class="empty-state">
+                        <i class="fas fa-folder-open fa-4x mb-4 d-block"></i>
+                        <h5 class="fw-bold text-secondary">Tidak ada aplikasi tersedia</h5>
+                        <p class="small">
+                            Akun Anda belum diberikan akses ke aplikasi manapun.<br>
+                            Hubungi IT Admin untuk pengaturan akses.
+                        </p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer>
+    <div class="container text-center">
+        <img src="/static/img/logo.png" alt="LiuGong" class="footer-logo mb-2"
+             onerror="this.style.display='none'">
+        <p>
+            &copy; <span id="copyrightYear"></span> Liugong Finance Indonesia
+            &mdash; Internal Use Only
+        </p>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Dynamic copyright year
+    document.getElementById('copyrightYear').textContent = new Date().getFullYear();
+
+    // Close offcanvas sidebar
+    function closeOffcanvas() {
+        const el = document.getElementById('sidebarOverlayMenu');
+        if (el) {
+            const instance = bootstrap.Offcanvas.getInstance(el);
+            if (instance) instance.hide();
+        }
+    }
+
+    // Auto-close sidebar links when clicked
+    document.querySelectorAll('#sidebarNavLinks .nav-link').forEach(function(link) {
+        link.addEventListener('click', closeOffcanvas);
+    });
+
+    // Toast helper
+    function showToast(message, type) {
+        const toast = document.getElementById('mainToast');
+        const toastBody = document.getElementById('toastBody');
+        toastBody.textContent = message;
+        toast.className = `toast align-items-center text-white border-0 bg-${type === 'success' ? 'success' : 'danger'}`;
+        const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+        bsToast.show();
+    }
+
+    // Change Password AJAX
+    function submitChangePassword(e) {
+        e.preventDefault();
+        const current  = document.getElementById('cp_current').value;
+        const newPass  = document.getElementById('cp_new').value;
+        const confirm  = document.getElementById('cp_confirm').value;
+        const errDiv   = document.getElementById('cpError');
+        const sucDiv   = document.getElementById('cpSuccess');
+        const btn      = document.getElementById('btnSavePass');
+
+        errDiv.classList.add('d-none');
+        sucDiv.classList.add('d-none');
+
+        if (newPass !== confirm) {
+            errDiv.textContent = 'Password baru dan konfirmasi tidak cocok.';
+            errDiv.classList.remove('d-none');
+            return;
+        }
+        if (newPass.length < 6) {
+            errDiv.textContent = 'Password baru minimal 6 karakter.';
+            errDiv.classList.remove('d-none');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Menyimpan...';
+
+        fetch('/api/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ current_password: current, new_password: newPass })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                sucDiv.textContent = '✓ Password berhasil diubah!';
+                sucDiv.classList.remove('d-none');
+                document.getElementById('formChangePassword').reset();
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('changePasswordModal')).hide();
+                    showToast('Password berhasil diubah!', 'success');
+                }, 1500);
+            } else {
+                errDiv.textContent = data.error || 'Terjadi kesalahan. Coba lagi.';
+                errDiv.classList.remove('d-none');
+            }
+        })
+        .catch(() => {
+            errDiv.textContent = 'Koneksi gagal. Periksa koneksi internet Anda.';
+            errDiv.classList.remove('d-none');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-2"></i>Simpan Password';
+        });
+    }
+</script>
+<script src="/static/js/push-client.js"></script>
+<script src="/static/js/session-watcher.js"></script>
+</body>
+</html>
