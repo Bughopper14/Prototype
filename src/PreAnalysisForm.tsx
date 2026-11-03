@@ -1,6 +1,9 @@
 
 export function getStaticAssetUrl(relativePath: string): string {
   const clean = relativePath.startsWith('/') ? relativePath.slice(1) : relativePath;
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/crm-dashboard')) {
+    return `/crm-dashboard/${clean}`;
+  }
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/crm')) {
     return `/crm/${clean}`;
   }
@@ -8,6 +11,7 @@ export function getStaticAssetUrl(relativePath: string): string {
 }
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Editor } from '@tinymce/tinymce-react';
 import {
   FileText,
   Save,
@@ -183,7 +187,144 @@ export function stripHtmlTags(val: any): string {
     .trim();
 }
 
+export interface EntitySlikReview {
+  id?: string;
+  entityName: string;
+  hasRecord: boolean;
+  noRecordRemarks?: string;
+  lenderExposures: LenderExposureItem[];
+  pefindoNotes?: string;
+  pefindoTerms?: string;
+}
+
+export function parsePlafonNumber(val: any): number {
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  if (!val || typeof val !== 'string') return 0;
+  let clean = val.replace(/Rp\s*/gi, '').trim();
+  if (clean.includes('.') && clean.includes(',')) {
+    clean = clean.replace(/\./g, '').replace(',', '.');
+  } else if (clean.includes('.') && !clean.includes(',')) {
+    const parts = clean.split('.');
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+      clean = clean.replace(/\./g, '');
+    }
+  } else if (clean.includes(',') && !clean.includes('.')) {
+    const parts = clean.split(',');
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+      clean = clean.replace(/,/g, '');
+    } else {
+      clean = clean.replace(',', '.');
+    }
+  }
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+export function formatPlafonCurrency(num: number): string {
+  if (isNaN(num) || num === 0) return '0,00';
+  return num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+export function renderRichHtml(val: any) {
+  if (!val) return null;
+  const str = String(val).trim();
+  if (!str) return null;
+  if (/<(p|ul|ol|li|div|br|strong|b|em|i|span|table|tr|td|th)[^>]*>/i.test(str)) {
+    return (
+      <div 
+        className="preana-rich-rendered-html" 
+        style={{ lineHeight: 1.45 }} 
+        dangerouslySetInnerHTML={{ __html: str }} 
+      />
+    );
+  }
+  return (
+    <div style={{ whiteSpace: 'pre-line', lineHeight: 1.45 }}>
+      {str}
+    </div>
+  );
+}
+
+export function PreAnalysisRichEditor({
+  value,
+  onChange,
+  onFocus,
+  placeholder,
+  height = 160,
+  dataField
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  onFocus?: () => void;
+  placeholder?: string;
+  height?: number;
+  dataField?: string;
+}) {
+  const tinymceSrc = getStaticAssetUrl("tinymce/tinymce.min.js");
+
+  const initialHtml = useMemo(() => {
+    if (!value) return '';
+    if (value.includes('<p>') || value.includes('<div>') || value.includes('<ul>') || value.includes('<ol>')) {
+      return value;
+    }
+    return value.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
+  }, []);
+
+  return (
+    <div
+      data-field={dataField}
+      onClick={onFocus}
+      style={{
+        borderRadius: '6px',
+        overflow: 'hidden',
+        border: '1px solid #cbd5e1',
+        background: '#ffffff'
+      }}
+    >
+      <Editor
+        licenseKey="gpl"
+        tinymceScriptSrc={tinymceSrc}
+        value={value || ''}
+        initialValue={initialHtml}
+        onEditorChange={(newHtml) => onChange(newHtml)}
+        init={{
+          height: height,
+          menubar: false,
+          placeholder: placeholder,
+          plugins: [
+            'advlist', 'autolink', 'lists', 'link', 'charmap',
+            'searchreplace', 'visualblocks', 'code', 'fullscreen',
+            'insertdatetime', 'table', 'wordcount'
+          ],
+          toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | removeformat',
+          content_style: `
+            body { 
+              font-family: 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+              font-size: 13px; 
+              line-height: 1.5; 
+              color: #0f172a; 
+              padding: 8px 12px; 
+            }
+            ol, ul {
+              margin: 0 0 6px 0;
+              padding-left: 20px;
+            }
+            li {
+              margin-bottom: 3px;
+              line-height: 1.5;
+            }
+            p {
+              margin: 0 0 5px 0;
+            }
+          `
+        }}
+      />
+    </div>
+  );
+}
+
 export interface PreAnalysisData {
+  entitySlikReviews?: Record<string, EntitySlikReview>;
   preAnalysisNo: string;
   preAnalysisDate: string;
   customerProjectName: string;
@@ -657,14 +798,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       .then(res => {
         if (isMounted && res && res.success && res.data) {
           const raw = res.data;
-          const cleaned: any = { ...raw };
-          for (const k of Object.keys(cleaned)) {
-            if (typeof cleaned[k] === 'string') {
-              cleaned[k] = stripHtmlTags(cleaned[k]);
-            }
-          }
-          setData(prev => ({ ...prev, ...cleaned }));
-          initialDataRef.current = structuredClone(cleaned);
+          setData(prev => ({ ...prev, ...raw }));
+          initialDataRef.current = structuredClone(raw);
         }
       })
       .catch(err => {
@@ -706,9 +841,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') {
       setViewMode('digital-twin');
     }
-    const cleanVal = typeof val === 'string' && (val.includes('<') || val.includes('&')) ? stripHtmlTags(val) : val;
     setData(prev => {
-      const next: PreAnalysisData = { ...prev, [key]: cleanVal };
+      const next: PreAnalysisData = { ...prev, [key]: val };
       if (key === 'uboInfo') {
         next.ubo = val;
         next.uboInfo = val;
@@ -760,6 +894,100 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     }
     return data.customerProjectName || 'APPLICANT COMPANY';
   }, [currentGroupStructure, data.customerProjectName]);
+
+  const groupSubsidiaries = useMemo(() => {
+    if (currentGroupStructure.subsidiaries && currentGroupStructure.subsidiaries.length > 0) {
+      return currentGroupStructure.subsidiaries;
+    }
+    return [
+      { name: sisterCompanyName, authorizedCapital: '', paidUpCapital: '', shareholders: [] },
+      { name: applicantCompanyName, authorizedCapital: '', paidUpCapital: '', shareholders: [] }
+    ];
+  }, [currentGroupStructure.subsidiaries, sisterCompanyName, applicantCompanyName]);
+
+  const getEntityReview = (idx: number, entityName: string): EntitySlikReview => {
+    const existing = data.entitySlikReviews?.[String(idx)];
+    if (existing) {
+      return {
+        ...existing,
+        entityName: entityName || existing.entityName || `Entitas #${idx + 1}`
+      };
+    }
+    const isSister = /sister|handalan|hps/i.test(entityName) || (groupSubsidiaries.length >= 2 && idx === 1);
+    const isApplicant = /applicant|request|htps|harta/i.test(entityName) || idx === groupSubsidiaries.length - 1;
+    
+    if (isSister) {
+      return {
+        id: `sub-${idx}`,
+        entityName: entityName || 'PT HPS (SISTER COMPANY)',
+        hasRecord: true,
+        noRecordRemarks: '',
+        lenderExposures: data.lenderExposures && data.lenderExposures.length > 0 ? data.lenderExposures : [
+          { lender: 'PT Astra Sedaya Finance (ACC)', plafond: '11.737.642.751,00', rate: '6,24' },
+          { lender: 'PT Bank Central Asia Tbk', plafond: '13.533.553.504,00', rate: '9,50' },
+          { lender: 'PT Bank Nano Syariah', plafond: '6.163.669.402,00', rate: '-' },
+          { lender: 'PT Bank Saqu Indonesia (d.h PT Bank Jasa Jakarta)', plafond: '2.738.552.586,00', rate: '10,41' },
+          { lender: 'PT Mandiri Tunas Finance (MTF)', plafond: '14.993.647.840,00', rate: '9,50' },
+          { lender: 'PT Mitsui Leasing Capital Indonesia', plafond: '392.806.826,00', rate: '10,63' },
+          { lender: 'PT Radana Bhaskara Finance', plafond: '3.273.898.464,00', rate: '7,20' },
+          { lender: 'PT SMFL Leasing Indonesia', plafond: '4.301.044.800,00', rate: '12,49' },
+          { lender: 'PT Surya Artha Nusantara Finance (SANF)', plafond: '23.538.710.000,00', rate: '11,25' }
+        ],
+        pefindoNotes: data.pefindoNotes || '<p>- PT HPS is existing customer of SANF, ACC, etc. Payment current, but for PT HPS there are no close contract because PT HPS also new established company in 2024. All leasing contracts still open.</p><p>- Its group : PT Harta Putramas Santosa (HTPS) is newly establish company, no record at all from Finco / Bank.</p><p>- New business diversification, PT HTPS doesnt have any experience in Harvesting.</p>',
+        pefindoTerms: data.pefindoTerms || '<p>Current PT HPS commercial term on other fincos : Flat rate 7%, 20% SD, Normal Installment - 36 months lease terms, Provision 1%, admin fee IDR 5 bio per contract</p>'
+      };
+    }
+    
+    if (isApplicant) {
+      return {
+        id: `sub-${idx}`,
+        entityName: entityName || 'PT HTPS (REQUEST USING THIS COMPANY)',
+        hasRecord: false,
+        noRecordRemarks: data.applicantPefindoCheck || '<p>NO RECORD SINCE ITS NEWLY ESTABLISHED</p>',
+        lenderExposures: [],
+        pefindoNotes: '',
+        pefindoTerms: ''
+      };
+    }
+
+    return {
+      id: `sub-${idx}`,
+      entityName: entityName || `PT Entitas #${idx + 1}`,
+      hasRecord: false,
+      noRecordRemarks: '<p>Belum ada fasilitas kredit perbankan / leasing (No Record)</p>',
+      lenderExposures: [],
+      pefindoNotes: '',
+      pefindoTerms: ''
+    };
+  };
+
+  const updateEntityReview = (idx: number, patch: Partial<EntitySlikReview>) => {
+    if (viewMode === 'original-pdf') {
+      setViewMode('digital-twin');
+    }
+    const current = getEntityReview(idx, groupSubsidiaries[idx]?.name || '');
+    const updated: EntitySlikReview = { ...current, ...patch };
+    const nextReviews = { ...(data.entitySlikReviews || {}), [String(idx)]: updated };
+    
+    const updates: Partial<PreAnalysisData> = {
+      entitySlikReviews: nextReviews
+    };
+    if (updated.hasRecord) {
+      updates.lenderExposures = updated.lenderExposures;
+      updates.pefindoNotes = updated.pefindoNotes;
+      updates.pefindoTerms = updated.pefindoTerms;
+    } else {
+      if (/applicant|request|htps|harta/i.test(updated.entityName) || idx === groupSubsidiaries.length - 1) {
+        updates.applicantPefindoCheck = updated.noRecordRemarks;
+      }
+    }
+    setData(prev => ({ ...prev, ...updates }));
+  };
+
+  const getGrandTotal = (exposures: LenderExposureItem[] = []): string => {
+    const total = exposures.reduce((sum, item) => sum + parsePlafonNumber(item.plafond), 0);
+    return formatPlafonCurrency(total);
+  };
 
 
   const syncStructureIntoData = (prev: PreAnalysisData, newGs: GroupStructureData): PreAnalysisData => {
@@ -1491,15 +1719,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <span>Existing Projects (Proyek Yang Sedang Berjalan - PT HPS & PT PASS)</span>
                     <span style={{ fontSize: '0.68rem', color: '#166534', fontWeight: 600 }}>Active Contracts</span>
                   </label>
-                  <textarea
-                    rows={6}
-                    name="existingProjects"
-                    data-field="existingProjects"
+                  <PreAnalysisRichEditor
                     value={data.existingProjects || ''}
-                    onChange={e => updateField('existingProjects', e.target.value)}
+                    onChange={val => updateField('existingProjects', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
-                    placeholder="A. PT Handalan Putramas Santosa (HPS)...\nB. PT Pangan Sejahtera Santosa (PASS)..."
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    placeholder="A. PT Handalan Putramas Santosa (HPS)..."
+                    height={180}
+                    dataField="existingProjects"
                   />
                 </div>
                 <div>
@@ -1507,15 +1733,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <span>New Projects (Pipeline Proyek Baru / Diajukan - PT HTPS)</span>
                     <span style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: 600 }}>Proposed Pipeline</span>
                   </label>
-                  <textarea
-                    rows={4}
-                    name="newProjects"
-                    data-field="newProjects"
+                  <PreAnalysisRichEditor
                     value={data.newProjects || ''}
-                    onChange={e => updateField('newProjects', e.target.value)}
+                    onChange={val => updateField('newProjects', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-newProjects')}
                     placeholder="C. PT Harta Putramas Santosa (HTPS)..."
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    height={160}
+                    dataField="newProjects"
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
@@ -1546,26 +1770,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Owner</label>
-                  <textarea
-                    rows={2}
-                    name="projectOwner"
-                    data-field="projectOwner"
-                    value={data.projectOwner}
-                    onChange={e => updateField('projectOwner', e.target.value)}
+                  <PreAnalysisRichEditor
+                    value={data.projectOwner || ''}
+                    onChange={val => updateField('projectOwner', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-projectOwner')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={120}
+                    dataField="projectOwner"
                   />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Bowheer Information</label>
-                  <textarea
-                    rows={4}
-                    name="bowheerInfo"
-                    data-field="bowheerInfo"
-                    value={stripHtmlTags(data.bowheerInfo)}
-                    onChange={e => updateField('bowheerInfo', e.target.value)}
+                  <PreAnalysisRichEditor
+                    value={data.bowheerInfo || ''}
+                    onChange={val => updateField('bowheerInfo', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-bowheerInfo')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={130}
+                    dataField="bowheerInfo"
                   />
                 </div>
                 <div>
@@ -1582,14 +1802,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Investment Plan</label>
-                  <textarea
-                    rows={3}
-                    name="investmentPlan"
-                    data-field="investmentPlan"
-                    value={stripHtmlTags(data.investmentPlan)}
-                    onChange={e => updateField('investmentPlan', e.target.value)}
+                  <PreAnalysisRichEditor
+                    value={data.investmentPlan || ''}
+                    onChange={val => updateField('investmentPlan', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-investmentPlan')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={130}
+                    dataField="investmentPlan"
                   />
                 </div>
                 <div>
@@ -1650,26 +1868,22 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>UBO (Ultimate Beneficiary Owner)</label>
-                  <textarea
-                    rows={3}
-                    name="uboInfo"
-                    data-field="uboInfo"
+                  <PreAnalysisRichEditor
                     value={data.uboInfo || data.ubo || ''}
-                    onChange={e => updateField('uboInfo', e.target.value)}
+                    onChange={val => { updateField('uboInfo', val); updateField('ubo', val); }}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInfo')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={130}
+                    dataField="uboInfo"
                   />
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background (Profil Singkat Entitas & Holding)</label>
-                  <textarea
-                    rows={3}
-                    name="companyBackground"
-                    data-field="companyBackground"
-                    value={stripHtmlTags(data.companyBackground)}
-                    onChange={e => updateField('companyBackground', e.target.value)}
+                  <PreAnalysisRichEditor
+                    value={data.companyBackground || ''}
+                    onChange={val => updateField('companyBackground', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-companyBackground')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={150}
+                    dataField="companyBackground"
                   />
                 </div>
                 <div>
@@ -1677,14 +1891,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <span>STAR Group – Key Milestones Narrative (Riwayat & Narasi Ekspansi)</span>
                     <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600 }}>2022 - 2026 Expansion</span>
                   </label>
-                  <textarea
-                    rows={7}
-                    name="starGroupMilestonesNarrative"
-                    data-field="starGroupMilestonesNarrative"
+                  <PreAnalysisRichEditor
                     value={data.starGroupMilestonesNarrative || ''}
-                    onChange={e => updateField('starGroupMilestonesNarrative', e.target.value)}
+                    onChange={val => updateField('starGroupMilestonesNarrative', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-starGroupMilestonesNarrative')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                    height={180}
+                    dataField="starGroupMilestonesNarrative"
                   />
                 </div>
                 <div>
@@ -1704,14 +1916,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
-                  <textarea
-                    rows={3}
-                    name="operationalTeamInfo"
-                    data-field="operationalTeamInfo"
+                  <PreAnalysisRichEditor
                     value={data.operationalTeamInfo || ''}
-                    onChange={e => updateField('operationalTeamInfo', e.target.value)}
+                    onChange={val => updateField('operationalTeamInfo', val)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-operationalTeamInfo')}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                    height={130}
+                    dataField="operationalTeamInfo"
                   />
                 </div>
                 <div>
@@ -2450,141 +2660,243 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
 
-                {/* Subheading: 1. Sister Company SLIK / Pefindo */}
+                {/* Per-PT from Subsection 3 Group Structure with Toggle YES/NO */}
                 <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
-                        1. {sisterCompanyName.toUpperCase()} (SISTER COMPANY) :
-                      </span>
-                      <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
-                        ✓ Synced with Subsection 3
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const next = [...(data.lenderExposures || []), { lender: '', plafond: '', rate: '' }];
-                        updateField('lenderExposures', next);
-                      }}
-                      style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe', cursor: 'pointer' }}
-                    >
-                      + Add Lender
-                    </button>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a', marginBottom: '8px' }}>
+                    DAFTAR ENTITAS GROUP UNTUK SLIK / BUREAU REVIEW:
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>
-                    {stripHtmlTags(data.slikPefindoHighlight)}
-                  </div>
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                      <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                        <tr>
-                          <th style={{ padding: '6px 8px', textAlign: 'left' }}>Row Labels</th>
-                          <th style={{ width: '32%', padding: '6px 8px', textAlign: 'right' }}>Sum of plafon</th>
-                          <th style={{ width: '20%', padding: '6px 8px', textAlign: 'right' }}>Interest Rate</th>
-                          <th style={{ width: '36px', padding: '6px 8px' }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(data.lenderExposures || []).map((lex, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '4px 6px' }}>
-                              <input
-                                type="text"
-                                value={lex.lender || ''}
-                                onChange={e => {
-                                  const copy = [...data.lenderExposures];
-                                  copy[idx] = { ...copy[idx], lender: e.target.value };
-                                  updateField('lenderExposures', copy);
+
+                  {groupSubsidiaries.map((sub, idx) => {
+                    const fullEntityName = sub.name || `Entitas #${idx + 1}`;
+                    const review = getEntityReview(idx, fullEntityName);
+                    const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          marginTop: idx > 0 ? '14px' : '6px',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '14px',
+                          background: review.hasRecord ? '#ffffff' : '#f8fafc',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.04)'
+                        }}
+                      >
+                        {/* Header with Title and Toggle YES/NO */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                            marginBottom: '10px',
+                            paddingBottom: '8px',
+                            borderBottom: '1px solid #e2e8f0'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a' }}>
+                              {idx + 1}. {fullEntityName.toUpperCase()}{!review.hasRecord ? ' - No Records' : ' :'}
+                            </span>
+                            <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                              ✓ Synced with Subsection 3
+                            </span>
+                          </div>
+
+                          {/* Toggle Yes/No Buttons */}
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569' }}>
+                              Gunakan Tabel Row Labels?
+                            </span>
+                            <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid #cbd5e1', overflow: 'hidden', background: '#e2e8f0' }}>
+                              <button
+                                type="button"
+                                onClick={() => updateEntityReview(idx, { hasRecord: true })}
+                                style={{
+                                  padding: '4px 14px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  background: review.hasRecord ? '#16a34a' : 'transparent',
+                                  color: review.hasRecord ? '#ffffff' : '#64748b',
+                                  transition: 'all 0.15s ease'
                                 }}
-                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
-                              />
-                            </td>
-                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
-                              <input
-                                type="text"
-                                value={lex.plafond || ''}
-                                onChange={e => {
-                                  const copy = [...data.lenderExposures];
-                                  copy[idx] = { ...copy[idx], plafond: e.target.value };
-                                  updateField('lenderExposures', copy);
+                              >
+                                ✓ YES
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => updateEntityReview(idx, { hasRecord: false })}
+                                style={{
+                                  padding: '4px 14px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 700,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  background: !review.hasRecord ? '#dc2626' : 'transparent',
+                                  color: !review.hasRecord ? '#ffffff' : '#64748b',
+                                  transition: 'all 0.15s ease'
                                 }}
-                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
-                              />
-                            </td>
-                            <td style={{ padding: '4px 6px', textAlign: 'right' }}>
-                              <input
-                                type="text"
-                                value={lex.rate || ''}
-                                onChange={e => {
-                                  const copy = [...data.lenderExposures];
-                                  copy[idx] = { ...copy[idx], rate: e.target.value };
-                                  updateField('lenderExposures', copy);
-                                }}
-                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
-                              />
-                            </td>
-                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                              >
+                                ✕ NO
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {review.hasRecord ? (
+                          /* YES: Show Table with dynamic Grand Total, Pefindo Analysis Notes, and Commercial Terms */
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <span style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic' }}>
+                                {stripHtmlTags(data.slikPefindoHighlight)}
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => {
-                                  const copy = data.lenderExposures.filter((_, i) => i !== idx);
-                                  updateField('lenderExposures', copy);
+                                  const next = [...(review.lenderExposures || []), { lender: '', plafond: '', rate: '' }];
+                                  updateEntityReview(idx, { lenderExposures: next });
                                 }}
-                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                                style={{
+                                  fontSize: '0.72rem',
+                                  padding: '3px 10px',
+                                  borderRadius: '4px',
+                                  background: '#eff6ff',
+                                  color: '#1e40af',
+                                  border: '1px solid #bfdbfe',
+                                  cursor: 'pointer',
+                                  fontWeight: 600
+                                }}
                               >
-                                <Trash2 size={13} />
+                                + Add Lender
                               </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pefindo Analysis Notes</label>
-                    <textarea
-                      rows={3}
-                      name="pefindoNotes"
-                      data-field="pefindoNotes"
-                      value={stripHtmlTags(data.pefindoNotes)}
-                      onChange={e => updateField('pefindoNotes', e.target.value)}
-                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '8px' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Commercial Terms on Other Fincos</label>
-                    <textarea
-                      rows={2}
-                      name="pefindoTerms"
-                      data-field="pefindoTerms"
-                      value={stripHtmlTags(data.pefindoTerms)}
-                      onChange={e => updateField('pefindoTerms', e.target.value)}
-                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                    />
-                  </div>
-                </div>
+                            </div>
 
-                {/* Subheading: 2. Applicant Company Check */}
-                <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
-                      2. {applicantCompanyName.toUpperCase()} (REQUEST USING THIS COMPANY)
-                    </span>
-                    <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
-                      ✓ Synced with Subsection 3
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    name="applicantPefindoCheck"
-                    data-field="applicantPefindoCheck"
-                    value={data.applicantPefindoCheck}
-                    onChange={e => updateField('applicantPefindoCheck', e.target.value)}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginTop: '4px' }}
-                  />
-                </div>
-              </div>
+                            <div style={{ border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden', marginBottom: '12px' }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+                                <thead style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                                  <tr>
+                                    <th style={{ padding: '6px 8px', textAlign: 'left' }}>Row Labels</th>
+                                    <th style={{ width: '32%', padding: '6px 8px', textAlign: 'right' }}>Sum of plafon</th>
+                                    <th style={{ width: '20%', padding: '6px 8px', textAlign: 'right' }}>Interest Rate</th>
+                                    <th style={{ width: '36px', padding: '6px 8px' }}></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(review.lenderExposures || []).map((lex, lIdx) => (
+                                    <tr key={lIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                                      <td style={{ padding: '4px 6px' }}>
+                                        <input
+                                          type="text"
+                                          value={lex.lender || ''}
+                                          onChange={e => {
+                                            const copy = [...review.lenderExposures];
+                                            copy[lIdx] = { ...copy[lIdx], lender: e.target.value };
+                                            updateEntityReview(idx, { lenderExposures: copy });
+                                          }}
+                                          placeholder="Nama Finco / Bank"
+                                          style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                                        <input
+                                          type="text"
+                                          value={lex.plafond || ''}
+                                          onChange={e => {
+                                            const copy = [...review.lenderExposures];
+                                            copy[lIdx] = { ...copy[lIdx], plafond: e.target.value };
+                                            updateEntityReview(idx, { lenderExposures: copy });
+                                          }}
+                                          placeholder="0"
+                                          style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px', fontFamily: 'monospace' }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: '4px 6px', textAlign: 'right' }}>
+                                        <input
+                                          type="text"
+                                          value={lex.rate || ''}
+                                          onChange={e => {
+                                            const copy = [...review.lenderExposures];
+                                            copy[lIdx] = { ...copy[lIdx], rate: e.target.value };
+                                            updateEntityReview(idx, { lenderExposures: copy });
+                                          }}
+                                          placeholder="%"
+                                          style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                                        />
+                                      </td>
+                                      <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const copy = review.lenderExposures.filter((_, i) => i !== lIdx);
+                                            updateEntityReview(idx, { lenderExposures: copy });
+                                          }}
+                                          style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                                        >
+                                          <Trash2 size={13} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot>
+                                  <tr style={{ background: '#f8fafc', fontWeight: 700, borderTop: '2px solid #cbd5e1' }}>
+                                    <td style={{ padding: '6px 8px', color: '#0f172a' }}>Grand Total</td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#1e3a8a', fontFamily: 'monospace', fontSize: '0.8rem' }}>
+                                      {totalPlafonFormatted}
+                                    </td>
+                                    <td style={{ padding: '6px 8px', textAlign: 'right', color: '#64748b' }}>-</td>
+                                    <td style={{ padding: '6px 8px' }}></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+
+                            <div style={{ marginBottom: '10px' }}>
+                              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px', display: 'block' }}>
+                                Pefindo Analysis Notes
+                              </label>
+                              <PreAnalysisRichEditor
+                                value={review.pefindoNotes || ''}
+                                onChange={val => updateEntityReview(idx, { pefindoNotes: val })}
+                                height={150}
+                                placeholder="Catatan analisis SLIK / Pefindo..."
+                              />
+                            </div>
+
+                            <div>
+                              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px', display: 'block' }}>
+                                Commercial Terms on Other Fincos
+                              </label>
+                              <PreAnalysisRichEditor
+                                value={review.pefindoTerms || ''}
+                                onChange={val => updateEntityReview(idx, { pefindoTerms: val })}
+                                height={130}
+                                placeholder="Ketentuan komersial pada finco lain..."
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          /* NO: Show Remarks column with TinyMCE */
+                          <div>
+                            <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '4px', display: 'block' }}>
+                              Remarks / Alasan Tidak Ada Record (No Record)
+                            </label>
+                            <PreAnalysisRichEditor
+                              value={review.noRecordRemarks || ''}
+                              onChange={val => updateEntityReview(idx, { noRecordRemarks: val })}
+                              height={140}
+                              placeholder="Tuliskan keterangan / alasan tidak ada fasilitas (contoh: Perusahaan baru berdiri / belum ada fasilitas kredit finco atau bank)..."
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>              </div>
             )}
           </div>
 
@@ -2677,13 +2989,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Brief Note</label>
-                  <textarea
-                    rows={3}
-                    name="briefNote"
-                    data-field="briefNote"
-                    value={stripHtmlTags(data.briefNote)}
-                    onChange={e => updateField('briefNote', e.target.value)}
-                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                  <PreAnalysisRichEditor
+                    value={data.briefNote || ''}
+                    onChange={val => updateField('briefNote', val)}
+                    height={160}
+                    dataField="briefNote"
                   />
                 </div>
 
@@ -3279,13 +3589,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
                     <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
-                      {stripHtmlTags(data.existingProjects)}
+                      {renderRichHtml(data.existingProjects)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>New Projects</td>
                     <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
-                      {stripHtmlTags(data.newProjects)}
+                      {renderRichHtml(data.newProjects)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3302,7 +3612,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Bowheer Information</td>
-                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{stripHtmlTags(data.bowheerInfo)}</td>
+                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{renderRichHtml(data.bowheerInfo)}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Status</td>
@@ -3310,7 +3620,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Investment Plan</td>
-                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{stripHtmlTags(data.investmentPlan)}</td>
+                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{renderRichHtml(data.investmentPlan)}</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Financing Scheme Requested</td>
@@ -3347,25 +3657,25 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>
                     <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
-                      {stripHtmlTags(data.companyBackground)}
+                      {renderRichHtml(data.companyBackground)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>STAR Group – Key Milestones</td>
                     <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
-                      {stripHtmlTags(data.starGroupMilestonesNarrative)}
+                      {renderRichHtml(data.starGroupMilestonesNarrative)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Business Development Background</td>
                     <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
-                      {stripHtmlTags(data.businessDevBackground)}
+                      {renderRichHtml(data.businessDevBackground)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other information :</td>
                     <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      {stripHtmlTags(data.operationalTeamInfo)}
+                      {renderRichHtml(data.operationalTeamInfo)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3673,49 +3983,72 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td id="preana-preview-cell-lmiArCheck" onClick={() => handlePreviewCellClick('lmiArCheck', 'sec6')} style={{ padding: '4px 6px', cursor: 'pointer' }}>{data.lmiArCheck}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>SLIK/Bureau Highlight</td>
+                    <td style={{ padding: '4px 6px', fontWeight: 700, verticalAlign: 'top' }}>SLIK/Bureau Highlight</td>
                     <td style={{ padding: '4px 6px' }}>
-                      <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
-                        1. {sisterCompanyName.toUpperCase()} (SISTER COMPANY) :
-                      </div>
-                      <div style={{ fontStyle: 'italic', marginBottom: '6px', fontSize: '8pt', color: '#475569' }}>
-                        {stripHtmlTags(data.slikPefindoHighlight)}
-                      </div>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt', marginBottom: '8px' }}>
-                        <thead>
-                          <tr style={{ background: '#f1f5f9' }}>
-                            <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Row Labels</th>
-                            <th style={{ width: '35%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Sum of plafon</th>
-                            <th style={{ width: '22%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Interest Rate</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(data.lenderExposures || []).map((lex, idx) => (
-                            <tr key={idx}>
-                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{lex.lender}</td>
-                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right' }}>{lex.plafond}</td>
-                              <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right' }}>{lex.rate}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1' }}>Grand Total</td>
-                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>80.673.526.173,00</td>
-                            <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>-</td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                      <div style={{ whiteSpace: 'pre-line', fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
-                        {stripHtmlTags(data.pefindoNotes)}
-                      </div>
-                      <div style={{ fontSize: '8pt', color: '#334155', fontWeight: 600, background: '#f8fafc', padding: '4px', border: '1px solid #e2e8f0' }}>
-                        {stripHtmlTags(data.pefindoTerms)}
-                      </div>
-                      <div style={{ fontWeight: 700, color: '#1b365d', marginTop: '10px' }}>
-                        2. {applicantCompanyName.toUpperCase()} (REQUEST USING THIS COMPANY) - {stripHtmlTags(data.applicantPefindoCheck) || 'NO RECORD SINCE ITS NEWLY ESTABLISHED'}
-                      </div>
-                    </td>
+                      {groupSubsidiaries.map((sub, idx) => {
+                        const fullEntityName = sub.name || `Entitas #${idx + 1}`;
+                        const review = getEntityReview(idx, fullEntityName);
+                        const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
+
+                        if (review.hasRecord) {
+                          return (
+                            <div key={idx} style={{ marginTop: idx > 0 ? '14px' : '0' }}>
+                              <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
+                                {idx + 1}. {fullEntityName.toUpperCase()} :
+                              </div>
+                              <div style={{ fontStyle: 'italic', marginBottom: '6px', fontSize: '8pt', color: '#475569' }}>
+                                {stripHtmlTags(data.slikPefindoHighlight)}
+                              </div>
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt', marginBottom: '8px' }}>
+                                <thead>
+                                  <tr style={{ background: '#f1f5f9' }}>
+                                    <th style={{ padding: '3px 6px', textAlign: 'left', border: '1px solid #cbd5e1' }}>Row Labels</th>
+                                    <th style={{ width: '35%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Sum of plafon</th>
+                                    <th style={{ width: '22%', padding: '3px 6px', textAlign: 'right', border: '1px solid #cbd5e1' }}>Interest Rate</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {(review.lenderExposures || []).map((lex, lIdx) => (
+                                    <tr key={lIdx}>
+                                      <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0' }}>{lex.lender}</td>
+                                      <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right', fontFamily: 'monospace' }}>{lex.plafond}</td>
+                                      <td style={{ padding: '3px 6px', border: '1px solid #e2e8f0', textAlign: 'right' }}>{lex.rate}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot>
+                                  <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
+                                    <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1' }}>Grand Total</td>
+                                    <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right', color: '#1e3a8a', fontFamily: 'monospace' }}>
+                                      {totalPlafonFormatted}
+                                    </td>
+                                    <td style={{ padding: '4px 6px', border: '1px solid #cbd5e1', textAlign: 'right' }}>-</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                              <div style={{ fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
+                                {renderRichHtml(review.pefindoNotes)}
+                              </div>
+                              {review.pefindoTerms && (
+                                <div style={{ fontSize: '8pt', color: '#334155', fontWeight: 600, background: '#f8fafc', padding: '4px', border: '1px solid #e2e8f0' }}>
+                                  {renderRichHtml(review.pefindoTerms)}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        } else {
+                          return (
+                            <div key={idx} style={{ marginTop: idx > 0 ? '14px' : '0' }}>
+                              <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
+                                {idx + 1}. {fullEntityName.toUpperCase()} - No Records
+                              </div>
+                              <div style={{ fontSize: '8pt', color: '#475569', fontStyle: 'italic', paddingLeft: '8px' }}>
+                                {renderRichHtml(review.noRecordRemarks || 'NO RECORD SINCE ITS NEWLY ESTABLISHED')}
+                              </div>
+                            </div>
+                          );
+                        }
+                      })}</td>
                   </tr>
                 </tbody>
               </table>
@@ -3766,7 +4099,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div style={{ marginBottom: '10px', fontSize: '9pt' }}>
                 <span style={{ fontWeight: 700 }}>Brief Note:</span>
                 <div style={{ whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b' }}>
-                  {stripHtmlTags(data.briefNote)}
+                  {renderRichHtml(data.briefNote)}
                 </div>
               </div>
 
