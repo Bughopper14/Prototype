@@ -2527,7 +2527,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       <tbody>
                         {(data.milestones || []).map((m, idx) => (
                           <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '4px 6px' }}>
+                            <td style={{ padding: '4px 6px', verticalAlign: 'middle' }}>
                               <input
                                 type="text"
                                 value={m.year || ''}
@@ -2538,12 +2538,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 }}
                                 onFocus={() => scrollToPreviewElement('preana-preview-cell-milestones')}
                                 placeholder="Year"
-                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                                style={{ width: '100%', height: '34px', padding: '6px 8px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px', boxSizing: 'border-box' }}
                               />
                             </td>
-                            <td style={{ padding: '4px 6px' }}>
-                              <textarea
-                                rows={2}
+                            <td style={{ padding: '4px 6px', verticalAlign: 'middle' }}>
+                              <input
+                                type="text"
                                 value={m.milestone || m.description || ''}
                                 onChange={e => {
                                   const copy = [...data.milestones];
@@ -2552,17 +2552,17 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                 }}
                                 onFocus={() => scrollToPreviewElement('preana-preview-cell-milestones')}
                                 placeholder="Milestone description"
-                                style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
+                                style={{ width: '100%', height: '34px', padding: '6px 8px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px', boxSizing: 'border-box' }}
                               />
                             </td>
-                            <td style={{ padding: '4px 6px', textAlign: 'center' }}>
+                            <td style={{ padding: '4px 6px', textAlign: 'center', verticalAlign: 'middle' }}>
                               <button
                                 type="button"
                                 onClick={() => {
                                   const copy = data.milestones.filter((_, i) => i !== idx);
                                   updateField('milestones', copy);
                                 }}
-                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer' }}
+                                style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                               >
                                 <Trash2 size={13} />
                               </button>
