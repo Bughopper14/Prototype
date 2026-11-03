@@ -164,6 +164,25 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
   return lines.join('\n');
 }
 
+export function stripHtmlTags(val: any): string {
+  if (typeof val !== 'string') return val ?? '';
+  if (!val.includes('<') && !val.includes('&')) return val;
+  return val
+    .replace(/<\/p>\s*<p>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?p[^>]*>/gi, '\n')
+    .replace(/<\/?div[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export interface PreAnalysisData {
   preAnalysisNo: string;
   preAnalysisDate: string;
@@ -571,10 +590,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     sec1: true,
     sec2: true,
-    sec3: false,
-    sec4: false,
-    sec5: false,
-    sec6: false,
+    sec3: true,
+    sec4: true,
+    sec5: true,
+    sec6: true,
     sec7: true
   });
 
@@ -637,8 +656,15 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     api(`/applications/${props.applicationId}/pre-analysis`)
       .then(res => {
         if (isMounted && res && res.success && res.data) {
-          setData(prev => ({ ...prev, ...res.data }));
-          initialDataRef.current = structuredClone(res.data);
+          const raw = res.data;
+          const cleaned: any = { ...raw };
+          for (const k of Object.keys(cleaned)) {
+            if (typeof cleaned[k] === 'string') {
+              cleaned[k] = stripHtmlTags(cleaned[k]);
+            }
+          }
+          setData(prev => ({ ...prev, ...cleaned }));
+          initialDataRef.current = structuredClone(cleaned);
         }
       })
       .catch(err => {
@@ -680,8 +706,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     if (viewMode === 'original-pdf') {
       setViewMode('digital-twin');
     }
+    const cleanVal = typeof val === 'string' && (val.includes('<') || val.includes('&')) ? stripHtmlTags(val) : val;
     setData(prev => {
-      const next: PreAnalysisData = { ...prev, [key]: val };
+      const next: PreAnalysisData = { ...prev, [key]: cleanVal };
       if (key === 'uboInfo') {
         next.ubo = val;
         next.uboInfo = val;
@@ -708,6 +735,32 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const currentGroupStructure = useMemo<GroupStructureData>(() => {
     return data.groupStructure || DEFAULT_GROUP_STRUCTURE;
   }, [data.groupStructure]);
+
+  const sisterCompanyName = useMemo(() => {
+    const subs = currentGroupStructure.subsidiaries || [];
+    if (subs.length >= 3) {
+      return subs[1]?.name || subs[0]?.name || 'SISTER COMPANY';
+    }
+    if (subs.length === 2) {
+      return subs[0]?.name || 'SISTER COMPANY';
+    }
+    if (subs.length === 1) {
+      return currentGroupStructure.holding?.name || subs[0]?.name || 'SISTER COMPANY';
+    }
+    return currentGroupStructure.holding?.name || 'SISTER COMPANY';
+  }, [currentGroupStructure]);
+
+  const applicantCompanyName = useMemo(() => {
+    const subs = currentGroupStructure.subsidiaries || [];
+    if (subs.length >= 3) {
+      return subs[2]?.name || data.customerProjectName || 'APPLICANT COMPANY';
+    }
+    if (subs.length >= 1) {
+      return subs[subs.length - 1]?.name || data.customerProjectName || 'APPLICANT COMPANY';
+    }
+    return data.customerProjectName || 'APPLICANT COMPANY';
+  }, [currentGroupStructure, data.customerProjectName]);
+
 
   const syncStructureIntoData = (prev: PreAnalysisData, newGs: GroupStructureData): PreAnalysisData => {
     const narrative = formatGroupStructureAsNarrative(newGs);
@@ -1342,7 +1395,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     type="text"
                     name="sourceOfRepayment"
                     data-field="sourceOfRepayment"
-                    value={data.sourceOfRepayment}
+                    value={stripHtmlTags(data.sourceOfRepayment)}
                     onChange={e => updateField('sourceOfRepayment', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-sourceOfRepayment')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
@@ -1509,7 +1562,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     rows={4}
                     name="bowheerInfo"
                     data-field="bowheerInfo"
-                    value={data.bowheerInfo}
+                    value={stripHtmlTags(data.bowheerInfo)}
                     onChange={e => updateField('bowheerInfo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-bowheerInfo')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
@@ -1533,7 +1586,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     rows={3}
                     name="investmentPlan"
                     data-field="investmentPlan"
-                    value={data.investmentPlan}
+                    value={stripHtmlTags(data.investmentPlan)}
                     onChange={e => updateField('investmentPlan', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-investmentPlan')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
@@ -1613,7 +1666,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     rows={3}
                     name="companyBackground"
                     data-field="companyBackground"
-                    value={data.companyBackground}
+                    value={stripHtmlTags(data.companyBackground)}
                     onChange={e => updateField('companyBackground', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-companyBackground')}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
@@ -2400,9 +2453,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 {/* Subheading: 1. Sister Company SLIK / Pefindo */}
                 <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
-                      1. PT HANDALAN PUTRAMAS SANTOSA (SISTER COMPANY) :
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
+                        1. {sisterCompanyName.toUpperCase()} (SISTER COMPANY) :
+                      </span>
+                      <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                        ✓ Synced with Subsection 3
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
@@ -2415,7 +2473,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     </button>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '8px' }}>
-                    {data.slikPefindoHighlight}
+                    {stripHtmlTags(data.slikPefindoHighlight)}
                   </div>
                   <div style={{ border: '1px solid #e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '8px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
@@ -2489,7 +2547,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       rows={3}
                       name="pefindoNotes"
                       data-field="pefindoNotes"
-                      value={data.pefindoNotes}
+                      value={stripHtmlTags(data.pefindoNotes)}
                       onChange={e => updateField('pefindoNotes', e.target.value)}
                       style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '8px' }}
                     />
@@ -2500,7 +2558,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       rows={2}
                       name="pefindoTerms"
                       data-field="pefindoTerms"
-                      value={data.pefindoTerms}
+                      value={stripHtmlTags(data.pefindoTerms)}
                       onChange={e => updateField('pefindoTerms', e.target.value)}
                       style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
@@ -2509,9 +2567,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
                 {/* Subheading: 2. Applicant Company Check */}
                 <div style={{ marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
-                    2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY)
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a' }}>
+                      2. {applicantCompanyName.toUpperCase()} (REQUEST USING THIS COMPANY)
+                    </span>
+                    <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#15803d', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
+                      ✓ Synced with Subsection 3
+                    </span>
+                  </div>
                   <input
                     type="text"
                     name="applicantPefindoCheck"
@@ -2618,7 +2681,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     rows={3}
                     name="briefNote"
                     data-field="briefNote"
-                    value={data.briefNote}
+                    value={stripHtmlTags(data.briefNote)}
                     onChange={e => updateField('briefNote', e.target.value)}
                     style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
@@ -3171,7 +3234,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>Source of Repayment</td>
-                    <td id="preana-preview-cell-sourceOfRepayment" onClick={() => handlePreviewCellClick('sourceOfRepayment', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{data.sourceOfRepayment}</td>
+                    <td id="preana-preview-cell-sourceOfRepayment" onClick={() => handlePreviewCellClick('sourceOfRepayment', 'sec1')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>{stripHtmlTags(data.sourceOfRepayment)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -3216,13 +3279,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
                     <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
-                      {data.existingProjects}
+                      {stripHtmlTags(data.existingProjects)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>New Projects</td>
                     <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
-                      {data.newProjects}
+                      {stripHtmlTags(data.newProjects)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3239,7 +3302,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Bowheer Information</td>
-                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.bowheerInfo}</td>
+                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{stripHtmlTags(data.bowheerInfo)}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Status</td>
@@ -3247,7 +3310,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Investment Plan</td>
-                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.investmentPlan}</td>
+                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{stripHtmlTags(data.investmentPlan)}</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Financing Scheme Requested</td>
@@ -3284,25 +3347,25 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>
                     <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
-                      {data.companyBackground}
+                      {stripHtmlTags(data.companyBackground)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>STAR Group – Key Milestones</td>
                     <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
-                      {data.starGroupMilestonesNarrative}
+                      {stripHtmlTags(data.starGroupMilestonesNarrative)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Business Development Background</td>
                     <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
-                      {data.businessDevBackground}
+                      {stripHtmlTags(data.businessDevBackground)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other information :</td>
                     <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
-                      {data.operationalTeamInfo}
+                      {stripHtmlTags(data.operationalTeamInfo)}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3613,10 +3676,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>SLIK/Bureau Highlight</td>
                     <td style={{ padding: '4px 6px' }}>
                       <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
-                        1. PT HANDALAN PUTRAMAS SANTOSA (SISTER COMPANY) :
+                        1. {sisterCompanyName.toUpperCase()} (SISTER COMPANY) :
                       </div>
                       <div style={{ fontStyle: 'italic', marginBottom: '6px', fontSize: '8pt', color: '#475569' }}>
-                        {data.slikPefindoHighlight}
+                        {stripHtmlTags(data.slikPefindoHighlight)}
                       </div>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8pt', marginBottom: '8px' }}>
                         <thead>
@@ -3644,13 +3707,13 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         </tfoot>
                       </table>
                       <div style={{ whiteSpace: 'pre-line', fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
-                        {data.pefindoNotes}
+                        {stripHtmlTags(data.pefindoNotes)}
                       </div>
                       <div style={{ fontSize: '8pt', color: '#334155', fontWeight: 600, background: '#f8fafc', padding: '4px', border: '1px solid #e2e8f0' }}>
-                        {data.pefindoTerms}
+                        {stripHtmlTags(data.pefindoTerms)}
                       </div>
                       <div style={{ fontWeight: 700, color: '#1b365d', marginTop: '10px' }}>
-                        2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY) - {data.applicantPefindoCheck}
+                        2. {applicantCompanyName.toUpperCase()} (REQUEST USING THIS COMPANY) - {stripHtmlTags(data.applicantPefindoCheck) || 'NO RECORD SINCE ITS NEWLY ESTABLISHED'}
                       </div>
                     </td>
                   </tr>
@@ -3703,7 +3766,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div style={{ marginBottom: '10px', fontSize: '9pt' }}>
                 <span style={{ fontWeight: 700 }}>Brief Note:</span>
                 <div style={{ whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b' }}>
-                  {data.briefNote}
+                  {stripHtmlTags(data.briefNote)}
                 </div>
               </div>
 
