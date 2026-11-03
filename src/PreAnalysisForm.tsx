@@ -8,7 +8,6 @@ export function getStaticAssetUrl(relativePath: string): string {
 }
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Editor } from '@tinymce/tinymce-react';
 import {
   FileText,
   Save,
@@ -31,6 +30,7 @@ import {
   ExternalLink,
   Layers,
   Sparkles,
+  RefreshCw,
   Plus,
   Trash2,
   Eye,
@@ -145,7 +145,7 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
     }
   });
   if (gs.holding.management) {
-    lines.push(`  - Management: ${gs.holding.management}`);
+    lines.push(`  - Pengurus: ${gs.holding.management}`);
   }
   (gs.subsidiaries || []).forEach(sub => {
     if (sub.name) {
@@ -157,7 +157,7 @@ export function formatGroupStructureAsNarrative(gs: GroupStructureData): string 
         }
       });
       if (sub.management) {
-        lines.push(`  - Management: ${sub.management}`);
+        lines.push(`  - Pengurus: ${sub.management}`);
       }
     }
   });
@@ -184,7 +184,6 @@ export interface PreAnalysisData {
   holdingGroup: string;
   projectName: string;
   projectLocation: string;
-  hasExistingProjects?: boolean;
   existingProjects: string;
   newProjects: string;
   projectNameLocation?: string;
@@ -204,7 +203,6 @@ export interface PreAnalysisData {
   businessDevBackground?: string;
   operationalTeamInfo?: string;
   uboInformation?: string;
-  hasGroupStructure?: boolean;
   groupStructure?: GroupStructureData;
   milestones: MilestoneItem[];
   existingFincoBackup: string;
@@ -284,7 +282,6 @@ export const defaultInitialData: PreAnalysisData = {
   holdingGroup: 'STAR GROUP (PT Sentosa Abadi Raja)',
   projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
   projectLocation: 'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
-  hasExistingProjects: true,
   existingProjects: `A. PT Handalan Putramas Santosa (HPS) (Existing Project):
 1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
 2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
@@ -349,7 +346,6 @@ End-2025 | PT HTPS Established – Harvesting Business
   - PT STAR (99,997%), Leonard Santosa (0,003%)
 • PT Harta Putramas Santosa (HTPS - Applicant): Modal Dasar Rp 500 Juta, Modal Disetor Rp 500 Juta
   - PT STAR (99,98%), Leonard Santosa (0,02%)`,
-  hasGroupStructure: true,
   groupStructure: DEFAULT_GROUP_STRUCTURE,
   milestones: [
     { year: '2022', milestone: "PT Pangan Sejahtera Santosa (PASS) established – Started the Group's business through urban FMCG distribution and supported major FMCG principals." },
@@ -461,91 +457,11 @@ interface PreAnalysisFormProps {
   customer?: any;
   pic?: any;
   profile?: any;
-  onSaved?: (changes?: any[]) => void;
+  onSaved?: (diffs?: any[]) => void;
   notify?: (msg: string) => void;
   registerSave?: (saveFn: () => Promise<void>) => void;
   onSavingChange?: (saving: boolean) => void;
 }
-
-function PreAnalysisRichEditor({
-  value,
-  onChange,
-  onFocus,
-  placeholder,
-  height = 200,
-  dataField
-}: {
-  value: string;
-  onChange: (val: string) => void;
-  onFocus?: () => void;
-  placeholder?: string;
-  height?: number;
-  dataField?: string;
-}) {
-  const initialHtml = useMemo(() => {
-    if (!value) return '';
-    if (value.includes('<p>') || value.includes('<div>') || value.includes('<ul>') || value.includes('<ol>')) {
-      return value;
-    }
-    return value.split('\n').map(l => l.trim() ? `<p>${l}</p>` : '<p>&nbsp;</p>').join('');
-  }, []);
-
-  return (
-    <div
-      data-field={dataField}
-      onClick={onFocus}
-      style={{
-        borderRadius: '6px',
-        overflow: 'hidden',
-        border: '1px solid #cbd5e1',
-        background: '#ffffff'
-      }}
-    >
-      <Editor
-        licenseKey="gpl"
-        tinymceScriptSrc={getStaticAssetUrl("tinymce/tinymce.min.js")}
-        initialValue={initialHtml}
-        onEditorChange={(newHtml) => onChange(newHtml)}
-        init={{
-          height: height,
-          menubar: false,
-          plugins: [
-            'advlist', 'autolink', 'lists', 'link', 'charmap',
-            'searchreplace', 'visualblocks', 'code', 'fullscreen',
-            'insertdatetime', 'table', 'wordcount'
-          ],
-          toolbar: 'undo redo | blocks | bold italic underline forecolor | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | table | removeformat',
-          content_style: `
-            body { 
-              font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-              font-size: 13px; 
-              line-height: 1.5; 
-              color: #0f172a; 
-              padding: 8px 12px; 
-            }
-            ol, ul {
-              margin: 0 0 6px 0;
-              padding-left: 20px;
-            }
-            li {
-              margin-bottom: 3px;
-              line-height: 1.5;
-            }
-            p {
-              margin: 0 0 5px 0;
-              line-height: 1.5;
-            }
-          `,
-          branding: false,
-          promotion: false,
-          statusbar: false,
-          placeholder: placeholder
-        }}
-      />
-    </div>
-  );
-}
-
 
 function computePreAnalysisDiffs(oldData: any, newData: any) {
   const diffs: any[] = [];
@@ -641,24 +557,24 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       </span>
     ) : null;
   };
+  const initialDataRef = useRef<any>(null);
   const [data, setData] = useState<PreAnalysisData>(() => {
     return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
   });
-  const initialDataRef = useRef<PreAnalysisData | null>(null);
 
   const [viewMode, setViewMode] = useState<'digital-twin' | 'original-pdf'>('digital-twin');
-  const [zoomLevel, setZoomLevel] = useState<number>(0.60);
+  const [zoomLevel, setZoomLevel] = useState<number>(0.75);
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
-  // Accordion section toggles - All 7 sections expanded by default
+  // Accordion section toggles - All 7 sections
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     sec1: true,
     sec2: true,
-    sec3: true,
-    sec4: true,
-    sec5: true,
-    sec6: true,
+    sec3: false,
+    sec4: false,
+    sec5: false,
+    sec6: false,
     sec7: true
   });
 
@@ -708,10 +624,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     }
   };
 
-  // Automatically sync FAP customer and PIC data when available
-  useEffect(() => {
+  const handleSyncCustomerPicData = () => {
     setData(prev => syncCustomerAndPicIntoPreAnalysis(prev, props));
-  }, [props.customer, props.pic, props.profile, props.application]);
+    props.notify?.('Customer & PIC data synced into Pre-Analysis!');
+    scrollToPreviewElement('preana-preview-sec-1');
+  };
 
   // Fetch saved pre-analysis data from server
   useEffect(() => {
@@ -759,43 +676,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     }
   });
 
-  // Container ref for measuring container width to fit to screen
-  const previewContainerRef = useRef<HTMLDivElement>(null);
-
-  const calculateFitZoom = () => {
-    if (previewContainerRef.current) {
-      const cw = previewContainerRef.current.clientWidth;
-      if (cw > 100) {
-        // Document width is 840px. Available width considering 16px left + 16px right padding = 32px
-        const avail = cw - 36;
-        const fit = Math.min(1.0, Math.max(0.4, Number((avail / 840).toFixed(2))));
-        return fit;
-      }
-    }
-    return 0.60;
-  };
-
-  const handleFit = () => {
-    const fit = calculateFitZoom();
-    setZoomLevel(fit);
-  };
-
-  useEffect(() => {
-    const autoFit = () => {
-      if (previewContainerRef.current) {
-        const fit = calculateFitZoom();
-        if (fit) setZoomLevel(fit);
-      }
-    };
-    const t = setTimeout(autoFit, 100);
-    window.addEventListener('resize', autoFit);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', autoFit);
-    };
-  }, []);
-
   const updateField = (key: keyof PreAnalysisData, val: any) => {
+    if (viewMode === 'original-pdf') {
+      setViewMode('digital-twin');
+    }
     setData(prev => {
       const next: PreAnalysisData = { ...prev, [key]: val };
       if (key === 'uboInfo') {
@@ -825,14 +709,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     return data.groupStructure || DEFAULT_GROUP_STRUCTURE;
   }, [data.groupStructure]);
 
-  const hasExistingProjects = data.hasExistingProjects !== undefined
-    ? Boolean(data.hasExistingProjects)
-    : (data.existingProjects ? data.existingProjects.trim().length > 0 : true);
-
-  const hasGroupStructure = data.hasGroupStructure !== undefined
-    ? Boolean(data.hasGroupStructure)
-    : true;
-
   const syncStructureIntoData = (prev: PreAnalysisData, newGs: GroupStructureData): PreAnalysisData => {
     const narrative = formatGroupStructureAsNarrative(newGs);
     const holdingShareholders = (newGs.holding?.shareholders || [])
@@ -851,6 +727,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const updateHoldingField = (field: keyof GroupEntity, val: any) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const updatedGs: GroupStructureData = {
@@ -862,6 +739,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const updateHoldingShareholder = (idx: number, field: keyof GroupShareholder, val: string) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = [...(gs.holding.shareholders || [])];
@@ -875,6 +753,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const addHoldingShareholder = () => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = [...(gs.holding.shareholders || []), { name: '', percentage: '', role: '' }];
@@ -887,6 +766,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const removeHoldingShareholder = (idx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const sh = (gs.holding.shareholders || []).filter((_, i) => i !== idx);
@@ -899,6 +779,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const addSubsidiary = () => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const holdingName = gs.holding?.name ? gs.holding.name.split('(')[0].trim() : 'Holding';
@@ -921,6 +802,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const removeSubsidiary = (idx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = (gs.subsidiaries || []).filter((_, i) => i !== idx);
@@ -933,6 +815,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const updateSubsidiaryField = (idx: number, field: keyof GroupEntity, val: any) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
@@ -946,6 +829,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const updateSubsidiaryShareholder = (subIdx: number, sIdx: number, field: keyof GroupShareholder, val: string) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
@@ -961,6 +845,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const addSubsidiaryShareholder = (subIdx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
@@ -975,6 +860,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   const removeSubsidiaryShareholder = (subIdx: number, sIdx: number) => {
+    if (viewMode === 'original-pdf') setViewMode('digital-twin');
     setData(prev => {
       const gs = prev.groupStructure || DEFAULT_GROUP_STRUCTURE;
       const subs = [...(gs.subsidiaries || [])];
@@ -1521,7 +1407,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Name (Nama Objek Proyek){reqMark('projectName', 'Project Information')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Name (Nama Objek Proyek)</label>
                     <input
                       type="text"
                       name="projectName"
@@ -1534,7 +1420,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Location (Lokasi Proyek){reqMark('projectLocation', 'Project Information')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Location (Lokasi Proyek)</label>
                     <input
                       type="text"
                       name="projectLocation"
@@ -1547,107 +1433,41 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                 </div>
-                <div style={{ background: '#ffffff', border: '1px solid ' + (hasExistingProjects ? '#cbd5e1' : '#e2e8f0'), borderRadius: '6px', padding: '10px', transition: 'all 0.2s' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasExistingProjects ? '8px' : '0' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', margin: 0 }}>
-                        Existing Projects (Proyek Yang Sedang Berjalan)
-                      </label>
-                      {hasExistingProjects ? (
-                        <span style={{ fontSize: '0.68rem', color: '#166534', background: '#dcfce7', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
-                          Active Contracts (Ada)
-                        </span>
-                      ) : (
-                        <span style={{ fontSize: '0.68rem', color: '#64748b', background: '#f1f5f9', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
-                          Tidak Ada / Dinonaktifkan
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Toggle Switch */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.72rem', color: hasExistingProjects ? '#15803d' : '#64748b', fontWeight: 600 }}>
-                        {hasExistingProjects ? 'Aktif' : 'Nonaktif'}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={hasExistingProjects}
-                        title={hasExistingProjects ? 'Klik untuk menonaktifkan Existing Projects' : 'Klik untuk mengaktifkan Existing Projects'}
-                        onClick={() => updateField('hasExistingProjects', !hasExistingProjects)}
-                        style={{
-                          position: 'relative',
-                          width: '38px',
-                          height: '20px',
-                          background: hasExistingProjects ? '#16a34a' : '#cbd5e1',
-                          borderRadius: '20px',
-                          border: 'none',
-                          padding: 0,
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s',
-                          display: 'inline-block',
-                          outline: 'none',
-                          flexShrink: 0
-                        }}
-                      >
-                        <span
-                          style={{
-                            position: 'absolute',
-                            top: '2px',
-                            left: hasExistingProjects ? '20px' : '2px',
-                            width: '16px',
-                            height: '16px',
-                            background: '#ffffff',
-                            borderRadius: '50%',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                            transition: 'left 0.2s'
-                          }}
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  {hasExistingProjects ? (
-                    <div style={{ marginTop: '6px' }}>
-                      <PreAnalysisRichEditor
-                        value={data.existingProjects || ''}
-                        onChange={val => updateField('existingProjects', val)}
-                        onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
-                        placeholder="A. PT Handalan Putramas Santosa (HPS)..."
-                        height={220}
-                        dataField="existingProjects"
-                      />
-                    </div>
-                  ) : (
-                    <div style={{ padding: '8px 10px', background: '#f8fafc', borderRadius: '4px', fontSize: '0.72rem', color: '#64748b', marginTop: '6px', border: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Existing Projects dinonaktifkan (tidak ada proyek berjalan). Kolom ini tidak akan dicetak atau ditampilkan pada formulir Digital Twin.</span>
-                      <button
-                        type="button"
-                        onClick={() => updateField('hasExistingProjects', true)}
-                        style={{ fontSize: '0.7rem', color: '#0284c7', background: 'transparent', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontWeight: 600 }}
-                      >
-                        Aktifkan
-                      </button>
-                    </div>
-                  )}
+                <div>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Existing Projects (Proyek Yang Sedang Berjalan - PT HPS & PT PASS)</span>
+                    <span style={{ fontSize: '0.68rem', color: '#166534', fontWeight: 600 }}>Active Contracts</span>
+                  </label>
+                  <textarea
+                    rows={6}
+                    name="existingProjects"
+                    data-field="existingProjects"
+                    value={data.existingProjects || ''}
+                    onChange={e => updateField('existingProjects', e.target.value)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-existingProjects')}
+                    placeholder="A. PT Handalan Putramas Santosa (HPS)...\nB. PT Pangan Sejahtera Santosa (PASS)..."
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
+                  />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
                     <span>New Projects (Pipeline Proyek Baru / Diajukan - PT HTPS)</span>
-                    <span style={{ fontSize: '0.68rem', color: '#b45309', background: '#fef3c7', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>Proposed Pipeline</span>
+                    <span style={{ fontSize: '0.68rem', color: '#b45309', fontWeight: 600 }}>Proposed Pipeline</span>
                   </label>
-                  <PreAnalysisRichEditor
+                  <textarea
+                    rows={4}
+                    name="newProjects"
+                    data-field="newProjects"
                     value={data.newProjects || ''}
-                    onChange={val => updateField('newProjects', val)}
+                    onChange={e => updateField('newProjects', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-newProjects')}
                     placeholder="C. PT Harta Putramas Santosa (HTPS)..."
-                    height={190}
-                    dataField="newProjects"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
                   />
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '6px' }}>Role of Customer{reqMark('customerRole', 'Project Information')}</label>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Role of Customer</label>
                     <input
                       type="text"
                       name="customerRole"
@@ -1658,8 +1478,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '6px' }}>Other Contractor work in the same bowheer</label>
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Contractor work in the same bowheer</label>
                     <input
                       type="text"
                       name="otherContractors"
@@ -1672,27 +1492,31 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Owner</label>
-                  <PreAnalysisRichEditor
-                    value={data.projectOwner || ''}
-                    onChange={val => updateField('projectOwner', val)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Owner</label>
+                  <textarea
+                    rows={2}
+                    name="projectOwner"
+                    data-field="projectOwner"
+                    value={data.projectOwner}
+                    onChange={e => updateField('projectOwner', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-projectOwner')}
-                    height={140}
-                    dataField="projectOwner"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Bowheer Information</label>
-                  <PreAnalysisRichEditor
-                    value={data.bowheerInfo || ''}
-                    onChange={val => updateField('bowheerInfo', val)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Bowheer Information</label>
+                  <textarea
+                    rows={4}
+                    name="bowheerInfo"
+                    data-field="bowheerInfo"
+                    value={data.bowheerInfo}
+                    onChange={e => updateField('bowheerInfo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-bowheerInfo')}
-                    height={180}
-                    dataField="bowheerInfo"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Project Status{reqMark('projectStatus', 'Project Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Project Status</label>
                   <input
                     type="text"
                     name="projectStatus"
@@ -1704,17 +1528,19 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Investment Plan</label>
-                  <PreAnalysisRichEditor
-                    value={data.investmentPlan || ''}
-                    onChange={val => updateField('investmentPlan', val)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Investment Plan</label>
+                  <textarea
+                    rows={3}
+                    name="investmentPlan"
+                    data-field="investmentPlan"
+                    value={data.investmentPlan}
+                    onChange={e => updateField('investmentPlan', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-investmentPlan')}
-                    height={150}
-                    dataField="investmentPlan"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Financing Scheme Requested{reqMark('financingSchemeRequested', 'Project Information')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Financing Scheme Requested</label>
                   <input
                     type="text"
                     name="financingSchemeRequested"
@@ -1771,58 +1597,68 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>UBO (Ultimate Beneficiary Owner)</label>
-                  <PreAnalysisRichEditor
+                  <textarea
+                    rows={3}
+                    name="uboInfo"
+                    data-field="uboInfo"
                     value={data.uboInfo || data.ubo || ''}
-                    onChange={val => { updateField('uboInfo', val); updateField('ubo', val); }}
+                    onChange={e => updateField('uboInfo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInfo')}
-                    height={160}
-                    dataField="uboInfo"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Company Background (Profil Singkat Entitas & Holding)</label>
-                  <PreAnalysisRichEditor
-                    value={data.companyBackground || ''}
-                    onChange={val => updateField('companyBackground', val)}
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Company Background (Profil Singkat Entitas & Holding)</label>
+                  <textarea
+                    rows={3}
+                    name="companyBackground"
+                    data-field="companyBackground"
+                    value={data.companyBackground}
+                    onChange={e => updateField('companyBackground', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-companyBackground')}
-                    height={170}
-                    dataField="companyBackground"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
                     <span>STAR Group – Key Milestones Narrative (Riwayat & Narasi Ekspansi)</span>
                     <span style={{ fontSize: '0.68rem', color: '#1e40af', fontWeight: 600 }}>2022 - 2026 Expansion</span>
                   </label>
-                  <PreAnalysisRichEditor
+                  <textarea
+                    rows={7}
+                    name="starGroupMilestonesNarrative"
+                    data-field="starGroupMilestonesNarrative"
                     value={data.starGroupMilestonesNarrative || ''}
-                    onChange={val => updateField('starGroupMilestonesNarrative', val)}
+                    onChange={e => updateField('starGroupMilestonesNarrative', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-starGroupMilestonesNarrative')}
-                    height={240}
-                    dataField="starGroupMilestonesNarrative"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between' }}>
                     <span>Business Development Background (Kemitraan Herry Tho & Rekam Jejak)</span>
                     <span style={{ fontSize: '0.68rem', color: '#dc2626', fontWeight: 600 }}>Key Risk Factor</span>
                   </label>
-                  <PreAnalysisRichEditor
+                  <textarea
+                    rows={5}
+                    name="businessDevBackground"
+                    data-field="businessDevBackground"
                     value={data.businessDevBackground || ''}
-                    onChange={val => updateField('businessDevBackground', val)}
+                    onChange={e => updateField('businessDevBackground', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-businessDevBackground')}
-                    height={220}
-                    dataField="businessDevBackground"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
-                  <PreAnalysisRichEditor
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Other Information (Kesiapan Tim Lapangan & Personel Harvesting)</label>
+                  <textarea
+                    rows={3}
+                    name="operationalTeamInfo"
+                    data-field="operationalTeamInfo"
                     value={data.operationalTeamInfo || ''}
-                    onChange={val => updateField('operationalTeamInfo', val)}
+                    onChange={e => updateField('operationalTeamInfo', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-operationalTeamInfo')}
-                    height={160}
-                    dataField="operationalTeamInfo"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
                 <div>
@@ -1834,117 +1670,48 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       Kolom Terpisah Sebelum Milestones
                     </span>
                   </div>
-                  <PreAnalysisRichEditor
+                  <textarea
+                    rows={6}
+                    name="uboInformation"
+                    data-field="uboInformation"
                     value={data.uboInformation || ''}
-                    onChange={val => updateField('uboInformation', val)}
+                    onChange={e => updateField('uboInformation', e.target.value)}
                     onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
                     placeholder="STAR GROUP Corporate Ownership Structure..."
-                    height={220}
-                    dataField="uboInformation"
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '6px', lineHeight: 1.35 }}
                   />
-                  <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: hasGroupStructure ? '#f8fafc' : '#f1f5f9', marginTop: '6px', transition: 'all 0.2s' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasGroupStructure ? '8px' : '0' }}>
+                  <div id="preana-form-group-structure-builder" style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '12px', background: '#f8fafc', marginTop: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>Bagan Struktur Kepemilikan Saham Group (Input System)</span>
-                          {hasGroupStructure ? (
-                            <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#166534', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
-                              Aktif
-                            </span>
-                          ) : (
-                            <span style={{ fontSize: '0.65rem', background: '#e2e8f0', color: '#64748b', padding: '1px 6px', borderRadius: '3px', fontWeight: 600 }}>
-                              Tidak Ada / Dinonaktifkan
-                            </span>
-                          )}
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f294a' }}>
+                          Bagan Struktur Kepemilikan Saham Group (Input System)
                         </div>
                         <div style={{ fontSize: '0.68rem', color: '#64748b' }}>
-                          {hasGroupStructure 
-                            ? 'Input entitas holding & anak perusahaan. Diagram hierarki visual otomatis ter-generate di Digital Twin (Halaman 3).'
-                            : 'Struktur kepemilikan group dinonaktifkan. Bagan diagram tidak akan dicetak atau ditampilkan pada Digital Twin form.'}
+                          Input entitas holding & anak perusahaan. Diagram hierarki visual otomatis ter-generate di Digital Twin (Halaman 3).
                         </div>
                       </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {/* Toggle Switch */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '0.72rem', color: hasGroupStructure ? '#15803d' : '#64748b', fontWeight: 600 }}>
-                            {hasGroupStructure ? 'Aktif' : 'Nonaktif'}
-                          </span>
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={hasGroupStructure}
-                            title={hasGroupStructure ? 'Klik untuk menonaktifkan Bagan Struktur Group' : 'Klik untuk mengaktifkan Bagan Struktur Group'}
-                            onClick={() => updateField('hasGroupStructure', !hasGroupStructure)}
-                            style={{
-                              position: 'relative',
-                              width: '38px',
-                              height: '20px',
-                              background: hasGroupStructure ? '#16a34a' : '#cbd5e1',
-                              borderRadius: '20px',
-                              border: 'none',
-                              padding: 0,
-                              cursor: 'pointer',
-                              transition: 'background-color 0.2s',
-                              display: 'inline-block',
-                              outline: 'none',
-                              flexShrink: 0
-                            }}
-                          >
-                            <span
-                              style={{
-                                position: 'absolute',
-                                top: '2px',
-                                left: hasGroupStructure ? '20px' : '2px',
-                                width: '16px',
-                                height: '16px',
-                                background: '#ffffff',
-                                borderRadius: '50%',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                                transition: 'left 0.2s'
-                              }}
-                            />
-                          </button>
-                        </div>
-
-                        {hasGroupStructure && (
-                          <button
-                            type="button"
-                            onClick={addSubsidiary}
-                            style={{
-                              fontSize: '0.72rem',
-                              fontWeight: 600,
-                              padding: '4px 10px',
-                              borderRadius: '4px',
-                              background: '#0284c7',
-                              color: '#ffffff',
-                              border: 'none',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            + Add Subsidiary
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={addSubsidiary}
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          padding: '4px 10px',
+                          borderRadius: '4px',
+                          background: '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        + Tambah Anak Perusahaan
+                      </button>
                     </div>
 
-                    {!hasGroupStructure ? (
-                      <div style={{ padding: '8px 10px', background: '#ffffff', borderRadius: '4px', fontSize: '0.72rem', color: '#64748b', marginTop: '6px', border: '1px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span>Bagan struktur group dinonaktifkan. Diagram hierarki visual tidak akan dicetak atau ditampilkan pada Digital Twin form.</span>
-                        <button
-                          type="button"
-                          onClick={() => updateField('hasGroupStructure', true)}
-                          style={{ fontSize: '0.7rem', color: '#0284c7', background: 'transparent', border: 'none', textDecoration: 'underline', cursor: 'pointer', fontWeight: 600 }}
-                        >
-                          Aktifkan
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {/* 1. HOLDING COMPANY (ENTITAS INDUK) */}
+                    {/* 1. HOLDING COMPANY (ENTITAS INDUK) */}
                     <div style={{ background: '#ffffff', border: '1px solid #bfdbfe', borderRadius: '6px', padding: '10px', marginBottom: '10px', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', marginBottom: '8px' }}>
                         <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a' }}>
@@ -1990,7 +1757,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         </div>
                       </div>
                       <div style={{ marginBottom: '8px' }}>
-                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Management / Management Notes</label>
+                        <label style={{ fontSize: '0.68rem', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '2px' }}>Pengurus / Catatan Manajemen</label>
                         <input
                           type="text"
                           value={currentGroupStructure.holding?.management || ''}
@@ -2010,7 +1777,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             onClick={addHoldingShareholder}
                             style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '3px', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                           >
-                            + Add Shareholder
+                            + Tambah Saham
                           </button>
                         </div>
                         {(currentGroupStructure.holding?.shareholders || []).map((sh, sIdx) => (
@@ -2043,7 +1810,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               type="button"
                               onClick={() => removeHoldingShareholder(sIdx)}
                               style={{ padding: '2px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.68rem' }}
-                              title="Delete"
+                              title="Hapus"
                             >
                               ✕
                             </button>
@@ -2068,7 +1835,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               onClick={() => removeSubsidiary(subIdx)}
                               style={{ fontSize: '0.65rem', padding: '1px 6px', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '3px', cursor: 'pointer' }}
                             >
-                              Delete Entity
+                              Hapus Entitas
                             </button>
                           </div>
                           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '6px', marginBottom: '6px' }}>
@@ -2107,7 +1874,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             </div>
                           </div>
                           <div style={{ marginBottom: '6px' }}>
-                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Management</label>
+                            <label style={{ fontSize: '0.65rem', color: '#64748b', display: 'block' }}>Pengurus / Manajemen</label>
                             <input
                               type="text"
                               value={sub.management || ''}
@@ -2169,8 +1936,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         </div>
                       ))}
                     </div>
-                      </>
-                    )}
                   </div>
                 </div>
                 <div>
@@ -2242,7 +2007,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Existing Finco Backup{reqMark('existingFincoBackup', 'Customer & Group Background')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Existing Finco Backup</label>
                   <input
                     type="text"
                     name="existingFincoBackup"
@@ -2299,7 +2064,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Equipment-to-Job Fit{reqMark('equipmentJobFit', 'Equipment Possibility of Success')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Equipment-to-Job Fit</label>
                     <input
                       type="text"
                       name="equipmentJobFit"
@@ -2311,7 +2076,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Utilization vs Project Duration{reqMark('utilizationDuration', 'Equipment Possibility of Success')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Utilization vs Project Duration</label>
                     <input
                       type="text"
                       name="utilizationDuration"
@@ -2416,7 +2181,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Prior LiuGong Experience</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Prior LiuGong Experience</label>
                     <input
                       type="text"
                       name="priorLiugongExperience"
@@ -2428,7 +2193,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Have Service Agreement / FMC{reqMark('serviceAgreementFmc', 'Equipment Possibility of Success')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Have Service Agreement / FMC</label>
                     <input
                       type="text"
                       name="serviceAgreementFmc"
@@ -2486,7 +2251,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
               <div className="fap-accordion-content" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Delivery Status{reqMark('deliveryStatus', 'Unit Delivery Status & QA Check')}</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Status</label>
                     <input
                       type="text"
                       name="deliveryStatus"
@@ -2498,7 +2263,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Delivery Date</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Delivery Date</label>
                     <input
                       type="text"
                       name="deliveryDate"
@@ -2511,7 +2276,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>QA Comment — iLink/GPS Performance Check</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Comment — iLink/GPS Performance Check</label>
                   <input
                     type="text"
                     name="qaIlinkComment"
@@ -2523,7 +2288,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>QA Conclusion{reqMark('qaConclusion', 'Unit Delivery Status & QA Check')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>QA Conclusion</label>
                   <input
                     type="text"
                     name="qaConclusion"
@@ -2595,7 +2360,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>TOP from Dealer to Customer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from Dealer to Customer</label>
                     <input
                       type="text"
                       name="topDealerToCustomer"
@@ -2607,7 +2372,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>TOP from LMI to Dealer</label>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>TOP from LMI to Dealer</label>
                     <input
                       type="text"
                       name="topLmiToDealer"
@@ -2620,7 +2385,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>LMI Internal AR Check{reqMark('lmiArCheck', 'Cross-Check with Dealer / LMI')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>LMI Internal AR Check</label>
                   <input
                     type="text"
                     name="lmiArCheck"
@@ -2720,20 +2485,24 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </div>
                   <div>
                     <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Pefindo Analysis Notes</label>
-                    <PreAnalysisRichEditor
-                      value={data.pefindoNotes || ''}
-                      onChange={val => updateField('pefindoNotes', val)}
-                      height={160}
-                      dataField="pefindoNotes"
+                    <textarea
+                      rows={3}
+                      name="pefindoNotes"
+                      data-field="pefindoNotes"
+                      value={data.pefindoNotes}
+                      onChange={e => updateField('pefindoNotes', e.target.value)}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1', marginBottom: '8px' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '6px' }}>Commercial Terms on Other Fincos</label>
-                    <PreAnalysisRichEditor
-                      value={data.pefindoTerms || ''}
-                      onChange={val => updateField('pefindoTerms', val)}
-                      height={140}
-                      dataField="pefindoTerms"
+                    <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Commercial Terms on Other Fincos</label>
+                    <textarea
+                      rows={2}
+                      name="pefindoTerms"
+                      data-field="pefindoTerms"
+                      value={data.pefindoTerms}
+                      onChange={e => updateField('pefindoTerms', e.target.value)}
+                      style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
                   </div>
                 </div>
@@ -2844,17 +2613,19 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Brief Note</label>
-                  <PreAnalysisRichEditor
-                    value={data.briefNote || ''}
-                    onChange={val => updateField('briefNote', val)}
-                    height={180}
-                    dataField="briefNote"
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>Brief Note</label>
+                  <textarea
+                    rows={3}
+                    name="briefNote"
+                    data-field="briefNote"
+                    value={data.briefNote}
+                    onChange={e => updateField('briefNote', e.target.value)}
+                    style={{ width: '100%', padding: '6px 10px', fontSize: '0.8rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>RECOMMENDATION{reqMark('recommendation', 'Expert Judgement Conclusion')}</label>
+                  <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569' }}>RECOMMENDATION</label>
                   <input
                     type="text"
                     name="recommendation"
@@ -3043,7 +2814,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Nama & Jabatan Pengusul :{reqMark('proposedBy', 'Expert Judgement Conclusion')}</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Pengusul :</label>
                       <textarea
                         rows={2}
                         name="proposedBy"
@@ -3085,7 +2856,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Nama & Jabatan Reviewer :{reqMark('reviewedBy', 'Expert Judgement Conclusion')}</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Reviewer :</label>
                       <textarea
                         rows={2}
                         name="reviewedBy"
@@ -3127,7 +2898,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>( Ruang Tanda Tangan Basah / Digital & Stempel )</span>
                         <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Area tanda tangan diperlebar</span>
                       </div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'inline-flex', alignItems: 'center', marginBottom: '4px' }}>Nama & Jabatan Approver :{reqMark('approvedBy', 'Expert Judgement Conclusion')}</label>
+                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: '4px' }}>Nama & Jabatan Approver :</label>
                       <textarea
                         rows={2}
                         name="approvedBy"
@@ -3150,163 +2921,87 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
       {/* RIGHT COLUMN: 50% LIVE DOCUMENT PREVIEW (DIGITAL TWIN 1:1 WITH PDF) */}
       <div className="fap-detail-preview-col" style={{ flex: '1 1 50%', width: '50%', minWidth: 0, height: '100%', maxHeight: '100%', display: 'flex', flexDirection: 'column', background: '#f8fafc', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        {/* Ribbon Toolbar - 2 Rows for spacious and clean controls */}
+        {/* Ribbon Toolbar */}
         <div
           className="pre-analysis-ribbon-toolbar"
           style={{
+            height: '44px',
+            minHeight: '44px',
             background: '#0f294a',
             color: '#ffffff',
-            borderRadius: '7px 7px 0 0',
-            borderBottom: '1px solid rgba(255,255,255,0.12)',
-            boxSizing: 'border-box',
             display: 'flex',
-            flexDirection: 'column'
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 12px',
+            borderRadius: '7px 7px 0 0',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            boxSizing: 'border-box',
+            gap: '10px'
           }}
         >
-          {/* Row 1: Document Identity & Print Button */}
-          <div
-            style={{
-              height: '38px',
-              minHeight: '38px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 12px',
-              borderBottom: '1px solid rgba(255,255,255,0.08)',
-              gap: '10px'
-            }}
-          >
-            {/* Left: Document Identity */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
-              <FileText size={15} color="#93c5fd" style={{ flexShrink: 0 }} />
-              <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em', color: '#f8fafc', whiteSpace: 'nowrap' }}>
-                PRE-ANALYSIS
-              </span>
-              <span style={{ fontSize: '0.7rem', color: '#94a3b8', borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                Ref: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.preAnalysisNo}</span>
-              </span>
-              {data.fapNumber && (
-                <span style={{ fontSize: '0.7rem', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-                  • FAP No: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.fapNumber}</span>
-                </span>
-              )}
-            </div>
-
-            {/* Right: Print Button */}
-            <button
-              type="button"
-              onClick={handlePrint}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                background: '#ffffff',
-                color: '#0f294a',
-                border: 'none',
-                padding: '4px 11px',
-                borderRadius: '5px',
-                fontSize: '0.72rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                flexShrink: 0,
-                transition: 'all 0.15s ease'
-              }}
-              title="Print atau Save ke PDF"
-            >
-              <Printer size={13} color="#0f294a" />
-              <span>Print / PDF</span>
-            </button>
+          {/* Left: Document Identity */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            <FileText size={15} color="#93c5fd" style={{ flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: '0.8rem', letterSpacing: '0.02em', color: '#f8fafc', whiteSpace: 'nowrap' }}>
+              PRE-ANALYSIS
+            </span>
+            <span style={{ fontSize: '0.7rem', color: '#94a3b8', borderLeft: '1px solid rgba(255,255,255,0.2)', paddingLeft: '8px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Ref: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>{data.preAnalysisNo}</span>
+            </span>
           </div>
 
-          {/* Row 2: View Switcher (Digital Twin vs Pedoman PDF) & Zoom Controls */}
-          <div
-            style={{
-              height: '36px',
-              minHeight: '36px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 12px',
-              background: 'rgba(0,0,0,0.18)',
-              gap: '8px'
-            }}
-          >
-            {/* Left: View Toggle Tabs & External Link */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ display: 'flex', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('digital-twin')}
-                  style={{
-                    background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
-                    color: viewMode === 'digital-twin' ? '#0f294a' : 'rgba(255,255,255,0.85)',
-                    border: 'none',
-                    padding: '3px 10px',
-                    borderRadius: '4px',
-                    fontSize: '0.72rem',
-                    fontWeight: viewMode === 'digital-twin' ? 700 : 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  Digital Twin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('original-pdf')}
-                  style={{
-                    background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
-                    color: viewMode === 'original-pdf' ? '#0f294a' : 'rgba(255,255,255,0.85)',
-                    border: 'none',
-                    padding: '3px 10px',
-                    borderRadius: '4px',
-                    fontSize: '0.72rem',
-                    fontWeight: viewMode === 'original-pdf' ? 700 : 500,
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    transition: 'all 0.15s ease'
-                  }}
-                  title="Lihat Dokumen Pedoman PDF (Original Expert Judgement)"
-                >
-                  Pedoman PDF (Original)
-                </button>
-              </div>
-
-              <a
-                href={getStaticAssetUrl("pre_analysis/pre_analysis_sample.pdf")}
-                target="_blank"
-                rel="noopener noreferrer"
+          {/* Right: Controls (Tabs, Zoom, Print) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            {/* View Toggle Tabs */}
+            <div style={{ display: 'flex', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <button
+                type="button"
+                onClick={() => setViewMode('digital-twin')}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  background: 'rgba(255,255,255,0.1)',
-                  color: '#ffffff',
-                  textDecoration: 'none',
-                  padding: '3px 8px',
+                  background: viewMode === 'digital-twin' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'digital-twin' ? '#0f294a' : 'rgba(255,255,255,0.8)',
+                  border: 'none',
+                  padding: '3px 9px',
                   borderRadius: '4px',
-                  fontSize: '0.7rem',
-                  border: '1px solid rgba(255,255,255,0.15)',
+                  fontSize: '0.72rem',
+                  fontWeight: viewMode === 'digital-twin' ? 700 : 500,
+                  cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   transition: 'all 0.15s ease'
                 }}
-                title="Buka Pedoman PDF di Tab Baru"
               >
-                <ExternalLink size={11} /> Tab Baru
-              </a>
+                Digital Twin
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('original-pdf')}
+                style={{
+                  background: viewMode === 'original-pdf' ? '#ffffff' : 'transparent',
+                  color: viewMode === 'original-pdf' ? '#0f294a' : 'rgba(255,255,255,0.8)',
+                  border: 'none',
+                  padding: '3px 9px',
+                  borderRadius: '4px',
+                  fontSize: '0.72rem',
+                  fontWeight: viewMode === 'original-pdf' ? 700 : 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Original PDF
+              </button>
             </div>
 
-            {/* Right: Zoom Controls */}
-            {viewMode === 'digital-twin' ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            {/* Zoom Controls */}
+            {viewMode === 'digital-twin' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2px', background: 'rgba(0,0,0,0.25)', borderRadius: '6px', padding: '2px 5px', border: '1px solid rgba(255,255,255,0.08)' }}>
                 <button
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.max(0.4, Number((prev - 0.05).toFixed(2))))}
                   style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
-                  title="Zoom Out (-5%)"
+                  title="Zoom Out"
                 >
                   <ZoomOut size={13} />
                 </button>
@@ -3317,49 +3012,52 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   type="button"
                   onClick={() => setZoomLevel(prev => Math.min(1.2, Number((prev + 0.05).toFixed(2))))}
                   style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
-                  title="Zoom In (+5%)"
+                  title="Zoom In"
                 >
                   <ZoomIn size={13} />
                 </button>
                 <button
                   type="button"
-                  onClick={handleFit}
-                  style={{
-                    background: 'rgba(255,255,255,0.15)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    color: '#ffffff',
-                    cursor: 'pointer',
-                    padding: '1px 6px',
-                    borderRadius: '3px',
-                    fontSize: '0.68rem',
-                    fontWeight: 700,
-                    letterSpacing: '0.02em',
-                    lineHeight: '16px'
-                  }}
-                  title="Fit to Container Width (Sesuaikan dengan Lebar Kolom)"
-                >
-                  Fit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoomLevel(0.60)}
+                  onClick={() => setZoomLevel(0.75)}
                   style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', padding: '2px 4px', display: 'grid', placeItems: 'center', borderRadius: '3px' }}
-                  title="Reset to 60%"
+                  title="Reset Zoom"
                 >
                   <RotateCcw size={12} />
                 </button>
               </div>
-            ) : <div />}
+            )}
+
+            {/* Print Button */}
+            <button
+              type="button"
+              onClick={handlePrint}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#ffffff',
+                color: '#0f294a',
+                border: 'none',
+                padding: '4px 10px',
+                borderRadius: '5px',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1)'
+              }}
+            >
+              <Printer size={13} /> Print
+            </button>
           </div>
         </div>
 
         {/* Viewport Canvas */}
         <div
-          ref={previewContainerRef}
           className="pre-analysis-canvas"
           style={{
             flex: 1,
-            minHeight: 0,
+            height: 'calc(100% - 42px)',
             overflowY: 'auto',
             overflowX: 'auto',
             background: '#f1f5f9',
@@ -3515,26 +3213,16 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       {data.projectLocation || '-'}
                     </td>
                   </tr>
-                  {hasExistingProjects && (
-                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
-                      <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#f8fafc' }}>
-                        {data.existingProjects?.includes('<') ? (
-                          <div dangerouslySetInnerHTML={{ __html: data.existingProjects }} style={{ lineHeight: 1.4 }} />
-                        ) : (
-                          <div style={{ whiteSpace: 'pre-line' }}>{data.existingProjects}</div>
-                        )}
-                      </td>
-                    </tr>
-                  )}
+                  <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '4px 6px', fontWeight: 700 }}>Existing Projects</td>
+                    <td id="preana-preview-cell-existingProjects" onClick={() => handlePreviewCellClick('existingProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
+                      {data.existingProjects}
+                    </td>
+                  </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>New Projects</td>
-                    <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#fffbeb' }}>
-                      {data.newProjects?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.newProjects }} style={{ lineHeight: 1.4 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.newProjects}</div>
-                      )}
+                    <td id="preana-preview-cell-newProjects" onClick={() => handlePreviewCellClick('newProjects', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
+                      {data.newProjects}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3547,23 +3235,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Owner</td>
-                    <td id="preana-preview-cell-projectOwner" onClick={() => handlePreviewCellClick('projectOwner', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
-                      {data.projectOwner?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.projectOwner }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.projectOwner}</div>
-                      )}
-                    </td>
+                    <td id="preana-preview-cell-projectOwner" onClick={() => handlePreviewCellClick('projectOwner', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.projectOwner}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Bowheer Information</td>
-                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
-                      {data.bowheerInfo?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.bowheerInfo }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.bowheerInfo}</div>
-                      )}
-                    </td>
+                    <td id="preana-preview-cell-bowheerInfo" onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.bowheerInfo}</td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Project Status</td>
@@ -3571,13 +3247,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Investment Plan</td>
-                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
-                      {data.investmentPlan?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.investmentPlan }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.investmentPlan}</div>
-                      )}
-                    </td>
+                    <td id="preana-preview-cell-investmentPlan" onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>{data.investmentPlan}</td>
                   </tr>
                   <tr>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Financing Scheme Requested</td>
@@ -3607,52 +3277,32 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <tbody>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ width: '26%', padding: '4px 6px', fontWeight: 700 }}>UBO (Ultimate Beneficiary Owner)</td>
-                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
-                      {(data.uboInfo || data.ubo)?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.uboInfo || data.ubo || '' }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.uboInfo || data.ubo}</div>
-                      )}
+                    <td id="preana-preview-cell-uboInfo" onClick={() => handlePreviewCellClick('uboInfo', 'sec3')} style={{ width: '74%', padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
+                      {data.uboInfo || data.ubo}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Company Background</td>
-                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
-                      {data.companyBackground?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.companyBackground }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.companyBackground}</div>
-                      )}
+                    <td id="preana-preview-cell-companyBackground" onClick={() => handlePreviewCellClick('companyBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', fontWeight: 600, color: '#1e3a8a' }}>
+                      {data.companyBackground}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>STAR Group – Key Milestones</td>
-                    <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#f8fafc' }}>
-                      {data.starGroupMilestonesNarrative?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.starGroupMilestonesNarrative }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.starGroupMilestonesNarrative}</div>
-                      )}
+                    <td id="preana-preview-cell-starGroupMilestonesNarrative" onClick={() => handlePreviewCellClick('starGroupMilestonesNarrative', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#f8fafc' }}>
+                      {data.starGroupMilestonesNarrative}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Business Development Background</td>
-                    <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer', background: '#fffbeb' }}>
-                      {data.businessDevBackground?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.businessDevBackground }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.businessDevBackground}</div>
-                      )}
+                    <td id="preana-preview-cell-businessDevBackground" onClick={() => handlePreviewCellClick('businessDevBackground', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer', background: '#fffbeb' }}>
+                      {data.businessDevBackground}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '4px 6px', fontWeight: 700 }}>Other information :</td>
-                    <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', cursor: 'pointer' }}>
-                      {data.operationalTeamInfo?.includes('<') ? (
-                        <div dangerouslySetInnerHTML={{ __html: data.operationalTeamInfo }} style={{ lineHeight: 1.45 }} />
-                      ) : (
-                        <div style={{ whiteSpace: 'pre-line' }}>{data.operationalTeamInfo}</div>
-                      )}
+                    <td id="preana-preview-cell-operationalTeamInfo" onClick={() => handlePreviewCellClick('operationalTeamInfo', 'sec3')} style={{ padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer' }}>
+                      {data.operationalTeamInfo}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -3660,23 +3310,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       UBO Information
                     </td>
                     <td id="preana-preview-cell-uboInformation" onClick={() => handlePreviewCellClick('uboInformation', 'sec3')} style={{ width: '74%', padding: '4px 6px', cursor: 'pointer' }}>
-                      {data.uboInformation ? (
-                        <div style={{ fontSize: '8.5pt', color: '#1e293b', marginBottom: hasGroupStructure ? '8px' : '0', lineHeight: 1.4 }}>
-                          {data.uboInformation?.includes('<') ? (
-                            <div dangerouslySetInnerHTML={{ __html: data.uboInformation }} />
-                          ) : (
-                            <div style={{ whiteSpace: 'pre-line' }}>{data.uboInformation}</div>
-                          )}
-                        </div>
-                      ) : (!hasGroupStructure ? (
-                        <span style={{ fontSize: '8pt', color: '#94a3b8', fontStyle: 'italic' }}>-</span>
-                      ) : null)}
+                      <div style={{ fontSize: '8.5pt', color: '#1e293b', whiteSpace: 'pre-line', marginBottom: '8px', lineHeight: 1.4 }}>
+                        {data.uboInformation}
+                      </div>
                       {/* Dynamic Corporate Group Structure Diagram */}
-                      {hasGroupStructure && (
-                        <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: data.uboInformation ? '6px' : '0' }}>
-                          <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
-                            BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
-                          </div>
+                      <div style={{ border: '1px solid #cbd5e1', borderRadius: '6px', padding: '10px', background: '#ffffff', marginTop: '6px' }}>
+                        <div style={{ fontSize: '8.5pt', fontWeight: 800, color: '#1e3a8a', letterSpacing: '0.02em', textAlign: 'center', marginBottom: '8px', borderBottom: '1px dashed #cbd5e1', paddingBottom: '4px' }}>
+                          BAGAN STRUKTUR KEPEMILIKAN SAHAM GROUP
+                        </div>
 
                         {/* LEVEL 1: HOLDING ENTITY (CENTERED) */}
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -3798,7 +3439,6 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           </div>
                         )}
                       </div>
-                      )}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
@@ -4003,19 +3643,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           </tr>
                         </tfoot>
                       </table>
-                      <div style={{ fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
-                        {data.pefindoNotes?.includes('<') ? (
-                          <div dangerouslySetInnerHTML={{ __html: data.pefindoNotes }} style={{ lineHeight: 1.45 }} />
-                        ) : (
-                          <div style={{ whiteSpace: 'pre-line' }}>{data.pefindoNotes}</div>
-                        )}
+                      <div style={{ whiteSpace: 'pre-line', fontSize: '8pt', color: '#334155', marginBottom: '6px' }}>
+                        {data.pefindoNotes}
                       </div>
                       <div style={{ fontSize: '8pt', color: '#334155', fontWeight: 600, background: '#f8fafc', padding: '4px', border: '1px solid #e2e8f0' }}>
-                        {data.pefindoTerms?.includes('<') ? (
-                          <div dangerouslySetInnerHTML={{ __html: data.pefindoTerms }} style={{ lineHeight: 1.45 }} />
-                        ) : (
-                          <div style={{ whiteSpace: 'pre-line' }}>{data.pefindoTerms}</div>
-                        )}
+                        {data.pefindoTerms}
                       </div>
                       <div style={{ fontWeight: 700, color: '#1b365d', marginTop: '10px' }}>
                         2. PT HARTA PUTRA SANTOSA (REQUEST USING THIS COMPANY) - {data.applicantPefindoCheck}
@@ -4070,12 +3702,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
               <div style={{ marginBottom: '10px', fontSize: '9pt' }}>
                 <span style={{ fontWeight: 700 }}>Brief Note:</span>
-                <div style={{ marginTop: '2px', color: '#1e293b' }}>
-                  {data.briefNote?.includes('<') ? (
-                    <div dangerouslySetInnerHTML={{ __html: data.briefNote }} style={{ lineHeight: 1.45 }} />
-                  ) : (
-                    <div style={{ whiteSpace: 'pre-line' }}>{data.briefNote}</div>
-                  )}
+                <div style={{ whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b' }}>
+                  {data.briefNote}
                 </div>
               </div>
 

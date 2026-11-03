@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { savePreAnalysisData } from './pre-analysis-store';
 
 const storeDir = path.resolve('database/pre_analysis');
 
@@ -59,14 +60,14 @@ const scenarios: PreAnalysisScenario[] = [
       businessDevBackground: 'Bapak Ir. Hermawan Sutanto merupakan alumni IPB Jurusan Agronomi dengan pengalaman lebih dari 25 tahun di industri kelapa sawit Sumatera. Didukung tim manajemen teknis berlatar belakang perkebunan multinasional.',
       operationalTeamInfo: 'Tim operasional dipimpin oleh David Sutanto bersama 4 site manager perkebunan eks-PTPN dan 25 operator alat berat bersertifikasi SIO aktif.',
       uboInformation: `AGRO PRIMA GROUP Corporate Structure:
-â€¢ PT Prima Inti Makmur (Holding): Modal Dasar Rp 250 M, Modal Disetor Rp 75 M
+• PT Prima Inti Makmur (Holding): Modal Dasar Rp 250 M, Modal Disetor Rp 75 M
   - Ir. Hermawan Sutanto (65% - Presiden Direktur)
   - David Sutanto (35% - Direktur)
-â€¢ PT Agro Prima Indonesia (Main OpCo): Modal Dasar Rp 100 M, Modal Disetor Rp 25 M
+• PT Agro Prima Indonesia (Main OpCo): Modal Dasar Rp 100 M, Modal Disetor Rp 25 M
   - PT Prima Inti Makmur (80%), David Sutanto (20%)
-â€¢ PT Sawit Mill Pratama (CPO Processing): Modal Dasar Rp 80 M, Modal Disetor Rp 20 M
+• PT Sawit Mill Pratama (CPO Processing): Modal Dasar Rp 80 M, Modal Disetor Rp 20 M
   - PT Prima Inti Makmur (90%), Ir. Hermawan Sutanto (10%)
-â€¢ PT Agro Logistik Mandiri (Fleet Transport): Modal Dasar Rp 40 M, Modal Disetor Rp 10 M
+• PT Agro Logistik Mandiri (Fleet Transport): Modal Dasar Rp 40 M, Modal Disetor Rp 10 M
   - PT Prima Inti Makmur (100%)`,
 
       groupStructure: {
@@ -122,8 +123,8 @@ const scenarios: PreAnalysisScenario[] = [
       ],
       existingFincoBackup: 'BCA Finance, Mandiri Tunas Finance, SANF, CIMB Niaga Auto Finance',
 
-      equipmentJobFit: 'Sangat sesuai (Suitable) â€” Spesifikasi LiuGong 835H Wheel Loader & 908E Excavator ideal untuk loading TBS dan perawatan parit perkebunan',
-      utilizationDuration: 'Wajar (Reasonable) â€” Durasi kontrak 5 tahun menjamin utilisasi unit selama 36 bulan tenor sewa',
+      equipmentJobFit: 'Sangat sesuai (Suitable) — Spesifikasi LiuGong 835H Wheel Loader & 908E Excavator ideal untuk loading TBS dan perawatan parit perkebunan',
+      utilizationDuration: 'Wajar (Reasonable) — Durasi kontrak 5 tahun menjamin utilisasi unit selama 36 bulan tenor sewa',
       priorLiugongExperience: 'Sudah berpengalaman mengoperasikan 4 unit Wheel Loader LiuGong sejak 2022 dengan feedback performa positif',
       serviceAgreementFmc: 'Full FMC disediakan oleh dealer resmi PT Intraco Penta Prima Servis (IPPS) Medan dengan garansi ketersediaan parts 48 jam',
       unitComposition: [
@@ -142,7 +143,7 @@ const scenarios: PreAnalysisScenario[] = [
       dealerCheck: 'Rekam pembayaran lancar pada dealer IPPS, track record servis rutin berkala',
       topDealerToCustomer: 'DP 15%, 85% dibiayai leasing, tenor 36 bulan',
       topLmiToDealer: 'Term of Payment 14 hari kalender pasca BAST unit',
-      lmiArCheck: 'Lancar â€” Tidak pernah mengalami keterlambatan pembayaran angsuran',
+      lmiArCheck: 'Lancar — Tidak pernah mengalami keterlambatan pembayaran angsuran',
       slikPefindoHighlight: 'Kolektibilitas 1 (Lancar) pada seluruh fasilitas pembiayaan bank dan non-bank',
       applicantPefindoCheck: 'PT AGRO PRIMA INDONESIA - SLIK OJK Score Kol-1, Baki Debet Rp 18,2 Miliar, Pembayaran Disiplin',
       pefindoTerms: 'Fasilitas aktif: BCA Finance (Sewa Pembiayaan Flat 7.2%), Mandiri Tunas Finance (Flat 7.5%)',
@@ -222,15 +223,15 @@ const scenarios: PreAnalysisScenario[] = [
       businessDevBackground: 'Bapak Hendra Wijaya memiliki rekam jejak 20 tahun di industri konstruksi sipil nasional dengan jaringan kuat ke BUMN Karya.',
       operationalTeamInfo: 'Dipimpin Ir. Fransiscus Wijaya bersama 8 Project Engineer dan 40 operator bersertifikasi LPJK.',
       uboInformation: `CIPTA MEGA GROUP Corporate Structure:
-â€¢ PT Cipta Mega Investama (Holding): Modal Dasar Rp 350 M, Modal Disetor Rp 100 M
+• PT Cipta Mega Investama (Holding): Modal Dasar Rp 350 M, Modal Disetor Rp 100 M
   - Hendra Wijaya (55% - Presdir)
   - Fransiscus Wijaya (35% - Direktur)
   - Melina Wijaya (10% - Komisaris)
-â€¢ PT Cipta Infrastruktur (Applicant): Modal Dasar Rp 150 M, Modal Disetor Rp 40 M
+• PT Cipta Infrastruktur (Applicant): Modal Dasar Rp 150 M, Modal Disetor Rp 40 M
   - PT Cipta Mega Investama (80%), Fransiscus Wijaya (20%)
-â€¢ PT Cipta Precast Indonesia (Beton Pracetak): Modal Dasar Rp 100 M, Modal Disetor Rp 30 M
+• PT Cipta Precast Indonesia (Beton Pracetak): Modal Dasar Rp 100 M, Modal Disetor Rp 30 M
   - PT Cipta Mega Investama (90%), Hendra Wijaya (10%)
-â€¢ PT Cipta Sarana Aspal (Hotmix Plant): Modal Dasar Rp 50 M, Modal Disetor Rp 15 M
+• PT Cipta Sarana Aspal (Hotmix Plant): Modal Dasar Rp 50 M, Modal Disetor Rp 15 M
   - PT Cipta Mega Investama (75%), Fransiscus Wijaya (25%)`,
 
       groupStructure: {
@@ -289,7 +290,7 @@ const scenarios: PreAnalysisScenario[] = [
       existingFincoBackup: 'Bank Mandiri, Bank BNI, ORIX Indonesia Finance, Tokyo Century',
 
       equipmentJobFit: 'Sangat cocok untuk pekerjaan galian tanah (bulk excavation) dan pemadatan subgrade jalan tol',
-      utilizationDuration: 'Wajar â€” Sesuai schedule proyek konstruksi selama 30 bulan',
+      utilizationDuration: 'Wajar — Sesuai schedule proyek konstruksi selama 30 bulan',
       priorLiugongExperience: 'Telah mengoperasikan 2 unit LiuGong Grader di proyek Tol Cipali',
       serviceAgreementFmc: 'FMC langsung dari LMI Jakarta support depo Cikampek',
       unitComposition: [
@@ -384,14 +385,14 @@ const scenarios: PreAnalysisScenario[] = [
       businessDevBackground: 'Bapak Ir. Bambang Suryono mantan Direktur Operasional kontraktor tambang terkemuka dengan keahlian mendalam di fleet management tambang batubara.',
       operationalTeamInfo: 'Tim operasional site Berau dipimpin 3 Project Manager tambang tersertifikasi POP/POM dan 80 personel operasional.',
       uboInformation: `BUMI KARYA GROUP Corporate Structure:
-â€¢ PT Bumi Karya Corporindo (Holding): Modal Dasar Rp 500 M, Modal Disetor Rp 150 M
+• PT Bumi Karya Corporindo (Holding): Modal Dasar Rp 500 M, Modal Disetor Rp 150 M
   - Ir. Bambang Suryono (60% - Komut)
   - Dimas Suryono (40% - Dirut)
-â€¢ PT Bumi Karya Nusantara (Applicant): Modal Dasar Rp 200 M, Modal Disetor Rp 50 M
+• PT Bumi Karya Nusantara (Applicant): Modal Dasar Rp 200 M, Modal Disetor Rp 50 M
   - PT Bumi Karya Corporindo (85%), Dimas Suryono (15%)
-â€¢ PT Nusantara Logistik Tambang (Fleet Hauling): Modal Dasar Rp 100 M, Modal Disetor Rp 30 M
+• PT Nusantara Logistik Tambang (Fleet Hauling): Modal Dasar Rp 100 M, Modal Disetor Rp 30 M
   - PT Bumi Karya Corporindo (90%), Ir. Bambang Suryono (10%)
-â€¢ PT Borneo Alat Mandiri (Workshop & Maintenance): Modal Dasar Rp 50 M, Modal Disetor Rp 15 M
+• PT Borneo Alat Mandiri (Workshop & Maintenance): Modal Dasar Rp 50 M, Modal Disetor Rp 15 M
   - PT Bumi Karya Corporindo (95%), Dimas Suryono (5%)`,
 
       groupStructure: {
@@ -449,7 +450,7 @@ const scenarios: PreAnalysisScenario[] = [
       existingFincoBackup: 'Komatsu Finance Indonesia, Caterpillar Financial, SANF, Bank Mandiri',
 
       equipmentJobFit: 'LiuGong 950HD Heavy Excavator terbukti handal untuk penggalian batuan keras overburden tambang batubara',
-      utilizationDuration: 'Sangat wajar â€” Kontrak Berau Coal berdurasi 5 tahun hingga 2029',
+      utilizationDuration: 'Sangat wajar — Kontrak Berau Coal berdurasi 5 tahun hingga 2029',
       priorLiugongExperience: 'Memiliki 6 unit wheel loader LiuGong 856H yang beroperasi di stockpile pelabuhan Balikpapan',
       serviceAgreementFmc: 'FMC komprehensif on-site Berau oleh PT Intraco Penta dengan mekanik standby 24 jam',
       unitComposition: [
@@ -542,10 +543,10 @@ const scenarios: PreAnalysisScenario[] = [
       businessDevBackground: 'Bapak Haji Achmad Fauzi adalah tokoh pengusaha kehutanan lokal di Samarinda dengan rekam jejak puluhan tahun.',
       operationalTeamInfo: 'Didukung 20 operator berpengalaman logging hutan tanaman.',
       uboInformation: `SAL GROUP Corporate Structure:
-â€¢ PT Sumber Alam Perkasa (Holding): Modal Dasar Rp 180 M, Modal Disetor Rp 45 M
+• PT Sumber Alam Perkasa (Holding): Modal Dasar Rp 180 M, Modal Disetor Rp 45 M
   - Haji Achmad Fauzi (70% - Komisaris)
   - Rizky Fauzi (30% - Direktur)
-â€¢ PT Sumber Alam Lestari (Applicant): Modal Dasar Rp 60 M, Modal Disetor Rp 15 M
+• PT Sumber Alam Lestari (Applicant): Modal Dasar Rp 60 M, Modal Disetor Rp 15 M
   - PT Sumber Alam Perkasa (85%), Rizky Fauzi (15%)`,
 
       groupStructure: {
@@ -670,12 +671,12 @@ const scenarios: PreAnalysisScenario[] = [
       businessDevBackground: 'Bapak Jimmy Hartanto memiliki pengalaman 18 tahun di sektor logistik komoditas Sumatera Selatan.',
       operationalTeamInfo: 'Dipimpin Kelvin Hartanto bersama 5 koordinator lapangan dan 60 pengemudi/operator.',
       uboInformation: `MITRA GROUP Corporate Structure:
-â€¢ PT Mitra Investama Corpora (Holding): Modal Dasar Rp 400 M, Modal Disetor Rp 120 M
+• PT Mitra Investama Corpora (Holding): Modal Dasar Rp 400 M, Modal Disetor Rp 120 M
   - Jimmy Hartanto (55% - Komut)
   - Kelvin Hartanto (45% - Dirut)
-â€¢ PT Mitra Tambang Sejahtera (Applicant): Modal Dasar Rp 120 M, Modal Disetor Rp 30 M
+• PT Mitra Tambang Sejahtera (Applicant): Modal Dasar Rp 120 M, Modal Disetor Rp 30 M
   - PT Mitra Investama Corpora (85%), Kelvin Hartanto (15%)
-â€¢ PT Mitra Trans Logistik (Barging): Modal Dasar Rp 80 M, Modal Disetor Rp 20 M
+• PT Mitra Trans Logistik (Barging): Modal Dasar Rp 80 M, Modal Disetor Rp 20 M
   - PT Mitra Investama Corpora (90%), Jimmy Hartanto (10%)`,
 
       groupStructure: {
@@ -814,10 +815,10 @@ const scenarios: PreAnalysisScenario[] = [
       businessDevBackground: 'Bapak Soetanto Kusumo berpengalaman di bidang konstruksi baja dan pergudangan komersial.',
       operationalTeamInfo: 'Didukung 15 staf teknis dan mandor konstruksi.',
       uboInformation: `MANDIRI GRAHA GROUP Corporate Structure:
-â€¢ PT Mandiri Graha Karya (Holding): Modal Dasar Rp 150 M, Modal Disetor Rp 40 M
+• PT Mandiri Graha Karya (Holding): Modal Dasar Rp 150 M, Modal Disetor Rp 40 M
   - Soetanto Kusumo (60% - Komisaris)
   - Andreas Kusumo (40% - Direktur)
-â€¢ PT Konstruksi Mandiri (Applicant): Modal Dasar Rp 50 M, Modal Disetor Rp 10 M
+• PT Konstruksi Mandiri (Applicant): Modal Dasar Rp 50 M, Modal Disetor Rp 10 M
   - PT Mandiri Graha Karya (80%), Andreas Kusumo (20%)`,
 
       groupStructure: {
@@ -905,11 +906,11 @@ async function run() {
   await fs.mkdir(storeDir, { recursive: true });
   console.log('Seeding rich pre-analysis scenarios for CRM testing...');
   for (const s of scenarios) {
-    const filePath = path.join(storeDir, `${s.id}.json`);
-    await fs.writeFile(filePath, JSON.stringify(s.data, null, 2), 'utf-8');
-    console.log(`Seeded Pre-Analysis scenario for [${s.data.fapNumber}] ${s.data.customerProjectName} -> ${filePath}`);
+    await savePreAnalysisData(s.id, s.data);
+    console.log(`Seeded Pre-Analysis scenario for [${s.data.fapNumber}] ${s.data.customerProjectName}`);
   }
-  console.log('All 6 Pre-Analysis testing scenarios seeded successfully!');
+  console.log('All 6 Pre-Analysis testing scenarios seeded successfully into files and MySQL!');
+  process.exit(0);
 }
 
 run().catch(console.error);
