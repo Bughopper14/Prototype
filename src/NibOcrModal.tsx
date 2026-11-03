@@ -7,6 +7,7 @@ import {
 import { api } from './api';
 import { 
   extractNibTextFromDocument, parseNibText, extractWilayahFromAddressAndText, 
+  normalizeWilayahInput,
   SAMPLE_NIB_TEXT, ParsedNibData 
 } from './nib-ocr';
 import { useMasterData } from './master-data';
@@ -116,17 +117,19 @@ export function NibOcrModal({ open, onClose, onApply, notify, existingDocumentUr
         let newRt = String(d.rt || '').trim();
         let newRw = String(d.rw || '').trim();
 
-        // If any region fields are missing, resolve them via address parser & master data
-        if (!newProvince || !newCity || !newDistrict || !newVillage || !newPostal || !newRt || !newRw) {
-          const w = extractWilayahFromAddressAndText(rawAddress, rawAddress, master);
-          if (!newProvince && w.province) newProvince = w.province;
-          if (!newCity && w.city) newCity = w.city;
-          if (!newDistrict && w.district) newDistrict = w.district;
-          if (!newVillage && w.village) newVillage = w.village;
-          if (!newPostal && w.postalCode) newPostal = w.postalCode;
-          if (!newRt && w.rt) newRt = w.rt;
-          if (!newRw && w.rw) newRw = w.rw;
-        }
+        // Always resolve & normalize wilayah fields through master data resolver
+        const w = extractWilayahFromAddressAndText(
+          `${rawAddress} ${newProvince} ${newCity} ${newDistrict} ${newVillage}`,
+          rawAddress,
+          master
+        );
+        newProvince = w.province || normalizeWilayahInput(newProvince);
+        newCity = w.city || normalizeWilayahInput(newCity);
+        newDistrict = w.district || normalizeWilayahInput(newDistrict);
+        newVillage = w.village || normalizeWilayahInput(newVillage);
+        if (w.postalCode && !newPostal) newPostal = w.postalCode;
+        if (w.rt && !newRt) newRt = w.rt;
+        if (w.rw && !newRw) newRw = w.rw;
 
         const newEmail = String(d.email || '').trim();
         const newPhone = String(d.phone || d.phoneFax || '').trim();

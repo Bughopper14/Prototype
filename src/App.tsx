@@ -10,6 +10,7 @@ import {
   getReadNotificationIds,
   saveReadNotificationIds,
   recordSystemActivity,
+  computeApplicationDiff,
   ensureInitialActivitySeeds,
   type SystemActivity,
   type SystemNotificationItem
@@ -1328,6 +1329,12 @@ function Detail({value:a,user,customers=[],initialTab=0,onBack,onChange,onCustom
        actionType: 'CREATE',
        title: `Created new application for ${finalCompanyName}`,
        details: `Initiated FAP Stage (${application.fapNumber || 'Draft'}), Category: ${customerCategory === 'EXISTING' ? 'Existing Customer' : 'New Customer'}. Ready for data entry.`,
+        changes: [
+          { label: 'Application Number', newValue: application.fapNumber || 'Draft' },
+          { label: 'Customer Category', newValue: customerCategory === 'EXISTING' ? 'Existing Customer' : 'New Customer' },
+          { label: 'Company Name', newValue: finalCompanyName },
+          { label: 'Initial Stage', newValue: 'FAP Stage' }
+        ],
        actionBy: user?.name || 'System User',
        userRole: user?.role || 'MKT',
        createNotification: true,
@@ -2036,43 +2043,62 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>((
      setDraft((prev:any)=>({...prev,...nextApp}));
      setCustomerDraft((prev:any)=>({...prev,...customerPayload}));
      onChange(nextApp);
-     notify('Changes saved successfully');
-     try {
-       const tabNamesList: Record<number, string> = {
-         0: 'Customer & PIC',
-         1: 'Stakeholders',
-         2: 'Business & banks',
-         3: 'Financing & units',
-         4: 'Financial statements',
-         5: 'Legal',
-         6: 'Documents',
-         8: 'Pre Analysis form'
-       };
-       const activeSectionName = tabNamesList[tab] || 'Application details';
-       let changeSnippet = `Updated ${activeSectionName} data.`;
-       if (tab === 0) changeSnippet = `Saved company profile, contact details, NIB (${customerPayload.nib || 'N/A'}), and NPWP (${customerPayload.npwp || 'N/A'}).`;
-       else if (tab === 1) changeSnippet = `Saved share ownership and stakeholder list.`;
-       else if (tab === 2) changeSnippet = `Updated business operations, industry segment, and bank reference info.`;
-       else if (tab === 3 || tab === 4) changeSnippet = `Updated financing value (${money(draft.proposal?.financingValue)}) and equipment unit terms.`;
-       else if (tab === 5) changeSnippet = `Updated legal deeds and shareholder registers.`;
-       else if (tab === 6) changeSnippet = `Updated document desk checklist records.`;
-       else if (tab === 8) changeSnippet = `Saved Pre-Analysis evaluation, greyed-out checklist, and TinyMCE remarks.`;
+      notify('Changes saved successfully');
+      try {
+        const tabNamesList: Record<number, string> = {
+          0: 'Customer & PIC',
+          1: 'Stakeholders',
+          2: 'Business & banks',
+          3: 'Financing & units',
+          4: 'Financial statements',
+          5: 'Legal',
+          6: 'Documents',
+          8: 'Pre Analysis form'
+        };
+        const activeSectionName = tabNamesList[tab] || 'Application details';
+        
+        let diffResult = { changes: [] as any[], details: '', summaryTitle: '' };
+        try {
+          diffResult = computeApplicationDiff({
+            tab,
+            beforeApp: a,
+            draft,
+            customerPayload,
+            customerDraft,
+            resolvedName,
+            customerCategory
+          });
+        } catch (diffErr) {
+          console.error('Diff computation error:', diffErr);
+        }
 
-       recordSystemActivity({
-         applicationId: a.id,
-         fapNumber: a.fapNumber,
-         companyName: resolvedName,
-         section: activeSectionName,
-         tabIndex: tab,
-         actionType: 'UPDATE',
-         title: `Updated ${activeSectionName} for ${resolvedName}`,
-         details: changeSnippet,
-         actionBy: user?.name || 'System User',
-         userRole: user?.role || 'User'
-       });
-     } catch (actErr) {
-       console.error('Activity record error:', actErr);
-     }
+        let changeSnippet = diffResult.details;
+        if (!changeSnippet) {
+          if (tab === 0) changeSnippet = `Saved company profile, contact details, NIB (${customerPayload.nib || 'N/A'}), and NPWP (${customerPayload.npwp || 'N/A'}).`;
+          else if (tab === 1) changeSnippet = `Saved share ownership and stakeholder list.`;
+          else if (tab === 2) changeSnippet = `Updated business operations, industry segment, and bank reference info.`;
+          else if (tab === 3 || tab === 4) changeSnippet = `Updated financing value (${money(draft.proposal?.financingValue)}) and equipment unit terms.`;
+          else if (tab === 5) changeSnippet = `Updated legal deeds and shareholder registers.`;
+          else if (tab === 6) changeSnippet = `Updated document desk checklist records.`;
+          else if (tab === 8) changeSnippet = `Saved Pre-Analysis evaluation, greyed-out checklist, and TinyMCE remarks.`;
+        }
+
+        recordSystemActivity({
+          applicationId: a.id,
+          fapNumber: a.fapNumber,
+          companyName: resolvedName,
+          section: activeSectionName,
+          tabIndex: tab,
+          actionType: 'UPDATE',
+          title: diffResult.summaryTitle ? `${diffResult.summaryTitle} for ${resolvedName}` : `Updated ${activeSectionName} for ${resolvedName}`,
+          details: changeSnippet,
+          changes: diffResult.changes,
+          actionBy: user?.name || 'System User',
+          userRole: user?.role || 'User'
+        });
+      } catch (actErr) {
+        console.error('Activity record error:', actErr);
+      }
    }catch(e:any){
      setError(e.message||'Failed to save changes.');
    }finally{
@@ -2493,6 +2519,10 @@ const [tab,setTab]=useState(resolvedInitialTab),[draft,setDraft]=useState<any>((
       actionType: 'UPDATE',
       title: `Updated Pre-Analysis Form for ${a.customer?.companyName || draft.customer?.companyName || 'Application'}`,
       details: 'Saved credit remarks, active vs proposed contract terms, and evaluation checks.',
+      changes: [
+        { label: 'Evaluation Form', newValue: 'Saved credit analyst evaluation, risk flags, and remarks.' },
+        { label: 'Proposed Terms', newValue: 'Verified active vs proposed credit facility terms.' }
+      ],
       actionBy: user?.name || 'System User',
       userRole: user?.role || 'CA'
     });

@@ -389,7 +389,7 @@ export function ActivityPage({
                 {item.details && (
                   <p
                     style={{
-                      margin: '0 0 10px',
+                      margin: '0 0 8px',
                       fontSize: 13,
                       color: '#475569',
                       lineHeight: 1.5
@@ -397,6 +397,87 @@ export function ActivityPage({
                   >
                     {item.details}
                   </p>
+                )}
+
+                {/* Specific field changes diff box if available */}
+                {item.changes && item.changes.length > 0 && (
+                  <div
+                    style={{
+                      margin: '6px 0 12px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 8,
+                      padding: '10px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: '#475569',
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5
+                      }}
+                    >
+                      <span>Specific Changes ({item.changes.length}):</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {item.changes.map((ch, cIdx) => (
+                        <div
+                          key={cIdx}
+                          style={{
+                            fontSize: 12,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            lineHeight: 1.4
+                          }}
+                        >
+                          <span style={{ fontWeight: 600, color: '#1e293b', minWidth: 120 }}>
+                            {ch.label}:
+                          </span>
+                          {ch.oldValue && ch.oldValue !== '(none)' && (
+                            <>
+                              <span
+                                style={{
+                                  color: '#b91c1c',
+                                  background: '#fee2e2',
+                                  padding: '1px 6px',
+                                  borderRadius: 4,
+                                  textDecoration: 'line-through',
+                                  fontSize: 11
+                                }}
+                                title="Previous value"
+                              >
+                                {ch.oldValue}
+                              </span>
+                              <span style={{ color: '#94a3b8', fontSize: 11 }}>➔</span>
+                            </>
+                          )}
+                          <span
+                            style={{
+                              color: '#15803d',
+                              background: '#dcfce7',
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                              fontWeight: 600,
+                              fontSize: 11
+                            }}
+                            title="New value"
+                          >
+                            {ch.newValue || '(empty)'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
 
                 {/* Meta footer: User, Role, Timestamp */}

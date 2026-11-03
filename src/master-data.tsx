@@ -3,6 +3,7 @@ import {createPortal} from 'react-dom';
 import {Plus,Pencil,Search,Settings2,X,Save,MapPin,ChevronRight,Check,Trash2,Menu,Layers} from 'lucide-react';
 import {api} from './api';
 import {defaultMasterCatalog,masterGroups,masterKey,validateMasterCatalog,type MasterCatalog,type MasterItem} from './master-catalog';
+import {matchWilayahName} from './nib-ocr';
 
 const equipmentChildren=new Set(['brand','unitType','modelName','assetName']);
 const locationGroups=new Set(['province','city','district','village']);
@@ -1041,13 +1042,7 @@ export const cleanWilayahStr = (s: string) => String(s || '').replace(/[^a-zA-Z0
 export const matchesMasterItem = (item: MasterItem, val: string) => {
   if (!item || !val) return false;
   if (item.value === val || item.name === val) return true;
-  const cName = cleanWilayahStr(item.name);
-  const cVal = cleanWilayahStr(val);
-  if (cName === cVal) return true;
-  if ((cVal === 'dkijakarta' || cVal === 'jakarta') && cName === 'daerahkhususibukotajakarta') return true;
-  if ((cName === 'dkijakarta' || cName === 'jakarta') && cVal === 'daerahkhususibukotajakarta') return true;
-  if (cName.length >= 4 && cVal.length >= 4 && (cName.includes(cVal) || cVal.includes(cName))) return true;
-  return false;
+  return matchWilayahName(item.name, val);
 };
 
 export function resolveWilayahUpwards(record: any, data: MasterCatalog) {
