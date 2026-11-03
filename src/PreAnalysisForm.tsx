@@ -307,7 +307,11 @@ export function PreAnalysisRichEditor({
         tinymceScriptSrc={tinymceSrc}
         value={value || ''}
         initialValue={initialHtml}
-        onEditorChange={(newHtml) => onChange(newHtml)}
+        onEditorChange={(newHtml) => {
+          if (newHtml !== value) {
+            onChange(newHtml);
+          }
+        }}
         init={{
           height: height,
           menubar: false,
@@ -315,8 +319,16 @@ export function PreAnalysisRichEditor({
           branding: false,
           elementpath: false,
           setup: (editor: any) => {
-            editor.on('focus', () => { if (onFocus) onFocus(); });
-            editor.on('click', () => { if (onFocus) onFocus(); });
+            let userReady = false;
+            editor.on('init', () => {
+              setTimeout(() => { userReady = true; }, 1000);
+            });
+            editor.on('focus', () => {
+              if (userReady && onFocus) onFocus();
+            });
+            editor.on('click', () => {
+              if (onFocus) onFocus();
+            });
           },
           plugins: [
             'advlist', 'autolink', 'lists', 'link', 'charmap',
@@ -745,6 +757,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
     ) : null;
   };
   const initialDataRef = useRef<any>(null);
+  const isInitialMountRef = useRef(true);
   const [data, setData] = useState<PreAnalysisData>(() => {
     return syncCustomerAndPicIntoPreAnalysis(defaultInitialData, props);
   });
@@ -790,6 +803,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
   // Sync scroll & highlight helper
   const scrollToPreviewElement = (elementId: string) => {
+    if (isInitialMountRef.current) return;
     if (viewMode === 'original-pdf') {
       setViewMode('digital-twin');
     }
@@ -817,14 +831,18 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
       setOpenSections(prev => ({ ...prev, [sectionId]: true }));
       const formTarget = document.getElementById('acc-' + sectionId);
       if (formTarget) {
-        formTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        formTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
     }
     if (fieldKey) {
       setTimeout(() => {
-        const input = document.querySelector(`[name="${fieldKey}"], [data-field="${fieldKey}"]`) as HTMLElement;
-        if (input) {
-          input.focus();
+        const targetSelector = fieldKey.startsWith('slik-')
+          ? `#preana-form-entity-${fieldKey.replace('slik-', '')}, [data-field="${fieldKey}"]`
+          : `[name="${fieldKey}"], [data-field="${fieldKey}"]`;
+        const targetEl = document.querySelector(targetSelector) as HTMLElement;
+        if (targetEl) {
+          targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          targetEl.focus();
         }
       }, 100);
     }
@@ -837,6 +855,29 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   };
 
   // Fetch saved pre-analysis data from server
+  useEffect(() => {
+    // Keep both left form and right preview at the top on initial open
+    const resetScroll = () => {
+      const formCol = document.querySelector('.fap-detail-form-col');
+      if (formCol) formCol.scrollTop = 0;
+      const canvasCol = document.querySelector('.pre-analysis-canvas');
+      if (canvasCol) canvasCol.scrollTop = 0;
+    };
+    resetScroll();
+    const t1 = setTimeout(resetScroll, 100);
+    const t2 = setTimeout(resetScroll, 400);
+    const t3 = setTimeout(() => {
+      resetScroll();
+      isInitialMountRef.current = false;
+    }, 1500);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
   useEffect(() => {
     if (!props.applicationId) return;
     let isMounted = true;
@@ -886,8 +927,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   const scrollDebounceRef = useRef<any>(null);
 
   const autoSyncPreview = (fieldKey: string) => {
+    if (isInitialMountRef.current) return;
     if (scrollDebounceRef.current) clearTimeout(scrollDebounceRef.current);
     scrollDebounceRef.current = setTimeout(() => {
+      if (isInitialMountRef.current) return;
       const targetId = 'preana-preview-cell-' + fieldKey;
       if (document.getElementById(targetId)) {
         scrollToPreviewElement(targetId);
@@ -2819,6 +2862,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     return (
                       <div
                         key={idx}
+                        id={`preana-form-entity-${idx}`}
+                        data-field={`slik-${idx}`}
                         style={{
                           marginTop: idx > 0 ? '14px' : '6px',
                           border: '1px solid #cbd5e1',
@@ -2858,7 +2903,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             <div style={{ display: 'inline-flex', borderRadius: '6px', border: '1px solid #cbd5e1', overflow: 'hidden', background: '#e2e8f0' }}>
                               <button
                                 type="button"
-                                onClick={() => updateEntityReview(idx, { hasRecord: true })}
+                                onClick={() => { updateEntityReview(idx, { hasRecord: true }); scrollToPreviewElement(`preana-preview-cell-slik-${idx}`); }}
                                 style={{
                                   padding: '4px 14px',
                                   fontSize: '0.75rem',
@@ -2874,7 +2919,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => updateEntityReview(idx, { hasRecord: false })}
+                                onClick={() => { updateEntityReview(idx, { hasRecord: false }); scrollToPreviewElement(`preana-preview-cell-slik-${idx}`); }}
                                 style={{
                                   padding: '4px 14px',
                                   fontSize: '0.75rem',
@@ -2942,6 +2987,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                             copy[lIdx] = { ...copy[lIdx], lender: e.target.value };
                                             updateEntityReview(idx, { lenderExposures: copy });
                                           }}
+                                          onFocus={() => scrollToPreviewElement(`preana-preview-cell-slik-${idx}`)}
                                           placeholder="Lender / Finco Name"
                                           style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                                         />
@@ -2955,6 +3001,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                             copy[lIdx] = { ...copy[lIdx], plafond: e.target.value };
                                             updateEntityReview(idx, { lenderExposures: copy });
                                           }}
+                                          onFocus={() => scrollToPreviewElement(`preana-preview-cell-slik-${idx}`)}
                                           placeholder="0"
                                           style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px', fontFamily: 'monospace' }}
                                         />
@@ -2968,6 +3015,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                                             copy[lIdx] = { ...copy[lIdx], rate: e.target.value };
                                             updateEntityReview(idx, { lenderExposures: copy });
                                           }}
+                                          onFocus={() => scrollToPreviewElement(`preana-preview-cell-slik-${idx}`)}
                                           placeholder="%"
                                           style={{ width: '100%', padding: '4px', fontSize: '0.75rem', textAlign: 'right', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                                         />
@@ -3007,6 +3055,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               <PreAnalysisRichEditor
                                 value={review.pefindoNotes || ''}
                                 onChange={val => updateEntityReview(idx, { pefindoNotes: val })}
+                                onFocus={() => scrollToPreviewElement(`preana-preview-cell-slik-${idx}`)}
+                                dataField={`slik-${idx}-pefindoNotes`}
                                 height={150}
                                 placeholder="SLIK / Pefindo analysis notes..."
                               />
@@ -3019,6 +3069,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                               <PreAnalysisRichEditor
                                 value={review.pefindoTerms || ''}
                                 onChange={val => updateEntityReview(idx, { pefindoTerms: val })}
+                                onFocus={() => scrollToPreviewElement(`preana-preview-cell-slik-${idx}`)}
+                                dataField={`slik-${idx}-pefindoTerms`}
                                 height={130}
                                 placeholder="Commercial terms on other fincos..."
                               />
@@ -3083,7 +3135,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       </span>
                       <button
                         type="button"
-                        onClick={() => updateField('goodProject', !data.goodProject)}
+                        onClick={() => { updateField('goodProject', !data.goodProject); scrollToPreviewElement('preana-preview-cell-goodProject'); }}
                         style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', cursor: 'pointer' }}
                       >
                         Toggle
@@ -3091,8 +3143,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     </div>
                     <input
                       type="text"
+                      name="goodProjectNote"
+                      data-field="goodProjectNote"
                       value={data.goodProjectNote}
                       onChange={e => updateField('goodProjectNote', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-goodProject')}
                       placeholder="e.g. Harvesting Contractor, PT RAPP - APRIL Group"
                       style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
@@ -3105,7 +3160,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       </span>
                       <button
                         type="button"
-                        onClick={() => updateField('goodCustomer', !data.goodCustomer)}
+                        onClick={() => { updateField('goodCustomer', !data.goodCustomer); scrollToPreviewElement('preana-preview-cell-goodCustomer'); }}
                         style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: '4px', background: '#ffffff', border: '1px solid #cbd5e1', cursor: 'pointer' }}
                       >
                         Toggle
@@ -3113,8 +3168,11 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                     </div>
                     <input
                       type="text"
+                      name="goodCustomerNote"
+                      data-field="goodCustomerNote"
                       value={data.goodCustomerNote}
                       onChange={e => updateField('goodCustomerNote', e.target.value)}
+                      onFocus={() => scrollToPreviewElement('preana-preview-cell-goodCustomer')}
                       placeholder="Customer assessment notes"
                       style={{ width: '100%', padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
                     />
@@ -3126,6 +3184,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   <PreAnalysisRichEditor
                     value={data.briefNote || ''}
                     onChange={val => updateField('briefNote', val)}
+                    onFocus={() => scrollToPreviewElement('preana-preview-cell-briefNote')}
                     height={160}
                     dataField="briefNote"
                   />
@@ -3226,12 +3285,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       <div key={idx} style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <input
                           type="text"
+                          data-field="suggestions"
                           value={s}
                           onChange={e => {
                             const copy = [...data.suggestions];
                             copy[idx] = e.target.value;
                             updateField('suggestions', copy);
                           }}
+                          onFocus={() => scrollToPreviewElement('preana-preview-cell-suggestions')}
                           style={{ flex: 1, padding: '4px 8px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '4px' }}
                         />
                         <button
@@ -3280,36 +3341,42 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                             <td style={{ padding: '4px 6px' }}>
                               <input
                                 type="text"
+                                data-field="competitionTable"
                                 value={c.finco || ''}
                                 onChange={e => {
                                   const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
                                   copy[idx] = { ...copy[idx], finco: e.target.value };
                                   updateField('competitionTable', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-competitionTable')}
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
                             <td style={{ padding: '4px 6px' }}>
                               <input
                                 type="text"
+                                data-field="competitionTable"
                                 value={c.rate || ''}
                                 onChange={e => {
                                   const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
                                   copy[idx] = { ...copy[idx], rate: e.target.value };
                                   updateField('competitionTable', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-competitionTable')}
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
                             <td style={{ padding: '4px 6px' }}>
                               <input
                                 type="text"
+                                data-field="competitionTable"
                                 value={c.purpose || ''}
                                 onChange={e => {
                                   const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
                                   copy[idx] = { ...copy[idx], purpose: e.target.value };
                                   updateField('competitionTable', copy);
                                 }}
+                                onFocus={() => scrollToPreviewElement('preana-preview-cell-competitionTable')}
                                 style={{ width: '100%', padding: '4px', fontSize: '0.75rem', border: '1px solid #cbd5e1', borderRadius: '3px' }}
                               />
                             </td>
@@ -4299,7 +4366,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
 
                         if (review.hasRecord) {
                           return (
-                            <div key={idx} style={{ marginTop: idx > 0 ? '14px' : '0' }}>
+                            <div
+                              key={idx}
+                              id={`preana-preview-cell-slik-${idx}`}
+                              onClick={() => handlePreviewCellClick(`slik-${idx}`, 'sec6')}
+                              style={{ marginTop: idx > 0 ? '14px' : '0', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+                            >
                               <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
                                 {idx + 1}. {fullEntityName.toUpperCase()} :
                               </div>
@@ -4345,7 +4417,12 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                           );
                         } else {
                           return (
-                            <div key={idx} style={{ marginTop: idx > 0 ? '14px' : '0' }}>
+                            <div
+                              key={idx}
+                              id={`preana-preview-cell-slik-${idx}`}
+                              onClick={() => handlePreviewCellClick(`slik-${idx}`, 'sec6')}
+                              style={{ marginTop: idx > 0 ? '14px' : '0', cursor: 'pointer', padding: '4px', borderRadius: '4px' }}
+                            >
                               <div style={{ fontWeight: 700, color: '#1b365d', marginBottom: '4px' }}>
                                 {idx + 1}. {fullEntityName.toUpperCase()} - No Records
                               </div>
