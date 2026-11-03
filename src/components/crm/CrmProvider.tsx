@@ -97,6 +97,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
 
   useEffect(() => {
     reload();
+    api('/ocr/warmup', 'POST', {}).catch(() => {}); // load the OCR models in the background
   }, [reload]);
 
   // Keep the notification badge fresh.

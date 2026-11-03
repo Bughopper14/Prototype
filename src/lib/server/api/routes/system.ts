@@ -2,8 +2,14 @@ import {pool, checkMysql, readMenu, writeMenu} from '../../db/pool';
 import {ensure} from '../../domain';
 import {get, post, put, patch} from '../router';
 import crypto from 'node:crypto';
+import {warmUpOcr} from '@/lib/server/ocr/runner';
 
 /* ---------- health ---------- */
+
+post('/ocr/warmup', () => {
+  warmUpOcr();
+  return {ok: true};
+});
 
 get('/health', () => ({status: 'ok'}), {public: true});
 get(

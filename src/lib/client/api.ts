@@ -2,6 +2,7 @@ import {validateWrite} from '@/lib/shared/input-validation';
 
 export const API_BASE = '/api/v1';
 const LOGIN_URL = '/login';
+const DEDUPE_WINDOW_MS = 1500;
 
 function redirectToLogin(reason: string): never {
   window.location.replace(`${LOGIN_URL}?next=/crm-dashboard&reason=${encodeURIComponent(reason)}`);
@@ -47,9 +48,27 @@ async function request(path: string, method: string, body?: unknown) {
   return data;
 }
 
+/**
+ * Several components ask for the same resource (for example /notifications) while a page is rendering.
+ * Identical GET requests made within a short window share one network call; any write clears the sharing.
+ */
+const recentReads = new Map<string, {startedAt: number; result: Promise<any>}>();
+
 export function api(path: string, method = 'GET', body?: unknown): Promise<any> {
   validateWrite(path, method, body);
-  return request(path, method, body);
+
+  if (method !== 'GET') {
+    recentReads.clear();
+    return request(path, method, body);
+  }
+
+  const recent = recentReads.get(path);
+  if (recent && Date.now() - recent.startedAt < DEDUPE_WINDOW_MS) return recent.result;
+
+  const result = request(path, method);
+  recentReads.set(path, {startedAt: Date.now(), result});
+  result.catch(() => recentReads.delete(path));
+  return result;
 }
 
 let currentUser: any = null;
