@@ -1552,6 +1552,19 @@ select.fap-preview-sync-highlight {
   transition: all 0.25s ease !important;
 }
 
+/* Rich rendered HTML typography inside digital twin preview */
+.preana-rich-rendered-html p {
+  margin: 0 0 3px 0;
+}
+.preana-rich-rendered-html p:last-child {
+  margin-bottom: 0;
+}
+.preana-rich-rendered-html ul,
+.preana-rich-rendered-html ol {
+  margin: 0 0 3px 0;
+  padding-left: 18px;
+}
+
 /* Accordion Container & Cards */
 .fap-accordion-group {
   display: flex;

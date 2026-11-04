@@ -7,7 +7,7 @@ import {
   generatePreAnalysisNo,
   getRomanMonthFromDate
 } from '../server/pre-analysis-store';
-import { syncCustomerAndPicIntoPreAnalysis, type PreAnalysisData } from '../src/PreAnalysisForm';
+import { syncCustomerAndPicIntoPreAnalysis, renderRichHtml, type PreAnalysisData } from '../src/PreAnalysisForm';
 
 test('pre-analysis number auto-increment starts from 1 with 000/PREANA/MKT/IX/YYYY template', () => {
   // Test starting from 1
@@ -316,6 +316,14 @@ test('pre-analysis Section 1 fapNumber syncs from application and remains protec
   });
   assert.equal(synced.fapNumber, '005/AF/X/2026');
   assert.equal(synced.customerProjectName, 'PT Test Company');
+});
+
+test('renderRichHtml safely parses HTML markup and unescapes entities for projectOwner', () => {
+  const htmlInput = '<p>1. PT Industrial Forest Plantation (RAPP)</p><p>2. Oki Pulp &amp; Paper</p>';
+  const element = renderRichHtml(htmlInput);
+  assert.ok(element, 'Element should not be null');
+  assert.equal(element.props.className, 'preana-rich-rendered-html');
+  assert.equal(element.props.dangerouslySetInnerHTML.__html, htmlInput);
 });
 
 // Cleanly terminate active database connection pool after test completion
