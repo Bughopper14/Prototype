@@ -631,7 +631,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   goodProjectNote: 'Harvesting Contractor, PT RAPP - APRIL Group',
   goodCustomer: false,
   goodCustomerNote: 'PT HPS was newly established company since 2024. Group (HTPS) newly established since 2025.',
-  recommendation: 'NOT RECOMMENDED',
+  recommendation: 'NOT RECOMMEND TO FULL DOCUMENTATION',
   briefNote: `- Based on documents (Legal & financial data), PT HPS is newly established company since 2024.\n- It's Group (PT Harta Putramas Santosa / PT HTPS) also newly established company since 2025.\nNot recommend to process in this stage`,
   suggestions: [
     'If still want to process with FPG, can be consider with the limitations :',
@@ -799,7 +799,10 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
   });
   const signatureDateToDisplay = data.signatureDate || todayDateStr;
 
-  const isRecommended = data.recommendation ? (!data.recommendation.toUpperCase().includes("NOT") && data.recommendation.toUpperCase().includes("RECOMMEND")) : false;
+  const recStr = (data.recommendation || '').trim().toUpperCase();
+  const isRecommended = recStr.length > 0 && !recStr.includes("NOT") && recStr.includes("RECOMMEND");
+  const isNotRecommended = recStr.length > 0 && recStr.includes("NOT");
+  const hasSelectedRecommendation = isRecommended || isNotRecommended;
 
   const [viewMode, setViewMode] = useState<'digital-twin' | 'original-pdf'>('digital-twin');
   const [zoomLevel, setZoomLevel] = useState<number>(0.75);
@@ -3284,8 +3287,8 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 <div>
                   <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                     <span>RECOMMENDATION{reqMark('recommendation', 'Expert Judgement Conclusion')}</span>
-                    <span style={{ fontSize: '0.72rem', color: isRecommended ? '#166534' : '#991b1b', fontWeight: 700 }}>
-                      {isRecommended ? '✓ RECOMMENDED' : '✕ NOT RECOMMENDED'}
+                    <span style={{ fontSize: '0.72rem', color: isRecommended ? '#166534' : isNotRecommended ? '#991b1b' : '#64748b', fontWeight: 700 }}>
+                      {isRecommended ? '✓ RECOMMENDED' : isNotRecommended ? '✕ NOT RECOMMEND TO FULL DOCUMENTATION' : '—'}
                     </span>
                   </label>
                   <div
@@ -3301,13 +3304,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       type="button"
                       id="btn-toggle-recommendation-yes"
                       onClick={() => {
-                        updateField('recommendation', 'RECOMMENDED');
+                        const nextVal = isRecommended ? '' : 'RECOMMENDED';
+                        updateField('recommendation', nextVal);
                         scrollToPreviewElement('preana-preview-cell-recommendation');
                       }}
                       style={{
                         flex: 1,
                         padding: '9px 16px',
-                        fontSize: '0.85rem',
+                        fontSize: '0.82rem',
                         fontWeight: 700,
                         borderRadius: '6px',
                         cursor: 'pointer',
@@ -3318,7 +3322,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         transition: 'all 0.15s ease',
                         border: isRecommended ? '2px solid #16a34a' : '1px solid #cbd5e1',
                         background: isRecommended ? '#f0fdf4' : '#ffffff',
-                        color: isRecommended ? '#15803d' : '#64748b',
+                        color: isRecommended ? '#15803d' : '#1e293b',
                         boxShadow: isRecommended ? '0 1px 3px rgba(22, 163, 74, 0.2)' : 'none'
                       }}
                     >
@@ -3329,13 +3333,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                       type="button"
                       id="btn-toggle-recommendation-no"
                       onClick={() => {
-                        updateField('recommendation', 'NOT RECOMMENDED');
+                        const nextVal = isNotRecommended ? '' : 'NOT RECOMMEND TO FULL DOCUMENTATION';
+                        updateField('recommendation', nextVal);
                         scrollToPreviewElement('preana-preview-cell-recommendation');
                       }}
                       style={{
                         flex: 1,
                         padding: '9px 16px',
-                        fontSize: '0.85rem',
+                        fontSize: '0.82rem',
                         fontWeight: 700,
                         borderRadius: '6px',
                         cursor: 'pointer',
@@ -3344,14 +3349,14 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                         justifyContent: 'center',
                         gap: '8px',
                         transition: 'all 0.15s ease',
-                        border: !isRecommended ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                        background: !isRecommended ? '#fef2f2' : '#ffffff',
-                        color: !isRecommended ? '#b91c1c' : '#64748b',
-                        boxShadow: !isRecommended ? '0 1px 3px rgba(239, 68, 68, 0.2)' : 'none'
+                        border: isNotRecommended ? '2px solid #ef4444' : '1px solid #cbd5e1',
+                        background: isNotRecommended ? '#fef2f2' : '#ffffff',
+                        color: isNotRecommended ? '#b91c1c' : '#1e293b',
+                        boxShadow: isNotRecommended ? '0 1px 3px rgba(239, 68, 68, 0.2)' : 'none'
                       }}
                     >
-                      <XCircle size={16} color={!isRecommended ? '#ef4444' : '#94a3b8'} />
-                      NOT RECOMMENDED
+                      <XCircle size={16} color={isNotRecommended ? '#ef4444' : '#94a3b8'} />
+                      NOT RECOMMEND TO FULL DOCUMENTATION
                     </button>
                   </div>
                 </div>
@@ -4656,9 +4661,9 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                 id="preana-preview-cell-recommendation"
                 onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
                 style={{
-                  background: isRecommended ? '#dcfce7' : '#fee2e2',
-                  border: `2px solid ${isRecommended ? '#22c55e' : '#ef4444'}`,
-                  color: isRecommended ? '#166534' : '#991b1b',
+                  background: !hasSelectedRecommendation ? '#ffffff' : isRecommended ? '#dcfce7' : '#fee2e2',
+                  border: `2px solid ${!hasSelectedRecommendation ? '#cbd5e1' : isRecommended ? '#22c55e' : '#ef4444'}`,
+                  color: !hasSelectedRecommendation ? '#000000' : isRecommended ? '#166534' : '#991b1b',
                   padding: '8px 12px',
                   borderRadius: '4px',
                   fontWeight: 800,
@@ -4669,7 +4674,7 @@ export function PreAnalysisForm(props: PreAnalysisFormProps) {
                   cursor: 'pointer'
                 }}
               >
-                RECOMMENDATION: {data.recommendation || (isRecommended ? 'RECOMMENDED' : 'NOT RECOMMENDED')}
+                RECOMMENDATION: {hasSelectedRecommendation ? (data.recommendation ? data.recommendation.toUpperCase() : (isRecommended ? 'RECOMMENDED' : 'NOT RECOMMEND TO FULL DOCUMENTATION')) : '—'}
               </div>
 
               {/* Suggestion Bullet Points */}
