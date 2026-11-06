@@ -1791,18 +1791,80 @@ label.field-active-sync .field-label {
   background: #ffffff;
 }
 
-/* Quick Jump Section Chips in Preview Ribbon */
-.excel-section-chips {
+/* Quick Jump Section Chips in Preview Ribbon with Smooth Slider Controls */
+.excel-ribbon-sub-tier {
   display: flex;
   align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 5px 12px;
+  position: relative;
   background: #00224a;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   width: 100%;
-  flex-shrink: 0;
+  overflow: hidden;
   box-sizing: border-box;
+}
+
+.excel-chips-scroll-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 29px;
+  background: #001a38;
+  color: #93c5fd;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  z-index: 5;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.excel-chips-scroll-btn:hover {
+  background: #1e3a8a;
+  color: #ffffff;
+}
+
+.excel-chips-scroll-btn:active {
+  background: #2563eb;
+}
+
+.excel-chips-scroll-btn.left {
+  border-right: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 2px 0 6px rgba(0,0,0,0.25);
+}
+
+.excel-chips-scroll-btn.right {
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: -2px 0 6px rgba(0,0,0,0.25);
+}
+
+.excel-section-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 3px 6px;
+  width: 100%;
+  flex: 1;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+}
+
+.excel-section-chips::-webkit-scrollbar {
+  height: 3px;
+}
+
+.excel-section-chips::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+.excel-section-chips::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 /* NIB Field OCR Trigger Pill (Header Level) */

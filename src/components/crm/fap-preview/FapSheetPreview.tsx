@@ -1,5 +1,5 @@
 import {useState, useEffect, useRef, useMemo} from 'react';
-import {FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer} from 'lucide-react';
+import {FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer, ChevronLeft, ChevronRight} from 'lucide-react';
 import {FAP_EXCEL_HTML_TEMPLATE} from '@/lib/client/fap-html-template';
 import {useMasterData} from '@/components/crm/master-data/MasterData';
 
@@ -17,7 +17,24 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
   const master = useMasterData();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const chipsScrollRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(0.15);
+
+  const scrollChips = (dir: 'left' | 'right') => {
+    if (chipsScrollRef.current) {
+      const offset = dir === 'left' ? -180 : 180;
+      chipsScrollRef.current.scrollBy({left: offset, behavior: 'smooth'});
+    }
+  };
+
+  useEffect(() => {
+    if (props.activeSection && chipsScrollRef.current) {
+      const activeEl = chipsScrollRef.current.querySelector<HTMLElement>('.excel-chip-btn.active');
+      if (activeEl) {
+        activeEl.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'center'});
+      }
+    }
+  }, [props.activeSection]);
 
   // Compute normalized values from props
   const d = useMemo(() => {
@@ -531,15 +548,35 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
             </div>
           </div>
 
-          {/* Sub Tier: Harmonious Section Quick-Jump Tabs */}
+          {/* Sub Tier: Harmonious Section Quick-Jump Tabs with Slider */}
           <div className="excel-ribbon-sub-tier">
-            <div className="excel-section-chips">
+            <button
+              type="button"
+              className="excel-chips-scroll-btn left"
+              onClick={() => scrollChips('left')}
+              title="Slide Left (View Earlier Sections)"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <div
+              className="excel-section-chips"
+              ref={chipsScrollRef}
+              onWheel={e => {
+                if (chipsScrollRef.current && Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                  chipsScrollRef.current.scrollLeft += e.deltaY;
+                }
+              }}
+            >
               {[
                 {id: 'fap-preview-sec-header', label: '1. Identity'},
                 {id: 'fap-preview-sec-company', label: '2. Domicile'},
                 {id: 'fap-preview-sec-business', label: '3. Profile'},
                 {id: 'fap-preview-sec-pic', label: '4. PIC'},
-                {id: 'fap-preview-sec-projects', label: '5. Projects'},
+                {id: 'fap-preview-sec-purpose-assets', label: '5. Purpose & Assets'},
+                {id: 'fap-preview-sec-projects', label: '6. Projects'},
+                {id: 'fap-preview-sec-banks', label: '7. References'},
+                {id: 'fap-preview-sec-proposal', label: '8. Financing Proposal'},
+                {id: 'fap-preview-sec-financial', label: '9. Financial Statements'},
               ].map(chip => (
                 <button
                   key={chip.id}
@@ -552,6 +589,14 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              className="excel-chips-scroll-btn right"
+              onClick={() => scrollChips('right')}
+              title="Slide Right (View Further Sections)"
+            >
+              <ChevronRight size={14} />
+            </button>
           </div>
         </div>
       )}

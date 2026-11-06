@@ -91,45 +91,21 @@ export const cleanWilayahStr = (s: string) =>
     .replace(/[^a-zA-Z0-9]/g, '')
     .toLowerCase();
 
-export function normalizeWilayahInput(str: string): string {
-  if (!str) return '';
-  let s = String(str).trim();
-  let prefix = '';
-  if (/^(?:kab\\.?|kabupaten\\.?)\\s+/i.test(s)) {
-    prefix = 'Kabupaten ';
-    s = s.replace(/^(?:kab\\.?|kabupaten\\.?)\\s+/i, '');
-  } else if (/^(?:kota\\s*adm\\.?|kota\\s*administrasi\\.?)\\s+/i.test(s)) {
-    prefix = 'Kota Administrasi ';
-    s = s.replace(/^(?:kota\\s*adm\\.?|kota\\s*administrasi\\.?)\\s+/i, '');
-  } else if (/^(?:kota|kodya)\\.?\\s+/i.test(s)) {
-    prefix = 'Kota ';
-    s = s.replace(/^(?:kota|kodya)\\.?\\s+/i, '');
-  } else if (/^(?:kec\\.?|kecamatan\\.?)\\s+/i.test(s)) {
-    prefix = 'Kecamatan ';
-    s = s.replace(/^(?:kec\\.?|kecamatan\\.?)\\s+/i, '');
-  } else if (/^(?:kel\\.?|kelurahan\\.?)\\s+/i.test(s)) {
-    prefix = 'Kelurahan ';
-    s = s.replace(/^(?:kel\\.?|kelurahan\\.?)\\s+/i, '');
-  } else if (/^(?:desa|ds\\.?)\\s+/i.test(s)) {
-    prefix = 'Desa ';
-    s = s.replace(/^(?:desa|ds\\.?)\\s+/i, '');
-  } else if (/^(?:prov\\.?|prop\\.?|propinsi\\.?|provinsi\\.?)\\s+/i.test(s)) {
-    prefix = 'Provinsi ';
-    s = s.replace(/^(?:prov\\.?|prop\\.?|propinsi\\.?|provinsi\\.?)\\s+/i, '');
-  }
-  const titleCore = s.replace(/\b([a-zA-Z]+)\b/g, w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-  return prefix ? prefix + titleCore : titleCore;
-}
-
 export function stripWilayahPrefix(str: string): string {
   if (!str) return '';
   return String(str)
     .trim()
     .replace(
-      /^(?:kabupaten|kab\\.?|kota\\s*administrasi|kota\\s*adm\\.?|kota|kodya|kecamatan|kec\\.?|kelurahan|kel\\.?|desa|ds\\.?|provinsi|propinsi|prov\\.?|prop\\.?)\\s+/i,
+      /^(?:kabupaten|kab\b\.?|kota\s*administrasi|kota\s*adm\b\.?|kota|kot\b\.?|kodya\b\.?|kecamatan|kec\b\.?|desa\/kelurahan|kelurahan\/desa|kelurahan|kel\b\.?|desa|ds\b\.?|provinsi|propinsi|prov\b\.?|prop\b\.?)\s*/i,
       '',
     )
     .trim();
+}
+
+export function normalizeWilayahInput(str: string): string {
+  if (!str) return '';
+  const stripped = stripWilayahPrefix(str);
+  return stripped.replace(/\b([a-zA-Z]+)\b/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 
 export function matchWilayahName(masterName: string, input: string): boolean {

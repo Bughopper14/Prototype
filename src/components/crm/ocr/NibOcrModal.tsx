@@ -1188,7 +1188,7 @@ export function NibOcrModal({
                         type="text"
                         value={formData.rt}
                         maxLength={3}
-                        placeholder="RT 005"
+                        placeholder=""
                         onChange={e => setFormData({...formData, rt: e.target.value.replace(/\D/g, '')})}
                         style={{
                           width: '50%',
@@ -1204,7 +1204,7 @@ export function NibOcrModal({
                         type="text"
                         value={formData.rw}
                         maxLength={3}
-                        placeholder="RW 003"
+                        placeholder=""
                         onChange={e => setFormData({...formData, rw: e.target.value.replace(/\D/g, '')})}
                         style={{
                           width: '50%',
