@@ -1,21 +1,21 @@
 import {lazy, Suspense} from 'react';
 import {Navigate, Route, Routes} from 'react-router';
-import {RequireSession} from '@/lib/session';
+import {RequireSession} from '@/shared/lib/session';
 
 // Each area is its own chunk, downloaded the first time the user opens it.
-const LoginPage = lazy(() => import('@/pages/login/page'));
-const GalleryPage = lazy(() => import('@/pages/gallery/page'));
-const UserManagementPage = lazy(() => import('@/pages/user-management/page'));
-const CrmLayout = lazy(() => import('@/pages/crm-dashboard/layout'));
-const OverviewPage = lazy(() => import('@/pages/crm-dashboard/page'));
-const ApplicationsPage = lazy(() => import('@/pages/crm-dashboard/applications/page'));
-const NewApplicationPage = lazy(() => import('@/pages/crm-dashboard/applications/new/page'));
-const ApplicationPage = lazy(() => import('@/pages/crm-dashboard/applications/[id]/page'));
-const DocumentDeskPage = lazy(() => import('@/pages/crm-dashboard/document-desk/page'));
-const CustomersPage = lazy(() => import('@/pages/crm-dashboard/customers/page'));
-const MasterDataPage = lazy(() => import('@/pages/crm-dashboard/master-data/page'));
-const NotificationsPage = lazy(() => import('@/pages/crm-dashboard/notifications/page'));
-const ActivityPage = lazy(() => import('@/pages/crm-dashboard/activity/page'));
+const LoginPage = lazy(() => import('@/features/auth/LoginPage'));
+const GalleryPage = lazy(() => import('@/features/portal/GalleryPage'));
+const UserManagementPage = lazy(() => import('@/features/user-management/UserManagementPage'));
+const CrmLayout = lazy(() => import('@/features/crm/CrmLayout'));
+const OverviewPage = lazy(() => import('@/features/overview/OverviewPage'));
+const ApplicationsPage = lazy(() => import('@/features/applications/ApplicationsPage'));
+const NewApplicationPage = lazy(() => import('@/features/applications/NewApplicationPage'));
+const ApplicationPage = lazy(() => import('@/features/applications/ApplicationPage'));
+const DocumentDeskPage = lazy(() => import('@/features/documents/DocumentDeskPage'));
+const CustomersPage = lazy(() => import('@/features/customers/CustomersPage'));
+const MasterDataPage = lazy(() => import('@/features/master-data/MasterDataPage'));
+const NotificationsPage = lazy(() => import('@/features/activity/NotificationsPage'));
+const ActivityPage = lazy(() => import('@/features/activity/ActivityPage'));
 
 export function App() {
   return (

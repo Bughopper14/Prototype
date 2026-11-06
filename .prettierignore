@@ -6,6 +6,4 @@ storage
 apps/ocr
 apps/backend/db
 apps/frontend/public
-apps/frontend/src/lib/fap-html-template.ts
-apps/frontend/src/lib/fap-excel-data.ts
-apps/frontend/src/lib/logo-data-uri.ts
+apps/frontend/src/features/fap/lib/fap-html-template.ts

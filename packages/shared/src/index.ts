@@ -5,3 +5,4 @@ export * from './experience';
 export * from './fields';
 export * from './input-validation';
 export * from './master-catalog';
+export * from './stored-documents';

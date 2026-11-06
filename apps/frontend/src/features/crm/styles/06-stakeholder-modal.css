@@ -1,0 +1,621 @@
+/* KTP side-by-side stakeholder modal, wide deed modal, TinyMCE, Excel zoom. */
+/* KTP Side-by-Side in Shareholder Modal */
+.modal-stakeholder-ktp {
+  width: min(1180px, 90vw) !important;
+  max-width: 90vw !important;
+  height: auto !important;
+  max-height: 86vh !important;
+}
+
+.modal.modal-stakeholder-form-only {
+  width: min(760px, 90vw) !important;
+  max-width: 90vw !important;
+  height: auto !important;
+  max-height: 86vh !important;
+}
+
+.modal.modal-stakeholder-form-only .modal-side-by-side-body {
+  display: block !important;
+  padding: 18px 22px !important;
+  overflow-y: auto !important;
+  max-height: calc(86vh - 125px) !important;
+}
+
+.modal.modal-stakeholder-form-only .modal-side-form-pane {
+  flex: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  padding-right: 0 !important;
+  overflow-y: visible !important;
+}
+
+.modal-stakeholder-ktp .modal-side-by-side-body {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 20px !important;
+  padding: 16px 20px !important;
+  max-height: calc(86vh - 125px) !important;
+  overflow: hidden !important;
+}
+
+/* Bagian Kiri (Form) LEBIH BESAR dari bagian kanan (Upload) */
+.modal-stakeholder-ktp .modal-side-form-pane {
+  flex: 1.35 !important;
+  width: auto !important;
+  min-width: 360px !important;
+  max-width: none !important;
+  overflow-y: auto !important;
+  padding-right: 16px !important;
+}
+
+/* Bagian Kanan (Upload & OCR) COMPACT & PROPORSIONAL */
+.modal-stakeholder-ktp .modal-side-preview-pane {
+  flex: 1 !important;
+  width: 380px !important;
+  min-width: 300px !important;
+  max-width: 440px !important;
+  border-left: 1px solid #cbd5e1 !important;
+  padding-left: 18px !important;
+  overflow-y: auto !important;
+}
+
+/* Formgrid di sisi kiri lapang 2 kolom */
+.modal-stakeholder-ktp .formgrid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px 16px !important;
+}
+
+.modal-stakeholder-ktp .formgrid label {
+  min-width: 0 !important;
+}
+
+.modal-stakeholder-ktp .formgrid label.full {
+  grid-column: 1 / -1 !important;
+}
+
+.stakeholder-ktp-pane {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto !important;
+  gap: 12px;
+}
+
+.ktp-upload-box {
+  border: 2px dashed #94a3b8;
+  border-radius: 8px;
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  min-height: 220px;
+}
+
+.ktp-upload-box:hover {
+  border-color: #002060;
+  background: #eff6ff;
+}
+
+.ktp-preview-box {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.ktp-preview-img {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 250px;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+}
+
+.ktp-preview-iframe {
+  width: 100%;
+  height: 260px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+}
+
+.ktp-ocr-result-container {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 2px 6px rgba(0, 32, 96, 0.04);
+  flex-shrink: 0;
+}
+
+.ktp-ocr-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #0f172a;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.ktp-ocr-textarea:focus {
+  outline: none;
+  border-color: #002060;
+  background: #ffffff;
+}
+
+/* Enhanced Side-by-Side KTP Modal Styles */
+.ktp-form-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 12px;
+}
+
+.ktp-pane-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e2e8f0;
+  margin-bottom: 10px;
+}
+
+.ktp-viewer-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 32, 96, 0.05);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.ktp-viewer-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.ktp-viewer-filename {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.ktp-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  color: #334155;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.15s ease;
+}
+
+.ktp-ctrl-btn:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #002060;
+}
+
+.ktp-ctrl-btn.reset {
+  font-size: 10px;
+  font-weight: 600;
+  color: #2563eb;
+  padding: 2px 6px;
+}
+
+.ktp-img-stage {
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f1f5f950;
+  min-height: 180px;
+  max-height: 250px;
+  overflow: hidden;
+  position: relative;
+}
+
+.ktp-img-viewport {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.ktp-preview-img-interactive {
+  max-width: 100%;
+  max-height: 230px;
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  background: #ffffff;
+}
+
+.ktp-upload-box-enhanced {
+  border: 2px dashed #94a3b8;
+  border-radius: 10px;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #ffffff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-height: 220px;
+}
+
+.ktp-upload-box-enhanced:hover {
+  border-color: #002060;
+  background: #f8fafc;
+}
+
+.ktp-upload-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ktp-upload-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: #475569;
+  max-width: 440px;
+  line-height: 1.45;
+}
+
+.ktp-ocr-workspace-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 2px 6px rgba(0, 32, 96, 0.04);
+  flex-shrink: 0;
+}
+
+.ktp-ocr-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ktp-ocr-badge-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ktp-ocr-status {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.ktp-ocr-status.ready {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.ktp-ocr-status.loading {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ktp-ocr-status.empty {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.ktp-autofill-btn {
+  background: linear-gradient(135deg, #002060 0%, #1e3a8a 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  font-weight: 600 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 6px 12px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 4px rgba(0, 32, 96, 0.15);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.ktp-autofill-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 32, 96, 0.25);
+}
+
+.ktp-ocr-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.ktp-ocr-tab {
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ktp-ocr-tab:hover {
+  color: #002060;
+  background: #f1f5f9;
+}
+
+.ktp-ocr-tab.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.ktp-structured-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.ktp-field-tile {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: border-color 0.15s ease;
+}
+
+.ktp-field-tile:hover {
+  border-color: #cbd5e1;
+}
+
+.ktp-field-tile.highlight {
+  background: #eff6ff40;
+  border-color: #bfdbfe;
+}
+
+.ktp-field-tile.full-width {
+  grid-column: 1 / -1;
+}
+
+.ktp-field-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ktp-field-key {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #64748b;
+  letter-spacing: 0.3px;
+}
+
+.ktp-field-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.ktp-field-val.nik-val {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+  font-size: 13.5px;
+  color: #002060;
+  letter-spacing: 0.5px;
+}
+
+.ktp-field-val.address-val {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #334155;
+}
+
+.ktp-field-sub {
+  font-size: 9.5px;
+  color: #94a3b8;
+}
+
+.ktp-tile-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9.5px;
+  color: #2563eb;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.ktp-tile-copy:hover {
+  background: #eff6ff;
+}
+
+.ktp-raw-view {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Wide Modal for Legal Deed (Edit / Tambah Akta) */
+.modal-legal-deed-wide {
+  width: min(960px, 90vw) !important;
+  max-width: 90vw !important;
+  height: auto !important;
+  max-height: 86vh !important;
+}
+
+.modal-legal-deed-wide .modal-body {
+  max-height: calc(86vh - 125px) !important;
+  overflow-y: auto !important;
+  padding: 16px 20px !important;
+}
+
+.modal-legal-deed-wide .formgrid {
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 12px 18px !important;
+}
+
+.legal-unified-remarks-box {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  margin-top: 16px !important;
+  padding: 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 10px !important;
+  box-shadow: 0 1px 3px rgba(0, 32, 96, 0.04) !important;
+}
+
+.legal-tinymce-wrapper {
+  margin-top: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+.legal-tinymce-wrapper .tox-tinymce {
+  border: none !important;
+}
+
+/* TinyMCE & Legal Remarks List Numbering */
+.legal-single-remark-view ol {
+  margin: 0 0 10px 0;
+  padding-left: 26px !important;
+  list-style-type: decimal !important;
+}
+.legal-single-remark-view ol li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+.legal-single-remark-view ul {
+  margin: 0 0 10px 0;
+  padding-left: 26px !important;
+  list-style-type: disc !important;
+}
+.legal-single-remark-view ul li {
+  margin-bottom: 5px;
+  line-height: 1.6;
+}
+/* TinyMCE GPL / Clean UI */
+.tox-notifications-container,
+.tox-statusbar__branding,
+.tox-statusbar__path,
+.tox .tox-statusbar__path,
+.tox-promotion {
+  display: none !important;
+}
+
+/* Excel Zoom Controls & Auto Fit */
+.excel-zoom-mode-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  padding: 2px 7px !important;
+  border-radius: 3px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  margin-right: 4px !important;
+  white-space: nowrap !important;
+}
+
+.excel-zoom-mode-btn:hover {
+  background: rgba(255, 255, 255, 0.28) !important;
+}
+
+.excel-zoom-mode-btn.active {
+  background: #ffffff !important;
+  color: #002c5f !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2) !important;
+}
+
+@media print {
+  .excel-fap-paper-scaler {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    position: static !important;
+    margin: 0 !important;
+  }
+  .excel-fap-paper {
+    transform: none !important;
+    position: static !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+  }
+}

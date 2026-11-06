@@ -1,4 +1,5 @@
 import {Controller, Get, Post, Res} from '@nestjs/common';
+import {storedDocumentUrl} from '@liugong/shared';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -187,13 +188,8 @@ export class IdentityDocumentsController {
       return {status: 'not_found', data: null};
     }
     const fileName = row.file_name || (row.document_path ? path.basename(row.document_path) : null);
-    const fileUrl = row.document_path
-      ? row.document_path.startsWith('/')
-        ? row.document_path
-        : `/${row.document_path.replace(/\\/g, '/')}`
-      : fileName
-        ? `/documents/${type}/${fileName}`
-        : null;
+    const fileUrl =
+      storedDocumentUrl(row.document_path) || (fileName ? `/documents/${type}/${fileName}` : null);
     return {
       status: 'success',
       data: {
