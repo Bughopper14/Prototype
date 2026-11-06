@@ -1,42 +1,24 @@
 {
   "name": "liugong-finance-los",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "typecheck": "tsc --noEmit",
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:setup": "tsx --env-file=.env scripts/db-setup.ts",
-    "user:create": "tsx --env-file=.env scripts/create-user.ts",
-    "import:pre-analysis": "tsx --env-file=.env scripts/import-pre-analysis.ts"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0",
-    "@fortawesome/fontawesome-free": "^6.7.2",
-    "@tinymce/tinymce-react": "^6.3.1",
-    "bcryptjs": "^3.0.0",
-    "decimal.js": "^10.5.0",
-    "jsonwebtoken": "^9.0.2",
-    "lucide-react": "^0.468.0",
-    "mysql2": "^3.24.5",
-    "next": "^15.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "tesseract.js": "^7.0.0",
-    "tinymce": "^8.10.0",
-    "zod": "^3.24.0"
+    "db:setup": "pnpm --filter @liugong/backend db:setup",
+    "user:create": "pnpm --filter @liugong/backend user:create",
+    "import:pre-analysis": "pnpm --filter @liugong/backend import:pre-analysis"
   },
   "devDependencies": {
-    "@types/jsonwebtoken": "^9.0.0",
-    "@types/node": "^22.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "prettier": "^3.9.10",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
   }
 }

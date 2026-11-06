@@ -213,17 +213,22 @@ Sesi berakhir otomatis bila tidak ada aktivitas (default 15 menit, bisa diatur p
 
 ## 💻 Menjalankan Aplikasi
 
+Butuh Node.js 22+, pnpm 9, MySQL 8, dan Python 3.12 (untuk OCR).
+
 ```sh
-npm install
-cp .env.example .env          # isi DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (MySQL)
-npm run db:setup              # membuat tabel dan data referensi
-npm run user:create -- admin "<password>" "System Admin" --admin   # hanya untuk database baru
-npm run dev                   # http://localhost:3000 (port bisa diubah lewat PORT)
+pnpm install
+cp apps/backend/.env.example apps/backend/.env   # isi DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (MySQL)
+pnpm db:setup                                    # membuat tabel dan data referensi
+pnpm user:create admin "<password>" "System Admin" --admin   # hanya untuk database baru
+pnpm dev                                         # aplikasi: http://localhost:3000 · API: http://localhost:3001
 ```
 
-OCR dokumen (KTP, NPWP, NIB, FAP, paspor, KITAS) memakai layanan Python: lihat bagian OCR di [TECHNICAL.md](TECHNICAL.md).
+Buka aplikasi di **<http://localhost:3000>**. Port 3001 hanya untuk API, bukan tampilan.
 
-Dokumentasi teknis (struktur kode, database, API, skrip, performa) ada di **[TECHNICAL.md](TECHNICAL.md)**.
+OCR dokumen (KTP, NPWP, NIB, FAP, paspor, KITAS) memakai layanan Python di `apps/ocr`. Cara memasangnya ada di bagian OCR
+di [TECHNICAL.md](TECHNICAL.md).
+
+Dokumentasi teknis (struktur monorepo, database, API, keamanan, skrip, performa) ada di **[TECHNICAL.md](TECHNICAL.md)**.
 
 ---
 Hak Cipta © 2026 **PT LiuGong Finance Indonesia**. Seluruh hak cipta dilindungi undang-undang.
