@@ -4,8 +4,8 @@
  * Usage: pnpm user:create -- <username> <password> "<Full Name>" [--admin]
  * --admin grants the Super Admin role on every portal application.
  */
-import {pool} from '../src/db/pool';
-import {hashPassword} from '../src/auth/password';
+import {pool} from '../src/core/db/pool';
+import {hashPassword} from '../src/modules/auth/password';
 
 async function main() {
   const [username, password, fullName] = process.argv.slice(2).filter(arg => !arg.startsWith('--'));

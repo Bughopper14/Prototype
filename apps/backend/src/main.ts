@@ -5,9 +5,10 @@ import type {NestExpressApplication} from '@nestjs/platform-express';
 import compression from 'compression';
 import helmet from 'helmet';
 import {AppModule} from './app.module';
+import {bodyParserErrors, bodyParsers} from './core/http/body-parsers';
 
 async function bootstrap() {
-  // Body parsing is left to the API handlers (JSON, form and multipart), so Nest's parser is disabled.
+  // Body parsing is configured below (JSON, form posts and multipart uploads), so Nest's default parser is off.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {bodyParser: false});
 
   // Behind a reverse proxy (nginx), trust its X-Forwarded-* headers. Set TRUST_PROXY=1 (hops) or false.
@@ -24,6 +25,8 @@ async function bootstrap() {
     .map(origin => origin.trim())
     .filter(Boolean);
   if (origins.length) app.enableCors({origin: origins, credentials: true});
+
+  app.use('/api', ...bodyParsers, bodyParserErrors);
 
   app.enableShutdownHooks();
   const port = Number(process.env.API_PORT || 3001);

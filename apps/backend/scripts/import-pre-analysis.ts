@@ -6,7 +6,7 @@
  *
  * Usage: pnpm import:pre-analysis -- <folder> [--apply]   (without --apply it only reports)
  */
-import {pool} from '../src/db/pool';
+import {pool} from '../src/core/db/pool';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 

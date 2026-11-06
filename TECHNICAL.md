@@ -61,18 +61,28 @@ apps/
       lib/                          api client, session guard, routes, formatters, OCR parsers, FAP templates
   backend/
     src/
-      main.ts, app.module.ts        bootstrap: helmet, compression, CORS allowlist, trust proxy
-      api.controller.ts             /api/v1/*, /api/auth/*, /documents/* → handlers below
-      api/                          router, dispatch (auth, origin check, parsing), routes/ (one file per area)
-      auth/                         password hashing, sessions/JWT, guard, /api/auth handlers
-      db/pool.ts, query.ts          connection pool and one/many/exec/tx helpers
-      db/repositories/              data access, one file per domain
-      db/setup.ts                   migrations + master-data seeding (only run by scripts/db-setup.ts)
-      domain/                       business rules (validation, installment, FAP diff)
-      common/http/web-bridge.ts     Express ⇄ Web Request/Response adapter
+      main.ts                       bootstrap: helmet, compression, CORS allowlist, trust proxy, body parsers
+      app.module.ts                 imports every domain module; registers the global guards/interceptor/filter
       config/load-env.ts            loads apps/backend/.env
-      storage.ts, documents-file.ts file storage; signed-in download of stored documents
-      ocr/runner.ts                 client of the Python OCR worker
+      core/                         shared by every module
+        http/                       guards (origin, session, write validation), result interceptor, problem filter,
+                                    body parsers, @ApiReq() / @Public() decorators
+        db/                         connection pool, one/many/exec/tx helpers, audit context, setup (migrations)
+        domain/                     Problem/ensure + business rules (stakeholders, financials, installment)
+        storage.ts, ready.ts        file storage (disk or S3); database readiness check
+      modules/                      one folder per domain: <name>.module.ts, <name>.controller.ts, *.repository.ts
+        auth/                       /api/auth/* (login, logout, password, heartbeat), /auth/me, sessions/JWT
+        portal/                     Apps Hub gallery, page access
+        users/                      /um/* user management (ManageSystemGuard)
+        customers/  applications/   customer directory; application intake, page saves, workflow, checklist
+        pre-analysis/  legal/       Pre-Analysis form; legal draft and deed review
+        documents/                  uploads, signed file links, document desk, /documents/* files
+        identity-documents/         KTP / NPWP / passport / KITAS scan and storage
+        ocr/                        Python OCR worker client, warm-up
+        fap/                        FAP OCR comparison, approval, immutable submission archive
+        master-data/                master catalog, mandatory rules, wilayah lookup
+        activity/                   activity feed, notifications, workspace menus
+        system/                     health checks
     db/                             schema.sql (all DDL), seed.sql (reference data), reset-data.sql
     scripts/                        db-setup, create-user, import-pre-analysis, dev/ (e2e, mint-session, check-password)
   ocr/                              Python OCR service (see OCR below)
@@ -93,9 +103,20 @@ Rules:
 1. The browser loads the Vite app. `RequireSession` (`lib/session.tsx`) calls `GET /api/v1/auth/me` and sends signed-out
    users to `/login?next=…`.
 2. The browser calls `/api/v1/...` on its own origin; Vite (dev) or the reverse proxy (production) forwards it to NestJS.
-3. `ApiController` hands the request to `dispatch.ts`, which checks the origin, parses JSON or multipart bodies (max 20 MB),
-   validates the session, binds the audit actor to the MySQL connection, then runs the matching handler from `api/routes/`.
-4. Handlers call repositories; errors are mapped to RFC 7807 `application/problem+json` without stack traces.
+3. Express middleware parses JSON, form posts and multipart uploads (max 20 MB; malformed JSON → 400).
+4. Global guards run in order: `OriginGuard` (writes from another origin → 403), `SessionGuard` (valid session unless the
+   route is `@Public()`), `WriteValidationGuard` (shared input rules from `@liugong/shared` → 422). Module guards follow,
+   e.g. `ManageSystemGuard` on `/um/*`.
+5. The domain controller runs. `ApiResultInterceptor` binds the audit actor to the MySQL connection (triggers fill
+   `created_by` / `updated_by`), sets `Cache-Control: no-store` and sends the returned value as JSON (status 200 unless the
+   handler sets another one).
+6. Errors are mapped by `ProblemFilter` to RFC 7807 `application/problem+json` without stack traces; an expired session
+   answers 401 `SESSION_TIMEOUT` and clears the cookie.
+
+Adding an endpoint: put a method on the domain's controller (`@Get('applications/:id/x')`, parameters
+`@ApiReq() req, @Res() res`), return the result, and keep data access in that module's `*.repository.ts`. A new domain
+gets its own folder with `<name>.module.ts` and is added to `AppModule.imports`. Two developers working on different
+domains therefore touch different folders.
 
 Roles come from `user_app_roles` (application 2 = CRM). `AccessGate` and the navigation hide pages the user has no
 authority for; the API enforces roles independently (for example every `/um/*` route needs `manage_system`).
@@ -134,7 +155,7 @@ office addresses.
 
 ## OCR
 
-`ocr_worker.py` keeps the models loaded and answers one JSON line per request. `apps/backend/src/ocr/runner.ts` starts it
+`ocr_worker.py` keeps the models loaded and answers one JSON line per request. `apps/backend/src/modules/ocr/ocr-runner.ts` starts it
 on demand (and `POST /api/v1/ocr/warmup` loads it in the background when the CRM opens), queues requests, and restarts it
 after a crash or timeout. A warm scan takes 0.2–3 s; the first one after a restart waits for the model load.
 
@@ -186,11 +207,10 @@ The FAP OCR step also needs `apps/ocr/.venv` and `scripts/dev/fixtures/test_doc_
 
 ## Known gaps
 
-- The backend still routes through its own small router (`api/router.ts`) behind one Nest controller; splitting it into a
-  Nest module per domain is the next step.
+- The frontend is still grouped by file kind (`pages/`, `components/`, `lib/`); grouping it by domain like the backend is
+  the next step.
 - `GET /api/v1/master-data` sends about 15 MB per first load; it should be split or loaded lazily.
 - OCR with `doc_type=auto` misdetects KTP/NPWP and fails on the NIB PDF; the UI always sends an explicit type.
-- Malformed JSON bodies return 500 instead of 400 (no stack trace is exposed).
 - Web-push notifications of the old portal are not ported.
 - Repositories still contain legacy `CREATE TABLE` / `ALTER` migration code next to `db/schema.sql`; they are only executed by
   `db:setup` and can be removed once all environments are on the current schema.
