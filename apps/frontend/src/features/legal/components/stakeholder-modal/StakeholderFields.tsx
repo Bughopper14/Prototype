@@ -45,8 +45,8 @@ export function StakeholderFields() {
           };
         }
         if (foreign && FOREIGN_REGION_KEYS.includes(f.key)) {
-          // Default "Others", still editable; plain text since the master lists are Indonesian
-          return {...f, master: false, required: false};
+          // Always "Others" and locked: the Indonesian region lists do not apply to a foreigner
+          return {...f, master: false, required: false, locked: true};
         }
         return f;
       })}

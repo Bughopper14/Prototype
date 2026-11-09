@@ -196,67 +196,30 @@ export function useStakeholderModal({
 
   const currentAsset = docAssets[docType];
 
-  // Parsed data for each doc type
+  // What each document panel shows is only what the OCR read from that document. The form values are
+  // never copied into it: "Auto-fill to Left Form" is optional and goes from here to the form, not back.
   const ktpParsed: ParsedKtpData = {
     ...parseKtpText(curVal.ktpOcrText || ''),
     ...(curVal.ktpData || {}),
   };
-  if (curVal.idNumber && (!ktpParsed.nik || ktpParsed.nik === '')) ktpParsed.nik = curVal.idNumber;
-  if (curVal.name && (!ktpParsed.nama || ktpParsed.nama === '')) ktpParsed.nama = curVal.name;
-  if (curVal.dateOfBirth && (!ktpParsed.dateOfBirth || ktpParsed.dateOfBirth === ''))
-    ktpParsed.dateOfBirth = curVal.dateOfBirth;
-  if (curVal.maritalStatus && curVal.maritalStatus !== 'NONE') {
-    ktpParsed.maritalStatus = curVal.maritalStatus;
-    ktpParsed.status = curVal.maritalStatus;
-  }
-  if (curVal.address && (!ktpParsed.alamat || ktpParsed.alamat === '')) ktpParsed.alamat = curVal.address;
-  if (curVal.province && (!ktpParsed.province || ktpParsed.province === ''))
-    ktpParsed.province = curVal.province;
-  if (curVal.cityRegency && (!ktpParsed.cityRegency || ktpParsed.cityRegency === ''))
-    ktpParsed.cityRegency = curVal.cityRegency;
-  if (curVal.district && (!ktpParsed.kecamatan || ktpParsed.kecamatan === '')) {
-    ktpParsed.kecamatan = curVal.district;
-    ktpParsed.district = curVal.district;
-  }
-  if (curVal.village && (!ktpParsed.kelDesa || ktpParsed.kelDesa === '')) {
-    ktpParsed.kelDesa = curVal.village;
-    ktpParsed.village = curVal.village;
-  }
-  if (curVal.rt && (!ktpParsed.rt || ktpParsed.rt === '')) ktpParsed.rt = curVal.rt;
-  if (curVal.rw && (!ktpParsed.rw || ktpParsed.rw === '')) ktpParsed.rw = curVal.rw;
   if ((ktpParsed.rt || ktpParsed.rw) && !ktpParsed.rtRw) {
     ktpParsed.rtRw = `${ktpParsed.rt || ''}/${ktpParsed.rw || ''}`.replace(/^\/|\/$/g, '');
   }
-  if (curVal.postalCode && (!ktpParsed.kodePos || ktpParsed.kodePos === '')) {
-    ktpParsed.kodePos = curVal.postalCode;
-    ktpParsed.postalCode = curVal.postalCode;
-  }
-  if (curVal.occupation && (!ktpParsed.pekerjaan || ktpParsed.pekerjaan === ''))
-    ktpParsed.pekerjaan = curVal.occupation;
 
   const passportParsed: ParsedPassportData = {
     ...(curVal.passportData || {}),
     rawText: curVal.passportOcrText || '',
   };
-  if (curVal.idNumber && curVal.idType === 'PASSPORT' && !passportParsed.passportNumber)
-    passportParsed.passportNumber = curVal.idNumber;
-  if (curVal.name && !passportParsed.fullName) passportParsed.fullName = curVal.name;
-  if (curVal.dateOfBirth && !passportParsed.dateOfBirth) passportParsed.dateOfBirth = curVal.dateOfBirth;
 
   const npwpParsed: ParsedNpwpData = {
     ...(curVal.npwpData || {}),
     rawText: curVal.npwpOcrText || '',
   };
-  if (curVal.taxId && !npwpParsed.npwpNumber) npwpParsed.npwpNumber = curVal.taxId;
-  if (curVal.name && !npwpParsed.nama) npwpParsed.nama = curVal.name;
 
   const kitasParsed: ParsedKitasData = {
     ...(curVal.kitasData || {}),
     rawText: curVal.kitasOcrText || '',
   };
-  if (curVal.idNumber && curVal.idType === 'KITAS' && !kitasParsed.permitNumber)
-    kitasParsed.permitNumber = curVal.idNumber;
-  if (curVal.name && !kitasParsed.nama) kitasParsed.nama = curVal.name;
 
   const copyToClipboard = (key: string, val: string) => {
     if (!val) return;

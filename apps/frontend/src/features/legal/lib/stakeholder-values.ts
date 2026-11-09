@@ -39,26 +39,24 @@ export function isForeignAddress(s: any) {
 }
 
 /**
- * "Others" is only a default: the fields stay editable. It is filled when the stakeholder
- * becomes foreign (overwriting the Indonesian address), and undone when switching back.
- * Without `prev` (a record just opened), only empty fields are filled, so saved edits are kept.
+ * A foreign stakeholder (PASSPORT - KITAS) always has "Others" from Country to ZIP, and the
+ * fields are locked: this runs on every change, so OCR, old records and typing cannot leave
+ * another value there. When the stakeholder stops being foreign the "Others" values are cleared.
  */
 export function applyForeignAddress(s: any, prev?: any) {
   if (!s) return s;
-  const foreignNow = isForeignAddress(s);
-  const foreignBefore = prev ? isForeignAddress(prev) : !foreignNow;
-  if (foreignNow === foreignBefore) return s; // no switch: keep whatever the user typed
-  const next = {...s};
-  if (foreignNow) {
-    for (const k of FOREIGN_REGION_KEYS)
-      if (prev || !String(next[k] ?? '').trim()) next[k] = FOREIGN_REGION_VALUE;
-  } else {
-    // Switching back clears the foreign address (typed values don't fit the Indonesian lists);
-    // a record just opened only loses leftover "Others"
-    for (const k of FOREIGN_REGION_KEYS) if (prev || next[k] === FOREIGN_REGION_VALUE) next[k] = '';
-    if (next.citizenship === 'INDONESIAN' && !/^indonesia$/i.test(String(next.country || '').trim()))
-      next.country = 'Indonesia';
+  if (isForeignAddress(s)) {
+    if (FOREIGN_REGION_KEYS.every(k => s[k] === FOREIGN_REGION_VALUE)) return s;
+    const next = {...s};
+    for (const k of FOREIGN_REGION_KEYS) next[k] = FOREIGN_REGION_VALUE;
+    return next;
   }
+  const wasForeign = prev ? isForeignAddress(prev) : false;
+  if (!wasForeign && !FOREIGN_REGION_KEYS.some(k => s[k] === FOREIGN_REGION_VALUE)) return s;
+  const next = {...s};
+  for (const k of FOREIGN_REGION_KEYS) if (next[k] === FOREIGN_REGION_VALUE) next[k] = '';
+  if (next.citizenship === 'INDONESIAN' && !/^indonesia$/i.test(String(next.country || '').trim()))
+    next.country = 'Indonesia';
   return next;
 }
 

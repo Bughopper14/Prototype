@@ -85,7 +85,7 @@ export function Fields({
           'address',
         ].includes(f.key);
         const isAgeField = ['ageYears', 'ageMonths', 'experienceYears', 'experienceMonths'].includes(f.key);
-        const isFieldDisabled = disabled || isAgeField;
+        const isFieldDisabled = disabled || isAgeField || !!f.locked;
         const ageStyle = isAgeField
           ? {backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b'}
           : undefined;
@@ -277,7 +277,7 @@ export function Fields({
                 fieldKey={f.key}
                 value={String(fieldValue)}
                 record={value || {}}
-                disabled={disabled}
+                disabled={disabled || !!f.locked}
                 required={isRequired}
                 onFocus={() => {
                   if (onFieldFocus) onFieldFocus(f.key, section);
@@ -288,7 +288,7 @@ export function Fields({
               <select
                 className={value?.[f.key] === '' ? 'is-placeholder' : undefined}
                 required={isRequired}
-                disabled={disabled}
+                disabled={disabled || !!f.locked}
                 value={value?.[f.key] ?? f.options[0]}
                 onFocus={() => {
                   if (onFieldFocus) onFieldFocus(f.key, section);
@@ -313,7 +313,7 @@ export function Fields({
               <textarea
                 aria-label={toTitleCase(f.label)}
                 required={isRequired}
-                disabled={disabled}
+                disabled={disabled || !!f.locked}
                 rows={3}
                 value={fieldValue}
                 placeholder={placeholderText}
