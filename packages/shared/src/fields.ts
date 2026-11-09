@@ -9,6 +9,8 @@ export type Field = {
   unit?: string;
   /** false renders a plain input/select even when the key has a master-data list. */
   master?: boolean;
+  /** Value of a new blank row; when omitted, the first option (or ''/0/null) is used. */
+  defaultValue?: string;
 };
 const f = (key: string, label: string, type = 'text', options?: string[]): Field => ({
   key,
@@ -133,41 +135,47 @@ export const stakeholderFields = [
     'OTHER',
   ]),
   f('stakeholderType', 'Type', 'select', ['INDIVIDUAL', 'CORPORATE']),
-  f('signatory', 'Signatory', 'select', ['NONE', 'YES', 'NO']),
+  {...f('signatory', 'Signatory', 'select', ['NONE', 'YES', 'NO']), defaultValue: ''},
   {
     ...f('idType', 'ID Type', 'select', ['NONE', 'KTP_NPWP', 'PASSPORT_KITAS']),
     optionLabels: {NONE: 'None', KTP_NPWP: 'KTP - NPWP', PASSPORT_KITAS: 'PASSPORT - KITAS'},
   },
   f('idNumber', 'ID Number - [KTP or PASSPORT]'),
   f('idNumberSecondary', 'ID Number - [NPWP or KITAS]'),
-  f('title', 'Title', 'select', ['NONE', 'MR', 'MRS', 'MS', 'DR', 'OTHER']),
+  {...f('title', 'Title', 'select', ['NONE', 'MR', 'MRS', 'MS', 'DR', 'OTHER']), defaultValue: ''},
   f('firstName', 'First Name'),
   f('middleName', 'Middle Name'),
   f('lastName', 'Last Name'),
   f('dateOfBirth', 'Date of Birth', 'date'),
   f('ageYears', 'Age · Years', 'number'),
   f('ageMonths', 'Age · Months', 'number'),
-  f('maritalStatus', 'Marital Status', 'select', [
-    'NONE',
-    'SINGLE',
-    'MARRIED',
-    'DIVORCED',
-    'WIDOWED',
-    'OTHER',
-  ]),
-  f('designation', 'Designation', 'select', [
-    'NONE',
-    'DIRECTOR',
-    'COMMISSIONER',
-    'PRESIDENT_DIRECTOR',
-    'OWNER',
-    'MANAGER',
-    'OTHER',
-  ]),
+  {
+    ...f('maritalStatus', 'Marital Status', 'select', [
+      'NONE',
+      'SINGLE',
+      'MARRIED',
+      'DIVORCED',
+      'WIDOWED',
+      'OTHER',
+    ]),
+    defaultValue: '',
+  },
+  {
+    ...f('designation', 'Designation', 'select', [
+      'NONE',
+      'DIRECTOR',
+      'COMMISSIONER',
+      'PRESIDENT_DIRECTOR',
+      'OWNER',
+      'MANAGER',
+      'OTHER',
+    ]),
+    defaultValue: '', // new rows show the grey placeholder, not "None"
+  },
   f('occupation', 'Occupation'),
   {...f('email', 'Email', 'email'), required: true},
   {...f('mobilePhone', 'Mobile Phone', 'tel'), required: true},
-  f('gender', 'Gender', 'select', ['NONE', 'MALE', 'FEMALE', 'OTHER']),
+  {...f('gender', 'Gender', 'select', ['NONE', 'MALE', 'FEMALE', 'OTHER']), defaultValue: ''},
   f('sharePercentage', 'Percentage Share', 'number'),
   f('depositedCapital', 'Deposited Capital (IDR)', 'number'),
   {...f('primaryCapital', 'Primary Capital (IDR)', 'number'), required: true},
@@ -250,7 +258,10 @@ export const financialFields = [
 
 export const blank = (fields: Field[]) =>
   Object.fromEntries(
-    fields.map(f => [f.key, f.options?.[0] ?? (f.type === 'number' ? 0 : f.type === 'date' ? null : '')]),
+    fields.map(f => [
+      f.key,
+      f.defaultValue ?? f.options?.[0] ?? (f.type === 'number' ? 0 : f.type === 'date' ? null : ''),
+    ]),
   );
 export const label = (s: string) => (s ? toTitleCase(s.replaceAll('_', ' ')) : '—');
 export const legalDeedFields = [

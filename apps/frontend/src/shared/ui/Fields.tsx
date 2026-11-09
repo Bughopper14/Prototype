@@ -120,6 +120,8 @@ export function Fields({
         };
         const fieldError = customErrors?.[f.key] || fieldInputError(f.key, fieldValue);
         const isMaster = f.master !== false && masterGroups.some(g => g.key === masterKey(f.key));
+        // Grey hint inside empty fields; gone as soon as the user types or picks something
+        const placeholderText = `${f.options || isMaster ? 'Select' : 'Enter'} ${toTitleCase(f.label)}`;
         const handleKeyDown = isDigitsOnly
           ? (e: React.KeyboardEvent<HTMLInputElement>) => {
               if (
@@ -284,6 +286,7 @@ export function Fields({
               />
             ) : f.options ? (
               <select
+                className={value?.[f.key] === '' ? 'is-placeholder' : undefined}
                 required={isRequired}
                 disabled={disabled}
                 value={value?.[f.key] ?? f.options[0]}
@@ -295,6 +298,11 @@ export function Fields({
                   if (onSelectOption) onSelectOption(f.key, e.target.value);
                 }}
               >
+                {value?.[f.key] === '' && (
+                  <option value="" disabled hidden>
+                    {placeholderText}
+                  </option>
+                )}
                 {f.options.map(o => (
                   <option key={o} value={o}>
                     {f.optionLabels?.[o] ?? toTitleCase(label(o))}
@@ -308,6 +316,7 @@ export function Fields({
                 disabled={disabled}
                 rows={3}
                 value={fieldValue}
+                placeholder={placeholderText}
                 onFocus={() => {
                   if (onFieldFocus) onFieldFocus(f.key, section);
                 }}
@@ -364,6 +373,7 @@ export function Fields({
                 {...inputLimits(f.key)}
                 aria-invalid={!!fieldError}
                 value={fieldValue}
+                placeholder={f.type === 'date' ? undefined : placeholderText}
                 onChange={handleInputChange}
               />
             )}

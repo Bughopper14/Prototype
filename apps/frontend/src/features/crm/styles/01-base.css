@@ -145,6 +145,20 @@ select:disabled {
 select {
   cursor: pointer;
 }
+/* Nothing chosen yet: grey like an input placeholder; the list itself keeps normal text */
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+select.is-placeholder:not(:disabled) {
+  color: #94a3b8;
+  font-weight: 500;
+}
+select.is-placeholder option {
+  color: #0f172a;
+  font-weight: 600;
+}
 h1,
 h2,
 h3,
