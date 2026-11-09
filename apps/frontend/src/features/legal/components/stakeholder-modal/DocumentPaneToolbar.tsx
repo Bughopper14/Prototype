@@ -9,7 +9,7 @@ export function DocumentPaneToolbar() {
   return (
     <div className="ktp-pane-topbar">
       <div>
-        <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+        <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px'}}>
           <h4 style={{margin: 0, fontSize: '14.5px', color: '#002060', fontWeight: 700}}>
             {docTitles[docType]}
           </h4>

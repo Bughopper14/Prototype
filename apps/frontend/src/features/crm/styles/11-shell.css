@@ -56,7 +56,8 @@ main {
   padding: 0 24px !important;
   position: sticky !important;
   top: 0 !important;
-  z-index: 1000 !important;
+  /* Under the modal overlay (100) so dialogs dim and cover it; above sticky page content (80) */
+  z-index: 90 !important;
 }
 
 .crm-nav-brand {
