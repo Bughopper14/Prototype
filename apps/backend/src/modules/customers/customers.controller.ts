@@ -4,7 +4,7 @@ import {pool} from '../../core/db/pool';
 import {ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {intakeCustomers} from '../applications/intake.repository';
-import {requireRole} from '../auth/session';
+import {requireAuthority} from '../auth/session';
 
 @Controller(API_PREFIX)
 export class CustomersController {
@@ -15,7 +15,7 @@ export class CustomersController {
 
   @Post('customers')
   async create(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, ['MKT']);
+    requireAuthority(req.actor, 'crm_manage_customers');
     const b = req.body || {};
     const companyName = String(b.companyName || '').trim();
     const companyType = String(b.companyType || '').trim();

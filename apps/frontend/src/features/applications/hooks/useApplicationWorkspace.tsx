@@ -7,7 +7,7 @@ import {
 import {type SystemActivity} from '@/features/activity/lib/types';
 import {printFapDocument} from '@/features/fap/lib/print';
 import {api} from '@/shared/lib/api';
-import {checkIsAdmin} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
 import {resolveWilayahUpwards, useMasterData} from '@/shared/master-data';
 import {
@@ -445,7 +445,7 @@ export function useApplicationWorkspace({
         details:
           'Physical FAP document approved. Customer & PIC locked, application advanced to Pre-analysis.',
         actionBy: user?.name || 'System User',
-        userRole: user?.role || 'BS',
+        userRole: user?.displayRole || user?.role || '',
         createNotification: true,
         notificationMessage: `Application ${a.fapNumber || ''} for ${a.customer?.companyName || 'Debtor'} advanced to Pre-analysis stage.`,
       });
@@ -643,10 +643,12 @@ export function useApplicationWorkspace({
   const isAdminUser = checkIsAdmin(user);
   // FAP Stage is fully editable at all times per specification
   const isFapLocked = false;
-  const canLegal = true;
-  const canEditCustomerPic = true;
-  const canEdit = true;
-  const canFinance = true;
+  // What the user may edit comes from the authorities of their DB role (administrators have all)
+  const canLegal = hasAuthority(user, 'crm_edit_app_legal');
+  const canEditCustomerPic = hasAuthority(user, 'crm_edit_app_customer_pic');
+  const canEdit = hasAuthority(user, 'crm_edit_app_business_banks');
+  const canFinance =
+    hasAuthority(user, 'crm_edit_app_financial') || hasAuthority(user, 'crm_edit_app_financing_units');
 
   async function submitFapStage() {
     setBusy(true);
@@ -698,13 +700,21 @@ export function useApplicationWorkspace({
     else if (a.status === 'CREDIT_COMMITTEE_REVIEW')
       actions = ['APPROVE_COMMITTEE', 'REJECT_COMMITTEE', 'RETURN'];
   } else {
-    if (user.role === 'MKT' && ['DRAFT', 'RETURNED'].includes(a.status)) actions = ['SUBMIT_TO_BS'];
-    if (user.role === 'BS' && a.status === 'SUBMITTED_TO_BS') actions = ['VERIFY_BS', 'RETURN'];
-    if (user.role === 'BS' && a.status === 'BS_VERIFIED') actions = ['START_REVIEW', 'RETURN'];
-    if (['CA', 'LEGAL'].includes(user.role) && a.status === 'IN_CA_LEGAL_REVIEW')
-      actions = [user.role === 'CA' ? 'RECOMMEND_CA' : 'RECOMMEND_LEGAL', 'RETURN'];
-    if (user.role === 'COMMITTEE' && a.status === 'CREDIT_COMMITTEE_REVIEW')
-      actions = ['APPROVE_COMMITTEE', 'REJECT_COMMITTEE', 'RETURN'];
+    const can = (authority: string) => hasAuthority(user, authority);
+    if (['DRAFT', 'RETURNED'].includes(a.status)) {
+      if (can('crm_workflow_submit')) actions = ['SUBMIT_TO_BS'];
+    } else {
+      if (a.status === 'SUBMITTED_TO_BS' && can('crm_workflow_verify_documents')) actions = ['VERIFY_BS'];
+      if (a.status === 'BS_VERIFIED' && can('crm_workflow_start_review')) actions = ['START_REVIEW'];
+      if (a.status === 'IN_CA_LEGAL_REVIEW')
+        actions = [
+          ...(can('crm_workflow_recommend_credit') ? ['RECOMMEND_CA'] : []),
+          ...(can('crm_workflow_recommend_legal') ? ['RECOMMEND_LEGAL'] : []),
+        ];
+      if (a.status === 'CREDIT_COMMITTEE_REVIEW' && can('crm_workflow_final_decision'))
+        actions = ['APPROVE_COMMITTEE', 'REJECT_COMMITTEE'];
+      if (actions.length && can('crm_workflow_return')) actions = [...actions, 'RETURN'];
+    }
   }
   const {save} = useSaveApplication({
     customerCategory,

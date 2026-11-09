@@ -91,14 +91,9 @@ export async function resolveCrmRole(userId: number, username: string): Promise<
   );
   const name: string = rows[0]?.role_name || '';
   if (/admin|super/i.test(name)) return {role: 'ADMIN', displayRole: 'Administrator', isAdmin: true};
-  if (/MKT|Marketing/i.test(name)) return {role: 'MKT', displayRole: 'Marketing', isAdmin: false};
-  if (/Committee/i.test(name)) return {role: 'COMMITTEE', displayRole: 'Credit Committee', isAdmin: false};
-  if (/BS|Branch Support|Business Support/.test(name))
-    return {role: 'BS', displayRole: 'Business Support', isAdmin: false};
-  if (/\bCA\b|Credit Analyst/i.test(name)) return {role: 'CA', displayRole: 'Credit Analyst', isAdmin: false};
-  if (/LEGAL/i.test(name)) return {role: 'LEGAL', displayRole: 'Legal Officer', isAdmin: false};
-  if (name) return {role: name.toUpperCase().replace(/[^A-Z0-9]+/g, '_'), displayRole: name, isAdmin: false};
-  return {role: 'MKT', displayRole: 'Marketing', isAdmin: false};
+  // Everything else comes from the role assigned in user management; what the user may do comes from its authorities.
+  if (!name) return {role: 'NONE', displayRole: 'No role', isAdmin: false};
+  return {role: name.toUpperCase().replace(/[^A-Z0-9]+/g, '_'), displayRole: name, isAdmin: false};
 }
 
 async function userTimeoutMinutes(userId: number, admin: boolean) {
@@ -290,8 +285,10 @@ async function verifySession(token: string): Promise<SessionCheck> {
 export const withActor = <T>(actor: Actor | null, fn: () => Promise<T>) =>
   mysqlActor.run(actor?.id ?? null, fn);
 
-export function requireRole(actor: Actor, roles: string[]) {
-  if (!(actor.isAdmin || actor.role === 'ADMIN' || roles.includes(actor.role))) {
+/** Allows the action when the actor's DB roles grant any of the authorities (administrators always pass). */
+export function requireAuthority(actor: Actor, ...authorities: string[]) {
+  if (actor.isAdmin || actor.role === 'ADMIN') return;
+  if (!authorities.some(a => (actor.authorities || []).includes(a)))
     throw new Problem(403, 'Your role cannot perform this action');
-  }
 }
+

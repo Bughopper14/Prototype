@@ -1,6 +1,7 @@
 import {ApplicationTable} from '@/features/applications/components/ApplicationTable';
 import {money} from '@/shared/lib/format';
-import {reviewStatus} from '@liugong/shared';
+import {checkIsAdmin} from '@/shared/lib/auth';
+import {DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY} from '@liugong/shared';
 import {
   AlertCircle,
   ArrowRight,
@@ -24,19 +25,19 @@ export function OverviewScreen({
   open: (id: string, tab?: number) => void;
   navigate: (p: string) => void;
 }) {
-  const needs = rows.filter(r =>
-    user.role === 'MKT'
-      ? ['DRAFT', 'RETURNED'].includes(r.status) ||
-        (r.legal?.deeds || []).some((d: any) => reviewStatus(d) === 'REJECTED')
-      : user.role === 'BS'
-        ? (r.legal?.deeds || []).some((d: any) => reviewStatus(d) === 'PENDING_CHECK')
-        : user.role === 'HEAD_BS'
-          ? (r.legal?.deeds || []).some((d: any) => reviewStatus(d) === 'PENDING_APPROVAL')
-          : user.role === 'CA' || user.role === 'LEGAL'
-            ? r.status === 'IN_CA_LEGAL_REVIEW'
-            : user.role === 'COMMITTEE'
-              ? r.status === 'CREDIT_COMMITTEE_REVIEW'
-              : false,
+  // Which applications need this user: derived from the authorities of the user's DB role (administrators have none)
+  const has = (authority: string) => !checkIsAdmin(user) && (user.authorities || []).includes(authority);
+  const hasRejectedDeed = (r: any) => Number(r.deeds_rejected) > 0;
+  const needs = rows.filter(
+    r =>
+      (has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)) ||
+      (has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending_check) + Number(r.deeds_pending_approval) > 0) ||
+      (has('crm_workflow_submit') && ['DRAFT', 'RETURNED'].includes(r.status)) ||
+      (has('crm_workflow_verify_documents') && r.status === 'SUBMITTED_TO_BS') ||
+      (has('crm_workflow_start_review') && r.status === 'BS_VERIFIED') ||
+      ((has('crm_workflow_recommend_credit') || has('crm_workflow_recommend_legal')) &&
+        r.status === 'IN_CA_LEGAL_REVIEW') ||
+      (has('crm_workflow_final_decision') && r.status === 'CREDIT_COMMITTEE_REVIEW'),
   );
   const total = rows.reduce((s, r) => s + Number(r.financing_value || 0), 0),
     approved = rows.filter(r => r.status === 'APPROVED'),
@@ -148,8 +149,8 @@ export function OverviewScreen({
               onClick={() =>
                 open(
                   r.id,
-                  ['BS', 'HEAD_BS'].includes(user.role) ||
-                    r.legal?.deeds?.some((d: any) => reviewStatus(d) === 'REJECTED')
+                  has(DEED_APPROVE_AUTHORITY) ||
+                    hasRejectedDeed(r)
                     ? 5
                     : 0,
                 )
@@ -160,17 +161,17 @@ export function OverviewScreen({
               </span>
               <div>
                 <b>
-                  {user.role === 'BS'
-                    ? 'Review deed document'
-                    : user.role === 'HEAD_BS'
-                      ? 'Approve deed document'
-                      : user.role === 'MKT'
-                        ? r.legal?.deeds?.some((d: any) => reviewStatus(d) === 'REJECTED')
-                          ? 'Fix the rejected deed'
-                          : r.status === 'RETURNED'
-                            ? 'Application returned'
-                            : 'Complete your draft'
-                        : 'Review application'}
+                  {has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending_check) + Number(r.deeds_pending_approval) > 0
+                    ? Number(r.deeds_pending_check) > 0
+                      ? 'Review deed document'
+                      : 'Approve deed document'
+                    : has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)
+                      ? 'Fix the rejected deed'
+                      : r.status === 'RETURNED'
+                        ? 'Application returned'
+                        : r.status === 'DRAFT'
+                          ? 'Complete your draft'
+                          : 'Review application'}
                 </b>
                 <span>{r.company_name}</span>
                 <small>{r.fap_number}</small>

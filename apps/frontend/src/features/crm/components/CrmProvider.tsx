@@ -8,7 +8,7 @@ import {
 } from '@/features/activity/lib/activity-store';
 import {type SystemActivity, type SystemNotificationItem} from '@/features/activity/lib/types';
 import {api} from '@/shared/lib/api';
-import {checkIsAdmin} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {applicationHref, newApplicationHref, pageHref} from '@/shared/lib/routes';
 import {setMasterData} from '@/shared/master-data';
 import {createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode} from 'react';
@@ -181,8 +181,8 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   };
 
   const startNewApplication = (customerId?: string) => {
-    if (!checkIsAdmin(user) && user?.role !== 'MKT') {
-      notify('Application creation is available for Marketing (MKT) and Administrator accounts.');
+    if (!hasAuthority(user, 'crm_create_application')) {
+      notify('Your role is not allowed to create applications.');
       return;
     }
     navigate(newApplicationHref(customerId));

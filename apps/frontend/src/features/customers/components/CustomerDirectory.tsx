@@ -1,4 +1,4 @@
-import {checkIsAdmin} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {date} from '@/shared/lib/format';
 import {IconBox} from '@/shared/ui/IconBox';
 import {label} from '@liugong/shared';
@@ -185,7 +185,7 @@ export function CustomerDirectory({
             onClick={() => {
               const a = rows.find(r => r.customer_id === c.id);
               if (a) open(a.id);
-              else if (user.role === 'MKT' || checkIsAdmin(user)) startNewApplication?.(c.id);
+              else if (hasAuthority(user, 'crm_create_application')) startNewApplication?.(c.id);
               else notify('This customer has no applications yet. Use New application to create one.');
             }}
           >

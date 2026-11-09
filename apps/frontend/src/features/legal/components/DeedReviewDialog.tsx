@@ -1,6 +1,7 @@
 import {api} from '@/shared/lib/api';
 import {useMasterData} from '@/shared/master-data';
-import {deedReviewLabels, reviewStatus} from '@liugong/shared';
+import {DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY, deedReviewLabels, reviewStatus} from '@liugong/shared';
+import {hasAuthority} from '@/shared/lib/auth';
 import {AlertCircle, Check, Clock, ExternalLink, FileText, Send, Upload, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -30,10 +31,10 @@ export function DeedReviewDialog({
     [busy, setBusy] = useState(false);
   const completed =
     status === 'APPROVED' ? 3 : status === 'PENDING_APPROVAL' ? 2 : status === 'PENDING_CHECK' ? 1 : 0;
-  const isAdmin = Boolean(user.isAdmin || user.role === 'ADMIN');
-  const canSubmit = (isAdmin || user.role === 'MKT') && ['DRAFT', 'REJECTED'].includes(status),
-    canCheck = (isAdmin || user.role === 'BS') && status === 'PENDING_CHECK',
-    canApprove = (isAdmin || user.role === 'HEAD_BS') && status === 'PENDING_APPROVAL';
+  const canSubmit =
+      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(status),
+    canCheck = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING_CHECK',
+    canApprove = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING_APPROVAL';
   useEffect(() => {
     let live = true;
     setUrl('');
@@ -90,9 +91,9 @@ export function DeedReviewDialog({
         <div className="modal-body">
           <div className="deed-review-steps">
             {[
-              ['MKT', 'Input & submission'],
-              ['BS', 'Arianti · Verification'],
-              ['HEAD_BS', 'Dellatra · Approval'],
+              ['SUBMIT', 'Input & submission'],
+              ['CHECK', 'Legal Approval · Verification'],
+              ['APPROVE', 'Legal Approval · Approval'],
             ].map(([role, name], i) => (
               <div key={role} className={i < completed ? 'done' : ''}>
                 <span>{i + 1}</span>
@@ -246,14 +247,14 @@ export function DeedReviewDialog({
           </div>
           {(canCheck || canApprove) && (
             <label className="deed-review-comments">
-              Review notes / rejection reason
+              Remarks (optional when approving, required to send back)
               <textarea
                 aria-label="Rejection reason"
                 rows={3}
                 maxLength={10000}
                 value={comments}
                 onChange={e => setComments(e.target.value)}
-                placeholder="Required when rejecting. Describe the data MKT needs to correct."
+                placeholder="Add remarks for the record. To send the deed back, describe what MKT needs to change."
               />
             </label>
           )}
@@ -288,13 +289,13 @@ export function DeedReviewDialog({
               onClick={() => action('REJECT')}
             >
               <AlertCircle size={14} />
-              Reject deed
+              Send back / Reject
             </button>
           )}
           {canSubmit && (
             <button className="button primary" disabled={busy} onClick={() => action('SUBMIT')}>
               <Send size={14} />
-              Submit to Arianti
+              Submit for Legal Approval
             </button>
           )}
           {canCheck && (

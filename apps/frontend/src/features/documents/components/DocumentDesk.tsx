@@ -15,7 +15,7 @@ export function DocumentDesk({
 }) {
   const [items, setItems] = useState<any[]>([]),
     [search, setSearch] = useState(''),
-    [department, setDepartment] = useState(['BS', 'CA', 'LEGAL'].includes(user.role) ? user.role : 'ALL'),
+    [department, setDepartment] = useState('ALL'),
     [status, setStatus] = useState('OPEN'),
     [error, setError] = useState('');
   useEffect(() => {

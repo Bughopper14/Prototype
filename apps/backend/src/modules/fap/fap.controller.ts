@@ -3,7 +3,7 @@ import {exec} from '../../core/db/query';
 import {Problem} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {intakeDetail} from '../applications/intake.repository';
-import {requireRole} from '../auth/session';
+import {requireAuthority} from '../auth/session';
 import {getSubmitLock, saveFapComparison, saveFapRemarks} from '../documents/documents.repository';
 import {
   getFapSubmissionArchiveDetail,
@@ -13,7 +13,6 @@ import {
 import {computeFapDiffs} from './fap-diff';
 import {clearFapDifferences, compareFapDocumentOcr, latestFapFile} from './fap-comparison';
 
-const REVIEW_ROLES = ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE'];
 
 const ARCHIVE_PATHS = ['applications/:id/fap-archive', 'fap-archive/:archiveId'];
 
@@ -49,7 +48,7 @@ export class FapController {
 
   @Post('applications/:id/fap-comparison/remarks')
   async saveRemarks(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, REVIEW_ROLES);
+    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
     const remarks = String(req.body.remarks || '');
     await saveFapRemarks(req.params.id, remarks);
     return {success: true, remarks, comparison: (await getSubmitLock(req.params.id)).ocrComparison};
@@ -57,7 +56,7 @@ export class FapController {
 
   @Post('applications/:id/fap-comparison/run')
   async runComparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, REVIEW_ROLES);
+    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
     const id = req.params.id;
     const currentApp = await intakeDetail(id);
     if (!currentApp) {
@@ -74,7 +73,7 @@ export class FapController {
 
   @Post('applications/:id/fap-changes/approve')
   async approveChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, REVIEW_ROLES);
+    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
     const id = req.params.id;
     const current = await intakeDetail(id);
     if (!current) {

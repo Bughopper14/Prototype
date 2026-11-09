@@ -18,7 +18,13 @@ export function FormBottomActions() {
     isSubmitLocked,
     actions,
     save,
+    canLegal,
+    canEdit,
+    canFinance,
+    canEditCustomerPic,
   } = useWorkspace();
+  // Saving a tab needs the edit authority of that tab (taken from the user's DB role)
+  const canSaveTab = tab === 0 ? canEditCustomerPic || canEdit : tab === 5 ? canLegal : canFinance || canEdit;
   return (
     <div className="form-bottom-actions">
       <div className="form-bottom-left">
@@ -35,7 +41,8 @@ export function FormBottomActions() {
             {busy ? <Loader2 size={15} className="spin" /> : <Save size={15} />}Save & Create Application
           </button>
         ) : (
-          (tab === 0 || tab === 2 || tab === 3 || tab === 4 || tab === 5) && (
+          (tab === 0 || tab === 2 || tab === 3 || tab === 4 || tab === 5) &&
+          canSaveTab && (
             <button
               className="button primary"
               disabled={busy}

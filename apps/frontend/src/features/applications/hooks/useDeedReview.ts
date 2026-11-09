@@ -1,7 +1,7 @@
 /** Start a deed review and poll the application while the Stakeholders tab is open. */
 import {legalDeedList} from '@/features/legal/components/DeedViews';
 import {api} from '@/shared/lib/api';
-import {deedData} from '@liugong/shared';
+import {deedData, reviewStatus} from '@liugong/shared';
 import {useEffect} from 'react';
 
 export function useDeedReview({
@@ -21,7 +21,7 @@ export function useDeedReview({
   setDraft: React.Dispatch<any>;
   setBusy: React.Dispatch<React.SetStateAction<boolean>>;
   setError: React.Dispatch<React.SetStateAction<string>>;
-  canLegal: true;
+  canLegal: boolean;
   a: any;
   onChange: (a: any) => void;
 }) {
@@ -37,13 +37,16 @@ export function useDeedReview({
             list[0]?.id,
           target = list.find(d => d.id === id);
         if (!target) throw Error('Deed not found.');
-        const deed = deedData({
-          ...target,
-          stakeholders: Array.isArray(target.stakeholders) ? target.stakeholders : draft.stakeholders || [],
-        });
-        const v = await api(`/applications/${a.id}/deeds/${id}/draft`, 'PUT', {deed});
-        onChange(v);
-        setDraft(structuredClone(v));
+        // The draft is only saved before a submission; reviewers (check/approve) have no edit rights and nothing to save
+        if (['DRAFT', 'REJECTED'].includes(reviewStatus(target))) {
+          const deed = deedData({
+            ...target,
+            stakeholders: Array.isArray(target.stakeholders) ? target.stakeholders : draft.stakeholders || [],
+          });
+          const v = await api(`/applications/${a.id}/deeds/${id}/draft`, 'PUT', {deed});
+          onChange(v);
+          setDraft(structuredClone(v));
+        }
       }
       setReviewDeedId(id);
     } catch (e: any) {

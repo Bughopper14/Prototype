@@ -9,7 +9,7 @@ import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/
 import {documentsDir, filesDir, putStoredFile, removeStoredDocument, s3} from '../../core/storage';
 import {logActivity} from '../activity/activity-log';
 import {intakeDetail} from '../applications/intake.repository';
-import {requireRole, signFileToken, verifyFileToken} from '../auth/session';
+import {requireAuthority, signFileToken, verifyFileToken} from '../auth/session';
 import {
   deleteApplicationDocumentFile,
   readApplicationDocuments,
@@ -19,7 +19,6 @@ import {
 } from './documents.repository';
 import {compareFapDocumentOcr, isFapChecklist} from '../fap/fap-comparison';
 
-const DOC_ROLES = ['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE'];
 
 const IMAGE_SIGNATURES = {
   png: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
@@ -64,7 +63,7 @@ export class DocumentsController {
 
   @Post('applications/:id/documents/upload')
   async upload(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, DOC_ROLES);
+    requireAuthority(req.actor, 'crm_upload_app_documents');
     const id = req.params.id;
     const file = req.file;
     ensure(file, 'Choose a file');
@@ -109,7 +108,7 @@ export class DocumentsController {
 
   @Delete(['applications/:id/documents/files/:fileId', 'applications/:id/documents/:fileId'])
   async deleteFile(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, DOC_ROLES);
+    requireAuthority(req.actor, 'crm_delete_app_documents');
     const {id, fileId} = req.params;
     const current = await intakeDetail(id);
     ensure(current, 'Application not found', 404);
