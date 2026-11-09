@@ -16,6 +16,52 @@ export function normalizeStakeholderIdType(
   return 'NONE';
 }
 
+/** Value stored in the address fields of a foreign (PASSPORT - KITAS) stakeholder. */
+export const FOREIGN_REGION_VALUE = 'Others';
+/**
+ * Address fields set to "Others" for a foreign stakeholder, Country included: which
+ * countries count is not decided yet, so no country list is offered for now.
+ */
+export const FOREIGN_REGION_KEYS = [
+  'country',
+  'province',
+  'cityRegency',
+  'district',
+  'village',
+  'rt',
+  'rw',
+  'postalCode',
+];
+
+/** Foreign citizen identified by PASSPORT - KITAS: the address is "Others" from Country onward. */
+export function isForeignAddress(s: any) {
+  return s?.citizenship === 'FOREIGN' && normalizeStakeholderIdType(s.idType, s) === 'PASSPORT_KITAS';
+}
+
+/**
+ * "Others" is only a default: the fields stay editable. It is filled when the stakeholder
+ * becomes foreign (overwriting the Indonesian address), and undone when switching back.
+ * Without `prev` (a record just opened), only empty fields are filled, so saved edits are kept.
+ */
+export function applyForeignAddress(s: any, prev?: any) {
+  if (!s) return s;
+  const foreignNow = isForeignAddress(s);
+  const foreignBefore = prev ? isForeignAddress(prev) : !foreignNow;
+  if (foreignNow === foreignBefore) return s; // no switch: keep whatever the user typed
+  const next = {...s};
+  if (foreignNow) {
+    for (const k of FOREIGN_REGION_KEYS)
+      if (prev || !String(next[k] ?? '').trim()) next[k] = FOREIGN_REGION_VALUE;
+  } else {
+    // Switching back clears the foreign address (typed values don't fit the Indonesian lists);
+    // a record just opened only loses leftover "Others"
+    for (const k of FOREIGN_REGION_KEYS) if (prev || next[k] === FOREIGN_REGION_VALUE) next[k] = '';
+    if (next.citizenship === 'INDONESIAN' && !/^indonesia$/i.test(String(next.country || '').trim()))
+      next.country = 'Indonesia';
+  }
+  return next;
+}
+
 export function stakeholderEditorValues(s: any) {
   const parts = String(s.name || '')
     .trim()

@@ -7,6 +7,8 @@ export type Field = {
   wide?: boolean;
   required?: boolean;
   unit?: string;
+  /** false renders a plain input/select even when the key has a master-data list. */
+  master?: boolean;
 };
 const f = (key: string, label: string, type = 'text', options?: string[]): Field => ({
   key,

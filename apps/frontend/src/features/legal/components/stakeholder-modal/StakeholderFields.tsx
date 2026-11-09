@@ -2,10 +2,12 @@
 import {Fields} from '@/shared/ui/Fields';
 
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
+import {FOREIGN_REGION_KEYS, isForeignAddress} from '@/features/legal/lib/stakeholder-values';
 
 export function StakeholderFields() {
   const {editorLocked, onChangeValue, fields, activeIdGroup, formValue, handleSelectOption} =
     useStakeholderModalContext();
+  const foreign = isForeignAddress(formValue);
   return (
     <Fields
       fields={fields.map(f => {
@@ -41,6 +43,10 @@ export function StakeholderFields() {
                   ? 'ID Number - KITAS'
                   : 'ID Number - [NPWP or KITAS]',
           };
+        }
+        if (foreign && FOREIGN_REGION_KEYS.includes(f.key)) {
+          // Default "Others", still editable; plain text since the master lists are Indonesian
+          return {...f, master: false, required: false};
         }
         return f;
       })}

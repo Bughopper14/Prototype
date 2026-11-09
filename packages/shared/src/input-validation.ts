@@ -126,7 +126,8 @@ export function fieldInputError(key: string, value: any, now = new Date()): stri
     value === null ||
     String(value).trim() === '' ||
     String(value).trim() === '-' ||
-    (key === 'postalCode' && String(value).trim() === '00000')
+    (key === 'postalCode' && String(value).trim() === '00000') ||
+    String(value).trim().toUpperCase() === 'OTHERS'
   )
     return '';
   const name = names[key] || key,

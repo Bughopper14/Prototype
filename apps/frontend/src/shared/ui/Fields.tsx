@@ -93,28 +93,33 @@ export function Fields({
           if (isAgeField) return;
           const clean = isDigitsOnly ? raw.replace(/\D/g, '') : isLettersOnly ? raw.replace(/\d/g, '') : raw;
           const sanitized = ['rt', 'rw'].includes(f.key) ? clean.slice(0, 3) : clean;
-          let next = resetMasterChildren(
-            f.key,
-            {
-              ...value,
-              [f.key]: f.type === 'number' ? sanitized : f.type === 'date' ? sanitized || null : sanitized,
-            },
-            fields.map(x => x.key),
-          );
-          if (f.key === 'village' && fields.some(x => x.key === 'postalCode'))
+          // master: false = free text (e.g. a foreign address): no cascading reset or wilayah lookup
+          const masterLinked = f.master !== false;
+          const changed = {
+            ...value,
+            [f.key]: f.type === 'number' ? sanitized : f.type === 'date' ? sanitized || null : sanitized,
+          };
+          let next = masterLinked
+            ? resetMasterChildren(
+                f.key,
+                changed,
+                fields.map(x => x.key),
+              )
+            : changed;
+          if (masterLinked && f.key === 'village' && fields.some(x => x.key === 'postalCode'))
             next.postalCode = master.village.find(x => x.value === sanitized)?.zipCode || '';
           if (f.key === 'dateOfBirth' && fields.some(x => x.key === 'ageYears' || x.key === 'ageMonths')) {
             const {years, months} = calculateAgeYearsMonths(sanitized);
             next.ageYears = years;
             next.ageMonths = months;
           }
-          if (['district', 'village', 'postalCode'].includes(f.key)) {
+          if (masterLinked && ['district', 'village', 'postalCode'].includes(f.key)) {
             next = resolveWilayahUpwards(next, master);
           }
           onChange(next);
         };
         const fieldError = customErrors?.[f.key] || fieldInputError(f.key, fieldValue);
-        const isMaster = masterGroups.some(g => g.key === masterKey(f.key));
+        const isMaster = f.master !== false && masterGroups.some(g => g.key === masterKey(f.key));
         const handleKeyDown = isDigitsOnly
           ? (e: React.KeyboardEvent<HTMLInputElement>) => {
               if (

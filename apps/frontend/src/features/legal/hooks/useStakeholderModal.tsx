@@ -1,4 +1,5 @@
 /** All state, derived values and handlers of StakeholderModalDialog; shared with its sections through StakeholderModalContext. */
+import {applyForeignAddress} from '@/features/legal/lib/stakeholder-values';
 import type {StakeholderDocType} from '@/features/legal/lib/types';
 import {
   extractKitasTextFromImage,
@@ -33,9 +34,11 @@ export function useStakeholderModal({
   formError,
   onClose,
   onSave,
-  onChangeValue,
+  onChangeValue: rawOnChangeValue,
   fields,
 }: StakeholderModalDialogProps) {
+  // Every change (typing, selects, OCR fills) keeps the foreign-address rule in sync.
+  const onChangeValue = (val: any) => rawOnChangeValue(applyForeignAddress(val, modal.value || {}));
   const curVal = modal.value || {};
   const isNewStakeholder = modal.index < 0;
 
@@ -64,6 +67,12 @@ export function useStakeholderModal({
     }
     return curVal;
   }, [curVal, activeIdGroup]);
+
+  // Apply the foreign-address rule to records opened as-is (e.g. an existing foreign stakeholder).
+  useEffect(() => {
+    const next = applyForeignAddress(formValue);
+    if (Object.keys(next).some(k => next[k] !== formValue[k])) rawOnChangeValue(next);
+  }, [formValue.citizenship, formValue.idType]);
 
   const [docType, setDocType] = useState<StakeholderDocType>(() => {
     if (activeIdGroup === 'PASSPORT_KITAS') {
