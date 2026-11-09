@@ -9,6 +9,8 @@ export type Field = {
   unit?: string;
   /** false renders a plain input/select even when the key has a master-data list. */
   master?: boolean;
+  /** Read-only for this field only (the user cannot change it). */
+  locked?: boolean;
   /** Value of a new blank row; when omitted, the first option (or ''/0/null) is used. */
   defaultValue?: string;
 };
