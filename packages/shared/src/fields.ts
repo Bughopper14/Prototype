@@ -128,6 +128,38 @@ export const picFields = [
   {...f('currentAddress', 'Full Address', 'textarea'), wide: true},
 ];
 
+export const STAKEHOLDER_POSITIONS = [
+  'NONE',
+  'MAIN_DIRECTOR',
+  'DIRECTOR',
+  'MAIN_COMMISSIONER',
+  'COMMISSIONER',
+  'BOARD_OF_DIRECTORS',
+  'AUTORIZED_REPRESENTATIVE',
+] as const;
+
+export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
+  NONE: 'None',
+  MAIN_DIRECTOR: 'Main Director',
+  DIRECTOR: 'Director',
+  MAIN_COMMISSIONER: 'Main Commissioner',
+  COMMISSIONER: 'Commissioner',
+  BOARD_OF_DIRECTORS: 'Board of Directors',
+  AUTORIZED_REPRESENTATIVE: 'Autorized Representative',
+};
+
+export function formatStakeholderPosition(val?: string | null): string {
+  if (!val) return '';
+  const s = String(val).trim();
+  const normalized = s.toUpperCase().replace(/[\s-]+/g, '_');
+  if (normalized === 'NONE' || normalized === '') return '';
+  if (STAKEHOLDER_POSITION_LABELS[normalized]) return STAKEHOLDER_POSITION_LABELS[normalized];
+  for (const [k, v] of Object.entries(STAKEHOLDER_POSITION_LABELS)) {
+    if (k.toLowerCase() === s.toLowerCase() || v.toLowerCase() === s.toLowerCase()) return v;
+  }
+  return s;
+}
+
 export const stakeholderFields = [
   f('representativeType', 'Representative Type', 'select', [
     'NONE',
@@ -136,6 +168,19 @@ export const stakeholderFields = [
     'AUTHORIZED_SIGNATORY',
     'OTHER',
   ]),
+  {
+    ...f('positions', 'Positions', 'select', [
+      'NONE',
+      'MAIN_DIRECTOR',
+      'DIRECTOR',
+      'MAIN_COMMISSIONER',
+      'COMMISSIONER',
+      'BOARD_OF_DIRECTORS',
+      'AUTORIZED_REPRESENTATIVE',
+    ]),
+    optionLabels: STAKEHOLDER_POSITION_LABELS,
+    defaultValue: '',
+  },
   f('stakeholderType', 'Type', 'select', ['INDIVIDUAL', 'CORPORATE']),
   {...f('signatory', 'Signatory', 'select', ['NONE', 'YES', 'NO']), defaultValue: ''},
   {

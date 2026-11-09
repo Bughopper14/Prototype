@@ -36,8 +36,7 @@ export function MasterSelect({
     onChange(storeName && item ? item.name : id);
   };
   const hasNone = entries.some(x => x.value.toUpperCase() === 'NONE');
-  const emptyLabel =
-    placeholder || (group.key === 'remarkCategoryId' ? 'Select Category' : `Select ${group.name}`);
+  const emptyLabel = 'None';
   return (
     <select
       className={selectedValue ? undefined : 'is-placeholder'}
@@ -47,11 +46,11 @@ export function MasterSelect({
       onFocus={onFocus}
       onChange={e => select(e.target.value)}
     >
-      {/* With its own "None" item the placeholder is not a choice: only shown while nothing is picked.
-          Lists without "None" keep it selectable, as the way to clear an optional field. */}
-      <option value="" disabled={hasNone} hidden={hasNone}>
-        {emptyLabel}
-      </option>
+      {!hasNone && (
+        <option value="">
+          {emptyLabel}
+        </option>
+      )}
       {selectedValue && !entries.some(x => x.value === selectedValue) && (
         <option value={selectedValue}>
           {existing?.name || value}
@@ -60,7 +59,7 @@ export function MasterSelect({
       )}
       {entries.map(x => (
         <option key={x.value} value={x.value}>
-          {x.name}
+          {x.value.toUpperCase() === 'NONE' ? 'None' : x.name}
         </option>
       ))}
     </select>

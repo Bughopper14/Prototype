@@ -30,12 +30,12 @@ const clean = (s: unknown) =>
 
 const VILLAGE_SELECT = `SELECT v.id AS village_id, v.name AS village_name, v.postal_code,
   d.id AS district_id, d.name AS district_name, c.id AS city_id, c.name AS city_name, p.id AS province_id, p.name AS province_name
-  FROM master_kelurahan_desa v JOIN master_kecamatan d ON v.kecamatan_id=d.id
-  JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id JOIN master_provinsi p ON c.provinsi_id=p.id`;
+  FROM master_location_kelurahan_desa v JOIN master_location_kecamatan d ON v.kecamatan_id=d.id
+  JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id=c.id JOIN master_location_provinsi p ON c.provinsi_id=p.id`;
 
 const DISTRICT_SELECT = `SELECT NULL AS village_id, NULL AS village_name, NULL AS postal_code,
   d.id AS district_id, d.name AS district_name, c.id AS city_id, c.name AS city_name, p.id AS province_id, p.name AS province_name
-  FROM master_kecamatan d JOIN master_kabupaten_kota c ON d.kabupaten_kota_id=c.id JOIN master_provinsi p ON c.provinsi_id=p.id`;
+  FROM master_location_kecamatan d JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id=c.id JOIN master_location_provinsi p ON c.provinsi_id=p.id`;
 
 @Controller(API_PREFIX)
 export class MasterDataController {

@@ -3,7 +3,7 @@ import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import crypto from 'node:crypto';
 
 const groups = [
-  ['remarkCategoryId', 'master_kategori_remarks', 'master_legal_kategori_akta_perubahan'],
+  ['remarkCategoryId', 'master_legal_kategori_remarks', 'master_legal_kategori_akta_perubahan'],
   ['representativeType', 'master_legal_representative_type', 'legal_representative_type'],
   ['designation', 'master_legal_designation_name', 'legal_designation_name'],
 ] as const;

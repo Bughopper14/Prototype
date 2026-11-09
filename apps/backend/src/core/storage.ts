@@ -4,7 +4,17 @@ import {DeleteObjectCommand, PutObjectCommand, S3Client} from '@aws-sdk/client-s
 
 /** File storage: local disk under STORAGE_DIR, or S3/MinIO when the S3_* variables are set. */
 
-export const STORAGE_DIR = path.resolve(process.env.STORAGE_DIR || 'storage');
+import fsSync from 'node:fs';
+const envStorage = process.env.STORAGE_DIR;
+const resolvedEnv = envStorage ? path.resolve(envStorage) : null;
+export const STORAGE_DIR =
+  resolvedEnv && fsSync.existsSync(resolvedEnv)
+    ? resolvedEnv
+    : fsSync.existsSync(path.resolve(process.cwd(), 'storage'))
+      ? path.resolve(process.cwd(), 'storage')
+      : fsSync.existsSync(path.resolve(__dirname, '../../../../storage'))
+        ? path.resolve(__dirname, '../../../../storage')
+        : path.resolve(process.cwd(), 'storage');
 export const documentsDir = path.join(STORAGE_DIR, 'documents');
 export const filesDir = path.join(STORAGE_DIR, 'files');
 
@@ -39,7 +49,22 @@ export async function putStoredFile(key: string, body: Buffer, contentType: stri
 
 export async function removeStoredDocument(key: string) {
   if (s3) await s3.send(new DeleteObjectCommand({Bucket: process.env.S3_BUCKET, Key: key}));
-  else await fs.rm(path.join(filesDir, key), {force: true});
+  else {
+    await fs.rm(path.join(filesDir, key), {force: true});
+    const protoFiles = path.resolve(STORAGE_DIR, '../prototype-src/storage/files', key);
+    await fs.rm(protoFiles, {force: true}).catch(() => undefined);
+  }
+}
+
+export async function mirrorFileToPrototypeSrc(savedFilePath: string, buffer: Buffer) {
+  try {
+    const rel = path.relative(documentsDir, savedFilePath);
+    const protoTarget = path.resolve(STORAGE_DIR, '../prototype-src/storage/documents', rel);
+    if (fsSync.existsSync(path.resolve(STORAGE_DIR, '../prototype-src/storage'))) {
+      await fs.mkdir(path.dirname(protoTarget), {recursive: true});
+      await fs.writeFile(protoTarget, buffer);
+    }
+  } catch {}
 }
 
 function timestamp(date = new Date()) {

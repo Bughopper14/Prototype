@@ -2,6 +2,7 @@ import {useState, useEffect, useRef, useMemo} from 'react';
 import {FileSpreadsheet, ZoomIn, ZoomOut, RotateCcw, Printer, ChevronLeft, ChevronRight} from 'lucide-react';
 import {FAP_EXCEL_HTML_TEMPLATE} from '../lib/fap-html-template';
 import {useMasterData} from '@/shared/master-data';
+import {formatStakeholderPosition} from '@liugong/shared';
 
 import type {FapSheetPreviewProps} from '@/features/fap/lib/types';
 import {FIELD_TO_CELL_ID_MAP, resolveFieldToCellId} from '@/features/fap/lib/field-cells';
@@ -293,7 +294,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       const item = shList[i] || {};
       const shName = item.name || [item.firstName, item.middleName, item.lastName].filter(Boolean).join(' ');
       setText(`fap-cell-sh-${i}-name`, shName || '');
-      setText(`fap-cell-sh-${i}-pos`, item.position || item.representativeType || '');
+      const shPos = formatStakeholderPosition(item.positions || item.position);
+      setText(`fap-cell-sh-${i}-pos`, shPos || '');
       setText(`fap-cell-sh-${i}-shares`, item.shares ? Number(item.shares).toLocaleString('id-ID') : '');
       setText(`fap-cell-sh-${i}-pct`, item.sharePercentage ? `${item.sharePercentage}%` : '');
     }

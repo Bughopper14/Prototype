@@ -4,17 +4,17 @@ import {auditTable} from '../../users/users.repository';
 import {type MasterCatalog, type MasterItem} from '@liugong/shared';
 
 const levels = [
-  ['province', 'master_provinsi', null],
-  ['city', 'master_kabupaten_kota', 'provinsi_id'],
-  ['district', 'master_kecamatan', 'kabupaten_kota_id'],
-  ['village', 'master_kelurahan_desa', 'kecamatan_id'],
+  ['province', 'master_location_provinsi', null],
+  ['city', 'master_location_kabupaten_kota', 'provinsi_id'],
+  ['district', 'master_location_kecamatan', 'kabupaten_kota_id'],
+  ['village', 'master_location_kelurahan_desa', 'kecamatan_id'],
 ] as const;
 
 export async function initializeLocation() {
   if (!pool) return;
 
-  // 1. Ensure master_country table exists first
-  await pool.query(`CREATE TABLE IF NOT EXISTS master_country (
+  // 1. Ensure master_location_country table exists first
+  await pool.query(`CREATE TABLE IF NOT EXISTS master_location_country (
     id CHAR(36) PRIMARY KEY,
     code VARCHAR(150) NOT NULL UNIQUE,
     name VARCHAR(150) NOT NULL,
@@ -22,12 +22,12 @@ export async function initializeLocation() {
     created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at TIMESTAMP(3) NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-  await auditTable('master_country');
+  await auditTable('master_location_country');
 
   // Default Indonesia row
   const defaultCountryId = '22cb50d8-c136-11f1-8174-38a746354dff';
   await pool.query(
-    `INSERT IGNORE INTO master_country (id, code, name, is_active) VALUES (?, 'Indonesia', 'Indonesia', 1)`,
+    `INSERT IGNORE INTO master_location_country (id, code, name, is_active) VALUES (?, 'Indonesia', 'Indonesia', 1)`,
     [defaultCountryId],
   );
 
@@ -43,7 +43,7 @@ export async function initializeLocation() {
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
         created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
         updated_at TIMESTAMP(3) NULL,
-        CONSTRAINT fk_${table}_country FOREIGN KEY (country_id) REFERENCES master_country(id) ON DELETE RESTRICT ON UPDATE CASCADE
+        CONSTRAINT fk_${table}_country FOREIGN KEY (country_id) REFERENCES master_location_country(id) ON DELETE RESTRICT ON UPDATE CASCADE
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
     } else {
       await pool.query(`CREATE TABLE IF NOT EXISTS ${table} (
@@ -59,28 +59,28 @@ export async function initializeLocation() {
     }
   }
 
-  // 3. Ensure country_id column and foreign key exists on master_provinsi if table previously lacked it
+  // 3. Ensure country_id column and foreign key exists on master_location_provinsi if table previously lacked it
   try {
-    const [cols] = await pool.query<any[]>(`SHOW COLUMNS FROM master_provinsi LIKE 'country_id'`);
+    const [cols] = await pool.query<any[]>(`SHOW COLUMNS FROM master_location_provinsi LIKE 'country_id'`);
     if (!cols.length) {
-      await pool.query(`ALTER TABLE master_provinsi ADD COLUMN country_id CHAR(36) NULL AFTER name`);
+      await pool.query(`ALTER TABLE master_location_provinsi ADD COLUMN country_id CHAR(36) NULL AFTER name`);
       await pool.query(
-        `UPDATE master_provinsi p LEFT JOIN master_country c ON (c.name=p.country OR c.code=p.country) SET p.country_id=COALESCE(c.id, ?)`,
+        `UPDATE master_location_provinsi p LEFT JOIN master_location_country c ON (c.name=p.country OR c.code=p.country) SET p.country_id=COALESCE(c.id, ?)`,
         [defaultCountryId],
       );
-      await pool.query(`ALTER TABLE master_provinsi MODIFY COLUMN country_id CHAR(36) NOT NULL`);
+      await pool.query(`ALTER TABLE master_location_provinsi MODIFY COLUMN country_id CHAR(36) NOT NULL`);
       await pool.query(
-        `ALTER TABLE master_provinsi ADD CONSTRAINT fk_master_provinsi_country FOREIGN KEY (country_id) REFERENCES master_country(id) ON DELETE RESTRICT ON UPDATE CASCADE`,
+        `ALTER TABLE master_location_provinsi ADD CONSTRAINT fk_master_provinsi_country FOREIGN KEY (country_id) REFERENCES master_location_country(id) ON DELETE RESTRICT ON UPDATE CASCADE`,
       );
     }
   } catch (err) {
     console.warn('[initializeLocation] Notice on country_id FK:', (err as any)?.message);
   }
 
-  await auditTable('master_provinsi');
+  await auditTable('master_location_provinsi');
 
   // 4. Postal code table
-  await pool.query(`CREATE TABLE IF NOT EXISTS master_kode_pos (
+  await pool.query(`CREATE TABLE IF NOT EXISTS master_location_kode_pos (
     id CHAR(36) PRIMARY KEY,
     postal_code VARCHAR(20) NOT NULL,
     name VARCHAR(150) NOT NULL,
@@ -89,16 +89,16 @@ export async function initializeLocation() {
     created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at TIMESTAMP(3) NULL,
     UNIQUE KEY city_postal_code(kabupaten_kota_id, postal_code),
-    FOREIGN KEY(kabupaten_kota_id) REFERENCES master_kabupaten_kota(id)
+    FOREIGN KEY(kabupaten_kota_id) REFERENCES master_location_kabupaten_kota(id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-  await auditTable('master_kode_pos');
+  await auditTable('master_location_kode_pos');
 
-  await pool.query(`INSERT IGNORE INTO master_kode_pos (id, postal_code, name, kabupaten_kota_id, is_active)
+  await pool.query(`INSERT IGNORE INTO master_location_kode_pos (id, postal_code, name, kabupaten_kota_id, is_active)
     SELECT UUID(), v.postal_code, v.postal_code, c.id, MAX(v.is_active AND d.is_active AND c.is_active AND p.is_active)
-    FROM master_kelurahan_desa v
-    JOIN master_kecamatan d ON d.id=v.kecamatan_id
-    JOIN master_kabupaten_kota c ON c.id=d.kabupaten_kota_id
-    JOIN master_provinsi p ON p.id=c.provinsi_id
+    FROM master_location_kelurahan_desa v
+    JOIN master_location_kecamatan d ON d.id=v.kecamatan_id
+    JOIN master_location_kabupaten_kota c ON c.id=d.kabupaten_kota_id
+    JOIN master_location_provinsi p ON p.id=c.provinsi_id
     WHERE v.postal_code IS NOT NULL AND v.postal_code<>''
     GROUP BY c.id, v.postal_code`);
 }
@@ -107,7 +107,7 @@ export async function locationCatalog(base: MasterCatalog): Promise<MasterCatalo
   if (!pool) return base;
   const result = {...base};
   const [countries] = await pool.query<any[]>(
-    'SELECT code, name, is_active FROM master_country ORDER BY created_at, id',
+    'SELECT code, name, is_active FROM master_location_country ORDER BY created_at, id',
   );
   result.country = countries.map(x => ({value: x.code, name: x.name, active: !!x.is_active}));
   for (const item of base.country) {
@@ -117,7 +117,7 @@ export async function locationCatalog(base: MasterCatalog): Promise<MasterCatalo
   for (const [i, [key, table, parent]] of levels.entries()) {
     const query = parent
       ? `SELECT a.*, p.id parent_id FROM ${table} a JOIN ${levels[i - 1][1]} p ON p.id=a.${parent} ORDER BY a.created_at, a.id`
-      : `SELECT a.*, COALESCE(c.code, a.country, 'Indonesia') as parent_id FROM ${table} a LEFT JOIN master_country c ON c.id=a.country_id ORDER BY a.created_at, a.id`;
+      : `SELECT a.*, COALESCE(c.code, a.country, 'Indonesia') as parent_id FROM ${table} a LEFT JOIN master_location_country c ON c.id=a.country_id ORDER BY a.created_at, a.id`;
     const [rows] = await pool.query<any[]>(query);
     const saved: MasterItem[] = rows.map(r => ({
       value: r.id,
@@ -132,9 +132,9 @@ export async function locationCatalog(base: MasterCatalog): Promise<MasterCatalo
 
   const [zipRows] = await pool.query<any[]>(
     `SELECT z.postal_code, z.name, z.kabupaten_kota_id AS city_id, (z.is_active AND c.is_active AND p.is_active) AS is_active
-     FROM master_kode_pos z
-     JOIN master_kabupaten_kota c ON c.id=z.kabupaten_kota_id
-     JOIN master_provinsi p ON p.id=c.provinsi_id
+     FROM master_location_kode_pos z
+     JOIN master_location_kabupaten_kota c ON c.id=z.kabupaten_kota_id
+     JOIN master_location_provinsi p ON p.id=c.provinsi_id
      ORDER BY z.kabupaten_kota_id, z.postal_code`,
   );
   const postalItems: MasterItem[] = zipRows.map(r => ({
@@ -166,11 +166,11 @@ export async function saveLocations(catalog: MasterCatalog, previous: MasterCata
   const c = await pool.getConnection();
   try {
     await c.beginTransaction();
-    const [storedCountries] = await c.query<any[]>('SELECT * FROM master_country FOR UPDATE');
+    const [storedCountries] = await c.query<any[]>('SELECT * FROM master_location_country FOR UPDATE');
     for (const row of catalog.country) {
       const old = storedCountries.find(x => x.code === row.value);
       if (!old) {
-        await c.execute('INSERT INTO master_country (id, code, name, is_active) VALUES (?, ?, ?, ?)', [
+        await c.execute('INSERT INTO master_location_country (id, code, name, is_active) VALUES (?, ?, ?, ?)', [
           crypto.randomUUID(),
           row.value,
           row.name,
@@ -178,7 +178,7 @@ export async function saveLocations(catalog: MasterCatalog, previous: MasterCata
         ]);
       } else if (old.name !== row.name || !!old.is_active !== row.active) {
         await c.execute(
-          'UPDATE master_country SET name=?, is_active=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?',
+          'UPDATE master_location_country SET name=?, is_active=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?',
           [row.name, row.active ? 1 : 0, old.id],
         );
       }
@@ -243,7 +243,7 @@ export async function saveLocations(catalog: MasterCatalog, previous: MasterCata
       }
     }
 
-    const [storedPostalCodes] = await c.query<any[]>('SELECT * FROM master_kode_pos FOR UPDATE');
+    const [storedPostalCodes] = await c.query<any[]>('SELECT * FROM master_location_kode_pos FOR UPDATE');
     const postalLookup = new Map(
       storedPostalCodes.map(row => [`${row.kabupaten_kota_id}|${row.postal_code}`, row]),
     );
@@ -254,12 +254,12 @@ export async function saveLocations(catalog: MasterCatalog, previous: MasterCata
       const old = postalLookup.get(`${city.value}|${row.value}`);
       if (!old) {
         await c.execute(
-          'INSERT INTO master_kode_pos (id, postal_code, name, kabupaten_kota_id, is_active) VALUES (?, ?, ?, ?, ?)',
+          'INSERT INTO master_location_kode_pos (id, postal_code, name, kabupaten_kota_id, is_active) VALUES (?, ?, ?, ?, ?)',
           [crypto.randomUUID(), row.value, row.name, city.value, row.active ? 1 : 0],
         );
       } else if (old.name !== row.name || !!old.is_active !== row.active) {
         await c.execute(
-          'UPDATE master_kode_pos SET name=?, is_active=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?',
+          'UPDATE master_location_kode_pos SET name=?, is_active=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?',
           [row.name, row.active ? 1 : 0, old.id],
         );
       }

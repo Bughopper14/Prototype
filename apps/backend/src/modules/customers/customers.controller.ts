@@ -30,12 +30,12 @@ export class CustomersController {
     ensure(/^\d{15,16}$/.test(npwp.replace(/\D/g, '')), 'NPWP must contain 15 or 16 digits');
 
     const [existing] = await pool.query<any[]>(
-      'SELECT id FROM business_partner WHERE nib=? OR npwp=? LIMIT 1',
+      'SELECT id FROM master_cust_n_pic_business_partner WHERE nib=? OR npwp=? LIMIT 1',
       [nib, npwp],
     );
     const id = existing[0]?.id || crypto.randomUUID();
     await pool.execute(
-      `INSERT INTO business_partner (id, company_name, company_type, nib, npwp, establishment_act_no, establishment_date)
+      `INSERT INTO master_cust_n_pic_business_partner (id, company_name, company_type, nib, npwp, establishment_act_no, establishment_date)
      VALUES (?, ?, ?, ?, ?, ?, ?)
      ON DUPLICATE KEY UPDATE company_name=VALUES(company_name), company_type=VALUES(company_type), nib=VALUES(nib), npwp=VALUES(npwp),
        establishment_act_no=COALESCE(VALUES(establishment_act_no), establishment_act_no),

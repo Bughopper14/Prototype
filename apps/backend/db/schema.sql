@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS `bank_facilities` (
   CONSTRAINT `fk_bank_facilities_application` FOREIGN KEY (`application_id`) REFERENCES `all_applications` (`application_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `business_partner` (
+CREATE TABLE IF NOT EXISTS `master_cust_n_pic_business_partner` (
   `id` char(36) NOT NULL,
   `company_name` varchar(255) NOT NULL,
   `company_type` varchar(50) DEFAULT NULL,
@@ -776,7 +776,7 @@ CREATE TABLE IF NOT EXISTS `master_busin_banks_role_in_project` (
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_country` (
+CREATE TABLE IF NOT EXISTS `master_location_country` (
   `id` char(36) NOT NULL,
   `code` varchar(150) NOT NULL,
   `name` varchar(150) NOT NULL,
@@ -1018,7 +1018,7 @@ CREATE TABLE IF NOT EXISTS `master_finance_payment_timing` (
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_kabupaten_kota` (
+CREATE TABLE IF NOT EXISTS `master_location_kabupaten_kota` (
   `id` char(36) NOT NULL,
   `name` varchar(150) NOT NULL,
   `provinsi_id` char(36) NOT NULL,
@@ -1031,10 +1031,10 @@ CREATE TABLE IF NOT EXISTS `master_kabupaten_kota` (
   KEY `fk_master_kabupaten_kota_parent` (`provinsi_id`),
   KEY `fk_master_kabupaten_kota_created_by` (`created_by`),
   KEY `fk_master_kabupaten_kota_updated_by` (`updated_by`),
-  CONSTRAINT `fk_master_kabupaten_kota_parent` FOREIGN KEY (`provinsi_id`) REFERENCES `master_provinsi` (`id`)
+  CONSTRAINT `fk_master_kabupaten_kota_parent` FOREIGN KEY (`provinsi_id`) REFERENCES `master_location_provinsi` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_kategori_remarks` (
+CREATE TABLE IF NOT EXISTS `master_legal_kategori_remarks` (
   `id` char(36) NOT NULL,
   `code` varchar(150) NOT NULL,
   `name` varchar(150) NOT NULL,
@@ -1047,7 +1047,7 @@ CREATE TABLE IF NOT EXISTS `master_kategori_remarks` (
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_kecamatan` (
+CREATE TABLE IF NOT EXISTS `master_location_kecamatan` (
   `id` char(36) NOT NULL,
   `name` varchar(150) NOT NULL,
   `kabupaten_kota_id` char(36) NOT NULL,
@@ -1060,10 +1060,10 @@ CREATE TABLE IF NOT EXISTS `master_kecamatan` (
   KEY `fk_master_kecamatan_parent` (`kabupaten_kota_id`),
   KEY `fk_master_kecamatan_created_by` (`created_by`),
   KEY `fk_master_kecamatan_updated_by` (`updated_by`),
-  CONSTRAINT `fk_master_kecamatan_parent` FOREIGN KEY (`kabupaten_kota_id`) REFERENCES `master_kabupaten_kota` (`id`)
+  CONSTRAINT `fk_master_kecamatan_parent` FOREIGN KEY (`kabupaten_kota_id`) REFERENCES `master_location_kabupaten_kota` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_kelurahan_desa` (
+CREATE TABLE IF NOT EXISTS `master_location_kelurahan_desa` (
   `id` char(36) NOT NULL,
   `name` varchar(150) NOT NULL,
   `kecamatan_id` char(36) NOT NULL,
@@ -1077,10 +1077,10 @@ CREATE TABLE IF NOT EXISTS `master_kelurahan_desa` (
   KEY `fk_master_kelurahan_desa_parent` (`kecamatan_id`),
   KEY `fk_master_kelurahan_desa_created_by` (`created_by`),
   KEY `fk_master_kelurahan_desa_updated_by` (`updated_by`),
-  CONSTRAINT `fk_master_kelurahan_desa_parent` FOREIGN KEY (`kecamatan_id`) REFERENCES `master_kecamatan` (`id`)
+  CONSTRAINT `fk_master_kelurahan_desa_parent` FOREIGN KEY (`kecamatan_id`) REFERENCES `master_location_kecamatan` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_kode_pos` (
+CREATE TABLE IF NOT EXISTS `master_location_kode_pos` (
   `id` char(36) NOT NULL,
   `postal_code` varchar(20) NOT NULL,
   `name` varchar(150) NOT NULL,
@@ -1092,7 +1092,7 @@ CREATE TABLE IF NOT EXISTS `master_kode_pos` (
   `updated_by` varchar(150) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `city_postal_code` (`kabupaten_kota_id`,`postal_code`),
-  CONSTRAINT `master_kode_pos_ibfk_1` FOREIGN KEY (`kabupaten_kota_id`) REFERENCES `master_kabupaten_kota` (`id`)
+  CONSTRAINT `master_kode_pos_ibfk_1` FOREIGN KEY (`kabupaten_kota_id`) REFERENCES `master_location_kabupaten_kota` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `master_legal_designation_name` (
@@ -1149,7 +1149,7 @@ CREATE TABLE IF NOT EXISTS `master_mandatory` (
   UNIQUE KEY `uk_section_field` (`section`,`field_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE IF NOT EXISTS `master_provinsi` (
+CREATE TABLE IF NOT EXISTS `master_location_provinsi` (
   `id` char(36) NOT NULL,
   `name` varchar(150) NOT NULL,
   `country_id` char(36) NOT NULL,
@@ -1164,7 +1164,7 @@ CREATE TABLE IF NOT EXISTS `master_provinsi` (
   KEY `fk_master_provinsi_created_by` (`created_by`),
   KEY `fk_master_provinsi_updated_by` (`updated_by`),
   KEY `fk_master_provinsi_country` (`country_id`),
-  CONSTRAINT `fk_master_provinsi_country` FOREIGN KEY (`country_id`) REFERENCES `master_country` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_master_provinsi_country` FOREIGN KEY (`country_id`) REFERENCES `master_location_country` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `new_application_fap_stage` (

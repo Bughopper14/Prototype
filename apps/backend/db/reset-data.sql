@@ -10,7 +10,7 @@
 --
 -- To keep some tables (for example the Indonesian location masters, which are
 -- slow to re-import), list them in @keep_tables, comma separated, no spaces:
---   SET @keep_tables = 'master_provinsi,master_kabupaten_kota,master_kecamatan,master_kelurahan_desa,master_kode_pos';
+--   SET @keep_tables = 'master_location_provinsi,master_location_kabupaten_kota,master_location_kecamatan,master_location_kelurahan_desa,master_location_kode_pos';
 --
 -- After a full reset:
 --   npm run db:setup                     reference data (apps, roles, authorities, mandatory rules, master data)

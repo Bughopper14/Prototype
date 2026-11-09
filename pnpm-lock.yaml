@@ -48,7 +48,7 @@ importers:
         specifier: ^10.4.3
         version: 10.6.0
       express:
-        specifier: 5.2.1
+        specifier: ^5.2.1
         version: 5.2.1
       helmet:
         specifier: ^8.0.0
@@ -57,7 +57,7 @@ importers:
         specifier: ^9.0.2
         version: 9.0.3
       multer:
-        specifier: 2.4.0
+        specifier: ^2.4.0
         version: 2.4.0
       mysql2:
         specifier: ^3.11.5

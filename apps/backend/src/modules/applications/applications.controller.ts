@@ -33,7 +33,7 @@ async function createApplication(req: ApiRequest) {
   const category = body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW');
   let customer: Record<string, any> = body.customer || {};
   if (customerId) {
-    const [rows] = await pool.query<any[]>('SELECT * FROM business_partner WHERE id=?', [customerId]);
+    const [rows] = await pool.query<any[]>('SELECT * FROM master_cust_n_pic_business_partner WHERE id=?', [customerId]);
     ensure(rows[0], 'Customer not found', 404);
     const c = rows[0];
     customer = {

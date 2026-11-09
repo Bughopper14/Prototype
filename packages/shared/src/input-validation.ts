@@ -175,7 +175,8 @@ export function fieldInputError(key: string, value: any, now = new Date()): stri
     if (!Number.isInteger(number) && Math.abs(number * 100 - Math.round(number * 100)) > 0.0001)
       return 'Max 2 decimal places';
   }
-  if (['email'].includes(key) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text)) return 'Email is not valid.';
+  if (['email', 'picEmail'].includes(key) && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(text))
+    return 'Email must be a valid company email (e.g. name@company.com).';
   if (
     ['phone', 'mobilePhone', 'phoneFax'].includes(key) &&
     (!/^\+?[\d\s().-]+$/.test(text) ||

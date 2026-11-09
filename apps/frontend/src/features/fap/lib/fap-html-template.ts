@@ -1719,12 +1719,13 @@ td
         padding: 4px 6px !important;
     }
     .fap-chk-val {
-        font-size: 20pt !important;
+        font-size: 56pt !important;
         font-weight: 900 !important;
         text-align: center !important;
         vertical-align: middle !important;
         color: #002060 !important;
         line-height: 1 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
     }
     .fap-address-box {
         vertical-align: middle !important;
@@ -1918,7 +1919,22 @@ td
         text-align: center !important;
         vertical-align: middle !important;
     }
-    </style></head>
+    
+    #fap-cell-prop-notes,
+    #fap-cell-prop-notes *,
+    #fap-cell-prop-notes p,
+    #fap-cell-prop-notes span,
+    #fap-cell-prop-notes div,
+    #fap-cell-prop-notes li,
+    #fap-cell-prop-notes td {
+        font-size: 24.0pt !important;
+        font-family: Calibri, sans-serif !important;
+    }
+    #fap-cell-prop-notes p {
+        margin: 0 0 6px 0 !important;
+        line-height: 1.3 !important;
+    }
+</style></head>
 <body class="xl70" link="#0563C1" vlink="#954F72">
 <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:
  collapse;table-layout:fixed;width:2580pt;border-left:1.0pt solid windowtext;" width="3443">
@@ -4275,9 +4291,9 @@ bFBLBQYAAAAABAAEAPUAAAAsBgAAAAA=
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl100"></td>
-<td class="xl148" colspan="3" style="width:490pt" width="654"><font class="font17"><span style="mso-spacerun:yes"> </span>Sewa Pembiayaan</font><font class="font18">/Financial
+<td class="xl148" colspan="3" style="width:490pt;padding-left:10px !important;" width="654"><font class="font17"><span style="mso-spacerun:yes"> </span>Sewa Pembiayaan</font><font class="font18">/Financial
   Lease</font></td>
-<td class="xl148" colspan="2" style="width:269pt" width="358"><font class="font17">Jual
+<td class="xl148" colspan="2" style="width:269pt;padding-left:10px !important;" width="358"><font class="font17">Jual
   dan Sewa kembali/</font><font class="font18">Sale and Lease Back</font></td>
 <td class="xl148" style="width:66pt" width="88"></td>
 <td align="left" colspan="3" height="122" style="height:91.5pt;width:463pt" valign="top" width="618"><!--[if gte vml 1]><v:shape id="TextBox_x0020_11"
@@ -4332,13 +4348,13 @@ SwUGAAAAAAQABAD1AAAAnAYAAAAA
 <table cellpadding="0" cellspacing="0">
 <tr>
 <td class="xl148" colspan="3" height="122" style="height:91.5pt;
-    width:463pt" width="618">Pembelian dengan pembayaran angsuran/ Installment Financing</td>
+    width:463pt;padding-left:10px !important;" width="618">Pembelian dengan pembayaran angsuran/ Installment Financing</td>
 </tr>
 </table>
 </span></td>
 <td class="xl148" style="width:24pt" width="32"></td>
 <td class="xl123" style="border-top:1.0pt solid windowtext !important"> </td>
-<td class="xl132" style="width:104pt" width="138">Company Profile</td>
+<td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">Company Profile</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>
@@ -4477,7 +4493,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl133"></td>
 <td class="xl123" style="border-top:none"> </td>
 <td class="xl203" colspan="3" style="border-right:1.0pt solid black;
-  border-left:none;width:232pt" width="310">Legality (e.g. NIB, SIUJK, SIUP, etc)</td>
+  border-left:none;width:232pt;padding-left:10px !important;" width="310">Legality (e.g. NIB, SIUJK, SIUP, etc)</td>
 <td class="xl70"></td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4486,8 +4502,8 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl132" colspan="2" style="width:229pt" width="305">Cara Pembiayaan /
   financing method<span style="mso-spacerun:yes">   </span></td>
-<td class="xl114">:<span style="mso-spacerun:yes"> </span></td>
-<td class="xl190" colspan="2"> </td>
+<td class="xl114" style="text-align:right !important;padding-right:6px !important;">:<span style="mso-spacerun:yes"> </span></td>
+<td class="xl190" colspan="2" style="padding-left:10px !important;"> </td>
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl132" colspan="2" style="width:171pt" width="228"><font class="font19">mata
   uang</font><font class="font20">/currency</font></td>
@@ -4501,7 +4517,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
 <td class="xl203" colspan="3" style="border-right:1.0pt solid black;
-  border-left:none;width:232pt" width="310">Deed establishment &amp; Deed Amendments</td>
+  border-left:none;width:232pt;padding-left:10px !important;" width="310">Deed establishment &amp; Deed Amendments</td>
 <td class="xl70"></td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4510,8 +4526,8 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl132" colspan="2" style="width:229pt" width="305">Nilai Pembiayaan /
   financing value<span style="mso-spacerun:yes"> </span></td>
-<td class="xl135" style="border-top:none">: (IDR/USD)</td>
-<td class="xl169" colspan="2"> </td>
+<td class="xl135" style="border-top:none;text-align:right !important;padding-right:6px !important;">: (IDR/USD)</td>
+<td class="xl169" colspan="2" style="padding-left:10px !important;"> </td>
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl132" colspan="2" style="width:171pt" width="228">Simpanan Jaminan /
   Security Deposit</td>
@@ -4525,7 +4541,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
 <td class="xl203" colspan="3" style="border-right:1.0pt solid black;
-  border-left:none;width:232pt" width="310">Decree of the ministry of law</td>
+  border-left:none;width:232pt;padding-left:10px !important;" width="310">Decree of the ministry of law</td>
 <td class="xl70"></td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4533,8 +4549,8 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Application Source<span style="mso-spacerun:yes"> </span></td>
-<td class="xl103" style="border-top:none">:</td>
-<td class="xl169" colspan="2"> </td>
+<td class="xl103" style="border-top:none;text-align:right !important;padding-right:6px !important;">:</td>
+<td class="xl169" colspan="2" style="padding-left:10px !important;"> </td>
 <td class="xl118" style="border-top:none"> </td>
 <td class="xl203" colspan="2" style="border-right:.5pt solid black;
   border-left:none;width:171pt" width="228">Bunga/Interest Rate</td>
@@ -4545,7 +4561,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl136" colspan="2" style="mso-ignore:colspan">Bunga/Interest Rate</td>
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:183pt" width="244">Copy
+<td class="xl203" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Copy
   of ID, BOD, and Shareholder</td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>
@@ -4567,7 +4583,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Jk. Waktu/Tenor</td>
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:183pt" width="244">Audited
+<td class="xl203" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Audited
   Financial Statements</td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>
@@ -4591,7 +4607,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
     Payment Method</td>
 <td class="xl132" style="width:24pt" width="32"></td>
 <td class="xl123" style="border-top:none"> </td>
-<td class="xl154" colspan="2" style="border-left:none;width:183pt" width="244">Bank
+<td class="xl154" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Bank
   Statements</td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>
@@ -4612,7 +4628,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl129" rowspan="2" style="border-bottom:.5pt solid black;border-top:
   none"> </td>
 <td class="xl203" colspan="3" rowspan="2" style="border-right:1.0pt solid black;
-  width:232pt" width="310">Bank or Financing Facility</td>
+  width:232pt;padding-left:10px !important;" width="310">Bank or Financing Facility</td>
 <td class="xl70"></td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4658,7 +4674,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
-<td class="xl132" style="width:104pt" width="138">Production report</td>
+<td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">Production report</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>
@@ -4684,7 +4700,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
-<td class="xl132" style="width:104pt" width="138">List of fixed assets</td>
+<td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">List of fixed assets</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>
@@ -4710,7 +4726,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl123" style="border-top:none"> </td>
-<td class="xl132" style="width:104pt" width="138">Project Contracts</td>
+<td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">Project Contracts</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
 <td class="xl70"></td>

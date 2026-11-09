@@ -5,6 +5,8 @@ import {useNibOcrModalContext} from '@/features/ocr/components/nib-modal/NibOcrM
 
 export function NibExtractedFields() {
   const {copiedKey, formData, setFormData, copyToClipboard} = useNibOcrModalContext();
+  const isEmailValid =
+    !formData.email || /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email.trim());
   return (
     <div
       style={{
@@ -63,7 +65,7 @@ export function NibExtractedFields() {
           type="text"
           value={formData.nib}
           maxLength={13}
-          placeholder="e.g. 1209260000012"
+          placeholder=""
           onChange={e => setFormData({...formData, nib: e.target.value.replace(/\D/g, '')})}
           style={{
             width: '100%',
@@ -122,7 +124,7 @@ export function NibExtractedFields() {
         <input
           type="text"
           value={formData.companyName}
-          placeholder="e.g. PT NUSANTARA MINING RESOURCES"
+          placeholder=""
           onChange={e => setFormData({...formData, companyName: e.target.value})}
           style={{
             width: '100%',
@@ -181,7 +183,7 @@ export function NibExtractedFields() {
         <textarea
           rows={2}
           value={formData.alamat}
-          placeholder="Full address as stated on the NIB document"
+          placeholder=""
           onChange={e => setFormData({...formData, alamat: e.target.value})}
           style={{
             width: '100%',
@@ -235,7 +237,7 @@ export function NibExtractedFields() {
             <input
               type="text"
               value={formData.province}
-              placeholder="e.g. DKI Jakarta"
+              placeholder=""
               onChange={e => setFormData({...formData, province: e.target.value})}
               style={{
                 width: '100%',
@@ -263,7 +265,7 @@ export function NibExtractedFields() {
             <input
               type="text"
               value={formData.city}
-              placeholder="e.g. South Jakarta"
+              placeholder=""
               onChange={e => setFormData({...formData, city: e.target.value})}
               style={{
                 width: '100%',
@@ -291,7 +293,7 @@ export function NibExtractedFields() {
             <input
               type="text"
               value={formData.district}
-              placeholder="e.g. Setiabudi"
+              placeholder=""
               onChange={e => setFormData({...formData, district: e.target.value})}
               style={{
                 width: '100%',
@@ -319,7 +321,7 @@ export function NibExtractedFields() {
             <input
               type="text"
               value={formData.village}
-              placeholder="e.g. Karet Semanggi"
+              placeholder=""
               onChange={e => setFormData({...formData, village: e.target.value})}
               style={{
                 width: '100%',
@@ -347,7 +349,7 @@ export function NibExtractedFields() {
             <input
               type="text"
               value={formData.postalCode}
-              placeholder="e.g. 12930"
+              placeholder=""
               onChange={e =>
                 setFormData({...formData, postalCode: e.target.value.replace(/\D/g, '').slice(0, 5)})
               }
@@ -430,17 +432,22 @@ export function NibExtractedFields() {
           <input
             type="email"
             value={formData.email}
-            placeholder="legal@company.co.id"
+            placeholder=""
             onChange={e => setFormData({...formData, email: e.target.value})}
             style={{
               width: '100%',
               padding: '7px 10px',
               fontSize: '0.84rem',
               borderRadius: 6,
-              border: '1px solid #cbd5e1',
-              background: formData.email ? '#f0f7ff' : '#ffffff',
+              border: `1px solid ${!isEmailValid ? '#ef4444' : '#cbd5e1'}`,
+              background: !isEmailValid ? '#fef2f2' : formData.email ? '#f0f7ff' : '#ffffff',
             }}
           />
+          {!isEmailValid && (
+            <span style={{fontSize: '0.72rem', color: '#ef4444', marginTop: 2, display: 'block'}}>
+              Format email tidak valid (contoh: nama@perusahaan.co.id)
+            </span>
+          )}
         </div>
 
         <div>
@@ -460,7 +467,7 @@ export function NibExtractedFields() {
           <input
             type="text"
             value={formData.phone}
-            placeholder="021-xxxxxxxx"
+            placeholder=""
             onChange={e => setFormData({...formData, phone: e.target.value})}
             style={{
               width: '100%',

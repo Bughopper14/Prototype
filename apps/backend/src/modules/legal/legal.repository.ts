@@ -1,3 +1,4 @@
+import {storedDocumentUrl} from '@liugong/shared';
 import {experienceFromEstablishmentDate} from '@liugong/shared';
 import fs from 'node:fs/promises';
 import {auditTable} from '../users/users.repository';
@@ -32,18 +33,29 @@ const comparable = (key: string, value: any) =>
       : dateFields.has(key)
         ? asDate(value)
         : String(value);
-const mapStakeholder = (row: any) => ({
-  ...Object.fromEntries(
-    stakeholderFields.map(f => [f.key, f.type === 'date' ? asDate(row[col(f.key)]) : row[col(f.key)]]),
-  ),
-  ...ageFromDateOfBirth(asDate(row.date_of_birth)),
-  district: row.district_master_id || row.district,
-  village: row.village_master_id || row.village,
-  id: row.id,
-  name: [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-});
+const mapStakeholder = (row: any) => {
+  const docPath = row.document_path || '';
+  const fileName = row.file_name || (docPath ? docPath.split(/[/\\]/).pop() : '');
+  const idFolder = String(row.id_type || '').startsWith('PASSPORT') ? 'passport' : 'ktp';
+  const fileUrl =
+    storedDocumentUrl(docPath) ||
+    (fileName ? `/documents/${idFolder}/${fileName}` : null);
+  return {
+    ...Object.fromEntries(
+      stakeholderFields.map(f => [f.key, f.type === 'date' ? asDate(row[col(f.key)]) : row[col(f.key)]]),
+    ),
+    ...ageFromDateOfBirth(asDate(row.date_of_birth)),
+    district: row.district_master_id || row.district,
+    village: row.village_master_id || row.village,
+    id: row.id,
+    name: [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
+    document_path: docPath,
+    file_name: fileName,
+    fileUrl: fileUrl,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
 export async function initializeLegal() {
   if (!pool) return;
   await pool.query(`CREATE TABLE IF NOT EXISTS daftar_akta (
@@ -101,7 +113,7 @@ export async function readLegal(applicationId: string) {
   const deeds = await Promise.all(
     rows.map(async row => {
       const [stakeholders] = await pool!.execute<any[]>(
-        `SELECT s.*,d.id AS district_master_id,v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN master_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id`,
+        `SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, d.id AS district_master_id, v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id`,
         [row.id],
       );
       const isEstablishment = row.akta === 'Akta pendirian' || /pendirian/i.test(row.akta);
@@ -275,7 +287,7 @@ export async function saveLegal(applicationId: string, incoming: any, final = fa
     for (const d of deeds) {
       if (!d._stakeholdersPassed) {
         const [existingRows] = await c.execute<any[]>(
-          'SELECT s.*,d.id AS district_master_id,v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN master_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id',
+          'SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, d.id AS district_master_id, v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id',
           [d.id],
         );
         if (existingRows.length > 0) d.stakeholders = existingRows.map(mapStakeholder);
@@ -400,10 +412,10 @@ async function stakeholderLocationNames(c: any, input: any) {
   const stored = {...input};
   let parentId: string | undefined;
   for (const [key, table, parent] of [
-    ['province', 'master_provinsi', null],
-    ['cityRegency', 'master_kabupaten_kota', 'provinsi_id'],
-    ['district', 'master_kecamatan', 'kabupaten_kota_id'],
-    ['village', 'master_kelurahan_desa', 'kecamatan_id'],
+    ['province', 'master_location_provinsi', null],
+    ['cityRegency', 'master_location_kabupaten_kota', 'provinsi_id'],
+    ['district', 'master_location_kecamatan', 'kabupaten_kota_id'],
+    ['village', 'master_location_kelurahan_desa', 'kecamatan_id'],
   ] as const) {
     if (!input[key]) {
       parentId = undefined;
@@ -428,10 +440,10 @@ async function stakeholderLocationNames(c: any, input: any) {
 export async function migrateStakeholderLocationNames() {
   if (!pool) return;
   const fields = [
-    ['province', 'master_provinsi'],
-    ['city_regency', 'master_kabupaten_kota'],
-    ['district', 'master_kecamatan'],
-    ['village', 'master_kelurahan_desa'],
+    ['province', 'master_location_provinsi'],
+    ['city_regency', 'master_location_kabupaten_kota'],
+    ['district', 'master_location_kecamatan'],
+    ['village', 'master_location_kelurahan_desa'],
   ] as const;
   try {
     const c = await pool.getConnection();

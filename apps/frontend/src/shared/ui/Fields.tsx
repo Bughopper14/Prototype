@@ -286,10 +286,10 @@ export function Fields({
               />
             ) : f.options ? (
               <select
-                className={value?.[f.key] === '' ? 'is-placeholder' : undefined}
+                className={value?.[f.key] === '' || value?.[f.key] === 'NONE' ? 'is-placeholder' : undefined}
                 required={isRequired}
                 disabled={disabled || !!f.locked}
-                value={value?.[f.key] ?? f.options[0]}
+                value={value?.[f.key] ?? (f.options.includes('NONE') ? 'NONE' : '')}
                 onFocus={() => {
                   if (onFieldFocus) onFieldFocus(f.key, section);
                 }}
@@ -298,14 +298,12 @@ export function Fields({
                   if (onSelectOption) onSelectOption(f.key, e.target.value);
                 }}
               >
-                {value?.[f.key] === '' && (
-                  <option value="" disabled hidden>
-                    {placeholderText}
-                  </option>
+                {!f.options.some(o => o.toUpperCase() === 'NONE') && (
+                  <option value="">None</option>
                 )}
                 {f.options.map(o => (
                   <option key={o} value={o}>
-                    {f.optionLabels?.[o] ?? toTitleCase(label(o))}
+                    {f.optionLabels?.[o] ?? (o.toUpperCase() === 'NONE' ? 'None' : toTitleCase(label(o)))}
                   </option>
                 ))}
               </select>

@@ -94,7 +94,7 @@ const mysqlError = (message: string, status = 422) => Object.assign(new Error(me
 
 export async function initializeIntake() {
   if (!pool) return;
-  await pool.query(`CREATE TABLE IF NOT EXISTS business_partner (
+  await pool.query(`CREATE TABLE IF NOT EXISTS master_cust_n_pic_business_partner (
   id CHAR(36) PRIMARY KEY,
   company_name VARCHAR(255) NOT NULL,company_type VARCHAR(50) NULL,nib VARCHAR(32) NULL,npwp VARCHAR(32) NULL,
   business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer',
@@ -108,17 +108,17 @@ export async function initializeIntake() {
   created_by VARCHAR(150) NULL,updated_by VARCHAR(150) NULL
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
   const [partnerTypeColumns] = await pool.query<any[]>(`SELECT COLUMN_NAME FROM information_schema.columns
-  WHERE table_schema=DATABASE() AND table_name='business_partner' AND column_name='business_partner_type'`);
+  WHERE table_schema=DATABASE() AND table_name='master_cust_n_pic_business_partner' AND column_name='business_partner_type'`);
   if (!partnerTypeColumns.length)
     await pool.query(
-      "ALTER TABLE business_partner ADD COLUMN business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer' AFTER company_type",
+      "ALTER TABLE master_cust_n_pic_business_partner ADD COLUMN business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer' AFTER company_type",
     );
   else {
     const [columnOrder] = await pool.query<any[]>(`SELECT ORDINAL_POSITION FROM information_schema.columns
-   WHERE table_schema=DATABASE() AND table_name='business_partner' AND column_name='business_partner_type'`);
+   WHERE table_schema=DATABASE() AND table_name='master_cust_n_pic_business_partner' AND column_name='business_partner_type'`);
     if (Number(columnOrder[0]?.ORDINAL_POSITION) !== 4)
       await pool.query(
-        "ALTER TABLE business_partner MODIFY COLUMN business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer' AFTER company_type",
+        "ALTER TABLE master_cust_n_pic_business_partner MODIFY COLUMN business_partner_type VARCHAR(50) NOT NULL DEFAULT 'Prorpect Customer' AFTER company_type",
       );
   }
   await pool.query(`CREATE TABLE IF NOT EXISTS new_application_fap_stage (
@@ -152,10 +152,10 @@ export async function initializeIntake() {
     if (!hasCol.length)
       await pool.query(`ALTER TABLE new_application_fap_stage ADD COLUMN \`${col}\` TEXT NULL`);
     const [hasBpCol] = await pool.query<any[]>(
-      `SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='business_partner' AND column_name=?`,
+      `SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='master_cust_n_pic_business_partner' AND column_name=?`,
       [col],
     );
-    if (!hasBpCol.length) await pool.query(`ALTER TABLE business_partner ADD COLUMN \`${col}\` TEXT NULL`);
+    if (!hasBpCol.length) await pool.query(`ALTER TABLE master_cust_n_pic_business_partner ADD COLUMN \`${col}\` TEXT NULL`);
   }
   await migrateCustomerPicLocations();
 }
@@ -170,8 +170,8 @@ export async function migrateCustomerPicLocations() {
   if (!exists.length) return;
   let columns = new Set(exists.map(r => String(r.COLUMN_NAME)));
   const migrations = [
-    ['district', 'kecamatan', 'master_kecamatan'],
-    ['village', 'kelurahan', 'master_kelurahan_desa'],
+    ['district', 'kecamatan', 'master_location_kecamatan'],
+    ['village', 'kelurahan', 'master_location_kelurahan_desa'],
   ] as const;
   for (const [oldName, newName, table] of migrations) {
     const current = columns.has(newName) ? newName : columns.has(oldName) ? oldName : null;
@@ -209,16 +209,16 @@ export async function migrateCustomerPicLocations() {
   }
   try {
     await pool.query(
-      `UPDATE new_application_fap_stage f JOIN master_kecamatan d ON d.id=f.district SET f.district=d.name`,
+      `UPDATE new_application_fap_stage f JOIN master_location_kecamatan d ON d.id=f.district SET f.district=d.name`,
     );
     await pool.query(
-      `UPDATE new_application_fap_stage f JOIN master_kelurahan_desa v ON v.id=f.village SET f.village=v.name`,
+      `UPDATE new_application_fap_stage f JOIN master_location_kelurahan_desa v ON v.id=f.village SET f.village=v.name`,
     );
     await pool.query(
-      `UPDATE business_partner bp JOIN master_kecamatan d ON d.id=bp.district SET bp.district=d.name`,
+      `UPDATE master_cust_n_pic_business_partner bp JOIN master_location_kecamatan d ON d.id=bp.district SET bp.district=d.name`,
     );
     await pool.query(
-      `UPDATE business_partner bp JOIN master_kelurahan_desa v ON v.id=bp.village SET bp.village=v.name`,
+      `UPDATE master_cust_n_pic_business_partner bp JOIN master_location_kelurahan_desa v ON v.id=bp.village SET bp.village=v.name`,
     );
     await pool.query(
       `UPDATE master_mandatory SET field_label='Establishment Deed No' WHERE field_key='establishmentActNo'`,
@@ -296,7 +296,7 @@ export async function intakeDetail(id: string) {
   };
   if (row.district || row.village) {
     const [pLocs] = await pool.execute<any[]>(
-      `SELECT d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM master_provinsi pr LEFT JOIN master_kabupaten_kota c ON c.name=? AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=? OR d.id=?) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=? OR v.id=?) AND v.kecamatan_id=d.id WHERE pr.name=?`,
+      `SELECT d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM master_location_provinsi pr LEFT JOIN master_location_kabupaten_kota c ON c.name=? AND c.provinsi_id=pr.id LEFT JOIN master_location_kecamatan d ON (d.name=? OR d.id=?) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=? OR v.id=?) AND v.kecamatan_id=d.id WHERE pr.name=?`,
       [
         row.city || '',
         row.district || '',
@@ -312,7 +312,7 @@ export async function intakeDetail(id: string) {
     }
   }
   const [pics] = await pool.execute<any[]>(
-    `SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM customer_pic cp LEFT JOIN master_provinsi pr ON pr.name=cp.province LEFT JOIN master_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,
+    `SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM customer_pic cp LEFT JOIN master_location_provinsi pr ON pr.name=cp.province LEFT JOIN master_location_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_location_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,
     [id],
   );
   const legal = await readLegal(id);
@@ -393,7 +393,7 @@ export async function intakeCustomers() {
   if (pool) {
     try {
       const [bpRows] = await pool.query<any[]>(
-        `SELECT id, company_name AS companyName, company_type AS companyType, nib, DATE_FORMAT(nib_date, '%Y-%m-%d') AS nibDate, npwp, establishment_act_no AS establishmentActNo, DATE_FORMAT(establishment_date, '%Y-%m-%d') AS establishmentDate, created_at AS createdAt, updated_at AS updatedAt FROM business_partner ORDER BY created_at DESC`,
+        `SELECT id, company_name AS companyName, company_type AS companyType, nib, DATE_FORMAT(nib_date, '%Y-%m-%d') AS nibDate, npwp, establishment_act_no AS establishmentActNo, DATE_FORMAT(establishment_date, '%Y-%m-%d') AS establishmentDate, created_at AS createdAt, updated_at AS updatedAt FROM master_cust_n_pic_business_partner ORDER BY created_at DESC`,
       );
       for (const r of bpRows) {
         customerMap.set(r.id, {
@@ -410,7 +410,7 @@ export async function intakeCustomers() {
         });
       }
     } catch (e) {
-      console.warn('intakeCustomers business_partner query error:', e);
+      console.warn('intakeCustomers master_cust_n_pic_business_partner query error:', e);
     }
   }
   const rows = await listIntake();
@@ -499,13 +499,13 @@ export async function createIntake(body: any, identity?: {id: string; fapNumber?
     };
     if (fapData.district) {
       const [districts] = await c.execute<any[]>(
-        `SELECT d.name FROM master_kecamatan d WHERE d.id=? OR d.name=?`,
+        `SELECT d.name FROM master_location_kecamatan d WHERE d.id=? OR d.name=?`,
         [fapData.district, fapData.district],
       );
       if (districts.length) fapData.district = districts[0].name;
       if (fapData.village) {
         const [villages] = await c.execute<any[]>(
-          `SELECT v.name FROM master_kelurahan_desa v WHERE v.id=? OR v.name=?`,
+          `SELECT v.name FROM master_location_kelurahan_desa v WHERE v.id=? OR v.name=?`,
           [fapData.village, fapData.village],
         );
         if (villages.length) fapData.village = villages[0].name;
@@ -529,7 +529,7 @@ export async function createIntake(body: any, identity?: {id: string; fapNumber?
     );
     const directoryKeys = Object.keys(directoryData);
     await c.execute(
-      `INSERT IGNORE INTO business_partner (id,${directoryKeys.map(k => `\`${k}\``).join(',')}) VALUES (${Array(
+      `INSERT IGNORE INTO master_cust_n_pic_business_partner (id,${directoryKeys.map(k => `\`${k}\``).join(',')}) VALUES (${Array(
         directoryKeys.length + 1,
       )
         .fill('?')
@@ -603,13 +603,13 @@ export async function saveCustomerPic(id: string, body: any, fallback?: any) {
     if (!app.length) throw mysqlError('Application not found', 404);
     if (fapData.district) {
       const [districts] = await c.execute<any[]>(
-        `SELECT d.name FROM master_kecamatan d WHERE d.id=? OR d.name=?`,
+        `SELECT d.name FROM master_location_kecamatan d WHERE d.id=? OR d.name=?`,
         [fapData.district, fapData.district],
       );
       if (districts.length) fapData.district = districts[0].name;
       if (fapData.village) {
         const [villages] = await c.execute<any[]>(
-          `SELECT v.name FROM master_kelurahan_desa v WHERE v.id=? OR v.name=?`,
+          `SELECT v.name FROM master_location_kelurahan_desa v WHERE v.id=? OR v.name=?`,
           [fapData.village, fapData.village],
         );
         if (villages.length) fapData.village = villages[0].name;
@@ -619,7 +619,7 @@ export async function saveCustomerPic(id: string, body: any, fallback?: any) {
     if (pic.district) {
       try {
         const [districts] = await c.execute<any[]>(
-          `SELECT d.id,d.name,c.name AS city_name,p.name AS province_name FROM master_kecamatan d JOIN master_kabupaten_kota c ON c.id=d.kabupaten_kota_id JOIN master_provinsi p ON p.id=c.provinsi_id WHERE (d.id=? OR d.name=?) AND (?='' OR c.name=?) AND (?='' OR p.name=?)`,
+          `SELECT d.id,d.name,c.name AS city_name,p.name AS province_name FROM master_location_kecamatan d JOIN master_location_kabupaten_kota c ON c.id=d.kabupaten_kota_id JOIN master_location_provinsi p ON p.id=c.provinsi_id WHERE (d.id=? OR d.name=?) AND (?='' OR c.name=?) AND (?='' OR p.name=?)`,
           [
             pic.district,
             pic.district,
@@ -634,7 +634,7 @@ export async function saveCustomerPic(id: string, body: any, fallback?: any) {
           storedPic.district = district.name;
           if (pic.village) {
             const [villages] = await c.execute<any[]>(
-              'SELECT id,name FROM master_kelurahan_desa WHERE (id=? OR name=?) AND kecamatan_id=?',
+              'SELECT id,name FROM master_location_kelurahan_desa WHERE (id=? OR name=?) AND kecamatan_id=?',
               [pic.village, pic.village, district.id],
             );
             if (villages.length >= 1) storedPic.village = villages[0].name;
@@ -686,12 +686,12 @@ export async function saveCustomerPic(id: string, body: any, fallback?: any) {
       Object.entries(rawDirectoryData).map(([k, v]) => [k, v === '' || v === undefined ? null : v]),
     );
     const directoryKeys = Object.keys(directoryData);
-    const [directoryRows] = await c.execute<any[]>('SELECT * FROM business_partner WHERE id=? FOR UPDATE', [
+    const [directoryRows] = await c.execute<any[]>('SELECT * FROM master_cust_n_pic_business_partner WHERE id=? FOR UPDATE', [
       current?.customerId,
     ]);
     if (!directoryRows.length) {
       await c.execute(
-        `INSERT INTO business_partner (id,${directoryKeys.map(k => `\`${k}\``).join(',')}) VALUES (${Array(
+        `INSERT INTO master_cust_n_pic_business_partner (id,${directoryKeys.map(k => `\`${k}\``).join(',')}) VALUES (${Array(
           directoryKeys.length + 1,
         )
           .fill('?')
@@ -710,7 +710,7 @@ export async function saveCustomerPic(id: string, body: any, fallback?: any) {
         ) || !same(directoryRows[0].customer_relationship, directoryData.customer_relationship);
       if (directoryChanged) {
         await c.execute(
-          `UPDATE business_partner SET ${directoryKeys.map(k => `\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
+          `UPDATE master_cust_n_pic_business_partner SET ${directoryKeys.map(k => `\`${k}\`=?`).join(',')},updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
           [...Object.values(directoryData), current?.customerId],
         );
         changed = true;
