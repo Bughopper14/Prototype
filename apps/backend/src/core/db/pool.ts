@@ -20,6 +20,9 @@ function createPool() {
     enableKeepAlive: true,
     keepAliveInitialDelay: 0,
     charset: 'utf8mb4',
+    // A DATE has no time zone: read it as the plain 'YYYY-MM-DD' string. As a JS Date it is local midnight, and
+    // turning that into a string through UTC (toISOString) moved every date one day back on each read and save.
+    dateStrings: ['DATE'],
   });
   // Each checkout receives the request's actor (NULL for non-request work) for the audit triggers.
   const checkout = pool.getConnection.bind(pool);

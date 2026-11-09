@@ -249,7 +249,7 @@ export async function listIntake() {
     ...r,
     deeds_pending_check: deedCounts.get(r.id)?.PENDING_CHECK || 0,
     deeds_pending_approval: deedCounts.get(r.id)?.PENDING_APPROVAL || 0,
-    deeds_rejected: deedCounts.get(r.id)?.REJECTED || 0,
+    deeds_rejected: (deedCounts.get(r.id)?.REJECTED || 0) + (deedCounts.get(r.id)?.NEEDS_CORRECTION || 0),
     stage:
       r.lock_stage === 'PRE_ANALYSIS' ||
       [
@@ -856,8 +856,7 @@ export async function transitionIntake(
       throw mysqlError('Akun ini tidak dapat memverifikasi berkas', 403);
     currentStatus = 'BS_VERIFIED';
   } else if (action === 'START_REVIEW') {
-    if (!can('crm_workflow_start_review'))
-      throw mysqlError('Akun ini tidak dapat memulai review', 403);
+    if (!can('crm_workflow_start_review')) throw mysqlError('Akun ini tidak dapat memulai review', 403);
     currentStatus = 'IN_CA_LEGAL_REVIEW';
   } else if (action === 'RECOMMEND_CA' || action === 'RECOMMEND_LEGAL') {
     if (!can(action === 'RECOMMEND_CA' ? 'crm_workflow_recommend_credit' : 'crm_workflow_recommend_legal'))

@@ -1,10 +1,12 @@
 /** One master group (e.g. Legal Entity, Documents): search, table of options, add / edit / delete. */
+import {useCanManageMasterData} from '@/features/master-data/hooks/useCanManageMasterData';
 import {MasterItemDialog, locationGroups, saveCatalog} from '@/shared/master-data';
 import {masterGroups, type MasterItem} from '@liugong/shared';
 import {Pencil, Plus, Search, Trash2} from 'lucide-react';
 import {useState} from 'react';
 
 export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Record<string, MasterItem[]>}) {
+  const canManage = useCanManageMasterData();
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<MasterItem | null | undefined>(undefined);
   const group = masterGroups.find(g => g.key === groupKey) || masterGroups[0];
@@ -30,12 +32,14 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
           <div>
             <h3 style={{fontSize: 18, color: '#002060', fontWeight: 700}}>{group.name}</h3>
             <p className="muted" style={{fontSize: 12, marginTop: 4}}>
-              Manage dropdown choices for {group.section}.
+              {canManage ? 'Manage dropdown choices for' : 'Dropdown choices for'} {group.section}.
             </p>
           </div>
-          <button className="button primary small" onClick={() => setEditing(null)}>
-            <Plus size={15} /> Add data
-          </button>
+          {canManage && (
+            <button className="button primary small" onClick={() => setEditing(null)}>
+              <Plus size={15} /> Add data
+            </button>
+          )}
         </div>
         {group.key === 'documents' && (
           <p className="master-help">
@@ -66,7 +70,7 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
                   </>
                 )}
                 <th>STATUS</th>
-                <th style={{textAlign: 'center'}}>ACTION</th>
+                {canManage && <th style={{textAlign: 'center'}}>ACTION</th>}
               </tr>
             </thead>
             <tbody>
@@ -92,22 +96,29 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
                       {x.active ? 'Active' : 'Inactive'}
                     </span>
                   </td>
-                  <td style={{textAlign: 'center'}}>
-                    <div
-                      style={{display: 'inline-flex', gap: 6, alignItems: 'center', justifyContent: 'center'}}
-                    >
-                      <button className="button small" onClick={() => setEditing(x)}>
-                        <Pencil size={13} /> Edit
-                      </button>
-                      <button
-                        className="button small legal-delete-button"
-                        onClick={() => handleDelete(x)}
-                        title={`Delete ${x.name}`}
+                  {canManage && (
+                    <td style={{textAlign: 'center'}}>
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          gap: 6,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
                       >
-                        <Trash2 size={13} /> Delete
-                      </button>
-                    </div>
-                  </td>
+                        <button className="button small" onClick={() => setEditing(x)}>
+                          <Pencil size={13} /> Edit
+                        </button>
+                        <button
+                          className="button small legal-delete-button"
+                          onClick={() => handleDelete(x)}
+                          title={`Delete ${x.name}`}
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

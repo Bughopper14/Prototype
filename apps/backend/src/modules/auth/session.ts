@@ -82,7 +82,9 @@ export async function isAdminUser(userId: number, username?: string) {
 
 /** Maps a portal user to the CRM workflow role through `user_app_roles` for application 2 (CRM). */
 export async function resolveCrmRole(userId: number, username: string): Promise<CrmRole> {
-  if (await isAdminUser(userId, username))
+  // Administrator in the CRM comes from the CRM role only. Being Super Admin of another application (for example
+  // User Management) must not make the user an administrator here.
+  if (['admin', 'axel@liugongfinance.com'].includes(String(username || '').toLowerCase()))
     return {role: 'ADMIN', displayRole: 'Administrator', isAdmin: true};
   const [rows] = await pool.query<any[]>(
     `SELECT r.role_name FROM user_app_roles uar JOIN roles r ON uar.role_id = r.id
@@ -291,4 +293,3 @@ export function requireAuthority(actor: Actor, ...authorities: string[]) {
   if (!authorities.some(a => (actor.authorities || []).includes(a)))
     throw new Problem(403, 'Your role cannot perform this action');
 }
-

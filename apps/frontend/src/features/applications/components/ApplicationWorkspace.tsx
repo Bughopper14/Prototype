@@ -41,6 +41,9 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
     activeStage,
     reviewDeedId,
     setReviewDeedId,
+    setEditRequest,
+    reviewHidden,
+    setReviewHidden,
     tab,
     busy,
     error,
@@ -169,7 +172,12 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             application={a}
             user={user}
             deedId={reviewDeedId}
+            hidden={reviewHidden}
             onClose={() => setReviewDeedId(null)}
+            onEdit={what => {
+              setEditRequest({id: reviewDeedId, what});
+              setReviewHidden(true);
+            }}
             onUpdated={onChange}
           />
         )}

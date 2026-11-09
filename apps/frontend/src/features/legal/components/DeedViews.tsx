@@ -92,7 +92,8 @@ export function StakeholderDeedView({legal}: {legal: any}) {
         <div>
           <h3>Deeds & Share Ownership</h3>
           <p className="muted">
-            Only approved deeds are shown, most recent first. Data is managed and submitted through the Legal tab.
+            Only approved deeds are shown, most recent first. Data is managed and submitted through the Legal
+            tab.
           </p>
         </div>
         <span className="subtle-chip">{deeds.length} approved deed(s)</span>

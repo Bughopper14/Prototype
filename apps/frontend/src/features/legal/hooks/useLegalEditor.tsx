@@ -6,7 +6,14 @@ import {api} from '@/shared/lib/api';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {calculateAgeYearsMonths, date, deedValidity} from '@/shared/lib/format';
 import {useMasterData} from '@/shared/master-data';
-import {deedPending, deedReviewLabels, DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY, reviewStatus} from '@liugong/shared';
+import {
+  deedPending,
+  deedSentBack,
+  deedStatusLabel,
+  DEED_APPROVE_AUTHORITY,
+  DEED_EDIT_AUTHORITY,
+  reviewStatus,
+} from '@liugong/shared';
 import {MoreHorizontal} from 'lucide-react';
 import {useEffect, useState} from 'react';
 
@@ -19,6 +26,11 @@ export type LegalEditorProps = {
   disabled: boolean;
   user: any;
   onReview: (id: string) => void;
+  /** Open this deed's editor (or stakeholder list) as soon as it is set, e.g. from the review dialog. */
+  editRequest?: {id: string; what: 'deed' | 'stakeholders'} | null;
+  onEditRequestHandled?: () => void;
+  /** Called with the deed id once an editor opened through editRequest has been closed (saved or cancelled). */
+  onEditFinished?: (deedId: string) => void;
 };
 
 export function useLegalEditor({
@@ -30,6 +42,9 @@ export function useLegalEditor({
   disabled,
   user,
   onReview,
+  editRequest,
+  onEditRequestHandled,
+  onEditFinished,
 }: LegalEditorProps) {
   const [formError, setFormError] = useState('');
   const [actionMenu, setActionMenu] = useState<any>(null);
@@ -100,7 +115,28 @@ export function useLegalEditor({
     (!checkIsAdmin(user) &&
       (!hasAuthority(user, DEED_EDIT_AUTHORITY) ||
         deedPending(d) ||
-        (!['DRAFT', 'RETURNED'].includes(application.status) && reviewStatus(d) !== 'REJECTED')));
+        (!['DRAFT', 'RETURNED'].includes(application.status) && !deedSentBack(d))));
+  const [returnToReview, setReturnToReview] = useState<string | null>(null);
+  useEffect(() => {
+    if (!editRequest) return;
+    const target = deeds.find(d => d.id === editRequest.id);
+    if (target) {
+      setReturnToReview(target.id);
+      if (editRequest.what === 'stakeholders') {
+        onChange({...value, selectedDeedId: target.id});
+        setStakeholderList(target.id);
+      } else setEditing({...structuredClone(target), stakeholders: rowsFor(target)});
+    } else onEditFinished?.(editRequest.id);
+    onEditRequestHandled?.();
+  }, [editRequest]);
+  // Every editor opened from the review dialog is closed again: hand the user back to it
+  useEffect(() => {
+    if (returnToReview && !editing && !stakeholderList && !stakeholderModal) {
+      const id = returnToReview;
+      setReturnToReview(null);
+      onEditFinished?.(id);
+    }
+  }, [returnToReview, editing, stakeholderList, stakeholderModal]);
   const listLocked = locked(deeds.find(d => d.id === stakeholderList));
   const editorLocked = locked(stakeholderModal ? deeds.find(d => d.id === stakeholderModal.deedId) : editing);
   const rowsFor = (x: any): any[] =>
@@ -512,10 +548,12 @@ export function useLegalEditor({
                     </div>
                     <b className="legal-deed-number">{x.deedNumber || 'Number not filled'}</b>
                     <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
-                      {deedReviewLabels[reviewStatus(x)]}
+                      {deedStatusLabel(x)}
                     </span>
-                    {x.review?.rejectionReason && (
-                      <small className="text-red">{x.review.rejectionReason}</small>
+                    {(x.review?.rejectionReason || x.review?.correctionNote) && (
+                      <small className="text-red">
+                        {x.review.rejectionReason || x.review.correctionNote}
+                      </small>
                     )}
                     <small>{x.source === 'Sistem' ? 'Initial system data' : 'Legal Input'}</small>
                   </td>
@@ -599,33 +637,35 @@ export function useLegalEditor({
                         }}
                       >
                         {hasAuthority(user, DEED_EDIT_AUTHORITY) &&
-                        ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
-                          ? 'Submit Deed'
+                        ['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(reviewStatus(x))
+                          ? (x.reviewHistory || []).length
+                            ? 'Resubmit Deed'
+                            : 'Submit Deed'
                           : hasAuthority(user, DEED_APPROVE_AUTHORITY) &&
-                              reviewStatus(x) === 'PENDING_CHECK'
+                              ['PENDING_CHECK', 'PENDING_APPROVAL'].includes(reviewStatus(x))
                             ? 'Review Deed'
-                            : hasAuthority(user, DEED_APPROVE_AUTHORITY) &&
-                                reviewStatus(x) === 'PENDING_APPROVAL'
-                              ? 'Approve Deed'
-                              : 'View Approval'}
+                            : 'View Review'}
                       </button>
-                      <button
-                        className="button small legal-kebab"
-                        aria-label={`Deed action ${x.deedNumber || 'no number'}`}
-                        aria-haspopup="menu"
-                        aria-expanded={actionMenu?.id === x.id}
-                        onClick={e => {
-                          e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setActionMenu({
-                            id: x.id,
-                            left: Math.max(8, Math.min(rect.right - 180, window.innerWidth - 188)),
-                            top: Math.min(rect.bottom + 5, window.innerHeight - 110),
-                          });
-                        }}
-                      >
-                        <MoreHorizontal size={17} />
-                      </button>
+                      {/* Edit/Delete only exist for someone who can change the deed; a reader uses the review button. */}
+                      {!rowLocked && (
+                        <button
+                          className="button small legal-kebab"
+                          aria-label={`Deed action ${x.deedNumber || 'no number'}`}
+                          aria-haspopup="menu"
+                          aria-expanded={actionMenu?.id === x.id}
+                          onClick={e => {
+                            e.stopPropagation();
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setActionMenu({
+                              id: x.id,
+                              left: Math.max(8, Math.min(rect.right - 180, window.innerWidth - 188)),
+                              top: Math.min(rect.bottom + 5, window.innerHeight - 110),
+                            });
+                          }}
+                        >
+                          <MoreHorizontal size={17} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

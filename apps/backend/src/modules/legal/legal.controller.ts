@@ -1,4 +1,11 @@
-import {canEditLegal, deedBaseline, deedTransition, reviewStatus, saveSingleDeed} from '@liugong/shared';
+import {
+  canEditLegal,
+  deedBaseline,
+  deedSentBack,
+  deedTransition,
+  reviewStatus,
+  saveSingleDeed,
+} from '@liugong/shared';
 import {Controller, Post, Put, Res} from '@nestjs/common';
 import {z} from 'zod';
 import {ensure} from '../../core/domain';
@@ -42,7 +49,7 @@ export class LegalController {
     ensure(
       isAdmin ||
         ['DRAFT', 'RETURNED'].includes(a.status) ||
-        reviewStatus((legal.deeds || []).find((d: any) => d.id === deedId)) === 'REJECTED',
+        deedSentBack((legal.deeds || []).find((d: any) => d.id === deedId)),
       'MKT hanya boleh memperbaiki akta yang ditolak.',
       409,
     );
@@ -56,7 +63,7 @@ export class LegalController {
     const {id, deedId} = req.params;
     const body = z
       .object({
-        action: z.enum(['SUBMIT', 'CHECK', 'APPROVE', 'REJECT']),
+        action: z.enum(['SUBMIT', 'CHECK', 'APPROVE', 'REJECT', 'REMARKS']),
         revision: z.number().int().positive(),
         documentId: z.string().max(100).optional(),
         comments: z.string().trim().max(10000).default(''),
@@ -107,6 +114,15 @@ export class LegalController {
         deedId,
         'Akta ditolak — perlu diperbaiki',
         `${a.fapNumber} · Akta ${deed.deedNumber} ditolak oleh ${req.actor.name}. Alasan: ${body.comments}`,
+      );
+    }
+    if (submitter && body.action === 'REMARKS') {
+      await newNotification(
+        submitter,
+        id,
+        deedId,
+        'Deed needs correction',
+        `${a.fapNumber} · Akta ${deed.deedNumber} diberi remarks oleh ${req.actor.name}. Remarks: ${body.comments}`,
       );
     }
     if (submitter && body.action === 'APPROVE') {

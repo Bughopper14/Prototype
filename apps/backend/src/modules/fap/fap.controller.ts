@@ -13,7 +13,6 @@ import {
 import {computeFapDiffs} from './fap-diff';
 import {clearFapDifferences, compareFapDocumentOcr, latestFapFile} from './fap-comparison';
 
-
 const ARCHIVE_PATHS = ['applications/:id/fap-archive', 'fap-archive/:archiveId'];
 
 const immutable = () => {
@@ -27,6 +26,7 @@ const immutable = () => {
 export class FapController {
   @Get('applications/:id/fap-comparison')
   async comparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
     const id = req.params.id;
     const {fap, file} = await latestFapFile(id);
     if (!fap || !file) return {status: 'success', comparison: null};
@@ -95,12 +95,14 @@ export class FapController {
 
   @Post('applications/:id/fap-changes/dismiss')
   async dismissChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
     await clearFapDifferences(req.params.id, req.body?.remarks);
     return {success: true};
   }
 
   @Get('applications/:id/fap-archive')
   async archives(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
     return {
       success: true,
       archives: await getFapSubmissionArchives(req.params.id),
@@ -109,6 +111,7 @@ export class FapController {
 
   @Get('fap-archive/:archiveId')
   async archive(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
     const archive = await getFapSubmissionArchiveDetail(req.params.archiveId);
     if (!archive) {
       res.status(404);

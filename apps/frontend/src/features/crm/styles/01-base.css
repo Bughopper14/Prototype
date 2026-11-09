@@ -5165,6 +5165,10 @@ nav button {
   color: #b2493c;
   background: #fff0ed;
 }
+.deed-review-status.needs_correction {
+  color: #8a5a00;
+  background: #fff4d6;
+}
 .deed-review-action {
   grid-column: 1/-1;
   background: #eff6ff;
@@ -5174,6 +5178,21 @@ nav button {
 .deed-review-scrim {
   z-index: 110;
 }
+/* While the deed/stakeholder editor is open from the review dialog, only the review box is hidden: its dark
+   backdrop stays up the whole time, so switching between the two never flashes the bare page. The editor sits
+   above it and borrows that backdrop instead of adding a second one. */
+.deed-review-scrim.is-hidden {
+  pointer-events: none;
+}
+.deed-review-scrim.is-hidden .deed-review-modal {
+  visibility: hidden;
+}
+body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
+  z-index: 120 !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
 .deed-review-modal {
   width: min(920px, 100%);
 }
@@ -5181,38 +5200,6 @@ nav button {
   font-size: 11px;
   color: #64748b;
   margin-top: 7px;
-}
-.deed-review-steps {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.deed-review-steps > div {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 13px 10px;
-  background: #f8fafc;
-  border-radius: 8px;
-  color: #64748b;
-}
-.deed-review-steps span {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  background: #eff6ff;
-  border-radius: 50%;
-  font-size: 10px;
-}
-.deed-review-steps b {
-  font-size: 10px;
-  line-height: 1.5;
-}
-.deed-review-steps .done {
-  background: #eff6ff;
-  color: #1d4ed8;
 }
 .deed-review-summary {
   display: grid;
@@ -5247,7 +5234,16 @@ nav button {
   font-size: 11px;
   color: #64748b;
 }
+.deed-review-document-picker .upload-label.button {
+  flex-direction: row;
+  flex-shrink: 0;
+  height: 38px;
+  min-height: 38px;
+  padding: 0 16px;
+  gap: 7px;
+}
 .deed-review-document-picker select {
+  height: 38px;
   width: 100%;
   min-width: 0;
   border: 1px solid #e2e8f0;
@@ -5294,14 +5290,58 @@ nav button {
 .deed-review-shareholders {
   margin: 20px 0;
 }
-.deed-review-shareholders > div {
+.deed-review-shareholders-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+.deed-review-holder {
   border-bottom: 1px solid #e2e8f0;
-  padding: 10px 0;
   font-size: 11px;
   color: #334155;
+}
+.deed-review-holder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.deed-review-holder-row span {
+  flex: 1;
+}
+.deed-review-holder-row svg {
+  transition: transform 0.15s ease;
+}
+.deed-review-holder.open .deed-review-holder-row svg {
+  transform: rotate(180deg);
+}
+.deed-review-holder-detail {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 10px 16px;
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.deed-review-holder-detail dt {
+  color: #64748b;
+  font-size: 10px;
+}
+.deed-review-holder-detail dd {
+  margin: 2px 0 0;
+  font-weight: 600;
+  color: #0f172a;
+  overflow-wrap: anywhere;
 }
 .deed-review-comments {
   display: grid;
@@ -5385,9 +5425,6 @@ nav button {
   font-size: 10px;
 }
 @media (max-width: 650px) {
-  .deed-review-steps {
-    grid-template-columns: 1fr;
-  }
   .deed-review-summary {
     grid-template-columns: 1fr 1fr;
   }

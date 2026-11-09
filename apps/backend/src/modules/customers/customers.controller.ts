@@ -10,6 +10,7 @@ import {requireAuthority} from '../auth/session';
 export class CustomersController {
   @Get('customers')
   list(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_customers', 'crm_create_application');
     return intakeCustomers();
   }
 

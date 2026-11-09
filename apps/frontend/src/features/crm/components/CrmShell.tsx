@@ -55,9 +55,7 @@ export function CrmShell({children}: {children: ReactNode}) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
 
-  const roleDisplay =
-    user.displayRole ||
-    (checkIsAdmin(user) ? 'Administrator' : label(user.role || ''));
+  const roleDisplay = user.displayRole || (checkIsAdmin(user) ? 'Administrator' : label(user.role || ''));
 
   const counts: Partial<Record<CrmPageName, number>> = {
     Applications: rows.length,

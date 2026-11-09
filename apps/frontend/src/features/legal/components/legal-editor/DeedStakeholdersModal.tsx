@@ -61,21 +61,24 @@ export function DeedStakeholdersModal() {
                       <Eye size={13} style={{marginRight: '4px'}} />
                       Detail
                     </button>
-                    <button
-                      type="button"
-                      className="button small"
-                      onClick={() => {
-                        setStakeholderModal({
-                          deedId: stakeholderList,
-                          index: i,
-                          value: stakeholderEditorValues(r),
-                        });
-                        setStakeholderList(null);
-                      }}
-                    >
-                      <Pencil size={13} style={{marginRight: '4px'}} />
-                      {listLocked ? 'View' : 'Edit'}
-                    </button>
+                    {/* A locked deed can only be read, and Detail already shows everything: no second read-only button. */}
+                    {!listLocked && (
+                      <button
+                        type="button"
+                        className="button small"
+                        onClick={() => {
+                          setStakeholderModal({
+                            deedId: stakeholderList,
+                            index: i,
+                            value: stakeholderEditorValues(r),
+                          });
+                          setStakeholderList(null);
+                        }}
+                      >
+                        <Pencil size={13} style={{marginRight: '4px'}} />
+                        Edit
+                      </button>
+                    )}
                     {!listLocked && (
                       <button
                         type="button"
@@ -101,21 +104,22 @@ export function DeedStakeholdersModal() {
             <button className="button" onClick={() => setStakeholderList(null)}>
               Close
             </button>
-            <button
-              className="button primary"
-              disabled={listLocked}
-              onClick={() => {
-                setStakeholderModal({
-                  deedId: stakeholderList,
-                  index: -1,
-                  value: {...blank(stakeholderFields), representativeType: 'SHAREHOLDER', idType: 'NONE'},
-                });
-                setStakeholderList(null);
-              }}
-            >
-              <Plus size={15} />
-              Add shareholder
-            </button>
+            {!listLocked && (
+              <button
+                className="button primary"
+                onClick={() => {
+                  setStakeholderModal({
+                    deedId: stakeholderList,
+                    index: -1,
+                    value: {...blank(stakeholderFields), representativeType: 'SHAREHOLDER', idType: 'NONE'},
+                  });
+                  setStakeholderList(null);
+                }}
+              >
+                <Plus size={15} />
+                Add shareholder
+              </button>
+            )}
           </div>
         </Modal>
       )}

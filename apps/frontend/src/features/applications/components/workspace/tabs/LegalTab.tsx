@@ -4,7 +4,8 @@ import {LegalEditor} from '@/features/legal/components/LegalEditor';
 import {deriveDeedSync} from '@/shared/lib/format';
 
 export function LegalTab() {
-  const {a, user, setCustomerDraft, tab, draft, setDraft, canLegal, beginDeedReview} = useWorkspace();
+  const {a, user, setCustomerDraft, tab, draft, setDraft, canLegal, beginDeedReview, editRequest, setEditRequest, setReviewHidden} =
+    useWorkspace();
   return (
     <>
       {tab === 5 && (
@@ -15,6 +16,13 @@ export function LegalTab() {
           disabled={!canLegal}
           user={user}
           onReview={beginDeedReview}
+          editRequest={editRequest}
+          onEditRequestHandled={() => setEditRequest(null)}
+          onEditFinished={async id => {
+            // Back to the review dialog at once (no empty moment); it refreshes in place with what was just saved
+            setReviewHidden(false);
+            await beginDeedReview(id);
+          }}
           onChange={legal => {
             const sync = deriveDeedSync(legal, a);
             const updCustomer = {

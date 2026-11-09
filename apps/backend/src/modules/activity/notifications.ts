@@ -29,5 +29,6 @@ export async function notifyLegalApprovers(
      WHERE uar.app_id = 2 AND au.authority_name = ? AND CONCAT('portal-', uar.user_id) <> ?`,
     [DEED_APPROVE_AUTHORITY, String(exceptUserId)],
   );
-  for (const row of rows) await newNotification(`portal-${row.user_id}`, applicationId, deedId, title, message);
+  for (const row of rows)
+    await newNotification(`portal-${row.user_id}`, applicationId, deedId, title, message);
 }

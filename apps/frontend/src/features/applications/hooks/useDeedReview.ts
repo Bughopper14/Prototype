@@ -38,7 +38,7 @@ export function useDeedReview({
           target = list.find(d => d.id === id);
         if (!target) throw Error('Deed not found.');
         // The draft is only saved before a submission; reviewers (check/approve) have no edit rights and nothing to save
-        if (['DRAFT', 'REJECTED'].includes(reviewStatus(target))) {
+        if (['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(reviewStatus(target))) {
           const deed = deedData({
             ...target,
             stakeholders: Array.isArray(target.stakeholders) ? target.stakeholders : draft.stakeholders || [],
