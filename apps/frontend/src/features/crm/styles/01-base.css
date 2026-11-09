@@ -142,6 +142,12 @@ select:disabled {
   color: #64748b;
   border-color: #e2e8f0;
 }
+/* Locked / read-only fields show the "blocked" cursor on hover */
+input:disabled,
+select:disabled,
+textarea:disabled {
+  cursor: not-allowed !important;
+}
 select {
   cursor: pointer;
 }
