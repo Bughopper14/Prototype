@@ -87,6 +87,8 @@ export function useStakeholderModal({
   const [rotation, setRotation] = useState(0);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
+  // Shown in the document pane, e.g. a KITAS uploaded on the passport tab
+  const [uploadError, setUploadError] = useState('');
 
   // Right pane is visible only when an ID document group (KTP - NPWP or PASSPORT - KITAS) is active
   const isRightPaneVisible = activeIdGroup === 'KTP_NPWP' || activeIdGroup === 'PASSPORT_KITAS';
@@ -98,6 +100,9 @@ export function useStakeholderModal({
       : activeIdGroup === 'KTP_NPWP'
         ? ['KTP', 'NPWP']
         : [];
+
+  // A wrong-document message belongs to the tab it appeared on
+  useEffect(() => setUploadError(''), [docType]);
 
   // Sync docType tab whenever activeIdGroup changes (e.g. from dropdown)
   useEffect(() => {
@@ -261,8 +266,11 @@ export function useStakeholderModal({
   };
 
   const handleUploadDoc = async (e: React.ChangeEvent<HTMLInputElement>, targetType: StakeholderDocType) => {
-    const f = e.target.files?.[0];
+    const input = e.target;
+    const f = input.files?.[0];
     if (!f) return;
+    input.value = ''; // picking the same file again must trigger onChange again
+    setUploadError('');
     const r = new FileReader();
     r.onload = async () => {
       const dataUrl = r.result as string;
@@ -411,15 +419,15 @@ export function useStakeholderModal({
             nextVal.ageMonths = months;
           }
           if (extracted.gender) nextVal.gender = extracted.gender;
-          if (extracted.kewarganegaraan) {
-            nextVal.citizenship = 'FOREIGN';
-            nextVal.nationalityType = 'WNA';
-            nextVal.country = extracted.kewarganegaraan;
-          }
+          // A KITAS is only issued to foreigners, even when the nationality line is unreadable
+          nextVal.citizenship = 'FOREIGN';
+          nextVal.nationalityType = 'WNA';
+          if (extracted.kewarganegaraan) nextVal.country = extracted.kewarganegaraan;
         }
         onChangeValue(nextVal);
-      } catch (err) {
+      } catch (err: any) {
         console.warn('OCR error:', err);
+        if (err?.code === 'WRONG_DOCUMENT_TYPE') setUploadError(err.message);
       } finally {
         setOcrLoading(false);
       }
@@ -531,11 +539,10 @@ export function useStakeholderModal({
         nextVal.ageMonths = months;
       }
       if (p.gender) nextVal.gender = p.gender;
-      if (p.kewarganegaraan) {
-        nextVal.citizenship = 'FOREIGN';
-        nextVal.nationalityType = 'WNA';
-        nextVal.country = p.kewarganegaraan;
-      }
+      // A KITAS is only issued to foreigners, even when the nationality line is unreadable
+      nextVal.citizenship = 'FOREIGN';
+      nextVal.nationalityType = 'WNA';
+      if (p.kewarganegaraan) nextVal.country = p.kewarganegaraan;
     }
     onChangeValue(nextVal);
     setCopiedKey('applied_all');
@@ -612,6 +619,8 @@ export function useStakeholderModal({
     setCopiedKey,
     ocrLoading,
     setOcrLoading,
+    uploadError,
+    setUploadError,
     isRightPaneVisible,
     allowedDocTypes,
     handleSelectOption,

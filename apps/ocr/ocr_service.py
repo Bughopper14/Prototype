@@ -1,6 +1,7 @@
 """Document OCR pipeline, shared by the one-shot CLI (ocr_cli.py) and the long-lived worker (ocr_worker.py)."""
 import re
 import sys
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -117,6 +118,39 @@ def _resolve_type(doc_type: str, boxes: Boxes, filename: str) -> str:
     return detected.value if hasattr(detected, "value") else str(detected).lower()
 
 
+# OCR drops spaces and misreads letters ("ljin" for "Ijin"), so markers are matched on the text with
+# everything but letters/digits removed. Only markers that cannot appear on the other document are used.
+KITAS_MARKERS = ("KITAS", "KITAP", "TINGGALTERBATAS", "TINGGALTETAP", "NIORA", "LIMITEDSTAY", "STAYPERMIT")
+PASSPORT_MARKERS = ("PASSPORT", "PASPOR", "PASSEPORT")
+# Blurry photos garble the words ("Terbatex", "Penmit Card"): these count when most of the word survives
+KITAS_FUZZY_MARKERS = (("TERBATAS", 6), ("PERMITCARD", 7))
+# Passport MRZ line 1 ("P<CHN...<<"), also read with the first "<" as "O"/"0"
+PASSPORT_MRZ = re.compile(r"P[<O0][A-Z]{3}[A-Z]*<<|<{6,}")
+
+
+def _longest_common(text: str, word: str) -> int:
+    return SequenceMatcher(None, text, word, autojunk=False).find_longest_match(0, len(text), 0, len(word)).size
+
+
+def _wrong_document(kind: str, boxes: Boxes) -> str:
+    """Returns "kitas"/"passport" when the scan clearly is the other of the two documents, else "".
+
+    A KITAS photographed on top of a passport carries both, so KITAS markers win: the passport tab rejects
+    it, the KITAS tab accepts it. Unclear scans (no markers either way) are accepted, not rejected."""
+    if kind not in ("passport", "kitas"):
+        return ""
+    text = "".join(b.get("text") or "" for b in boxes).upper()
+    squashed = re.sub(r"[^A-Z0-9<]", "", text)
+    has_kitas = any(m in squashed for m in KITAS_MARKERS) or any(
+        _longest_common(squashed, word) >= need for word, need in KITAS_FUZZY_MARKERS)
+    has_passport = any(m in squashed for m in PASSPORT_MARKERS) or bool(PASSPORT_MRZ.search(squashed))
+    if kind == "passport" and has_kitas:
+        return "kitas"
+    if kind == "kitas" and has_passport and not has_kitas:
+        return "passport"
+    return ""
+
+
 def _dump(model: Any) -> Dict[str, Any]:
     return model.model_dump() if hasattr(model, "model_dump") else dict(model)
 
@@ -153,6 +187,11 @@ def process_document(file_path: str, doc_type: str = "auto") -> Dict[str, Any]:
             _log(f"PDF extraction note: {error}")
     if not boxes:
         boxes, page_count = _read_image(path)
+
+    wrong = _wrong_document(doc_type, boxes)
+    if wrong:
+        return {"status": "wrong_document", "doc_type": doc_type, "type_mismatch": wrong,
+                "filename": path.name, "page_count": page_count, "data": {}}
 
     detected, data = _extract(_resolve_type(doc_type, boxes, path.name), boxes, path)
     return {"status": "success", "doc_type": detected, "filename": path.name, "page_count": page_count, "data": data}

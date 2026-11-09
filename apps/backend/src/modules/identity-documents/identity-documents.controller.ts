@@ -123,6 +123,18 @@ export class IdentityDocumentsController {
       res.status(500);
       return {error: 'OCR processing error: ' + (err.message || String(err))};
     }
+    if (result.type_mismatch) {
+      // Wrong tab (e.g. a KITAS on the passport tab): drop the stored file and keep the data out of the tables
+      await fs.unlink(storage.savedFilePath).catch(() => undefined);
+      const found = String(result.type_mismatch).toUpperCase() === 'KITAS' ? 'KITAS' : 'passport';
+      const expected = docType === 'kitas' ? 'KITAS' : 'passport';
+      const otherTab = found === 'KITAS' ? 'KITAS' : 'Passport';
+      res.status(422);
+      return {
+        error: `This looks like a ${found}, not a ${expected}. Please upload it in the ${otherTab} tab.`,
+        code: 'WRONG_DOCUMENT_TYPE',
+      };
+    }
     const detectedType = String(result.doc_type || storage.docType).toLowerCase();
     Object.assign(result, {
       fileName: storage.fileName,

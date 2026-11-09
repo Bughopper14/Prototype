@@ -1,5 +1,5 @@
 /** Document pane: image / PDF viewer or empty dropzone. */
-import {RotateCw, Sparkles, Upload, ZoomIn, ZoomOut} from 'lucide-react';
+import {AlertCircle, RotateCw, Sparkles, Upload, ZoomIn, ZoomOut} from 'lucide-react';
 
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
 
@@ -14,9 +14,16 @@ export function DocumentViewer() {
     currentAsset,
     handleUploadDoc,
     docTitles,
+    uploadError,
   } = useStakeholderModalContext();
   return (
     <>
+      {uploadError && (
+        <div className="ktp-upload-error" role="alert">
+          <AlertCircle size={15} />
+          <span>{uploadError}</span>
+        </div>
+      )}
       {currentAsset.url ? (
         <div className="ktp-viewer-card">
           <div className="ktp-viewer-controls">

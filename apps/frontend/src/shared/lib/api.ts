@@ -50,7 +50,9 @@ async function request(path: string, method: string, body?: unknown) {
     const fieldErrors = data.errors?.length
       ? data.errors.map((e: any) => `${e.field}: ${e.detail}`).join('\n')
       : '';
-    throw new Error(fieldErrors || data.message || data.error || 'Request failed');
+    throw Object.assign(new Error(fieldErrors || data.message || data.error || 'Request failed'), {
+      code: data?.code,
+    });
   }
   return data;
 }

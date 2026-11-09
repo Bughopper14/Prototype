@@ -1,5 +1,6 @@
 /** Sends an ID image to the OCR service and parses the result per document type. */
 import {api} from '@/shared/lib/api';
+import {normalizeBirthDate} from '@/shared/lib/dates';
 import {parseKitasText} from './parse-kitas';
 import {parseKtpText} from './parse-ktp';
 import {parseNpwpText} from './parse-npwp';
@@ -55,7 +56,8 @@ export async function extractIdDocumentFromImage(
         rawText: typeof d === 'string' ? d : JSON.stringify(d, null, 2),
       };
     }
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.code === 'WRONG_DOCUMENT_TYPE') throw err; // the caller tells the user to use the other tab
     console.warn(`[${docType.toUpperCase()} OCR] Scan error:`, err);
   }
 
@@ -148,7 +150,7 @@ export async function extractPassportTextFromImage(
     surname: d.surname,
     givenNames: d.given_names || d.givenNames,
     nationality: d.nationality || d.country_name,
-    dateOfBirth: d.tanggal_lahir || d.dateOfBirth,
+    dateOfBirth: normalizeBirthDate(d.tanggal_lahir || d.dateOfBirth) || undefined,
     placeOfBirth: d.tempat_lahir || d.placeOfBirth,
     gender: resolvedGen,
     issueDate: d.tanggal_pengeluaran || d.issueDate,
@@ -194,7 +196,7 @@ export async function extractKitasTextFromImage(
     niora: d.niora,
     nama: d.nama,
     kewarganegaraan: d.kewarganegaraan,
-    tanggalLahir: d.tanggal_lahir || d.tanggalLahir,
+    tanggalLahir: normalizeBirthDate(d.tanggal_lahir || d.tanggalLahir) || undefined,
     gender: resolvedGen,
     berlakuHingga: d.berlaku_hingga || d.berlakuHingga,
     instansiPenerbit: d.instansi_penerbit || d.instansiPenerbit || 'Direktorat Jenderal Imigrasi',
