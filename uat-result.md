@@ -106,7 +106,7 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 
 ## 4. Changes made after this run (for Axel: read this and adjust your branch)
 
-Status when this was written: these code changes are in Angel's working tree and are not pushed yet. This section describes what will change.
+Status: pushed. Commit 758316a on the angel branch (`[AG] change. role checks move to authorities with general names, add user picks a role, authority catalog and seed completed.`), merged into dev. Verified after the change: typecheck, the API and the screens below, and a fresh database built from `db:setup` (40 authorities in the seed, none with an old name).
 
 ### Authority names are now general (no role names)
 
@@ -120,6 +120,10 @@ Roles are only seed data, so authorities must not carry a role name. Four names 
 | crm_workflow_committee | crm_workflow_final_decision | same files |
 
 If your branch checks one of the old names (`can('...')`, `requireAuthority(...)`), change it to the new name. A database that was seeded before this change needs: `UPDATE authorities SET authority_name = '<new>' WHERE authority_name = '<old>'` for the four rows. The descriptions of crm_workflow_submit, verify_documents, start_review, recommend_credit, recommend_legal and final_decision were also rewritten without role names.
+
+### Seed fix
+
+`seed.sql` was missing 6 authorities that the code checks: crm_create_application, crm_view_overview, crm_view_applications, crm_view_customers, crm_view_document_desk, crm_manage_document_desk. On a database made from the seed, a user who is not an administrator could not create an application or open those pages. They are now in the seed with the same ids as `crm-liugong` (INSERT IGNORE).
 
 ### User Management
 
