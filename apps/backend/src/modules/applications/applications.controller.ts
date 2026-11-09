@@ -67,6 +67,7 @@ async function saveBusinessMerged(id: string, patchBody: Record<string, any>) {
 export class ApplicationsController {
   @Get('applications')
   list(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_applications');
     return listIntake();
   }
 
@@ -84,6 +85,7 @@ export class ApplicationsController {
 
   @Get('applications/:id')
   detail(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_applications');
     return detailOr404(req.params.id);
   }
 
@@ -145,6 +147,7 @@ export class ApplicationsController {
 
   @Put('applications/:id/stage')
   async updateStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_workflow_submit', 'crm_verify_app_documents');
     const id = req.params.id;
     const stage = String(req.body?.stage || 'Pre-analysis');
     if (stage === 'Pre-analysis') {
@@ -200,6 +203,7 @@ export class ApplicationsController {
 
   @Get('applications/:id/checklist')
   async checklist(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
     return (await detailOr404(req.params.id)).documentChecks;
   }
 

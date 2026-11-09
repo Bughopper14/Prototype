@@ -12,6 +12,7 @@ import {saveEquipmentMasters} from './repositories/equipment-masters.repository'
 import {saveFinanceMasters} from './repositories/finance-masters.repository';
 import {saveLegalMasters} from './repositories/legal-masters.repository';
 import {saveLocations} from './repositories/location.repository';
+import {requireAuthority} from '../auth/session';
 
 /* ---------- mandatory-field rules ---------- */
 
@@ -53,6 +54,7 @@ export class MasterDataController {
 
   @Put('master-data')
   async saveCatalog(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_manage_master_data', 'crm_quick_add_master_option');
     let catalog: MasterCatalog;
     try {
       catalog = validateMasterCatalog(req.body.catalog);
@@ -107,6 +109,7 @@ export class MasterDataController {
 
   @Put(['mandatory', 'master-mandatory'])
   async updateMandatoryRule(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_manage_master_data');
     const {id, section, fieldKey, field_key, mandatory} = req.body;
     const flag = mandatory === 1 || mandatory === true || mandatory === '1' ? 1 : 0;
     if (id !== undefined && id !== null) {

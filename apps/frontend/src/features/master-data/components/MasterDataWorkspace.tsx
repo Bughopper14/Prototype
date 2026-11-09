@@ -1,4 +1,5 @@
 /** Master Data page body: header with the catalog menu, then the selected tab (mandatory rules, regions or a group). */
+import {useCanManageMasterData} from '@/features/master-data/hooks/useCanManageMasterData';
 import {useMasterData} from '@/shared/master-data';
 import {masterGroups} from '@liugong/shared';
 import {Menu} from 'lucide-react';
@@ -16,6 +17,7 @@ function categoryTitle(selected: string) {
 
 export function MasterDataWorkspace() {
   const data = useMasterData();
+  const canManage = useCanManageMasterData();
   const [selected, setSelected] = useState('master_mandatory');
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -66,7 +68,7 @@ export function MasterDataWorkspace() {
         <LocationConfiguration />
       ) : selected === 'master_mandatory' ? (
         <div className="master-page-layout">
-          <MasterMandatoryView />
+          <MasterMandatoryView canManage={canManage} />
         </div>
       ) : (
         // keyed so search and the open dialog reset when switching groups

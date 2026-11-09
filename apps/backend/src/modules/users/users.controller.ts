@@ -287,7 +287,10 @@ export class UsersController {
       422,
     );
     ensure(
-      !(await one('SELECT 1 AS x FROM authorities WHERE app_id = ? AND authority_name = ?', [b.app_id, b.authority_name])),
+      !(await one('SELECT 1 AS x FROM authorities WHERE app_id = ? AND authority_name = ?', [
+        b.app_id,
+        b.authority_name,
+      ])),
       `Authority '${b.authority_name}' sudah ada.`,
       409,
     );
@@ -304,7 +307,10 @@ export class UsersController {
   async updateAuthority(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const id = Number(req.params.id);
     const {description} = z.object({description: z.string().trim().max(255)}).parse(req.body);
-    const existing = await one<{authority_name: string}>('SELECT authority_name FROM authorities WHERE id = ?', [id]);
+    const existing = await one<{authority_name: string}>(
+      'SELECT authority_name FROM authorities WHERE id = ?',
+      [id],
+    );
     ensure(existing, 'Authority tidak ditemukan.', 404);
     await exec('UPDATE authorities SET description = ? WHERE id = ?', [description, id]);
     await audit(req.actor, `Edited Authority: ${existing.authority_name}`);

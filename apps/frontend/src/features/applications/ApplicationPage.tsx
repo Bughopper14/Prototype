@@ -1,3 +1,4 @@
+import {AccessGate} from '@/features/crm/components/AccessGate';
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {api} from '@/shared/lib/api';
 import {CRM_PAGES} from '@/shared/lib/routes';
@@ -15,7 +16,7 @@ const PRE_ANALYSIS_STATUSES = [
 ];
 const PRE_ANALYSIS_TAB = 8;
 
-export default function ApplicationPage() {
+function ApplicationDetail() {
   const {id = ''} = useParams<{id: string}>();
   const tabParam = useSearchParams()[0].get('tab');
   const navigate = useNavigate();
@@ -62,5 +63,13 @@ export default function ApplicationPage() {
       onCustomerCreated={addCustomer}
       notify={notify}
     />
+  );
+}
+
+export default function ApplicationPage() {
+  return (
+    <AccessGate authority="crm_view_applications" page="Application">
+      <ApplicationDetail />
+    </AccessGate>
   );
 }

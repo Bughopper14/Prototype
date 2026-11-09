@@ -19,7 +19,6 @@ import {
 } from './documents.repository';
 import {compareFapDocumentOcr, isFapChecklist} from '../fap/fap-comparison';
 
-
 const IMAGE_SIGNATURES = {
   png: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
 };
@@ -50,6 +49,7 @@ function formattedUploadName(applicationId: string, originalname: string, mimety
 export class DocumentsController {
   @Get('document-desk')
   documentDesk(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_document_desk');
     return many(`
   SELECT d.id AS checklist_id, d.application_id, d.document_code, d.document_name, d.assigned_role, d.is_mandatory, d.status,
          f.fap_registration_number AS fap_number, f.company_name,
@@ -121,6 +121,13 @@ export class DocumentsController {
 
   @Get('files/:id/url')
   async fileUrl(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(
+      req.actor,
+      'crm_view_app_documents',
+      'crm_view_document_desk',
+      'crm_edit_app_legal',
+      'crm_deed_approve',
+    );
     const file = await readDocumentFile(req.params.id);
     ensure(file, 'File not found', 404);
     const url = s3

@@ -1,3 +1,4 @@
+import {AccessGate} from '@/features/crm/components/AccessGate';
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {applicationHref, CRM_PAGES} from '@/shared/lib/routes';
 import {useMemo} from 'react';
@@ -12,19 +13,21 @@ export default function NewApplicationPage() {
   const draft = useMemo(() => buildNewApplicationDraft(customers, customerId), [customers, customerId]);
 
   return (
-    <ApplicationWorkspace
-      value={draft}
-      user={user}
-      customers={customers}
-      initialTab={0}
-      onBack={() => navigate(CRM_PAGES[1].href)}
-      onChange={saved => {
-        reload();
-        // Once the application has been created it lives at its own address.
-        if (saved?.id && saved.id !== 'new') navigate(applicationHref(saved.id), {replace: true});
-      }}
-      onCustomerCreated={addCustomer}
-      notify={notify}
-    />
+    <AccessGate authority="crm_create_application" page="New application">
+      <ApplicationWorkspace
+        value={draft}
+        user={user}
+        customers={customers}
+        initialTab={0}
+        onBack={() => navigate(CRM_PAGES[1].href)}
+        onChange={saved => {
+          reload();
+          // Once the application has been created it lives at its own address.
+          if (saved?.id && saved.id !== 'new') navigate(applicationHref(saved.id), {replace: true});
+        }}
+        onCustomerCreated={addCustomer}
+        notify={notify}
+      />
+    </AccessGate>
   );
 }

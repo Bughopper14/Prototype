@@ -41,7 +41,7 @@ INSERT IGNORE INTO `authorities` (`id`, `app_id`, `authority_name`, `description
 INSERT IGNORE INTO `authorities` (`id`, `app_id`, `authority_name`, `description`) VALUES (40,2,'crm_deed_approve','Memeriksa, menyetujui, atau menolak akta yang diajukan (Deed Review)');
 INSERT IGNORE INTO `roles` (`id`, `app_id`, `role_name`, `description`) VALUES (10,2,'Legal Approval','Memeriksa dan menyetujui/menolak akta yang diajukan dari tab Legal');
 -- Marketing inputs the FAP including the Legal tab and submits deeds (view/edit sections, documents)
-INSERT IGNORE INTO `role_authorities` (`role_id`, `authority_id`) VALUES (3,17),(3,18),(3,19),(3,20),(3,21),(3,22),(3,23),(3,25),(3,27),(3,28),(3,29),(3,30),(3,31);
+INSERT IGNORE INTO `role_authorities` (`role_id`, `authority_id`) VALUES (3,17),(3,18),(3,19),(3,20),(3,21),(3,22),(3,23),(3,25),(3,26),(3,27),(3,28),(3,29),(3,30),(3,31);
 INSERT IGNORE INTO `role_authorities` (`role_id`, `authority_id`) VALUES (2,40),(10,3),(10,4),(10,5),(10,9),(10,13),(10,14),(10,16),(10,17),(10,18),(10,21),(10,23),(10,40);
 
 LOCK TABLES `master_mandatory` WRITE;

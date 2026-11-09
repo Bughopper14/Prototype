@@ -7,6 +7,7 @@ import {exec, one} from '../../core/db/query';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {generateDocumentStorageInfo} from '../../core/storage';
 import {runOcr} from '../ocr/ocr-runner';
+import {requireAuthority} from '../auth/session';
 
 /* ---------- stakeholder identity documents (KTP, NPWP, passport, KITAS) ---------- */
 
@@ -95,10 +96,20 @@ async function saveIdentityDocument(
   }
 }
 
+/** Reading an identity document with OCR is part of filling in a company, its PIC, its deeds or its stakeholders. */
+const OCR_AUTHORITIES = [
+  'crm_create_application',
+  'crm_edit_app_customer_pic',
+  'crm_edit_app_legal',
+  'crm_edit_app_stakeholders',
+  'crm_manage_customers',
+];
+
 @Controller(API_PREFIX)
 export class IdentityDocumentsController {
   @Post('ocr/scan')
   async scan(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, ...OCR_AUTHORITIES);
     const file = req.file;
     if (!file) {
       res.status(400);
@@ -161,6 +172,7 @@ export class IdentityDocumentsController {
 
   @Post('stakeholders/documents/save')
   async save(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_edit_app_stakeholders', 'crm_edit_app_legal');
     const {stakeholder_id, doc_type, data} = req.body || {};
     if (!stakeholder_id) {
       res.status(400);
@@ -186,6 +198,12 @@ export class IdentityDocumentsController {
 
   @Get('stakeholders/documents/:docType/:stakeholderId')
   async find(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(
+      req.actor,
+      'crm_view_app_stakeholders',
+      'crm_view_app_legal',
+      'crm_edit_app_stakeholders',
+    );
     const type = req.params.docType.toLowerCase();
     if (!identityDocuments[type]) {
       res.status(404);

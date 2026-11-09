@@ -1,4 +1,5 @@
 /** Indonesian Region tab: province → city → district → village editor. */
+import {useCanManageMasterData} from '@/features/master-data/hooks/useCanManageMasterData';
 import {MasterItemDialog, useMasterData} from '@/shared/master-data';
 import type {MasterItem} from '@liugong/shared';
 import {ChevronRight, MapPin, Plus, Search} from 'lucide-react';
@@ -9,6 +10,7 @@ import {LocationCountryPicker} from './LocationCountryPicker';
 
 export function LocationConfiguration() {
   const data = useMasterData();
+  const canManage = useCanManageMasterData();
   const {countries, country, levels, select, selectCountry} = useLocationLevels(data);
   const [editing, setEditing] = useState<{key: string; item?: MasterItem; parent?: string} | null>(null);
   const [search, setSearch] = useState('');
@@ -75,15 +77,17 @@ export function LocationConfiguration() {
         <span>
           Active options are available in application forms. Use Edit to update data or deactivate regions.
         </span>
-        <button
-          className="button small"
-          onClick={() =>
-            setEditing({key: 'postalCode', parent: levels.find(x => x.key === 'city')?.selected?.value})
-          }
-        >
-          <Plus size={14} />
-          Add ZIP code
-        </button>
+        {canManage && (
+          <button
+            className="button small"
+            onClick={() =>
+              setEditing({key: 'postalCode', parent: levels.find(x => x.key === 'city')?.selected?.value})
+            }
+          >
+            <Plus size={14} />
+            Add ZIP code
+          </button>
+        )}
       </div>
       {editing && (
         <MasterItemDialog

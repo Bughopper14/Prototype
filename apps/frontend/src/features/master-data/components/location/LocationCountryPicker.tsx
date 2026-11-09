@@ -1,4 +1,5 @@
 /** Country dropdown with edit / add buttons, top right of the region editor. */
+import {useCanManageMasterData} from '@/features/master-data/hooks/useCanManageMasterData';
 import type {MasterItem} from '@liugong/shared';
 import {Pencil, Plus} from 'lucide-react';
 
@@ -15,6 +16,7 @@ export function LocationCountryPicker({
   onEdit: () => void;
   onAdd: () => void;
 }) {
+  const canManage = useCanManageMasterData();
   return (
     <div className="location-country">
       <label>
@@ -32,13 +34,17 @@ export function LocationCountryPicker({
           ))}
         </select>
       </label>
-      <button className="button small" aria-label="Edit country" disabled={!country} onClick={onEdit}>
-        <Pencil size={14} />
-      </button>
-      <button className="button small" onClick={onAdd}>
-        <Plus size={14} />
-        Country
-      </button>
+      {canManage && (
+        <>
+          <button className="button small" aria-label="Edit country" disabled={!country} onClick={onEdit}>
+            <Pencil size={14} />
+          </button>
+          <button className="button small" onClick={onAdd}>
+            <Plus size={14} />
+            Country
+          </button>
+        </>
+      )}
     </div>
   );
 }

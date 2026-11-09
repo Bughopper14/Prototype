@@ -2,6 +2,7 @@ import {Controller, Get, Patch, Post, Res} from '@nestjs/common';
 import {pool, readMenu, writeMenu} from '../../core/db/pool';
 import {ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
+import {requireAuthority} from '../auth/session';
 
 @Controller(API_PREFIX)
 export class ActivityController {
@@ -23,6 +24,7 @@ export class ActivityController {
 
   @Get('activity')
   async activityFeed(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_activity', 'crm_view_app_activity');
     const [rows] = await pool.query<any[]>(`
     SELECT l.id, l.application_id AS applicationId, l.action_by AS actionBy, l.user_role AS userRole,
            l.previous_status AS previousStatus, l.new_status AS newStatus, l.comments,
@@ -36,6 +38,7 @@ export class ActivityController {
 
   @Get('notifications')
   async notifications(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_notifications');
     const [rows] = await pool.query<any[]>(
       `SELECT id, application_id AS applicationId, deed_id AS deedId, title, message, read_at AS readAt, created_at AS createdAt
      FROM notifications WHERE recipient_user_id=? ORDER BY created_at DESC LIMIT 200`,

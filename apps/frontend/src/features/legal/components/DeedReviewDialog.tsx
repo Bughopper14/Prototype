@@ -1,8 +1,16 @@
 import {api} from '@/shared/lib/api';
 import {useMasterData} from '@/shared/master-data';
-import {DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY, deedReviewLabels, reviewStatus} from '@liugong/shared';
+import {
+  DEED_APPROVE_AUTHORITY,
+  DEED_EDIT_AUTHORITY,
+  deedReviewLabels,
+  deedStatusLabel,
+  label,
+  reviewStatus,
+  stakeholderFields,
+} from '@liugong/shared';
 import {hasAuthority} from '@/shared/lib/auth';
-import {AlertCircle, Check, Clock, ExternalLink, FileText, Send, Upload, X} from 'lucide-react';
+import {AlertCircle, Check, ChevronDown, Clock, ExternalLink, FileText, Pencil, Send, Upload, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {DeedComparison} from './DeedComparison';
@@ -11,12 +19,18 @@ export function DeedReviewDialog({
   user,
   deedId,
   onClose,
+  onEdit,
+  hidden = false,
   onUpdated,
 }: {
+  /** Kept mounted but not shown while the deed editor is open on top of it. */
+  hidden?: boolean;
   application: any;
   user: any;
   deedId: string;
   onClose: () => void;
+  /** Close this dialog and open the deed (or its stakeholders) in the Legal editor. */
+  onEdit?: (what: 'deed' | 'stakeholders') => void;
   onUpdated: (a: any) => void;
 }) {
   const master = useMasterData();
@@ -28,11 +42,22 @@ export function DeedReviewDialog({
     [url, setUrl] = useState(''),
     [error, setError] = useState(''),
     [comments, setComments] = useState(''),
+    [closedRows, setClosedRows] = useState<Record<number, boolean>>({}),
     [busy, setBusy] = useState(false);
-  const completed =
-    status === 'APPROVED' ? 3 : status === 'PENDING_APPROVAL' ? 2 : status === 'PENDING_CHECK' ? 1 : 0;
+  const holders: any[] = deed?.stakeholders || [];
+  // Every stored field of a stakeholder that has a value, labelled the way the stakeholder form labels it.
+  const detailRows = (r: any) =>
+    stakeholderFields
+      .map(f => {
+        const raw = r[f.key];
+        if (raw === undefined || raw === null || raw === '') return null;
+        const shown = f.optionLabels?.[raw] ?? (f.type === 'select' ? label(String(raw)) : String(raw));
+        const money = ['depositedCapital', 'primaryCapital'].includes(f.key) && !Number.isNaN(Number(raw));
+        return [f.label, money ? Number(raw).toLocaleString('id-ID') : shown] as const;
+      })
+      .filter(Boolean) as (readonly [string, string])[];
   const canSubmit =
-      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(status),
+      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(status),
     canCheck = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING_CHECK',
     canApprove = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING_APPROVAL';
   useEffect(() => {
@@ -75,9 +100,15 @@ export function DeedReviewDialog({
       setBusy(false);
     }
   }
+  // The editor opened from here borrows this dialog's backdrop (see .deed-edit-over-review in the CSS)
+  useEffect(() => {
+    if (!hidden) return;
+    document.body.classList.add('deed-edit-over-review');
+    return () => document.body.classList.remove('deed-edit-over-review');
+  }, [hidden]);
   if (!deed) return null;
   return createPortal(
-    <div className="modal-scrim deed-review-scrim">
+    <div className={'modal-scrim deed-review-scrim' + (hidden ? ' is-hidden' : '')}>
       <section className="modal deed-review-modal" role="dialog" aria-modal="true" aria-label="Deed review">
         <div className="modal-head">
           <div>
@@ -89,26 +120,20 @@ export function DeedReviewDialog({
           </button>
         </div>
         <div className="modal-body">
-          <div className="deed-review-steps">
-            {[
-              ['SUBMIT', 'Input & submission'],
-              ['CHECK', 'Legal Approval · Verification'],
-              ['APPROVE', 'Legal Approval · Approval'],
-            ].map(([role, name], i) => (
-              <div key={role} className={i < completed ? 'done' : ''}>
-                <span>{i + 1}</span>
-                <b>{name}</b>
-              </div>
-            ))}
-          </div>
           <div className={'deed-review-status ' + status.toLowerCase()}>
             <Clock size={15} />
-            {deedReviewLabels[status]}
+            {deedStatusLabel(deed)}
           </div>
-          {deed.review?.rejectionReason && (
+          {status === 'REJECTED' && deed.review?.rejectionReason && (
             <div className="error">
               <b>Rejection reason: </b>
               {deed.review.rejectionReason}
+            </div>
+          )}
+          {status === 'NEEDS_CORRECTION' && deed.review?.correctionNote && (
+            <div className="error">
+              <b>Remarks: </b>
+              {deed.review.correctionNote}
             </div>
           )}
           <dl className="deed-review-summary">
@@ -236,27 +261,61 @@ export function DeedReviewDialog({
           )}
           <div className="deed-review-shareholders">
             <h3>Submitted stakeholders / shareholders</h3>
-            {(deed.stakeholders || []).map((r: any, i: number) => (
-              <div key={r.id || i}>
-                <span>
-                  {[r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ') || r.name || 'No name'}
-                </span>
-                <b>{Number(r.sharePercentage || 0).toFixed(2)}%</b>
+            {holders.map((r: any, i: number) => (
+              <div key={r.id || i} className={'deed-review-holder' + (closedRows[i] ? '' : ' open')}>
+                <button
+                  type="button"
+                  className="deed-review-holder-row"
+                  aria-expanded={!closedRows[i]}
+                  onClick={() => setClosedRows({...closedRows, [i]: !closedRows[i]})}
+                >
+                  <span>
+                    {[r.firstName, r.middleName, r.lastName].filter(Boolean).join(' ') || r.name || 'No name'}
+                  </span>
+                  <b>{Number(r.sharePercentage || 0).toFixed(2)}%</b>
+                  <ChevronDown size={15} />
+                </button>
+                {!closedRows[i] && (
+                  <dl className="deed-review-holder-detail">
+                    {detailRows(r).map(([name, value]) => (
+                      <div key={name}>
+                        <dt>{name}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
               </div>
             ))}
           </div>
           {(canCheck || canApprove) && (
             <label className="deed-review-comments">
-              Remarks (optional when approving, required to send back)
+              Remarks (optional when approving, required for Remarks or Reject)
               <textarea
-                aria-label="Rejection reason"
+                aria-label="Remarks"
                 rows={3}
                 maxLength={10000}
                 value={comments}
                 onChange={e => setComments(e.target.value)}
-                placeholder="Add remarks for the record. To send the deed back, describe what MKT needs to change."
+                placeholder="Add remarks for the record. To ask MKT to change something, describe it here and use Remarks. To refuse the deed, give the reason and use Reject."
               />
             </label>
+          )}
+          {(canCheck || canApprove) && !comments.trim() && (
+            <ul className="muted deed-review-hint">
+              <li>
+                <b>{canCheck ? 'Verification passed' : 'Approve deed'}</b>: the deed is correct. Remarks are
+                optional.
+              </li>
+              <li>
+                <b>Remarks</b>: the deed is not wrong, but MKT must change or add something. It goes back to
+                MKT as "Needs correction" with your note, and MKT submits it again.
+              </li>
+              <li>
+                <b>Reject</b>: the deed is refused. It goes back to MKT as "Rejected" with your reason.
+              </li>
+              <li>Remarks and Reject stay grey until you write in the Remarks box above.</li>
+            </ul>
           )}
           {error && (
             <div className="error" role="alert">
@@ -269,7 +328,7 @@ export function DeedReviewDialog({
               {[...deed.reviewHistory].reverse().map((h: any, i: number) => (
                 <div key={i}>
                   <b>
-                    {deedReviewLabels[h.status]} · {h.actor}
+                    {h.action === 'REMARKS' ? 'Remarks' : deedReviewLabels[h.status]} · {h.actor}
                   </b>
                   <small>{new Date(h.at).toLocaleString('en-GB', {timeZone: 'Asia/Bangkok'})}</small>
                   {h.comments && <p>{h.comments}</p>}
@@ -284,18 +343,44 @@ export function DeedReviewDialog({
           </button>
           {(canCheck || canApprove) && (
             <button
+              className="button"
+              disabled={busy || !comments.trim()}
+              title={comments.trim() ? 'Send the remarks back to MKT to change' : 'Write the remarks first'}
+              onClick={() => action('REMARKS')}
+            >
+              <FileText size={14} />
+              Remarks
+            </button>
+          )}
+          {(canCheck || canApprove) && (
+            <button
               className="button danger"
               disabled={busy || !comments.trim()}
+              title={comments.trim() ? 'Reject the deed' : 'Write the reason first'}
               onClick={() => action('REJECT')}
             >
               <AlertCircle size={14} />
-              Send back / Reject
+              Reject
             </button>
+          )}
+          {canSubmit && onEdit && (
+            <>
+              <button className="button" disabled={busy} onClick={() => onEdit('stakeholders')}>
+                <Pencil size={14} />
+                Edit stakeholders
+              </button>
+              <button className="button" disabled={busy} onClick={() => onEdit('deed')}>
+                <Pencil size={14} />
+                Edit deed
+              </button>
+            </>
           )}
           {canSubmit && (
             <button className="button primary" disabled={busy} onClick={() => action('SUBMIT')}>
               <Send size={14} />
-              Submit for Legal Approval
+              {(deed.reviewHistory || []).length
+                ? 'Resubmit for Legal Approval'
+                : 'Submit for Legal Approval'}
             </button>
           )}
           {canCheck && (

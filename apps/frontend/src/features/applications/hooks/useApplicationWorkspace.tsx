@@ -336,6 +336,10 @@ export function useApplicationWorkspace({
     if (isPre && tab === 0) setTab(8);
   }, [a.id, a.stage, a.status]);
   const [reviewDeedId, setReviewDeedId] = useState<string | null>(null);
+  // "Edit" asked from the review dialog: the Legal editor opens that deed (or its stakeholder list)
+  const [editRequest, setEditRequest] = useState<{id: string; what: 'deed' | 'stakeholders'} | null>(null);
+  // The review dialog stays mounted (comments typed, scroll) but hidden while the editor is on screen
+  const [reviewHidden, setReviewHidden] = useState(false);
   const [tab, setTab] = useState(resolvedInitialTab),
     [draft, setDraft] = useState<any>(() => {
       const base = structuredClone(a);
@@ -638,7 +642,22 @@ export function useApplicationWorkspace({
 
   const stageTabOrder =
     activeStage === 'FAP Stage' ? [0, 5, 1, 6, 7] : activeStage === 'Pre-analysis' ? [8, 2, 4, 6, 7] : [6, 7];
-  const tabOrder = stageTabOrder;
+  // A tab is only offered when the user's role may view that section.
+  const tabViewAuthority: Record<number, string> = {
+    0: 'crm_view_app_customer_pic',
+    1: 'crm_view_app_stakeholders',
+    2: 'crm_view_app_business_banks',
+    3: 'crm_view_app_financing_units',
+    4: 'crm_view_app_financial',
+    5: 'crm_view_app_legal',
+    6: 'crm_view_app_documents',
+    7: 'crm_view_app_activity',
+    8: 'crm_view_applications',
+  };
+  const tabOrder = stageTabOrder.filter(id => hasAuthority(user, tabViewAuthority[id]));
+  useEffect(() => {
+    if (tabOrder.length && !tabOrder.includes(tab)) setTab(tabOrder[0]);
+  }, [tabOrder.join(','), tab]);
 
   const isAdminUser = checkIsAdmin(user);
   // FAP Stage is fully editable at all times per specification
@@ -795,6 +814,10 @@ export function useApplicationWorkspace({
     setSubmitFapConfirm,
     reviewDeedId,
     setReviewDeedId,
+    editRequest,
+    setEditRequest,
+    reviewHidden,
+    setReviewHidden,
     tab,
     setTab,
     draft,

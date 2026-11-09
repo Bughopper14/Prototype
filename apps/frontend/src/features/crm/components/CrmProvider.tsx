@@ -71,11 +71,13 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
+      // Only ask for what the user's role may read; the API refuses the rest.
+      const can = (authority: string) => hasAuthority(user, authority);
       const [applications, customerList, masterData, notifications] = await Promise.all([
-        api('/applications'),
-        api('/customers'),
+        can('crm_view_applications') ? api('/applications') : [],
+        can('crm_view_customers') || can('crm_create_application') ? api('/customers') : [],
         api('/master-data'),
-        api('/notifications'),
+        can('crm_view_notifications') ? api('/notifications') : [],
       ]);
       setServerNotifications(notifications);
       setMasterData(masterData);
@@ -101,7 +103,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   useEffect(() => {
     let live = true;
     const refresh = () =>
-      api('/notifications')
+      (hasAuthority(user, 'crm_view_notifications') ? api('/notifications') : Promise.resolve([]))
         .then(list => live && setServerNotifications(list))
         .catch(() => {});
     const timer = setInterval(refresh, NOTIFICATION_POLL_MS);
@@ -111,7 +113,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
       clearInterval(timer);
       window.removeEventListener('storage', refresh);
     };
-  }, []);
+  }, [user]);
 
   // Activity and notification read-state is shared through browser events (see system-activity.ts).
   useEffect(() => {
