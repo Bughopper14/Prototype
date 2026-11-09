@@ -72,7 +72,19 @@ export function UserManagement({currentUserId}: {currentUserId: number}) {
               onClick={() =>
                 setDialog(
                   <UserForm
-                    onSave={v => act(() => call('/users', 'POST', v))}
+                    data={data}
+                    onSave={v =>
+                      act(async () => {
+                        const access = Object.fromEntries(
+                          Object.entries(v)
+                            .filter(([k]) => k.startsWith('access_'))
+                            .map(([k, role]) => [k.slice('access_'.length), role || null]),
+                        );
+                        const fields = Object.fromEntries(Object.entries(v).filter(([k]) => !k.startsWith('access_')));
+                        const created = await call('/users', 'POST', fields);
+                        if (Object.values(access).some(Boolean)) await call(`/users/${created.id}/permissions`, 'PUT', access);
+                      })
+                    }
                     onClose={() => setDialog(null)}
                   />,
                 )
@@ -280,6 +292,20 @@ export function UserManagement({currentUserId}: {currentUserId: number}) {
                   </td>
                   <td>{a.description}</td>
                   <td className="actions">
+                    <button
+                      onClick={() =>
+                        setDialog(
+                          <AuthorityForm
+                            data={data}
+                            authority={a}
+                            onSave={v => act(() => call(`/authorities/${a.id}`, 'PUT', v))}
+                            onClose={() => setDialog(null)}
+                          />,
+                        )
+                      }
+                    >
+                      Edit
+                    </button>
                     <button
                       className="danger"
                       onClick={() =>

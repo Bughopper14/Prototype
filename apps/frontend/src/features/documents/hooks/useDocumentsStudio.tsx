@@ -1,5 +1,5 @@
 /** All state, derived values and handlers of Documents; shared with its sections through DocumentsContext. */
-import {checkIsAdmin} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {useMasterData} from '@/shared/master-data';
 import {useEffect, useMemo, useRef, useState} from 'react';
 
@@ -165,7 +165,7 @@ export function useDocumentsStudio({
   }, [activeFileUrl, activeFile?.mimeType, pdfZoom]);
 
   const canUpload =
-    checkIsAdmin(user) || ['MKT', 'BS', 'HEAD_BS', 'CA', 'LEGAL', 'COMMITTEE'].includes(user.role);
+    hasAuthority(user, 'crm_upload_app_documents');
 
   // Automatically preview latest file if available and none selected
   useEffect(() => {

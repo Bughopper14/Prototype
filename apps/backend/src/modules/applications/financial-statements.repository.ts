@@ -48,7 +48,7 @@ export async function readFinancialStatements(applicationId: string) {
     ratios: statements.map(row => ({fiscalYear: row.fiscalYear, ...ratios(row)})),
   };
 }
-export async function saveFinancialStatements(applicationId: string, input: unknown, role: string) {
+export async function saveFinancialStatements(applicationId: string, input: unknown, actor: {role: string; isAdmin?: boolean; authorities?: string[]}) {
   if (!pool) throw new Error('MySQL is not configured');
   const amount = z
     .union([z.string().regex(/^-?\d{1,18}(\.\d{1,2})?$/), z.number().finite()])
@@ -72,9 +72,10 @@ export async function saveFinancialStatements(applicationId: string, input: unkn
     if (!apps.length) throw Object.assign(new Error('Application not found'), {status: 404});
     const status = apps[0].application_status;
     if (!(
-      role === 'ADMIN' ||
-      (role === 'MKT' && ['DRAFT', 'RETURNED'].includes(status)) ||
-      (role === 'CA' && status === 'IN_CA_LEGAL_REVIEW')
+      actor.isAdmin ||
+      actor.role === 'ADMIN' ||
+      ((actor.authorities || []).includes('crm_edit_app_financial') &&
+        ['DRAFT', 'RETURNED', 'IN_CA_LEGAL_REVIEW'].includes(status))
     ))
       throw Object.assign(new Error('Financial statements are locked at this workflow stage'), {status: 403});
     const years = rows.map(row => row.fiscalYear);

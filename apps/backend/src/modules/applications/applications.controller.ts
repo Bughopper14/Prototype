@@ -8,7 +8,7 @@ import {logActivity} from '../activity/activity-log';
 import {saveBusiness} from './business.repository';
 import {saveFinancialStatements} from './financial-statements.repository';
 import {createIntake, intakeDetail, listIntake, saveCustomerPic, transitionIntake} from './intake.repository';
-import {requireRole} from '../auth/session';
+import {requireAuthority} from '../auth/session';
 import {getSubmitLock, verifyApplicationDocument} from '../documents/documents.repository';
 import {recordFapSubmissionArchive} from '../fap/fap-archive.repository';
 
@@ -22,7 +22,7 @@ const DEFAULT_PROFILE: Record<string, string> = {
 };
 
 async function createApplication(req: ApiRequest) {
-  requireRole(req.actor, ['MKT']);
+  requireAuthority(req.actor, 'crm_create_application');
   const body = req.body || {};
   const profile: Record<string, any> = {...DEFAULT_PROFILE, ...body};
   for (const key of Object.keys(DEFAULT_PROFILE))
@@ -89,7 +89,7 @@ export class ApplicationsController {
 
   @Put('applications/:id/business')
   async saveBusiness(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, ['MKT', 'CA']);
+    requireAuthority(req.actor, 'crm_edit_app_business_banks');
     const id = req.params.id;
     await detailOr404(id);
     await saveBusiness(id, req.body);
@@ -101,6 +101,9 @@ export class ApplicationsController {
     const id = req.params.id;
     const existing = await detailOr404(id);
     const b = req.body || {};
+    if (b.profile || b.pic) requireAuthority(req.actor, 'crm_edit_app_customer_pic');
+    if (b.bankReferences || b.proposal || (!b.profile && !b.pic && Array.isArray(b.projects)))
+      requireAuthority(req.actor, 'crm_edit_app_business_banks');
     if (b.profile || b.pic) {
       if (Array.isArray(b.projects)) await saveBusinessMerged(id, {projects: b.projects});
       await saveCustomerPic(id, b);
@@ -126,9 +129,10 @@ export class ApplicationsController {
   async saveFinancialPage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const id = req.params.id;
     const existing = await detailOr404(id);
+    if (req.body?.proposal) requireAuthority(req.actor, 'crm_edit_app_financing_units');
     if (req.body?.proposal) await saveBusinessMerged(id, {proposal: req.body.proposal});
     if (req.body?.financialStatements)
-      await saveFinancialStatements(id, req.body.financialStatements, req.actor.role);
+      await saveFinancialStatements(id, req.body.financialStatements, req.actor);
     await logActivity(
       req.actor,
       id,
@@ -201,7 +205,7 @@ export class ApplicationsController {
 
   @Patch('applications/:id/checklist/:checklistId/verify')
   async verifyChecklistItem(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireRole(req.actor, ['BS', 'CA', 'LEGAL']);
+    requireAuthority(req.actor, 'crm_verify_app_documents');
     const body = z
       .object({
         department: z.enum(['BS', 'CA', 'LEGAL']),
@@ -213,7 +217,6 @@ export class ApplicationsController {
       })
       .parse(req.body);
     const isAdmin = req.actor.isAdmin || req.actor.role === 'ADMIN';
-    if (!isAdmin) ensure(body.department === req.actor.role, 'Cannot verify for another department', 403);
     const id = req.params.id;
     await detailOr404(id);
     await verifyApplicationDocument(id, req.params.checklistId, body, isAdmin);

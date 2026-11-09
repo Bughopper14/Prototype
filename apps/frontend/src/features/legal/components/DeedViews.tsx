@@ -1,5 +1,5 @@
 import {date, deedValidity} from '@/shared/lib/format';
-import {legalDeedFields, publishedDeeds} from '@liugong/shared';
+import {deedPending, legalDeedFields, publishedDeeds} from '@liugong/shared';
 import {Users} from 'lucide-react';
 
 export const deedNames: Record<string, string> = {
@@ -78,19 +78,10 @@ export function shareholderNames(parties: any): string[] {
       : [];
 }
 
-export function StakeholderDeedView({
-  legal,
-  application,
-  fallbackRows,
-}: {
-  legal: any;
-  application: any;
-  fallbackRows: any[];
-}) {
-  const published = publishedDeeds(legal);
-  const allDeeds = legalDeedList(legal, application);
-  const deedSource = published && published.length > 0 ? published : allDeeds;
-  const deeds = [...deedSource].sort((a, b) => {
+/** Read-only stakeholder view: shows only deeds that were submitted and approved (never drafts or pending reviews). */
+export function StakeholderDeedView({legal}: {legal: any}) {
+  const pending = (legal?.deeds || []).filter((d: any) => deedPending(d)).length;
+  const deeds = [...publishedDeeds(legal)].sort((a, b) => {
     const ad = Date.parse(String(a.deedDate || a.createdAt || '')) || 0,
       bd = Date.parse(String(b.deedDate || b.createdAt || '')) || 0;
     return bd - ad || String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
@@ -100,24 +91,23 @@ export function StakeholderDeedView({
       <div className="section-title">
         <div>
           <h3>Deeds & Share Ownership</h3>
-          <p className="muted">Most recent deed shown first. Data is managed through the Legal tab.</p>
+          <p className="muted">
+            Only approved deeds are shown, most recent first. Data is managed and submitted through the Legal tab.
+          </p>
         </div>
-        <span className="subtle-chip">{deeds.length} deed(s)</span>
+        <span className="subtle-chip">{deeds.length} approved deed(s)</span>
       </div>
+      {deeds.length === 0 && (
+        <div className="empty-small" style={{padding: '24px 20px', color: '#64748b', textAlign: 'center'}}>
+          No approved deed yet.{' '}
+          {pending > 0
+            ? `${pending} deed(s) are waiting for Legal approval.`
+            : 'Submit a deed from the Legal tab to start the approval; its stakeholders appear here once it is approved.'}
+        </div>
+      )}
       <div className="stakeholder-deed-cards">
         {deeds.map((d, index) => {
-          const rawRows =
-            Array.isArray(d.stakeholders) && d.stakeholders.length > 0
-              ? d.stakeholders
-              : d.id === legal.selectedDeedId || (!legal.selectedDeedId && d.id === deeds[0]?.id)
-                ? fallbackRows || []
-                : [];
-          const displayRows =
-            rawRows.length > 0
-              ? rawRows
-              : Array.isArray(fallbackRows) && fallbackRows.length > 0
-                ? fallbackRows
-                : [];
+          const displayRows: any[] = Array.isArray(d.stakeholders) ? d.stakeholders : [];
           const total = displayRows.reduce((sum: number, r: any) => sum + Number(r.sharePercentage || 0), 0),
             validity = deedValidity(d.deedDate);
           return (

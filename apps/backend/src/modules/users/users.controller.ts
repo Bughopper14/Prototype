@@ -1,5 +1,6 @@
 import {Controller, Delete, Get, Post, Put, Res, UseGuards, UseInterceptors} from '@nestjs/common';
 import {ClearSessionCacheInterceptor, ManageSystemGuard} from './manage-system';
+import {AUTHORITY_NAMES} from '@liugong/shared';
 import {z} from 'zod';
 import {exec, many, one, tx} from '../../core/db/query';
 import {ensure} from '../../core/domain';
@@ -279,6 +280,17 @@ export class UsersController {
         description: z.string().default(''),
       })
       .parse(req.body);
+    // An authority only does something when the code checks its exact name, so only known names may be created.
+    ensure(
+      AUTHORITY_NAMES.has(b.authority_name),
+      `Authority '${b.authority_name}' tidak dikenal oleh aplikasi. Pilih dari daftar.`,
+      422,
+    );
+    ensure(
+      !(await one('SELECT 1 AS x FROM authorities WHERE app_id = ? AND authority_name = ?', [b.app_id, b.authority_name])),
+      `Authority '${b.authority_name}' sudah ada.`,
+      409,
+    );
     await exec('INSERT INTO authorities (app_id, authority_name, description) VALUES (?, ?, ?)', [
       b.app_id,
       b.authority_name,
@@ -288,10 +300,31 @@ export class UsersController {
     return {success: true};
   }
 
+  @Put('authorities/:id')
+  async updateAuthority(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    const id = Number(req.params.id);
+    const {description} = z.object({description: z.string().trim().max(255)}).parse(req.body);
+    const existing = await one<{authority_name: string}>('SELECT authority_name FROM authorities WHERE id = ?', [id]);
+    ensure(existing, 'Authority tidak ditemukan.', 404);
+    await exec('UPDATE authorities SET description = ? WHERE id = ?', [description, id]);
+    await audit(req.actor, `Edited Authority: ${existing.authority_name}`);
+    return {success: true};
+  }
+
   @Delete('authorities/:id')
   async deleteAuthority(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    await exec('DELETE FROM authorities WHERE id = ?', [Number(req.params.id)]);
-    await audit(req.actor, `Deleted Authority ID: ${req.params.id}`);
+    const id = Number(req.params.id);
+    const used = await many<{role_name: string}>(
+      'SELECT r.role_name FROM role_authorities ra JOIN roles r ON r.id = ra.role_id WHERE ra.authority_id = ?',
+      [id],
+    );
+    ensure(
+      !used.length,
+      `Authority masih dipakai role: ${used.map(r => r.role_name).join(', ')}. Lepas dari role tersebut dulu.`,
+      409,
+    );
+    await exec('DELETE FROM authorities WHERE id = ?', [id]);
+    await audit(req.actor, `Deleted Authority ID: ${id}`);
     return {success: true};
   }
 }

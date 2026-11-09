@@ -3,10 +3,10 @@ import {deedNames, legalDeedList} from '@/features/legal/components/DeedViews';
 import {extractKtpTextFromImage} from '@/features/ocr/lib/id-documents/extract';
 import {parseKtpText} from '@/features/ocr/lib/id-documents/parse-ktp';
 import {api} from '@/shared/lib/api';
-import {checkIsAdmin} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {calculateAgeYearsMonths, date, deedValidity} from '@/shared/lib/format';
 import {useMasterData} from '@/shared/master-data';
-import {deedPending, deedReviewLabels, reviewStatus} from '@liugong/shared';
+import {deedPending, deedReviewLabels, DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY, reviewStatus} from '@liugong/shared';
 import {MoreHorizontal} from 'lucide-react';
 import {useEffect, useState} from 'react';
 
@@ -98,7 +98,8 @@ export function useLegalEditor({
   const locked = (d: any) =>
     disabled ||
     (!checkIsAdmin(user) &&
-      (deedPending(d) ||
+      (!hasAuthority(user, DEED_EDIT_AUTHORITY) ||
+        deedPending(d) ||
         (!['DRAFT', 'RETURNED'].includes(application.status) && reviewStatus(d) !== 'REJECTED')));
   const listLocked = locked(deeds.find(d => d.id === stakeholderList));
   const editorLocked = locked(stakeholderModal ? deeds.find(d => d.id === stakeholderModal.deedId) : editing);
@@ -597,13 +598,13 @@ export function useLegalEditor({
                           onReview(x.id);
                         }}
                       >
-                        {(user.isAdmin || user.role === 'ADMIN' || user.role === 'MKT') &&
+                        {hasAuthority(user, DEED_EDIT_AUTHORITY) &&
                         ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
                           ? 'Submit Deed'
-                          : (user.isAdmin || user.role === 'ADMIN' || user.role === 'BS') &&
+                          : hasAuthority(user, DEED_APPROVE_AUTHORITY) &&
                               reviewStatus(x) === 'PENDING_CHECK'
                             ? 'Review Deed'
-                            : (user.isAdmin || user.role === 'ADMIN' || user.role === 'HEAD_BS') &&
+                            : hasAuthority(user, DEED_APPROVE_AUTHORITY) &&
                                 reviewStatus(x) === 'PENDING_APPROVAL'
                               ? 'Approve Deed'
                               : 'View Approval'}

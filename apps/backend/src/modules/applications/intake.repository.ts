@@ -234,8 +234,22 @@ function listSelect() {
 export async function listIntake() {
   if (!pool) return [];
   const [rows] = await pool.query<any[]>(listSelect());
+  // The list carries per-application deed review counts so the dashboard can show who has to act (no full legal data).
+  const [deedRows] = await pool.query<any[]>(
+    `SELECT application_id, JSON_UNQUOTE(JSON_EXTRACT(review, '$.review.status')) AS status, COUNT(*) AS n
+     FROM deed_review GROUP BY application_id, status`,
+  );
+  const deedCounts = new Map<string, Record<string, number>>();
+  for (const d of deedRows) {
+    const counts = deedCounts.get(d.application_id) || {};
+    counts[String(d.status)] = Number(d.n);
+    deedCounts.set(d.application_id, counts);
+  }
   return rows.map(r => ({
     ...r,
+    deeds_pending_check: deedCounts.get(r.id)?.PENDING_CHECK || 0,
+    deeds_pending_approval: deedCounts.get(r.id)?.PENDING_APPROVAL || 0,
+    deeds_rejected: deedCounts.get(r.id)?.REJECTED || 0,
     stage:
       r.lock_stage === 'PRE_ANALYSIS' ||
       [
@@ -751,7 +765,7 @@ export async function saveCustomerPic(id: string, body: any, fallback?: any) {
 export async function transitionIntake(
   id: string,
   action: string,
-  actor: {name: string; role: string},
+  actor: {name: string; role: string; isAdmin?: boolean; authorities?: string[]},
   comments: string = '',
 ) {
   if (!pool) throw mysqlError('MySQL is not configured', 503);
@@ -759,10 +773,11 @@ export async function transitionIntake(
   if (!detail) throw mysqlError('Application not found', 404);
 
   const isAdmin = actor.role === 'ADMIN' || Boolean((actor as any).isAdmin);
+  const can = (authority: string) => isAdmin || (actor.authorities || []).includes(authority);
   let currentStatus = detail.status || 'DRAFT';
 
   if (action === 'SUBMIT_TO_BS') {
-    if (!isAdmin && !['MKT'].includes(actor.role)) {
+    if (!can('crm_workflow_submit')) {
       throw mysqlError('Hanya tim Marketing yang dapat mengajukan ke Branch Support', 403);
     }
     if (!['DRAFT', 'RETURNED'].includes(currentStatus)) {
@@ -837,23 +852,23 @@ export async function transitionIntake(
     // All mandatory checks passed (or optional if is_mandatory=0)
     currentStatus = 'SUBMITTED_TO_BS';
   } else if (action === 'VERIFY_BS') {
-    if (!isAdmin && !['BS'].includes(actor.role))
-      throw mysqlError('Hanya Branch Support yang dapat memverifikasi berkas', 403);
+    if (!can('crm_workflow_verify_documents'))
+      throw mysqlError('Akun ini tidak dapat memverifikasi berkas', 403);
     currentStatus = 'BS_VERIFIED';
   } else if (action === 'START_REVIEW') {
-    if (!isAdmin && !['BS'].includes(actor.role))
-      throw mysqlError('Hanya Branch Support yang dapat memulai review', 403);
+    if (!can('crm_workflow_start_review'))
+      throw mysqlError('Akun ini tidak dapat memulai review', 403);
     currentStatus = 'IN_CA_LEGAL_REVIEW';
   } else if (action === 'RECOMMEND_CA' || action === 'RECOMMEND_LEGAL') {
-    const role = action === 'RECOMMEND_CA' ? 'CA' : 'LEGAL';
-    if (!isAdmin && ![role].includes(actor.role))
-      throw mysqlError(`Hanya ${role} yang dapat melakukan sign-off ini`, 403);
+    if (!can(action === 'RECOMMEND_CA' ? 'crm_workflow_recommend_credit' : 'crm_workflow_recommend_legal'))
+      throw mysqlError('Akun ini tidak dapat melakukan sign-off ini', 403);
     currentStatus = 'CREDIT_COMMITTEE_REVIEW';
   } else if (action === 'APPROVE_COMMITTEE' || action === 'REJECT_COMMITTEE') {
-    if (!isAdmin && !['COMMITTEE'].includes(actor.role))
-      throw mysqlError('Hanya Komite Kredit yang dapat memutuskan', 403);
+    if (!can('crm_workflow_final_decision'))
+      throw mysqlError('Akun ini tidak dapat memutuskan sebagai Komite Kredit', 403);
     currentStatus = action === 'APPROVE_COMMITTEE' ? 'APPROVED' : 'REJECTED';
   } else if (action === 'RETURN') {
+    if (!can('crm_workflow_return')) throw mysqlError('Akun ini tidak dapat mengembalikan aplikasi', 403);
     currentStatus = 'RETURNED';
   }
 

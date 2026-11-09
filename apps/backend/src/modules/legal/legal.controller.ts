@@ -8,7 +8,7 @@ import {logActivity} from '../activity/activity-log';
 import {intakeDetail} from '../applications/intake.repository';
 import {readApplicationDocuments} from '../documents/documents.repository';
 import {saveDeedReviewState, saveLegal} from './legal.repository';
-import {newNotification} from '../activity/notifications';
+import {newNotification, notifyLegalApprovers} from '../activity/notifications';
 
 @Controller(API_PREFIX)
 export class LegalController {
@@ -115,7 +115,16 @@ export class LegalController {
         id,
         deedId,
         'Akta disetujui',
-        `${a.fapNumber} · Akta ${deed.deedNumber} disetujui oleh ${req.actor.name}. Data shareholder sudah ditampilkan di Stakeholders.`,
+        `${a.fapNumber} · Akta ${deed.deedNumber} disetujui oleh ${req.actor.name}. Data shareholder sudah ditampilkan di Stakeholders.${body.comments ? ` Catatan: ${body.comments}` : ''}`,
+      );
+    }
+    if (body.action === 'SUBMIT' || body.action === 'CHECK') {
+      await notifyLegalApprovers(
+        req.actor.id,
+        id,
+        deedId,
+        body.action === 'SUBMIT' ? 'Akta menunggu pemeriksaan' : 'Akta menunggu approval',
+        `${a.fapNumber} · Akta ${deed.deedNumber} ${body.action === 'SUBMIT' ? 'diajukan' : 'lolos pemeriksaan'} oleh ${req.actor.name}.`,
       );
     }
     await logActivity(

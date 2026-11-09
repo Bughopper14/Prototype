@@ -1,11 +1,19 @@
 import {validateInput} from './input-validation';
 export const deedReviewLabels: Record<string, string> = {
   DRAFT: 'Draft',
-  PENDING_CHECK: 'Pending BS Check',
-  PENDING_APPROVAL: 'Pending Head BS Approval',
+  PENDING_CHECK: 'Pending Legal Check',
+  PENDING_APPROVAL: 'Pending Legal Approval',
   APPROVED: 'Disetujui',
   REJECTED: 'Ditolak',
 };
+/** Authorities (managed in user management, stored in the DB) that gate the deed review. */
+export const DEED_APPROVE_AUTHORITY = 'crm_deed_approve';
+export const DEED_EDIT_AUTHORITY = 'crm_edit_app_legal';
+type DeedActor = {id?: string; name?: string; role?: string; isAdmin?: boolean; authorities?: string[]};
+const isAdminActor = (actor: DeedActor | null | undefined) => Boolean(actor?.isAdmin || actor?.role === 'ADMIN');
+/** True when the actor holds the authority (from the DB roles); administrators hold every authority. */
+export const actorCan = (actor: DeedActor | null | undefined, authority: string) =>
+  Boolean(actor) && (isAdminActor(actor) || (actor!.authorities || []).includes(authority));
 export class DeedWorkflowError extends Error {
   constructor(
     message: string,
@@ -95,7 +103,7 @@ export function mergeLegal(previous: any, incoming: any) {
 export function deedTransition(
   deed: any,
   action: string,
-  actor: {id: string; name: string; role: string; isAdmin?: boolean},
+  actor: DeedActor & {id: string; name: string; role: string},
   options: {revision: number; documentId?: string; comments?: string; beforeSnapshot?: any},
   now = new Date(),
 ) {
@@ -113,8 +121,8 @@ export function deedTransition(
   let next = '';
   if (action === 'SUBMIT') {
     assert(
-      actor.isAdmin || actor.role === 'ADMIN' || actor.role === 'MKT',
-      'Hanya MKT yang dapat mengajukan akta.',
+      actorCan(actor, DEED_EDIT_AUTHORITY),
+      'Akun ini tidak memiliki hak untuk mengajukan akta.',
       403,
     );
     assert(['DRAFT', 'REJECTED'].includes(status), 'Akta sudah diajukan atau disetujui.', 409);
@@ -147,30 +155,27 @@ export function deedTransition(
     next = 'PENDING_CHECK';
   } else if (action === 'CHECK') {
     assert(
-      actor.isAdmin || actor.role === 'ADMIN' || actor.role === 'BS',
-      'Pemeriksaan akta dilakukan oleh Arianti / BS.',
+      actorCan(actor, DEED_APPROVE_AUTHORITY),
+      'Akun ini tidak memiliki hak untuk memeriksa akta.',
       403,
     );
     assert(status === 'PENDING_CHECK', 'Akta belum menunggu pemeriksaan.', 409);
-    if (!actor.isAdmin && actor.role !== 'ADMIN')
+    if (!isAdminActor(actor))
       assert(deed.review.submittedById !== actor.id, 'Pengaju dan pemeriksa harus berbeda.', 403);
     next = 'PENDING_APPROVAL';
   } else if (action === 'APPROVE') {
     assert(
-      actor.isAdmin || actor.role === 'ADMIN' || actor.role === 'HEAD_BS',
-      'Approval akta dilakukan oleh Dellatra / Head BS.',
+      actorCan(actor, DEED_APPROVE_AUTHORITY),
+      'Akun ini tidak memiliki hak untuk menyetujui akta.',
       403,
     );
-    assert(status === 'PENDING_APPROVAL', 'Akta harus lolos pemeriksaan Arianti terlebih dahulu.', 409);
-    if (!actor.isAdmin && actor.role !== 'ADMIN')
+    assert(status === 'PENDING_APPROVAL', 'Akta harus lolos pemeriksaan terlebih dahulu.', 409);
+    if (!isAdminActor(actor))
       assert(deed.review.checkedById !== actor.id, 'Pemeriksa dan approver harus berbeda.', 403);
     next = 'APPROVED';
   } else if (action === 'REJECT') {
     assert(
-      actor.isAdmin ||
-        actor.role === 'ADMIN' ||
-        (actor.role === 'BS' && status === 'PENDING_CHECK') ||
-        (actor.role === 'HEAD_BS' && status === 'PENDING_APPROVAL'),
+      actorCan(actor, DEED_APPROVE_AUTHORITY) && ['PENDING_CHECK', 'PENDING_APPROVAL'].includes(status),
       'Penolakan tidak tersedia untuk akun/status ini.',
       403,
     );
@@ -219,16 +224,13 @@ export function deedTransition(
 
 export function canEditLegal(actor: any, application: any) {
   if (!actor) return false;
-  if (actor.isAdmin || actor.role === 'ADMIN') return true;
-  if (actor.role === 'LEGAL') return true;
-  if (
-    actor.role === 'MKT' &&
-    (['DRAFT', 'RETURNED'].includes(application?.status) ||
-      (!['APPROVED', 'REJECTED', 'CREDIT_COMMITTEE_REVIEW'].includes(application?.status) &&
-        (application?.legal?.deeds || []).some((d: any) => reviewStatus(d) === 'REJECTED')))
-  )
-    return true;
-  return false;
+  if (isAdminActor(actor)) return true;
+  if (!actorCan(actor, DEED_EDIT_AUTHORITY)) return false;
+  return (
+    ['DRAFT', 'RETURNED'].includes(application?.status) ||
+    (!['APPROVED', 'REJECTED', 'CREDIT_COMMITTEE_REVIEW'].includes(application?.status) &&
+      (application?.legal?.deeds || []).some((d: any) => reviewStatus(d) === 'REJECTED'))
+  );
 }
 
 export function saveSingleDeed(previous: any, deedId: string, input: any) {
