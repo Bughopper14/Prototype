@@ -2,9 +2,9 @@
 
 Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3101, frontend on 3100), through Chrome and direct API calls. Nothing in the source code was changed. All data created by the run is named `UAT-...` (companies, roles, test users `uat-*`); the run only deletes rows whose company name starts with `UAT-`.
 
-**Result: 228 checks, 153 passed, 72 failed, 3 notes.**
+**Result: 228 checks, 151 passed, 73 failed, 4 notes.**
 - 56 failures look like real behaviour problems (section 1).
-- 16 failures are checks where the script could not drive the screen (timeout / element not found). They are NOT confirmed bugs; the screens changed (for example Logout now sits in a user menu) and these checks still need to be re-aimed (section 2).
+- 17 failures are checks where the script could not drive the screen (timeout / element not found). They are NOT confirmed bugs; the screens changed (for example Logout now sits in a user menu) and these checks still need to be re-aimed (section 2).
 
 ## Read this first: limits of this run
 
@@ -86,6 +86,7 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 | J3 | Existing Customer: choose a customer, create the application; no new customer row is created | customer not offered: Select Business Category / Corporate / Commercial / Micro / Liugong User / Makro |
 | J5 | Scan OCR NIB with the sample NIB PDF fills the company identity fields | locator.click: Timeout 30000ms exceeded. |
 | J6 | stakeholder Detail dialog shows the saved stakeholder (not sample data) | locator.click: Timeout 30000ms exceeded. |
+| P1 | Stakeholders tab shows no stakeholder data while no deed is approved, and says how many deeds wait for approval | no pending count |
 | UI6 | Change Password dialog opens from the header and validates (empty, mismatch) | no dialog |
 | UI7 | logout from the header ends the session and returns to /login | locator.click: Timeout 30000ms exceeded. |
 | UI13 | applications list: Dates filter opens, an impossible range is not accepted, and the date shown in rows matches the stored application_date (no off-by-one) | Unknown column 'a.application_date' in 'field list' |
@@ -101,8 +102,37 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 | A12 | browser console/page errors during auth flows | HTTP 401 POST /api/auth/login / console.error: Failed to load resource: the server responded with a status of 401 (Unauthorized) / HTTP 401 POST /api/auth/login / console.error: Failed to load resource: the server responded with a status of 401 (Unauthorized) / HTTP 401 POST /api/auth/login / console.error: Failed to load resource: the server responded with a status of 401 (Una |
 | C1b-detail | name-only application saved: * fields were NOT enforced | {"nib":"1794209849622","npwp":"179420984962214","branch_code":"JKT01","province":null,"city":null,"postal_code":null} |
 | H1b | approver names in the review workflow are hard-coded people ("Arianti", "Dellatra") rather than users/roles from the database | Dialog steps read "2 Arianti · Verification", "3 Dellatra · Approval", button "Submit to Arianti"; grep of the DB users table: ["admin","axel@liugongfinance.com","testlegal","testmkt","uat-admin","uat-lapprove","uat-lapprove2","uat-legal","uat-mkt"] |
+| J7 | browser console / API errors in these flows | pageerror: useSession must be used inside <RequireSession> |
 
-## 4. Hardcoded data and JSON still in the code (found by searching the source, not by a check)
+## 4. Changes made after this run (for Axel: read this and adjust your branch)
+
+Status when this was written: these code changes are in Angel's working tree and are not pushed yet. This section describes what will change.
+
+### Authority names are now general (no role names)
+
+Roles are only seed data, so authorities must not carry a role name. Four names were renamed in the code, in `apps/backend/db/seed.sql` and in the `authorities` table of `crm-liugong` (same ids, so roles that already use them keep working):
+
+| Old name | New name | Used in |
+| --- | --- | --- |
+| crm_workflow_verify_bs | crm_workflow_verify_documents | intake.repository.ts, useApplicationWorkspace.tsx, OverviewScreen.tsx |
+| crm_workflow_signoff_ca | crm_workflow_recommend_credit | same files |
+| crm_workflow_signoff_legal | crm_workflow_recommend_legal | same files |
+| crm_workflow_committee | crm_workflow_final_decision | same files |
+
+If your branch checks one of the old names (`can('...')`, `requireAuthority(...)`), change it to the new name. A database that was seeded before this change needs: `UPDATE authorities SET authority_name = '<new>' WHERE authority_name = '<old>'` for the four rows. The descriptions of crm_workflow_submit, verify_documents, start_review, recommend_credit, recommend_legal and final_decision were also rewritten without role names.
+
+### User Management
+
+- **Add user** now has a role dropdown per application, and shows the authorities of the chosen role. Before, the role could only be set afterwards with the Akses button. Files: user-management/components/forms/UserForm.tsx and UserManagement.tsx. The user is created first, then the access is saved with PUT /um/users/:id/permissions (body is {"<appId>": <roleId>}).
+- **Authorities tab**: the list of authorities the code checks is now one file, `packages/shared/src/authorities.ts` (AUTHORITY_CATALOG). Add authority is a dropdown of that list; the backend refuses a name that is not in it (422) and a duplicate (409). When code starts checking a new authority name, add it to AUTHORITY_CATALOG and to seed.sql.
+- **Edit authority** (description only) is new: PUT /um/authorities/:id.
+- **Delete authority** is refused (409) while a role still uses it.
+
+### FAP "9 sections": only the buttons exist, not the sections
+
+The preview has 9 quick-jump chips (Identity, Domicile, Profile, PIC, Purpose & Assets, Projects, References, Financing Proposal, Financial Statements) and apps/frontend/src/features/fap/lib/section-cells.ts lists 9 sections of cell ids. But `fap-html-template.ts` (the same file on axel's branch) only has anchors for 5 rows: fap-preview-sec-header, -company, -business, -deeds, -projects. There are no `fap-preview-sec-purpose-assets`, `-banks`, `-proposal`, `-financial` anchors and none of the cells `fap-cell-purpose-*`, `fap-cell-asset-*`, `fap-cell-ref-*`, `fap-cell-prop-*`, `fap-cell-fin-*` exist in the template, although the sheet does print those parts as plain text (Fixed Assets, Unit Realization Plan, Financial Statements). So chips 5, 7, 8, 9 scroll nowhere, no field highlights in them, and the Documents tab navigation (features/documents/components/studio/fap/FapSectionNav.tsx) still has only 5 buttons. To finish it: add the anchors and cell ids to the template rows and fill them from the application data (proposal, bank references, financial statements, fixed assets) in FapSheetPreview.tsx, then add the 4 buttons to FapSectionNav.tsx and the matching entries to useFapSectionNav.ts.
+
+## 5. Hardcoded data and JSON still in the code (found by searching the source, not by a check)
 
 | Where | What |
 | --- | --- |
@@ -112,7 +142,7 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 | apps/backend/src/modules/applications/applications.controller.ts, apps/frontend/src/features/applications/hooks/useApplicationWorkspace.tsx | blank profile fields are silently filled with JKT01, MINING, CONTRACTOR, OWNED, Operating Cash Flow |
 | database | JSON is stored for deed review state, pre-analysis data, FAP archive snapshots (projects, stakeholders, banks, units, financial statements) and the master data catalog |
 
-## 5. All checks
+## 6. All checks
 
 ### A. Login, session, access control (24 checks, 2 failed)
 
@@ -288,7 +318,7 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 | J4 | New customer with the same NIB as an existing company reuses it instead of creating a duplicate | **FAIL** | business_partner rows 2 -> 3; names for that NIB: UAT-PT Nama Lain Sama NIB / UAT-PT Legal Uji Perkasa |
 | J5 | Scan OCR NIB with the sample NIB PDF fills the company identity fields | **FAIL** | locator.click: Timeout 30000ms exceeded. |
 | J6 | stakeholder Detail dialog shows the saved stakeholder (not sample data) | **FAIL** | locator.click: Timeout 30000ms exceeded. |
-| J7 | browser console / API errors in these flows | PASS |  |
+| J7 | browser console / API errors in these flows | note | pageerror: useSession must be used inside <RequireSession> |
 
 ### J2. NIB OCR (3 checks, 1 failed)
 
@@ -298,11 +328,19 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 | J5b | upload the sample NIB PDF: scan succeeds and the result lists company, NIB number and address | **FAIL** | no 13-digit number: Upload & Scan NIB Document · Auto-Fill OCR Automatically extract NIB number, company name, domicile address, administrative regions, contacts, and issue date. 11 fields detected and ready to sync to f |
 | J5c | console/API errors | PASS |  |
 
-### P. API: every endpoint, roles and validation (8 checks, 0 failed)
+### P. Legal approval role and Stakeholders view (4 checks, 4 failed)
 
 | ID | What was checked | Result | Remark |
 | --- | --- | --- | --- |
-| P1 | all four test users can log in | PASS | admin, mkt, legal, lapp |
+| P1 | Stakeholders tab shows no stakeholder data while no deed is approved, and says how many deeds wait for approval | **FAIL** | no pending count |
+| P2-Legal Officer | Legal Officer: draft deed button reads "Submit Deed", pending deed button reads "View Approval" | **FAIL** | pending deed expected "View Approval" but got "Submit Deed" |
+| P2-Marketing | Marketing: draft deed button reads "Submit Deed", pending deed button reads "View Approval" | **FAIL** | pending deed expected "View Approval" but got "Submit Deed" |
+| P2-Legal Approval | Legal Approval: draft deed button reads "View Approval", pending deed button reads "Review Deed" | **FAIL** | pending deed expected "Review Deed" but got "View Approval" |
+
+### P. API: every endpoint, roles and validation (7 checks, 0 failed)
+
+| ID | What was checked | Result | Remark |
+| --- | --- | --- | --- |
 | P2 | GET /health and /mysql/health answer ok without a session | PASS | health 200, mysql/health 200 |
 | P3 | GET /auth/me returns the signed-in user and its role | PASS | {"id":"portal-6","portalUserId":6,"username":"uat-mkt","name":"UAT_Marketing","email":"uat-mkt@portal.local","role":"MARKETING_MKT_","displayRole":"Marketing (M |
 | P4 | POST /auth/heartbeat keeps a session alive (200) and is 401 without a cookie | PASS | with 200, without 401 |
@@ -310,14 +348,6 @@ Run on 9 Nov 2026 against the live dev database `crm-liugong` (backend on port 3
 | P6 | security headers are present (helmet) and no x-powered-by | PASS | nosniff set, no x-powered-by |
 | P7 | GET /portal/apps lists CRM + User Management for admin, CRM only for marketing | PASS | ok |
 | P8 | GET /portal/access is true for admin and false for marketing | PASS | admin {"manageSystem":true} / mkt {"manageSystem":false} |
-
-### P. Legal approval role and Stakeholders view (3 checks, 3 failed)
-
-| ID | What was checked | Result | Remark |
-| --- | --- | --- | --- |
-| P2-Legal Officer | Legal Officer: draft deed button reads "Submit Deed", pending deed button reads "View Approval" | **FAIL** | pending deed expected "View Approval" but got "Submit Deed" |
-| P2-Marketing | Marketing: draft deed button reads "Submit Deed", pending deed button reads "View Approval" | **FAIL** | pending deed expected "View Approval" but got "Submit Deed" |
-| P2-Legal Approval | Legal Approval: draft deed button reads "View Approval", pending deed button reads "Review Deed" | **FAIL** | pending deed expected "Review Deed" but got "View Approval" |
 
 ### Q. API: user management (admin only) (13 checks, 4 failed)
 
