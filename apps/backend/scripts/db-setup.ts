@@ -7,8 +7,8 @@
  *
  * Usage: pnpm db:setup
  */
-import {pool} from '../src/db/pool';
-import {runSetup} from '../src/db/setup';
+import {pool} from '../src/core/db/pool';
+import {runSetup} from '../src/core/db/setup';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import mysql from 'mysql2/promise';

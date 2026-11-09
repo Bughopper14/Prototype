@@ -1572,86 +1572,108 @@ class InformationExtractor:
         boxes_sorted = sorted(boxes, key=lambda b: (b.get("y_min", 0.0), b.get("x_min", 0.0)))
         full_text = "\n".join([b.get("text", "") for b in boxes_sorted])
 
-        KITAS_LABELS = [
-            "NIORA", "FULL NAME", "NAME", "NAMA LENGKAP", "NATIONALITY", "NATIONAITY",
-            "KEWARGANEGARAAN", "DATE OF BIRTH", "DOTE OF BIRTH", "TGL. LAHIR", "TGL LAHIR",
-            "SEX", "KELAMIN", "PERMIT NUMBER", "PERMIT NUEBER", "PERMIT NO", "NO. PERMIT",
-            "DATE OF EXPIRY", "EXPIRY", "BERLAKU HINGGA", "MASA BERLAKU", "TANDA TANGAN", "SIGNATURE",
-            "KEMENTERIAN", "DIREKTORAT", "IMIGRASI", "KARTU IJIN", "KARTU IZIN"
-        ]
+        # e-KITAS layout is fixed: each label sits on its own line with the value directly underneath,
+        # in the same column. OCR often garbles the labels ("FutL None", "Pereit Nunber"), so labels
+        # are matched fuzzily and the value is the nearest non-label line below, inside that column.
+        from difflib import SequenceMatcher
+
+        KITAS_KEYS = {
+            "niora": ["NIORA"],
+            "nama": ["FULLNAME", "NAMALENGKAP"],
+            "kewarganegaraan": ["NATIONALITY", "KEWARGANEGARAAN"],
+            "tanggal_lahir": ["DATEOFBIRTH", "TGLLAHIR"],
+            "jenis_kelamin": ["SEX", "JENISKELAMIN"],
+            "permit_number": ["PERMITNUMBER", "NOIZIN", "NOMORIZIN"],
+            "berlaku_hingga": ["DATEOFEXPIRY", "BERLAKUHINGGA", "MASABERLAKU"],
+        }
+        HEADER_WORDS = ["KEMENTERIAN", "DIREKTORAT", "IMIGRASI", "KARTU", "TERBATAS", "SIGNATURE", "TANDA"]
+
+        def norm(t: str) -> str:
+            return re.sub(r"[^A-Z0-9]", "", (t or "").upper())
+
+        def label_score(t: str) -> Tuple[float, Optional[str]]:
+            n = norm(t)
+            if not n:
+                return 0.0, None
+            best: Tuple[float, Optional[str]] = (0.0, None)
+            for key, names in KITAS_KEYS.items():
+                for name in names:
+                    # Short labels (SEX) must match closely, long ones tolerate OCR noise
+                    r = SequenceMatcher(None, n, name).ratio() if len(name) > 3 else (1.0 if n == name else 0.0)
+                    if r > best[0]:
+                        best = (r, key)
+            return best
 
         def is_kitas_label(t: str) -> bool:
-            u = t.upper().strip()
-            return any(k in u for k in KITAS_LABELS)
+            return label_score(t)[0] >= 0.6 or any(w in norm(t) for w in HEADER_WORDS)
 
+        # Best-matching box per label
+        labels: Dict[str, Dict[str, Any]] = {}
+        label_ratio: Dict[str, float] = {}
         for b in boxes_sorted:
-            txt = b.get("text", "").strip()
-            upper = txt.upper()
+            r, key = label_score(b.get("text", ""))
+            if key and r >= 0.6 and r > label_ratio.get(key, 0.0):
+                labels[key], label_ratio[key] = b, r
 
-            # 1. NIORA (Nomor Izin Tinggal Orang Asing)
-            if "NIORA" in upper:
-                val, _, used = cls._find_viz_value(b, boxes_sorted, max_y_dist=40.0)
-                if val and not is_kitas_label(val):
-                    m = re.search(r'([1I][A-Z0-9]{9,12})', val.replace(" ", "").upper())
-                    clean_n = m.group(1) if m else val.strip()
-                    if clean_n.startswith("I") and len(clean_n) > 2 and clean_n[1].isdigit():
-                        clean_n = "1" + clean_n[1:]
-                    kitas.niora = clean_n
-                    for ub in used: ub["field_mapping"] = "niora"
+        def value_below(label: Dict[str, Any]) -> Tuple[Optional[str], Optional[Dict[str, Any]]]:
+            h = max(label["y_max"] - label["y_min"], 8.0)
+            right = label["x_max"] + 8 * h
+            for other in labels.values():  # stop at the next label on the same row
+                if other is not label and abs(other["y_min"] - label["y_min"]) < h and other["x_min"] > label["x_min"]:
+                    right = min(right, other["x_min"] - 2)
+            cands = [
+                c for c in boxes_sorted
+                if c is not label
+                and c["y_min"] > label["y_min"] + 0.4 * h
+                and c["y_min"] - label["y_max"] <= 1.6 * h + 4
+                and label["x_min"] - h <= c["x_min"] < right
+            ]
+            cands.sort(key=lambda c: (c["y_min"], abs(c["x_min"] - label["x_min"])))
+            for c in cands:
+                txt = c.get("text", "").strip()
+                if not txt:
+                    continue
+                if is_kitas_label(txt):
+                    return None, None  # next label reached: the value is missing/unreadable
+                return txt, c
+            return None, None
 
-            # 2. Full Name
-            elif any(k in upper for k in ["FULL NAME", "FULLNAME", "NAMA LENGKAP"]) and "KEMENTERIAN" not in upper:
-                val, _, used = cls._find_viz_value(b, boxes_sorted, is_name=True, max_y_dist=35.0)
-                if val and not is_kitas_label(val):
-                    kitas.nama = cls.segment_name(val.strip())
-                    for ub in used: ub["field_mapping"] = "nama"
-
-            # 3. Nationality
-            elif any(k in upper for k in ["NATIONALITY", "NATIONAITY", "KEWARGANEGARAAN"]):
-                val, _, used = cls._find_viz_value(b, boxes_sorted, max_y_dist=35.0)
-                if val and not is_kitas_label(val):
-                    kitas.kewarganegaraan = val.strip()
-                    for ub in used: ub["field_mapping"] = "kewarganegaraan"
-
-            # 4. Date of Birth
-            elif any(k in upper for k in ["DATE OF BIRTH", "DOTE OF BIRTH", "TGL. LAHIR", "TGL LAHIR"]):
-                val, _, used = cls._find_viz_value(b, boxes_sorted, max_y_dist=35.0)
-                if val and not is_kitas_label(val):
-                    c_date = cls._clean_passport_date(val)
-                    kitas.tanggal_lahir = c_date or val.strip()
-                    for ub in used: ub["field_mapping"] = "tanggal_lahir"
-
-            # 5. Sex / Kelamin
-            elif any(k in upper for k in ["SEX", "KELAMIN"]) and "DATE" not in upper and "PERMIT" not in upper:
-                val, _, used = cls._find_viz_value(b, boxes_sorted, max_y_dist=35.0)
-                if val and not is_kitas_label(val):
-                    u_sex = val.upper()
-                    if "F" in u_sex or "P" in u_sex or "W" in u_sex:
-                        kitas.jenis_kelamin = "Perempuan (F)"
-                    elif "M" in u_sex or "L" in u_sex:
-                        kitas.jenis_kelamin = "Laki-laki (M)"
-                    else:
-                        kitas.jenis_kelamin = val.strip()
-                    for ub in used: ub["field_mapping"] = "jenis_kelamin"
-
-            # 6. Permit Number
-            elif any(k in upper for k in ["PERMIT NUMBER", "PERMIT NUEBER", "PERMIT NO", "NO. PERMIT", "NO. IZIN", "NOMOR IZIN", "PERMIT"]):
-                val, _, used = cls._find_viz_value(b, boxes_sorted, max_y_dist=35.0)
-                if val and not is_kitas_label(val):
-                    clean_permit = val.strip()
-                    if clean_permit.endswith("-6") and len(clean_permit) >= 10:
-                        clean_permit = clean_permit[:-2] + "-Q"
-                    kitas.permit_number = clean_permit
-                    for ub in used: ub["field_mapping"] = "permit_number"
-
-            # 7. Date of Expiry / Masa Berlaku
-            elif any(k in upper for k in ["DATE OF EXPIRY", "EXPIRY", "BERLAKU HINGGA", "MASA BERLAKU"]):
-                val, _, used = cls._find_viz_value(b, boxes_sorted, max_y_dist=35.0)
-                if val and not is_kitas_label(val):
-                    c_date = cls._clean_passport_date(val)
-                    kitas.berlaku_hingga = c_date or val.strip()
-                    for ub in used: ub["field_mapping"] = "berlaku_hingga"
-
+        for key, label in labels.items():
+            val, box = value_below(label)
+            if not val:
+                continue
+            if key == "niora":
+                token = val.replace(" ", "").upper()
+                # The whole value when it looks like a NIORA; otherwise the part starting at an "I"/"1"
+                m = re.fullmatch(r"([A-Z0-9]{10,13})", token) or re.search(r"([1I][A-Z0-9]{9,12})", token)
+                if not m:
+                    continue
+                n = m.group(1)
+                if n.startswith("I") and n[1].isdigit():
+                    n = "1" + n[1:]
+                kitas.niora = n
+            elif key == "nama":
+                kitas.nama = cls.segment_name(val)
+            elif key == "kewarganegaraan":
+                kitas.kewarganegaraan = val.upper()
+            elif key in ("tanggal_lahir", "berlaku_hingga"):
+                if not re.search(r"\d", val):
+                    continue
+                setattr(kitas, key, cls._clean_passport_date(val) or val)
+            elif key == "jenis_kelamin":
+                u_sex = norm(val)
+                if u_sex in ("F", "P", "W", "FEMALE", "PEREMPUAN", "WANITA"):
+                    kitas.jenis_kelamin = "Perempuan (F)"
+                elif u_sex in ("M", "L", "MALE", "LAKILAKI", "PRIA"):
+                    kitas.jenis_kelamin = "Laki-laki (M)"
+                else:
+                    continue
+            elif key == "permit_number":
+                m = re.search(r"\b([0-9][A-Z0-9]{8,11})\s*[-.]?\s*([A-Z0-9])\b", val.upper())
+                if not m:
+                    continue
+                kitas.permit_number = f"{m.group(1)}-{m.group(2)}"
+            box["field_mapping"] = key
         # Regex fallbacks if any fields were missed
         if not kitas.niora:
             for b in boxes_sorted:
@@ -1665,9 +1687,9 @@ class InformationExtractor:
 
         if not kitas.permit_number:
             for b in boxes_sorted:
-                m = re.search(r'\b([0-9][A-Z0-9]{8,11}-[A-Z0-9])\b', b.get("text", "").upper())
+                m = re.search(r'\b([0-9][A-Z0-9]{8,11})[-.]([A-Z0-9])\b', b.get("text", "").upper())
                 if m:
-                    p = m.group(1)
+                    p = f"{m.group(1)}-{m.group(2)}"
                     if p.endswith("-6"): p = p[:-2] + "-Q"
                     kitas.permit_number = p
                     b["field_mapping"] = "permit_number"
@@ -1680,6 +1702,31 @@ class InformationExtractor:
                     kitas.berlaku_hingga = m.group(1)
                     b["field_mapping"] = "berlaku_hingga"
                     break
+
+        # Small or blurry photos lose the "Date of Birth" / "Nationality" / "Sex" labels (read as "004", ...) and
+        # glue the sex letter to the date ("23-07-1972F"). Fall back to the date pattern and the row it sits on.
+        if not kitas.tanggal_lahir:
+            date_re = re.compile(r"(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})\s*([MFLP])?")
+            for b in boxes_sorted:
+                m = date_re.search(b.get("text", "").upper())
+                if not m:
+                    continue
+                found = cls._clean_passport_date(f"{m.group(1)}-{m.group(2)}-{m.group(3)}")
+                if found == kitas.berlaku_hingga:
+                    continue  # the expiry date, not the birth date
+                kitas.tanggal_lahir = found
+                b["field_mapping"] = "tanggal_lahir"
+                if m.group(4) and not kitas.jenis_kelamin:
+                    kitas.jenis_kelamin = "Perempuan (F)" if m.group(4) in ("F", "P") else "Laki-laki (M)"
+                if not kitas.kewarganegaraan:
+                    row_h = max(b["y_max"] - b["y_min"], 6.0)
+                    for n in boxes_sorted:
+                        if (n is not b and re.fullmatch(r"[A-Z]{3}", n.get("text", "").strip())
+                                and abs(n["y_min"] - b["y_min"]) < row_h and n["x_min"] < b["x_min"]):
+                            kitas.kewarganegaraan = n["text"].strip()
+                            n["field_mapping"] = "kewarganegaraan"
+                            break
+                break
 
         # Dynamic Custom Fields
         if custom_targets:

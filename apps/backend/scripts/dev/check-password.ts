@@ -1,6 +1,6 @@
 /** Dev check: Werkzeug-compatible hashing round-trips, and a stored portal hash is parsed without error. */
-import {pool} from '../../src/db/pool';
-import {hashPassword, verifyPassword} from '../../src/auth/password';
+import {pool} from '../../src/core/db/pool';
+import {hashPassword, verifyPassword} from '../../src/modules/auth/password';
 
 async function main() {
   const hash = hashPassword('s3cret-test');

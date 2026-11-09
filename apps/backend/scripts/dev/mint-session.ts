@@ -4,8 +4,8 @@
  *
  * Usage: tsx --import ./src/config/load-env.ts scripts/dev/mint-session.ts <username>
  */
-import {pool} from '../../src/db/pool';
-import {createSessionRecord, isAdminUser, signSession, SESSION_COOKIE} from '../../src/auth/session';
+import {pool} from '../../src/core/db/pool';
+import {createSessionRecord, isAdminUser, signSession, SESSION_COOKIE} from '../../src/modules/auth/session';
 
 async function main() {
   const username = process.argv[2];

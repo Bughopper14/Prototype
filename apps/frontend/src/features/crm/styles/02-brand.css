@@ -1,0 +1,309 @@
+/* LiuGong brand system, legal deed tables and legal overrides. */
+/* ========================================================
+   LIUGONG BRAND SYSTEM V5: COMPLETE GREEN REMOVAL OVERRIDE
+   Replaces all legacy prototype sage/olive green with
+   LiuGong Corporate Navy (#001f42 / #002c5f) and Slate.
+   ======================================================== */
+
+body {
+  color: #1e293b !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: #001f42 !important;
+}
+
+.detail-heading .eyebrow {
+  color: #002c5f !important;
+}
+
+.detail-heading .eyebrow span {
+  color: #64748b !important;
+}
+
+.detail-heading p {
+  color: #64748b !important;
+}
+
+.iconbox {
+  background: #f0f4f9 !important;
+  color: #002c5f !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.detail-summary {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.detail-summary > div > span {
+  color: #64748b !important;
+}
+
+.detail-summary > div > b {
+  color: #001f42 !important;
+  font-weight: 600 !important;
+}
+
+.detail-tabs {
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+
+.detail-tabs button {
+  color: #64748b !important;
+}
+
+.detail-tabs button:hover {
+  color: #001f42 !important;
+  background: rgba(0, 31, 66, 0.03) !important;
+}
+
+.detail-tabs button.active {
+  border-bottom-color: #001f42 !important;
+  color: #001f42 !important;
+  background: rgba(0, 31, 66, 0.05) !important;
+}
+
+.detail-tabs span {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+.detail-tabs button.active span {
+  background: #001f42 !important;
+  color: #ffffff !important;
+}
+
+.detail-tabs em {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+.detail-tabs button.active em {
+  background: #001f42 !important;
+  color: #ffffff !important;
+}
+
+.customer-reference {
+  color: #002c5f !important;
+  background: #f0f4f9 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.business-section {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.business-section-heading p,
+.repeater-description {
+  color: #64748b !important;
+}
+
+.subtle-chip {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+input,
+select,
+textarea {
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #002c5f !important;
+  box-shadow: 0 0 0 3px rgba(0, 44, 95, 0.15) !important;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #002c5f !important;
+}
+
+.simulation {
+  background: #f0f4f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.simulation > div {
+  color: #002c5f !important;
+}
+
+.simulation strong {
+  color: #001f42 !important;
+}
+
+.simulation p {
+  color: #64748b !important;
+}
+
+.legal-table-wrap {
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 8px rgba(0, 31, 66, 0.04) !important;
+}
+
+.legal-deed-table thead {
+  background: #f8fafc !important;
+}
+
+.legal-deed-table th {
+  color: #64748b !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.legal-deed-table td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.legal-deed-table tbody tr:hover {
+  background: #f8fafc !important;
+}
+
+.legal-deed-table tbody tr.selected {
+  background: rgba(0, 31, 66, 0.04) !important;
+  box-shadow: inset 3px 0 #001f42 !important;
+}
+
+/* Dual Legal Deed Tables (Active vs Historical) */
+.legal-table-history {
+  border-color: #cbd5e1 !important;
+  background: #fbfcfd;
+}
+.legal-table-history thead {
+  background: #f1f5f9 !important;
+}
+.legal-table-history tr.selected {
+  background: #f1f5f9 !important;
+}
+.legal-history-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  margin-left: 5px;
+}
+.legal-role-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 5px;
+}
+.legal-count.active-count {
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  border: 1px solid #bfdbfe !important;
+}
+.legal-count.history-count {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.legal-deed-table tr.selected .legal-row-action span {
+  color: #001f42 !important;
+}
+
+.legal-add-stakeholder {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #002c5f !important;
+}
+
+.legal-stakeholder-summary {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.signoffs {
+  background: #f1f5f9 !important;
+  color: #002c5f !important;
+}
+
+.audit-item {
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.audit-icon {
+  background: #f1f5f9 !important;
+  color: #002c5f !important;
+}
+
+.audit-item b {
+  color: #001f42 !important;
+}
+
+.audit-role {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+}
+
+.audit-item p {
+  color: #334155 !important;
+}
+
+.audit-item small {
+  color: #64748b !important;
+}
+
+.badge {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+.loading-strip {
+  background: linear-gradient(90deg, transparent, #0050a8, transparent) !important;
+}
+
+.stat-top {
+  color: #64748b !important;
+}
+
+.repeater-carousel-controls span {
+  color: #64748b !important;
+}
+
+/* Additional Legal & Counter overrides */
+.legal-count {
+  background: #f1f5f9 !important;
+  color: #001f42 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+.legal-count-link {
+  color: #002c5f !important;
+}
+.legal-add-stakeholder {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #002c5f !important;
+}
+.shareholder-count-top > div,
+.shareholder-count-top label {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+.shareholder-count-top strong,
+.shareholder-count-list strong {
+  color: #001f42 !important;
+}
