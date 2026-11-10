@@ -27,3 +27,6 @@ apps/ocr/tessdata/
 apps/ocr/.venv/
 apps/backend/scripts/dev/fixtures/
 *.zip
+
+UAT/
+apps/backend/dist-qa/
