@@ -3,11 +3,8 @@ import path from 'node:path';
 
 /**
  * Loads apps/backend/.env into process.env (variables already set by the environment win).
- * The repository-root .env is read as a fallback during the move to the monorepo; move it to apps/backend/.env.
+ * Only this file is read: the repository-root .env is no longer used.
  */
-const candidates = [path.resolve('.env'), path.resolve('../../.env')];
-const file = candidates.find(existsSync);
-if (file) {
-  process.loadEnvFile(file);
-  if (file === candidates[1]) console.warn(`[env] Using ${file}; move it to apps/backend/.env`);
-}
+const file = path.resolve('.env');
+if (existsSync(file)) process.loadEnvFile(file);
+else console.warn(`[env] ${file} not found; copy apps/backend/.env.example to apps/backend/.env`);

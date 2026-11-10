@@ -10,6 +10,7 @@ import responsive from '../styles/08-responsive.css?raw';
 import fapComparison from '../styles/09-fap-comparison.css?raw';
 import approvedExcel from '../styles/10-approved-excel.css?raw';
 import shell from '../styles/11-shell.css?raw';
+import keithSync from '../styles/12-keith-sync.css?raw';
 
 const CRM_CSS = [
   base,
@@ -23,6 +24,7 @@ const CRM_CSS = [
   fapComparison,
   approvedExcel,
   shell,
+  keithSync,
 ].join('');
 
 export function CrmStyles() {

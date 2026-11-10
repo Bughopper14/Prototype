@@ -164,8 +164,7 @@ export function useDocumentsStudio({
     return `${base}#toolbar=1&navpanes=0&${zoomParam}`;
   }, [activeFileUrl, activeFile?.mimeType, pdfZoom]);
 
-  const canUpload =
-    hasAuthority(user, 'crm_upload_app_documents');
+  const canUpload = hasAuthority(user, 'crm_upload_app_documents');
 
   // Automatically preview latest file if available and none selected
   useEffect(() => {

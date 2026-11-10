@@ -18,7 +18,9 @@ export function UserForm({
 }) {
   const [picked, setPicked] = useState<Record<number, string>>({});
   const authoritiesOf = (roleId: string) => {
-    const ids = new Set((data?.roleAuthorities || []).filter(ra => ra.role_id === Number(roleId)).map(ra => ra.authority_id));
+    const ids = new Set(
+      (data?.roleAuthorities || []).filter(ra => ra.role_id === Number(roleId)).map(ra => ra.authority_id),
+    );
     return (data?.authorities || []).filter(a => ids.has(a.id)).map(a => a.authority_name);
   };
   return (
@@ -61,7 +63,8 @@ export function UserForm({
               </label>
               {picked[a.id] && (
                 <small>
-                  Authorities: {authorities.length ? authorities.join(', ') : 'role ini belum punya authority'}
+                  Authorities:{' '}
+                  {authorities.length ? authorities.join(', ') : 'role ini belum punya authority'}
                 </small>
               )}
             </div>

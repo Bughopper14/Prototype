@@ -4,12 +4,12 @@ import {useEffect, useState} from 'react';
 import {DEFAULT_MANDATORY_RULES} from './default-rules';
 import {getSectionAliases, normalizeRule, normalizeStage, resolveRuleSection} from './sections';
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v25';
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v28';
 
 // Automatically clear obsolete cache versions
 try {
   if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 24; i++) {
+    for (let i = 1; i <= 27; i++) {
       localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
     }
     localStorage.removeItem('liugong_mandatory_rules_cache');
@@ -158,42 +158,47 @@ export function isFieldMandatory(
   const normSec = (section || '').toLowerCase().trim();
   const normStg = stage ? normalizeStage(stage) : '';
 
-  if (normStg) {
-    if (normSec) {
-      const directKey = `${normStg}:${normSec}:${fieldKey}`;
-      if (mandatoryMapCache.has(directKey)) {
-        return mandatoryMapCache.get(directKey)!;
-      }
-      const aliases = getSectionAliases(normSec, normStg);
-      for (const al of aliases) {
-        const aliasKey = `${normStg}:${al}:${fieldKey}`;
-        if (mandatoryMapCache.has(aliasKey)) {
-          return mandatoryMapCache.get(aliasKey)!;
+  // Fields stored under one key and shown under another (deed decree, stakeholder ids, capital…)
+  const synonyms: Record<string, string[]> = {
+    ministerialDecreeNumber: ['decreeNumber'],
+    decreeNumber: ['ministerialDecreeNumber'],
+    ministerialDecreeDate: ['decreeDate'],
+    decreeDate: ['ministerialDecreeDate'],
+    depositedCapital: ['shareAmount'],
+    shareAmount: ['depositedCapital'],
+    idNumberSecondary: ['taxNumber'],
+    taxNumber: ['idNumberSecondary'],
+    citizenship: ['nationalityType'],
+    nationalityType: ['citizenship'],
+    firstName: ['shareholderName'],
+    name: ['shareholderName'],
+    shareholderName: ['firstName', 'name'],
+    representativeType: ['shareholderPosition'],
+    designation: ['shareholderPosition'],
+    shareholderPosition: ['representativeType', 'designation'],
+  };
+  for (const fk of [fieldKey, ...(synonyms[fieldKey] || [])]) {
+    if (normStg) {
+      if (normSec) {
+        const directKey = `${normStg}:${normSec}:${fk}`;
+        if (mandatoryMapCache.has(directKey)) return mandatoryMapCache.get(directKey)!;
+        for (const al of getSectionAliases(normSec, normStg)) {
+          const aliasKey = `${normStg}:${al}:${fk}`;
+          if (mandatoryMapCache.has(aliasKey)) return mandatoryMapCache.get(aliasKey)!;
         }
       }
+      const stageWildKey = `${normStg}:*:${fk}`;
+      if (mandatoryMapCache.has(stageWildKey)) return mandatoryMapCache.get(stageWildKey)!;
     }
-    const stageWildKey = `${normStg}:*:${fieldKey}`;
-    if (mandatoryMapCache.has(stageWildKey)) {
-      return mandatoryMapCache.get(stageWildKey)!;
-    }
-  }
-
-  if (normSec) {
-    const directKey = `${normSec}:${fieldKey}`;
-    if (mandatoryMapCache.has(directKey)) {
-      return mandatoryMapCache.get(directKey)!;
-    }
-    const aliases = getSectionAliases(normSec);
-    for (const al of aliases) {
-      const aliasKey = `${al}:${fieldKey}`;
-      if (mandatoryMapCache.has(aliasKey)) {
-        return mandatoryMapCache.get(aliasKey)!;
+    if (normSec) {
+      const directKey = `${normSec}:${fk}`;
+      if (mandatoryMapCache.has(directKey)) return mandatoryMapCache.get(directKey)!;
+      for (const al of getSectionAliases(normSec)) {
+        const aliasKey = `${al}:${fk}`;
+        if (mandatoryMapCache.has(aliasKey)) return mandatoryMapCache.get(aliasKey)!;
       }
     }
-  }
-
-  if (mandatoryMapCache.has(`*:${fieldKey}`)) {
-    return mandatoryMapCache.get(`*:${fieldKey}`)!;
+    if (mandatoryMapCache.has(`*:${fk}`)) return mandatoryMapCache.get(`*:${fk}`)!;
   }
 
   return Boolean(defaultRequired);

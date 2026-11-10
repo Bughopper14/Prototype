@@ -1,13 +1,11 @@
-/** Shares PreAnalysisForm state with its sections so each section can live in its own file. */
-import type {usePreAnalysisState} from '@/features/pre-analysis/hooks/usePreAnalysisState';
+import type {PreAnalysisState} from '@/features/pre-analysis/hooks/usePreAnalysisState';
 import {createContext, useContext} from 'react';
 
-export type PreAnalysisState = ReturnType<typeof usePreAnalysisState>;
-
+/** Shares the Pre-Analysis state with every section of the form and of the preview. */
 export const PreAnalysisContext = createContext<PreAnalysisState | null>(null);
 
-export function usePreAnalysis(): PreAnalysisState {
+export function usePreAnalysisContext(): PreAnalysisState {
   const value = useContext(PreAnalysisContext);
-  if (!value) throw new Error('usePreAnalysis must be used inside PreAnalysisForm');
+  if (!value) throw new Error('usePreAnalysisContext must be used inside PreAnalysisForm');
   return value;
 }

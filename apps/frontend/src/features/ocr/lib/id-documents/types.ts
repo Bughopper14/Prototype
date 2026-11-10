@@ -74,6 +74,7 @@ export interface ParsedKitasData {
   nama?: string;
   kewarganegaraan?: string;
   tanggalLahir?: string;
+  dateOfBirth?: string;
   gender?: 'MALE' | 'FEMALE';
   berlakuHingga?: string;
   instansiPenerbit?: string;

@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {exec, one} from '../../core/db/query';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {generateDocumentStorageInfo} from '../../core/storage';
+import {generateDocumentStorageInfo, mirrorFileToPrototypeSrc} from '../../core/storage';
 import {runOcr} from '../ocr/ocr-runner';
 import {requireAuthority} from '../auth/session';
 
@@ -126,6 +126,7 @@ export class IdentityDocumentsController {
       file.originalname,
     );
     await fs.writeFile(storage.savedFilePath, file.buffer);
+    await mirrorFileToPrototypeSrc(storage.savedFilePath, file.buffer);
 
     let result;
     try {

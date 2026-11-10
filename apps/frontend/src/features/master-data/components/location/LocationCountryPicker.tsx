@@ -26,7 +26,7 @@ export function LocationCountryPicker({
           value={country?.value || ''}
           onChange={e => onChange(e.target.value)}
         >
-          <option value="">Select country</option>
+          <option value="" hidden></option>
           {countries.map(x => (
             <option key={x.value} value={x.value}>
               {x.name}

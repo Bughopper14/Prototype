@@ -1,4 +1,3 @@
-import {api} from '@/shared/lib/api';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {CRM_PAGES, type CrmPageName} from '@/shared/lib/routes';
 import {label} from '@liugong/shared';
@@ -69,7 +68,7 @@ export function CrmShell({children}: {children: ReactNode}) {
   const closeDrawer = () => setDrawerOpen(false);
 
   async function logout() {
-    await api('/auth/logout', 'POST').catch(() => {});
+    await fetch('/api/auth/logout', {method: 'POST'}).catch(() => {});
     window.location.href = '/login';
   }
 

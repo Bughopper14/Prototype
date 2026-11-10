@@ -1,0 +1,18 @@
+const BASE = 'http://localhost:3100';
+let cookie = '';
+const call = async (m, p, b, h = {}) => { const r = await fetch(BASE + p, {method: m, headers: {...(cookie ? {Cookie: cookie} : {}), ...(b && !(b instanceof FormData) ? {'Content-Type': 'application/json'} : {}), ...h}, body: b instanceof FormData ? b : b ? JSON.stringify(b) : undefined, redirect: 'manual'}); const sc = r.headers.get('set-cookie'); if (sc) cookie = sc.split(';')[0]; let j = null; const t = await r.text(); try { j = JSON.parse(t); } catch {} return {s: r.status, j, t}; };
+const l = await call('POST', '/api/auth/login', {username: 'e2e-admin', password: 'E2e-Pass-123'});
+console.log('login', l.s, Object.keys(l.j || {}));
+const o = await call('GET', '/api/v1/um/overview');
+console.log('overview', o.s, Object.keys(o.j || {}));
+const j = o.j;
+console.log('roles', j.roles.map(r => r.id + ':' + r.name).join(' | '));
+console.log('authorities', j.authorities.length, j.authorities.slice(0, 3));
+console.log('users', j.users.length, j.users.slice(0, 2).map(u => ({...u, password_hash: undefined})));
+console.log('apps', j.applications.map(a => a.id + ':' + (a.name || a.app_name)));
+console.log('hash exposed in overview users?', j.users.some(u => 'password_hash' in u));
+console.log('roles detail', j.roles.map(r => JSON.stringify(r)).join('\n'));
+const ra = {}; j.roleAuthorities.forEach(x => (ra[x.role_id] = ra[x.role_id] || []).push(x.authority_id));
+const an = Object.fromEntries(j.authorities.map(a => [a.id, a.authority_name]));
+for (const r of j.roles) console.log(r.role_name, '=>', (ra[r.id] || []).map(i => an[i]).join(','));
+console.log('all authorities:', j.authorities.map(a => a.authority_name).join(','));

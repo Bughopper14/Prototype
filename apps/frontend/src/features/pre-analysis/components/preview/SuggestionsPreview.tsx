@@ -1,8 +1,8 @@
-/** Preview: suggestion bullet points. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Suggestion bullet points of the document. */
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function SuggestionsPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, data} = usePreAnalysisContext();
   return (
     <div
       id="preana-preview-cell-suggestions"

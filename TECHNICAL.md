@@ -61,12 +61,18 @@ apps/
                                     ChangePasswordModal, lazy = code-split heavy screens); styles/01-…11-*.css
         overview/                   dashboard
         applications/               list, new and detail pages; components/ApplicationWorkspace (layout only) +
-                                    workspace/ (header/, tabs/, customer/ sections, dialogs/, action bars);
-                                    hooks/ (useApplicationWorkspace + save, activity, live FAP data, preview sync, deed review)
-        pre-analysis/               components/PreAnalysisForm (layout only) + form/ (7 sections, group-structure/,
-                                    expert-judgement/, dealer-cross-check/) + preview/ (7 sections, toolbar, diagram);
-                                    hooks/ (usePreAnalysisState, useGroupStructure, usePreAnalysisPrint);
-                                    PreAnalysisContext shares the state with the sections; lib/ (types, defaults, diff…)
+                                    workspace/ (header/, tabs/, customer/ (the 9 FAP form sections), dialogs/, action bars);
+                                    customer/proposal/ (financing proposal: one card per sub-section, terms are data-driven) and
+                                    customer/purpose-assets/; hooks/ (useApplicationWorkspace composes stage sync, access,
+                                    NIB OCR, new application, FAP approval, customer-detail submit, print, save, activity, live
+                                    FAP data, preview sync, deed review); lib/workspace/ (stage, tabs, workflow actions, loan calc)
+        pre-analysis/               components/PreAnalysisForm (layout only) + form/ (AccordionSection and the 7 sections, each
+                                    a folder of field blocks: general-info/, project-info/, customer-group/, equipment/,
+                                    delivery-qa/, dealer-cross-check/, expert-judgement/) + preview/ (toolbar, canvas,
+                                    DigitalTwinDocument and one component per section of the document);
+                                    hooks/ (usePreAnalysisState composes view, sync, data, derived, persistence,
+                                    signatories, slik, actions, print); PreAnalysisContext shares the state with
+                                    the sections; lib/ (types, defaults, diff, projects, rich-editor settings…)
         legal/                      components/ LegalEditor + legal-editor/ (deed headings, menu, modals),
                                     StakeholderModalDialog + stakeholder-modal/ (form, doc tabs, viewer, OCR results);
                                     hooks/ (useLegalEditor, useStakeholderModal), lib/

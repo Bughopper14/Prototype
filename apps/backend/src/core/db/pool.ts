@@ -1,7 +1,5 @@
 import mysql from 'mysql2/promise';
-import crypto from 'node:crypto';
 import {mysqlActor} from './audit-context';
-import {auditTable} from '../../modules/users/users.repository';
 
 const globalForPool = globalThis as unknown as {__crmPool?: mysql.Pool};
 
@@ -64,52 +62,6 @@ export const pool: mysql.Pool = new Proxy({} as mysql.Pool, {
   },
 });
 
-const menus = new Set([
-  'overview',
-  'applications',
-  'customers',
-  'document-desk',
-  'master-data',
-  'notifications',
-  'activity',
-]);
-function tableFor(menu: string) {
-  if (!menus.has(menu)) throw new Error('Unknown workspace menu');
-  return `ui_${menu.replaceAll('-', '_')}`;
-}
-
 export async function checkMysql() {
   await pool.query('SELECT 1');
-}
-
-export async function readMenu(menu: string) {
-  const table = tableFor(menu);
-  try {
-    const [rows] = await pool.query<any[]>(
-      `SELECT id, payload, created_at FROM \`${table}\` ORDER BY created_at DESC`,
-    );
-    return rows.map(row => ({
-      id: row.id,
-      payload: typeof row.payload === 'string' ? JSON.parse(row.payload) : row.payload,
-      createdAt: row.created_at,
-    }));
-  } catch (err: any) {
-    if (err?.code === 'ER_NO_SUCH_TABLE') return [];
-    throw err;
-  }
-}
-
-export async function writeMenu(menu: string, payload: unknown) {
-  const table = tableFor(menu);
-  await pool.query(
-    `CREATE TABLE IF NOT EXISTS \`${table}\` (id CHAR(36) NOT NULL PRIMARY KEY, payload JSON NOT NULL, created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), INDEX created_at_idx (created_at)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`,
-  );
-
-  await auditTable(table);
-  const id = crypto.randomUUID();
-  await pool.query(`INSERT INTO \`${table}\` (id,payload) VALUES (?,?)`, [
-    id,
-    JSON.stringify(payload ?? null),
-  ]);
-  return {id};
 }

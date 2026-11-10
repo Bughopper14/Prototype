@@ -1,4 +1,5 @@
 /** All state, derived values and handlers of StakeholderModalDialog; shared with its sections through StakeholderModalContext. */
+import {applyParsedDoc, mergeExtractedDoc, withoutDoc} from '@/features/legal/lib/stakeholder-doc-ocr';
 import {applyForeignAddress} from '@/features/legal/lib/stakeholder-values';
 import type {StakeholderDocType} from '@/features/legal/lib/types';
 import {
@@ -7,7 +8,7 @@ import {
   extractNpwpTextFromImage,
   extractPassportTextFromImage,
 } from '@/features/ocr/lib/id-documents/extract';
-import {parseKtpText, splitPersonName} from '@/features/ocr/lib/id-documents/parse-ktp';
+import {parseKtpText} from '@/features/ocr/lib/id-documents/parse-ktp';
 import {
   type ParsedKitasData,
   type ParsedKtpData,
@@ -26,6 +27,8 @@ export type StakeholderModalDialogProps = {
   onSave: () => void;
   onChangeValue: (val: any) => void;
   fields: Field[];
+  /** The deed's current stakeholders, for the running total of share percentages. */
+  deedStakeholders?: any[];
 };
 
 export function useStakeholderModal({
@@ -36,11 +39,37 @@ export function useStakeholderModal({
   onSave,
   onChangeValue: rawOnChangeValue,
   fields,
+  deedStakeholders = [],
 }: StakeholderModalDialogProps) {
   // Every change (typing, selects, OCR fills) keeps the foreign-address rule in sync.
   const onChangeValue = (val: any) => rawOnChangeValue(applyForeignAddress(val, modal.value || {}));
   const curVal = modal.value || {};
   const isNewStakeholder = modal.index < 0;
+
+  // Running total of share percentages on this deed (other stakeholders + this one), capped at 100%
+  const otherTotalShare = useMemo(
+    () =>
+      (Array.isArray(deedStakeholders) ? deedStakeholders : [])
+        .filter((_: any, i: number) => modal.index < 0 || i !== modal.index)
+        .reduce((sum: number, x: any) => sum + (parseFloat(String(x.sharePercentage || 0)) || 0), 0),
+    [deedStakeholders, modal.index],
+  );
+  const rawInputShare =
+    curVal.sharePercentage !== undefined &&
+    curVal.sharePercentage !== null &&
+    String(curVal.sharePercentage).trim() !== ''
+      ? parseFloat(String(curVal.sharePercentage).replace(',', '.'))
+      : 0;
+  const currentInputShare = Number.isNaN(rawInputShare) ? 0 : rawInputShare;
+  const roundedTotal = Math.round((otherTotalShare + currentInputShare) * 100) / 100;
+  const roundedOther = Math.round(otherTotalShare * 100) / 100;
+  const isShareExceeded = roundedTotal > 100 || currentInputShare > 100;
+  const maxAvailableShare = Math.max(0, Math.round((100 - roundedOther) * 100) / 100);
+  const shareCustomErrors: Record<string, string> = isShareExceeded
+    ? {
+        sharePercentage: `Total persentase saham pada akta ini akan menjadi ${roundedTotal.toFixed(2)}% (melebihi batas maksimal 100%). Pemegang saham lain: ${roundedOther.toFixed(2)}%. Maksimal yang dapat diinput: ${maxAvailableShare.toFixed(2)}%.`,
+      }
+    : {};
 
   const rawIdType = String(curVal.idType || '')
     .toUpperCase()
@@ -241,153 +270,14 @@ export function useStakeholderModal({
       setZoom(1);
       setRotation(0);
       try {
-        let nextVal = {...curVal};
-        if (targetType === 'KTP') {
-          const extracted = await extractKtpTextFromImage(f, f.name);
-          nextVal = {
-            ...nextVal,
-            ktpUrl: dataUrl,
-            ktpFileName: f.name,
-            ktpMime: f.type,
-            ktpOcrText: extracted.rawText || '',
-            ktpData: extracted,
-          };
-          if (extracted.nik) {
-            nextVal.idNumber = extracted.nik;
-          }
-          nextVal.idType = 'KTP_NPWP';
-          if (extracted.nama) {
-            nextVal.name = extracted.nama;
-            nextVal.firstName = extracted.firstName || '';
-            nextVal.middleName = extracted.middleName || '';
-            nextVal.lastName = extracted.lastName || '';
-          }
-          if (extracted.dateOfBirth) {
-            nextVal.dateOfBirth = extracted.dateOfBirth;
-            const {years, months} = calculateAgeYearsMonths(extracted.dateOfBirth);
-            nextVal.ageYears = years;
-            nextVal.ageMonths = months;
-          }
-          if (extracted.gender) nextVal.gender = extracted.gender;
-          if (extracted.maritalStatus) nextVal.maritalStatus = extracted.maritalStatus;
-          if (extracted.citizenship) {
-            nextVal.citizenship = extracted.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
-            nextVal.nationalityType = extracted.citizenship;
-          }
-          if (extracted.kewarganegaraan?.includes('CHINA')) {
-            nextVal.nationalityType = 'WNA';
-            nextVal.citizenship = 'FOREIGN';
-            nextVal.country = 'CHINA';
-          }
-          if (extracted.alamat) nextVal.address = extracted.alamat;
-          if (extracted.province) nextVal.province = extracted.province;
-          if (extracted.cityRegency || extracted.city)
-            nextVal.cityRegency = extracted.cityRegency || extracted.city;
-          if (extracted.kecamatan || extracted.district)
-            nextVal.district = extracted.kecamatan || extracted.district;
-          if (extracted.kelDesa || extracted.village)
-            nextVal.village = extracted.kelDesa || extracted.village;
-          if (extracted.rt) nextVal.rt = extracted.rt;
-          if (extracted.rw) nextVal.rw = extracted.rw;
-          if (extracted.kodePos || extracted.postalCode)
-            nextVal.postalCode = extracted.kodePos || extracted.postalCode;
-          if (extracted.pekerjaan) nextVal.occupation = extracted.pekerjaan;
-        } else if (targetType === 'PASSPORT') {
-          const extracted = await extractPassportTextFromImage(f, f.name);
-          nextVal = {
-            ...nextVal,
-            passportUrl: dataUrl,
-            passportFileName: f.name,
-            passportMime: f.type,
-            passportOcrText: extracted.rawText || '',
-            passportData: extracted,
-          };
-          if (extracted.passportNumber) {
-            nextVal.idNumber = extracted.passportNumber;
-          }
-          nextVal.idType = 'PASSPORT_KITAS';
-          if (extracted.fullName || extracted.surname || extracted.givenNames) {
-            nextVal.name =
-              extracted.fullName || [extracted.givenNames, extracted.surname].filter(Boolean).join(' ');
-            nextVal.firstName = extracted.givenNames || '';
-            nextVal.lastName = extracted.surname || '';
-          }
-          if (extracted.dateOfBirth) {
-            nextVal.dateOfBirth = extracted.dateOfBirth;
-            const {years, months} = calculateAgeYearsMonths(extracted.dateOfBirth);
-            nextVal.ageYears = years;
-            nextVal.ageMonths = months;
-          }
-          if (extracted.gender) nextVal.gender = extracted.gender;
-          if (extracted.countryCode || extracted.nationality) {
-            const isIndo =
-              extracted.countryCode === 'IDN' || extracted.nationality?.toUpperCase().includes('INDONESIA');
-            nextVal.citizenship = isIndo ? 'INDONESIAN' : 'FOREIGN';
-            nextVal.nationalityType = isIndo ? 'WNI' : 'WNA';
-            nextVal.country = extracted.countryName || extracted.nationality || (isIndo ? 'INDONESIA' : '');
-          }
-        } else if (targetType === 'NPWP') {
-          const extracted = await extractNpwpTextFromImage(f, f.name);
-          nextVal = {
-            ...nextVal,
-            npwpUrl: dataUrl,
-            npwpFileName: f.name,
-            npwpMime: f.type,
-            npwpOcrText: extracted.rawText || '',
-            npwpData: extracted,
-          };
-          if (extracted.npwpNumber || extracted.rawNpwp) {
-            nextVal.idNumberSecondary = extracted.npwpNumber || extracted.rawNpwp;
-            nextVal.taxId = extracted.npwpNumber || extracted.rawNpwp;
-            nextVal.npwp = extracted.npwpNumber || extracted.rawNpwp;
-          }
-          if (extracted.nik && !nextVal.idNumber) {
-            nextVal.idNumber = extracted.nik;
-          }
-          nextVal.idType = 'KTP_NPWP';
-          if (extracted.nama && !nextVal.name) {
-            nextVal.name = extracted.nama;
-            const sn = splitPersonName(extracted.nama);
-            nextVal.firstName = sn.firstName;
-            nextVal.middleName = sn.middleName;
-            nextVal.lastName = sn.lastName;
-          }
-          if (extracted.alamat && !nextVal.address) nextVal.address = extracted.alamat;
-          if (extracted.kotaProvinsi && !nextVal.cityRegency) nextVal.cityRegency = extracted.kotaProvinsi;
-        } else if (targetType === 'KITAS') {
-          const extracted = await extractKitasTextFromImage(f, f.name);
-          nextVal = {
-            ...nextVal,
-            kitasUrl: dataUrl,
-            kitasFileName: f.name,
-            kitasMime: f.type,
-            kitasOcrText: extracted.rawText || '',
-            kitasData: extracted,
-          };
-          if (extracted.permitNumber || extracted.niora) {
-            nextVal.idNumberSecondary = extracted.permitNumber || extracted.niora;
-          }
-          nextVal.idType = 'PASSPORT_KITAS';
-          if (extracted.nama) {
-            nextVal.name = extracted.nama;
-            const sn = splitPersonName(extracted.nama);
-            nextVal.firstName = sn.firstName;
-            nextVal.middleName = sn.middleName;
-            nextVal.lastName = sn.lastName;
-          }
-          if (extracted.tanggalLahir) {
-            nextVal.dateOfBirth = extracted.tanggalLahir;
-            const {years, months} = calculateAgeYearsMonths(extracted.tanggalLahir);
-            nextVal.ageYears = years;
-            nextVal.ageMonths = months;
-          }
-          if (extracted.gender) nextVal.gender = extracted.gender;
-          // A KITAS is only issued to foreigners, even when the nationality line is unreadable
-          nextVal.citizenship = 'FOREIGN';
-          nextVal.nationalityType = 'WNA';
-          if (extracted.kewarganegaraan) nextVal.country = extracted.kewarganegaraan;
-        }
-        onChangeValue(nextVal);
+        const extract = {
+          KTP: extractKtpTextFromImage,
+          PASSPORT: extractPassportTextFromImage,
+          NPWP: extractNpwpTextFromImage,
+          KITAS: extractKitasTextFromImage,
+        }[targetType];
+        const extracted = await extract(f, f.name);
+        onChangeValue(mergeExtractedDoc(curVal, targetType, extracted, dataUrl, f));
       } catch (err: any) {
         console.warn('OCR error:', err);
         if (err?.code === 'WRONG_DOCUMENT_TYPE') setUploadError(err.message);
@@ -399,157 +289,14 @@ export function useStakeholderModal({
   };
 
   const applyDocOcrToForm = () => {
-    let nextVal = {...curVal};
-    if (docType === 'KTP') {
-      const p = ktpParsed;
-      if (p.nik) {
-        nextVal.idNumber = p.nik;
-      }
-      nextVal.idType = 'KTP_NPWP';
-      if (p.nama) {
-        nextVal.name = p.nama;
-        nextVal.firstName = p.firstName || '';
-        nextVal.middleName = p.middleName || '';
-        nextVal.lastName = p.lastName || '';
-      }
-      if (p.dateOfBirth) {
-        nextVal.dateOfBirth = p.dateOfBirth;
-        const {years, months} = calculateAgeYearsMonths(p.dateOfBirth);
-        nextVal.ageYears = years;
-        nextVal.ageMonths = months;
-      }
-      if (p.gender) nextVal.gender = p.gender;
-      if (p.maritalStatus) nextVal.maritalStatus = p.maritalStatus;
-      if (p.citizenship) {
-        nextVal.citizenship = p.citizenship === 'WNI' ? 'INDONESIAN' : 'FOREIGN';
-        nextVal.nationalityType = p.citizenship;
-      }
-      if (p.kewarganegaraan?.includes('CHINA')) {
-        nextVal.nationalityType = 'WNA';
-        nextVal.citizenship = 'FOREIGN';
-        nextVal.country = 'CHINA';
-      }
-      if (p.alamat) nextVal.address = p.alamat;
-      if (p.province) nextVal.province = p.province;
-      if (p.cityRegency || p.city) nextVal.cityRegency = p.cityRegency || p.city;
-      if (p.kecamatan || p.district) nextVal.district = p.kecamatan || p.district;
-      if (p.kelDesa || p.village) nextVal.village = p.kelDesa || p.village;
-      if (p.rt) nextVal.rt = p.rt;
-      if (p.rw) nextVal.rw = p.rw;
-      if (p.postalCode || p.kodePos) nextVal.postalCode = p.postalCode || p.kodePos;
-      if (p.pekerjaan) nextVal.occupation = p.pekerjaan;
-    } else if (docType === 'PASSPORT') {
-      const p = passportParsed;
-      if (p.passportNumber) {
-        nextVal.idNumber = p.passportNumber;
-      }
-      nextVal.idType = 'PASSPORT_KITAS';
-      if (p.fullName || p.surname || p.givenNames) {
-        nextVal.name = p.fullName || [p.givenNames, p.surname].filter(Boolean).join(' ');
-        nextVal.firstName = p.givenNames || '';
-        nextVal.lastName = p.surname || '';
-      }
-      if (p.dateOfBirth) {
-        nextVal.dateOfBirth = p.dateOfBirth;
-        const {years, months} = calculateAgeYearsMonths(p.dateOfBirth);
-        nextVal.ageYears = years;
-        nextVal.ageMonths = months;
-      }
-      if (p.gender) nextVal.gender = p.gender;
-      if (p.countryCode || p.nationality) {
-        const isIndo = p.countryCode === 'IDN' || p.nationality?.toUpperCase().includes('INDONESIA');
-        nextVal.citizenship = isIndo ? 'INDONESIAN' : 'FOREIGN';
-        nextVal.nationalityType = isIndo ? 'WNI' : 'WNA';
-        nextVal.country = p.countryName || p.nationality || (isIndo ? 'INDONESIA' : '');
-      }
-    } else if (docType === 'NPWP') {
-      const p = npwpParsed;
-      if (p.npwpNumber || p.rawNpwp) {
-        nextVal.idNumberSecondary = p.npwpNumber || p.rawNpwp;
-        nextVal.taxId = p.npwpNumber || p.rawNpwp;
-        nextVal.npwp = p.npwpNumber || p.rawNpwp;
-      }
-      if (p.nik && !nextVal.idNumber) {
-        nextVal.idNumber = p.nik;
-      }
-      nextVal.idType = 'KTP_NPWP';
-      if (p.nama && !nextVal.name) {
-        nextVal.name = p.nama;
-        const sn = splitPersonName(p.nama);
-        nextVal.firstName = sn.firstName;
-        nextVal.middleName = sn.middleName;
-        nextVal.lastName = sn.lastName;
-      }
-      if (p.alamat && !nextVal.address) nextVal.address = p.alamat;
-      if (p.kotaProvinsi && !nextVal.cityRegency) nextVal.cityRegency = p.kotaProvinsi;
-    } else if (docType === 'KITAS') {
-      const p = kitasParsed;
-      if (p.permitNumber || p.niora) {
-        nextVal.idNumberSecondary = p.permitNumber || p.niora;
-      }
-      nextVal.idType = 'PASSPORT_KITAS';
-      if (p.nama) {
-        nextVal.name = p.nama;
-        const sn = splitPersonName(p.nama);
-        nextVal.firstName = sn.firstName;
-        nextVal.middleName = sn.middleName;
-        nextVal.lastName = sn.lastName;
-      }
-      if (p.tanggalLahir) {
-        nextVal.dateOfBirth = p.tanggalLahir;
-        const {years, months} = calculateAgeYearsMonths(p.tanggalLahir);
-        nextVal.ageYears = years;
-        nextVal.ageMonths = months;
-      }
-      if (p.gender) nextVal.gender = p.gender;
-      // A KITAS is only issued to foreigners, even when the nationality line is unreadable
-      nextVal.citizenship = 'FOREIGN';
-      nextVal.nationalityType = 'WNA';
-      if (p.kewarganegaraan) nextVal.country = p.kewarganegaraan;
-    }
-    onChangeValue(nextVal);
+    const parsed = {KTP: ktpParsed, PASSPORT: passportParsed, NPWP: npwpParsed, KITAS: kitasParsed}[docType];
+    onChangeValue(applyParsedDoc(curVal, docType, parsed));
     setCopiedKey('applied_all');
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
   const handleRemoveDoc = () => {
-    if (docType === 'KTP') {
-      onChangeValue({
-        ...curVal,
-        ktpUrl: undefined,
-        ktpFileName: undefined,
-        ktpMime: undefined,
-        ktpOcrText: '',
-        ktpData: undefined,
-      });
-    } else if (docType === 'PASSPORT') {
-      onChangeValue({
-        ...curVal,
-        passportUrl: undefined,
-        passportFileName: undefined,
-        passportMime: undefined,
-        passportOcrText: '',
-        passportData: undefined,
-      });
-    } else if (docType === 'NPWP') {
-      onChangeValue({
-        ...curVal,
-        npwpUrl: undefined,
-        npwpFileName: undefined,
-        npwpMime: undefined,
-        npwpOcrText: '',
-        npwpData: undefined,
-      });
-    } else if (docType === 'KITAS') {
-      onChangeValue({
-        ...curVal,
-        kitasUrl: undefined,
-        kitasFileName: undefined,
-        kitasMime: undefined,
-        kitasOcrText: '',
-        kitasData: undefined,
-      });
-    }
+    onChangeValue(withoutDoc(curVal, docType));
   };
 
   const docTitles: Record<StakeholderDocType, string> = {
@@ -560,6 +307,11 @@ export function useStakeholderModal({
   };
 
   return {
+    roundedTotal,
+    roundedOther,
+    isShareExceeded,
+    maxAvailableShare,
+    shareCustomErrors,
     modal,
     editorLocked,
     formError,

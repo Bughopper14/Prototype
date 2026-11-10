@@ -46,6 +46,7 @@ export const masterGroups: MasterGroup[] = [
   {key: 'currency', name: 'Currency', section: 'Financing'},
   {key: 'paymentMethod', name: 'Payment Timing', section: 'Financing'},
   {key: 'documents', name: 'Document Types & Required', section: 'Documents'},
+  {key: 'preanInvestmentPlanOptions', name: 'Investment Plan Options', section: 'Pre-Analysis'},
 ];
 export const masterKey = (key: string) => (key === 'cityRegency' ? 'city' : key);
 const options = (values: string[]): MasterItem[] =>
@@ -256,12 +257,12 @@ export function defaultMasterCatalog(): MasterCatalog {
       {value: 'In Advance', name: 'In Advance', active: true, timing: 'advance'},
     ],
     remarkCategoryId: [
+      ['establishment-deed', 'Establishment Deed'],
       ['amendment-share-change', 'Shares'],
       ['amendment-management-change', 'Management'],
-      ['amendment-business-activity-change', 'Business Activity'],
+      ['amendment-business-activity-change', 'Business Activities'],
       ['amendment-articles-change', 'Articles of Association'],
       ['amendment-other', 'Other'],
-      ['establishment-deed', 'Establishment deed'],
       ['akta-pendirian', 'Akta Pendirian'],
       ['akta-perubahan', 'Akta Perubahan'],
     ].map(([value, name]) => ({value, name, active: true})),
@@ -286,6 +287,13 @@ export function defaultMasterCatalog(): MasterCatalog {
       required: Boolean(required),
       active: true,
     })),
+    preanInvestmentPlanOptions: [
+      {value: 'SD', name: 'SD (Security Deposit / Down Payment)', active: true},
+      {value: 'Tenor', name: 'Tenor', active: true},
+      {value: 'Rate', name: 'Rate', active: true},
+      {value: 'Provision', name: 'Provision', active: true},
+      {value: 'Adm', name: 'Adm (Administration Fee)', active: true},
+    ],
   };
   result.province.forEach(x => (x.parentValue = 'Indonesia'));
   const cityParents: Record<string, string> = {
@@ -304,92 +312,129 @@ export function defaultMasterCatalog(): MasterCatalog {
   for (const key of ['branchCode', 'currency', 'unitCategory']) result[key].forEach(x => (x.name = x.value));
   return result;
 }
+
+export function validateMasterGroupItems(
+  groupKey: string,
+  rows: unknown[],
+  lookupParent?: Set<string>,
+): MasterItem[] {
+  const group = masterGroups.find(g => g.key === groupKey);
+  const groupName = group ? group.name : groupKey;
+  if (
+    !Array.isArray(rows) ||
+    rows.length >
+      (['province', 'city', 'district', 'village', 'postalCode'].includes(groupKey) ? 150000 : 1000)
+  ) {
+    throw Error(`${groupName} list is not valid.`);
+  }
+  const seen = new Set<string>();
+  const seenNames = new Set<string>();
+
+  const result: MasterItem[] = (rows as any[]).map((row: any) => {
+    if (
+      !row ||
+      typeof row.value !== 'string' ||
+      typeof row.name !== 'string' ||
+      typeof row.active !== 'boolean'
+    ) {
+      throw Error(`${groupName} data is not valid.`);
+    }
+    const value = row.value.trim(),
+      name = row.name.trim();
+    const valueLimit =
+      (
+        {
+          postalCode: 20,
+          currency: 5,
+          branchCode: 20,
+          brand: 50,
+          paymentMethod: 50,
+          position: 100,
+          projectRole: 100,
+          applicationSource: 100,
+          province: 100,
+          city: 100,
+          district: 100,
+          village: 100,
+          modelName: 100,
+        } as Record<string, number>
+      )[groupKey] || 150;
+
+    if (value.length > valueLimit)
+      throw Error(`${groupName} code exceeds maximum of ${valueLimit} characters.`);
+    if (!value || value.length > 150 || !name || name.length > 150)
+      throw Error('Code and name are required, maximum 150 characters.');
+    const uniqueValue =
+      groupKey === 'postalCode' ? `${row.parentValue || ''}|${value.toLowerCase()}` : value.toLowerCase();
+    if (seen.has(uniqueValue)) throw Error(`Duplicate code in ${groupName}.`);
+    seen.add(uniqueValue);
+
+    const nameKey = (row.parentValue || '') + '|' + name.toLocaleLowerCase();
+    if (seenNames.has(nameKey) && !['province', 'city', 'district', 'village'].includes(groupKey)) {
+      throw Error(`Duplicate name in ${groupName}.`);
+    }
+    seenNames.add(nameKey);
+
+    if (
+      groupKey === 'documents' &&
+      (!['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE'].includes(row.role || '') ||
+        typeof row.required !== 'boolean')
+    ) {
+      throw Error('Please select the document department and required status.');
+    }
+    if (groupKey === 'paymentMethod' && !['advance', 'arrear'].includes(row.timing || '')) {
+      throw Error('Please select the payment timing rule.');
+    }
+    for (const [key, limit] of [
+      ['areaCode', 20],
+      ['region', 100],
+      ['zipCode', 20],
+    ] as const) {
+      if (row[key] !== undefined && (typeof row[key] !== 'string' || row[key]!.trim().length > limit)) {
+        throw Error(`Field ${key} exceeds maximum of ${limit} characters.`);
+      }
+    }
+    if (lookupParent && group?.parent && row.parentValue && !lookupParent.has(row.parentValue)) {
+      throw Error(`Parent data not available for ${groupName}.`);
+    }
+
+    return {
+      value,
+      name,
+      active: row.active,
+      ...(row.areaCode ? {areaCode: row.areaCode.trim()} : {}),
+      ...(row.region ? {region: row.region.trim()} : {}),
+      ...(row.zipCode ? {zipCode: row.zipCode.trim()} : {}),
+      ...(row.parentValue ? {parentValue: String(row.parentValue)} : {}),
+      ...(groupKey === 'documents' ? {role: row.role, required: row.required} : {}),
+      ...(groupKey === 'paymentMethod' ? {timing: row.timing} : {}),
+    };
+  });
+
+  if (groupKey === 'documents') {
+    if (
+      !result.some(x => x.value === 'EKITAS' && x.active) ||
+      !result.some(x => x.value === 'LEGAL_OPINION' && x.active && x.required)
+    ) {
+      throw Error('E-KITAS and Legal opinion documents must be retained for the review workflow.');
+    }
+  }
+
+  return result;
+}
+
 export function validateMasterCatalog(input: unknown): MasterCatalog {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw Error('Master data is not valid.');
   const result: MasterCatalog = {};
   for (const group of masterGroups) {
     const rows = (input as MasterCatalog)[group.key];
-    if (
-      !Array.isArray(rows) ||
-      rows.length >
-        (['province', 'city', 'district', 'village', 'postalCode'].includes(group.key) ? 150000 : 1000)
-    )
-      throw Error(`${group.name} list is not valid.`);
-    const seen = new Set<string>();
-    result[group.key] = rows.map(row => {
-      if (
-        !row ||
-        typeof row.value !== 'string' ||
-        typeof row.name !== 'string' ||
-        typeof row.active !== 'boolean'
-      )
-        throw Error(`${group.name} data is not valid.`);
-      const value = row.value.trim(),
-        name = row.name.trim();
-      const valueLimit =
-        (
-          {
-            postalCode: 20,
-            currency: 5,
-            branchCode: 20,
-            brand: 50,
-            paymentMethod: 50,
-            position: 100,
-            projectRole: 100,
-            applicationSource: 100,
-            province: 100,
-            city: 100,
-            district: 100,
-            village: 100,
-            modelName: 100,
-          } as Record<string, number>
-        )[group.key] || 150;
-      if (value.length > valueLimit)
-        throw Error(`${group.name} code exceeds maximum of ${valueLimit} characters.`);
-      if (!value || value.length > 150 || !name || name.length > 150)
-        throw Error('Code and name are required, maximum 150 characters.');
-      const uniqueValue =
-        group.key === 'postalCode' ? `${row.parentValue || ''}|${value.toLowerCase()}` : value.toLowerCase();
-      if (seen.has(uniqueValue)) throw Error(`Duplicate code in ${group.name}.`);
-      seen.add(uniqueValue);
-      if (
-        group.key === 'documents' &&
-        (!['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE'].includes(row.role || '') ||
-          typeof row.required !== 'boolean')
-      )
-        throw Error('Please select the document department and required status.');
-      if (group.key === 'paymentMethod' && !['advance', 'arrear'].includes(row.timing || ''))
-        throw Error('Please select the payment timing rule.');
-      for (const [key, limit] of [
-        ['areaCode', 20],
-        ['region', 100],
-        ['zipCode', 20],
-      ] as const)
-        if (row[key] !== undefined && (typeof row[key] !== 'string' || row[key]!.trim().length > limit))
-          throw Error(`Field ${key} exceeds maximum of ${limit} characters.`);
-      return {
-        value,
-        name,
-        active: row.active,
-        ...(row.areaCode ? {areaCode: row.areaCode.trim()} : {}),
-        ...(row.region ? {region: row.region.trim()} : {}),
-        ...(row.zipCode ? {zipCode: row.zipCode.trim()} : {}),
-        ...(row.parentValue ? {parentValue: String(row.parentValue)} : {}),
-        ...(group.key === 'documents' ? {role: row.role, required: row.required} : {}),
-        ...(group.key === 'paymentMethod' ? {timing: row.timing} : {}),
-      };
-    });
+    result[group.key] = validateMasterGroupItems(group.key, rows);
   }
+  const lookup = Object.fromEntries(
+    Object.entries(result).map(([key, rows]) => [key, new Map(rows.map(x => [x.value, x]))]),
+  );
   for (const group of masterGroups) {
-    const lookup = Object.fromEntries(
-      Object.entries(result).map(([key, rows]) => [key, new Map(rows.map(x => [x.value, x]))]),
-    );
-    const seenNames = new Set<string>();
     for (const row of result[group.key]) {
-      const nameKey = (row.parentValue || '') + '|' + row.name.toLocaleLowerCase();
-      if (seenNames.has(nameKey) && !['province', 'city', 'district', 'village'].includes(group.key))
-        throw Error(`Duplicate name in ${group.name}.`);
-      seenNames.add(nameKey);
       if (group.key === 'village' && row.zipCode) {
         const district = lookup.district.get(row.parentValue || ''),
           zipRows = result.postalCode.filter(zip => zip.value === row.zipCode);
@@ -398,13 +443,8 @@ export function validateMasterCatalog(input: unknown): MasterCatalog {
           throw Error('ZIP code must belong to the same city/regency as the village.');
       }
       if (group.parent && row.parentValue && !lookup[group.parent].has(row.parentValue))
-        throw Error(`Parent data not available for ${group.name}.`);
+        throw Error('Parent data not available for ' + group.name + '.');
     }
   }
-  if (
-    !result.documents.some(x => x.value === 'EKITAS' && x.active) ||
-    !result.documents.some(x => x.value === 'LEGAL_OPINION' && x.active && x.required)
-  )
-    throw Error('E-KITAS and Legal opinion documents must be retained for the review workflow.');
   return result;
 }

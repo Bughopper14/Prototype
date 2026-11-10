@@ -34,7 +34,7 @@ export function SystemDocumentPane() {
             <button
               type="button"
               className="button small"
-              onClick={() => printFapDocument(a.fapNumber)}
+              onClick={() => printFapDocument(a.fapNumber, 'system')}
               title="Print system FAP form"
               style={{
                 display: 'inline-flex',
@@ -85,6 +85,10 @@ export function SystemDocumentPane() {
       <div className="fap-pane-body fap-pane-body-system">
         <FapSheetPreview
           data={liveFapData}
+          application={a}
+          customer={a.customer}
+          profile={a.profile || a}
+          pic={a.pic}
           isComparison={true}
           hideToolbar={true}
           diffSide="system"
@@ -92,7 +96,7 @@ export function SystemDocumentPane() {
           externalZoom={systemZoom}
           activeSection={fapNavFilter === 'all' ? undefined : fapNavFilter}
           syncTick={fapNavTick}
-          onPrint={() => printFapDocument(a.fapNumber)}
+          onPrint={() => printFapDocument(a.fapNumber, 'system')}
         />
       </div>
     </div>

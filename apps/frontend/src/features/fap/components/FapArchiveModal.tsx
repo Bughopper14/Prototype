@@ -1,15 +1,11 @@
 import {Modal} from '@/shared/ui/Modal';
-import {
-  Archive,
-  Check,
-  CheckCheck,
-  Copy,
-  FileText,
-  FolderCheck,
-  Loader2,
-  ScanLine,
-  ShieldCheck,
-} from 'lucide-react';
+import {ArchiveSnapshotViewer} from '@/features/fap/components/archive/ArchiveSnapshotViewer';
+import {ArchiveDiscrepancies} from '@/features/fap/components/archive/ArchiveDiscrepancies';
+import {ArchiveRemarks} from '@/features/fap/components/archive/ArchiveRemarks';
+import {ArchiveStorageCard} from '@/features/fap/components/archive/ArchiveStorageCard';
+import {ArchiveMetadataBanner} from '@/features/fap/components/archive/ArchiveMetadataBanner';
+import {ArchiveVersionSelector} from '@/features/fap/components/archive/ArchiveVersionSelector';
+import {Archive, Loader2, ShieldCheck} from 'lucide-react';
 import {useState} from 'react';
 
 export function FapArchiveModal({
@@ -112,353 +108,30 @@ export function FapArchiveModal({
         ) : (
           <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
             {/* Version / snapshot selector if more than 1 */}
-            {archives.length > 1 && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  background: '#f8fafc',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                <span style={{fontSize: 12, fontWeight: 600, color: '#475569'}}>
-                  Select Submission Snapshot:
-                </span>
-                <select
-                  value={selectedIndex}
-                  onChange={e => onSelectIndex(Number(e.target.value))}
-                  style={{padding: '4px 8px', fontSize: 13, borderRadius: 4, border: '1px solid #cbd5e1'}}
-                >
-                  {archives.map((arc, idx) => (
-                    <option key={arc.id || idx} value={idx}>
-                      Snapshot #{archives.length - idx} —{' '}
-                      {new Date(arc.submitted_at || arc.created_at).toLocaleString('en-GB')} by{' '}
-                      {arc.submitted_by_user_name || 'System'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <ArchiveVersionSelector
+              archives={archives}
+              selectedIndex={selectedIndex}
+              onSelectIndex={onSelectIndex}
+            />
 
             {/* Snapshot Metadata Banner */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: 12,
-                background: '#ffffff',
-                padding: 12,
-                borderRadius: 8,
-                border: '1px solid #e2e8f0',
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: '#64748b',
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                    display: 'block',
-                  }}
-                >
-                  Submitted At
-                </span>
-                <strong style={{fontSize: 13, color: '#0f172a'}}>
-                  {new Date(current.submitted_at || current.created_at).toLocaleString('en-GB')}
-                </strong>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: '#64748b',
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                    display: 'block',
-                  }}
-                >
-                  Submitted By
-                </span>
-                <strong style={{fontSize: 13, color: '#0f172a'}}>
-                  {current.submitted_by_user_name || 'System'}
-                </strong>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: '#64748b',
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                    display: 'block',
-                  }}
-                >
-                  Target Stage
-                </span>
-                <strong style={{fontSize: 13, color: '#047857'}}>
-                  {current.stage_at_submission || 'PRE_ANALYSIS'}
-                </strong>
-              </div>
-              <div>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: '#64748b',
-                    textTransform: 'uppercase',
-                    fontWeight: 600,
-                    display: 'block',
-                  }}
-                >
-                  Database Archive ID
-                </span>
-                <span style={{fontSize: 11, fontFamily: 'monospace', color: '#475569'}}>{current.id}</span>
-              </div>
-            </div>
+            <ArchiveMetadataBanner current={current} />
 
             {/* Document Storage Location Card */}
-            <div style={{background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0'}}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 8,
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontWeight: 700,
-                    fontSize: 13,
-                    color: '#002060',
-                  }}
-                >
-                  <FolderCheck size={16} />
-                  <span>Lokasi Penyimpanan Dokumen (Physical Document Storage Path)</span>
-                </div>
-                {current.ocr_document_path && (
-                  <button
-                    type="button"
-                    className="button small"
-                    style={{
-                      fontSize: 11,
-                      padding: '3px 8px',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                    }}
-                    onClick={() => handleCopyPath(current.ocr_document_path)}
-                  >
-                    {copied ? <Check size={12} style={{color: '#10b981'}} /> : <Copy size={12} />}
-                    <span>{copied ? 'Copied!' : 'Copy Path'}</span>
-                  </button>
-                )}
-              </div>
-              <div
-                style={{
-                  background: '#ffffff',
-                  padding: '8px 12px',
-                  borderRadius: 6,
-                  border: '1px solid #cbd5e1',
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  wordBreak: 'break-all',
-                  color: current.ocr_document_path ? '#0f172a' : '#94a3b8',
-                }}
-              >
-                {current.ocr_document_path ||
-                  'Lokasi dokumen fisik: Belum terindeks pada direktori server atau diunggah secara virtual'}
-              </div>
-              {current.ocr_document_filename && (
-                <div style={{marginTop: 6, fontSize: 11, color: '#64748b'}}>
-                  Nama File Dokumen: <strong>{current.ocr_document_filename}</strong>
-                </div>
-              )}
-            </div>
+            <ArchiveStorageCard current={current} copied={copied} handleCopyPath={handleCopyPath} />
 
             {/* Document Comparison Remarks */}
-            <div style={{background: '#fefce8', padding: 14, borderRadius: 8, border: '1px solid #fef08a'}}>
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: 13,
-                  color: '#854d0e',
-                  marginBottom: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <FileText size={16} />
-                <span>Remarks &amp; Notes Tambahan dari Perbandingan Dokumen</span>
-              </div>
-              <div
-                style={{
-                  fontSize: 13,
-                  color: '#713f12',
-                  background: '#ffffff',
-                  padding: '10px 12px',
-                  borderRadius: 6,
-                  border: '1px solid #fef08a',
-                  minHeight: 40,
-                  whiteSpace: 'pre-wrap',
-                }}
-              >
-                {current.comparison_remarks ||
-                  'Tidak ada catatan khusus / keterangan remarks tambahan saat verifikasi dokumen FAP.'}
-              </div>
-            </div>
+            <ArchiveRemarks current={current} />
 
             {/* OCR Discrepancies / Differences Table */}
-            <div style={{background: '#ffffff', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0'}}>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: 10,
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: 700,
-                    fontSize: 13,
-                    color: '#002060',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6,
-                  }}
-                >
-                  <ScanLine size={16} />
-                  <span>Perbandingan System FAP vs Hasil Dokumen OCR ({discrepancies.length} perbedaan)</span>
-                </div>
-                <span className="subtle-chip" style={{fontSize: 11}}>
-                  {discrepancies.length === 0
-                    ? '✓ Matched / No Discrepancy'
-                    : `${discrepancies.length} Field(s) Differ`}
-                </span>
-              </div>
-
-              {discrepancies.length === 0 ? (
-                <div
-                  style={{
-                    padding: '16px',
-                    background: '#ecfdf5',
-                    borderRadius: 6,
-                    border: '1px solid #a7f3d0',
-                    color: '#065f46',
-                    fontSize: 13,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <CheckCheck size={18} style={{color: '#059669'}} />
-                  <span>
-                    Semua kolom data sistem FAP yang dibandingkan telah sesuai atau tidak ditemukan perbedaan
-                    dengan dokumen fisik OCR.
-                  </span>
-                </div>
-              ) : (
-                <div style={{overflowX: 'auto'}}>
-                  <table style={{width: '100%', borderCollapse: 'collapse', fontSize: 12}}>
-                    <thead>
-                      <tr
-                        style={{background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left'}}
-                      >
-                        <th style={{padding: '8px 10px', color: '#475569', fontWeight: 600}}>Field Name</th>
-                        <th style={{padding: '8px 10px', color: '#002060', fontWeight: 600}}>
-                          System FAP Record
-                        </th>
-                        <th style={{padding: '8px 10px', color: '#b45309', fontWeight: 600}}>
-                          Scanned Document (OCR)
-                        </th>
-                        <th style={{padding: '8px 10px', color: '#475569', fontWeight: 600, width: 100}}>
-                          Status
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {discrepancies.map((diff: any, i: number) => (
-                        <tr key={diff.field || i} style={{borderBottom: '1px solid #e2e8f0'}}>
-                          <td style={{padding: '8px 10px', fontWeight: 600, color: '#334155'}}>
-                            {diff.label || diff.field}
-                          </td>
-                          <td style={{padding: '8px 10px', color: '#0f172a', background: '#f8fafc'}}>
-                            {diff.oldValue || diff.systemValue || '—'}
-                          </td>
-                          <td
-                            style={{
-                              padding: '8px 10px',
-                              color: '#b45309',
-                              background: '#fffbeb',
-                              fontWeight: 500,
-                            }}
-                          >
-                            {diff.newValue || diff.ocrValue || '—'}
-                          </td>
-                          <td style={{padding: '8px 10px'}}>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '2px 6px',
-                                borderRadius: 4,
-                                fontSize: 10,
-                                fontWeight: 700,
-                                background: '#fef3c7',
-                                color: '#92400e',
-                              }}
-                            >
-                              DIFFERENT
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+            <ArchiveDiscrepancies discrepancies={discrepancies} />
 
             {/* System FAP Snapshot Collapsible Viewer */}
-            <div style={{background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0'}}>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                <span style={{fontWeight: 600, fontSize: 13, color: '#334155'}}>
-                  Arsip Lengkap Snapshot FAP System Data (JSON Payload)
-                </span>
-                <button
-                  type="button"
-                  className="button small"
-                  style={{fontSize: 11}}
-                  onClick={() => setShowSnapshotJson(s => !s)}
-                >
-                  {showSnapshotJson ? 'Hide JSON Snapshot' : 'View Full JSON Snapshot'}
-                </button>
-              </div>
-              {showSnapshotJson && (
-                <pre
-                  style={{
-                    marginTop: 10,
-                    background: '#0f172a',
-                    color: '#f8fafc',
-                    padding: 12,
-                    borderRadius: 6,
-                    fontSize: 11,
-                    maxHeight: 300,
-                    overflowY: 'auto',
-                    fontFamily: 'monospace',
-                  }}
-                >
-                  {JSON.stringify(current.fap_stage_data, null, 2)}
-                </pre>
-              )}
-            </div>
+            <ArchiveSnapshotViewer
+              current={current}
+              showSnapshotJson={showSnapshotJson}
+              setShowSnapshotJson={setShowSnapshotJson}
+            />
           </div>
         )}
       </div>

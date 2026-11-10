@@ -1,7 +1,7 @@
 /** FAP sheet data for the two panes: live from the application, and from the OCR of the uploaded FAP. */
 import {useMasterData} from '@/shared/master-data';
 import {type FapSheetData} from '@/features/fap/lib/types';
-import {calculateAgeYearsMonths} from '@/shared/lib/format';
+import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
 import {useMemo} from 'react';
 
 export function useFapSheetData({
@@ -33,12 +33,18 @@ export function useFapSheetData({
           : autoExp
             ? autoExp.months
             : '';
+    // Deed number/date and shareholders come from the latest deed in Legal
+    const syncDoc = deriveDeedSync(a.legal, a);
+    const resolvedStakeholders =
+      syncDoc.latestStakeholders.length > 0 ? syncDoc.latestStakeholders : a.stakeholders || [];
+    const finalLatestDeedNo = syncDoc.latestDeedNo || a.latestDeedNo || '';
+    const finalLatestDeedDate = String(syncDoc.latestDeedDate || a.latestDeedDate || '').slice(0, 10);
 
     return {
       fapNumber: a.fapNumber || '-',
       applicationDate: a.applicationDate || new Date().toISOString(),
       branchCode: a.branchCode || a.profile?.branchCode || '',
-      customerStatus: a.customerCategory || a.profile?.customerStatus || 'EXISTING',
+      customerStatus: a.customerCategory || a.customerStatus || a.profile?.customerStatus || 'NEW',
       companyName: a.customer?.companyName || a.companyName || '',
       companyType: a.customer?.companyType || a.companyType || 'PT',
       nib: a.customer?.nib || a.nib || '',
@@ -53,8 +59,8 @@ export function useFapSheetData({
       experienceYears: finalExpYears,
       experienceMonths: finalExpMonths,
       mainBusiness: a.mainBusiness || a.customer?.mainBusiness || '',
-      latestDeedNo: a.latestDeedNo || '',
-      latestDeedDate: a.latestDeedDate || '',
+      latestDeedNo: finalLatestDeedNo,
+      latestDeedDate: finalLatestDeedDate,
       phoneFax: a.phoneFax || '',
       website: a.website || '',
       email: a.email || '',
@@ -83,8 +89,8 @@ export function useFapSheetData({
         a.picProvince ||
         '',
       picPostalCode: docPic.postalCode || a.picPostalCode || '',
-      selectedDeedNo: a.selectedDeedNo || a.customer?.establishmentActNo || '',
-      stakeholders: a.stakeholders || [],
+      selectedDeedNo: finalLatestDeedNo || a.selectedDeedNo || a.customer?.establishmentActNo || '',
+      stakeholders: resolvedStakeholders,
       facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || 'INVESTMENT',
       financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
       financingValue: a.proposal?.financingValue || a.financingValue || '',
@@ -92,8 +98,8 @@ export function useFapSheetData({
       interestRate: a.proposal?.interestRate || a.interestRate || '',
       tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
       paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
-      industrySegment: a.industrySegment || '',
-      businessRole: a.businessRole || '',
+      industrySegment: a.industrySegment || a.industry_segment || '',
+      businessRole: a.businessRole || a.business_role || '',
       proposal: a.proposal || {},
       projects: a.projects || [],
       bankReferences: a.bankReferences || [],
@@ -146,7 +152,7 @@ export function useFapSheetData({
       interestRate: ext.interestRate != null ? ext.interestRate : 0,
       tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : 0,
       paymentMethod: ext.paymentMethod || '',
-      stakeholders: ext.stakeholders || [],
+      stakeholders: ext.stakeholders || ext.shareholders || [],
       projects: ext.projects || [],
       bankReferences: ext.bankReferences || [],
       financialStatements: ext.financialStatements || [],

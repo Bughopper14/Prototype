@@ -33,7 +33,9 @@ async function createApplication(req: ApiRequest) {
   const category = body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW');
   let customer: Record<string, any> = body.customer || {};
   if (customerId) {
-    const [rows] = await pool.query<any[]>('SELECT * FROM business_partner WHERE id=?', [customerId]);
+    const [rows] = await pool.query<any[]>('SELECT * FROM master_cust_n_pic_business_partner WHERE id=?', [
+      customerId,
+    ]);
     ensure(rows[0], 'Customer not found', 404);
     const c = rows[0];
     customer = {
@@ -77,25 +79,10 @@ export class ApplicationsController {
     return createApplication(req);
   }
 
-  @Post('intake/drafts')
-  async createDraft(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    res.status(201);
-    return createApplication(req);
-  }
-
   @Get('applications/:id')
   detail(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_applications');
     return detailOr404(req.params.id);
-  }
-
-  @Put('applications/:id/business')
-  async saveBusiness(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_business_banks');
-    const id = req.params.id;
-    await detailOr404(id);
-    await saveBusiness(id, req.body);
-    return intakeDetail(id);
   }
 
   @Put('applications/:id/page-1')
@@ -104,8 +91,11 @@ export class ApplicationsController {
     const existing = await detailOr404(id);
     const b = req.body || {};
     if (b.profile || b.pic) requireAuthority(req.actor, 'crm_edit_app_customer_pic');
-    if (b.bankReferences || b.proposal || (!b.profile && !b.pic && Array.isArray(b.projects)))
+    if (b.bankReferences || (!b.profile && !b.pic && Array.isArray(b.projects)))
       requireAuthority(req.actor, 'crm_edit_app_business_banks');
+    // FAP section 08 (financing proposal) and 09 (financial statements) are saved from the FAP form too
+    if (b.proposal || b.financialStatements)
+      requireAuthority(req.actor, 'crm_edit_app_financing_units', 'crm_edit_app_financial');
     if (b.profile || b.pic) {
       if (Array.isArray(b.projects)) await saveBusinessMerged(id, {projects: b.projects});
       await saveCustomerPic(id, b);
@@ -117,30 +107,14 @@ export class ApplicationsController {
         proposal: b.proposal,
       });
     }
+    if (Array.isArray(b.financialStatements))
+      await saveFinancialStatements(id, b.financialStatements, req.actor);
     await logActivity(
       req.actor,
       id,
       existing.status,
       existing.status,
       'Profile and business information updated',
-    );
-    return intakeDetail(id);
-  }
-
-  @Put('applications/:id/page-2')
-  async saveFinancialPage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    const id = req.params.id;
-    const existing = await detailOr404(id);
-    if (req.body?.proposal) requireAuthority(req.actor, 'crm_edit_app_financing_units');
-    if (req.body?.proposal) await saveBusinessMerged(id, {proposal: req.body.proposal});
-    if (req.body?.financialStatements)
-      await saveFinancialStatements(id, req.body.financialStatements, req.actor);
-    await logActivity(
-      req.actor,
-      id,
-      existing.status,
-      existing.status,
-      'Financing and financial statements updated',
     );
     return intakeDetail(id);
   }
@@ -199,12 +173,6 @@ export class ApplicationsController {
       comments || action.replaceAll('_', ' '),
     );
     return updated;
-  }
-
-  @Get('applications/:id/checklist')
-  async checklist(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
-    return (await detailOr404(req.params.id)).documentChecks;
   }
 
   @Patch('applications/:id/checklist/:checklistId/verify')

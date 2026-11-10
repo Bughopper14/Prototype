@@ -321,7 +321,7 @@ async function main() {
       tax: 80 * scale,
       netIncome: 320 * scale,
     });
-    const res = await http('PUT', `/api/v1/applications/${id}/page-2`, {
+    const res = await http('PUT', `/api/v1/applications/${id}/page-1`, {
       financialStatements: [year(2023, 1e6), year(2024, 1.2e6), year(2025, 1.5e6)],
     });
     expectStatus(res, 200);
@@ -329,7 +329,7 @@ async function main() {
   });
 
   await step(
-    'page 2 stores an unbalanced sheet as a draft (balance is flagged in the data, not enforced on save)',
+    'page 1 stores an unbalanced sheet as a draft (balance is flagged in the data, not enforced on save)',
     async () => {
       const bad = {
         fiscalYear: 2025,
@@ -348,7 +348,7 @@ async function main() {
         tax: 0,
         netIncome: 1,
       };
-      const res = await http('PUT', `/api/v1/applications/${id}/page-2`, {financialStatements: [bad]});
+      const res = await http('PUT', `/api/v1/applications/${id}/page-1`, {financialStatements: [bad]});
       expectStatus(res, 200);
       expect(
         res.data.financialStatements?.length === 1,
@@ -414,10 +414,10 @@ async function main() {
   });
 
   const checklist = await step('document checklist exists', async () => {
-    const res = await http('GET', `/api/v1/applications/${id}/checklist`);
+    const res = await http('GET', `/api/v1/applications/${id}`);
     expectStatus(res, 200);
-    expect(res.data.length > 0, 'empty checklist');
-    return res.data as any[];
+    expect(res.data.documentChecks?.length > 0, 'empty checklist');
+    return res.data.documentChecks as any[];
   });
   const first = checklist?.find(d => String(d.documentCode).toUpperCase() !== 'FAP') || checklist?.[0];
 
@@ -441,7 +441,7 @@ async function main() {
     expectStatus(await http('POST', `/api/v1/applications/${id}/documents/upload`, form), 422);
   });
   await step('uploaded file is visible, gets a signed URL and downloads', async () => {
-    const detail = (await http('GET', `/api/v1/applications/${id}/checklist`)).data.find(
+    const detail = (await http('GET', `/api/v1/applications/${id}`)).data.documentChecks.find(
       (d: any) => d.id === first.id,
     );
     const file = detail.files?.[0];
@@ -464,7 +464,7 @@ async function main() {
     expectStatus(res, 200);
   });
   await step('delete the uploaded file', async () => {
-    const detail = (await http('GET', `/api/v1/applications/${id}/checklist`)).data.find(
+    const detail = (await http('GET', `/api/v1/applications/${id}`)).data.documentChecks.find(
       (d: any) => d.id === first.id,
     );
     expectStatus(
@@ -496,7 +496,7 @@ async function main() {
   );
 
   await step('upload the signed FAP document, approve it and enter Pre-analysis', async () => {
-    const list = (await http('GET', `/api/v1/applications/${id}/checklist`)).data as any[];
+    const list = (await http('GET', `/api/v1/applications/${id}`)).data.documentChecks as any[];
     const fap = list.find(d => String(d.documentCode).toUpperCase() === 'FAP');
     expect(fap, 'no FAP checklist item');
     const form = new FormData();

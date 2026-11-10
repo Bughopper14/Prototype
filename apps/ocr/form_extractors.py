@@ -293,10 +293,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if c_kec and c_kel:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kelurahan_desa v
+                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                           AND REPLACE(UPPER(v.name), ' ', '') = %s
                         LIMIT 1
@@ -305,10 +305,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_pos and c_kec:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kelurahan_desa v
+                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE v.postal_code = %s
                           AND REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
@@ -317,10 +317,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_pos:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kelurahan_desa v
+                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE v.postal_code = %s
                         LIMIT 1
                     """, (c_pos,))
@@ -328,9 +328,9 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_kec:
                     cur.execute("""
                         SELECT NULL, NULL, d.name, c.name, p.name
-                        FROM master_kecamatan d
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kecamatan d
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
                     """, (c_kec,))
@@ -338,10 +338,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_kel:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kelurahan_desa v
+                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(v.name), ' ', '') = %s
                         LIMIT 1
                     """, (c_kel,))
@@ -351,9 +351,9 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and (c_kec or c_kel):
                     cur.execute("""
                         SELECT d.id, d.name, c.name, p.name 
-                        FROM master_kecamatan d 
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id 
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kecamatan d 
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id 
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                     """)
                     all_kecs = cur.fetchall()
                     best_kec = None
@@ -367,7 +367,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                                 best_kec = (k_id, k_name, c_name, p_name)
                     if best_kec and best_k_score >= 0.70:
                         k_id, k_name, c_name, p_name = best_kec
-                        cur.execute("SELECT v.name, v.postal_code FROM master_kelurahan_desa v WHERE v.kecamatan_id = %s", (k_id,))
+                        cur.execute("SELECT v.name, v.postal_code FROM master_location_kelurahan_desa v WHERE v.kecamatan_id = %s", (k_id,))
                         all_kels = cur.fetchall()
                         best_kel = None
                         best_v_score = 0
@@ -1397,10 +1397,10 @@ def extract_nib(boxes: list) -> tuple:
                 if c_kec and c_kel:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kelurahan_desa v
+                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                           AND REPLACE(UPPER(v.name), ' ', '') = %s
                         LIMIT 1
@@ -1409,10 +1409,10 @@ def extract_nib(boxes: list) -> tuple:
                 if not row and c_pos and c_kec:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kelurahan_desa v
+                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE v.postal_code = %s
                           AND REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
@@ -1421,9 +1421,9 @@ def extract_nib(boxes: list) -> tuple:
                 if not row and c_kec:
                     cur.execute("""
                         SELECT NULL, NULL, d.name, c.name, p.name
-                        FROM master_kecamatan d
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
+                        FROM master_location_kecamatan d
+                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
                     """, (c_kec,))
@@ -1538,6 +1538,60 @@ def extract_experience_boxes_from_image(file_path: str, l_exp: dict, p1_boxes: l
     except Exception as exp_err:
         print(f"[OCR] Experience box digit extraction error: {exp_err}")
         return "", ""
+
+def extract_latest_deed_no_from_image(file_path: str, l_latest_deed: dict, p1_boxes: list) -> str:
+    if not file_path or not os.path.exists(file_path):
+        return ""
+    try:
+        import re, cv2, numpy as np
+        page_bgr = None
+        if file_path.lower().endswith('.pdf'):
+            try:
+                import pymupdf as fitz
+            except ImportError:
+                import fitz
+            doc = fitz.open(file_path)
+            if len(doc) > 0:
+                pix = doc[0].get_pixmap(matrix=fitz.Matrix(300.0/72.0, 300.0/72.0), alpha=False)
+                page_bgr = cv2.cvtColor(np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.h, pix.w, pix.n), cv2.COLOR_RGB2BGR)
+            doc.close()
+        else:
+            page_bgr = cv2.imread(file_path)
+
+        if page_bgr is None:
+            return ""
+
+        h, w, _ = page_bgr.shape
+        y_center = int(l_latest_deed.get('yc', 0.37) * h)
+        row_y1 = max(0, y_center - int(0.025 * h))
+        row_y2 = min(h, y_center + int(0.025 * h))
+        col_x1 = max(0, int(0.215 * w))
+        col_x2 = min(w, int(0.290 * w))
+
+        crop = page_bgr[row_y1:row_y2, col_x1:col_x2]
+        if crop.size > 0:
+            from app.services.ocr_engine import OCREngine
+            crop_boxes = OCREngine.process_image(crop)
+            # 1. First look for pure numbers or AHU numbers (the actual deed number)
+            for b in crop_boxes:
+                txt = b.get('text', '').strip()
+                if re.search(r'\b(tanggal|date|terakhir|latest|amendment|perubahan|years?|months?|vears?|thn|tahun|bln|bulan)\b', txt, re.IGNORECASE):
+                    continue
+                m = re.search(r'\b(AHU[-.0-9A-Za-z]+|\d+)\b', txt)
+                if m:
+                    return m.group(1).strip()
+            # 2. Fallback
+            for b in crop_boxes:
+                txt = b.get('text', '').strip()
+                if re.search(r'\b(tanggal|date|terakhir|latest|amendment|perubahan|years?|months?|vears?|thn|tahun|bln|bulan)\b', txt, re.IGNORECASE):
+                    continue
+                m = re.search(r'([A-Za-z0-9\-_./]+)', txt)
+                if m:
+                    return m.group(1).strip()
+    except Exception as e:
+        sys.stderr.write(f"[OCR] extract_latest_deed_no_from_image error: {e}\n")
+    return ""
+
 
 def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tuple:
     import re
@@ -1749,6 +1803,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         "facilityPurpose": "",
         "financingMethod": "",
         "customerStatus": "",
+        "stakeholders": [],
+        "shareholders": [],
         "raw_text": combined_full_text
     }
 
@@ -2113,6 +2169,10 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                 cleaned_deed = re.sub(r'\.AH\.', '.AH.', cleaned_deed, flags=re.IGNORECASE)
                 cleaned_deed = re.sub(r'Tahun', 'Tahun ', cleaned_deed, flags=re.IGNORECASE)
                 data["latestDeedNo"] = cleaned_deed if cleaned_deed.startswith('AHU-') else raw_deed
+            if not data["latestDeedNo"] and pdf_path and l_latest_deed:
+                img_deed = extract_latest_deed_no_from_image(pdf_path, l_latest_deed, p1)
+                if img_deed:
+                    data["latestDeedNo"] = img_deed
             date_boxes = [b for b in p1 if b["xc"] >= 0.37 and b["xc"] <= 0.44 and b["yc"] >= l_latest_deed["y1"] - 0.005 and b["yc"] < y_next]
             for db in date_boxes:
                 m_dt = re.search(r'(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2})', db["text"])
@@ -2247,6 +2307,75 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                         else:
                             data["financingMethod"] = ""
 
+        # Stakeholders / Shareholders Table Extraction on Page 1
+        sh_hdr = find_label(p1, r'struktur\s+organisasi|shareholder\s+structure', 0.40, 0.85)
+        sh_name_lbl = find_label(p1, r'\bname\b', 0.50, 0.62)
+        y_sh_top = (sh_name_lbl["y2"] if sh_name_lbl else (sh_hdr["y2"] + 0.02 if sh_hdr else 0.355))
+        sh_ftr = find_label(p1, r'list\s+fixed\s+assets|modal\s+kerja|fixed\s+assets', 0.40, 0.85)
+        y_sh_bot = sh_ftr["y1"] if sh_ftr else 0.55
+
+        cand_sh_boxes = [
+            b for b in p1 
+            if b["xc"] >= 0.46 and b["xc"] <= 0.84 
+            and b["yc"] >= y_sh_top + 0.005 and b["yc"] < y_sh_bot
+        ]
+        cand_sh_boxes.sort(key=lambda b: b["yc"])
+        sh_rows = []
+        for b in cand_sh_boxes:
+            t_low = b["text"].lower().strip()
+            if t_low in ('name', 'position', 'no', 'amount of share', 'amount of shard', 'amount', '% share', 'aeys %', 'share', 'shares'):
+                continue
+            if 'berdasarkan akta' in t_low or 'based on act' in t_low:
+                continue
+            matched_r = None
+            for r in sh_rows:
+                if abs(r["yc"] - b["yc"]) < 0.016:
+                    matched_r = r
+                    break
+            if matched_r:
+                matched_r["boxes"].append(b)
+                matched_r["yc"] = sum(x["yc"] for x in matched_r["boxes"]) / len(matched_r["boxes"])
+            else:
+                sh_rows.append({"yc": b["yc"], "boxes": [b]})
+
+        extracted_sh = []
+        for r in sh_rows:
+            name_toks = []
+            pos_toks = []
+            pct_toks = []
+            amt_toks = []
+            for b in r["boxes"]:
+                if b["xc"] < 0.50:
+                    continue
+                elif b["xc"] < 0.63:
+                    name_toks.append(b["text"])
+                elif b["xc"] < 0.72:
+                    pos_toks.append(b["text"])
+                elif b["xc"] < 0.77:
+                    amt_toks.append(b["text"])
+                else:
+                    pct_toks.append(b["text"])
+
+            sh_name = " ".join(name_toks).strip()
+            sh_pos = " ".join(pos_toks).strip()
+            sh_amt = " ".join(amt_toks).strip()
+            sh_pct = " ".join(pct_toks).strip()
+
+            sh_name = re.sub(r'^[\s/:\-_,.]+|[\s/:\-_,.]+$', '', sh_name).strip()
+            sh_pos = re.sub(r'^[\s/:\-_,.]+|[\s/:\-_,.]+$', '', sh_pos).strip()
+            sh_pct = re.sub(r'^[^\d%]+|[^\d%]+$', '', sh_pct).strip()
+
+            if sh_name or sh_pos or sh_pct:
+                extracted_sh.append({
+                    "name": sh_name,
+                    "position": sh_pos,
+                    "shares": sh_amt,
+                    "sharePercentage": sh_pct
+                })
+
+        data["stakeholders"] = extracted_sh
+        data["shareholders"] = extracted_sh
+
     # Fallback regex extraction if coordinates were missing or fields remained blank
     lines = [l.strip() for l in combined_full_text.splitlines() if l.strip()]
 
@@ -2351,7 +2480,7 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
 
     # Sanitize each field against stray punctuation and template boilerplate
     for k in list(data.keys()):
-        if k in ('raw_text', 'financingValue', 'downPaymentValue', 'tenorMonths'):
+        if k in ('raw_text', 'financingValue', 'downPaymentValue', 'tenorMonths', 'stakeholders', 'shareholders'):
             continue
         data[k] = sanitize_fap_field(k, data.get(k))
 
@@ -2363,7 +2492,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         not data.get("npwp") and
         not data.get("establishmentActNo") and
         not data.get("establishmentDate") and
-        not data.get("picName")
+        not data.get("picName") and
+        not data.get("stakeholders")
     )
     if is_blank_form:
         for k in list(data.keys()):
@@ -2371,6 +2501,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                 continue
             if k in ("financingValue", "downPaymentValue", "tenorMonths"):
                 data[k] = None
+            elif k in ("stakeholders", "shareholders"):
+                data[k] = []
             else:
                 data[k] = ""
 

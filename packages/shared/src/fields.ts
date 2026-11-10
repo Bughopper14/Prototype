@@ -98,6 +98,20 @@ export const profileFields = [
     'OTHER',
   ]),
   f('businessRole', 'Business Role', 'select', ['CONS_OWNER', 'CONTRACTORS', 'SUB_CONT', 'RENTAL', 'OTHER']),
+  f('assetSummaryHeLiuGong', 'Asset Summary HE LiuGong', 'number'),
+  f('assetSummaryTruckLiuGong', 'Asset Summary Truck LiuGong', 'number'),
+  f('assetSummaryHeNonLiuGong', 'Asset Summary HE Non-LiuGong', 'number'),
+  f('assetSummaryTruckNonLiuGong', 'Asset Summary Truck Non-LiuGong', 'number'),
+  f('financingPurposeDetail', 'Financing Purpose Detail'),
+  f('referenceComments', 'Bank Reference Comments'),
+  f('financingProposalJson', 'Financing Proposal JSON'),
+];
+
+/** Profile keys that belong to one application only, never copied to the customer directory. */
+export const applicationOnlyProfileKeys = [
+  'financingPurposeDetail',
+  'referenceComments',
+  'financingProposalJson',
 ];
 
 export const customerFields = [
@@ -128,6 +142,63 @@ export const picFields = [
   {...f('currentAddress', 'Full Address', 'textarea'), wide: true},
 ];
 
+export const STAKEHOLDER_POSITIONS = [
+  'NONE',
+  'MAIN_DIRECTOR',
+  'DIRECTOR',
+  'MAIN_COMMISSIONER',
+  'COMMISSIONER',
+  'BOARD_OF_DIRECTORS',
+  'AUTORIZED_REPRESENTATIVE',
+] as const;
+
+export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
+  NONE: 'None',
+  MAIN_DIRECTOR: 'Main Director',
+  DIRECTOR: 'Director',
+  MAIN_COMMISSIONER: 'Main Commissioner',
+  COMMISSIONER: 'Commissioner',
+  BOARD_OF_DIRECTORS: 'Board of Directors',
+  AUTORIZED_REPRESENTATIVE: 'Autorized Representative',
+};
+
+export function formatStakeholderPosition(val?: string | null): string {
+  if (!val) return '';
+  const clean = String(val).trim();
+  const upper = clean.toUpperCase().replace(/[\s-]+/g, '_');
+  if (['NONE', '', '_', 'SHAREHOLDER'].includes(upper)) return '';
+  const aliases: Record<string, string> = {
+    ...STAKEHOLDER_POSITION_LABELS,
+    AUTHORIZED_REPRESENTATIVE: 'Autorized Representative',
+    PRESIDENT_DIRECTOR: 'Main Director',
+    PRESIDENT_COMMISSIONER: 'Main Commissioner',
+  };
+  if (aliases[upper] && upper !== 'NONE') return aliases[upper];
+  const match = Object.values(STAKEHOLDER_POSITION_LABELS).find(v => v.toLowerCase() === clean.toLowerCase());
+  if (match) return match;
+  if (clean.toLowerCase() === 'authorized representative') return 'Autorized Representative';
+  return clean;
+}
+
+/** Any stored position wording (English, Indonesian, legacy) → its STAKEHOLDER_POSITIONS key. */
+export function normalizeStakeholderPositionKey(pos?: string | null): string {
+  if (!pos) return 'NONE';
+  const clean = String(pos)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  if (['NONE', '', '_', 'SHAREHOLDER'].includes(clean)) return 'NONE';
+  if (['MAIN_DIRECTOR', 'PRESIDENT_DIRECTOR', 'DIREKTUR_UTAMA'].includes(clean)) return 'MAIN_DIRECTOR';
+  if (['DIRECTOR', 'DIREKTUR'].includes(clean)) return 'DIRECTOR';
+  if (['MAIN_COMMISSIONER', 'PRESIDENT_COMMISSIONER', 'KOMISARIS_UTAMA'].includes(clean))
+    return 'MAIN_COMMISSIONER';
+  if (['COMMISSIONER', 'KOMISARIS'].includes(clean)) return 'COMMISSIONER';
+  if (['BOARD_OF_DIRECTORS', 'BOD', 'DIREKSI'].includes(clean)) return 'BOARD_OF_DIRECTORS';
+  if (['AUTORIZED_REPRESENTATIVE', 'AUTHORIZED_REPRESENTATIVE', 'KUASA_HUKUM'].includes(clean))
+    return 'AUTORIZED_REPRESENTATIVE';
+  return 'NONE';
+}
+
 export const stakeholderFields = [
   f('representativeType', 'Representative Type', 'select', [
     'NONE',
@@ -136,6 +207,19 @@ export const stakeholderFields = [
     'AUTHORIZED_SIGNATORY',
     'OTHER',
   ]),
+  {
+    ...f('positions', 'Positions', 'select', [
+      'NONE',
+      'MAIN_DIRECTOR',
+      'DIRECTOR',
+      'MAIN_COMMISSIONER',
+      'COMMISSIONER',
+      'BOARD_OF_DIRECTORS',
+      'AUTORIZED_REPRESENTATIVE',
+    ]),
+    optionLabels: STAKEHOLDER_POSITION_LABELS,
+    defaultValue: '',
+  },
   f('stakeholderType', 'Type', 'select', ['INDIVIDUAL', 'CORPORATE']),
   {...f('signatory', 'Signatory', 'select', ['NONE', 'YES', 'NO']), defaultValue: ''},
   {
@@ -209,6 +293,7 @@ export const bankFields = [
   f('interestRate', 'Interest Rate (%)', 'number'),
   f('paymentRecord', 'Payment Record'),
   f('facilityStatus', 'Facility Status', 'select', ['Active', 'Settled']),
+  f('comments', 'Comments'),
 ];
 
 export const proposalFields = [

@@ -1,10 +1,9 @@
-/** Print: the original PDF iframe or the digital-twin document in a print window. */
-import type {PreAnalysisData} from '@/features/pre-analysis/lib/types';
+/** Prints the digital twin (or the original PDF) through a hidden frame. */
 import {useRef} from 'react';
+import type {PreAnalysisViewState} from '@/features/pre-analysis/hooks/usePreAnalysisView';
+import type {PreAnalysisDataState} from '@/features/pre-analysis/hooks/usePreAnalysisData';
 
-type ViewMode = 'digital-twin' | 'original-pdf';
-
-export function usePreAnalysisPrint({data, viewMode}: {data: PreAnalysisData; viewMode: ViewMode}) {
+export function usePreAnalysisPrint({viewMode}: PreAnalysisViewState, {data}: PreAnalysisDataState) {
   const pdfIframeRef = useRef<HTMLIFrameElement>(null);
 
   const handlePrint = () => {
@@ -121,5 +120,7 @@ export function usePreAnalysisPrint({data, viewMode}: {data: PreAnalysisData; vi
     }, 250);
   };
 
-  return {pdfIframeRef, handlePrint};
+  return {handlePrint, pdfIframeRef};
 }
+
+export type PreAnalysisPrintState = ReturnType<typeof usePreAnalysisPrint>;

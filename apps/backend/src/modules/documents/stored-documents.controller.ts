@@ -20,8 +20,21 @@ export class StoredDocumentsController {
   @Get('*path')
   async file(@Req() req: HttpRequest, @Res() res: Response) {
     const segments = ([] as string[]).concat((req.params as any).path ?? []);
-    const file = path.resolve(documentsDir, ...segments);
-    if (!file.startsWith(documentsDir + path.sep)) return res.status(404).send('Not found');
+    let file = path.resolve(documentsDir, ...segments);
+    if (!file.startsWith(documentsDir + path.sep)) {
+      const protoFile = path.resolve(documentsDir, '../../../prototype-src/storage/documents', ...segments);
+      if (protoFile.includes('..')) return res.status(404).send('Not found');
+      file = protoFile;
+    }
+    try {
+      await fs.access(file);
+    } catch {
+      const altFile = path.resolve(documentsDir, '../../../prototype-src/storage/documents', ...segments);
+      try {
+        await fs.access(altFile);
+        file = altFile;
+      } catch {}
+    }
     try {
       const body = await fs.readFile(file);
       res

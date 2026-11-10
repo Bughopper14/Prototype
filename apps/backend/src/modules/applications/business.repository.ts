@@ -22,6 +22,19 @@ export async function initializeBusiness() {
     await pool.query(
       `CREATE TABLE IF NOT EXISTS ${table} (id CHAR(36) PRIMARY KEY,application_id CHAR(36) NOT NULL${table === 'financing_detail' ? ' UNIQUE' : ''},${table === 'equipment_units' ? 'financing_detail_id CHAR(36) NOT NULL,' : ''}row_position INT NOT NULL DEFAULT 0,${fields.map(f => '`' + column(f.key) + '` ' + (f.type === 'number' ? 'DECIMAL(20,2)' : 'TEXT') + ' NULL').join(',')},${table === 'financing_detail' ? 'estimated_monthly_installment DECIMAL(20,2) NULL,' : ''}created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,deleted_at TIMESTAMP(3) NULL,CONSTRAINT fk_${table}_application FOREIGN KEY(application_id) REFERENCES all_applications(application_id)${table === 'equipment_units' ? ',CONSTRAINT fk_equipment_financing FOREIGN KEY(financing_detail_id) REFERENCES financing_detail(id)' : ''}) ENGINE=InnoDB`,
     );
+  // Fields added after a table was created (for example the bank reference comments).
+  for (const [table, fields] of groups) {
+    const [cols] = await pool.query<any[]>(
+      'SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=?',
+      [table],
+    );
+    const have = new Set(cols.map(r => String(r.COLUMN_NAME)));
+    for (const f of fields)
+      if (!have.has(column(f.key)))
+        await pool.query(
+          `ALTER TABLE ${table} ADD COLUMN \`${column(f.key)}\` ${f.type === 'number' ? 'DECIMAL(20,2)' : 'TEXT'} NULL`,
+        );
+  }
 }
 export async function readBusiness(id: string) {
   if (!pool) return {projects: [], bankReferences: [], proposal: null};

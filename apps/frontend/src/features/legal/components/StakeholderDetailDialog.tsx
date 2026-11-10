@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 
 export function StakeholderDetailDialog({
   item,
@@ -41,13 +41,29 @@ export function StakeholderDetailDialog({
   };
 
   // Scanned identity documents live in storage/documents/<ktp|passport|…>/ (see storedDocumentUrl).
-  const idFolder = String(item.idType || '').startsWith('PASSPORT') ? 'passport' : 'ktp';
-  const ktpPreview =
+  const isPassport = String(item.idType || '').startsWith('PASSPORT');
+  const idFolder = isPassport ? 'passport' : 'ktp';
+  const docLabel = isPassport ? 'Passport' : 'KTP';
+  const [docUrl, setDocUrl] = useState<string | null>(
     storedDocumentUrl(item.fileUrl) ||
-    storedDocumentUrl(item.document_path) ||
-    (item.file_name ? `/documents/${idFolder}/${item.file_name}` : null) ||
-    item.ktpUrl ||
-    (item.name?.includes('GUOHUI CHEN') ? '/img/ktp-guohui-chen.png' : null);
+      storedDocumentUrl(item.document_path) ||
+      (item.file_name ? `/documents/${idFolder}/${item.file_name}` : null) ||
+      item.ktpUrl ||
+      (item.name?.includes('GUOHUI CHEN') ? '/img/ktp-guohui-chen.png' : null),
+  );
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (docUrl || !item.id) return;
+    fetch(`/api/v1/stakeholders/documents/${idFolder}/${item.id}`)
+      .then(res => (res.ok ? res.json() : null))
+      .then(json => {
+        if (json?.data?.fileUrl) {
+          setDocUrl(json.data.fileUrl);
+        }
+      })
+      .catch(() => {});
+  }, [item.id, idFolder, docUrl]);
 
   return (
     <Modal title="Stakeholder Details" onClose={onClose} className="modal-stakeholder-detail-view">
@@ -317,25 +333,32 @@ export function StakeholderDetailDialog({
             </div>
           </div>
 
-          {/* Card 4: Physical Identity Document & KTP */}
+          {/* Card 4: Physical Identity Document & KTP / Passport */}
           <div className="detail-bento-card ktp-card">
             <div className="bento-card-head">
               <div className="bento-card-icon" style={{background: '#eff6ff', color: '#2563eb'}}>
                 <FileText size={16} />
               </div>
-              <h4>Physical ID Document (KTP)</h4>
+              <h4>Physical ID Document ({docLabel})</h4>
             </div>
 
-            {ktpPreview ? (
+            {docUrl && !imgError ? (
               <div className="detail-ktp-preview-box">
-                <img
-                  src={ktpPreview}
-                  alt="KTP Stakeholder"
-                  className="detail-ktp-img"
-                  onError={e => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
+                {docUrl.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={docUrl}
+                    title={`${docLabel} Preview`}
+                    className="detail-ktp-img"
+                    style={{width: '100%', height: '280px', border: 'none', borderRadius: 8}}
+                  />
+                ) : (
+                  <img
+                    src={docUrl}
+                    alt={`${docLabel} Stakeholder`}
+                    className="detail-ktp-img"
+                    onError={() => setImgError(true)}
+                  />
+                )}
                 <div className="detail-ktp-status-pill">
                   <CheckCircle size={13} color="#2563eb" /> Verified
                 </div>
@@ -343,8 +366,8 @@ export function StakeholderDetailDialog({
             ) : (
               <div className="detail-ktp-empty">
                 <FileText size={28} style={{color: '#cbd5e1', marginBottom: '6px'}} />
-                <span>No KTP scan / photo uploaded yet</span>
-                <small className="muted">Upload KTP photo via the Edit Stakeholder menu</small>
+                <span>No {docLabel} scan / photo uploaded yet</span>
+                <small className="muted">Upload {docLabel} photo via the Edit Stakeholder menu</small>
               </div>
             )}
           </div>

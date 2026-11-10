@@ -1,9 +1,9 @@
-/** Preview: competition information table. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Competition information table of the document. */
 import {DEFAULT_COMPETITION_TABLE} from '@/features/pre-analysis/lib/defaults';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function CompetitionPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, data} = usePreAnalysisContext();
   return (
     <div
       id="preana-preview-cell-competitionTable"

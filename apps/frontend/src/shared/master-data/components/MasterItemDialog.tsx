@@ -71,7 +71,7 @@ export function MasterItemDialog({
             )
           : [...data[groupKey], row],
       };
-      await saveCatalog(next);
+      await saveCatalog(next, groupKey);
       onSaved?.(row);
       onClose();
     } catch (e: any) {
@@ -136,13 +136,13 @@ export function MasterItemDialog({
                     })
                   }
                 >
-                  <option value="">
-                    {locationGroups.has(groupKey) ||
-                    groupKey === 'postalCode' ||
-                    equipmentChildren.has(groupKey)
-                      ? 'Select parent'
-                      : 'All / No parent'}
-                  </option>
+                  {locationGroups.has(groupKey) ||
+                  groupKey === 'postalCode' ||
+                  equipmentChildren.has(groupKey) ? (
+                    <option value="" hidden></option>
+                  ) : (
+                    <option value="">All / No parent</option>
+                  )}
                   {data[group.parent]
                     .filter(x => x.active || x.value === draft.parentValue)
                     .map(x => (
@@ -172,7 +172,7 @@ export function MasterItemDialog({
                   value={draft.zipCode || ''}
                   onChange={e => setDraft({...draft, zipCode: e.target.value})}
                 >
-                  <option value="">Select ZIP code (optional)</option>
+                  <option value="" hidden></option>
                   {data.postalCode
                     .filter(
                       x =>

@@ -46,13 +46,22 @@ export function FapSectionNav() {
         >
           4. PIC
         </button>
-        <button
-          type="button"
-          className={fapNavFilter === 'fap-preview-sec-projects' ? 'active' : ''}
-          onClick={() => scrollToFapSection('fap-preview-sec-projects')}
-        >
-          5. Projects
-        </button>
+        {[
+          ['fap-preview-sec-purpose-assets', '5. Purpose & Assets'],
+          ['fap-preview-sec-projects', '6. Projects'],
+          ['fap-preview-sec-banks', '7. References'],
+          ['fap-preview-sec-proposal', '8. Financing Proposal'],
+          ['fap-preview-sec-financial', '9. Financial Statements'],
+        ].map(([id, title]) => (
+          <button
+            key={id}
+            type="button"
+            className={fapNavFilter === id ? 'active' : ''}
+            onClick={() => scrollToFapSection(id)}
+          >
+            {title}
+          </button>
+        ))}
       </div>
     </div>
   );

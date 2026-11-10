@@ -1,7 +1,5 @@
 /** Data and props passed to the FAP sheet preview. */
 
-// Types and cell-id lookup tables shared by the FAP sheet preview and the application screens.
-
 export interface FapSheetData {
   fapNumber?: string;
   applicationDate?: string;
@@ -38,6 +36,8 @@ export interface FapSheetData {
   selectedDeedNo?: string;
   stakeholders?: any[];
   projects?: any[];
+  financialAudited?: boolean;
+  financialStatements?: any[];
   [key: string]: any;
 }
 
@@ -55,7 +55,7 @@ export interface FapSheetPreviewProps {
   activeField?: string | null;
   syncTick?: number;
   onSectionClick?: (sectionId: string) => void;
-  onPreviewCellClick?: (fieldKey: string, sectionId?: string) => void;
+  onPreviewCellClick?: (fieldKey: string, sectionId?: string, extraMeta?: any) => void;
   onPrint?: () => void | Promise<void>;
   hideToolbar?: boolean;
   isComparison?: boolean;
