@@ -1,236 +1,183 @@
-/** Preview: propose / review / approve sign-off footer. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Approvals / sign-off footer of the document, three signatories per row. */
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function SignOffPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {currentSignatories, triggerSignatorySync, highlightAllSignatureDates, signatureDateToDisplay} =
+    usePreAnalysisContext();
   return (
-    <div style={{marginTop: '36px', marginBottom: '28px'}}>
-      <table
-        style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: '9pt',
-          border: '1.5px solid #000000',
-          background: '#ffffff',
-        }}
-      >
-        <thead>
-          <tr style={{background: '#f8fafc', borderBottom: '1.5px solid #000000'}}>
-            <th
+    <div
+      style={{
+        marginTop: '36px',
+        marginBottom: '28px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px',
+      }}
+    >
+      {(() => {
+        const chunkSize = 3;
+        const chunks = [];
+        for (let i = 0; i < currentSignatories.length; i += chunkSize) {
+          chunks.push({
+            startIndex: i,
+            items: currentSignatories.slice(i, i + chunkSize),
+          });
+        }
+
+        return chunks.map((chunk, chunkIdx) => {
+          const isMultiRow = currentSignatories.length > 3;
+          const tableWidth = isMultiRow ? `${((chunk.items.length / 3) * 100).toFixed(2)}%` : '100%';
+
+          return (
+            <table
+              key={chunkIdx}
               style={{
-                width: '33.33%',
-                padding: '8px 10px',
-                textAlign: 'left',
-                fontWeight: 700,
+                width: tableWidth,
+                borderCollapse: 'collapse',
                 fontSize: '9pt',
-                color: '#000000',
-                borderRight: '1.5px solid #000000',
+                border: '1.5px solid #000000',
+                background: '#ffffff',
+                tableLayout: 'fixed',
               }}
             >
-              Propose by :
-            </th>
-            <th
-              style={{
-                width: '33.33%',
-                padding: '8px 10px',
-                textAlign: 'left',
-                fontWeight: 700,
-                fontSize: '9pt',
-                color: '#000000',
-                borderRight: '1.5px solid #000000',
-              }}
-            >
-              Reviewed by :
-            </th>
-            <th
-              style={{
-                width: '33.34%',
-                padding: '8px 10px',
-                textAlign: 'left',
-                fontWeight: 700,
-                fontSize: '9pt',
-                color: '#000000',
-              }}
-            >
-              Approved by :
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {/* Generous signature clearance - 95px height */}
-          <tr style={{height: '95px'}}>
-            <td
-              id="preana-preview-cell-sign-propose"
-              onClick={() => handlePreviewCellClick('proposedBy', 'sec7')}
-              style={{
-                padding: '10px',
-                verticalAlign: 'bottom',
-                borderRight: '1.5px solid #000000',
-                cursor: 'pointer',
-                height: '95px',
-              }}
-            >
-              <div
-                style={{
-                  minHeight: '75px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                  fontSize: '7.5pt',
-                }}
-              >
-                ( Tanda Tangan / Stempel )
-              </div>
-            </td>
-            <td
-              id="preana-preview-cell-sign-review"
-              onClick={() => handlePreviewCellClick('reviewedBy', 'sec7')}
-              style={{
-                padding: '10px',
-                verticalAlign: 'bottom',
-                borderRight: '1.5px solid #000000',
-                cursor: 'pointer',
-                height: '95px',
-              }}
-            >
-              <div
-                style={{
-                  minHeight: '75px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                  fontSize: '7.5pt',
-                }}
-              >
-                ( Tanda Tangan / Stempel )
-              </div>
-            </td>
-            <td
-              id="preana-preview-cell-sign-approve"
-              onClick={() => handlePreviewCellClick('approvedBy', 'sec7')}
-              style={{padding: '10px', verticalAlign: 'bottom', cursor: 'pointer', height: '95px'}}
-            >
-              <div
-                style={{
-                  minHeight: '75px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94a3b8',
-                  fontStyle: 'italic',
-                  fontSize: '7.5pt',
-                }}
-              >
-                ( Tanda Tangan / Stempel )
-              </div>
-            </td>
-          </tr>
-          {/* Signatory Names & Positions */}
-          <tr style={{borderTop: '1px solid #000000'}}>
-            <td
-              id="preana-preview-cell-proposedBy"
-              onClick={() => handlePreviewCellClick('proposedBy', 'sec7')}
-              style={{
-                padding: '8px 10px',
-                verticalAlign: 'top',
-                borderRight: '1.5px solid #000000',
-                cursor: 'pointer',
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: '9pt',
-                  color: '#000000',
-                  textDecoration: 'underline',
-                }}
-              >
-                {(data.proposedBy || '').split('\n')[0] || data.proposedBy || '-'}
-              </div>
-              <div
-                style={{
-                  fontSize: '8pt',
-                  color: '#1e293b',
-                  marginTop: '2px',
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {(data.proposedBy || '').split('\n').slice(1).join('\n')}
-              </div>
-              <div style={{fontSize: '7pt', color: '#64748b', marginTop: '6px'}}>
-                Date: ____ / ____ / 2026
-              </div>
-            </td>
-            <td
-              id="preana-preview-cell-reviewedBy"
-              onClick={() => handlePreviewCellClick('reviewedBy', 'sec7')}
-              style={{
-                padding: '8px 10px',
-                verticalAlign: 'top',
-                borderRight: '1.5px solid #000000',
-                cursor: 'pointer',
-              }}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: '9pt',
-                  color: '#000000',
-                  textDecoration: 'underline',
-                }}
-              >
-                {(data.reviewedBy || '').split('\n')[0] || data.reviewedBy || '-'}
-              </div>
-              <div
-                style={{
-                  fontSize: '8pt',
-                  color: '#1e293b',
-                  marginTop: '2px',
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {(data.reviewedBy || '').split('\n').slice(1).join('\n')}
-              </div>
-              <div style={{fontSize: '7pt', color: '#64748b', marginTop: '6px'}}>
-                Date: ____ / ____ / 2026
-              </div>
-            </td>
-            <td
-              id="preana-preview-cell-approvedBy"
-              onClick={() => handlePreviewCellClick('approvedBy', 'sec7')}
-              style={{padding: '8px 10px', verticalAlign: 'top', cursor: 'pointer'}}
-            >
-              <div
-                style={{
-                  fontWeight: 700,
-                  fontSize: '9pt',
-                  color: '#000000',
-                  textDecoration: 'underline',
-                }}
-              >
-                {(data.approvedBy || '').split('\n')[0] || data.approvedBy || '-'}
-              </div>
-              <div
-                style={{
-                  fontSize: '8pt',
-                  color: '#1e293b',
-                  marginTop: '2px',
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {(data.approvedBy || '').split('\n').slice(1).join('\n')}
-              </div>
-              <div style={{fontSize: '7pt', color: '#64748b', marginTop: '6px'}}>
-                Date: ____ / ____ / 2026
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              <thead>
+                <tr style={{background: '#f8fafc', borderBottom: '1.5px solid #000000'}}>
+                  {chunk.items.map((sig, localIdx) => {
+                    const globalIdx = chunk.startIndex + localIdx;
+                    const colWidth = `${(100 / chunk.items.length).toFixed(2)}%`;
+                    const isLastInChunk = localIdx === chunk.items.length - 1;
+                    return (
+                      <th
+                        key={sig.id || globalIdx}
+                        id={`preana-preview-cell-sign-head-${globalIdx}`}
+                        onClick={() => triggerSignatorySync(globalIdx)}
+                        style={{
+                          width: colWidth,
+                          padding: '8px 10px',
+                          textAlign: 'left',
+                          fontWeight: 700,
+                          fontSize: isMultiRow ? '8pt' : currentSignatories.length > 3 ? '8pt' : '9pt',
+                          color: '#000000',
+                          borderRight: isLastInChunk ? 'none' : '1.5px solid #000000',
+                          wordBreak: 'break-word',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {sig.role || 'Reviewed by :'}
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Generous signature clearance - 95px height */}
+                <tr style={{height: '95px'}}>
+                  {chunk.items.map((sig, localIdx) => {
+                    const globalIdx = chunk.startIndex + localIdx;
+                    const isLastInChunk = localIdx === chunk.items.length - 1;
+                    return (
+                      <td
+                        key={sig.id || globalIdx}
+                        id={`preana-preview-cell-sign-${globalIdx}`}
+                        onClick={() => triggerSignatorySync(globalIdx)}
+                        style={{
+                          padding: '10px',
+                          verticalAlign: 'bottom',
+                          borderRight: isLastInChunk ? 'none' : '1.5px solid #000000',
+                          cursor: 'pointer',
+                          height: '95px',
+                        }}
+                      >
+                        <div
+                          style={{
+                            minHeight: '75px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#94a3b8',
+                            fontStyle: 'italic',
+                            fontSize: '7.5pt',
+                          }}
+                        >
+                          ( Signature / Stamp )
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+                {/* Signatory Names & Positions */}
+                <tr style={{borderTop: '1px solid #000000'}}>
+                  {chunk.items.map((sig, localIdx) => {
+                    const globalIdx = chunk.startIndex + localIdx;
+                    const isLastInChunk = localIdx === chunk.items.length - 1;
+                    const cellId =
+                      globalIdx === 0
+                        ? 'preana-preview-cell-proposedBy'
+                        : globalIdx === 1
+                          ? 'preana-preview-cell-reviewedBy'
+                          : globalIdx === 2
+                            ? 'preana-preview-cell-approvedBy'
+                            : `preana-preview-cell-signatory-${globalIdx}`;
+
+                    return (
+                      <td
+                        key={sig.id || globalIdx}
+                        id={cellId}
+                        onClick={() => triggerSignatorySync(globalIdx)}
+                        style={{
+                          padding: '8px 10px',
+                          verticalAlign: 'top',
+                          borderRight: isLastInChunk ? 'none' : '1.5px solid #000000',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: isMultiRow ? '8pt' : '9pt',
+                            color: '#000000',
+                            textDecoration: 'underline',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {sig.name || '-'}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: isMultiRow ? '7.5pt' : '8pt',
+                            color: '#1e293b',
+                            marginTop: '2px',
+                            whiteSpace: 'pre-line',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {sig.position || ''}
+                        </div>
+                        <div
+                          id={`preana-preview-sig-date-${globalIdx}`}
+                          onClick={e => {
+                            e.stopPropagation();
+                            highlightAllSignatureDates();
+                          }}
+                          style={{
+                            fontSize: '7.5pt',
+                            color: '#0f172a',
+                            marginTop: '6px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Date: {signatureDateToDisplay}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              </tbody>
+            </table>
+          );
+        });
+      })()}
     </div>
   );
 }

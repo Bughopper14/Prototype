@@ -1,11 +1,6 @@
 /** Pulls province / city / district / village out of the NIB address text. */
-import {
-  cleanWilayahStr,
-  matchWilayahName,
-  normalizeWilayahInput,
-  stripWilayahPrefix,
-} from '@/shared/master-data';
-import {defaultMasterCatalog, type MasterCatalog, type MasterItem} from '@liugong/shared';
+import {cleanWilayahStr, matchWilayahName, normalizeWilayahInput} from '@/shared/master-data';
+import {defaultMasterCatalog, type MasterCatalog} from '@liugong/shared';
 
 export function extractWilayahFromAddressAndText(rawText: string, alamat: string, catalog?: MasterCatalog) {
   const master = catalog || defaultMasterCatalog();
@@ -25,22 +20,18 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
     rw?: string;
   } = {};
 
-  const fullText = `${rawText || ''}\n${alamat || ''}`;
+  const fullText = `${alamat || ''}\n${rawText || ''}`;
 
-  // 1. Extract RT / RW if present
-  const rtRwMatch =
-    fullText.match(
-      /(?:RT|R\.T)\.?\s*[:.]?\s*(\d{1,3})\s*(?:[\/-]|\s*dan\s*|\s*,?\s*)\s*(?:RW|R\.W)\.?\s*[:.]?\s*(\d{1,3})/i,
-    ) || fullText.match(/\bRT\s*[:.]?\s*(\d{1,3})\b/i);
+  // 1. Extract RT / RW if explicitly present
+  const rtRwMatch = fullText.match(
+    /(?:RT|R\.T)\.?\s*[:.]?\s*(\d{1,3})\s*(?:[\/-]|\s*dan\s*|\s*,?\s*)\s*(?:RW|R\.W)\.?\s*[:.]?\s*(\d{1,3})/i,
+  );
   if (rtRwMatch) {
-    if (rtRwMatch[2]) {
-      result.rt = rtRwMatch[1].padStart(3, '0').slice(-3);
-      result.rw = rtRwMatch[2].padStart(3, '0').slice(-3);
-    } else {
-      result.rt = rtRwMatch[1].padStart(3, '0').slice(-3);
-    }
-  }
-  if (!result.rw) {
+    result.rt = rtRwMatch[1].padStart(3, '0').slice(-3);
+    result.rw = rtRwMatch[2].padStart(3, '0').slice(-3);
+  } else {
+    const rtOnly = fullText.match(/\bRT\s*[:.]?\s*(\d{1,3})\b/i);
+    if (rtOnly) result.rt = rtOnly[1].padStart(3, '0').slice(-3);
     const rwOnly = fullText.match(/\bRW\s*[:.]?\s*(\d{1,3})\b/i);
     if (rwOnly) result.rw = rwOnly[1].padStart(3, '0').slice(-3);
   }
@@ -54,201 +45,144 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
     result.postalCode = postalMatch[1];
   }
 
-  // 3. Extract explicit labeled fields in rawText if any:
-  const provExplicit = rawText.match(
-    /(?:provinsi|propinsi|prov\.?)\s*[:.]?\s*([a-zA-Z\s]{3,35})(?:[\n\r,]|$)/i,
+  // 3. Extract Explicit Labeled Administrative Fields from fullText (evaluates alamat & rawText)
+  // Province (e.g. "Provinsi Jawa Barat, Kode Pos: 45155" or "Prov. DKI Jakarta")
+  const provExplicit = fullText.match(
+    /(?:provinsi|propinsi|prov\.|prov\b|prop\.|prop\b)\s*[:.]?\s*([a-zA-Z\s]{3,35}?)(?:,\s*kode\s*pos|,\s*\d{5}|[\n\r,;]|$)/i,
   );
-  if (provExplicit) result.province = normalizeWilayahInput(provExplicit[1].trim());
+  if (provExplicit && provExplicit[1].trim()) {
+    result.province = normalizeWilayahInput(provExplicit[1].trim());
+  }
 
-  const cityExplicit = rawText.match(
-    /(?:kabupaten\/kota|kabupaten|kota\s*adm\.?|kota|kab\.?)\s*[:.]?\s*([a-zA-Z\s]{3,35})(?:[\n\r,]|$)/i,
+  // City / Regency (e.g. "Kab. Cirebon", "Kota Cirebon", "Kot. Cirebon", "Kabupaten Bandung", "Kota Administrasi Jakarta Selatan")
+  const cityExplicit = fullText.match(
+    /(?:kabupaten\/kota|kota\/kabupaten|kabupaten|kota\s*adm(?:inistrasi)?\.?|kota|kot\.|kot\b|kodya\b\.?|kab\.|kab\b)\s*[:.]?\s*([a-zA-Z\s]{3,35}?)(?:,\s*prov|\bprovinsi|\bpropinsi|\bprov\.|,\s*kode\s*pos|[\n\r,;]|$)/i,
   );
-  if (cityExplicit) result.city = normalizeWilayahInput(cityExplicit[1].trim());
+  if (cityExplicit && cityExplicit[1].trim()) {
+    result.city = normalizeWilayahInput(cityExplicit[1].trim());
+  }
 
-  const distExplicit = rawText.match(/(?:kecamatan|kec\.?)\s*[:.]?\s*([a-zA-Z\s]{3,35})(?:[\n\r,]|$)/i);
-  if (distExplicit) result.district = normalizeWilayahInput(distExplicit[1].trim());
-
-  const villExplicit = rawText.match(
-    /(?:kelurahan\/desa|desa\/kelurahan|kelurahan|desa|kel\.?)\s*[:.]?\s*([a-zA-Z\s]{3,35})(?:[\n\r,]|$)/i,
+  // District (e.g. "Kec. Depok", "Kecamatan Setiabudi")
+  const distExplicit = fullText.match(
+    /(?:kecamatan|kec\.|kec\b)\s*[:.]?\s*([a-zA-Z\s]{3,35}?)(?:,\s*kab|,\s*kota|,\s*kot|\bkab\.|\bkabupaten|\bkota|\bkot|\bprov|[\n\r,;]|$)/i,
   );
-  if (villExplicit) result.village = normalizeWilayahInput(villExplicit[1].trim());
+  if (distExplicit && distExplicit[1].trim()) {
+    result.district = normalizeWilayahInput(distExplicit[1].trim());
+  }
 
-  // 4. Tokenize alamat by comma / semicolon / newline
+  // Village (e.g. "Desa/Kelurahan Kasugengan Kidul", "Kel. Karet Semanggi", "Desa Sukamaju")
+  const villExplicit = fullText.match(
+    /(?:desa\/kelurahan|kelurahan\/desa|kelurahan|desa|kel\.|kel\b|ds\.|ds\b)\s*[:.]?\s*([a-zA-Z\s]{3,35}?)(?:,\s*kec|\bkec\.|\bkecamatan|\bkab|[\n\r,;]|$)/i,
+  );
+  if (villExplicit && villExplicit[1].trim()) {
+    result.village = normalizeWilayahInput(villExplicit[1].trim());
+  }
+
+  // 4. Tokenize alamat by delimiter for fallback searches
   const parts = String(alamat || '')
     .split(/[,;\n\r]+/)
     .map(p => p.trim())
     .filter(Boolean);
 
-  // 5. Match Village:
-  let foundVillageItem = vList.find(v => {
-    if (result.village && matchWilayahName(v.name, result.village)) return true;
-    return false;
-  });
-
-  if (!foundVillageItem) {
-    for (const part of [...parts].reverse()) {
-      const match = vList.find(v => matchWilayahName(v.name, part));
-      if (match) {
-        foundVillageItem = match;
-        break;
-      }
-    }
-  }
-
-  if (!foundVillageItem && (alamat || rawText)) {
-    const cAlamat = cleanWilayahStr(`${alamat} ${rawText}`);
-    const sortedVillages = [...vList].sort((a, b) => b.name.length - a.name.length);
-    for (const v of sortedVillages) {
-      const core = cleanWilayahStr(stripWilayahPrefix(v.name));
-      if (core.length >= 4 && cAlamat.includes(core)) {
-        foundVillageItem = v;
-        break;
-      }
-    }
-  }
-
-  if (!foundVillageItem && result.postalCode) {
-    foundVillageItem = vList.find(v => v.zipCode === result.postalCode);
-  }
-
-  if (foundVillageItem) {
-    result.village = foundVillageItem.name;
-    if (!result.postalCode && foundVillageItem.zipCode) {
-      result.postalCode = foundVillageItem.zipCode;
-    }
-  } else if (result.village) {
-    result.village = normalizeWilayahInput(result.village);
-  }
-
-  // 6. Match District:
-  let foundDistrictItem: MasterItem | undefined;
-  if (foundVillageItem?.parentValue) {
-    foundDistrictItem = dList.find(
-      d =>
-        cleanWilayahStr(d.value) === cleanWilayahStr(foundVillageItem!.parentValue!) ||
-        matchWilayahName(d.name, foundVillageItem!.parentValue!),
-    );
-  }
-
-  if (!foundDistrictItem && result.district) {
-    foundDistrictItem = dList.find(d => matchWilayahName(d.name, result.district!));
-  }
-
-  if (!foundDistrictItem) {
-    for (const part of [...parts].reverse()) {
-      const match = dList.find(d => matchWilayahName(d.name, part));
-      if (match) {
-        foundDistrictItem = match;
-        break;
-      }
-    }
-  }
-
-  if (!foundDistrictItem && (alamat || rawText)) {
-    const cAlamat = cleanWilayahStr(`${alamat} ${rawText}`);
-    const sortedDistricts = [...dList].sort((a, b) => b.name.length - a.name.length);
-    for (const d of sortedDistricts) {
-      const core = cleanWilayahStr(stripWilayahPrefix(d.name));
-      if (core.length >= 4 && cAlamat.includes(core)) {
-        foundDistrictItem = d;
-        break;
-      }
-    }
-  }
-
-  if (foundDistrictItem) {
-    result.district = foundDistrictItem.name;
-  } else if (result.district) {
-    result.district = normalizeWilayahInput(result.district);
-  }
-
-  // 7. Match City / Regency:
-  let foundCityItem: MasterItem | undefined;
-  if (foundDistrictItem?.parentValue) {
-    foundCityItem = cList.find(
-      c =>
-        cleanWilayahStr(c.value) === cleanWilayahStr(foundDistrictItem!.parentValue!) ||
-        matchWilayahName(c.name, foundDistrictItem!.parentValue!),
-    );
-  }
-
-  if (!foundCityItem && result.city) {
-    foundCityItem = cList.find(c => matchWilayahName(c.name, result.city!));
-  }
-
-  if (!foundCityItem) {
-    for (const part of [...parts].reverse()) {
-      const match = cList.find(c => matchWilayahName(c.name, part));
-      if (match) {
-        foundCityItem = match;
-        break;
-      }
-    }
-  }
-
-  if (!foundCityItem && (alamat || rawText)) {
-    const cAlamat = cleanWilayahStr(`${alamat} ${rawText}`);
-    const sortedCities = [...cList].sort((a, b) => b.name.length - a.name.length);
-    for (const c of sortedCities) {
-      const core = cleanWilayahStr(stripWilayahPrefix(c.name));
-      if (core.length >= 4 && cAlamat.includes(core)) {
-        foundCityItem = c;
-        break;
-      }
-    }
-  }
-
-  if (foundCityItem) {
-    result.city = foundCityItem.name;
-  } else if (result.city) {
-    result.city = normalizeWilayahInput(result.city);
-  }
-
-  // 8. Match Province:
-  let foundProvItem: MasterItem | undefined;
-  if (foundCityItem?.parentValue) {
-    foundProvItem = pList.find(
-      p =>
-        cleanWilayahStr(p.value) === cleanWilayahStr(foundCityItem!.parentValue!) ||
-        matchWilayahName(p.name, foundCityItem!.parentValue!),
-    );
-  }
-
-  if (!foundProvItem && result.province) {
-    foundProvItem = pList.find(p => matchWilayahName(p.name, result.province!));
-  }
-
-  if (!foundProvItem) {
+  // 5. Match or Standardize Province
+  if (result.province) {
+    const pFound = pList.find(p => matchWilayahName(p.name, result.province!));
+    if (pFound) result.province = normalizeWilayahInput(pFound.name);
+  } else {
     for (const part of [...parts].reverse()) {
       const match = pList.find(p => matchWilayahName(p.name, part));
       if (match) {
-        foundProvItem = match;
+        result.province = normalizeWilayahInput(match.name);
         break;
       }
     }
   }
 
-  if (!foundProvItem && fullText) {
-    const cFull = cleanWilayahStr(fullText);
-    for (const p of pList) {
-      const core = cleanWilayahStr(stripWilayahPrefix(p.name));
-      if (
-        core.length >= 4 &&
-        (cFull.includes(core) || (core.includes('jakarta') && cFull.includes('jakarta')))
-      ) {
-        foundProvItem = p;
+  // 6. Match or Standardize City
+  if (result.city) {
+    const cFound = cList.find(c => matchWilayahName(c.name, result.city!));
+    if (cFound) {
+      result.city = normalizeWilayahInput(cFound.name);
+    }
+  } else {
+    for (const part of [...parts].reverse()) {
+      const match = cList.find(c => matchWilayahName(c.name, part));
+      if (match) {
+        result.city = normalizeWilayahInput(match.name);
         break;
       }
     }
   }
 
-  if (foundProvItem) {
-    result.province = foundProvItem.name;
-  } else if (result.province) {
-    result.province = normalizeWilayahInput(result.province);
+  // 7. Match or Standardize District
+  if (result.district) {
+    const dFound = dList.find(d => matchWilayahName(d.name, result.district!));
+    if (dFound) result.district = normalizeWilayahInput(dFound.name);
+  } else {
+    for (const part of [...parts].reverse()) {
+      const match = dList.find(d => matchWilayahName(d.name, part));
+      if (match) {
+        result.district = normalizeWilayahInput(match.name);
+        break;
+      }
+    }
   }
 
-  // 9. If postalCode still not set, look up by village or district
+  // 8. Match or Standardize Village
+  if (result.village) {
+    const vFound = vList.find(v => matchWilayahName(v.name, result.village!));
+    if (vFound) {
+      result.village = normalizeWilayahInput(vFound.name);
+      if (!result.postalCode && vFound.zipCode) result.postalCode = vFound.zipCode;
+    }
+  } else {
+    for (const part of [...parts].reverse()) {
+      const match = vList.find(v => matchWilayahName(v.name, part));
+      if (match) {
+        result.village = normalizeWilayahInput(match.name);
+        if (!result.postalCode && match.zipCode) result.postalCode = match.zipCode;
+        break;
+      }
+    }
+  }
+
+  // 9. If postal code matches a village in catalog and village/district/city are not set, backfill only unset fields
+  if (result.postalCode) {
+    const vByZip = vList.find(v => v.zipCode === result.postalCode);
+    if (vByZip) {
+      if (!result.village) result.village = normalizeWilayahInput(vByZip.name);
+      if (!result.district && vByZip.parentValue) {
+        const dByZip = dList.find(
+          d =>
+            cleanWilayahStr(d.value) === cleanWilayahStr(vByZip.parentValue!) ||
+            matchWilayahName(d.name, vByZip.parentValue!),
+        );
+        if (dByZip) {
+          result.district = normalizeWilayahInput(dByZip.name);
+          if (!result.city && dByZip.parentValue) {
+            const cByZip = cList.find(
+              c =>
+                cleanWilayahStr(c.value) === cleanWilayahStr(dByZip.parentValue!) ||
+                matchWilayahName(c.name, dByZip.parentValue!),
+            );
+            if (cByZip) {
+              result.city = normalizeWilayahInput(cByZip.name);
+              if (!result.province && cByZip.parentValue) {
+                const pByZip = pList.find(
+                  p =>
+                    cleanWilayahStr(p.value) === cleanWilayahStr(cByZip.parentValue!) ||
+                    matchWilayahName(p.name, cByZip.parentValue!),
+                );
+                if (pByZip) result.province = normalizeWilayahInput(pByZip.name);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 10. If postalCode still not set, look up by village or district
   if (!result.postalCode && (result.village || result.district)) {
     const candidate = postList.find(po => {
       const cName = cleanWilayahStr(po.name);
@@ -260,6 +194,11 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
       result.postalCode = candidate.value;
     }
   }
+
+  if (result.province) result.province = normalizeWilayahInput(result.province);
+  if (result.city) result.city = normalizeWilayahInput(result.city);
+  if (result.district) result.district = normalizeWilayahInput(result.district);
+  if (result.village) result.village = normalizeWilayahInput(result.village);
 
   return result;
 }

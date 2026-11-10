@@ -1,8 +1,7 @@
 import {Editor} from '@tinymce/tinymce-react';
 import {createPortal} from 'react-dom';
 import {useState} from 'react';
-import {Pencil, AlertCircle, AlertTriangle, X, Loader2, Lock, CheckCircle} from 'lucide-react';
-import {type Field, label} from '@liugong/shared';
+import {Pencil, AlertCircle, AlertTriangle, X, Loader2, CheckCircle} from 'lucide-react';
 
 export function FapComparisonModal({
   comparison,

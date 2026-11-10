@@ -9,6 +9,7 @@ import {legalMasterCatalog} from './repositories/legal-masters.repository';
 import {financeMasterCatalog} from './repositories/finance-masters.repository';
 import {equipmentMasterCatalog} from './repositories/equipment-masters.repository';
 import {documentMasterCatalog} from './repositories/document-masters.repository';
+import {preanalysisMasterCatalog} from './repositories/preanalysis-masters.repository';
 
 /** The merged master-data catalog (about 15 MB of JSON), cached in memory together with its gzip form. */
 
@@ -53,6 +54,7 @@ export async function masterData(conn?: Queryable, forceRefresh = false) {
   catalog = await financeMasterCatalog(catalog);
   catalog = await equipmentMasterCatalog(catalog);
   catalog = await documentMasterCatalog(catalog);
+  catalog = await preanalysisMasterCatalog(catalog);
 
   const result = {catalog, revision: rows[0]?.revision || 0};
   if (!conn) cachedCatalog = result;

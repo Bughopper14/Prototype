@@ -1,22 +1,11 @@
 import {Controller, Get, Patch, Post, Res} from '@nestjs/common';
-import {pool, readMenu, writeMenu} from '../../core/db/pool';
+import {pool} from '../../core/db/pool';
 import {ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {requireAuthority} from '../auth/session';
 
 @Controller(API_PREFIX)
 export class ActivityController {
-  @Get('workspace-data/:menu')
-  readWorkspace(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    return readMenu(req.params.menu);
-  }
-
-  @Post('workspace-data/:menu')
-  async saveWorkspace(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    res.status(201);
-    return writeMenu(req.params.menu, req.body?.payload);
-  }
-
   @Post('user-activity')
   recordUserActivity(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     return {ok: true, action: req.body?.action};

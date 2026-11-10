@@ -16,7 +16,7 @@ export function BusinessBanksTab() {
             <Repeater
               title="Bank Facilities"
               description="Existing company credit facilities and loans."
-              fields={bankFields}
+              fields={bankFields.filter(f => f.key !== 'comments')}
               rows={draft.bankReferences}
               disabled={!canEdit}
               carousel

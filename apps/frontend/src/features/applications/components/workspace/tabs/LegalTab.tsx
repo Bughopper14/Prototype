@@ -4,8 +4,20 @@ import {LegalEditor} from '@/features/legal/components/LegalEditor';
 import {deriveDeedSync} from '@/shared/lib/format';
 
 export function LegalTab() {
-  const {a, user, setCustomerDraft, tab, draft, setDraft, canLegal, beginDeedReview, editRequest, setEditRequest, setReviewHidden} =
-    useWorkspace();
+  const {
+    a,
+    user,
+    notify,
+    setCustomerDraft,
+    tab,
+    draft,
+    setDraft,
+    canLegal,
+    beginDeedReview,
+    editRequest,
+    setEditRequest,
+    setReviewHidden,
+  } = useWorkspace();
   return (
     <>
       {tab === 5 && (
@@ -16,6 +28,7 @@ export function LegalTab() {
           disabled={!canLegal}
           user={user}
           onReview={beginDeedReview}
+          notify={notify}
           editRequest={editRequest}
           onEditRequestHandled={() => setEditRequest(null)}
           onEditFinished={async id => {
@@ -49,10 +62,13 @@ export function LegalTab() {
               establishmentDate: sync.establishmentDate || draft.customer?.establishmentDate || '',
             };
             if (sync.establishmentActNo) setCustomerDraft((prev: any) => ({...prev, ...updCustomer}));
+            // The FAP shows the shareholders of the latest deed
+            const effectiveStakeholders =
+              sync.latestStakeholders.length > 0 ? sync.latestStakeholders : stakeholders;
             setDraft({
               ...draft,
               legal,
-              stakeholders,
+              stakeholders: effectiveStakeholders,
               latestDeedNo: sync.latestDeedNo || draft.latestDeedNo || '',
               latestDeedDate: sync.latestDeedDate || draft.latestDeedDate || '',
               experienceYears: sync.experienceYears,

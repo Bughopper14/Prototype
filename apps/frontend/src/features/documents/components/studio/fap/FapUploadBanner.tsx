@@ -65,7 +65,6 @@ export function FapUploadBanner() {
                 ? 'Uploading and processing OCR...'
                 : 'Drag & drop FAP PDF/Image file here, or click to select a file'}
             </strong>
-            <span>Files are automatically named with application hash and date stamp</span>
             <span className="fap-dropzone-full-hint">
               Supported formats: PDF, PNG, JPEG · Max 20 MB · Automatic system data vs OCR comparison
             </span>

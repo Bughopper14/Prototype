@@ -60,7 +60,7 @@ export function AuthorityForm({
       <label className="pt-field">
         <span className="pt-form-label">Authority (hanya yang dikenali aplikasi)</span>
         <select className="pt-select" value={name} onChange={e => setName(e.target.value)} required>
-          <option value="">— pilih authority —</option>
+          <option value="" hidden></option>
           {available.map(a => (
             <option key={a.name} value={a.name}>
               {a.name}

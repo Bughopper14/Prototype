@@ -13,6 +13,7 @@ import {initializeLegalMasters} from '../../modules/master-data/repositories/leg
 import {initializeFinanceMasters} from '../../modules/master-data/repositories/finance-masters.repository';
 import {initializeEquipmentMasters} from '../../modules/master-data/repositories/equipment-masters.repository';
 import {initializeDocumentMasters} from '../../modules/master-data/repositories/document-masters.repository';
+import {initializePreanalysisMasters} from '../../modules/master-data/repositories/preanalysis-masters.repository';
 import {
   initializeApplicationDocuments,
   syncApplicationDocuments,
@@ -46,6 +47,7 @@ export async function runSetup() {
   await initializeFinanceMasters(seed);
   await initializeEquipmentMasters(seed);
   await initializeDocumentMasters(seed);
+  await initializePreanalysisMasters(seed);
   await initializeApplicationDocuments();
   await initializeAudit();
   await initPreAnalysisStore();

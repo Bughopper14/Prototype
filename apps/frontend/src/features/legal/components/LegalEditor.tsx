@@ -10,6 +10,7 @@ import {Trash2} from 'lucide-react';
 
 import {ActiveDeedsHeading} from '@/features/legal/components/legal-editor/ActiveDeedsHeading';
 import {DeedActionMenu} from '@/features/legal/components/legal-editor/DeedActionMenu';
+import {DeedTable} from '@/features/legal/components/legal-editor/DeedTable';
 import {DeedEditorModal} from '@/features/legal/components/legal-editor/DeedEditorModal';
 import {DeedStakeholdersModal} from '@/features/legal/components/legal-editor/DeedStakeholdersModal';
 import {DeleteStakeholderModal} from '@/features/legal/components/legal-editor/DeleteStakeholderModal';
@@ -34,6 +35,7 @@ export function LegalEditor(props: LegalEditorProps) {
     remarkCategories,
     getDeedCategoryIds,
     deeds,
+    rowsFor,
     listLocked,
     editorLocked,
     removeDeed,
@@ -41,7 +43,6 @@ export function LegalEditor(props: LegalEditorProps) {
     latestAmendmentDeed,
     activeDeeds,
     historicalDeeds,
-    renderDeedTable,
   } = state;
   return (
     <LegalEditorContext.Provider value={state}>
@@ -49,16 +50,16 @@ export function LegalEditor(props: LegalEditorProps) {
         {/* 1. TOP TABLE: ACTIVE DEEDS & CURRENT REFERENCE */}
         <ActiveDeedsHeading />
 
-        {renderDeedTable(activeDeeds, false, 'No active deeds recorded.')}
+        <DeedTable list={activeDeeds} isHistory={false} emptyMsg="No active deeds recorded." />
 
         {/* 2. BOTTOM TABLE: PREVIOUS DEED HISTORY (HISTORICAL DATA) */}
         <HistoricalDeedsHeading />
 
-        {renderDeedTable(
-          historicalDeeds,
-          true,
-          'No previous deed history. All deeds are recorded in the active reference table.',
-        )}
+        <DeedTable
+          list={historicalDeeds}
+          isHistory
+          emptyMsg="No previous deed history. All deeds are recorded in the active reference table."
+        />
 
         <DeedActionMenu />
         <DeedEditorModal />
@@ -69,8 +70,14 @@ export function LegalEditor(props: LegalEditorProps) {
             modal={stakeholderModal}
             editorLocked={editorLocked}
             formError={formError}
-            onClose={() => setStakeholderModal(null)}
+            onClose={() => {
+              // Closing the stakeholder form goes back to that deed's stakeholder list
+              const deedId = stakeholderModal.deedId;
+              setStakeholderModal(null);
+              if (deedId) setStakeholderList(deedId);
+            }}
             onSave={saveStakeholder}
+            deedStakeholders={rowsFor(deeds.find(x => x.id === stakeholderModal.deedId))}
             onChangeValue={val => {
               const fullName = [val.firstName, val.middleName, val.lastName]
                 .map((x: any) => String(x || '').trim())

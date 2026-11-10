@@ -84,8 +84,16 @@ export function DeedStakeholdersModal() {
                         type="button"
                         className="button small legal-delete-button"
                         onClick={() => {
-                          setDeleteStakeholder({deedId: stakeholderList, index: i});
-                          setStakeholderList(null);
+                          // The list stays open behind the confirmation
+                          setDeleteStakeholder({
+                            deedId: stakeholderList,
+                            index: i,
+                            id: r.id,
+                            name:
+                              r.name ||
+                              [r.firstName, r.lastName].filter(Boolean).join(' ') ||
+                              `Stakeholder ${i + 1}`,
+                          });
                         }}
                       >
                         <Trash2 size={13} />
@@ -111,7 +119,12 @@ export function DeedStakeholdersModal() {
                   setStakeholderModal({
                     deedId: stakeholderList,
                     index: -1,
-                    value: {...blank(stakeholderFields), representativeType: 'SHAREHOLDER', idType: 'NONE'},
+                    value: {
+                      ...blank(stakeholderFields),
+                      representativeType: 'SHAREHOLDER',
+                      positions: 'NONE',
+                      idType: 'NONE',
+                    },
                   });
                   setStakeholderList(null);
                 }}

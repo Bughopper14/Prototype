@@ -1,4 +1,19 @@
-/** Pre-analysis data shapes (milestones, units, lenders, group structure, SLIK review…). */
+/** Shapes of the Pre-Analysis data and the props of the form. */
+
+export interface PreAnalysisProjectItem {
+  id?: string;
+  projectName: string;
+  location: string;
+  scope: string;
+}
+
+export interface PreAnalysisProjectGroup {
+  id?: string;
+  headName: string;
+  projects: PreAnalysisProjectItem[];
+}
+
+export type PreAnalysisProjectGroupOrItem = PreAnalysisProjectGroup | PreAnalysisProjectItem;
 
 export interface MilestoneItem {
   year: string;
@@ -80,20 +95,25 @@ export interface PreAnalysisData {
   sourceOfRepayment: string;
 
   // 2. PROJECT INFORMATION
-  holdingGroup: string;
-  projectName: string;
-  projectLocation: string;
-  existingProjects: string;
-  newProjects: string;
+  holdingGroup?: string;
+  projectName?: string;
+  projectLocation?: string;
+  existingProjects?: string;
+  newProjects?: string;
+  currentProjects?: (PreAnalysisProjectGroup | PreAnalysisProjectItem)[];
+  historyProjects?: (PreAnalysisProjectGroup | PreAnalysisProjectItem)[];
+  investmentProjectPlans?: (PreAnalysisProjectGroup | PreAnalysisProjectItem)[];
   projectNameLocation?: string;
   customerRole: string;
   otherContractors: string;
   projectOwner: string;
   bowheerInfo: string;
   projectStatus: string;
-  investmentPlan: string;
+  projectStatusRemarks?: string;
+  investmentPlan?: string;
+  investmentPlanSelected?: string[];
+  investmentPlanRemarks?: Record<string, string>;
   financingSchemeRequested: string;
-
   // 3. CUSTOMER & GROUP BACKGROUND
   ubo?: string;
   uboInfo: string;
@@ -101,7 +121,9 @@ export interface PreAnalysisData {
   starGroupMilestonesNarrative?: string;
   businessDevBackground?: string;
   operationalTeamInfo?: string;
+  showUboInformation?: boolean;
   uboInformation?: string;
+  groupStructureImage?: string;
   groupStructure?: GroupStructureData;
   milestones: MilestoneItem[];
   existingFincoBackup: string;
@@ -117,6 +139,8 @@ export interface PreAnalysisData {
   deliveryStatus: string;
   deliveryDate: string;
   qaIlinkComment: string;
+  qaDocumentName?: string;
+  qaDocumentFile?: string;
   qaConclusion: string;
 
   // 6. CROSS-CHECK WITH DEALER / LMI (quick)
@@ -130,7 +154,7 @@ export interface PreAnalysisData {
   pefindoNotes: string;
   lenderExposures: LenderExposureItem[];
 
-  // 7. EXPERT JUDGEMENT CONCLUSION
+  // 7. PRELIMENARY ASSESSMENT
   goodProject: boolean;
   goodProjectNote: string;
   goodCustomer: boolean;
@@ -143,4 +167,31 @@ export interface PreAnalysisData {
   proposedBy: string;
   reviewedBy: string;
   approvedBy: string;
+  signatureDate?: string;
+  signatories?: SignatoryItem[];
+}
+
+export interface SignatoryItem {
+  id?: string;
+  role: string;
+  name: string;
+  position: string;
+  date?: string;
+}
+
+export interface PreAnalysisFormProps {
+  applicationId: string;
+  application?: any;
+  customer?: any;
+  pic?: any;
+  profile?: any;
+  isNew?: boolean;
+  busy?: boolean;
+  assignedPreAnalysisNo?: string;
+  onSaveNewApplication?: () => Promise<void>;
+  onChange?: (data: PreAnalysisData) => void;
+  onSaved?: (diffs?: any[]) => void;
+  notify?: (msg: string) => void;
+  registerSave?: (saveFn: () => Promise<void>) => void;
+  onSavingChange?: (saving: boolean) => void;
 }

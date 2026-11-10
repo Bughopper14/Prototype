@@ -35,11 +35,8 @@ export function matchWilayahName(masterName: string, input: string): boolean {
 
   const coreInput = cleanWilayahStr(stripWilayahPrefix(input));
   const coreMaster = cleanWilayahStr(stripWilayahPrefix(masterName));
-  if (coreInput && coreMaster) {
-    if (coreMaster === coreInput) return true;
-    if (coreMaster.length >= 4 && coreInput.length >= 4) {
-      if (coreMaster.includes(coreInput) || coreInput.includes(coreMaster)) return true;
-    }
+  if (coreInput && coreMaster && coreMaster === coreInput) {
+    return true;
   }
 
   // Handle DKI Jakarta

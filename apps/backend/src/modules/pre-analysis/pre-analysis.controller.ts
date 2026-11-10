@@ -1,7 +1,12 @@
 import {Controller, Get, Put, Res} from '@nestjs/common';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {intakeDetail} from '../applications/intake.repository';
-import {getPreAnalysisData, savePreAnalysisData} from './pre-analysis.repository';
+import {
+  generatePreAnalysisNo,
+  getAllPreAnalysisNumbers,
+  getPreAnalysisData,
+  savePreAnalysisData,
+} from './pre-analysis.repository';
 import {requireAuthority} from '../auth/session';
 
 @Controller(API_PREFIX)
@@ -23,7 +28,18 @@ export class PreAnalysisController {
       'crm_edit_app_financial',
       'crm_workflow_start_review',
     );
-    await savePreAnalysisData(req.params.id, req.body);
-    return {success: true, data: req.body};
+    const data = req.body || {};
+    const missing = (v: any) => !v || String(v).includes('Auto') || String(v).trim() === '';
+    // A form saved before its numbers exist gets them here: next Pre-Analysis number, FAP number, company name
+    if (missing(data.preAnalysisNo))
+      data.preAnalysisNo = generatePreAnalysisNo(await getAllPreAnalysisNumbers(), new Date());
+    const appRecord: any = await intakeDetail(req.params.id);
+    if (appRecord && missing(data.fapNumber))
+      data.fapNumber = appRecord.fapNumber || appRecord.fap_number || '';
+    if (appRecord && (missing(data.customerProjectName) || data.customerProjectName === 'New Applicant'))
+      data.customerProjectName =
+        appRecord.customer?.companyName || appRecord.companyName || data.customerProjectName;
+    await savePreAnalysisData(req.params.id, data);
+    return {success: true, data};
   }
 }

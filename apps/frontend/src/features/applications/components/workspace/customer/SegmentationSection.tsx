@@ -1,5 +1,6 @@
-/** Customer section 05: Segmentation & Active Projects. */
+/** Customer section 06: industry segmentation, main business and active project contracts. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
+import {SegmentChecklist} from '@/features/applications/components/workspace/customer/SegmentChecklist';
 import {Repeater} from '@/shared/ui/Repeater';
 import {projectFields} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
@@ -10,20 +11,23 @@ export function SegmentationSection() {
     setDraft,
     openSections,
     setOpenSections,
-    activeFieldKey,
     handleTriggerFieldSync,
     handleTriggerSync,
     toggleSection,
     canEditCustomerPic,
+    activeFieldKey,
+    targetProjectRow,
+    setTargetProjectRow,
   } = useWorkspace();
   return (
     <div
       className={`fap-accordion-card ${openSections['fap-preview-sec-projects'] ? 'is-open' : 'is-closed'}`}
       id="acc-fap-preview-sec-projects"
+      data-section="projects"
     >
       <div className="fap-accordion-header" onClick={() => toggleSection('fap-preview-sec-projects')}>
         <div className="fap-acc-header-left">
-          <span className="fap-acc-step-badge">05</span>
+          <span className="fap-acc-step-badge">06</span>
           <div className="fap-acc-titles">
             <div className="fap-acc-title-row">
               <h4 className="fap-acc-title">Industry Segmentation & Active Projects</h4>
@@ -54,6 +58,8 @@ export function SegmentationSection() {
       </div>
       {openSections['fap-preview-sec-projects'] && (
         <div className="fap-accordion-content">
+          <SegmentChecklist />
+          <div style={{marginTop: 14}} />
           <Repeater
             title="Project Contracts"
             description="Active project contracts and business activities (filled by Marketing)."
@@ -62,8 +68,10 @@ export function SegmentationSection() {
             disabled={!canEditCustomerPic}
             carousel
             section="projects"
-            onFieldFocus={k => handleTriggerFieldSync(k, 'projects')}
-            onFieldSync={k => handleTriggerFieldSync(k, 'projects')}
+            targetRowIndex={targetProjectRow}
+            onRowChange={setTargetProjectRow}
+            onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `projects-${targetProjectRow || 0}`)}
+            onFieldSync={(k, s) => handleTriggerFieldSync(k, s || `projects-${targetProjectRow || 0}`)}
             activeFieldKey={activeFieldKey}
             onChange={projects => setDraft({...draft, projects})}
           />

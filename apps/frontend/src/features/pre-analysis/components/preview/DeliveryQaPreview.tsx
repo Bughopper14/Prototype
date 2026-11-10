@@ -1,26 +1,15 @@
-/** Preview section 5: Unit Delivery Status & QA Check. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Section 5 of the document: unit delivery status and QA check. */
+import {renderRichHtml} from '@/features/pre-analysis/components/RichHtml';
+import {PreviewSectionTitle} from '@/features/pre-analysis/components/preview/PreviewSectionTitle';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function DeliveryQaPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, data} = usePreAnalysisContext();
   return (
     <>
-      <div
-        id="preana-preview-sec-5"
-        onClick={() => handlePreviewCellClick('deliveryStatus', 'sec5')}
-        style={{
-          background: '#1b365d',
-          color: '#ffffff',
-          padding: '6px 10px',
-          fontWeight: 700,
-          fontSize: '10.5pt',
-          marginTop: '16px',
-          marginBottom: '8px',
-          cursor: 'pointer',
-        }}
-      >
+      <PreviewSectionTitle n={5} field="deliveryStatus">
         5. UNIT DELIVERY STATUS & QA CHECK
-      </div>
+      </PreviewSectionTitle>
       <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px'}}>
         <tbody>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -40,7 +29,7 @@ export function DeliveryQaPreview() {
               onClick={() => handlePreviewCellClick('deliveryDate', 'sec5')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.deliveryDate}
+              {renderRichHtml(data.deliveryDate)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -50,7 +39,9 @@ export function DeliveryQaPreview() {
               onClick={() => handlePreviewCellClick('qaIlinkComment', 'sec5')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.qaIlinkComment}
+              <span style={{fontWeight: 600, color: '#0f172a'}}>
+                {data.qaDocumentName || data.qaIlinkComment || '-'}
+              </span>
             </td>
           </tr>
           <tr>
@@ -60,7 +51,7 @@ export function DeliveryQaPreview() {
               onClick={() => handlePreviewCellClick('qaConclusion', 'sec5')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.qaConclusion}
+              {renderRichHtml(data.qaConclusion)}
             </td>
           </tr>
         </tbody>

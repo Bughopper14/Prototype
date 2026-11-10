@@ -5,14 +5,18 @@ import {Trash2} from 'lucide-react';
 import {useLegalEditorContext} from '@/features/legal/components/legal-editor/LegalEditorContext';
 
 export function DeleteStakeholderModal() {
-  const {deleteStakeholder, setDeleteStakeholder, deeds, rowsFor, updateRows} = useLegalEditorContext();
+  const {deleteStakeholder, setDeleteStakeholder, setStakeholderList, deeds, rowsFor, updateRows} =
+    useLegalEditorContext();
   return (
     <>
       {deleteStakeholder && (
         <Modal title="Delete Stakeholder" onClose={() => setDeleteStakeholder(null)}>
           <div className="modal-body">
-            <p>Delete this stakeholder from the deed?</p>
-            <p className="muted legal-delete-note">Click Save changes in Legal to keep changes saved.</p>
+            <p>
+              Are you sure you want to delete stakeholder <strong>{deleteStakeholder.name}</strong> from this
+              deed?
+            </p>
+            <p className="muted legal-delete-note">This will remove this stakeholder only from this deed.</p>
           </div>
           <div className="modal-actions">
             <button className="button" onClick={() => setDeleteStakeholder(null)}>
@@ -20,13 +24,18 @@ export function DeleteStakeholderModal() {
             </button>
             <button
               className="button legal-confirm-delete"
-              onClick={() => {
-                const x = deeds.find(d => d.id === deleteStakeholder.deedId);
+              onClick={async () => {
+                const {deedId, id, index} = deleteStakeholder;
+                const x = deeds.find(d => d.id === deedId);
                 if (x)
-                  updateRows(
+                  // Match by id when the row has one, so a re-ordered list never removes the wrong person
+                  await updateRows(
                     x.id,
-                    rowsFor(x).filter((_, i) => i !== deleteStakeholder.index),
+                    rowsFor(x).filter((item: any, i: number) =>
+                      id && item.id ? item.id !== id : i !== index,
+                    ),
                   );
+                setStakeholderList(deedId);
                 setDeleteStakeholder(null);
               }}
             >

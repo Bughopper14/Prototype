@@ -21,14 +21,7 @@ export default function UserManagementPage() {
 
   return (
     <PortalShell name={user.name} wide>
-      <div className="pt-welcome">
-        <div className="pt-pill">
-          <i className="fas fa-circle" style={{fontSize: 6}} /> User Management
-        </div>
-        <h2>Pengguna, Role &amp; Akses</h2>
-        <p>Kelola user, role, authority, aplikasi, audit log, dan sesi aktif.</p>
-      </div>
-      <UserManagement currentUserId={user.portalUserId} />
+      <UserManagement currentUserId={user.portalUserId} fullName={user.name} />
     </PortalShell>
   );
 }

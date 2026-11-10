@@ -79,6 +79,18 @@ export function sectionBadgeStyle(sec: string, stage?: string): BadgeStyle {
       return {color: '#be185d', bg: '#fdf2f8', border: '#fbcfe8'};
     return {color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd'};
   }
+  // FAP sections 05 and 07-09 plus the legal / shareholder rules (checked first: "Legal Deeds" also says "deed")
+  if (s.includes('proposal')) return {color: '#0284c7', bg: '#f0f9ff', border: '#bae6fd'};
+  if (s.includes('financial') || s.includes('statement'))
+    return {color: '#059669', bg: '#ecfdf5', border: '#a7f3d0'};
+  if (s.includes('bank') || s.includes('reference'))
+    return {color: '#d97706', bg: '#fffbeb', border: '#fde68a'};
+  if (s.includes('purpose') || s.includes('fixed asset'))
+    return {color: '#8b5cf6', bg: '#faf5ff', border: '#ddd6fe'};
+  if (s.includes('legal deeds') || s.includes('amendment'))
+    return {color: '#9333ea', bg: '#faf5ff', border: '#e9d5ff'};
+  if (s.includes('shareholder') || s.includes('management'))
+    return {color: '#4f46e5', bg: '#eef2ff', border: '#c7d2fe'};
   if (s.includes('debtor') || s.includes('identity') || s.includes('classification'))
     return {color: '#3730a3', bg: '#eef2ff', border: '#c7d2fe'};
   if (s.includes('domicile') || s.includes('office') || s.includes('registration'))

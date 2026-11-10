@@ -1,0 +1,46 @@
+/** FAP form section "Purpose and assets": the sheet cells it highlights, where to scroll, and which cells belong to it. */
+export const PURPOSE_ASSETS = {
+  section: 'fap-preview-sec-purpose-assets',
+  /** Cells highlighted when the section is focused. */
+  cellIds: [
+    'fap-cell-purpose-business',
+    'fap-cell-purpose-rehab',
+    'fap-cell-purpose-expansion',
+    'fap-cell-purpose-relocation',
+    'fap-cell-purpose-working-cap',
+    'fap-cell-asset-lg-he',
+    'fap-cell-asset-lg-truck',
+    'fap-cell-asset-lg-unit',
+    'fap-cell-asset-lg-pct',
+    'fap-cell-asset-nlg-he',
+    'fap-cell-asset-nlg-truck',
+    'fap-cell-asset-nlg-unit',
+    'fap-cell-asset-nlg-pct',
+    'fap-cell-asset-tot-he',
+    'fap-cell-asset-tot-truck',
+    'fap-cell-asset-tot-unit',
+    'fap-cell-asset-tot-pct',
+  ],
+  /** Cell the sheet scrolls to. */
+  scrollTarget: 'fap-cell-purpose-business',
+  /** Cells that, when clicked, open this section. */
+  ownCellIds: [
+    'fap-cell-purpose-business',
+    'fap-cell-purpose-rehab',
+    'fap-cell-purpose-expansion',
+    'fap-cell-purpose-relocation',
+    'fap-cell-purpose-working-cap',
+    'fap-cell-asset-lg-he',
+    'fap-cell-asset-lg-truck',
+    'fap-cell-asset-lg-unit',
+    'fap-cell-asset-lg-pct',
+    'fap-cell-asset-nlg-he',
+    'fap-cell-asset-nlg-truck',
+    'fap-cell-asset-nlg-unit',
+    'fap-cell-asset-nlg-pct',
+    'fap-cell-asset-tot-he',
+    'fap-cell-asset-tot-truck',
+    'fap-cell-asset-tot-unit',
+    'fap-cell-asset-tot-pct',
+  ],
+};

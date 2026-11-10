@@ -16,7 +16,8 @@ export function CustomerTab() {
     activeSyncSection,
     activeSyncField,
     syncTick,
-    handleTriggerFieldSync,
+    handlePreviewCellClick,
+    formColumnHandlers,
     handlePreviewSectionClick,
     handlePrintFap,
     openArchiveViewer,
@@ -96,7 +97,7 @@ export function CustomerTab() {
           )}
           {sideBySide ? (
             <div className="fap-detail-split-container">
-              <div className="fap-detail-form-col">
+              <div className="fap-detail-form-col" {...formColumnHandlers}>
                 <CustomerDetailSections />
               </div>
               <div className="fap-detail-preview-col">
@@ -110,7 +111,7 @@ export function CustomerTab() {
                   activeField={activeSyncField || undefined}
                   syncTick={syncTick}
                   onSectionClick={handlePreviewSectionClick}
-                  onPreviewCellClick={(fKey, sId) => handleTriggerFieldSync(fKey, sId)}
+                  onPreviewCellClick={handlePreviewCellClick}
                   onPrint={handlePrintFap}
                 />
               </div>

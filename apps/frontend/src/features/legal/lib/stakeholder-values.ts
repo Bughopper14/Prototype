@@ -1,3 +1,5 @@
+import {formatStakeholderPosition, normalizeStakeholderPositionKey} from '@liugong/shared';
+
 export function normalizeStakeholderIdType(
   rawType: string | undefined,
   s?: any,
@@ -68,6 +70,8 @@ export function stakeholderEditorValues(s: any) {
   const idNumberSecondary = s.idNumberSecondary || s.taxId || s.npwp || s.permitNumber || s.niora || '';
   return {
     ...s,
+    // Board position from the Positions list, whatever wording it was stored with
+    positions: normalizeStakeholderPositionKey(s.positions || s.position || ''),
     representativeType: s.representativeType || 'NONE',
     signatory: s.signatory || '',
     idType: resolvedIdType,
@@ -113,7 +117,8 @@ export function stakeholderForSave(s: any) {
   return {
     ...s,
     name,
-    position: s.designation && s.designation !== 'NONE' ? s.designation : s.position || 'Shareholder',
+    positions: s.positions && s.positions !== 'NONE' ? s.positions : null,
+    position: formatStakeholderPosition(s.positions || s.position) || '',
     nationalityType: s.citizenship === 'FOREIGN' ? 'WNA' : 'WNI',
     idType,
     idNumber: s.idNumber || s.nik || s.passportNumber || '',

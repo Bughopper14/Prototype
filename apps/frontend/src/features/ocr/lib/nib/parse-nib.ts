@@ -1,5 +1,6 @@
 /** NIB (OSS) OCR text → company fields. */
 import {type MasterCatalog} from '@liugong/shared';
+import {normalizeWilayahInput} from '@/shared/master-data';
 import {extractWilayahFromAddressAndText} from './address-wilayah';
 
 export interface ParsedNibData {
@@ -120,17 +121,40 @@ export function parseNibText(text: string, catalog?: MasterCatalog): ParsedNibDa
     }
   }
 
-  // 3. Alamat Perusahaan / Domisili
-  const addrMatch = text.match(
-    /(?:Alamat\s*(?:Kantor|Perusahaan|Usaha|Domisili)?|Domisili\s*Usaha)\s*[:\.]?\s*([^\n\r]+(?:\n(?!(?:Email|Surel|No\.?\s*Tel|Telepon|Phone|Status|Kode|Tanggal|Diterbitkan))[^\n\r]+)?)/i,
+  // 3. Alamat Perusahaan / Domisili (prioritaskan setelah kata korespondensi jika ada)
+  let extractedAlamat = '';
+  const koresMatch = text.match(
+    /(?:Alamat\s*(?:Kantor|Perusahaan|Usaha|Domisili)?[/\s]*Korespondensi|Alamat\s*Korespondensi|\bKorespondensi\b)\s*[:\.]?\s*([^\n\r]+(?:\n(?!(?:NPWP|Nomor\s*Pokok|Email|Surel|No\.?\s*Tel|Telepon|Phone|Status|Kode|Tanggal|Diterbitkan))[^\n\r]+)?)/i,
   );
-  if (addrMatch) {
-    result.alamat = addrMatch[1]
+  if (koresMatch) {
+    extractedAlamat = koresMatch[1];
+  } else {
+    const addrMatch = text.match(
+      /(?:Alamat\s*(?:Kantor|Perusahaan|Usaha|Domisili)?|Domisili\s*Usaha)\s*[:\.]?\s*([^\n\r]+(?:\n(?!(?:NPWP|Nomor\s*Pokok|Email|Surel|No\.?\s*Tel|Telepon|Phone|Status|Kode|Tanggal|Diterbitkan))[^\n\r]+)?)/i,
+    );
+    if (addrMatch) {
+      extractedAlamat = addrMatch[1];
+    }
+  }
+
+  if (extractedAlamat) {
+    let cleanAddr = extractedAlamat
       .split('\n')
       .map(s => s.trim())
       .filter(Boolean)
-      .join(', ')
-      .replace(/^[:\-\s]+/, '');
+      .join(', ');
+    if (/korespondensi/i.test(cleanAddr)) {
+      cleanAddr = cleanAddr.split(/korespondensi/i).pop() || cleanAddr;
+    }
+    cleanAddr = cleanAddr
+      .replace(/^[/:,\-\s.\u2013\u2014=]+/, '')
+      .replace(
+        /\s*(?:NPWP|Nomor\s*Pokok\s*Wajib\s*Pajak|(?:No\.?\s*)?Telepon|(?:No\.?\s*)?Telp|Email|Status\s*Penanaman|Kode\s*KBLI)\s*[:.\-–—=]?.*/i,
+        '',
+      )
+      .replace(/[,.\s\-]+$/, '')
+      .trim();
+    result.alamat = cleanAddr;
   }
 
   // 4. Email
@@ -183,6 +207,11 @@ export function parseNibText(text: string, catalog?: MasterCatalog): ParsedNibDa
   result.postalCode = wilayah.postalCode;
   result.rt = wilayah.rt;
   result.rw = wilayah.rw;
+
+  if (result.province) result.province = normalizeWilayahInput(result.province);
+  if (result.city) result.city = normalizeWilayahInput(result.city);
+  if (result.district) result.district = normalizeWilayahInput(result.district);
+  if (result.village) result.village = normalizeWilayahInput(result.village);
 
   return result;
 }

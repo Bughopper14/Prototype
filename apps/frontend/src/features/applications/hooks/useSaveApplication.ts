@@ -1,8 +1,14 @@
 /** Save the application draft (customer, legal, business, financing) with mandatory-field checks. */
 import {recordSystemActivity} from '@/features/activity/lib/activity-store';
 import {computeApplicationDiff} from '@/features/activity/lib/application-diff';
+import {
+  bankReferencesWithComments,
+  mergedProposal,
+  proposalProfileValues,
+} from '@/features/applications/lib/financing-proposal';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {api} from '@/shared/lib/api';
+import {hasAuthority} from '@/shared/lib/auth';
 import {money} from '@/shared/lib/format';
 
 export function useSaveApplication({
@@ -129,11 +135,19 @@ export function useSaveApplication({
         ...(draft.legal || {}),
         deeds: deedsWithStakeholders,
       };
+      // FAP sections 05-09 live on the Customer & PIC tab; each part is only sent when the user may edit it,
+      // so a user with Customer & PIC rights alone can still save that tab.
+      const canBanks = hasAuthority(user, 'crm_edit_app_business_banks');
+      const canFinance =
+        hasAuthority(user, 'crm_edit_app_financial') || hasAuthority(user, 'crm_edit_app_financing_units');
+      const proposal = mergedProposal(draft);
+      const bankReferences = bankReferencesWithComments(draft);
       const body =
         tab === 0
           ? {
               profile: {
                 ...safeProfileData,
+                ...proposalProfileValues(draft),
                 companyName: resolvedName,
                 customerStatus: customerCategory,
               },
@@ -141,16 +155,18 @@ export function useSaveApplication({
               customerCategory: customerCategory,
               ...(hasPicData ? {pic: draft.pic} : {}),
               projects: cleanProjects,
+              ...(canBanks ? {bankReferences} : {}),
+              ...(canFinance ? {proposal, financialStatements: draft.financialStatements || []} : {}),
             }
           : tab === 2
             ? {
                 projects: cleanProjects,
-                bankReferences: draft.bankReferences,
-                proposal: draft.proposal,
+                bankReferences,
+                proposal,
               }
             : tab === 3
               ? {
-                  proposal: draft.proposal,
+                  proposal,
                 }
               : tab === 4
                 ? {
@@ -182,7 +198,7 @@ export function useSaveApplication({
       notify('Changes saved successfully');
       try {
         const tabNamesList: Record<number, string> = {
-          0: 'Customer & PIC',
+          0: 'FAP Form',
           1: 'Stakeholders',
           2: 'Business & banks',
           3: 'Financing & units',

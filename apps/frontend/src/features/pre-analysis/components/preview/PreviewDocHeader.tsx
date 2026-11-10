@@ -1,8 +1,8 @@
-/** Preview: document title and number. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Title block of the document. */
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function PreviewDocHeader() {
-  const {data} = usePreAnalysis();
+  const {data} = usePreAnalysisContext();
   return (
     <div style={{marginBottom: '16px'}}>
       <h1
@@ -21,9 +21,14 @@ export function PreviewDocHeader() {
       </div>
       <div
         id="preana-preview-cell-preAnalysisNo"
-        style={{fontSize: '10pt', color: '#000000', marginTop: '4px'}}
+        style={{
+          fontSize: '10pt',
+          color: data.preAnalysisNo?.includes('Auto') ? '#64748b' : '#000000',
+          fontStyle: data.preAnalysisNo?.includes('Auto') ? 'italic' : 'normal',
+          marginTop: '4px',
+        }}
       >
-        No. : {data.preAnalysisNo}
+        No. : {data.preAnalysisNo || 'Auto (Generated on save)'}
       </div>
     </div>
   );

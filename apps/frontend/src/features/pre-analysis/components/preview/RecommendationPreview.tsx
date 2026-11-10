@@ -1,16 +1,18 @@
-/** Preview: recommendation callout. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Recommendation callout of the document. */
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function RecommendationPreview() {
-  const {data, isRecommended, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, hasSelectedRecommendation, isNotRecommended, data} = usePreAnalysisContext();
   return (
     <div
       id="preana-preview-cell-recommendation"
       onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
       style={{
-        background: isRecommended ? '#dcfce7' : '#fee2e2',
-        border: `2px solid ${isRecommended ? '#22c55e' : '#ef4444'}`,
-        color: isRecommended ? '#166534' : '#991b1b',
+        background: !hasSelectedRecommendation ? '#ffffff' : isNotRecommended ? '#fee2e2' : '#dcfce7',
+        border: `2px solid ${
+          !hasSelectedRecommendation ? '#cbd5e1' : isNotRecommended ? '#ef4444' : '#16a34a'
+        }`,
+        color: !hasSelectedRecommendation ? '#000000' : isNotRecommended ? '#991b1b' : '#166534',
         padding: '8px 12px',
         borderRadius: '4px',
         fontWeight: 800,
@@ -21,7 +23,7 @@ export function RecommendationPreview() {
         cursor: 'pointer',
       }}
     >
-      RECOMMENDATION: {data.recommendation || (isRecommended ? 'RECOMMENDED' : 'NOT RECOMMENDED')}
+      RECOMMENDATION: {hasSelectedRecommendation ? data.recommendation.toUpperCase() : '—'}
     </div>
   );
 }

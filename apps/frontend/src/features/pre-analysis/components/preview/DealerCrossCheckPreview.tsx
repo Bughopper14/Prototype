@@ -1,28 +1,17 @@
-/** Preview section 6: Cross-check with Dealer / LMI. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Section 6 of the document: cross-check with the dealer / LMI (SLIK per entity). */
 import {renderRichHtml} from '@/features/pre-analysis/components/RichHtml';
 import {stripHtmlTags} from '@/features/pre-analysis/lib/text';
+import {PreviewSectionTitle} from '@/features/pre-analysis/components/preview/PreviewSectionTitle';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function DealerCrossCheckPreview() {
-  const {data, handlePreviewCellClick, groupSubsidiaries, getEntityReview, getGrandTotal} = usePreAnalysis();
+  const {handlePreviewCellClick, data, slikEntities, getEntityReview, getGrandTotal} =
+    usePreAnalysisContext();
   return (
     <>
-      <div
-        id="preana-preview-sec-6"
-        onClick={() => handlePreviewCellClick('topDealerToCustomer', 'sec6')}
-        style={{
-          background: '#1b365d',
-          color: '#ffffff',
-          padding: '6px 10px',
-          fontWeight: 700,
-          fontSize: '10.5pt',
-          marginTop: '16px',
-          marginBottom: '8px',
-          cursor: 'pointer',
-        }}
-      >
+      <PreviewSectionTitle n={6} field="topDealerToCustomer">
         6. CROSS-CHECK WITH DEALER / LMI (quick)
-      </div>
+      </PreviewSectionTitle>
       <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px'}}>
         <tbody>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -32,7 +21,7 @@ export function DealerCrossCheckPreview() {
               onClick={() => handlePreviewCellClick('dealerCheck', 'sec6')}
               style={{width: '74%', padding: '4px 6px', cursor: 'pointer', fontWeight: 600}}
             >
-              {data.dealerCheck}
+              {renderRichHtml(data.dealerCheck)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -42,7 +31,7 @@ export function DealerCrossCheckPreview() {
               onClick={() => handlePreviewCellClick('topDealerToCustomer', 'sec6')}
               style={{width: '74%', padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.topDealerToCustomer}
+              {renderRichHtml(data.topDealerToCustomer)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -52,7 +41,7 @@ export function DealerCrossCheckPreview() {
               onClick={() => handlePreviewCellClick('topLmiToDealer', 'sec6')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.topLmiToDealer}
+              {renderRichHtml(data.topLmiToDealer)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -62,22 +51,30 @@ export function DealerCrossCheckPreview() {
               onClick={() => handlePreviewCellClick('lmiArCheck', 'sec6')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.lmiArCheck}
+              {renderRichHtml(data.lmiArCheck)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
             <td style={{padding: '4px 6px', fontWeight: 700, verticalAlign: 'top'}}>SLIK/Bureau Highlight</td>
             <td style={{padding: '4px 6px'}}>
-              {groupSubsidiaries.map((sub, idx) => {
-                const fullEntityName = sub.subtitle
-                  ? `${sub.name} ${sub.subtitle}`
-                  : sub.name || `Entity #${idx + 1}`;
+              {slikEntities.map((entity, idx) => {
+                const fullEntityName = entity.name || `Entity #${idx + 1}`;
                 const review = getEntityReview(idx, fullEntityName);
                 const totalPlafonFormatted = getGrandTotal(review.lenderExposures);
 
                 if (review.hasRecord) {
                   return (
-                    <div key={idx} style={{marginTop: idx > 0 ? '14px' : '0'}}>
+                    <div
+                      key={idx}
+                      id={`preana-preview-cell-slik-${idx}`}
+                      onClick={() => handlePreviewCellClick(`slik-${idx}`, 'sec6')}
+                      style={{
+                        marginTop: idx > 0 ? '14px' : '0',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                      }}
+                    >
                       <div style={{fontWeight: 700, color: '#1b365d', marginBottom: '4px'}}>
                         {idx + 1}. {fullEntityName.toUpperCase()} :
                       </div>
@@ -205,7 +202,17 @@ export function DealerCrossCheckPreview() {
                   );
                 } else {
                   return (
-                    <div key={idx} style={{marginTop: idx > 0 ? '14px' : '0'}}>
+                    <div
+                      key={idx}
+                      id={`preana-preview-cell-slik-${idx}`}
+                      onClick={() => handlePreviewCellClick(`slik-${idx}`, 'sec6')}
+                      style={{
+                        marginTop: idx > 0 ? '14px' : '0',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        borderRadius: '4px',
+                      }}
+                    >
                       <div style={{fontWeight: 700, color: '#1b365d', marginBottom: '4px'}}>
                         {idx + 1}. {fullEntityName.toUpperCase()} - No Records
                       </div>

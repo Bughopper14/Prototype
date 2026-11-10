@@ -1,51 +1,27 @@
-/** Preview section 2: Project Information. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Section 2 of the document: project information. */
+import {
+  renderProjectGroupListPreview,
+  renderInvestmentPlanPreview,
+} from '@/features/pre-analysis/components/preview/ProjectListPreview';
 import {renderRichHtml} from '@/features/pre-analysis/components/RichHtml';
+import {PreviewSectionTitle} from '@/features/pre-analysis/components/preview/PreviewSectionTitle';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function ProjectInfoPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, data} = usePreAnalysisContext();
   return (
     <>
-      <div
-        id="preana-preview-sec-2"
-        onClick={() => handlePreviewCellClick('projectNameLocation', 'sec2')}
-        style={{
-          background: '#1b365d',
-          color: '#ffffff',
-          padding: '6px 10px',
-          fontWeight: 700,
-          fontSize: '10.5pt',
-          marginTop: '16px',
-          marginBottom: '8px',
-          cursor: 'pointer',
-        }}
-      >
+      <PreviewSectionTitle n={2} field="projectNameLocation">
         2. PROJECT INFORMATION
-      </div>
+      </PreviewSectionTitle>
       <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '16px'}}>
         <tbody>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
-            <td style={{width: '26%', padding: '4px 6px', fontWeight: 700}}>Holding Group / Main Company</td>
-            <td
-              id="preana-preview-cell-holdingGroup"
-              onClick={() => handlePreviewCellClick('holdingGroup', 'sec2')}
-              style={{
-                width: '74%',
-                padding: '4px 6px',
-                fontWeight: 700,
-                color: '#1e3a8a',
-                cursor: 'pointer',
-              }}
-            >
-              {data.holdingGroup || '-'}
-            </td>
-          </tr>
-          <tr style={{borderBottom: '1px solid #e2e8f0'}}>
-            <td style={{padding: '4px 6px', fontWeight: 700}}>Project Name</td>
+            <td style={{width: '26%', padding: '4px 6px', fontWeight: 700}}>Project Name</td>
             <td
               id="preana-preview-cell-projectName"
               onClick={() => handlePreviewCellClick('projectName', 'sec2')}
-              style={{padding: '4px 6px', fontWeight: 600, cursor: 'pointer'}}
+              style={{width: '74%', padding: '4px 6px', fontWeight: 600, cursor: 'pointer'}}
             >
               {data.projectName || '-'}
             </td>
@@ -61,33 +37,33 @@ export function ProjectInfoPreview() {
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
-            <td style={{padding: '4px 6px', fontWeight: 700}}>Existing Projects</td>
+            <td style={{padding: '4px 6px', fontWeight: 700}}>Current Project</td>
             <td
-              id="preana-preview-cell-existingProjects"
-              onClick={() => handlePreviewCellClick('existingProjects', 'sec2')}
-              style={{
-                padding: '4px 6px',
-                whiteSpace: 'pre-line',
-                cursor: 'pointer',
-                background: '#f8fafc',
-              }}
+              id="preana-preview-cell-currentProjects"
+              onClick={() => handlePreviewCellClick('currentProjects', 'sec2')}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {renderRichHtml(data.existingProjects)}
+              {renderProjectGroupListPreview(data.currentProjects, 'PT Handalan Putramas Santosa (HPS)')}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
-            <td style={{padding: '4px 6px', fontWeight: 700}}>New Projects</td>
+            <td style={{padding: '4px 6px', fontWeight: 700}}>History Project</td>
             <td
-              id="preana-preview-cell-newProjects"
-              onClick={() => handlePreviewCellClick('newProjects', 'sec2')}
-              style={{
-                padding: '4px 6px',
-                whiteSpace: 'pre-line',
-                cursor: 'pointer',
-                background: '#fffbeb',
-              }}
+              id="preana-preview-cell-historyProjects"
+              onClick={() => handlePreviewCellClick('historyProjects', 'sec2')}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {renderRichHtml(data.newProjects)}
+              {renderProjectGroupListPreview(data.historyProjects, 'PT Pangan Sejahtera Santosa (PASS)')}
+            </td>
+          </tr>
+          <tr style={{borderBottom: '1px solid #e2e8f0'}}>
+            <td style={{padding: '4px 6px', fontWeight: 700}}>Investment Project Plan</td>
+            <td
+              id="preana-preview-cell-investmentProjectPlans"
+              onClick={() => handlePreviewCellClick('investmentProjectPlans', 'sec2')}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
+            >
+              {renderProjectGroupListPreview(data.investmentProjectPlans, 'PT Harta Putramas Santosa (HTPS)')}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -97,7 +73,7 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('customerRole', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.customerRole}
+              {renderRichHtml(data.customerRole)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -107,7 +83,7 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('otherContractors', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.otherContractors}
+              {renderRichHtml(data.otherContractors)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -115,9 +91,9 @@ export function ProjectInfoPreview() {
             <td
               id="preana-preview-cell-projectOwner"
               onClick={() => handlePreviewCellClick('projectOwner', 'sec2')}
-              style={{padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer'}}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.projectOwner}
+              {renderRichHtml(data.projectOwner)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -125,7 +101,7 @@ export function ProjectInfoPreview() {
             <td
               id="preana-preview-cell-bowheerInfo"
               onClick={() => handlePreviewCellClick('bowheerInfo', 'sec2')}
-              style={{padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer'}}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
             >
               {renderRichHtml(data.bowheerInfo)}
             </td>
@@ -137,7 +113,8 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('projectStatus', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.projectStatus}
+              <span style={{fontWeight: 600}}>{data.projectStatus || 'Ongoing'}</span>
+              {data.projectStatusRemarks ? ` - ${data.projectStatusRemarks}` : ''}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -145,9 +122,9 @@ export function ProjectInfoPreview() {
             <td
               id="preana-preview-cell-investmentPlan"
               onClick={() => handlePreviewCellClick('investmentPlan', 'sec2')}
-              style={{padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer'}}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {renderRichHtml(data.investmentPlan)}
+              {renderInvestmentPlanPreview(data)}
             </td>
           </tr>
           <tr>
@@ -155,9 +132,9 @@ export function ProjectInfoPreview() {
             <td
               id="preana-preview-cell-financingSchemeRequested"
               onClick={() => handlePreviewCellClick('financingSchemeRequested', 'sec2')}
-              style={{padding: '4px 6px', whiteSpace: 'pre-line', cursor: 'pointer'}}
+              style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {data.financingSchemeRequested}
+              {renderRichHtml(data.financingSchemeRequested)}
             </td>
           </tr>
         </tbody>

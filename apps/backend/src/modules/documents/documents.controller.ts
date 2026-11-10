@@ -106,7 +106,7 @@ export class DocumentsController {
     return {...result, fileName, fapComparison};
   }
 
-  @Delete(['applications/:id/documents/files/:fileId', 'applications/:id/documents/:fileId'])
+  @Delete('applications/:id/documents/files/:fileId')
   async deleteFile(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_delete_app_documents');
     const {id, fileId} = req.params;

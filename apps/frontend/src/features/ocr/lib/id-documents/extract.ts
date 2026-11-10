@@ -98,8 +98,12 @@ export async function extractKtpTextFromImage(
     middleName: d.middleName,
     lastName: d.lastName,
     tempatLahir: d.tempat_lahir || d.tempatLahir,
-    tanggalLahir: d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth,
-    dateOfBirth: d.tanggal_lahir || d.dateOfBirth,
+    tanggalLahir:
+      normalizeBirthDate(d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth) ||
+      d.tanggal_lahir ||
+      d.tanggalLahir ||
+      d.dateOfBirth,
+    dateOfBirth: normalizeBirthDate(d.tanggal_lahir || d.dateOfBirth) || d.tanggal_lahir || d.dateOfBirth,
     tempatTglLahir: d.tempatTglLahir || (d.tempat_lahir ? `${d.tempat_lahir}, ${d.tanggal_lahir || ''}` : ''),
     gender:
       d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('PEREMPUAN')
@@ -153,8 +157,9 @@ export async function extractPassportTextFromImage(
     dateOfBirth: normalizeBirthDate(d.tanggal_lahir || d.dateOfBirth) || undefined,
     placeOfBirth: d.tempat_lahir || d.placeOfBirth,
     gender: resolvedGen,
-    issueDate: d.tanggal_pengeluaran || d.issueDate,
-    expiryDate: d.tanggal_berlaku || d.expiryDate,
+    issueDate:
+      normalizeBirthDate(d.tanggal_pengeluaran || d.issueDate) || d.tanggal_pengeluaran || d.issueDate,
+    expiryDate: normalizeBirthDate(d.tanggal_berlaku || d.expiryDate) || d.tanggal_berlaku || d.expiryDate,
     issuingAuthority: d.kantor_penerbit || d.issuingAuthority,
     personalId: d.personal_id || d.personalId,
     mrzLine1: d.mrz_line1 || d.mrzLine1,
@@ -197,8 +202,10 @@ export async function extractKitasTextFromImage(
     nama: d.nama,
     kewarganegaraan: d.kewarganegaraan,
     tanggalLahir: normalizeBirthDate(d.tanggal_lahir || d.tanggalLahir) || undefined,
+    dateOfBirth: normalizeBirthDate(d.tanggal_lahir || d.tanggalLahir) || undefined,
     gender: resolvedGen,
-    berlakuHingga: d.berlaku_hingga || d.berlakuHingga,
+    berlakuHingga:
+      normalizeBirthDate(d.berlaku_hingga || d.berlakuHingga) || d.berlaku_hingga || d.berlakuHingga,
     instansiPenerbit: d.instansi_penerbit || d.instansiPenerbit || 'Direktorat Jenderal Imigrasi',
     rawText: res.rawText || '',
   };

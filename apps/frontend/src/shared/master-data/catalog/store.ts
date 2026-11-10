@@ -1,6 +1,11 @@
 /** Master-data catalog shared by every form: in-memory store, React hook and save. */
 import {api} from '@/shared/lib/api';
-import {defaultMasterCatalog, validateMasterCatalog, type MasterCatalog} from '@liugong/shared';
+import {
+  defaultMasterCatalog,
+  validateMasterCatalog,
+  validateMasterGroupItems,
+  type MasterCatalog,
+} from '@liugong/shared';
 import {useEffect, useState} from 'react';
 
 export const equipmentChildren = new Set(['brand', 'unitType', 'modelName', 'assetName']);
@@ -30,7 +35,14 @@ export function useMasterData() {
   return data;
 }
 
-export async function saveCatalog(next: MasterCatalog) {
+/** Saves the catalog; with `groupKey` only that list is sent and stored (much faster than the whole catalog). */
+export async function saveCatalog(next: MasterCatalog, groupKey?: string) {
+  if (groupKey && next[groupKey]) {
+    validateMasterGroupItems(groupKey, next[groupKey]);
+    const result = await api('/master-data', 'PUT', {group: groupKey, items: next[groupKey], revision});
+    setMasterData(result);
+    return result;
+  }
   validateMasterCatalog(next);
   const result = await api('/master-data', 'PUT', {catalog: next, revision});
   setMasterData(result);

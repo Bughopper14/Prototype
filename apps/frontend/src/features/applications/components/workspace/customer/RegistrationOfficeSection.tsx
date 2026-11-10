@@ -61,9 +61,7 @@ export function RegistrationOfficeSection() {
               Office & Branch Status
             </h5>
             <Fields
-              fields={profileFields.filter(f =>
-                ['branchCode', 'customerStatus', 'locationStatus'].includes(f.key),
-              )}
+              fields={profileFields.filter(f => ['branchCode', 'locationStatus'].includes(f.key))}
               value={draft}
               disabled={!canEditCustomerPic}
               section="company"

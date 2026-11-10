@@ -1,27 +1,15 @@
-/** Preview section 7: Expert Judgement Conclusion. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Section 7 of the document: assessment table and brief note. */
 import {renderRichHtml} from '@/features/pre-analysis/components/RichHtml';
+import {PreviewSectionTitle} from '@/features/pre-analysis/components/preview/PreviewSectionTitle';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function ExpertJudgementPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, data} = usePreAnalysisContext();
   return (
     <>
-      <div
-        id="preana-preview-sec-7"
-        onClick={() => handlePreviewCellClick('recommendation', 'sec7')}
-        style={{
-          background: '#1b365d',
-          color: '#ffffff',
-          padding: '6px 10px',
-          fontWeight: 700,
-          fontSize: '10.5pt',
-          marginTop: '16px',
-          marginBottom: '8px',
-          cursor: 'pointer',
-        }}
-      >
-        7. EXPERT JUDGEMENT CONCLUSION
-      </div>
+      <PreviewSectionTitle n={7} field="recommendation">
+        7. PRELIMENARY ASSESSMENT
+      </PreviewSectionTitle>
       <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '12px'}}>
         <thead>
           <tr style={{background: '#f1f5f9'}}>
@@ -93,10 +81,10 @@ export function ExpertJudgementPreview() {
       <div
         id="preana-preview-cell-briefNote"
         onClick={() => handlePreviewCellClick('briefNote', 'sec7')}
-        style={{marginBottom: '10px', fontSize: '9pt', cursor: 'pointer'}}
+        style={{marginBottom: '14px', fontSize: '8.5pt', cursor: 'pointer'}}
       >
         <span style={{fontWeight: 700}}>Brief Note:</span>
-        <div style={{whiteSpace: 'pre-line', marginTop: '2px', color: '#1e293b'}}>
+        <div className="preana-brief-note-content" style={{marginTop: '4px', color: '#1e293b'}}>
           {renderRichHtml(data.briefNote)}
         </div>
       </div>

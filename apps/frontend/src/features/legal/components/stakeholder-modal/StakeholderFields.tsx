@@ -5,9 +5,50 @@ import {useStakeholderModalContext} from '@/features/legal/components/stakeholde
 import {FOREIGN_REGION_KEYS, isForeignAddress} from '@/features/legal/lib/stakeholder-values';
 
 export function StakeholderFields() {
-  const {editorLocked, onChangeValue, fields, activeIdGroup, formValue, handleSelectOption} =
-    useStakeholderModalContext();
+  const {
+    editorLocked,
+    onChangeValue,
+    fields,
+    activeIdGroup,
+    formValue,
+    handleSelectOption,
+    roundedTotal,
+    roundedOther,
+    isShareExceeded,
+    maxAvailableShare,
+    shareCustomErrors,
+  } = useStakeholderModalContext();
   const foreign = isForeignAddress(formValue);
+  const shareChip = (
+    <span
+      className="subtle-chip"
+      title={`Pemegang saham lain: ${roundedOther.toFixed(2)}% | Total akta: ${roundedTotal.toFixed(2)}%`}
+      style={{
+        fontSize: '11px',
+        fontWeight: isShareExceeded ? 700 : 600,
+        padding: '2px 8px',
+        borderRadius: '12px',
+        background: isShareExceeded ? '#fef2f2' : roundedTotal === 100 ? '#f0fdf4' : '#f8fafc',
+        color: isShareExceeded ? '#b91c1c' : roundedTotal === 100 ? '#15803d' : '#0369a1',
+        border: `1px solid ${isShareExceeded ? '#fecaca' : roundedTotal === 100 ? '#bbf7d0' : '#bae6fd'}`,
+      }}
+    >
+      {isShareExceeded
+        ? `${roundedTotal.toFixed(2)}% · Exceeds 100%`
+        : roundedTotal === 100
+          ? '✓ Total 100.00%'
+          : `Total: ${roundedTotal.toFixed(2)}% / 100%`}
+    </span>
+  );
+  const shareFooter =
+    !isShareExceeded && roundedOther > 0 ? (
+      <small
+        style={{color: '#64748b', fontSize: '10.5px', marginTop: '3px', display: 'block', lineHeight: 1.3}}
+      >
+        Pemegang saham lain pada akta ini: <strong>{roundedOther.toFixed(2)}%</strong> · Kuota tersedia:{' '}
+        <strong>{maxAvailableShare.toFixed(2)}%</strong>
+      </small>
+    ) : null;
   return (
     <Fields
       fields={fields.map(f => {
@@ -51,9 +92,13 @@ export function StakeholderFields() {
         return f;
       })}
       value={formValue}
+      section="Shareholders & Management"
       disabled={editorLocked}
       onChange={onChangeValue}
       onSelectOption={handleSelectOption}
+      customErrors={shareCustomErrors}
+      customFieldHeaders={{sharePercentage: shareChip}}
+      customFieldFooters={shareFooter ? {sharePercentage: shareFooter} : undefined}
     />
   );
 }

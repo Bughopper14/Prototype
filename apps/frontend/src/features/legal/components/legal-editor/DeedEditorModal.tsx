@@ -24,6 +24,9 @@ export function DeedEditorModal() {
     saveDeed,
     isDuplicateDeedNumber,
     complete,
+    establishmentDeedCat,
+    isTypeMandatory,
+    isRemarksMandatory,
   } = useLegalEditorContext();
   return (
     <>
@@ -32,10 +35,7 @@ export function DeedEditorModal() {
           const availableChips =
             editing.type === 'amendment'
               ? amendmentRemarkCategories
-              : [
-                  {id: 'establishment-deed', name: 'Establishment deed', remarks: ''},
-                  ...amendmentRemarkCategories,
-                ];
+              : [establishmentDeedCat, ...amendmentRemarkCategories];
           const currentSelectedCategoryIds = getDeedCategoryIds(editing);
           const toggleCategory = (catId: string) => {
             if (editorLocked) return;
@@ -71,7 +71,7 @@ export function DeedEditorModal() {
                   );
                   return (
                     <label className="legal-deed-select">
-                      Deed type
+                      Deed type{isTypeMandatory && <span className="field-required">*</span>}
                       <select
                         aria-label="Deed type"
                         disabled={editorLocked}
@@ -110,6 +110,7 @@ export function DeedEditorModal() {
                 })()}
                 <Fields
                   fields={legalDeedFields}
+                  section="Legal Deeds & Amendments"
                   value={editing}
                   disabled={editorLocked}
                   customErrors={
@@ -142,14 +143,7 @@ export function DeedEditorModal() {
                 />
                 <>
                   <div className="legal-remarks-category-group">
-                    <span className="field-label">
-                      Remarks Categories{' '}
-                      {editing.type === 'amendment' && (
-                        <span className="field-required" aria-label="Required">
-                          *
-                        </span>
-                      )}
-                    </span>
+                    <span className="field-label">Remarks Categories</span>
                     <div className="legal-remarks-chips" role="group" aria-label="Remarks Categories">
                       {availableChips.map(cat => {
                         const isSelected = currentSelectedCategoryIds.includes(cat.id);
@@ -169,11 +163,6 @@ export function DeedEditorModal() {
                         );
                       })}
                     </div>
-                    {editing.type === 'amendment' && currentSelectedCategoryIds.length === 0 && (
-                      <small className="input-validation-error" role="alert">
-                        Please select at least one remarks category.
-                      </small>
-                    )}
                   </div>
                   <div className="legal-unified-remarks-box">
                     <div
@@ -189,12 +178,8 @@ export function DeedEditorModal() {
                           className="field-label"
                           style={{fontSize: '13px', fontWeight: 700, color: '#002060'}}
                         >
-                          Notes / Deed Remarks{' '}
-                          {editing.type === 'amendment' && (
-                            <span className="field-required" aria-label="Required">
-                              *
-                            </span>
-                          )}
+                          Notes / Deed Remarks
+                          {isRemarksMandatory && <span className="field-required">*</span>}
                         </span>
                         <p
                           className="legal-remarks-hint"
