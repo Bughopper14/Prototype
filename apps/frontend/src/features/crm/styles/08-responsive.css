@@ -1,0 +1,118 @@
+/* Global responsive rules and compact-height screens. */
+/* ==========================================================================
+   Global Responsive Modal & Pop-Up Architecture (Fit to Screen)
+   Accommodates various PC & Laptop screen resolutions (1366x768, 1440x900, 1920x1080)
+   with comfortable breathing room and anchored headers/footers.
+   ========================================================================== */
+.modal-scrim {
+  position: fixed !important;
+  inset: 0 !important;
+  background: rgba(15, 23, 42, 0.72) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  z-index: 100 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 24px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+}
+
+.modal {
+  width: min(740px, 88vw) !important;
+  max-width: 88vw !important;
+  max-height: 86vh !important;
+  background: #ffffff !important;
+  border-radius: 14px !important;
+  box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.45) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  margin: auto !important;
+  position: relative !important;
+}
+
+.modal.nib-ocr-modal,
+.nib-ocr-modal {
+  width: min(1840px, 98vw) !important;
+  max-width: 98vw !important;
+  height: 94vh !important;
+  max-height: 94vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 14px !important;
+  padding: 0 !important;
+  margin: auto !important;
+  overflow: hidden !important;
+}
+
+.nib-ocr-modal-overlay {
+  padding: 12px !important;
+  box-sizing: border-box !important;
+}
+
+.modal-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 20px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+  flex-shrink: 0 !important;
+}
+
+.modal-head h2 {
+  font-size: 16.5px !important;
+  margin: 0 !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+}
+
+.modal-body {
+  overflow-y: auto !important;
+  padding: 16px 20px !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  max-height: calc(86vh - 125px) !important;
+}
+
+.modal-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 10px !important;
+  padding: 12px 20px !important;
+  border-top: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  flex-shrink: 0 !important;
+}
+
+/* Laptop and compact screen accommodations (height <= 850px) */
+@media (max-height: 850px) {
+  .modal-scrim {
+    padding: 16px !important;
+  }
+  .modal {
+    max-height: 88vh !important;
+  }
+  .modal-head {
+    padding: 10px 16px !important;
+  }
+  .modal-head h2 {
+    font-size: 15px !important;
+  }
+  .modal-body {
+    padding: 12px 16px !important;
+    max-height: calc(88vh - 105px) !important;
+  }
+  .modal-actions {
+    padding: 10px 16px !important;
+  }
+  .modal-side-by-side-body,
+  .modal-stakeholder-ktp .modal-side-by-side-body {
+    padding: 12px 16px !important;
+    gap: 14px !important;
+    max-height: calc(88vh - 105px) !important;
+  }
+}

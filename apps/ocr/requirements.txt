@@ -1,0 +1,10 @@
+# Python OCR service (invoked by the Next.js API through ocr_cli.py)
+rapidocr-onnxruntime
+opencv-python
+numpy
+Pillow
+pymupdf
+pydantic>=2
+pytesseract
+pdf2image
+pymysql

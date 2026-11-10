@@ -1,0 +1,9 @@
+node_modules
+dist
+.turbo
+pnpm-lock.yaml
+storage
+apps/ocr
+apps/backend/db
+apps/frontend/public
+apps/frontend/src/features/fap/lib/fap-html-template.ts

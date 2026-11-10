@@ -1,0 +1,597 @@
+/* Excel-style FAP sheet: ribbon, paper, header, form grid, shareholders, print. */
+/* ==========================================================================
+   Exact Excel FAP Form Viewer (100% Faithful to APPROVED v01.2025.xlsx)
+   ========================================================================== */
+.excel-fap-viewer {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  height: 100%;
+  min-height: 580px;
+  font-family: 'Outfit', sans-serif !important;
+}
+
+/* Ribbon */
+.excel-fap-ribbon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px;
+  background: #002c5f; /* Microsoft Excel Green */
+  color: #ffffff;
+  border-bottom: 1px solid #001f42;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.excel-ribbon-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.excel-brand-icon {
+  color: #ffffff;
+}
+
+.excel-file-badge {
+  display: flex;
+  flex-direction: column;
+}
+
+.excel-file-name {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.excel-tab-badge {
+  font-size: 9.5px;
+  color: #93c5fd;
+}
+
+.excel-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+}
+
+.excel-live-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #93c5fd;
+  box-shadow: 0 0 6px #93c5fd;
+}
+
+.excel-ribbon-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.excel-zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(0, 0, 0, 0.15);
+  padding: 2px 5px;
+  border-radius: 4px;
+}
+
+.excel-zoom-controls button {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  padding: 2px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.excel-zoom-controls.compact {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 6px !important;
+  padding: 2px !important;
+  height: 28px !important;
+  min-height: 28px !important;
+  max-height: 28px !important;
+  box-sizing: border-box !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.excel-zoom-controls.compact button,
+.excel-zoom-controls.compact .excel-zoom-btn {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  font-family: inherit !important;
+  transition: all 0.15s ease !important;
+}
+
+.excel-zoom-controls.compact button.btn-zoom-icon,
+.excel-zoom-controls.compact .excel-zoom-btn.btn-zoom-icon {
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+}
+
+.excel-zoom-controls.compact button:hover,
+.excel-zoom-controls.compact .excel-zoom-btn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #002c5f !important;
+}
+
+.excel-zoom-controls.compact button svg,
+.excel-zoom-controls.compact .excel-zoom-btn svg {
+  stroke: #0f172a !important;
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.excel-zoom-controls.compact button:hover svg,
+.excel-zoom-controls.compact .excel-zoom-btn:hover svg {
+  stroke: #002c5f !important;
+}
+
+.excel-zoom-controls.compact button.btn-fit,
+.excel-zoom-controls.compact button.excel-zoom-fit-btn,
+.excel-zoom-controls.compact .excel-zoom-btn.btn-fit,
+.excel-zoom-controls.compact .excel-zoom-btn.excel-zoom-fit-btn {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  padding: 0 8px !important;
+  margin: 0 !important;
+  background: #002c5f !important;
+  color: #ffffff !important;
+  border: 1px solid #002c5f !important;
+  font-weight: 700 !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+}
+
+.excel-zoom-controls.compact button.btn-fit:hover,
+.excel-zoom-controls.compact button.excel-zoom-fit-btn:hover,
+.excel-zoom-controls.compact .excel-zoom-btn.btn-fit:hover,
+.excel-zoom-controls.compact .excel-zoom-btn.excel-zoom-fit-btn:hover {
+  background: #001f42 !important;
+  border-color: #001f42 !important;
+  color: #ffffff !important;
+}
+
+.excel-zoom-controls.compact .excel-zoom-val {
+  height: 22px !important;
+  min-height: 22px !important;
+  max-height: 22px !important;
+  min-width: 40px !important;
+  padding: 0 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 4px !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+}
+
+.excel-zoom-btn-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  min-width: 52px;
+  text-align: center;
+}
+
+.excel-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background: #ffffff;
+  color: #002c5f;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease;
+}
+
+.excel-print-btn:hover {
+  background: #eff6ff;
+}
+
+/* Viewport & Paper */
+.excel-fap-viewport {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  background: #e2e8f0;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+.excel-fap-paper {
+  background: #ffffff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  border: 1px solid #94a3b8;
+  padding: 12px 16px;
+  box-sizing: border-box;
+  max-width: 980px;
+}
+
+/* Exact Header */
+.excel-exact-header {
+  margin-bottom: 4px;
+}
+
+.exact-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.exact-header-logo img {
+  height: 38px;
+  width: auto;
+  display: block;
+}
+
+.exact-header-title {
+  font-size: 19px;
+  font-weight: 900;
+  color: #002060;
+  letter-spacing: 0.8px;
+  text-align: center;
+  font-family: 'Outfit', sans-serif !important;
+}
+
+.exact-header-reg {
+  border: 1px solid #000000;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffff;
+}
+
+.exact-header-reg .reg-lbl {
+  color: #000000;
+}
+
+.exact-header-reg .reg-val {
+  color: #002060;
+  font-family: monospace;
+}
+
+.exact-navy-bar {
+  background: #002060;
+  height: 5px;
+  width: 100%;
+  margin: 4px 0 8px 0;
+}
+
+.exact-matrix-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1.35fr 1.05fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.exact-matrix-box {
+  border: 1px solid #000000;
+  background: #ffffff;
+}
+
+.exact-matrix-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2.5px 6px;
+  border-bottom: 1px solid #000000;
+  font-size: 10px;
+  min-height: 22px;
+}
+
+.exact-matrix-row:last-child {
+  border-bottom: none;
+}
+
+.exact-matrix-lbl {
+  font-weight: 600;
+  color: #000000;
+}
+
+.exact-matrix-val {
+  font-weight: 700;
+  color: #002060;
+}
+
+.exact-matrix-chk {
+  font-size: 13px;
+  font-weight: bold;
+  color: #002060;
+}
+
+.exact-orange-bar {
+  background: #2563eb;
+  height: 2.5px;
+  width: 100%;
+  margin: 4px 0 12px 0;
+}
+
+/* Form Body Two-Column Grid */
+.exact-fap-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.exact-fap-col {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.exact-fap-row {
+  display: flex;
+  align-items: flex-start;
+  font-size: 9.5px;
+  gap: 4px;
+}
+
+.exact-fap-lbl {
+  width: 155px;
+  flex-shrink: 0;
+  color: #000000;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.exact-fap-colon {
+  width: 8px;
+  flex-shrink: 0;
+  font-weight: 600;
+  text-align: center;
+}
+
+.exact-fap-box {
+  flex: 1;
+  border: 1px solid #000000;
+  background: #ffffff;
+  min-height: 21px;
+  padding: 2px 6px;
+  display: flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #002060;
+}
+
+.exact-fap-box.multiline {
+  min-height: 48px;
+  align-items: flex-start;
+  line-height: 1.3;
+}
+
+.exact-sub-row {
+  display: flex;
+  align-items: center;
+  font-size: 9.5px;
+  margin-left: 24px;
+  gap: 4px;
+}
+
+.exact-sub-lbl {
+  width: 131px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+.exact-dual-row {
+  display: flex;
+  gap: 6px;
+  flex: 1;
+}
+
+.exact-inline-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+}
+
+.exact-inline-lbl {
+  font-size: 9px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Shareholder Section */
+.exact-sh-section {
+  margin-top: 4px;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 6px;
+}
+
+.exact-sh-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #000000;
+  line-height: 1.2;
+}
+
+.exact-sh-subtitle {
+  font-size: 9px;
+  font-style: italic;
+  color: #475569;
+  margin: 2px 0 5px 0;
+}
+
+.exact-sh-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+}
+
+.exact-sh-table th,
+.exact-sh-table td {
+  border: 1px solid #000000;
+  padding: 2px 4px;
+}
+
+.exact-sh-table th {
+  background: #f1f5f9;
+  font-weight: 700;
+  text-align: center;
+  color: #000000;
+}
+
+.exact-sh-table td {
+  background: #ffffff;
+}
+
+.exact-sh-table td.center {
+  text-align: center;
+}
+
+.exact-sh-table td.right {
+  text-align: right;
+  font-family: monospace;
+}
+
+.highlight-dynamic {
+  color: #002060 !important;
+}
+
+/* ==========================================================================
+   Print & PDF Export Media Queries (100% Faithful A4 Sheet Print)
+   ========================================================================== */
+@page {
+  size: A4 portrait;
+  margin: 6mm 6mm 6mm 6mm;
+}
+
+@media print {
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    font-size: 8.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Sembunyikan elemen UI website dan form input */
+  aside,
+  .sidebar,
+  .sidebar-backdrop,
+  header.topbar,
+  .topbar,
+  footer,
+  .breadcrumb,
+  .notification-bell,
+  .fap-tab-layout-toggle,
+  .fap-detail-form-col,
+  .excel-fap-ribbon,
+  .excel-section-chips,
+  .form-bottom-actions,
+  .workflow-buttons,
+  .toast,
+  .loading-strip,
+  .error,
+  .modal-backdrop,
+  .modal {
+    display: none !important;
+  }
+
+  /* Reset layout wrapper */
+  #root,
+  .shell,
+  main,
+  .content,
+  .detail-layout,
+  .fap-detail-split-container,
+  .fap-detail-preview-col,
+  .excel-fap-viewer,
+  .excel-fap-viewport,
+  .excel-fap-paper-scaler {
+    display: block !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    transform: none !important;
+  }
+
+  #fap-excel-printable-doc {
+    display: block !important;
+    visibility: visible !important;
+    position: static !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    transform: none !important;
+  }
+
+  #fap-excel-printable-doc * {
+    visibility: visible !important;
+  }
+}
