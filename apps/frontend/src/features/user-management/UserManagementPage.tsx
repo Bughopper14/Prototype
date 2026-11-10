@@ -1,5 +1,6 @@
 import {PortalShell} from '@/features/portal/components/PortalShell';
 import {UserManagement} from '@/features/user-management/components/UserManagement';
+import '@/features/user-management/user_management.css';
 import {api} from '@/shared/lib/api';
 import {usePageTitle, useSession} from '@/shared/lib/session';
 import {useEffect, useState} from 'react';

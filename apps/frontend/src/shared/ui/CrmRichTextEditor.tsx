@@ -265,6 +265,33 @@ export function CrmRichTextEditor({
             };
             input.click();
           },
+          paste_data_images: true,
+          images_upload_handler: (blobInfo: any) =>
+            new Promise((resolve, reject) => {
+              try {
+                const base64 = 'data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64();
+                resolve(base64);
+              } catch (e: any) {
+                reject(e?.message || 'Failed to upload image');
+              }
+            }),
+          setup: (editor: any) => {
+            let userReady = false;
+            editor.on('init', () => {
+              setTimeout(() => {
+                userReady = true;
+              }, 300);
+            });
+            editor.on('focus', () => {
+              if (userReady) triggerEditorFocus();
+            });
+            editor.on('click', () => {
+              triggerEditorFocus();
+            });
+            editor.on('mousedown', () => {
+              triggerEditorFocus();
+            });
+          },
           content_style: `
             body { 
               font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 

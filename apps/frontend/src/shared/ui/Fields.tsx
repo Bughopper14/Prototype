@@ -1,5 +1,6 @@
 /** Renders a form grid from a Field[] schema: inputs, master selects, dates, OCR buttons, mandatory stars. */
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
+import {normalizeBirthDate} from '@/shared/lib/dates';
 import {
   isFieldMandatory,
   MasterSelect,
@@ -56,7 +57,10 @@ export function Fields({
         const isPlaceholderDash = String(rawVal ?? '').trim() === '-';
         const isPlaceholderZip = f.key === 'postalCode' && String(rawVal ?? '').trim() === '00000';
         const cleanVal = isPlaceholderDash || isPlaceholderZip ? '' : (rawVal ?? '');
-        const fieldValue = f.type === 'date' ? String(cleanVal || '').slice(0, 10) : cleanVal;
+        const fieldValue =
+          f.type === 'date'
+            ? normalizeBirthDate(cleanVal) || String(cleanVal || '').slice(0, 10)
+            : cleanVal;
         const isDigitsOnly = ['phone', 'mobilePhone', 'phoneFax', 'rt', 'rw'].includes(f.key);
         const isLettersOnly = ['repaymentSource'].includes(f.key);
         const isTitleCaseField = [

@@ -13,6 +13,12 @@ import {
   CELL_ID_TO_SECTION_MAP,
 } from '@/features/fap/lib/section-cells';
 
+const isNoneVal = (val: any) => {
+  if (val === undefined || val === null) return true;
+  const s = String(val).trim().toUpperCase();
+  return !s || s === 'NONE' || s === 'N/A' || s === '-' || s === '—';
+};
+
 export function FapSheetPreview(props: FapSheetPreviewProps) {
   const master = useMasterData();
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -50,7 +56,6 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
 
     const pick = (vA: any, vB: any, vC?: any, fallback = '') => {
       if (isOcrSide) {
-        // On OCR side, strictly use vA (the OCR extracted value). Do not fall back to system data (vB, vC).
         if (vA !== undefined && vA !== null) return vA;
         return fallback;
       }
@@ -169,6 +174,22 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       picPostalCode: pick(raw.picPostalCode, p.postalCode, ''),
       stakeholders: isOcrSide ? raw.stakeholders || [] : sh,
       projects: isOcrSide ? (raw as any).projects || [] : proj,
+
+      // Sections 05 - 09 data derivation
+      financingPurposeDetail: pick(raw.financingPurposeDetail, app.financingPurposeDetail, ''),
+      facilityPurpose: pick(raw.facilityPurpose, (raw.proposal || app.proposal)?.facilityPurpose || app.facilityPurpose, 'INVESTMENT'),
+      assetSummaryHeLiuGong: raw.assetSummaryHeLiuGong !== undefined ? raw.assetSummaryHeLiuGong : app.assetSummaryHeLiuGong,
+      assetSummaryTruckLiuGong: raw.assetSummaryTruckLiuGong !== undefined ? raw.assetSummaryTruckLiuGong : app.assetSummaryTruckLiuGong,
+      assetSummaryHeNonLiuGong: raw.assetSummaryHeNonLiuGong !== undefined ? raw.assetSummaryHeNonLiuGong : app.assetSummaryHeNonLiuGong,
+      assetSummaryTruckNonLiuGong: raw.assetSummaryTruckNonLiuGong !== undefined ? raw.assetSummaryTruckNonLiuGong : app.assetSummaryTruckNonLiuGong,
+      industrySegment: pick(raw.industrySegment, app.industrySegment, ''),
+      businessRole: pick(raw.businessRole, app.businessRole, ''),
+      bankReferences: isOcrSide ? raw.bankReferences || [] : (raw.bankReferences || app.bankReferences || []),
+      referenceComments: pick(raw.referenceComments, app.referenceComments, ''),
+      financingProposal: raw.financingProposal || raw.proposal || app.financingProposal || app.proposal || {},
+      financialAudited: raw.financialAudited !== undefined ? raw.financialAudited : app.financialAudited,
+      financialStatements: isOcrSide ? raw.financialStatements || [] : (raw.financialStatements || app.financialStatements || []),
+      documentRequirements: raw.documentRequirements || raw.financingProposal?.documentRequirements || app.financingProposal?.documentRequirements || (raw.proposal || app.proposal)?.documentRequirements || {},
     };
   }, [
     props.data,
@@ -219,6 +240,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       return String(dateStr).trim();
     };
 
+    // SECTION 01: Application / Header
     setText('fap-cell-fapNumber', d.fapNumber);
     setText('fap-cell-applicationDate', formatFapDate(d.applicationDate));
     setText('fap-cell-branchCode', d.branchCode);
@@ -250,20 +272,13 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     setText('fap-cell-micro', isMicro ? '✓' : '');
     setText('fap-cell-liugongUser', isLiuGongUser ? '✓' : '');
 
+    // SECTION 02 & 03: Company Details, Domicile, Business & Legality
     setText('fap-cell-companyName', d.companyName);
-    setText('fap-cell-picName', d.picName);
-    setText('fap-cell-phone', d.phone);
     setText('fap-cell-companyAddress', d.companyAddress);
-    setText('fap-cell-position', d.position);
-    setText('fap-cell-picEmail', d.picEmail);
     setText('fap-cell-city', d.city);
-    setText('fap-cell-currentAddress', d.currentAddress);
     setText('fap-cell-province', d.province);
     setText('fap-cell-postalCode', d.postalCode);
-    setText('fap-cell-picCity', d.picCity);
     setText('fap-cell-mainBusiness', d.mainBusiness);
-    setText('fap-cell-picProvince', d.picProvince);
-    setText('fap-cell-picPostalCode', d.picPostalCode);
     setText('fap-cell-establishmentActNo', d.establishmentActNo);
     setText('fap-cell-establishmentDate', d.establishmentDate);
     setText('fap-cell-experienceYears', d.experienceYears);
@@ -276,7 +291,161 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     setText('fap-cell-website', d.website);
     setText('fap-cell-email', d.email);
     setText('fap-cell-repaymentSource', d.repaymentSource);
-    setText('fap-cell-locationStatus', d.locationStatus);
+
+    const locStatus = String(d.locationStatus || '').toUpperCase().trim();
+    const displayLocationStatus =
+      locStatus === 'OWNED'
+        ? 'Owned'
+        : locStatus === 'RENTED'
+          ? 'Rented'
+          : locStatus === 'OTHERS' || locStatus === 'OTHER'
+            ? 'Others'
+            : isNoneVal(locStatus)
+              ? ''
+              : d.locationStatus || '';
+    setText('fap-cell-locationStatus', displayLocationStatus);
+
+    // SECTION 04: PIC
+    setText('fap-cell-picName', d.picName);
+    setText('fap-cell-position', d.position);
+    setText('fap-cell-phone', d.phone);
+    setText('fap-cell-picEmail', d.picEmail);
+    setText('fap-cell-currentAddress', d.currentAddress);
+    setText('fap-cell-picCity', d.picCity);
+    setText('fap-cell-picProvince', d.picProvince);
+    setText('fap-cell-picPostalCode', d.picPostalCode);
+
+    // SECTION 05: Tujuan Pembiayaan / Financing Purpose & List Fixed Assets
+    const rawPurpose = d.financingPurposeDetail;
+    const purposeList = Array.isArray(rawPurpose)
+      ? rawPurpose.map((s: any) => String(s).toUpperCase())
+      : String(rawPurpose || '')
+          .split(',')
+          .map((s: string) => s.trim().toUpperCase());
+    const facilityPurp = String(d.facilityPurpose || '').toUpperCase();
+    const isBiz = purposeList.some(
+      (p: string) => p.includes('BUSINESS') || p.includes('USAHA') || p.includes('AKTIVITAS'),
+    );
+    const isRehab = purposeList.some((p: string) => p.includes('REHAB'));
+    const isExp = purposeList.some(
+      (p: string) => p.includes('EXPANSION') || p.includes('MODERNISASI') || p.includes('EKSPANSI'),
+    );
+    const isReloc = purposeList.some((p: string) => p.includes('RELOCATION') || p.includes('RELOKASI'));
+    const isWorkCap =
+      purposeList.some(
+        (p: string) =>
+          p.includes('WORKING') ||
+          p.includes('MODAL_KERJA') ||
+          p.includes('MODAL KERJA') ||
+          p.includes('SIKLUS'),
+      ) || facilityPurp === 'WORKING_CAPITAL';
+
+    setText('fap-cell-purpose-business', isBiz ? '✓' : '');
+    setText('fap-cell-purpose-rehab', isRehab ? '✓' : '');
+    setText('fap-cell-purpose-expansion', isExp ? '✓' : '');
+    setText('fap-cell-purpose-relocation', isReloc ? '✓' : '');
+    setText('fap-cell-purpose-working-cap', isWorkCap ? '✓' : '');
+
+    // List Fixed Assets Summary Table
+    const lgHe = Number((d as any).assetSummaryHeLiuGong) || 0;
+    const lgTruck = Number((d as any).assetSummaryTruckLiuGong) || 0;
+    const nlgHe = Number((d as any).assetSummaryHeNonLiuGong) || 0;
+    const nlgTruck = Number((d as any).assetSummaryTruckNonLiuGong) || 0;
+
+    const lgUnit = lgHe + lgTruck;
+    const nlgUnit = nlgHe + nlgTruck;
+    const totHe = lgHe + nlgHe;
+    const totTruck = lgTruck + nlgTruck;
+    const totUnit = lgUnit + nlgUnit;
+
+    const lgPct = totUnit > 0 ? ((lgUnit / totUnit) * 100).toFixed(1) + '%' : '0.0%';
+    const nlgPct = totUnit > 0 ? ((nlgUnit / totUnit) * 100).toFixed(1) + '%' : '0.0%';
+    const totPct = totUnit > 0 ? '100.0%' : '0.0%';
+
+    const hasAnyAssets = Boolean(
+      (d as any).assetSummaryHeLiuGong !== undefined ||
+        (d as any).assetSummaryTruckLiuGong !== undefined ||
+        (d as any).assetSummaryHeNonLiuGong !== undefined ||
+        (d as any).assetSummaryTruckNonLiuGong !== undefined ||
+        totUnit > 0,
+    );
+
+    if (hasAnyAssets && !(props.diffSide === 'ocr' && totUnit === 0)) {
+      setText('fap-cell-asset-lg-he', lgHe > 0 || (d as any).assetSummaryHeLiuGong !== undefined ? String(lgHe) : '');
+      setText('fap-cell-asset-lg-truck', lgTruck > 0 || (d as any).assetSummaryTruckLiuGong !== undefined ? String(lgTruck) : '');
+      setText('fap-cell-asset-lg-unit', totUnit > 0 ? String(lgUnit) : '');
+      setText('fap-cell-asset-lg-pct', totUnit > 0 ? lgPct : '');
+      setText('fap-cell-asset-nlg-he', nlgHe > 0 || (d as any).assetSummaryHeNonLiuGong !== undefined ? String(nlgHe) : '');
+      setText('fap-cell-asset-nlg-truck', nlgTruck > 0 || (d as any).assetSummaryTruckNonLiuGong !== undefined ? String(nlgTruck) : '');
+      setText('fap-cell-asset-nlg-unit', totUnit > 0 ? String(nlgUnit) : '');
+      setText('fap-cell-asset-nlg-pct', totUnit > 0 ? nlgPct : '');
+      setText('fap-cell-asset-tot-he', totUnit > 0 ? String(totHe) : '');
+      setText('fap-cell-asset-tot-truck', totUnit > 0 ? String(totTruck) : '');
+      setText('fap-cell-asset-tot-unit', totUnit > 0 ? String(totUnit) : '');
+      setText('fap-cell-asset-tot-pct', totUnit > 0 ? totPct : '');
+    } else {
+      setText('fap-cell-asset-lg-he', '');
+      setText('fap-cell-asset-lg-truck', '');
+      setText('fap-cell-asset-lg-unit', '');
+      setText('fap-cell-asset-lg-pct', '');
+      setText('fap-cell-asset-nlg-he', '');
+      setText('fap-cell-asset-nlg-truck', '');
+      setText('fap-cell-asset-nlg-unit', '');
+      setText('fap-cell-asset-nlg-pct', '');
+      setText('fap-cell-asset-tot-he', '');
+      setText('fap-cell-asset-tot-truck', '');
+      setText('fap-cell-asset-tot-unit', '');
+      setText('fap-cell-asset-tot-pct', '');
+    }
+
+    // SECTION 06: Industry Segmentation, Role & Projects
+    const segUpper = String(d.industrySegment || '').toUpperCase().trim();
+    setText(
+      'fap-cell-seg-mining',
+      !segUpper ? '' : segUpper === 'MINING' || segUpper.includes('TAMBANG') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-seg-agriculture',
+      !segUpper ? '' : segUpper === 'AGRICULTURE' || segUpper.includes('TANI') || segUpper.includes('AGRI') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-seg-forestry',
+      !segUpper ? '' : segUpper === 'FORESTRY' || segUpper.includes('HUTAN') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-seg-construction',
+      !segUpper ? '' : segUpper === 'CONSTRUCTION' || segUpper.includes('KONSTRUKSI') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-seg-oilgas',
+      !segUpper ? '' : segUpper === 'OIL_AND_GAS' || segUpper.includes('OIL') || segUpper.includes('GAS') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-seg-other',
+      !segUpper ? '' : segUpper === 'OTHER' || segUpper.includes('LAIN') ? '✓' : '',
+    );
+
+    const roleUpper = String(d.businessRole || '').toUpperCase().trim();
+    setText(
+      'fap-cell-role-consowner',
+      !roleUpper ? '' : roleUpper === 'CONS_OWNER' || roleUpper.includes('CONS') || roleUpper.includes('OWNER') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-role-contractors',
+      !roleUpper ? '' : roleUpper === 'CONTRACTORS' || roleUpper === 'CONTRACTOR' || roleUpper.includes('KONTRAKTOR') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-role-subcont',
+      !roleUpper ? '' : roleUpper === 'SUB_CONT' || roleUpper === 'SUB CONT' || roleUpper.startsWith('SUB') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-role-rental',
+      !roleUpper ? '' : roleUpper === 'RENTAL' || roleUpper.includes('SEWA') ? '✓' : '',
+    );
+    setText(
+      'fap-cell-role-other',
+      !roleUpper ? '' : roleUpper === 'OTHER' || roleUpper.includes('LAIN') ? '✓' : '',
+    );
 
     // Projects (Pemilik Proyek / Project Owner table)
     const projList = d.projects || [];
@@ -284,8 +453,18 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       const item = projList[i] || {};
       setText(`fap-cell-proj-${i}-owner`, item.projectOwner || '');
       setText(`fap-cell-proj-${i}-loc`, item.projectLocation || item.location || '');
-      setText(`fap-cell-proj-${i}-role`, item.projectRole || item.roleInProject || '');
-      setText(`fap-cell-proj-${i}-status`, item.contractStatus || '');
+      const rawRole = (item.projectRole || item.roleInProject || '').trim();
+      const displayRole = !isNoneVal(rawRole) ? rawRole : '';
+      setText(`fap-cell-proj-${i}-role`, displayRole);
+      const rawStatus = (item.contractStatus || item.status || '').trim();
+      const displayStatus = !isNoneVal(rawStatus)
+        ? rawStatus.toUpperCase() === 'EXISTING'
+          ? 'Existing'
+          : rawStatus.toUpperCase() === 'NEW'
+            ? 'New'
+            : rawStatus
+        : '';
+      setText(`fap-cell-proj-${i}-status`, displayStatus);
     }
 
     // Shareholders up to 8
@@ -293,12 +472,255 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     for (let i = 0; i < 8; i++) {
       const item = shList[i] || {};
       const shName = item.name || [item.firstName, item.middleName, item.lastName].filter(Boolean).join(' ');
+      const shareVal = item.depositedCapital || item.primaryCapital || item.shareAmount || item.shares || item.amount;
+      const pctVal =
+        item.sharePercentage !== undefined && item.sharePercentage !== null && item.sharePercentage !== ''
+          ? item.sharePercentage
+          : item.sharePercent || item.percent || item.percentage;
       setText(`fap-cell-sh-${i}-name`, shName || '');
-      const shPos = formatStakeholderPosition(item.positions || item.position);
-      setText(`fap-cell-sh-${i}-pos`, shPos || '');
-      setText(`fap-cell-sh-${i}-shares`, item.shares ? Number(item.shares).toLocaleString('id-ID') : '');
-      setText(`fap-cell-sh-${i}-pct`, item.sharePercentage ? `${item.sharePercentage}%` : '');
+      setText(`fap-cell-sh-${i}-pos`, formatStakeholderPosition(item.positions || item.position));
+      setText(
+        `fap-cell-sh-${i}-shares`,
+        shareVal !== undefined && shareVal !== null && shareVal !== ''
+          ? Number(shareVal).toLocaleString('id-ID')
+          : '',
+      );
+      setText(
+        `fap-cell-sh-${i}-pct`,
+        pctVal !== undefined && pctVal !== null && pctVal !== '' ? `${pctVal}%` : '',
+      );
     }
+
+    // SECTION 07: References (Bank Facilities / Fasilitas Bank table) up to 5 rows
+    const refList = d.bankReferences || [];
+    let totalMonthlyInstallment = 0;
+    for (let i = 0; i < 5; i++) {
+      const item = refList[i];
+      if (item) {
+        setText(`fap-cell-ref-${i}-no`, String(i + 1));
+        setText(`fap-cell-ref-${i}-bank`, item.bankOrFinInstitution || '');
+        setText(`fap-cell-ref-${i}-currency`, item.currency || 'IDR');
+        setText(
+          `fap-cell-ref-${i}-credit`,
+          item.creditFacility ? Number(item.creditFacility).toLocaleString('id-ID') : '',
+        );
+        const instVal = Number(item.monthlyInstallment) || 0;
+        totalMonthlyInstallment += instVal;
+        setText(`fap-cell-ref-${i}-installment`, instVal ? instVal.toLocaleString('id-ID') : '');
+        setText(`fap-cell-ref-${i}-year`, item.yearStarted ? String(item.yearStarted) : '');
+        setText(
+          `fap-cell-ref-${i}-rate`,
+          item.interestRate !== undefined && item.interestRate !== '' ? `${item.interestRate}%` : '',
+        );
+        setText(`fap-cell-ref-${i}-record`, item.paymentRecord || '');
+        const facStatus = (item.facilityStatus || item.status || '').trim();
+        setText(`fap-cell-ref-${i}-status`, isNoneVal(facStatus) ? '' : facStatus);
+      } else {
+        setText(`fap-cell-ref-${i}-no`, '');
+        setText(`fap-cell-ref-${i}-bank`, '');
+        setText(`fap-cell-ref-${i}-currency`, '');
+        setText(`fap-cell-ref-${i}-credit`, '');
+        setText(`fap-cell-ref-${i}-installment`, '');
+        setText(`fap-cell-ref-${i}-year`, '');
+        setText(`fap-cell-ref-${i}-rate`, '');
+        setText(`fap-cell-ref-${i}-record`, '');
+        setText(`fap-cell-ref-${i}-status`, '');
+      }
+    }
+    setText(
+      'fap-cell-ref-total-installment',
+      totalMonthlyInstallment > 0 ? totalMonthlyInstallment.toLocaleString('id-ID') : '',
+    );
+    setText('fap-cell-ref-comments', d.referenceComments || '');
+
+    // SECTION 08: Financing Proposal & Terms and Conditions
+    const prop = d.financingProposal || {};
+    const facProp = prop.facilityProposed || {};
+    const tcFl = prop.termsFinancialLease || {};
+    const tcSlb = prop.termsSaleAndLeaseBack || {};
+    const tcIf = prop.termsInstallmentFinancing || {};
+
+    setText('fap-cell-prop-method', facProp.financingMethod);
+    setText('fap-cell-prop-app-source', facProp.applicationSource);
+    setText('fap-cell-prop-val', facProp.financingValue);
+
+    // Currency selector with double strikethrough for unselected currency
+    const currCell = doc.getElementById('fap-cell-prop-curr-choice');
+    if (currCell) {
+      const choice = String(facProp.currencyChoice || '').toUpperCase().trim();
+      if (choice === 'USD') {
+        currCell.innerHTML = `: (<span style="text-decoration:line-through;text-decoration-style:double;">IDR</span> / USD)`;
+      } else if (choice === 'IDR') {
+        currCell.innerHTML = `: (IDR / <span style="text-decoration:line-through;text-decoration-style:double;">USD</span>)`;
+      } else {
+        currCell.innerHTML = `: (IDR / USD)`;
+      }
+    }
+
+    const setBoxText = (id: string, text: any, defaultLabel = '') => {
+      const el = doc.getElementById(id);
+      if (el) {
+        const valStr = text !== undefined && text !== null ? String(text).trim() : '';
+        if (valStr) {
+          el.textContent = valStr;
+          el.style.textAlign = 'center';
+          el.style.fontWeight = 'bold';
+          el.style.color = '#002060';
+          if (valStr.length > 5) {
+            el.style.fontSize = '14pt';
+          } else {
+            el.style.fontSize = '20pt';
+          }
+        } else {
+          el.textContent = defaultLabel;
+          el.style.textAlign = '';
+          el.style.fontWeight = '';
+          el.style.color = '';
+        }
+      }
+    };
+
+    setBoxText('fap-cell-tc-fl-purpose', tcFl.workingCapitalInvestment || tcFl.investment, 'Investment');
+    setBoxText('fap-cell-tc-fl-curr', tcFl.currency);
+    setBoxText('fap-cell-tc-fl-deposit', tcFl.securityDeposit);
+    setBoxText('fap-cell-tc-fl-rate', tcFl.interestRate);
+    setBoxText('fap-cell-tc-fl-tenor', tcFl.tenor);
+    setBoxText('fap-cell-tc-fl-payment', tcFl.paymentMethod);
+
+    setBoxText('fap-cell-tc-slb-purpose', tcSlb.workingCapitalInvestment);
+    setBoxText('fap-cell-tc-slb-curr', tcSlb.currency);
+    setBoxText('fap-cell-tc-slb-deposit', tcSlb.securityDeposit);
+    setBoxText('fap-cell-tc-slb-rate', tcSlb.interestRate);
+    setBoxText('fap-cell-tc-slb-tenor', tcSlb.tenor);
+    setBoxText('fap-cell-tc-slb-payment', tcSlb.paymentMethod);
+
+    setBoxText('fap-cell-tc-if-purpose', tcIf.workingCapitalInvestment);
+    setBoxText('fap-cell-tc-if-curr', tcIf.currency);
+    setBoxText('fap-cell-tc-if-dp', tcIf.downPayment);
+    setBoxText('fap-cell-tc-if-rate', tcIf.interestRate);
+    setBoxText('fap-cell-tc-if-tenor', tcIf.tenor);
+    setBoxText('fap-cell-tc-if-payment', tcIf.paymentMethod);
+
+    // Unit Realization Plan
+    const rPlan = prop.realizationPlan || {};
+    const rpLgHe = Number(rPlan.lgHe) || 0;
+    const rpLgTruck = Number(rPlan.lgTruck) || 0;
+    const rpLgUnit = rpLgHe + rpLgTruck;
+    const rpNlgHe = Number(rPlan.nlgHe) || 0;
+    const rpNlgTruck = Number(rPlan.nlgTruck) || 0;
+    const rpNlgUnit = rpNlgHe + rpNlgTruck;
+    const rpTotUnit = rpLgUnit + rpNlgUnit;
+
+    setText('fap-cell-prop-asset-lg-he', rpLgHe ? String(rpLgHe) : '');
+    setText('fap-cell-prop-asset-lg-truck', rpLgTruck ? String(rpLgTruck) : '');
+    setText('fap-cell-prop-asset-lg-unit', rpLgUnit ? String(rpLgUnit) : '');
+    setText('fap-cell-prop-asset-nlg-he', rpNlgHe ? String(rpNlgHe) : '');
+    setText('fap-cell-prop-asset-nlg-truck', rpNlgTruck ? String(rpNlgTruck) : '');
+    setText('fap-cell-prop-asset-nlg-unit', rpNlgUnit ? String(rpNlgUnit) : '');
+    setText('fap-cell-prop-asset-tot-unit', rpTotUnit ? String(rpTotUnit) : '');
+
+    // Notes
+    const notesCell = doc.getElementById('fap-cell-prop-notes');
+    if (notesCell) {
+      notesCell.innerHTML = prop.notes || '';
+    }
+
+    // Document Requirements Checklist
+    const docReq = prop.documentRequirements || (d as any).documentRequirements || {};
+    const setDocBox = (id: string, isChecked: boolean) => {
+      const el = doc.getElementById(id);
+      if (el) {
+        el.innerHTML = isChecked
+          ? '<div style="text-align:center;font-weight:bold;font-size:48pt;color:#002060;line-height:1;font-family:-apple-system,BlinkMacSystemFont,\\"Segoe UI\\",Roboto,Arial,sans-serif;">✓</div>'
+          : '';
+      }
+    };
+
+    setDocBox('fap-cell-doc-company-profile', !!docReq.companyProfile);
+    setDocBox('fap-cell-doc-legality', !!docReq.legality);
+    setDocBox('fap-cell-doc-deed', !!docReq.deedEstablishment);
+    setDocBox('fap-cell-doc-decree', !!docReq.decreeMinistryOfLaw);
+    setDocBox('fap-cell-doc-copy-id', !!docReq.copyIdBodShareholder);
+    setDocBox('fap-cell-doc-audited-financial', !!docReq.auditedFinancialStatements);
+    setDocBox('fap-cell-doc-bank-statements', !!docReq.bankStatements);
+    setDocBox('fap-cell-doc-bank-facility', !!docReq.bankFinancingFacility);
+    setDocBox('fap-cell-doc-production-report', !!docReq.productionReport);
+    setDocBox('fap-cell-doc-fixed-assets', !!docReq.listOfFixedAssets);
+    setDocBox('fap-cell-doc-project-contracts', !!docReq.projectContracts);
+
+    // SECTION 09: Financial Audited & Financial Statements
+    const isAudited = Boolean(
+      d.financialAudited ||
+      (d.financialStatements && d.financialStatements.some((fs: any) => fs.isAudited))
+    );
+    const auditedCell = doc.getElementById('fap-cell-fin-audited');
+    if (auditedCell) {
+      if (isAudited) {
+        auditedCell.textContent = '✓';
+        auditedCell.style.textAlign = 'center';
+        auditedCell.style.fontSize = '56pt';
+        auditedCell.style.fontWeight = '900';
+        auditedCell.style.lineHeight = '1';
+        auditedCell.style.color = '#002060';
+      } else {
+        auditedCell.textContent = '';
+      }
+    }
+
+    // Financial Statements (Balance Sheet & Income Statement) up to 3 fiscal years
+    const finList = d.financialStatements || [];
+    const fmtFinVal = (val: any) => {
+      if (val === undefined || val === null || val === '') return '';
+      const num = Number(val);
+      if (isNaN(num) || num === 0) return '';
+      return num.toLocaleString('id-ID');
+    };
+
+    for (let i = 0; i < 3; i++) {
+      const item = finList[i];
+      if (item) {
+        const yr = item.fiscalYear ? String(item.fiscalYear) : '';
+        setText(`fap-cell-fin-bs-yr-${i}`, yr || '20….');
+        setText(`fap-cell-fin-is-yr-${i}`, yr || '20….');
+        setText(`fap-cell-fin-cur-asset-${i}`, fmtFinVal(item.currentAssets));
+        setText(`fap-cell-fin-noncur-asset-${i}`, fmtFinVal(item.nonCurrentAssets));
+        setText(`fap-cell-fin-tot-asset-${i}`, fmtFinVal(item.totalAssets));
+        setText(`fap-cell-fin-cur-liab-${i}`, fmtFinVal(item.currentLiabilities));
+        setText(`fap-cell-fin-noncur-liab-${i}`, fmtFinVal(item.nonCurrentLiabilities));
+        setText(`fap-cell-fin-tot-liab-${i}`, fmtFinVal(item.totalLiabilities));
+        setText(`fap-cell-fin-equity-${i}`, fmtFinVal(item.equity));
+        setText(`fap-cell-fin-tot-liab-equity-${i}`, fmtFinVal(item.totalLiabAndEquity));
+        setText(`fap-cell-fin-revenue-${i}`, fmtFinVal(item.revenue));
+        setText(`fap-cell-fin-gross-profit-${i}`, fmtFinVal(item.grossMargin ?? item.grossProfit));
+        setText(`fap-cell-fin-op-profit-${i}`, fmtFinVal(item.operatingMargin ?? item.operatingProfit));
+        setText(`fap-cell-fin-tax-${i}`, fmtFinVal(item.tax));
+        setText(`fap-cell-fin-net-income-${i}`, fmtFinVal(item.netIncome));
+      } else {
+        setText(`fap-cell-fin-bs-yr-${i}`, '20….');
+        setText(`fap-cell-fin-is-yr-${i}`, '20….');
+        setText(`fap-cell-fin-cur-asset-${i}`, '');
+        setText(`fap-cell-fin-noncur-asset-${i}`, '');
+        setText(`fap-cell-fin-tot-asset-${i}`, '');
+        setText(`fap-cell-fin-cur-liab-${i}`, '');
+        setText(`fap-cell-fin-noncur-liab-${i}`, '');
+        setText(`fap-cell-fin-tot-liab-${i}`, '');
+        setText(`fap-cell-fin-equity-${i}`, '');
+        setText(`fap-cell-fin-tot-liab-equity-${i}`, '');
+        setText(`fap-cell-fin-revenue-${i}`, '');
+        setText(`fap-cell-fin-gross-profit-${i}`, '');
+        setText(`fap-cell-fin-op-profit-${i}`, '');
+        setText(`fap-cell-fin-tax-${i}`, '');
+        setText(`fap-cell-fin-net-income-${i}`, '');
+      }
+    }
+
+    // Debtor signature company name
+    const debtorComp = String(d.companyName || '').trim();
+    let debtorDisplay = 'PT.';
+    if (debtorComp) {
+      debtorDisplay = /^PT[\.\s]/i.test(debtorComp) ? debtorComp.toUpperCase() : `PT. ${debtorComp.toUpperCase()}`;
+    }
+    setText('fap-cell-sign-debtor-company', debtorDisplay);
 
     // Attach click listeners to all data cells
     const cells = doc.querySelectorAll('[id^="fap-cell-"]');
@@ -318,7 +740,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           const rowIndex = parseInt(projMatch[1], 10);
           const ftype = projMatch[2];
           matchedSection = 'fap-preview-sec-projects';
-          extraMeta = {rowIndex, sectionContext: 'projects', repeater: 'projects'};
+          extraMeta = {rowIndex, sectionContext: `projects-${rowIndex}`, repeater: 'projects'};
           if (ftype === 'owner') matchedField = 'projectOwner';
           else if (ftype === 'loc') matchedField = 'projectLocation';
           else if (ftype === 'role') matchedField = 'projectRole';
@@ -331,8 +753,8 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           const rowIndex = parseInt(refMatch[1], 10);
           const ftype = refMatch[2];
           matchedSection = 'fap-preview-sec-banks';
-          extraMeta = {rowIndex, sectionContext: 'banks', repeater: 'banks'};
-          if (ftype === 'bank') matchedField = 'bankOrFinInstitution';
+          extraMeta = {rowIndex, sectionContext: `banks-${rowIndex}`, repeater: 'banks'};
+          if (ftype === 'no' || ftype === 'bank') matchedField = 'bankOrFinInstitution';
           else if (ftype === 'currency') matchedField = 'currency';
           else if (ftype === 'credit') matchedField = 'creditFacility';
           else if (ftype === 'installment') matchedField = 'monthlyInstallment';
@@ -356,7 +778,7 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           const metric = finMatch[1];
           const colIdx = parseInt(finMatch[2], 10);
           matchedSection = 'fap-preview-sec-financial';
-          extraMeta = {rowIndex: colIdx, sectionContext: 'financial', repeater: 'financial'};
+          extraMeta = {rowIndex: colIdx, sectionContext: `financial-${colIdx}`, repeater: 'financial'};
           if (metric === 'bs-yr' || metric === 'is-yr') matchedField = 'fiscalYear';
           else if (metric === 'cur-asset') matchedField = 'currentAssets';
           else if (metric === 'noncur-asset') matchedField = 'nonCurrentAssets';
@@ -383,6 +805,22 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           else if (id === 'fap-cell-asset-nlg-truck') matchedField = 'assetSummaryTruckNonLiuGong';
         }
 
+        if (id.startsWith('fap-cell-purpose-')) {
+          matchedSection = 'fap-preview-sec-purpose-assets';
+          matchedField = 'financingPurposeDetail';
+          extraMeta = {sectionContext: 'purpose-assets'};
+        }
+
+        if (id.startsWith('fap-cell-seg-')) {
+          matchedSection = 'fap-preview-sec-business';
+          matchedField = 'industrySegment';
+        }
+
+        if (id.startsWith('fap-cell-role-')) {
+          matchedSection = 'fap-preview-sec-business';
+          matchedField = 'businessRole';
+        }
+
         // Proposal details
         const propCellMap: Record<string, string> = {
           'fap-cell-prop-method': 'financingMethod',
@@ -407,112 +845,51 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
           'fap-cell-tc-if-rate': 'ifRate',
           'fap-cell-tc-if-tenor': 'ifTenor',
           'fap-cell-tc-if-payment': 'ifPayment',
-          'fap-cell-prop-asset-lg-he': 'propAssetLgHe',
-          'fap-cell-prop-asset-lg-truck': 'propAssetLgTruck',
-          'fap-cell-prop-asset-lg-unit': 'propAssetLgUnit',
-          'fap-cell-prop-asset-nlg-he': 'propAssetNlgHe',
-          'fap-cell-prop-asset-nlg-truck': 'propAssetNlgTruck',
-          'fap-cell-prop-asset-nlg-unit': 'propAssetNlgUnit',
-          'fap-cell-prop-asset-tot-unit': 'propAssetTotUnit',
-          'fap-cell-prop-notes': 'proposalNotes',
-          'fap-cell-doc-company-profile': 'docReqCompanyProfile',
-          'fap-cell-doc-legality': 'docReqLegality',
-          'fap-cell-doc-deed': 'docReqDeed',
-          'fap-cell-doc-decree': 'docReqDecree',
-          'fap-cell-doc-copy-id': 'docReqCopyId',
-          'fap-cell-doc-audited-financial': 'docReqAuditedFin',
-          'fap-cell-doc-bank-statements': 'docReqBankStatements',
-          'fap-cell-doc-bank-facility': 'docReqBankFacility',
-          'fap-cell-doc-production-report': 'docReqProductionReport',
-          'fap-cell-doc-fixed-assets': 'docReqFixedAssets',
-          'fap-cell-doc-project-contracts': 'docReqProjectContracts',
+          'fap-cell-prop-notes': 'notes',
         };
 
         if (propCellMap[id]) {
           matchedSection = 'fap-preview-sec-proposal';
           matchedField = propCellMap[id];
-          extraMeta = {sectionContext: 'proposal'};
         }
 
-        if (id === 'fap-cell-ref-total-installment') {
-          matchedSection = 'fap-preview-sec-banks';
-          matchedField = 'totalMonthlyInstallment';
-          extraMeta = {sectionContext: 'banks'};
-        } else if (id === 'fap-cell-ref-comments') {
-          matchedSection = 'fap-preview-sec-banks';
-          matchedField = 'referenceComments';
-          extraMeta = {sectionContext: 'banks'};
+        if (id.startsWith('fap-cell-doc-')) {
+          matchedSection = 'fap-preview-sec-proposal';
+          matchedField = 'documentRequirements';
         }
 
-        if (!matchedField) {
-          if (id.startsWith('fap-cell-seg-')) matchedField = 'industrySegment';
-          else if (id.startsWith('fap-cell-role-')) matchedField = 'businessRole';
+        if (id.startsWith('fap-cell-prop-asset-')) {
+          matchedSection = 'fap-preview-sec-proposal';
+          matchedField = 'realizationPlan';
+        }
+
+        if (id === 'fap-cell-sign-debtor-company') {
+          matchedSection = 'fap-preview-sec-header';
+          matchedField = 'companyName';
         }
 
         if (props.onPreviewCellClick) {
-          props.onPreviewCellClick(matchedField, matchedSection, extraMeta);
-        } else if (matchedSection && props.onSectionClick) {
-          props.onSectionClick(matchedSection);
+          props.onPreviewCellClick(matchedField || id, matchedSection, extraMeta);
         }
       };
     });
-
-    // Highlight cells that have differences
-    doc.querySelectorAll('.fap-diff-warning-cell').forEach(c => {
-      c.classList.remove('fap-diff-warning-cell');
-      (c as HTMLElement).style.backgroundColor = '';
-      (c as HTMLElement).style.outline = '';
-    });
-
-    if (props.diffs && props.diffs.length > 0) {
-      props.diffs.forEach((item: any) => {
-        const cid =
-          resolveFieldToCellId(item.field, undefined, props.data) || FIELD_TO_CELL_ID_MAP[item.field];
-        if (cid) {
-          const el = doc.getElementById(cid);
-          if (el) {
-            el.classList.add('fap-diff-warning-cell');
-            (el as HTMLElement).style.backgroundColor = props.diffSide === 'ocr' ? '#fff7ed' : '#fef2f2';
-            (el as HTMLElement).style.outline =
-              props.diffSide === 'ocr' ? '2px solid #f97316' : '2px solid #ef4444';
-          }
-        }
-      });
-    }
-
-    // Sync customer data box height to reach just above Email
-    try {
-      const box = doc.getElementById('fap-customer-data-box');
-      const comp = doc.getElementById('fap-preview-sec-company');
-      const emailTd = doc.getElementById('fap-email-label');
-      if (box && comp && emailTd) {
-        const emailTr = emailTd.closest('tr');
-        if (emailTr) {
-          const h = emailTr.offsetTop - comp.offsetTop - 4;
-          if (h > 1000) {
-            box.style.height = `${h}px`;
-          }
-        }
-      }
-    } catch (_) {}
   };
 
+  // Re-sync on prop change
   useEffect(() => {
     syncIframeValues();
-    const timer = setTimeout(syncIframeValues, 150);
-    return () => clearTimeout(timer);
-  }, [d, zoomLevel, props.diffs]);
+  }, [d, zoomLevel, props.syncTick]);
 
-  // Handle field/section focus and scroll sync
+  // Handle active field/section scroll & highlighting inside iframe
   useEffect(() => {
     const iframe = iframeRef.current;
     if (!iframe || !iframe.contentDocument || !iframe.contentWindow) return;
     const doc = iframe.contentDocument;
     const win = iframe.contentWindow;
 
-    // Clear old highlights
-    doc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(h => {
-      h.classList.remove('fap-cell-highlight', 'fap-section-highlight');
+    // Clear previous highlights
+    doc.querySelectorAll('.fap-cell-highlight, .fap-section-highlight').forEach(el => {
+      el.classList.remove('fap-cell-highlight', 'fap-section-highlight');
     });
 
     if (!props.activeSection && !props.activeField) return;
@@ -578,8 +955,39 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
         if (cel) cel.classList.remove('fap-cell-highlight');
       });
     }, 3200);
+
     return () => clearTimeout(timer);
   }, [props.activeSection, props.activeField, props.syncTick]);
+
+  // Diffs highlighting for comparison mode
+  useEffect(() => {
+    if (!props.isComparison || !props.diffs || props.diffs.length === 0) return;
+    const iframe = iframeRef.current;
+    if (!iframe || !iframe.contentDocument) return;
+    const doc = iframe.contentDocument;
+
+    doc.querySelectorAll('.fap-diff-mismatch, .fap-diff-match').forEach(el => {
+      el.classList.remove('fap-diff-mismatch', 'fap-diff-match');
+    });
+
+    props.diffs.forEach(diff => {
+      const cellId = FIELD_TO_CELL_ID_MAP[diff.field];
+      if (cellId) {
+        const el = doc.getElementById(cellId);
+        if (el) {
+          if (diff.isMatch) {
+            el.classList.add('fap-diff-match');
+          } else {
+            el.classList.add('fap-diff-mismatch');
+          }
+        }
+      }
+    });
+  }, [props.isComparison, props.diffs, zoomLevel]);
+
+  // Responsive initial zoom calculation based on container width
+  const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.03, 0.45));
+  const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.03, 0.08));
 
   useEffect(() => {
     if (props.externalZoom !== undefined && props.externalZoom > 0) {
@@ -602,8 +1010,12 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
     return () => observer.disconnect();
   }, [props.externalZoom]);
 
-  const handleZoomOut = () => setZoomLevel(z => Math.max(0.05, Number((z - 0.05).toFixed(2))));
-  const handleZoomIn = () => setZoomLevel(z => Math.min(1.5, Number((z + 0.05).toFixed(2))));
+  useEffect(() => {
+    if (props.onZoomChange) {
+      props.onZoomChange(zoomLevel);
+    }
+  }, [zoomLevel, props.onZoomChange]);
+
   const handleResetZoom = () => {
     if (containerRef.current) {
       const w = containerRef.current.clientWidth;

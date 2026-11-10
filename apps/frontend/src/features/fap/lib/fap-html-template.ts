@@ -14,7 +14,7 @@ x\\:* {behavior:url(#default#VML);}
 .shape {behavior:url(#default#VML);}
 </style>
 <![endif]-->
-
+<link href="stylesheet.css" rel="Stylesheet"/>
 <style>
 <!--table
 	{mso-displayed-decimal-separator:"\\.";
@@ -1725,7 +1725,7 @@ td
         vertical-align: middle !important;
         color: #002060 !important;
         line-height: 1 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     }
     .fap-address-box {
         vertical-align: middle !important;
@@ -1830,7 +1830,7 @@ td
             height: 12px !important;
             line-height: 0 !important;
         }
-        .fap-cell-highlight, .fap-section-highlight {
+        .fap-cell-highlight, .fap-section-highlight, .fap-diff-warning-cell {
             outline: none !important;
             box-shadow: none !important;
             animation: none !important;
@@ -1919,7 +1919,6 @@ td
         text-align: center !important;
         vertical-align: middle !important;
     }
-    
     #fap-cell-prop-notes,
     #fap-cell-prop-notes *,
     #fap-cell-prop-notes p,
@@ -1934,7 +1933,7 @@ td
         margin: 0 0 6px 0 !important;
         line-height: 1.3 !important;
     }
-</style></head>
+    </style></head>
 <body class="xl70" link="#0563C1" vlink="#954F72">
 <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:
  collapse;table-layout:fixed;width:2580pt;border-left:1.0pt solid windowtext;" width="3443">
@@ -2857,7 +2856,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl108" style="width:123pt" width="164"></td>
 <td class="xl96"></td>
-<td class="xl106" colspan="2" style="border-right:.5pt solid black"><span style="mso-spacerun:yes">         </span>Kota/<font class="font18">City</font></td>
+<td class="xl106" colspan="2" style="border-right:.5pt solid black;padding-right:10px !important;"><span style="mso-spacerun:yes">         </span>Kota/<font class="font18">City</font></td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-city" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
@@ -2888,7 +2887,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <tr height="166" style="mso-height-source:userset;height:124.5pt">
 <td class="xl71" height="166" style="height:124.5pt"> </td>
 <td class="xl108" style="width:123pt" width="164"></td>
-<td class="xl106" colspan="3" style="border-right:.5pt solid black">Provinsi/<font class="font18">Province</font></td>
+<td class="xl106" colspan="3" style="border-right:.5pt solid black;padding-right:10px !important;">Provinsi/<font class="font18">Province</font></td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-province" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
@@ -2927,13 +2926,13 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl108" style="width:123pt" width="164"></td>
 <td class="xl96"></td>
-<td class="xl176" colspan="2" style="border-right:.5pt solid black">Postal code</td>
+<td class="xl176" colspan="2" style="border-right:.5pt solid black;padding-right:10px !important;">Postal code</td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-postalCode" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl100">Kota/City</td>
+<td class="xl100" style="line-height:1.15;vertical-align:middle">Kota/kabupaten<br/>City/Regency</td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -3037,7 +3036,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
   Pendirian/ <font class="font18">Deed Establishment number</font></td>
 <td class="xl96">:</td>
 <td class="xl118 fap-autofill-val" id="fap-cell-establishmentActNo" style="text-align:center;vertical-align:middle;"> </td>
-<td class="xl178" colspan="2" style="border-left:none;width:229pt" width="305">Tanggal
+<td class="xl178" colspan="2" style="border-left:none;width:229pt;padding-left:10px !important;padding-right:10px !important;" width="305">Tanggal
   Pendirian/<br/>
 <font class="font18">Est Date</font></td>
 <td class="xl98 fap-autofill-val" id="fap-cell-establishmentDate" style="text-align:center;vertical-align:middle;"> </td>
@@ -3062,7 +3061,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl97" colspan="6" style="mso-ignore:colspan">Berdasarkan Akta/ <font class="font20">Based on Act No…........</font><font class="font19">Tanggal/</font><font class="font20">Date ................</font><font class="font19">.....</font></td>
+<td class="xl97 fap-autofill-val" id="fap-cell-shareholderDeedRef" colspan="6" style="mso-ignore:colspan">Berdasarkan Akta/ <font class="font20">Based on Act No…........</font><font class="font19">Tanggal/</font><font class="font20">Date ................</font><font class="font19">.....</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -3078,9 +3077,9 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl100" colspan="2" style="mso-ignore:colspan">Pengalaman/<font class="font18">Experien</font><span style="display:none"><font class="font18">ce</font></span></td>
 <td class="xl96">:</td>
 <td class="xl118 fap-autofill-val" id="fap-cell-experienceYears" style="text-align:center;vertical-align:middle;"> </td>
-<td class="xl117">years</td>
+<td class="xl117" style="padding-left:10px !important;padding-right:10px !important;">years</td>
 <td class="xl118 fap-autofill-val" id="fap-cell-experienceMonths" style="text-align:center;vertical-align:middle;"> </td>
-<td class="xl117">months</td>
+<td class="xl117" style="padding-left:10px !important;">months</td>
 <td class="xl97"></td>
 <td class="xl179" rowspan="2" style="border-bottom:.5pt solid black">No</td>
 <td class="xl180" colspan="4" rowspan="2" style="border-right:.5pt solid black;
@@ -3120,7 +3119,7 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl96">:</td>
 <td class="xl174 fap-autofill-val" id="fap-cell-latestDeedNo" rowspan="2" style="border-bottom:.5pt solid black;
   width:118pt" width="158"> </td>
-<td class="xl101" colspan="2" rowspan="2" style="width:229pt" width="305">Tanggal
+<td class="xl101" colspan="2" rowspan="2" style="width:229pt;padding-left:10px !important;padding-right:10px !important;" width="305">Tanggal
   Perubahan Terakhir/<font class="font18">Date of The Latest Amendment</font></td>
 <td class="xl174 fap-autofill-val" id="fap-cell-latestDeedDate" rowspan="2" style="border-bottom:.5pt solid black;
   width:319pt" width="426"> </td>
@@ -3459,12 +3458,12 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl109"></td>
-<td class="xl118"> </td>
+<td class="xl118 fap-chk-val" id="fap-cell-purpose-business"> </td>
 <td class="xl192" colspan="3" style="border-right:.5pt solid black;
-  border-left:none;width:548pt" width="731">Aktivitas Usaha / Investasi <font class="font20">(Business
+  border-left:none;width:548pt;padding-left:10px !important;" width="731">Aktivitas Usaha / Investasi <font class="font20">(Business
   Activity/Investment</font></td>
-<td class="xl118" style="border-left:none"> </td>
-<td class="xl122" colspan="3" rowspan="2" style="width:376pt" width="501">memenuhi
+<td class="xl118 fap-chk-val" id="fap-cell-purpose-working-cap" style="border-left:none"> </td>
+<td class="xl122" colspan="3" rowspan="2" style="width:376pt;padding-left:10px !important;" width="501">memenuhi
   kebutuhan pengeluaran yang habis dalam 1 (satu) siklus usaha / fulfilling the
   expenditure needs that are used up in 1 (one) business cycle</td>
 <td class="xl97"></td>
@@ -3485,17 +3484,15 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl109"></td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="3" style="mso-ignore:colspan">Rehabilitasi <font class="font20">(rehabilitation)</font></td>
+<td class="xl118 fap-chk-val" id="fap-cell-purpose-rehab" style="border-top:none"> </td>
+<td class="xl97" colspan="3" style="mso-ignore:colspan;padding-left:10px !important;">Rehabilitasi <font class="font20">(rehabilitation)</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl127">Liugong</td>
-<td class="xl128" style="border-left:none"> </td>
-<td class="xl129" style="border-left:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
-  none"> </td>
+<td class="xl128 fap-autofill-val" id="fap-cell-asset-lg-he" style="border-left:none;text-align:center !important;"> </td>
+<td class="xl129 fap-autofill-val" id="fap-cell-asset-lg-truck" style="border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-asset-lg-unit" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-asset-lg-pct" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -3506,20 +3503,18 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl109"></td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="3" style="mso-ignore:colspan">Modernisasi/Ekspansi <font class="font20">(modernization/expansion)</font></td>
+<td class="xl118 fap-chk-val" id="fap-cell-purpose-expansion" style="border-top:none"> </td>
+<td class="xl97" colspan="3" style="mso-ignore:colspan;padding-left:10px !important;">Modernisasi/Ekspansi <font class="font20">(modernization/expansion)</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl118">Non Liugong</td>
-<td class="xl104"> </td>
-<td class="xl118" style="border-left:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
-  none"> </td>
+<td class="xl104 fap-autofill-val" id="fap-cell-asset-nlg-he" style="text-align:center !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-asset-nlg-truck" style="border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-asset-nlg-unit" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-asset-nlg-pct" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -3530,8 +3525,8 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl109"></td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="3" style="mso-ignore:colspan">Relokasi tempat
+<td class="xl118 fap-chk-val" id="fap-cell-purpose-relocation" style="border-top:none"> </td>
+<td class="xl97" colspan="3" style="mso-ignore:colspan;padding-left:10px !important;">Relokasi tempat
   usaha(relocation of business premises)</td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -3539,12 +3534,10 @@ eG1sUEsFBgAAAAAEAAQA9QAAAC4GAAAAAA==
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl118" style="border-top:none">Total</td>
-<td class="xl104" style="border-top:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
-  none"> </td>
+<td class="xl104 fap-autofill-val" id="fap-cell-asset-tot-he" style="border-top:none;text-align:center !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-asset-tot-truck" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-asset-tot-unit" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-asset-tot-pct" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -3760,17 +3753,17 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 </table>
 </span></td>
-<td class="xl100" colspan="3" style="mso-ignore:colspan">Segmentasi/<font class="font18">Segmentation</font><font class="font17"> :</font></td>
+<td class="xl100" id="fap-cell-hdr-segmentation" colspan="3" style="mso-ignore:colspan">Segmentasi/<font class="font18">Segmentation</font><font class="font17"> :</font></td>
 <td class="xl100"></td>
-<td class="xl100" colspan="3" style="mso-ignore:colspan">Bisnis Utama/<font class="font18">Main Business</font><font class="font17"> :</font></td>
-<td class="xl196" colspan="3" style="border-right:.5pt solid black;
+<td class="xl100" id="fap-cell-hdr-mainbusiness" colspan="3" style="mso-ignore:colspan">Bisnis Utama/<font class="font18">Main Business</font><font class="font17"> :</font></td>
+<td class="xl196" id="fap-cell-hdr-proj-owner" colspan="3" style="border-right:.5pt solid black;
   width:290pt" width="386">Pemilik Proyek/<font class="font18">Project Owner<span style="mso-spacerun:yes"> </span></font></td>
-<td class="xl196" colspan="4" style="border-right:.5pt solid black;
+<td class="xl196" id="fap-cell-hdr-proj-loc" colspan="4" style="border-right:.5pt solid black;
   border-left:none;width:473pt" width="632">Lokasi Proyek/<font class="font18">Project
   Location<span style="mso-spacerun:yes"> </span></font></td>
-<td class="xl194" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl194" id="fap-cell-hdr-proj-role" colspan="3" style="border-right:.5pt solid black;border-left:
   none">Project Role</td>
-<td class="xl130" colspan="2" style="border-left:none">Existing/New</td>
+<td class="xl130" id="fap-cell-hdr-proj-status" colspan="2" style="border-left:none">Existing/New</td>
 <td class="xl78"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -3778,11 +3771,11 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl87" height="106" style="height:79.95pt"> </td>
-<td class="xl118"> </td>
-<td class="xl97" colspan="2" style="mso-ignore:colspan">Pertambangan/<font class="font20">Mining</font></td>
+<td class="xl118 fap-chk-val" id="fap-cell-seg-mining"> </td>
+<td class="xl97" id="fap-cell-lbl-seg-mining" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Pertambangan/<font class="font20">Mining</font></td>
 <td class="xl97"></td>
-<td class="xl118"> </td>
-<td class="xl116" colspan="2" style="mso-ignore:colspan">Cons. Owner</td>
+<td class="xl118 fap-chk-val" id="fap-cell-role-consowner"> </td>
+<td class="xl116" id="fap-cell-lbl-role-consowner" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Cons. Owner</td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-0-owner" style="border-right:.5pt solid black"> </td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-0-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -3797,11 +3790,11 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl87" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="2" style="mso-ignore:colspan">Pertanian/<font class="font20">Agriculture</font></td>
+<td class="xl118 fap-chk-val" id="fap-cell-seg-agriculture" style="border-top:none"> </td>
+<td class="xl97" id="fap-cell-lbl-seg-agriculture" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Pertanian/<font class="font20">Agriculture</font></td>
 <td class="xl97"></td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl116" colspan="2" style="mso-ignore:colspan">Contractors</td>
+<td class="xl118 fap-chk-val" id="fap-cell-role-contractors" style="border-top:none"> </td>
+<td class="xl116" id="fap-cell-lbl-role-contractors" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Contractors</td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-1-owner" style="border-right:.5pt solid black"> </td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-1-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -3816,11 +3809,11 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl87" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="2" style="mso-ignore:colspan">Kehutanan/Forestry</td>
+<td class="xl118 fap-chk-val" id="fap-cell-seg-forestry" style="border-top:none"> </td>
+<td class="xl97" id="fap-cell-lbl-seg-forestry" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Kehutanan/Forestry</td>
 <td class="xl97"></td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl116" colspan="2" style="mso-ignore:colspan">Sub Cont</td>
+<td class="xl118 fap-chk-val" id="fap-cell-role-subcont" style="border-top:none"> </td>
+<td class="xl116" id="fap-cell-lbl-role-subcont" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Sub Cont</td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-2-owner" style="border-right:.5pt solid black"> </td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-2-loc" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -3835,10 +3828,10 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl87" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="3" style="mso-ignore:colspan">Konstruksi/Construction</td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl116">Rental</td>
+<td class="xl118 fap-chk-val" id="fap-cell-seg-construction" style="border-top:none"> </td>
+<td class="xl97" id="fap-cell-lbl-seg-construction" colspan="3" style="mso-ignore:colspan;padding-left:10px !important;">Konstruksi/Construction</td>
+<td class="xl118 fap-chk-val" id="fap-cell-role-rental" style="border-top:none"> </td>
+<td class="xl116" id="fap-cell-lbl-role-rental" style="padding-left:10px !important;">Rental</td>
 <td class="xl97"></td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-3-owner" style="border-right:.5pt solid black"> </td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-3-loc" style="border-right:.5pt solid black;border-left:
@@ -3854,12 +3847,12 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl87" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97">Oil &amp; Gas</td>
+<td class="xl118 fap-chk-val" id="fap-cell-seg-oilgas" style="border-top:none"> </td>
+<td class="xl97" id="fap-cell-lbl-seg-oilgas" style="padding-left:10px !important;">Oil &amp; Gas</td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl116">Other</td>
+<td class="xl118 fap-chk-val" id="fap-cell-role-other" style="border-top:none"> </td>
+<td class="xl116" id="fap-cell-lbl-role-other" style="padding-left:10px !important;">Other</td>
 <td class="xl97"></td>
 <td class="xl105 fap-autofill-val" colspan="3" id="fap-cell-proj-4-owner" style="border-right:.5pt solid black"> </td>
 <td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-proj-4-loc" style="border-right:.5pt solid black;border-left:
@@ -3875,8 +3868,8 @@ ZXYueG1sUEsFBgAAAAAEAAQA9QAAAGoGAAAAAA==
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl87" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97" colspan="2" style="mso-ignore:colspan">Lainnya/O<font class="font20">ther</font></td>
+<td class="xl118 fap-chk-val" id="fap-cell-seg-other" style="border-top:none"> </td>
+<td class="xl97" id="fap-cell-lbl-seg-other" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Lainnya/O<font class="font20">ther</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -4005,17 +3998,17 @@ BAAEAPUAAAAjBgAAAAA=
 </tr>
 </table>
 </span></td>
-<td class="xl130">No</td>
-<td class="xl130" colspan="3" style="border-left:none">Bank/Fin</td>
-<td class="xl130" style="border-left:none">Currency</td>
-<td class="xl130" colspan="2" style="border-left:none">Credit Facility</td>
-<td class="xl130" colspan="3" style="border-left:none">Monthly Installment</td>
-<td class="xl130" style="border-left:none">Year Started</td>
-<td class="xl194" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl130" id="fap-cell-hdr-ref-no">No</td>
+<td class="xl130" id="fap-cell-hdr-ref-bank" colspan="3" style="border-left:none">Bank/Fin</td>
+<td class="xl130" id="fap-cell-hdr-ref-currency" style="border-left:none">Currency</td>
+<td class="xl130" id="fap-cell-hdr-ref-credit" colspan="2" style="border-left:none">Credit Facility</td>
+<td class="xl130" id="fap-cell-hdr-ref-installment" colspan="3" style="border-left:none">Monthly Installment</td>
+<td class="xl130" id="fap-cell-hdr-ref-year" style="border-left:none">Year Started</td>
+<td class="xl194" id="fap-cell-hdr-ref-rate" colspan="3" style="border-right:.5pt solid black;border-left:
   none">Interest Rate</td>
-<td class="xl194" colspan="3" style="border-right:.5pt solid black;border-left:
+<td class="xl194" id="fap-cell-hdr-ref-record" colspan="3" style="border-right:.5pt solid black;border-left:
   none">Payment Recored</td>
-<td class="xl130" colspan="2" style="border-left:none">Status</td>
+<td class="xl130" id="fap-cell-hdr-ref-status" colspan="2" style="border-left:none">Status</td>
 <td class="xl78"> </td>
 <td class="xl73"></td>
 <td class="xl73"></td>
@@ -4023,17 +4016,15 @@ BAAEAPUAAAAjBgAAAAA=
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl123" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl200" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl102" style="border-top:none;border-left:none"> </td>
-<td class="xl169" colspan="2" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl200" colspan="2" style="border-left:none"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-0-no" style="border-top:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-0-bank" colspan="3" style="border-left:none;padding-left:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-0-currency" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-0-credit" colspan="2" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-0-installment" colspan="3" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-0-year" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-0-rate" colspan="3" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-0-record" colspan="3" style="border-right:.5pt solid black;border-left:none;padding-left:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-0-status" colspan="2" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4041,17 +4032,15 @@ BAAEAPUAAAAjBgAAAAA=
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl123" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl200" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl102" style="border-top:none;border-left:none"> </td>
-<td class="xl169" colspan="2" style="border-right:.5pt solid black"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl200" colspan="2" style="border-left:none"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-1-no" style="border-top:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-1-bank" colspan="3" style="border-left:none;padding-left:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-1-currency" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-1-credit" colspan="2" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-1-installment" colspan="3" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-1-year" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-1-rate" colspan="3" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-1-record" colspan="3" style="border-right:.5pt solid black;border-left:none;padding-left:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-1-status" colspan="2" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4059,17 +4048,15 @@ BAAEAPUAAAAjBgAAAAA=
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl123" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl200" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl200" colspan="2" style="border-left:none"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-2-no" style="border-top:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-2-bank" colspan="3" style="border-left:none;padding-left:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-2-currency" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-2-credit" colspan="2" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-2-installment" colspan="3" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-2-year" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-2-rate" colspan="3" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-2-record" colspan="3" style="border-right:.5pt solid black;border-left:none;padding-left:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-2-status" colspan="2" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4077,17 +4064,15 @@ BAAEAPUAAAAjBgAAAAA=
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl123" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl200" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl200" colspan="2" style="border-left:none"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-3-no" style="border-top:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-3-bank" colspan="3" style="border-left:none;padding-left:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-3-currency" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-3-credit" colspan="2" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-3-installment" colspan="3" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-3-year" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-3-rate" colspan="3" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-3-record" colspan="3" style="border-right:.5pt solid black;border-left:none;padding-left:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-3-status" colspan="2" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4095,17 +4080,15 @@ BAAEAPUAAAAjBgAAAAA=
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl123" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl200" colspan="3" style="border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
-  none"> </td>
-<td class="xl201" colspan="2" style="border-left:none"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-4-no" style="border-top:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-4-bank" colspan="3" style="border-left:none;padding-left:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-4-currency" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl123 fap-autofill-val" id="fap-cell-ref-4-credit" colspan="2" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl200 fap-autofill-val" id="fap-cell-ref-4-installment" colspan="3" style="border-left:none;text-align:right !important;padding-right:4px !important;"> </td>
+<td class="xl118 fap-autofill-val" id="fap-cell-ref-4-year" style="border-top:none;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-4-rate" colspan="3" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
+<td class="xl105 fap-autofill-val" id="fap-cell-ref-4-record" colspan="3" style="border-right:.5pt solid black;border-left:none;padding-left:4px !important;"> </td>
+<td class="xl201 fap-autofill-val" id="fap-cell-ref-4-status" colspan="2" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4119,10 +4102,10 @@ BAAEAPUAAAAjBgAAAAA=
 <td class="xl131" style="border-top:none"> </td>
 <td class="xl131" style="border-top:none"> </td>
 <td class="xl100"></td>
-<td class="xl100">TOTAL</td>
-<td class="xl172" colspan="3" style="border-right:.5pt solid black"> </td>
-<td class="xl100">Comments :</td>
-<td class="xl99" colspan="8"> </td>
+<td class="xl100" id="fap-cell-lbl-ref-total">TOTAL</td>
+<td class="xl172 fap-autofill-val" id="fap-cell-ref-total-installment" colspan="3" style="border-right:.5pt solid black;text-align:right !important;font-weight:bold;padding-right:4px !important;"> </td>
+<td class="xl100" id="fap-cell-lbl-ref-comments">Comments :</td>
+<td class="xl99 fap-autofill-val" id="fap-cell-ref-comments" colspan="8" style="padding-left:6px !important;"> </td>
 <td class="xl80"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -4353,7 +4336,7 @@ SwUGAAAAAAQABAD1AAAAnAYAAAAA
 </table>
 </span></td>
 <td class="xl148" style="width:24pt" width="32"></td>
-<td class="xl123" style="border-top:1.0pt solid windowtext !important"> </td>
+<td class="xl123" id="fap-cell-doc-company-profile" style="cursor:pointer; border-top:1.0pt solid windowtext !important"> </td>
 <td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">Company Profile</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4481,17 +4464,17 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 </tr>
 </table>
 </span><?endif?><!--[if !mso & vml]><span style='width:76.8pt;height:399.0pt'></span><![endif]--></td>
-<td class="xl99">Investment<span style="mso-spacerun:yes"> </span></td>
+<td class="xl99" id="fap-cell-tc-fl-purpose">Investment<span style="mso-spacerun:yes"> </span></td>
 <td class="xl132" colspan="2" style="width:171pt" width="228"></td>
-<td class="xl118"> </td>
+<td class="xl118" id="fap-cell-tc-slb-purpose"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288">working
   capital / Investment<span style="mso-spacerun:yes"> </span></td>
-<td class="xl118"> </td>
+<td class="xl118" id="fap-cell-tc-if-purpose"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:327pt" width="436">working
   capital / <br/>
     Investment<span style="mso-spacerun:yes"> </span></td>
 <td class="xl133"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-legality" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="3" style="border-right:1.0pt solid black;
   border-left:none;width:232pt;padding-left:10px !important;" width="310">Legality (e.g. NIB, SIUJK, SIUP, etc)</td>
 <td class="xl70"></td>
@@ -4503,19 +4486,19 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl132" colspan="2" style="width:229pt" width="305">Cara Pembiayaan /
   financing method<span style="mso-spacerun:yes">   </span></td>
 <td class="xl114" style="text-align:right !important;padding-right:6px !important;">:<span style="mso-spacerun:yes"> </span></td>
-<td class="xl190" colspan="2" style="padding-left:10px !important;"> </td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl190" colspan="2" id="fap-cell-prop-method" style="padding-left:10px !important;"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-fl-curr"> </td>
 <td class="xl132" colspan="2" style="width:171pt" width="228"><font class="font19">mata
   uang</font><font class="font20">/currency</font></td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-slb-curr"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288"><font class="font19">mata uang</font><font class="font20">/<br/>
     currency</font></td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-if-curr"> </td>
 <td class="xl134" style="border-left:none;width:121pt" width="162"><font class="font23">mata uang</font><font class="font22">/<br/>
     currency</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-deed" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="3" style="border-right:1.0pt solid black;
   border-left:none;width:232pt;padding-left:10px !important;" width="310">Deed establishment &amp; Deed Amendments</td>
 <td class="xl70"></td>
@@ -4526,20 +4509,20 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl132" colspan="2" style="width:229pt" width="305">Nilai Pembiayaan /
   financing value<span style="mso-spacerun:yes"> </span></td>
-<td class="xl135" style="border-top:none;text-align:right !important;padding-right:6px !important;">: (IDR/USD)</td>
-<td class="xl169" colspan="2" style="padding-left:10px !important;"> </td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl135" style="border-top:none;text-align:right !important;padding-right:6px !important;" id="fap-cell-prop-curr-choice">: (IDR/USD)</td>
+<td class="xl169" colspan="2" id="fap-cell-prop-val" style="padding-left:10px !important;"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-fl-deposit"> </td>
 <td class="xl132" colspan="2" style="width:171pt" width="228">Simpanan Jaminan /
   Security Deposit</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-slb-deposit"> </td>
 <td class="xl205" colspan="2" style="border-left:none;width:216pt" width="288">Simpanan
   Jaminan / Security Deposit</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-if-dp"> </td>
 <td class="xl134" style="border-left:none;width:121pt" width="162">Uang Muka /
   Down Payment<span style="mso-spacerun:yes"> </span></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-decree" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="3" style="border-right:1.0pt solid black;
   border-left:none;width:232pt;padding-left:10px !important;" width="310">Decree of the ministry of law</td>
 <td class="xl70"></td>
@@ -4550,17 +4533,17 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Application Source<span style="mso-spacerun:yes"> </span></td>
 <td class="xl103" style="border-top:none;text-align:right !important;padding-right:6px !important;">:</td>
-<td class="xl169" colspan="2" style="padding-left:10px !important;"> </td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl169" colspan="2" id="fap-cell-prop-app-source" style="padding-left:10px !important;"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-fl-rate"> </td>
 <td class="xl203" colspan="2" style="border-right:.5pt solid black;
   border-left:none;width:171pt" width="228">Bunga/Interest Rate</td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
+<td class="xl118" style="border-top:none;border-left:none" id="fap-cell-tc-slb-rate"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288">Bunga/Interest
   Rate</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-if-rate"> </td>
 <td class="xl136" colspan="2" style="mso-ignore:colspan">Bunga/Interest Rate</td>
 <td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-copy-id" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Copy
   of ID, BOD, and Shareholder</td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4575,14 +4558,14 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-fl-tenor"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Jk. Waktu/Tenor</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-slb-tenor"> </td>
 <td class="xl136" colspan="2" style="border-left:none">Jk. Waktu/Tenor</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-if-tenor"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Jk. Waktu/Tenor</td>
 <td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-audited-financial" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Audited
   Financial Statements</td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4595,18 +4578,18 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl100" colspan="4" style="mso-ignore:colspan">Rencana Realisasi Unit/<font class="font18">Unit Realization Plan</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-fl-payment"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:171pt" width="228">cara
   pembayaran /Payment Method</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-slb-payment"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288">cara
   pembayaran /Payment Method</td>
-<td class="xl118" style="border-top:none"> </td>
+<td class="xl118" style="border-top:none" id="fap-cell-tc-if-payment"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:327pt" width="436">cara
   pembayaran /<br/>
     Payment Method</td>
 <td class="xl132" style="width:24pt" width="32"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-bank-statements" style="cursor:pointer; border-top:none"> </td>
 <td class="xl154" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Bank
   Statements</td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4625,7 +4608,7 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl109" colspan="8"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl129" rowspan="2" style="border-bottom:.5pt solid black;border-top:
+<td class="xl129" id="fap-cell-doc-bank-facility" rowspan="2" style="cursor:pointer; border-bottom:.5pt solid black;border-top:
   none"> </td>
 <td class="xl203" colspan="3" rowspan="2" style="border-right:1.0pt solid black;
   width:232pt;padding-left:10px !important;" width="310">Bank or Financing Facility</td>
@@ -4658,22 +4641,17 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl137" style="border-top:none">Liugong</td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
+<td class="xl118" id="fap-cell-prop-asset-lg-he" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
+<td class="xl118" id="fap-cell-prop-asset-lg-truck" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
+<td class="xl118" id="fap-cell-prop-asset-lg-unit" style="border-top:none;border-left:none;cursor:pointer;text-align:center;font-weight:bold;"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl138"> </td>
-<td class="xl111"> </td>
-<td class="xl111"> </td>
-<td class="xl111"> </td>
-<td class="xl111"> </td>
-<td class="xl112"> </td>
+<td colspan="6" rowspan="4" id="fap-cell-prop-notes" style="border:.5pt solid windowtext; vertical-align:top; padding:8px 12px; font-size:24.0pt; font-family:Calibri,sans-serif; color:#002060; line-height:1.3; overflow:hidden; word-break:break-word; cursor:pointer;"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-production-report" style="cursor:pointer; border-top:none"> </td>
 <td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">Production report</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4684,22 +4662,16 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl137" style="border-top:none">Non Liugon<span style="display:none">g</span></td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl118" style="border-top:none;border-left:none"> </td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl139"> </td>
+<td class="xl118" id="fap-cell-prop-asset-nlg-he" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
+<td class="xl118" id="fap-cell-prop-asset-nlg-truck" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
+<td class="xl118" id="fap-cell-prop-asset-nlg-unit" style="border-top:none;border-left:none;cursor:pointer;text-align:center;font-weight:bold;"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl113"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-fixed-assets" style="cursor:pointer; border-top:none"> </td>
 <td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">List of fixed assets</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4712,20 +4684,14 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl106"></td>
 <td class="xl106"></td>
 <td class="xl106">Total</td>
-<td class="xl118" style="border-top:none"> </td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl139"> </td>
+<td class="xl118" id="fap-cell-prop-asset-tot-unit" style="border-top:none;text-align:center;font-weight:bold;"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl113"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl97"></td>
-<td class="xl123" style="border-top:none"> </td>
+<td class="xl123" id="fap-cell-doc-project-contracts" style="cursor:pointer; border-top:none"> </td>
 <td class="xl132" style="width:104pt;padding-left:10px !important;" width="138">Project Contracts</td>
 <td class="xl122" style="width:79pt" width="106"></td>
 <td class="xl142" style="width:49pt" width="66"> </td>
@@ -4741,12 +4707,6 @@ b3ducmV2LnhtbFBLBQYAAAAABAAEAPUAAABuBgAAAAA=
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl140"> </td>
-<td class="xl114"> </td>
-<td class="xl114"> </td>
-<td class="xl114"> </td>
-<td class="xl114"> </td>
-<td class="xl115"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -4864,8 +4824,8 @@ bFBLBQYAAAAABAAEAPUAAAAsBgAAAAA=
 <td class="xl70"></td>
 </tr>
 <tr height="86" style="mso-height-source:userset;height:64.95pt">
-<td class="xl143" height="86" style="height:64.95pt"> </td>
-<td class="xl144"> </td>
+<td class="xl143" height="86" style="height:64.95pt"></td>
+<td id="fap-cell-fin-audited" class="xl144 fap-chk-val fap-autofill-val"></td>
 <td class="xl97" colspan="2" style="mso-ignore:colspan">Audited (<font class="font20">Yes/No</font><font class="font19">)</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -4971,17 +4931,17 @@ AAAAAAQABAD1AAAAYAYAAAAA
 </span></td>
 <td class="xl145" colspan="2" style="mso-ignore:colspan">Keterangan/Remarks</td>
 <td class="xl104"> </td>
-<td class="xl172" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-bs-yr-0" class="xl172 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none">20.</td>
-<td class="xl172" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-bs-yr-1" class="xl172 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none">20.</td>
-<td class="xl172" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-bs-yr-2" class="xl172 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none">20.</td>
 <td class="xl146" style="border-left:none"> </td>
 <td class="xl99" colspan="3">Keterangan/<font class="font18">Remarks</font></td>
-<td class="xl99" style="border-left:none">20.</td>
-<td class="xl99" colspan="2" style="border-left:none">20.</td>
-<td class="xl172" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-is-yr-0" class="xl99 fap-autofill-val" style="border-left:none">20.</td>
+<td id="fap-cell-fin-is-yr-1" class="xl99 fap-autofill-val" colspan="2" style="border-left:none">20.</td>
+<td id="fap-cell-fin-is-yr-2" class="xl172 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none">20.</td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -4992,17 +4952,17 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl143" height="125" style="height:94.05pt"> </td>
 <td class="xl213" colspan="2" style="width:229pt" width="305">Total Aset Lancar/<font class="font20">Total Current Asset</font></td>
 <td class="xl104" style="border-top:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-cur-asset-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-cur-asset-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-cur-asset-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl122" style="width:150pt" width="200"></td>
 <td class="xl215" colspan="3" style="width:323pt" width="432">Pendapatan/<font class="font20">Revenue</font></td>
-<td class="xl123" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl234" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-revenue-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
+<td id="fap-cell-fin-revenue-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
+<td id="fap-cell-fin-revenue-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -5013,17 +4973,17 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl143" height="106" style="height:79.95pt"> </td>
 <td class="xl213" colspan="2" style="width:229pt" width="305">Total Aset Tetap/<font class="font20">Total Non Current Asset</font></td>
 <td class="xl104" style="border-top:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-noncur-asset-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-noncur-asset-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-noncur-asset-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl122" style="width:150pt" width="200"></td>
 <td class="xl215" colspan="3" style="width:323pt" width="432">Laba Kotor/<font class="font20">Gross Margin</font></td>
-<td class="xl123" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl234" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-gross-profit-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
+<td id="fap-cell-fin-gross-profit-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
+<td id="fap-cell-fin-gross-profit-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -5034,17 +4994,17 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl143" height="106" style="height:79.95pt"> </td>
 <td class="xl229" colspan="2" style="width:229pt" width="305">Total Aset/<font class="font18">Total Asset</font></td>
 <td class="xl104" style="border-top:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-asset-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-asset-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-asset-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl122" style="width:150pt" width="200"></td>
 <td class="xl215" colspan="3" style="width:323pt" width="432">Laba Usaha/<font class="font20">Operating Margin</font></td>
-<td class="xl123" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl234" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-op-profit-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
+<td id="fap-cell-fin-op-profit-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
+<td id="fap-cell-fin-op-profit-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -5056,17 +5016,17 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl213" colspan="3" style="border-right:.5pt solid black;
   width:357pt" width="476">Total Liabilitas Jangka Pendek/<font class="font20">Total
   Current Liabilities</font></td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-cur-liab-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-cur-liab-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl210" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-cur-liab-2" class="xl210 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl107"></td>
 <td class="xl209" colspan="3">Pajak/<font class="font20">Tax</font></td>
-<td class="xl123" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl234" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tax-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
+<td id="fap-cell-fin-tax-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
+<td id="fap-cell-fin-tax-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -5078,17 +5038,17 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl213" colspan="3" style="border-right:.5pt solid black;
   width:357pt" width="476">Total Liabilitas Jangka Panjang/<font class="font20">Total Non
   Current Liabilities</font></td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-noncur-liab-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-noncur-liab-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-noncur-liab-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl107"></td>
 <td class="xl209" colspan="3">Laba Bersih/<font class="font20">Net Income</font></td>
-<td class="xl123" style="border-top:none;border-left:none"> </td>
-<td class="xl123" colspan="2" style="border-left:none"> </td>
-<td class="xl234" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-net-income-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
+<td id="fap-cell-fin-net-income-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
+<td id="fap-cell-fin-net-income-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -5099,11 +5059,11 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl143" height="106" style="height:79.95pt"> </td>
 <td class="xl229" colspan="3" style="border-right:.5pt solid black;
   width:357pt" width="476">Total Liabilitas/ <font class="font18">Total Liabilities</font></td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-liab-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-liab-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-liab-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -5123,11 +5083,11 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl143" height="106" style="height:79.95pt"> </td>
 <td class="xl213" colspan="2" style="width:229pt" width="305">Ekuitas/<font class="font20">Equity</font></td>
 <td class="xl104" style="border-top:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-equity-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-equity-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-equity-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -5148,11 +5108,11 @@ AAAAAAQABAD1AAAAYAYAAAAA
 <td class="xl229" colspan="2" style="width:229pt" width="305">Total Liabilitas
   &amp; Ekuitas/<font class="font18">Total Liabilities &amp; Equity</font></td>
 <td class="xl104" style="border-top:none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-liab-equity-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="2" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-liab-equity-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
-<td class="xl105" colspan="3" style="border-right:.5pt solid black;border-left:
+<td id="fap-cell-fin-tot-liab-equity-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -5513,9 +5473,7 @@ AAAEAAQA9QAAACUGAAAAAA==
 </tr>
 <tr height="62" style="mso-height-source:userset;height:46.5pt">
 <td class="xl71" height="62" style="height:46.5pt"> </td>
-<td class="xl147"><span style="mso-spacerun:yes">               
-  </span>PT.<span style="mso-spacerun:yes"> </span></td>
-<td class="xl150" colspan="5" style="border-right:1.0pt solid black"> </td>
+<td class="xl149" colspan="6" style="border-right:1.0pt solid black; font-weight:bold; text-align:center; vertical-align:middle; word-break:break-word; padding:2px;" id="fap-cell-sign-debtor-company">PT.</td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>

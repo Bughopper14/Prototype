@@ -1,4 +1,5 @@
 import {Modal} from '@/shared/ui/Modal';
+import {useMasterData} from '@/shared/master-data';
 import {label, storedDocumentUrl} from '@liugong/shared';
 import {
   BriefcaseBusiness,
@@ -64,6 +65,20 @@ export function StakeholderDetailDialog({
       })
       .catch(() => {});
   }, [item.id, idFolder, docUrl]);
+
+  const masterData = useMasterData();
+  const districtName =
+    masterData.district?.find(d => d.value === item.district || d.name === item.district)?.name ||
+    item.district;
+  const villageName =
+    masterData.village?.find(v => v.value === item.village || v.name === item.village)?.name ||
+    item.village;
+  const cityName =
+    masterData.city?.find(c => c.value === (item.cityRegency || item.city) || c.name === (item.cityRegency || item.city))?.name ||
+    (item.cityRegency || item.city);
+  const provinceName =
+    masterData.province?.find(p => p.value === item.province || p.name === item.province)?.name ||
+    item.province;
 
   return (
     <Modal title="Stakeholder Details" onClose={onClose} className="modal-stakeholder-detail-view">
@@ -297,24 +312,24 @@ export function StakeholderDetailDialog({
                       color: '#475569',
                     }}
                   >
-                    {item.province && (
+                    {provinceName && (
                       <span>
-                        <b>Provinsi:</b> {item.province}
+                        <b>Provinsi:</b> {provinceName}
                       </span>
                     )}
-                    {(item.cityRegency || item.city) && (
+                    {cityName && (
                       <span>
-                        <b>Kab/Kota:</b> {item.cityRegency || item.city}
+                        <b>Kab/Kota:</b> {cityName}
                       </span>
                     )}
-                    {item.district && (
+                    {districtName && (
                       <span>
-                        <b>Kecamatan:</b> {item.district}
+                        <b>Kecamatan:</b> {districtName}
                       </span>
                     )}
-                    {item.village && (
+                    {villageName && (
                       <span>
-                        <b>Kelurahan:</b> {item.village}
+                        <b>Kelurahan:</b> {villageName}
                       </span>
                     )}
                     {(item.rt || item.rw) && (

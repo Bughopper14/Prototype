@@ -122,16 +122,15 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
 
   // 6. Match District:
   let foundDistrictItem: MasterItem | undefined;
-  if (foundVillageItem?.parentValue) {
+  if (result.district) {
+    foundDistrictItem = dList.find(d => matchWilayahName(d.name, result.district!));
+  }
+  if (!foundDistrictItem && foundVillageItem?.parentValue) {
     foundDistrictItem = dList.find(
       d =>
         cleanWilayahStr(d.value) === cleanWilayahStr(foundVillageItem!.parentValue!) ||
         matchWilayahName(d.name, foundVillageItem!.parentValue!),
     );
-  }
-
-  if (!foundDistrictItem && result.district) {
-    foundDistrictItem = dList.find(d => matchWilayahName(d.name, result.district!));
   }
 
   if (!foundDistrictItem) {
@@ -164,16 +163,15 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
 
   // 7. Match City / Regency:
   let foundCityItem: MasterItem | undefined;
-  if (foundDistrictItem?.parentValue) {
+  if (result.city) {
+    foundCityItem = cList.find(c => matchWilayahName(c.name, result.city!));
+  }
+  if (!foundCityItem && foundDistrictItem?.parentValue) {
     foundCityItem = cList.find(
       c =>
         cleanWilayahStr(c.value) === cleanWilayahStr(foundDistrictItem!.parentValue!) ||
         matchWilayahName(c.name, foundDistrictItem!.parentValue!),
     );
-  }
-
-  if (!foundCityItem && result.city) {
-    foundCityItem = cList.find(c => matchWilayahName(c.name, result.city!));
   }
 
   if (!foundCityItem) {
@@ -206,16 +204,15 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
 
   // 8. Match Province:
   let foundProvItem: MasterItem | undefined;
-  if (foundCityItem?.parentValue) {
+  if (result.province) {
+    foundProvItem = pList.find(p => matchWilayahName(p.name, result.province!));
+  }
+  if (!foundProvItem && foundCityItem?.parentValue) {
     foundProvItem = pList.find(
       p =>
         cleanWilayahStr(p.value) === cleanWilayahStr(foundCityItem!.parentValue!) ||
         matchWilayahName(p.name, foundCityItem!.parentValue!),
     );
-  }
-
-  if (!foundProvItem && result.province) {
-    foundProvItem = pList.find(p => matchWilayahName(p.name, result.province!));
   }
 
   if (!foundProvItem) {

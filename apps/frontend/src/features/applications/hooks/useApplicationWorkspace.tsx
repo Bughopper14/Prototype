@@ -36,6 +36,7 @@ import {useDeedReview} from '@/features/applications/hooks/useDeedReview';
 import {useFapPreviewSync} from '@/features/applications/hooks/useFapPreviewSync';
 import {useLiveFapData} from '@/features/applications/hooks/useLiveFapData';
 import {useSaveApplication} from '@/features/applications/hooks/useSaveApplication';
+import {createDefaultFinancialStatement} from '@/features/applications/lib/new-application';
 export function useApplicationWorkspace({
   value: a,
   user,
@@ -345,6 +346,14 @@ export function useApplicationWorkspace({
       const base = structuredClone(a);
       if (!base.projects || base.projects.length === 0) {
         base.projects = [blank(projectFields)];
+      }
+      if (!base.financialStatements || base.financialStatements.length === 0) {
+        const currYear = new Date().getFullYear();
+        base.financialStatements = [
+          createDefaultFinancialStatement(currYear - 2, Boolean(base.financialAudited)),
+          createDefaultFinancialStatement(currYear - 1, Boolean(base.financialAudited)),
+          createDefaultFinancialStatement(currYear, Boolean(base.financialAudited)),
+        ];
       }
       return base;
     }),

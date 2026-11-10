@@ -28,18 +28,31 @@ export function RequireSession({children}: {children: ReactNode}) {
 
   useEffect(() => {
     let live = true;
-    api('/auth/me')
-      .then((me: SessionUser | null) => {
-        if (!live) return;
-        if (!me) {
-          const next = location.pathname + location.search;
-          window.location.replace(`/login?next=${encodeURIComponent(next)}`);
-          return;
-        }
-        setCurrentUser(me);
-        setUser(me);
-      })
-      .catch(() => live && window.location.replace('/login'));
+    let retryCount = 0;
+
+    const checkSession = () => {
+      api('/auth/me')
+        .then((me: SessionUser | null) => {
+          if (!live) return;
+          if (!me) {
+            const next = location.pathname + location.search;
+            window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+            return;
+          }
+          setCurrentUser(me);
+          setUser(me);
+        })
+        .catch((err) => {
+          if (!live) return;
+          console.warn('Network error checking session:', err);
+          if (retryCount < 3) {
+            retryCount++;
+            setTimeout(checkSession, 1500);
+          }
+        });
+    };
+
+    checkSession();
     return () => {
       live = false;
     };

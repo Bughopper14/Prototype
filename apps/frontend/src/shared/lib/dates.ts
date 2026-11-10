@@ -77,3 +77,52 @@ export function normalizeBirthDate(raw?: string | null): string {
 
   return '';
 }
+
+export function toDmyDate(raw?: string | null): string {
+  if (!raw) return '';
+  const s = String(raw).trim().toUpperCase();
+
+  // 1. DD-MM-YYYY or DD/MM/YYYY or DD.MM.YYYY
+  const mDmy = s.match(/\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b/);
+  if (mDmy) {
+    const d = parseInt(mDmy[1], 10);
+    const m = parseInt(mDmy[2], 10);
+    const y = parseInt(mDmy[3], 10);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}-${String(y).padStart(4, '0')}`;
+    }
+  }
+
+  // 2. ISO format: YYYY-MM-DD
+  const mIso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (mIso) {
+    const y = parseInt(mIso[1], 10);
+    const m = parseInt(mIso[2], 10);
+    const d = parseInt(mIso[3], 10);
+    if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+      return `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}-${String(y).padStart(4, '0')}`;
+    }
+  }
+
+  // 3. DD MonthName YYYY
+  const mText = s.match(/\b(\d{1,2})[-\s/\.]+([A-Z]+)[-\s/\.]+(\d{4})\b/);
+  if (mText) {
+    const d = parseInt(mText[1], 10);
+    const mStr = mText[2];
+    const y = parseInt(mText[3], 10);
+    let mNum = INDO_MONTH_MAP[mStr];
+    if (!mNum) {
+      for (const [k, v] of Object.entries(INDO_MONTH_MAP)) {
+        if (mStr.startsWith(k) || k.startsWith(mStr)) {
+          mNum = v;
+          break;
+        }
+      }
+    }
+    if (mNum && d >= 1 && d <= 31) {
+      return `${String(d).padStart(2, '0')}-${mNum}-${String(y).padStart(4, '0')}`;
+    }
+  }
+
+  return '';
+}

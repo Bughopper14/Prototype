@@ -7,10 +7,29 @@ import {
   proposalFields,
 } from '@liugong/shared';
 
+export const createDefaultFinancialStatement = (fiscalYear: number, isAudited = false) => ({
+  fiscalYear,
+  isAudited,
+  currentAssets: '',
+  nonCurrentAssets: '',
+  totalAssets: '',
+  currentLiabilities: '',
+  nonCurrentLiabilities: '',
+  totalLiabilities: '',
+  equity: '',
+  totalLiabAndEquity: '',
+  revenue: '',
+  grossMargin: '',
+  operatingMargin: '',
+  tax: '',
+  netIncome: '',
+});
+
 /** An empty application, ready to be filled in before it is saved for the first time. */
 export function buildNewApplicationDraft(customers: any[], preselectedCustomerId?: string) {
   const category = preselectedCustomerId ? 'EXISTING' : 'NEW';
   const customer = preselectedCustomerId ? customers.find(c => c.id === preselectedCustomerId) : null;
+  const currentYear = new Date().getFullYear();
 
   return {
     ...blank(profileFields),
@@ -46,7 +65,12 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
     projects: [blank(projectFields)],
     bankReferences: [],
     proposal: {...blank(proposalFields), units: []},
-    financialStatements: [],
+    financialAudited: false,
+    financialStatements: [
+      createDefaultFinancialStatement(currentYear - 2, false),
+      createDefaultFinancialStatement(currentYear - 1, false),
+      createDefaultFinancialStatement(currentYear, false),
+    ],
     documentChecks: [],
     legal: {deeds: []},
     signoffs: [],

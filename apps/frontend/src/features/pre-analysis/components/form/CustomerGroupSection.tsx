@@ -124,21 +124,12 @@ export function CustomerGroupSection() {
               <span>Business Development Background (Kemitraan Herry Tho & Rekam Jejak)</span>
               <span style={{fontSize: '0.68rem', color: '#dc2626', fontWeight: 600}}>Key Risk Factor</span>
             </label>
-            <textarea
-              rows={5}
-              name="businessDevBackground"
-              data-field="businessDevBackground"
+            <PreAnalysisRichEditor
               value={data.businessDevBackground || ''}
-              onChange={e => updateField('businessDevBackground', e.target.value)}
+              onChange={val => updateField('businessDevBackground', val)}
               onFocus={() => scrollToPreviewElement('preana-preview-cell-businessDevBackground')}
-              style={{
-                width: '100%',
-                padding: '6px 10px',
-                fontSize: '0.8rem',
-                borderRadius: '4px',
-                border: '1px solid #cbd5e1',
-                fontFamily: 'monospace',
-              }}
+              height={160}
+              dataField="businessDevBackground"
             />
           </div>
           <div>
@@ -178,23 +169,13 @@ export function CustomerGroupSection() {
                 Separate Section Before Milestones
               </span>
             </div>
-            <textarea
-              rows={6}
-              name="uboInformation"
-              data-field="uboInformation"
+            <PreAnalysisRichEditor
               value={data.uboInformation || ''}
-              onChange={e => updateField('uboInformation', e.target.value)}
+              onChange={val => updateField('uboInformation', val)}
               onFocus={() => scrollToPreviewElement('preana-preview-cell-uboInformation')}
               placeholder="STAR GROUP Corporate Ownership Structure..."
-              style={{
-                width: '100%',
-                padding: '6px 10px',
-                fontSize: '0.8rem',
-                borderRadius: '4px',
-                border: '1px solid #cbd5e1',
-                marginBottom: '6px',
-                lineHeight: 1.35,
-              }}
+              height={180}
+              dataField="uboInformation"
             />
             <div
               id="preana-form-group-structure-builder"

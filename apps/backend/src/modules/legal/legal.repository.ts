@@ -45,8 +45,10 @@ const mapStakeholder = (row: any) => {
       stakeholderFields.map(f => [f.key, f.type === 'date' ? asDate(row[col(f.key)]) : row[col(f.key)]]),
     ),
     ...ageFromDateOfBirth(asDate(row.date_of_birth)),
-    district: row.district_master_id || row.district,
-    village: row.village_master_id || row.village,
+    province: row.province_name || row.province,
+    cityRegency: row.city_regency_name || row.city_regency,
+    district: row.district_name || row.district,
+    village: row.village_name || row.village,
     id: row.id,
     name: [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
     document_path: docPath,
@@ -113,7 +115,7 @@ export async function readLegal(applicationId: string) {
   const deeds = await Promise.all(
     rows.map(async row => {
       const [stakeholders] = await pool!.execute<any[]>(
-        `SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, d.id AS district_master_id, v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id`,
+        `SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, COALESCE(d.name, s.district) AS district_name, COALESCE(v.name, s.village) AS village_name, COALESCE(c.name, s.city_regency) AS city_regency_name, COALESCE(p.name, s.province) AS province_name FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND (p.id IS NULL OR c.provinsi_id=p.id) LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND (c.id IS NULL OR d.kabupaten_kota_id=c.id) LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND (d.id IS NULL OR v.kecamatan_id=d.id) WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id`,
         [row.id],
       );
       const isEstablishment = row.akta === 'Akta pendirian' || /pendirian/i.test(row.akta);
@@ -287,7 +289,7 @@ export async function saveLegal(applicationId: string, incoming: any, final = fa
     for (const d of deeds) {
       if (!d._stakeholdersPassed) {
         const [existingRows] = await c.execute<any[]>(
-          'SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, d.id AS district_master_id, v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id',
+          'SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, COALESCE(d.name, s.district) AS district_name, COALESCE(v.name, s.village) AS village_name, COALESCE(c.name, s.city_regency) AS city_regency_name, COALESCE(p.name, s.province) AS province_name FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND (p.id IS NULL OR c.provinsi_id=p.id) LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND (c.id IS NULL OR d.kabupaten_kota_id=c.id) LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND (d.id IS NULL OR v.kecamatan_id=d.id) WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id',
           [d.id],
         );
         if (existingRows.length > 0) d.stakeholders = existingRows.map(mapStakeholder);

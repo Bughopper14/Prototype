@@ -11,7 +11,7 @@ export function stripWilayahPrefix(str: string): string {
   return String(str)
     .trim()
     .replace(
-      /^(?:kabupaten|kab\b\.?|kota\s*administrasi|kota\s*adm\b\.?|kota|kot\b\.?|kodya\b\.?|kecamatan|kec\b\.?|desa\/kelurahan|kelurahan\/desa|kelurahan|kel\b\.?|desa|ds\b\.?|provinsi|propinsi|prov\b\.?|prop\b\.?)\s*/i,
+      /^(?:kabupaten\b|kab\b\.?|kota\s*administrasi\b|kota\s*adm\b\.?|kota\b|kot\b\.?|kodya\b\.?|kecamatan\b|kec\b\.?|desa\/kelurahan\b|kelurahan\/desa\b|kelurahan\b|kel\b\.?|desa\b|ds\b\.?|provinsi\b|propinsi\b|prov\b\.?|prop\b\.?)\s*/i,
       '',
     )
     .trim();
@@ -31,15 +31,12 @@ export function matchWilayahName(masterName: string, input: string): boolean {
 
   const normInput = cleanWilayahStr(normalizeWilayahInput(input));
   const normMaster = cleanWilayahStr(normalizeWilayahInput(masterName));
-  if (normMaster === normInput) return true;
+  if (normMaster && normInput && normMaster === normInput) return true;
 
   const coreInput = cleanWilayahStr(stripWilayahPrefix(input));
   const coreMaster = cleanWilayahStr(stripWilayahPrefix(masterName));
   if (coreInput && coreMaster) {
     if (coreMaster === coreInput) return true;
-    if (coreMaster.length >= 4 && coreInput.length >= 4) {
-      if (coreMaster.includes(coreInput) || coreInput.includes(coreMaster)) return true;
-    }
   }
 
   // Handle DKI Jakarta

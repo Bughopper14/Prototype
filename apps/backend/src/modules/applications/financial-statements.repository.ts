@@ -41,7 +41,12 @@ export async function readFinancialStatements(applicationId: string) {
     id: row.id,
     fiscalYear: row.fiscal_year,
     isAudited: !!row.is_audited,
-    ...Object.fromEntries(Object.entries(metrics).map(([key, column]) => [key, row[column]])),
+    ...Object.fromEntries(
+      Object.entries(metrics).map(([key, column]) => {
+        const val = row[column];
+        return [key, val === null || val === undefined ? '' : Number(val) === 0 ? '' : val];
+      }),
+    ),
   }));
   return {
     financialStatements: statements,
@@ -55,10 +60,19 @@ export async function saveFinancialStatements(
 ) {
   if (!pool) throw new Error('MySQL is not configured');
   const amount = z
-    .union([z.string().regex(/^-?\d{1,18}(\.\d{1,2})?$/), z.number().finite()])
-    .transform(String);
+    .union([
+      z.string().regex(/^-?\d{1,18}(\.\d{1,2})?$/),
+      z.number().finite(),
+      z.literal(''),
+      z.null(),
+      z.undefined(),
+    ])
+    .transform(val => {
+      if (val === null || val === undefined || val === '') return '0.00';
+      return String(val);
+    });
   const schema = z.object({
-    fiscalYear: z.number().int().min(1900).max(new Date().getFullYear()),
+    fiscalYear: z.number().int().min(1900).max(new Date().getFullYear() + 10),
     isAudited: z.boolean(),
     ...Object.fromEntries(Object.keys(metrics).map(key => [key, amount])),
   });

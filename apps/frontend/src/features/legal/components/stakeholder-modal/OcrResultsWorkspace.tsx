@@ -1,5 +1,6 @@
 /** OCR results per field with copy / apply buttons. */
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
+import {toDmyDate} from '@/shared/lib/dates';
 import {Check, Copy, Sparkles} from 'lucide-react';
 
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
@@ -97,11 +98,11 @@ export function OcrResultsWorkspace() {
             </div>
             <span className="ktp-field-val">
               {ktpParsed.tempatTglLahir ||
-                (ktpParsed.tempatLahir ? `${ktpParsed.tempatLahir}, ${ktpParsed.dateOfBirth || ''}` : '—')}
+                (ktpParsed.tempatLahir ? `${ktpParsed.tempatLahir}, ${toDmyDate(ktpParsed.dateOfBirth) || ''}` : '—')}
             </span>
             {ktpParsed.dateOfBirth && (
               <small className="ktp-field-sub">
-                ISO: {ktpParsed.dateOfBirth} · Age: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} yr{' '}
+                DOB: {toDmyDate(ktpParsed.dateOfBirth)} · Age: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} yr{' '}
                 {calculateAgeYearsMonths(ktpParsed.dateOfBirth).months} mo
               </small>
             )}

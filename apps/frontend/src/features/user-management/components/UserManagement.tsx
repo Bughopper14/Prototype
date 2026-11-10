@@ -6,6 +6,7 @@ import {RoleForm} from '@/features/user-management/components/forms/RoleForm';
 import {UserForm} from '@/features/user-management/components/forms/UserForm';
 import {Overview, Tab} from '@/features/user-management/lib/types';
 import {call, fmt} from '@/features/user-management/lib/um-api';
+import '@/features/user-management/user_management.css';
 import {useCallback, useEffect, useMemo, useState, type ReactNode} from 'react';
 
 export function UserManagement({currentUserId}: {currentUserId: number}) {
@@ -455,10 +456,15 @@ export function UserManagement({currentUserId}: {currentUserId: number}) {
                             </button>
                             <button
                               className="btn btn-outline-danger btn-sm"
-                              onClick={() =>
-                                confirm(`Keluarkan paksa ${u.username}?`) &&
-                                act(() => call(`/users/${u.id}/force-logout`, 'POST', {}))
-                              }
+                              onClick={() => {
+                                const isSelf = u.id === currentUserId;
+                                const msg = isSelf
+                                  ? `PERINGATAN: Anda sedang mengeluarkan akun Anda sendiri ('${u.username}')! Sesi Anda saat ini akan segera berakhir. Lanjutkan?`
+                                  : `Apakah Anda yakin ingin mengeluarkan paksa (Force Logout) user '${u.username}' dari seluruh perangkat?`;
+                                if (window.confirm(msg)) {
+                                  act(() => call(`/users/${u.id}/force-logout`, 'POST', {}));
+                                }
+                              }}
                               title="Keluarkan Paksa Sesi User"
                             >
                               <i className="fas fa-power-off me-1" />Logout
@@ -1133,7 +1139,11 @@ export function UserManagement({currentUserId}: {currentUserId: number}) {
                               <button
                                 className="btn btn-outline-danger btn-sm"
                                 style={{borderRadius: 8}}
-                                onClick={() => act(() => call(`/sessions/${s.session_id}/terminate`, 'POST', {}))}
+                                onClick={() => {
+                                  if (window.confirm('Apakah Anda yakin ingin menghentikan sesi aktif ini?')) {
+                                    act(() => call(`/sessions/${s.session_id}/terminate`, 'POST', {}));
+                                  }
+                                }}
                               >
                                 <i className="fas fa-power-off me-1" />Akhiri
                               </button>

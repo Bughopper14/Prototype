@@ -168,11 +168,25 @@ export function useLiveFapData({
       '',
     picPostalCode: draft.pic?.postalCode || a.pic?.postalCode || a.picPostalCode || '',
     selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo,
+    financingPurposeDetail: draft.financingPurposeDetail !== undefined ? draft.financingPurposeDetail : a.financingPurposeDetail,
+    businessRole: draft.businessRole || a.businessRole,
     proposal: draft.proposal || a.proposal,
+    financingProposal: draft.financingProposal || draft.proposal || a.financingProposal || a.proposal,
     projects: draft.projects || a.projects,
     bankReferences: draft.bankReferences || a.bankReferences,
+    referenceComments: draft.referenceComments !== undefined ? draft.referenceComments : a.referenceComments,
     financialStatements: draft.financialStatements || a.financialStatements,
-    facilityPurpose: (draft.proposal || a.proposal)?.facilityPurpose || a.facilityPurpose || 'INVESTMENT',
+    financialAudited: draft.financialAudited !== undefined ? draft.financialAudited : a.financialAudited,
+    documentRequirements:
+      draft.documentRequirements ||
+      draft.financingProposal?.documentRequirements ||
+      a.financingProposal?.documentRequirements ||
+      (draft.proposal || a.proposal)?.documentRequirements,
+    facilityPurpose:
+      draft.facilityPurpose ||
+      (draft.proposal || a.proposal)?.facilityPurpose ||
+      a.facilityPurpose ||
+      'INVESTMENT',
     financingMethod: (draft.proposal || a.proposal)?.financingMethod,
     financingValue: (draft.proposal || a.proposal)?.financingValue,
     downPaymentValue: (draft.proposal || a.proposal)?.downPaymentValue,
@@ -180,10 +194,16 @@ export function useLiveFapData({
     tenorMonths: (draft.proposal || a.proposal)?.tenorMonths,
     paymentMethod: (draft.proposal || a.proposal)?.paymentMethod,
     units: (draft.proposal || a.proposal)?.units,
-    assetSummaryHeLiuGong: a.assetSummaryHeLiuGong,
-    assetSummaryTruckLiuGong: a.assetSummaryTruckLiuGong,
-    assetSummaryHeNonLiuGong: a.assetSummaryHeNonLiuGong,
-    assetSummaryTruckNonLiuGong: a.assetSummaryTruckNonLiuGong,
+    assetSummaryHeLiuGong:
+      draft.assetSummaryHeLiuGong !== undefined ? draft.assetSummaryHeLiuGong : a.assetSummaryHeLiuGong,
+    assetSummaryTruckLiuGong:
+      draft.assetSummaryTruckLiuGong !== undefined ? draft.assetSummaryTruckLiuGong : a.assetSummaryTruckLiuGong,
+    assetSummaryHeNonLiuGong:
+      draft.assetSummaryHeNonLiuGong !== undefined ? draft.assetSummaryHeNonLiuGong : a.assetSummaryHeNonLiuGong,
+    assetSummaryTruckNonLiuGong:
+      draft.assetSummaryTruckNonLiuGong !== undefined
+        ? draft.assetSummaryTruckNonLiuGong
+        : a.assetSummaryTruckNonLiuGong,
   };
 
   return {

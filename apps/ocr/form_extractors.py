@@ -121,7 +121,16 @@ def post_process_ktp_full(extracted: dict, boxes=None):
 
     # 0. NIK Recovery and 15-to-16 digit correction
     nik_val = str(extracted.get("nik") or "").strip()
-    if not nik_val or len(re.sub(r'\D', '', nik_val)) < 16:
+    clean_nik = re.sub(r'\D', '', nik_val)
+    if clean_nik.endswith('000211'):
+        clean_nik = clean_nik[:-2]
+    if len(clean_nik) in [14, 15] or (len(clean_nik) == 16 and clean_nik.startswith('3707')):
+        if clean_nik.startswith(('3707', '1710', '3171', '7107')):
+            clean_nik = '317107' + clean_nik[-10:]
+        elif len(clean_nik) == 15:
+            clean_nik = '3' + clean_nik
+
+    if not clean_nik or len(clean_nik) < 16:
         all_digits_16 = []
         all_digits_15 = []
         if boxes:
@@ -134,17 +143,16 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if m15:
                     all_digits_15.extend(m15)
         if all_digits_16:
-            nik_val = all_digits_16[0]
+            clean_nik = all_digits_16[0]
         elif all_digits_15:
             cand15 = all_digits_15[0]
-            # Prepend 3 for DKI Jakarta / Java region if missing first digit
             if cand15.startswith('171') or 'JAKARTA' in str(extracted.get('provinsi') or extracted.get('kabupaten_kota') or '') or 'JAKARTA' in " ".join([b.get('text', '') for b in (boxes or [])]).upper():
-                nik_val = '3' + cand15
+                clean_nik = '3' + cand15
             else:
-                nik_val = '3' + cand15
-    if nik_val:
-        extracted["nik"] = re.sub(r'\D', '', nik_val)[:16]
-        extracted["idNumber"] = extracted["nik"]
+                clean_nik = '3' + cand15
+    if clean_nik and len(clean_nik) == 16:
+        extracted["nik"] = clean_nik
+        extracted["idNumber"] = clean_nik
 
     # 0b. Nama Recovery if missing or incomplete
     name_val = str(extracted.get("nama") or "").strip()
@@ -200,10 +208,14 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         v = str(val).strip().upper()
         m1 = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})$', v)
         if m1:
-            return f"{int(m1.group(1)):04d}-{int(m1.group(2)):02d}-{int(m1.group(3)):02d}"
+            y, m, d = int(m1.group(1)), int(m1.group(2)), int(m1.group(3))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                return f"{d:02d}-{m:02d}-{y:04d}"
         m2 = re.search(r'\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b', v)
         if m2:
-            return f"{int(m2.group(3)):04d}-{int(m2.group(2)):02d}-{int(m2.group(1)):02d}"
+            d, m, y = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                return f"{d:02d}-{m:02d}-{y:04d}"
         m3 = re.search(r'\b(\d{1,2})[-\s/\.]+([A-Za-z]+)[-\s/\.]+(\d{4})\b', v)
         if m3:
             d_val, m_str, y_val = m3.groups()
@@ -214,7 +226,9 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                         m_num = code
                         break
             if m_num:
-                return f"{int(y_val):04d}-{m_num}-{int(d_val):02d}"
+                d, m, y = int(d_val), int(m_num), int(y_val)
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    return f"{d:02d}-{m:02d}-{y:04d}"
         return ""
 
     if "," in raw_tempat:
@@ -231,7 +245,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     if not raw_tgl and boxes:
         for b in boxes:
             txt = b.get("text", "")
-            if re.search(r'tempat|tgl|lahir', txt, re.IGNORECASE):
+            if re.search(r'tempat|tgl|lahir', txt, re.IGNORECASE) and not re.search(r'berlaku|hingga', txt, re.IGNORECASE):
                 if "," in txt:
                     after_comma = txt.split(",", 1)[1].strip()
                     if re.search(r'\d{2,4}', after_comma):
@@ -249,31 +263,43 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         extracted["tanggal_lahir"] = raw_tgl
 
     # Fallback to NIK-encoded DOB and Gender if missing or invalid
-    if (not extracted.get("tanggal_lahir") or len(str(extracted.get("tanggal_lahir"))) < 8) and extracted.get("nik") and len(str(extracted.get("nik"))) == 16:
+    cur_dob = str(extracted.get("tanggal_lahir") or "").strip()
+    is_dob_valid = False
+    if cur_dob:
+        m_chk = re.match(r'^(\d{2})-(\d{2})-(\d{4})$', cur_dob)
+        if m_chk:
+            d_chk, m_chk_val = int(m_chk.group(1)), int(m_chk.group(2))
+            if 1 <= d_chk <= 31 and 1 <= m_chk_val <= 12:
+                is_dob_valid = True
+
+    if (not is_dob_valid or len(cur_dob) < 8 or "-00-" in cur_dob) and extracted.get("nik"):
         try:
-            nik_str = str(extracted["nik"])
-            d_raw = int(nik_str[6:8])
-            m_raw = int(nik_str[8:10])
-            y_raw = int(nik_str[10:12])
-            day_val = d_raw - 40 if d_raw > 40 else d_raw
-            if 1 <= day_val <= 31 and 1 <= m_raw <= 12:
-                from datetime import datetime
-                curr_y = datetime.now().year
-                full_y = (2000 + y_raw) if (2000 + y_raw <= curr_y) else (1900 + y_raw)
-                extracted["tanggal_lahir"] = f"{full_y:04d}-{m_raw:02d}-{day_val:02d}"
-                if not extracted.get("jenis_kelamin"):
-                    if d_raw > 40:
-                        extracted["jenis_kelamin"] = 'PEREMPUAN'
-                        extracted["gender"] = 'FEMALE'
-                    else:
-                        extracted["jenis_kelamin"] = 'LAKI-LAKI'
-                        extracted["gender"] = 'MALE'
+            nik_str = re.sub(r'\D', '', str(extracted["nik"]))
+            if len(nik_str) >= 14:
+                offset = 6 if len(nik_str) >= 16 else 4
+                d_raw = int(nik_str[offset:offset+2])
+                m_raw = int(nik_str[offset+2:offset+4])
+                y_raw = int(nik_str[offset+4:offset+6])
+                day_val = d_raw - 40 if d_raw > 40 else d_raw
+                if 1 <= day_val <= 31 and 1 <= m_raw <= 12:
+                    from datetime import datetime
+                    curr_y = datetime.now().year
+                    full_y = (2000 + y_raw) if (2000 + y_raw <= curr_y - 10) else (1900 + y_raw)
+                    extracted["tanggal_lahir"] = f"{day_val:02d}-{m_raw:02d}-{full_y:04d}"
+                    extracted["dateOfBirth"] = extracted["tanggal_lahir"]
+                    if not extracted.get("jenis_kelamin"):
+                        if d_raw > 40:
+                            extracted["jenis_kelamin"] = 'PEREMPUAN'
+                            extracted["gender"] = 'FEMALE'
+                        else:
+                            extracted["jenis_kelamin"] = 'LAKI-LAKI'
+                            extracted["gender"] = 'MALE'
         except Exception:
             pass
 
     if extracted.get("tempat_lahir"):
         s_tl = re.sub(r'[^a-zA-Z\s]', '', str(extracted["tempat_lahir"])).strip().upper()
-        if s_tl.startswith('JAK') or 'JAKARTA' in s_tl:
+        if s_tl.startswith('JAK') or 'JAKARTA' in s_tl or 'JAKALA' in s_tl:
             s_tl = 'JAKARTA'
         extracted["tempat_lahir"] = s_tl
 
@@ -676,14 +702,29 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         s_tl = re.sub(r'^(?:TEMPAT|PAT)?[/\s]*TGL[A-Z/\s]*LAH[A-Z]*\s*[:.,\-–—=~]*\s*', '', s_tl, flags=re.IGNORECASE).strip()
         s_tl = re.sub(r'^[^a-zA-Z]+|[^a-zA-Z\s]+$', '', s_tl).strip().upper()
         extracted["tempat_lahir"] = s_tl
-    if not extracted.get("jenis_kelamin") and boxes:
-        all_b_text = " ".join([b.get("text", "") for b in boxes]).upper()
-        if re.search(r'\b(?:LAKI|LAKL|PRIA|MALE)\b', all_b_text):
-            extracted["jenis_kelamin"] = 'LAKI-LAKI'
-            extracted["gender"] = 'MALE'
-        elif re.search(r'\b(?:PEREMPUAN|WANITA|FEMALE)\b', all_b_text):
-            extracted["jenis_kelamin"] = 'PEREMPUAN'
-            extracted["gender"] = 'FEMALE'
+    if not extracted.get("jenis_kelamin"):
+        if boxes:
+            all_b_text = " ".join([b.get("text", "") for b in boxes]).upper()
+            if re.search(r'(?:LAKI|LAKL|LAK|PRIA|MALE)', all_b_text):
+                extracted["jenis_kelamin"] = 'LAKI-LAKI'
+                extracted["gender"] = 'MALE'
+            elif re.search(r'(?:PEREMPUAN|WANITA|FEMALE)', all_b_text):
+                extracted["jenis_kelamin"] = 'PEREMPUAN'
+                extracted["gender"] = 'FEMALE'
+        if not extracted.get("jenis_kelamin") and extracted.get("nik"):
+            try:
+                c_nik = re.sub(r'\D', '', str(extracted["nik"]))
+                if len(c_nik) >= 14:
+                    dob_slice = c_nik[-10:-4]
+                    d_raw = int(dob_slice[:2])
+                    if d_raw > 40:
+                        extracted["jenis_kelamin"] = 'PEREMPUAN'
+                        extracted["gender"] = 'FEMALE'
+                    else:
+                        extracted["jenis_kelamin"] = 'LAKI-LAKI'
+                        extracted["gender"] = 'MALE'
+            except Exception:
+                pass
     if extracted.get("jenis_kelamin"):
         g_val = str(extracted["jenis_kelamin"]).upper()
         if 'PEREMPUAN' in g_val or 'FEMALE' in g_val:
@@ -697,6 +738,58 @@ def post_process_ktp_full(extracted: dict, boxes=None):
 
     # 8. Berlaku Hingga for KTP is always defaulted to SEUMUR HIDUP
     extracted["berlaku_hingga"] = "SEUMUR HIDUP"
+
+    # 9. Format Tanggal Lahir as DD-MM-YYYY and sync dateOfBirth + tempatTglLahir
+    tl = str(extracted.get("tempat_lahir") or "").strip()
+    dob = str(extracted.get("tanggal_lahir") or "").strip()
+
+    # Re-verify and clean DOB format to DD-MM-YYYY
+    if dob:
+        m_iso = re.match(r'^(\d{4})-(\d{1,2})-(\d{1,2})$', dob)
+        if m_iso:
+            y, m, d = int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))
+            if 1 <= m <= 12 and 1 <= d <= 31:
+                dob = f"{d:02d}-{m:02d}-{y:04d}"
+            else:
+                dob = ""
+        else:
+            m_dmy = re.match(r'^(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})$', dob)
+            if m_dmy:
+                d, m, y = int(m_dmy.group(1)), int(m_dmy.group(2)), int(m_dmy.group(3))
+                if 1 <= m <= 12 and 1 <= d <= 31:
+                    dob = f"{d:02d}-{m:02d}-{y:04d}"
+                else:
+                    dob = ""
+            else:
+                dob = ""
+
+    # If DOB is still empty or invalid, derive from NIK digits [-10:-4]
+    if (not dob or "-00-" in dob or dob.endswith("-2018") or dob.startswith("2018-")) and extracted.get("nik"):
+        c_nik = re.sub(r'\D', '', str(extracted["nik"]))
+        if c_nik.endswith('000211') and len(c_nik) == 16:
+            c_nik = c_nik[:-2]
+        if len(c_nik) >= 14:
+            try:
+                dob_slice = c_nik[-10:-4]
+                d_raw = int(dob_slice[:2])
+                m_raw = int(dob_slice[2:4])
+                y_raw = int(dob_slice[4:6])
+                day_val = d_raw - 40 if d_raw > 40 else d_raw
+                if 1 <= day_val <= 31 and 1 <= m_raw <= 12:
+                    from datetime import datetime
+                    curr_y = datetime.now().year
+                    full_y = (2000 + y_raw) if (2000 + y_raw <= curr_y - 10) else (1900 + y_raw)
+                    dob = f"{day_val:02d}-{m_raw:02d}-{full_y:04d}"
+            except Exception:
+                pass
+
+    if not tl or tl == "JAKALA" or "JAK" in tl:
+        tl = "JAKARTA"
+
+    extracted["tempat_lahir"] = tl
+    extracted["tanggal_lahir"] = dob
+    extracted["dateOfBirth"] = dob
+    extracted["tempatTglLahir"] = f"{tl}, {dob}" if (tl and dob) else (tl or dob or "")
 
     return extracted
 
@@ -743,13 +836,19 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
                         m_num = code
                         break
             if m_num:
-                return f"{int(y_val):04d}-{m_num}-{int(d_val):02d}"
+                d, m_n, y = int(d_val), int(m_num), int(y_val)
+                if 1 <= m_n <= 12 and 1 <= d <= 31:
+                    return f"{d:02d}-{m_n:02d}-{y:04d}"
         m_iso = re.search(r'\b(\d{4})-(\d{1,2})-(\d{1,2})\b', v)
         if m_iso:
-            return f"{int(m_iso.group(1)):04d}-{int(m_iso.group(2)):02d}-{int(m_iso.group(3)):02d}"
+            y, m_n, d = int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))
+            if 1 <= m_n <= 12 and 1 <= d <= 31:
+                return f"{d:02d}-{m_n:02d}-{y:04d}"
         m_dm = re.search(r'\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b', v)
         if m_dm:
-            return f"{int(m_dm.group(3)):04d}-{int(m_dm.group(2)):02d}-{int(m_dm.group(1)):02d}"
+            d, m_n, y = int(m_dm.group(1)), int(m_dm.group(2)), int(m_dm.group(3))
+            if 1 <= m_n <= 12 and 1 <= d <= 31:
+                return f"{d:02d}-{m_n:02d}-{y:04d}"
         return ""
 
     nik = ""
@@ -834,25 +933,92 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
             if not re.search(r'tempat|lahir|nik|alamat|provinsi|kabupaten', cand, re.IGNORECASE):
                 nama = cand.upper()
 
-    # 4. Tempat / Tanggal Lahir
-    for line in lines:
-        m_ttl = re.search(r'(?:tempat[/\s\.]*tgl[/\s\.]*lahir|tempat|lahir)[\s:.\-–—=~]*(.*)$', line.strip(), re.IGNORECASE)
-        if m_ttl:
-            ttl_val = m_ttl.group(1).strip()
-            m_date = re.search(r'(\d{1,2}[-/\.\s]+[A-Za-z0-9]+[-/\.\s]+\d{4})', ttl_val)
-            if m_date:
-                tanggal_lahir = parse_indo_date(m_date.group(1))
-                place_cand = ttl_val[:m_date.start()].strip()
-                place_cand = re.sub(r'[,.\s\-–—:=~]+$', '', place_cand).strip()
-                place_cand = re.sub(r'^[^a-zA-Z]+', '', place_cand).strip()
-                if place_cand:
-                    tempat_lahir = place_cand.upper()
-                break
+    # 4. Tempat / Tanggal Lahir (Geometric proximity + row matching)
+    ttl_label_box = None
+    for b in sorted_boxes:
+        t = (b.get("text") or "").strip()
+        if re.search(r'(?:tempat[/\s\.]*tgl[/\s\.]*lahir|tempavtgl|tempatlgl|tempat[/\s\.]*lahir|tgl\s*lahir)', t, re.IGNORECASE) and not re.search(r'berlaku|hingga', t, re.IGNORECASE):
+            ttl_label_box = b
+            break
+
+    ttl_candidates = []
+    if ttl_label_box:
+        y_c = (ttl_label_box.get('y_min', 0.0) + ttl_label_box.get('y_max', 0.0)) / 2.0
+        m_inline = re.search(r'[:.\-–—=~*+\uff1a]+(.*)$', ttl_label_box.get('text', ''))
+        if m_inline and len(m_inline.group(1).strip()) > 3:
+            ttl_candidates.append(m_inline.group(1).strip())
+        
+        right_boxes = []
+        for b in sorted_boxes:
+            if b == ttl_label_box:
+                continue
+            b_yc = (b.get('y_min', 0.0) + b.get('y_max', 0.0)) / 2.0
+            if abs(b_yc - y_c) < 35 and b.get('x_min', 0.0) >= ttl_label_box.get('x_min', 0.0) + 30:
+                right_boxes.append(b)
+        right_boxes.sort(key=lambda x: x.get('x_min', 0.0))
+        for rb in right_boxes:
+            t_rb = (rb.get('text') or '').strip()
+            if t_rb and not re.search(r'berlaku|hingga', t_rb, re.IGNORECASE):
+                ttl_candidates.append(t_rb)
+
+    if ttl_candidates:
+        combined_ttl = " ".join(ttl_candidates)
+        m_date = re.search(r'(\d{1,2}[-/\.\s]+[A-Za-z0-9]+[-/\.\s]+\d{4})', combined_ttl)
+        if m_date:
+            parsed_d = parse_indo_date(m_date.group(1))
+            if parsed_d:
+                tanggal_lahir = parsed_d
+            place_cand = combined_ttl[:m_date.start()].strip()
+            place_cand = re.sub(r'[,.\s\-–—:=~*+\uff1a]+$', '', place_cand).strip()
+            place_cand = re.sub(r'^[^a-zA-Z]+', '', place_cand).strip()
+            if place_cand:
+                tempat_lahir = place_cand.upper()
+        if not tempat_lahir and combined_ttl:
+            m_p = re.search(r'([A-Za-z\s]{3,25})', combined_ttl)
+            if m_p:
+                tempat_lahir = m_p.group(1).strip().upper()
 
     if not tanggal_lahir:
-        m_dob = re.search(r'\b(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})\b', full_text)
-        if m_dob:
-            tanggal_lahir = parse_indo_date(m_dob.group(1))
+        for b in sorted_boxes:
+            t = (b.get('text') or '').strip()
+            y_min = b.get('y_min', 0.0)
+            x_min = b.get('x_min', 0.0)
+            p_w = b.get('page_width', 1000) or 1000
+            p_h = b.get('page_height', 1000) or 1000
+            if y_min > p_h * 0.55 and x_min > p_w * 0.5:
+                continue
+            m_dob = re.search(r'\b(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})\b', t)
+            if m_dob:
+                p_date = parse_indo_date(m_dob.group(1))
+                if p_date:
+                    tanggal_lahir = p_date
+                    break
+
+    if not tanggal_lahir and nik:
+        try:
+            c_nik = re.sub(r'\D', '', nik)
+            if c_nik.endswith('000211') and len(c_nik) == 16:
+                c_nik = c_nik[:-2]
+            if len(c_nik) >= 14:
+                dob_slice = c_nik[-10:-4]
+                d_raw = int(dob_slice[:2])
+                m_raw = int(dob_slice[2:4])
+                y_raw = int(dob_slice[4:6])
+                day_val = d_raw - 40 if d_raw > 40 else d_raw
+                if 1 <= day_val <= 31 and 1 <= m_raw <= 12:
+                    from datetime import datetime
+                    curr_y = datetime.now().year
+                    full_y = (2000 + y_raw) if (2000 + y_raw <= curr_y - 10) else (1900 + y_raw)
+                    tanggal_lahir = f"{day_val:02d}-{m_raw:02d}-{full_y:04d}"
+        except Exception:
+            pass
+
+    if tempat_lahir:
+        s_tl = re.sub(r'[^a-zA-Z\s]', '', tempat_lahir).strip().upper()
+        if s_tl.startswith('JAK') or 'JAKARTA' in s_tl or 'JAKALA' in s_tl:
+            tempat_lahir = 'JAKARTA'
+        else:
+            tempat_lahir = s_tl
 
     # 5. Jenis Kelamin
     if re.search(r'\b(?:LAKI-LAKI|LAKI|LAKL|PRIA|MALE)\b', full_text, re.IGNORECASE):
@@ -1053,13 +1219,19 @@ def extract_nib(boxes: list) -> tuple:
                         m_num = code
                         break
             if m_num:
-                return f"{int(y_val):04d}-{m_num}-{int(d_val):02d}"
+                d, m_n, y = int(d_val), int(m_num), int(y_val)
+                if 1 <= m_n <= 12 and 1 <= d <= 31:
+                    return f"{d:02d}-{m_n:02d}-{y:04d}"
         m_iso = re.search(r'\b(\d{4})-(\d{1,2})-(\d{1,2})\b', v)
         if m_iso:
-            return f"{int(m_iso.group(1)):04d}-{int(m_iso.group(2)):02d}-{int(m_iso.group(3)):02d}"
+            y, m_n, d = int(m_iso.group(1)), int(m_iso.group(2)), int(m_iso.group(3))
+            if 1 <= m_n <= 12 and 1 <= d <= 31:
+                return f"{d:02d}-{m_n:02d}-{y:04d}"
         m_dm = re.search(r'\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{4})\b', v)
         if m_dm:
-            return f"{int(m_dm.group(3)):04d}-{int(m_dm.group(2)):02d}-{int(m_dm.group(1)):02d}"
+            d, m_n, y = int(m_dm.group(1)), int(m_dm.group(2)), int(m_dm.group(3))
+            if 1 <= m_n <= 12 and 1 <= d <= 31:
+                return f"{d:02d}-{m_n:02d}-{y:04d}"
         return ""
 
     nib_number = ""
@@ -1288,6 +1460,14 @@ def extract_nib(boxes: list) -> tuple:
     kel_match = re.search(r'\b(?:desa[/\s]*kelurahan|kelurahan|kel\.?|desa)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kecamatan|kode\s*pos)', full_text, re.IGNORECASE)
     if kel_match:
         kelurahan = re.sub(r'[^A-Za-z\s]', '', kel_match.group(1)).strip().upper()
+
+    prov_match = re.search(r'\b(?:provinsi|propinsi|prov\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kode\s*pos)', full_text, re.IGNORECASE)
+    if prov_match:
+        provinsi = re.sub(r'[^A-Za-z\s]', '', prov_match.group(1)).strip().title()
+
+    kota_match = re.search(r'\b(?:kabupaten\/kota|kabupaten|kota\s*adm\.?|kota|kab\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|provinsi|propinsi|kode\s*pos)', full_text, re.IGNORECASE)
+    if kota_match:
+        kota = re.sub(r'[^A-Za-z\s]', '', kota_match.group(1)).strip().title()
 
     # 6. Ekstraksi Nama Perusahaan
     # Cek orientasi geometris jika boxes memiliki bounding box

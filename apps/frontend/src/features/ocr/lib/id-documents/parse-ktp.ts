@@ -1,5 +1,5 @@
 /** KTP OCR text → structured fields (NIK, name, birth place/date, address…). */
-import {normalizeBirthDate} from '@/shared/lib/dates';
+import {normalizeBirthDate, toDmyDate} from '@/shared/lib/dates';
 import {ParsedKtpData} from './types';
 
 export function parseBirthPlaceAndDate(rawStr?: string | null): {
@@ -34,8 +34,8 @@ export function parseBirthPlaceAndDate(rawStr?: string | null): {
     .replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9\s]+$/g, '')
     .trim()
     .toUpperCase();
-  const dateIso = normalizeBirthDate(rawDate);
-  return {place, date: dateIso, rawDate};
+  const dateDmy = toDmyDate(rawDate) || normalizeBirthDate(rawDate);
+  return {place, date: dateDmy, rawDate};
 }
 
 export function splitPersonName(fullName: string) {
@@ -151,10 +151,10 @@ export function parseKtpText(text: string): ParsedKtpData {
   if (dobMatch) {
     const parsed = parseBirthPlaceAndDate(dobMatch[1]);
     result.tempatLahir = parsed.place;
-    result.tanggalLahir = parsed.date;
-    result.dateOfBirth = parsed.date;
+    result.tanggalLahir = toDmyDate(parsed.date || parsed.rawDate);
+    result.dateOfBirth = result.tanggalLahir;
     result.tempatTglLahir =
-      parsed.place + (parsed.date ? `, ${parsed.date}` : parsed.rawDate ? `, ${parsed.rawDate}` : '');
+      parsed.place + (result.tanggalLahir ? `, ${result.tanggalLahir}` : parsed.rawDate ? `, ${parsed.rawDate}` : '');
   } else {
     const commaDateMatch = text.match(
       /([a-zA-Z\s]{3,20})\s*,\s*(\d{1,2}[-\s/\.]+[A-Za-z]+[-\s/\.]+\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{2,4})/,
@@ -162,11 +162,43 @@ export function parseKtpText(text: string): ParsedKtpData {
     if (commaDateMatch) {
       const parsed = parseBirthPlaceAndDate(commaDateMatch[0]);
       if (parsed.place) result.tempatLahir = parsed.place;
-      if (parsed.date) {
-        result.tanggalLahir = parsed.date;
-        result.dateOfBirth = parsed.date;
-        result.tempatTglLahir = `${parsed.place}, ${parsed.date}`;
+      const dmy = toDmyDate(parsed.date || parsed.rawDate);
+      if (dmy) {
+        result.tanggalLahir = dmy;
+        result.dateOfBirth = dmy;
+        result.tempatTglLahir = `${parsed.place}, ${dmy}`;
       }
+    }
+  }
+
+  // Fallback to NIK-encoded DOB if missing or invalid
+  if (
+    (!result.tanggalLahir || result.tanggalLahir.includes('-00-') || result.tanggalLahir.endsWith('-2018') || result.tanggalLahir.startsWith('2018-')) &&
+    result.nik
+  ) {
+    const cNik = result.nik.replace(/\D/g, '');
+    if (cNik.length >= 14) {
+      const dobSlice = cNik.slice(-10, -4);
+      let d = parseInt(dobSlice.slice(0, 2), 10);
+      const m = parseInt(dobSlice.slice(2, 4), 10);
+      const y = parseInt(dobSlice.slice(4, 6), 10);
+      if (d > 40) d -= 40;
+      if (d >= 1 && d <= 31 && m >= 1 && m <= 12) {
+        const fullY = 2000 + y <= 2015 ? 2000 + y : 1900 + y;
+        result.tanggalLahir = `${String(d).padStart(2, '0')}-${String(m).padStart(2, '0')}-${fullY}`;
+        result.dateOfBirth = result.tanggalLahir;
+      }
+    }
+  }
+
+  if (result.tempatLahir) {
+    let tl = result.tempatLahir.trim().toUpperCase();
+    if (tl.startsWith('JAK') || tl.includes('JAKARTA') || tl.includes('JAKALA')) {
+      tl = 'JAKARTA';
+    }
+    result.tempatLahir = tl;
+    if (result.tanggalLahir) {
+      result.tempatTglLahir = `${tl}, ${result.tanggalLahir}`;
     }
   }
 

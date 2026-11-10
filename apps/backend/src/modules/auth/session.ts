@@ -34,8 +34,14 @@ function jwtSecret() {
     .digest('hex');
 }
 
-export const signSession = (uid: number, sid: string) =>
-  jwt.sign({uid, sid}, jwtSecret(), {expiresIn: `${MAX_LIFETIME_MIN * 4}m`, audience: 'los-api'});
+export const signSession = (uid: number, sid: string, unlimited: boolean = false) =>
+  jwt.sign(
+    {uid, sid},
+    jwtSecret(),
+    unlimited
+      ? {expiresIn: '3650d', audience: 'los-api'}
+      : {expiresIn: `${MAX_LIFETIME_MIN * 4}m`, audience: 'los-api'},
+  );
 export const signFileToken = (fileId: string, userId: string) =>
   jwt.sign({fileId, userId}, jwtSecret(), {expiresIn: '15m', audience: 'los-file'});
 export const verifyFileToken = (token: string) =>
@@ -52,10 +58,11 @@ export function isHttps(headers?: Headers) {
   return headers.get('x-forwarded-proto') === 'https' || (headers.get('origin') || '').startsWith('https:');
 }
 
-export function sessionCookie(token: string | null, headers?: Headers) {
+export function sessionCookie(token: string | null, headers?: Headers, unlimited: boolean = false) {
   const secure = isHttps(headers) ? '; Secure' : '';
   const base = `${SESSION_COOKIE}=${token ?? ''}; Path=/; HttpOnly; SameSite=Lax${secure}`;
-  return token ? `${base}; Max-Age=${MAX_LIFETIME_MIN * 60 * 4}` : `${base}; Max-Age=0`;
+  const maxAge = unlimited ? 315360000 : MAX_LIFETIME_MIN * 60 * 4;
+  return token ? `${base}; Max-Age=${maxAge}` : `${base}; Max-Age=0`;
 }
 
 export function readCookie(header: string | null | undefined, name: string) {
@@ -98,7 +105,7 @@ export async function resolveCrmRole(userId: number, username: string): Promise<
   return {role: name.toUpperCase().replace(/[^A-Z0-9]+/g, '_'), displayRole: name, isAdmin: false};
 }
 
-async function userTimeoutMinutes(userId: number, admin: boolean) {
+export async function userTimeoutMinutes(userId: number, admin: boolean) {
   const [rows] = await pool.query<any[]>('SELECT session_timeout_minutes FROM users WHERE id = ?', [userId]);
   const v = rows[0]?.session_timeout_minutes;
   if (admin && (v === null || v === undefined || Number(v) === 0)) return 0;

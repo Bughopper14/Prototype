@@ -1,6 +1,6 @@
 /** Sends an ID image to the OCR service and parses the result per document type. */
 import {api} from '@/shared/lib/api';
-import {normalizeBirthDate} from '@/shared/lib/dates';
+import {normalizeBirthDate, toDmyDate} from '@/shared/lib/dates';
 import {parseKitasText} from './parse-kitas';
 import {parseKtpText} from './parse-ktp';
 import {parseNpwpText} from './parse-npwp';
@@ -91,16 +91,27 @@ export async function extractKtpTextFromImage(
   const isDivorced = sLower.includes('cerai') || sLower.includes('divorced') || sLower.includes('widowed');
   const resolvedMarital = isSingle ? 'SINGLE' : isMarried ? 'MARRIED' : isDivorced ? 'DIVORCED' : 'SINGLE';
 
+  const rawTl = d.tempat_lahir || d.tempatLahir || '';
+  const cleanTl =
+    rawTl.toUpperCase().startsWith('JAK') ||
+    rawTl.toUpperCase().includes('JAKARTA') ||
+    rawTl.toUpperCase().includes('JAKALA')
+      ? 'JAKARTA'
+      : rawTl;
+  const rawDob = d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth || '';
+  const dobDmy = toDmyDate(rawDob) || rawDob;
+
   return {
     nik: d.nik || d.idNumber,
     nama: d.nama || d.name,
     firstName: d.firstName,
     middleName: d.middleName,
     lastName: d.lastName,
-    tempatLahir: d.tempat_lahir || d.tempatLahir,
-    tanggalLahir: d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth,
-    dateOfBirth: d.tanggal_lahir || d.dateOfBirth,
-    tempatTglLahir: d.tempatTglLahir || (d.tempat_lahir ? `${d.tempat_lahir}, ${d.tanggal_lahir || ''}` : ''),
+    tempatLahir: cleanTl,
+    tanggalLahir: dobDmy,
+    dateOfBirth: dobDmy,
+    tempatTglLahir:
+      d.tempatTglLahir || (cleanTl ? `${cleanTl}, ${dobDmy}` : dobDmy),
     gender:
       d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('PEREMPUAN')
         ? 'FEMALE'

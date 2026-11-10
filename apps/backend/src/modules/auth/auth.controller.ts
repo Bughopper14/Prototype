@@ -4,7 +4,15 @@ import {pool} from '../../core/db/pool';
 import {ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {Public} from '../../core/http/public.decorator';
 import {hashPassword, verifyPassword} from './password';
-import {createSessionRecord, endSession, isAdminUser, logAudit, sessionCookie, signSession} from './session';
+import {
+  createSessionRecord,
+  endSession,
+  isAdminUser,
+  logAudit,
+  sessionCookie,
+  signSession,
+  userTimeoutMinutes,
+} from './session';
 import {clientIp, currentActor} from './current-actor';
 
 const attempts = new Map<string, {count: number; until: number}>();
@@ -58,9 +66,11 @@ export class AuthController {
     attempts.delete(key);
 
     const admin = await isAdminUser(user.id, user.username);
+    const timeout = await userTimeoutMinutes(user.id, admin);
+    const unlimited = timeout === 0 || admin;
     const sessionId = await createSessionRecord(user.id, admin, ip, req.headers.get('user-agent'));
     await logAudit(user.id, 'User Login', 'Portal Hub', ip);
-    res.setHeader('Set-Cookie', sessionCookie(signSession(user.id, sessionId), req.headers));
+    res.setHeader('Set-Cookie', sessionCookie(signSession(user.id, sessionId, unlimited), req.headers, unlimited));
     return isForm ? res.redirect(303, safeNext(next)) : {ok: true, redirect: safeNext(next)};
   }
 
@@ -108,7 +118,13 @@ export class AuthController {
   async heartbeat(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const actor = await currentActor(req);
     if (!actor) return res.status(401).json({status: 'expired', message: 'Sesi tidak ditemukan'});
-    return {status: 'active', user: actor.username, isAdmin: actor.isAdmin};
+    const timeout = await userTimeoutMinutes(actor.portalUserId, actor.isAdmin);
+    return {
+      status: 'active',
+      user: actor.username,
+      isAdmin: actor.isAdmin,
+      inactivity_timeout_minutes: timeout,
+    };
   }
 
   private async endCurrentSession(req: ApiRequest, res: ApiResponse) {
