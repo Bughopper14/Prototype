@@ -1,10 +1,16 @@
-/** Renders stored rich text (HTML or plain text with line breaks). */
+/** Shows saved rich text (TinyMCE HTML) in the live document. */
 
 export function renderRichHtml(val: any) {
   if (!val) return null;
   const str = String(val).trim();
   if (!str) return null;
-  if (/<(p|ul|ol|li|div|br|strong|b|em|i|span|table|tr|td|th)[^>]*>/i.test(str)) {
+  const stripped = str
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .trim();
+  if (!stripped && !/<(img|table|hr)/i.test(str)) return null;
+
+  if (/<(p|ul|ol|li|div|br|strong|b|em|i|span|table|tr|td|th|img)[^>]*>/i.test(str)) {
     return (
       <div
         className="preana-rich-rendered-html"

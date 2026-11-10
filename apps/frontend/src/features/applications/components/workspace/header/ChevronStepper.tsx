@@ -9,15 +9,14 @@ export function ChevronStepper() {
         <div
           key={st}
           className={`chevron-step ${i === 0 ? 'first' : ''} ${activeStage === st ? 'active' : 'inactive'}`}
-          style={{cursor: draft.isNew && st !== 'FAP Stage' ? 'not-allowed' : 'pointer'}}
+          // FAP Stage and Pre-analysis can both be filled before the first save; ICLF needs a saved application
+          style={{cursor: draft.isNew && st === 'ICLF' ? 'not-allowed' : 'pointer'}}
           title={
-            draft.isNew && st !== 'FAP Stage'
-              ? 'Please save the application first'
-              : `Switch to ${st} view tab`
+            draft.isNew && st === 'ICLF' ? 'Please save the application first' : `Switch to ${st} view tab`
           }
           onClick={() => {
-            if (draft.isNew && st !== 'FAP Stage') {
-              notify('Please save the application (FAP Stage) first to unlock the next stage.');
+            if (draft.isNew && st === 'ICLF') {
+              notify('Please save the application first to open the ICLF stage.');
               return;
             }
             setActiveStage(st);

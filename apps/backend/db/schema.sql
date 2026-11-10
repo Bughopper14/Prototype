@@ -149,6 +149,7 @@ CREATE TABLE IF NOT EXISTS `bank_facilities` (
   `interest_rate` decimal(20,2) DEFAULT NULL,
   `payment_record` text,
   `facility_status` text,
+  `comments` text,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL,
   `deleted_at` timestamp(3) NULL DEFAULT NULL,
@@ -685,7 +686,7 @@ CREATE TABLE IF NOT EXISTS `ktp` (
   PRIMARY KEY (`id`),
   KEY `idx_ktp_stakeholder` (`stakeholder_id`),
   KEY `idx_ktp_nik` (`nik`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `legal_stakeholder` (
   `id` char(36) NOT NULL,
@@ -1220,6 +1221,9 @@ CREATE TABLE IF NOT EXISTS `new_application_pre_analisis` (
   `asset_summary_truck_liu_gong` int DEFAULT NULL,
   `asset_summary_he_non_liu_gong` int DEFAULT NULL,
   `asset_summary_truck_non_liu_gong` int DEFAULT NULL,
+  `financing_purpose_detail` text,
+  `reference_comments` longtext,
+  `financing_proposal_json` longtext,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL,
   `created_by` varchar(150) DEFAULT NULL,
@@ -1297,7 +1301,7 @@ CREATE TABLE IF NOT EXISTS `passport` (
   PRIMARY KEY (`id`),
   KEY `idx_passport_stakeholder` (`stakeholder_id`),
   KEY `idx_passport_number` (`passport_number`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS `project_contract` (
   `id` char(36) NOT NULL,

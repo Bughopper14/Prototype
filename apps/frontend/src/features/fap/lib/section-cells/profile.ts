@@ -1,0 +1,47 @@
+/** FAP form section "Business profile": the sheet cells it highlights, where to scroll, and which cells belong to it. */
+export const PROFILE = {
+  section: 'fap-preview-sec-business',
+  /** Cells highlighted when the section is focused. */
+  cellIds: [
+    'fap-cell-mainBusiness',
+    'fap-cell-repaymentSource',
+    'fap-cell-experienceYears',
+    'fap-cell-experienceMonths',
+    'fap-cell-latestDeedNo',
+    'fap-cell-latestDeedDate',
+    'fap-cell-seg-mining',
+    'fap-cell-seg-agriculture',
+    'fap-cell-seg-forestry',
+    'fap-cell-seg-construction',
+    'fap-cell-seg-oilgas',
+    'fap-cell-seg-other',
+    'fap-cell-role-consowner',
+    'fap-cell-role-contractors',
+    'fap-cell-role-subcont',
+    'fap-cell-role-rental',
+    'fap-cell-role-other',
+  ],
+  /** Cell the sheet scrolls to. */
+  scrollTarget: 'fap-cell-mainBusiness',
+  /** Cells that, when clicked, open this section. */
+  ownCellIds: [
+    'fap-cell-mainBusiness',
+    'fap-cell-seg-mining',
+    'fap-cell-seg-agriculture',
+    'fap-cell-seg-forestry',
+    'fap-cell-seg-construction',
+    'fap-cell-seg-oilgas',
+    'fap-cell-seg-other',
+    'fap-cell-role-consowner',
+    'fap-cell-role-contractors',
+    'fap-cell-role-subcont',
+    'fap-cell-role-rental',
+    'fap-cell-role-other',
+    'fap-cell-repaymentSource',
+    'fap-cell-experienceYears',
+    'fap-cell-experienceMonths',
+    'fap-cell-latestDeedNo',
+    'fap-cell-latestDeedDate',
+    'fap-cell-shareholderDeedRef',
+  ],
+};

@@ -1,157 +1,13 @@
-/** Default pre-analysis content for a new application (unchanged sample defaults). */
-import {CompetitionItem, GroupStructureData, PreAnalysisData} from './types';
+/** Starting values of a Pre-Analysis (sample data), the competition table and the signature date of today. */
+import type {CompetitionItem, PreAnalysisData} from '@/features/pre-analysis/lib/types';
+import {DEFAULT_GROUP_STRUCTURE} from '@/features/pre-analysis/lib/group-structure';
 
-export const DEFAULT_GROUP_STRUCTURE: GroupStructureData = {
-  holding: {
-    name: 'PT STAR',
-    subtitle: '(PT Santosa Abadi Raja)',
-    authorizedCapital: 'Rp. 240,000,000,000',
-    paidUpCapital: 'Rp. 60,000,000,000',
-    borderColor: '#1e3a8a',
-    shareholders: [
-      {
-        name: 'HANSEN SANTOSA',
-        position: 'President Director',
-        role: 'President Director',
-        shareClass: '-',
-        numberOfShares: '324,000',
-        total: 'Rp. 32,400,000,000',
-        percentage: '54%',
-      },
-      {
-        name: 'LEONARD SANTOSA',
-        position: 'Director',
-        role: 'Director',
-        shareClass: '-',
-        numberOfShares: '204,000',
-        total: 'Rp. 20,400,000,000',
-        percentage: '34%',
-      },
-      {
-        name: 'OKY SANTOSA',
-        position: 'Commissioner',
-        role: 'Commissioner',
-        shareClass: '-',
-        numberOfShares: '72,000',
-        total: 'Rp. 7,200,000,000',
-        percentage: '12%',
-      },
-    ],
-    management: 'Presdir: Hansen Santosa | Direktur: Leonard Santosa | Komisaris: Oky Santosa',
-  },
-  subsidiaries: [
-    {
-      name: 'PT PASS',
-      subtitle: '(PT Pangan Sejahtera Santosa)',
-      authorizedCapital: 'Rp. 50,000,000,000',
-      paidUpCapital: 'Rp. 17,500,000,000',
-      borderColor: '#0284c7',
-      shareholders: [
-        {
-          name: 'LEONARD SANTOSA',
-          position: 'Director',
-          role: 'Director',
-          shareClass: '-',
-          numberOfShares: '10',
-          total: 'Rp. 1,000,000',
-          percentage: '<1%',
-        },
-        {
-          name: 'HANSEN SANTOSA',
-          position: 'Commissioner',
-          role: 'Commissioner',
-          shareClass: '-',
-          numberOfShares: '-',
-          total: 'Rp. 0',
-          percentage: '0%',
-        },
-        {
-          name: 'PT SANTOSA ABADI RAJA',
-          position: 'Legal Entity',
-          role: 'Legal Entity',
-          shareClass: '-',
-          numberOfShares: '174,990',
-          total: 'Rp. 17,499,000,000',
-          percentage: '99.99%',
-        },
-      ],
-      management: 'Direktur: Leonard Santosa | Komisaris: Hansen Santosa',
-    },
-    {
-      name: 'PT HPS',
-      subtitle: '(PT Handalan Putra Santosa)',
-      authorizedCapital: 'Rp. 130,000,000,000',
-      paidUpCapital: 'Rp. 32,500,000,000',
-      borderColor: '#dc2626',
-      shareholders: [
-        {
-          name: 'LEONARD SANTOSA',
-          position: 'Director',
-          role: 'Director',
-          shareClass: '-',
-          numberOfShares: '10',
-          total: 'Rp. 1,000,000',
-          percentage: '<1%',
-        },
-        {
-          name: 'HANSEN SANTOSA',
-          position: 'Commissioner',
-          role: 'Commissioner',
-          shareClass: '-',
-          numberOfShares: '-',
-          total: 'Rp. 0',
-          percentage: '0%',
-        },
-        {
-          name: 'PT SANTOSA ABADI RAJA',
-          position: 'Legal Entity',
-          role: 'Legal Entity',
-          shareClass: '-',
-          numberOfShares: '324,990',
-          total: 'Rp. 32,499,000,000',
-          percentage: '99.99%',
-        },
-      ],
-      management: 'Direktur: Leonard Santosa | Komisaris: Hansen Santosa',
-    },
-    {
-      name: 'PT HTPS',
-      subtitle: '(PT Harta Putramas Santosa)',
-      authorizedCapital: 'Rp. 500,000,000',
-      paidUpCapital: 'Rp. 500,000,000',
-      borderColor: '#16a34a',
-      shareholders: [
-        {
-          name: 'HANSEN SANTOSA',
-          position: 'Commissioner',
-          role: 'Commissioner',
-          shareClass: '-',
-          numberOfShares: '-',
-          total: 'Rp. 0',
-          percentage: '0%',
-        },
-        {
-          name: 'LEONARD SANTOSA',
-          position: 'Director',
-          role: 'Director',
-          shareClass: '-',
-          numberOfShares: '1',
-          total: 'Rp. 100,000',
-          percentage: '<1%',
-        },
-        {
-          name: 'PT SANTOSA ABADI RAJA',
-          position: 'Legal Entity',
-          role: 'Legal Entity',
-          shareClass: '-',
-          numberOfShares: '4,999',
-          total: 'Rp. 499,900,000',
-          percentage: '99.98%',
-        },
-      ],
-      management: 'Komisaris: Hansen Santosa | Direktur: Leonard Santosa',
-    },
-  ],
+export const getTodaySignatureDate = (): string => {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = now.getFullYear();
+  return `${dd} / ${mm} / ${yyyy}`;
 };
 
 export const DEFAULT_COMPETITION_TABLE: CompetitionItem[] = [
@@ -191,61 +47,126 @@ export const defaultInitialData: PreAnalysisData = {
   projectName: 'Land Clearing, Wood Hauling & Forestry Harvesting Operations',
   projectLocation:
     'Head Office: Jakarta | Sites: Sumatera Area (Riau, Pelalawan, South Sumatra) & Kalimantan Timur',
-  existingProjects: `A. PT Handalan Putramas Santosa (HPS) (Existing Project):
-1. PT Bumi Andalas Permai (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
-2. PT Bumi Mekar Hijau (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
-3. PT Sebangun Bumi Andalas Wood Industries (APP / Sinarmas Group) - Land Clearing, Maintenance & Logging - project start from November 2025
-4. PT Riau Andalan Pulp & Paper (RAPP) - Wood Hauling & Logging Project - Project start from December 2024
-
-B. PT Pangan Sejahtera Santosa (PASS) (Existing Project):
-1. PT Sinar Sosro - FMCG distributor - Start from 2022
-2. PT FKS Pangan Nusantara - Start from 2022
-3. PT Perfetti Van Melle - Start from 2022
-4. PT Mondelez Indonesia Trading - Start from 2022`,
-  newProjects: `C. PT Harta Putramas Santosa (HTPS) - NEW (Proposed Project):
-1. PT Industrial Forest Plantation - Harvesting project - Project start estimated around Sept / Oct 2026 (Kalimantan Timur)
-2. PT SBA Wood Industries - Land Clearing - Project start estimated around Oct 2026 (Lebong Hitam)
-3. RAPP - Mayawana (for next year)`,
+  currentProjects: [
+    {
+      headName: 'PT Handalan Putramas Santosa (HPS)',
+      projects: [
+        {
+          projectName: 'PT Bumi Andalas Permai',
+          location: 'Jakarta',
+          scope: 'Land Clearing, Maintenance & Logging - project start from November 2025',
+        },
+        {
+          projectName: 'PT Bumi Mekar Hijau',
+          location: 'Sumatera',
+          scope: 'Land Clearing, Maintenance & Logging - project start from November 2025',
+        },
+        {
+          projectName: 'PT Sebangun Bumi Andalas Wood Industries',
+          location: 'Sumatera',
+          scope: 'Land Clearing, Maintenance & Logging - project start from November 2025',
+        },
+        {
+          projectName: 'PT Riau Andalan Pulp & Paper (RAPP)',
+          location: 'Riau, Pelalawan',
+          scope: 'Wood Hauling & Logging Project - Project start from December 2024',
+        },
+      ],
+    },
+  ],
+  historyProjects: [
+    {
+      headName: 'PT Pangan Sejahtera Santosa (PASS)',
+      projects: [
+        {projectName: 'PT Sinar Sosro', location: 'Jakarta', scope: 'FMCG distributor - Start from 2022'},
+        {
+          projectName: 'PT FKS Pangan Nusantara',
+          location: 'Surabaya',
+          scope: 'FMCG distribution logistics - Start from 2022',
+        },
+        {
+          projectName: 'PT Perfetti Van Melle',
+          location: 'Jakarta',
+          scope: 'Confectionery logistics distribution - Start from 2022',
+        },
+        {
+          projectName: 'PT Mondelez Indonesia Trading',
+          location: 'Bandung',
+          scope: 'Snack distribution & transport - Start from 2022',
+        },
+      ],
+    },
+  ],
+  investmentProjectPlans: [
+    {
+      headName: 'PT Harta Putramas Santosa (HTPS)',
+      projects: [
+        {
+          projectName: 'PT Industrial Forest Plantation',
+          location: 'Kalimantan Timur',
+          scope: 'Harvesting project - Project start estimated around Sept / Oct 2026',
+        },
+        {
+          projectName: 'PT SBA Wood Industries',
+          location: 'Lebong Hitam',
+          scope: 'Land Clearing - Project start estimated around Oct 2026',
+        },
+        {
+          projectName: 'RAPP - Mayawana',
+          location: 'Kalimantan Barat',
+          scope: 'Logging and harvesting supply for next year',
+        },
+      ],
+    },
+  ],
+  existingProjects: '',
+  newProjects: '',
   projectNameLocation:
     'STAR GROUP (PT Sentosa Abadi Raja) - Land Clearing, Wood Hauling & Harvesting | Sumatera & Kalimantan',
   customerRole: 'Land Clearing & Harvesting Contractor',
   otherContractors: 'Sarindo Group, Bandang Group',
   projectOwner: '1. PT Industrial Forest Plantation (RAPP)\n2. Oki Pulp & Paper',
   bowheerInfo: `1. PT Riau Andalan Pulp and Paper (RAPP) is one of the world's largest producers of sustainable pulp and paper, operating in Pangkalan Kerinci, Pelalawan Regency, Riau Province.\n- Parent Company: The core business unit of APRIL Group (Asia Pacific Resources International Limited) under the RGE (Royal Golden Eagle) Group.\n- Operational Location: Pangkalan Kerinci, Riau, Sumatra, Indonesia.\n- Production Capacity: Capable of producing up to 2.8 million tons of pulp and 1.15 million tons of paper annually.\n- Flagship Product: PaperOne™\nEstablishment: Founded May 15, 1989. Integrated mill in Pangkalan Kerinci with 11 MW solar array and self-sufficient power.\n\n2. OKI Pulp & Paper - Sinar Mas Forestry Group\nStrategic subsidiary of Asia Pulp & Paper (APP) Group located in Air Sugihan, Ogan Komering Ilir Regency, South Sumatra, supported by Tanjung Tapa Seaport. Integrated upstream-to-downstream sustainable fiber supply network.`,
-  projectStatus: 'on Going with RAPP since 2025 for logistic',
-  investmentPlan: `- nearest plan : 20 units LIUGONG Excavator for RAPP & 30 units LIUGONG Excavator for Sinarmas Project (combine 13 & 20 ton)\nTotal demand will be around 100 units until end of 2026.\nOther info : 20-30 unit (1st batch) estimated will delivery on W3 September 2026`,
+  projectStatus: 'Ongoing',
+  projectStatusRemarks: 'with RAPP since 2025 for logistic',
+  investmentPlan: '',
+  investmentPlanSelected: ['SD', 'Tenor', 'Rate', 'Provision', 'Adm'],
+  investmentPlanRemarks: {
+    SD: '15% down payment / security deposit',
+    Tenor: '36-month lease duration',
+    Rate: 'Competitive interest rate per LiuGong standard',
+    Adm: '1.5% administration fee',
+  },
   financingSchemeRequested: 'Tenor : 36-month lease\nSD : 15%',
 
   ubo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
   uboInfo: 'Mr. Oky Santosa (Father)\nMr. Hansen Santosa (Owner)\nMr. Leonard Santosa (Brother)',
-  companyBackground:
-    'PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa & family, under holding named PT Santosa Abadi Raja (STAR).',
-  starGroupMilestonesNarrative: `2022 | PT PASS Established – FMCG Distribution Business
-- PT Pangan Sejahtera Santosa (PT PASS) was established by Mr. Hansen Santosa, son of Mr. Oky Santosa, marking the beginning of the STAR Group's business operations.
-- PT PASS focuses on urban FMCG distribution, operating warehouses and providing next-day delivery services while generating revenue from distribution margins.
-- In 2022, PT PASS supported the distribution activities of several major FMCG companies, including PT Sinar Sosro, PT FKS Pangan Nusantara, PT Perfetti Van Melle, and PT Mondelez Indonesia Trading.
-
-Q1 2024 | PT STAR Established as Holding Company
-- PT Sentosa Abadi Raja (STAR) was established by Mr. Hansen Santosa as a holding company to consolidate and manage the businesses of Mr. Hansen.
-
-November 2024 | PT HPS Established – Entry into Forestry Logistics and Hauling
-- PT HPS was established as the vehicle for STAR Group's entry into forestry, following Mr. Herry Tho's former experience. The initial business focus was forestry logistics and wood hauling.
-- PT HPS secured a five-year contract with RAPP, with operations commencing in December 2024.
-
-Late 2025 | Expansion into Land Clearing and Harvesting
-- After approximately one year of forestry operations, Mr. Herry Tho proposed further expansion into land clearing and harvesting.
-- In November 2025, PT HPS commenced land clearing, maintenance, and logging projects with three APP Group/Sinar Mas companies:
-  1. PT Bumi Andalas Permai
-  2. PT Bumi Mekar Hijau
-  3. PT Sebangun Bumi Andalas Wood Industries
-
-End-2025 | PT HTPS Established – Harvesting Business
-- PT HTPS was established by Mr. Hansen Santosa to focus specifically on harvesting projects.
-- The establishment of a separate entity was intended to differentiate and streamline the diversification of each business/project within the STAR Group and to focusing on land clearing & harvesting contractor.`,
+  companyBackground: `<p>PT Handalan Putramas Santosa (HPS) is family company belongs to Mr. Hansen Santosa &amp; family, under holding named PT Santosa Abadi Raja (STAR).</p>
+<p><strong>STAR Group – Key Milestones</strong></p>
+<p><strong>2022 | PT PASS Established – FMCG Distribution Business</strong><br/>
+- PT Pangan Sejahtera Santosa (PT PASS) was established by Mr. Hansen Santosa, son of Mr. Oky Santosa, marking the beginning of the STAR Group's business operations.<br/>
+- PT PASS focuses on urban FMCG distribution, operating warehouses and providing next-day delivery services while generating revenue from distribution margins.<br/>
+- In 2022, PT PASS supported the distribution activities of several major FMCG companies, including PT Sinar Sosro, PT FKS Pangan Nusantara, PT Perfetti Van Melle, and PT Mondelez Indonesia Trading.</p>
+<p><strong>Q1 2024 | PT STAR Established as Holding Company</strong><br/>
+- PT Sentosa Abadi Raja (STAR) was established by Mr. Hansen Santosa as a holding company to consolidate and manage the businesses of Mr. Hansen.</p>
+<p><strong>November 2024 | PT HPS Established – Entry into Forestry Logistics and Hauling</strong><br/>
+- PT HPS was established as the vehicle for STAR Group's entry into forestry, following Mr. Herry Tho's former experience. The initial business focus was forestry logistics and wood hauling.<br/>
+- PT HPS secured a five-year contract with RAPP, with operations commencing in December 2024.</p>
+<p><strong>Late 2025 | Expansion into Land Clearing and Harvesting</strong><br/>
+- After approximately one year of forestry operations, Mr. Herry Tho proposed further expansion into land clearing and harvesting.<br/>
+- In November 2025, PT HPS commenced land clearing, maintenance, and logging projects with three APP Group/Sinar Mas companies:<br/>
+&nbsp;&nbsp;&bull; PT Bumi Andalas Permai<br/>
+&nbsp;&nbsp;&bull; PT Bumi Mekar Hijau<br/>
+&nbsp;&nbsp;&bull; PT Sebangun Bumi Andalas Wood Industries</p>
+<p><strong>End-2025 | PT HTPS Established – Harvesting Business</strong><br/>
+- PT HTPS was established by Mr. Hansen Santosa to focus specifically on harvesting projects.<br/>
+- The establishment of a separate entity was intended to differentiate and streamline the diversification of each business/project within the STAR Group and to focusing on land clearing &amp; harvesting contractor.</p>`,
   businessDevBackground: `While seeking a partner to develop wingbox trucking services to support his FMCG distribution business, Mr. Hansen Santosa met Mr. Herry Tho.
 - Mr. Herry Tho is based from Pekanbaru and has a background in logistics and hauling, with business connections within the forestry sector, including contacts at RAPP and APP/Sinar Mas. Through this relationship, he introduced Mr. Hansen to investment opportunities in forestry logistics and wood hauling.
 - Mr. Herry previously worked at DNR Logistics (Dos Ni Roha). According to the information provided, the business he was involved in reportedly failed. His experience during that period appears to have been primarily in logistics and hauling, with no established harvesting track record.`,
   operationalTeamInfo: `Mr. Herry Tho is expected to lead the harvesting project. The planned operational team will include personnel formerly employed by RAPP, Sarindo, and CIS who have experience in forestry operations.`,
+  groupStructureImage: '',
+  showUboInformation: true,
   uboInformation: `STAR GROUP Corporate Shareholding & Governance Structure:
 • PT Sentosa Abadi Raja (Holding Company): Authorized Capital IDR 240B, Paid-up Capital IDR 60B
   - Hansen Santosa (54% - Presiden Direktur)
@@ -302,7 +223,9 @@ End-2025 | PT HTPS Established – Harvesting Business
 
   deliveryStatus: 'Not yet Deliver',
   deliveryDate: 'demand units Sept 2026, will be delivery estimate on W3 & after receive PO from Finco',
-  qaIlinkComment: 'No Records / Pre-Delivery Inspection Pending',
+  qaIlinkComment: 'iLink_PDI_Performance_Report.pdf',
+  qaDocumentName: 'iLink_PDI_Performance_Report.pdf',
+  qaDocumentFile: '',
   qaConclusion: 'Standard PDI required upon delivery and iLink telemetry activation',
 
   dealerCheck: 'No Records Payment - New Liugong Customer',
@@ -331,7 +254,7 @@ End-2025 | PT HTPS Established – Harvesting Business
   goodCustomer: false,
   goodCustomerNote:
     'PT HPS was newly established company since 2024. Group (HTPS) newly established since 2025.',
-  recommendation: 'NOT RECOMMENDED',
+  recommendation: 'NOT RECOMMENDED TO FULL DOCUMENTATION',
   briefNote: `- Based on documents (Legal & financial data), PT HPS is newly established company since 2024.\n- It's Group (PT Harta Putramas Santosa / PT HTPS) also newly established company since 2025.\nNot recommend to process in this stage`,
   suggestions: [
     'If still want to process with FPG, can be consider with the limitations :',
@@ -348,6 +271,11 @@ End-2025 | PT HTPS Established – Harvesting Business
     'Pefindo check 4 Sept 2026. Rate benchmark: Flat 7% p.a., 20% Security Deposit, 36-month lease tenor, 1% provision fee, IDR 5.000.000 admin fee per contract.',
   competitionTable: DEFAULT_COMPETITION_TABLE,
   proposedBy: 'Amanda Cynthia\nSenior Account Manager',
-  reviewedBy: 'Maria Regina\nDept. Head',
+  reviewedBy: 'Maria Regina\nDept. Head Marketing',
   approvedBy: 'Jembar Ganda E\nDirector',
+  signatories: [
+    {id: 'sig-1', role: 'Propose by :', name: 'Amanda Cynthia', position: 'Senior Account Manager'},
+    {id: 'sig-2', role: 'Reviewed by :', name: 'Maria Regina', position: 'Dept. Head Marketing'},
+    {id: 'sig-3', role: 'Approved by :', name: 'Jembar Ganda E', position: 'Director'},
+  ],
 };

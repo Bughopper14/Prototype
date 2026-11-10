@@ -180,7 +180,7 @@ export function OcrDocumentPane() {
               externalZoom={systemZoom}
               activeSection={fapNavFilter === 'all' ? undefined : fapNavFilter}
               syncTick={fapNavTick}
-              onPrint={() => printFapDocument(a.fapNumber)}
+              onPrint={() => printFapDocument(a.fapNumber, 'ocr')}
             />
           ) : activeFile?.mimeType === 'application/pdf' ? (
             <iframe

@@ -73,6 +73,8 @@ const names: Record<string, string> = {
   experienceMonths: 'Experience Months',
   ageMonths: 'Age Months',
   email: 'Email',
+  companyEmail: 'Company Email',
+  picEmail: 'PIC Email',
   mobilePhone: 'Mobile Phone',
   phone: 'Phone Number',
   rt: 'RT',
@@ -109,6 +111,8 @@ export function inputLimits(
   const today = businessToday(now),
     year = Number(today.slice(0, 4));
   if (key === 'dateOfBirth') return {min: '1900-01-01', max: today};
+  // Year a bank facility started: any year (older facilities are common), whole numbers only
+  if (key === 'yearStarted') return {step: 1};
   if (historicalDateKeys.has(key)) return {min: '1900-01-01', max: today};
   if (yearKeys.has(key)) return {min: 1900, max: year, step: 1};
   if (['sharePercentage', 'interestRate'].includes(key)) return {min: 0, max: 100, step: '0.01'};
@@ -175,7 +179,10 @@ export function fieldInputError(key: string, value: any, now = new Date()): stri
     if (!Number.isInteger(number) && Math.abs(number * 100 - Math.round(number * 100)) > 0.0001)
       return 'Max 2 decimal places';
   }
-  if (['email', 'picEmail'].includes(key) && !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(text))
+  if (
+    ['email', 'companyEmail', 'picEmail'].includes(key) &&
+    !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(text)
+  )
     return 'Email must be a valid company email (e.g. name@company.com).';
   if (
     ['phone', 'mobilePhone', 'phoneFax'].includes(key) &&

@@ -1,9 +1,9 @@
-/** Sticky bar above the form: save status, sync customer / PIC, save button. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
-import {CheckCircle2, FileText, Save} from 'lucide-react';
+/** Sticky header of the form: title and save. */
+import {FileText, CheckCircle2, Loader2, Save} from 'lucide-react';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function FormActionHeader() {
-  const {data, saving, saveStatus, handleSave} = usePreAnalysis();
+  const {data, saveStatus, handleSave, saving, props} = usePreAnalysisContext();
   return (
     <div
       style={{
@@ -44,8 +44,26 @@ export function FormActionHeader() {
             textOverflow: 'ellipsis',
           }}
         >
-          Ref: <span style={{fontWeight: 600, color: '#334155'}}>{data.preAnalysisNo}</span> • FAP No:{' '}
-          <span style={{fontWeight: 600, color: '#334155'}}>{data.fapNumber}</span>
+          Ref:{' '}
+          <span
+            style={{
+              fontWeight: 600,
+              color: data.preAnalysisNo?.includes('Auto') ? '#2563eb' : '#334155',
+              fontStyle: data.preAnalysisNo?.includes('Auto') ? 'italic' : 'normal',
+            }}
+          >
+            {data.preAnalysisNo || 'Auto (Generated on save)'}
+          </span>{' '}
+          • FAP No:{' '}
+          <span
+            style={{
+              fontWeight: 600,
+              color: data.fapNumber?.includes('Auto') ? '#2563eb' : '#334155',
+              fontStyle: data.fapNumber?.includes('Auto') ? 'italic' : 'normal',
+            }}
+          >
+            {data.fapNumber || 'Auto (Generated on save)'}
+          </span>
         </p>
       </div>
 
@@ -67,8 +85,8 @@ export function FormActionHeader() {
         )}
         <button
           type="button"
-          onClick={handleSave}
-          disabled={saving}
+          onClick={props.isNew ? props.onSaveNewApplication : handleSave}
+          disabled={saving || (props.isNew && props.busy)}
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -80,14 +98,24 @@ export function FormActionHeader() {
             borderRadius: '6px',
             fontSize: '0.8rem',
             fontWeight: 600,
-            cursor: 'pointer',
+            cursor: saving || (props.isNew && props.busy) ? 'not-allowed' : 'pointer',
             whiteSpace: 'nowrap',
             flexShrink: 0,
             boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
           }}
         >
-          <Save size={14} />
-          {saving ? 'Saving...' : 'Save Draft'}
+          {saving || (props.isNew && props.busy) ? (
+            <Loader2 size={14} className="spin" />
+          ) : (
+            <Save size={14} />
+          )}
+          {props.isNew
+            ? props.busy
+              ? 'Creating...'
+              : 'Save & Create Application'
+            : saving
+              ? 'Saving...'
+              : 'Save Draft'}
         </button>
       </div>
     </div>

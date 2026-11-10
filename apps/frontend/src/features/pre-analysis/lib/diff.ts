@@ -1,4 +1,4 @@
-/** Field-by-field diff of two pre-analysis versions (activity log). */
+/** What changed between two versions of a Pre-Analysis (for the activity log). */
 
 export function computePreAnalysisDiffs(oldData: any, newData: any) {
   const diffs: any[] = [];
@@ -105,6 +105,13 @@ export function computePreAnalysisDiffs(oldData: any, newData: any) {
     'companyBackground',
     oldData?.companyBackground,
     newData?.companyBackground,
+  );
+  check(
+    'Customer & Group Background',
+    'Group Structure Graph',
+    'groupStructureImage',
+    oldData?.groupStructureImage ? 'Graph image attached' : 'None',
+    newData?.groupStructureImage ? 'Graph image attached' : 'None',
   );
   check(
     'Customer & Group Background',

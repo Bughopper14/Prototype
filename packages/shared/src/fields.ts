@@ -98,6 +98,20 @@ export const profileFields = [
     'OTHER',
   ]),
   f('businessRole', 'Business Role', 'select', ['CONS_OWNER', 'CONTRACTORS', 'SUB_CONT', 'RENTAL', 'OTHER']),
+  f('assetSummaryHeLiuGong', 'Asset Summary HE LiuGong', 'number'),
+  f('assetSummaryTruckLiuGong', 'Asset Summary Truck LiuGong', 'number'),
+  f('assetSummaryHeNonLiuGong', 'Asset Summary HE Non-LiuGong', 'number'),
+  f('assetSummaryTruckNonLiuGong', 'Asset Summary Truck Non-LiuGong', 'number'),
+  f('financingPurposeDetail', 'Financing Purpose Detail'),
+  f('referenceComments', 'Bank Reference Comments'),
+  f('financingProposalJson', 'Financing Proposal JSON'),
+];
+
+/** Profile keys that belong to one application only, never copied to the customer directory. */
+export const applicationOnlyProfileKeys = [
+  'financingPurposeDetail',
+  'referenceComments',
+  'financingProposalJson',
 ];
 
 export const customerFields = [
@@ -150,14 +164,39 @@ export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
 
 export function formatStakeholderPosition(val?: string | null): string {
   if (!val) return '';
-  const s = String(val).trim();
-  const normalized = s.toUpperCase().replace(/[\s-]+/g, '_');
-  if (normalized === 'NONE' || normalized === '') return '';
-  if (STAKEHOLDER_POSITION_LABELS[normalized]) return STAKEHOLDER_POSITION_LABELS[normalized];
-  for (const [k, v] of Object.entries(STAKEHOLDER_POSITION_LABELS)) {
-    if (k.toLowerCase() === s.toLowerCase() || v.toLowerCase() === s.toLowerCase()) return v;
-  }
-  return s;
+  const clean = String(val).trim();
+  const upper = clean.toUpperCase().replace(/[\s-]+/g, '_');
+  if (['NONE', '', '_', 'SHAREHOLDER'].includes(upper)) return '';
+  const aliases: Record<string, string> = {
+    ...STAKEHOLDER_POSITION_LABELS,
+    AUTHORIZED_REPRESENTATIVE: 'Autorized Representative',
+    PRESIDENT_DIRECTOR: 'Main Director',
+    PRESIDENT_COMMISSIONER: 'Main Commissioner',
+  };
+  if (aliases[upper] && upper !== 'NONE') return aliases[upper];
+  const match = Object.values(STAKEHOLDER_POSITION_LABELS).find(v => v.toLowerCase() === clean.toLowerCase());
+  if (match) return match;
+  if (clean.toLowerCase() === 'authorized representative') return 'Autorized Representative';
+  return clean;
+}
+
+/** Any stored position wording (English, Indonesian, legacy) → its STAKEHOLDER_POSITIONS key. */
+export function normalizeStakeholderPositionKey(pos?: string | null): string {
+  if (!pos) return 'NONE';
+  const clean = String(pos)
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  if (['NONE', '', '_', 'SHAREHOLDER'].includes(clean)) return 'NONE';
+  if (['MAIN_DIRECTOR', 'PRESIDENT_DIRECTOR', 'DIREKTUR_UTAMA'].includes(clean)) return 'MAIN_DIRECTOR';
+  if (['DIRECTOR', 'DIREKTUR'].includes(clean)) return 'DIRECTOR';
+  if (['MAIN_COMMISSIONER', 'PRESIDENT_COMMISSIONER', 'KOMISARIS_UTAMA'].includes(clean))
+    return 'MAIN_COMMISSIONER';
+  if (['COMMISSIONER', 'KOMISARIS'].includes(clean)) return 'COMMISSIONER';
+  if (['BOARD_OF_DIRECTORS', 'BOD', 'DIREKSI'].includes(clean)) return 'BOARD_OF_DIRECTORS';
+  if (['AUTORIZED_REPRESENTATIVE', 'AUTHORIZED_REPRESENTATIVE', 'KUASA_HUKUM'].includes(clean))
+    return 'AUTORIZED_REPRESENTATIVE';
+  return 'NONE';
 }
 
 export const stakeholderFields = [
@@ -254,6 +293,7 @@ export const bankFields = [
   f('interestRate', 'Interest Rate (%)', 'number'),
   f('paymentRecord', 'Payment Record'),
   f('facilityStatus', 'Facility Status', 'select', ['Active', 'Settled']),
+  f('comments', 'Comments'),
 ];
 
 export const proposalFields = [

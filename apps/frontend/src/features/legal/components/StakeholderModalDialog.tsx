@@ -1,4 +1,5 @@
 import {Modal} from '@/shared/ui/Modal';
+import {AlertTriangle} from 'lucide-react';
 
 import {DocTypeTabs} from '@/features/legal/components/stakeholder-modal/DocTypeTabs';
 import {DocumentPaneToolbar} from '@/features/legal/components/stakeholder-modal/DocumentPaneToolbar';
@@ -15,7 +16,17 @@ import {
 
 export function StakeholderModalDialog(props: StakeholderModalDialogProps) {
   const state = useStakeholderModal(props);
-  const {editorLocked, formError, onClose, isNewStakeholder, isRightPaneVisible} = state;
+  const {
+    editorLocked,
+    formError,
+    onClose,
+    isNewStakeholder,
+    isRightPaneVisible,
+    isShareExceeded,
+    roundedTotal,
+    roundedOther,
+    maxAvailableShare,
+  } = state;
   return (
     <StakeholderModalContext.Provider value={state}>
       <Modal
@@ -45,6 +56,31 @@ export function StakeholderModalDialog(props: StakeholderModalDialogProps) {
             {formError && (
               <div className="error" role="alert">
                 {formError}
+              </div>
+            )}
+            {isShareExceeded && (
+              <div
+                role="alert"
+                style={{
+                  background: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  color: '#991b1b',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '14px',
+                }}
+              >
+                <AlertTriangle size={16} style={{flexShrink: 0, color: '#dc2626'}} />
+                <span>
+                  <strong>Peringatan Persentase Saham:</strong> Total kepemilikan saham pada akta ini akan
+                  mencapai <strong>{roundedTotal.toFixed(2)}%</strong> (melebihi 100%). Pemegang saham lain
+                  memiliki <strong>{roundedOther.toFixed(2)}%</strong>. Maksimal kuota yang dapat dialokasikan
+                  untuk pemegang saham ini adalah <strong>{maxAvailableShare.toFixed(2)}%</strong>.
+                </span>
               </div>
             )}
             <StakeholderFields />

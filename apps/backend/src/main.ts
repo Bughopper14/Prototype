@@ -12,7 +12,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {bodyParser: false});
 
   // Behind a reverse proxy (nginx), trust its X-Forwarded-* headers. Set TRUST_PROXY=1 (hops) or false.
-  app.set('trust proxy', process.env.TRUST_PROXY ?? 'loopback');
+  app.set('trust proxy', process.env.TRUST_PROXY?.trim() || 'loopback');
   app.disable('x-powered-by');
 
   // The API only serves JSON and stored files; the browser UI is served by the frontend (Vite / static host).

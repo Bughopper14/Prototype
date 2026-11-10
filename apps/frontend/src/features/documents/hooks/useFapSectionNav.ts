@@ -43,6 +43,7 @@ export function useFapSectionNav({
       'npwp',
       'establishmentActNo',
       'establishmentDate',
+      'debtorSignature',
     ],
     'fap-preview-sec-company': [
       'branchCode',
@@ -84,6 +85,13 @@ export function useFapSectionNav({
       'representativeType',
       'idNumber',
     ],
+    'fap-preview-sec-purpose-assets': [
+      'financingPurposeDetail',
+      'assetSummaryHeLiuGong',
+      'assetSummaryTruckLiuGong',
+      'assetSummaryHeNonLiuGong',
+      'assetSummaryTruckNonLiuGong',
+    ],
     'fap-preview-sec-projects': [
       'shareholders',
       'stakeholderType',
@@ -100,14 +108,24 @@ export function useFapSectionNav({
     'fap-preview-sec-company': '2. Domicile',
     'fap-preview-sec-business': '3. Profile',
     'fap-preview-sec-pic': '4. PIC',
-    'fap-preview-sec-projects': '5. Projects',
+    'fap-preview-sec-purpose-assets': '5. Purpose & Assets',
+    'fap-preview-sec-projects': '6. Projects',
+    'fap-preview-sec-banks': '7. References',
+    'fap-preview-sec-proposal': '8. Financing Proposal',
+    'fap-preview-sec-financial': '9. Financial Statements',
   };
 
   const filteredDiffs = useMemo(() => {
     if (!fapComparison?.diffs) return [];
     if (fapNavFilter === 'all') return fapComparison.diffs;
     const allowed = sectionFieldMap[fapNavFilter] || [];
-    return fapComparison.diffs.filter((d: any) => allowed.includes(d.field));
+    // Shareholder rows (stakeholder_*, shareholder_*) are listed with the projects block they sit next to
+    return fapComparison.diffs.filter(
+      (d: any) =>
+        allowed.includes(d.field) ||
+        (fapNavFilter === 'fap-preview-sec-projects' &&
+          (d.field.startsWith('stakeholder_') || d.field.startsWith('shareholder_'))),
+    );
   }, [fapComparison, fapNavFilter]);
 
   // Reset state when switching application to prevent cross-application data leakage

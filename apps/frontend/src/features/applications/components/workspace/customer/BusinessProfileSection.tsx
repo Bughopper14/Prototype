@@ -76,8 +76,6 @@ export function BusinessProfileSection() {
               const opFields: Field[] = [
                 profileFields.find(f => f.key === 'mainBusiness')!,
                 profileFields.find(f => f.key === 'repaymentSource')!,
-                profileFields.find(f => f.key === 'industrySegment')!,
-                profileFields.find(f => f.key === 'businessRole')!,
                 {...profileFields.find(f => f.key === 'experienceYears')!, type: 'text'},
                 {...profileFields.find(f => f.key === 'experienceMonths')!, type: 'text'},
               ].filter(Boolean);

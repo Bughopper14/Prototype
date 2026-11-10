@@ -19,7 +19,7 @@ import {newNotification, notifyLegalApprovers} from '../activity/notifications';
 
 @Controller(API_PREFIX)
 export class LegalController {
-  @Put(['applications/:id/legal/draft', 'applications/:id/page-legal'])
+  @Put('applications/:id/page-legal')
   async saveLegalDraft(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const id = req.params.id;
     const existing = await detailOr404(id);

@@ -1,9 +1,9 @@
-/** Preview section 1: General Information. */
-import {usePreAnalysis} from '@/features/pre-analysis/components/PreAnalysisContext';
+/** Section 1 of the document: general information table. */
 import {stripHtmlTags} from '@/features/pre-analysis/lib/text';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function GeneralInfoPreview() {
-  const {data, handlePreviewCellClick} = usePreAnalysis();
+  const {handlePreviewCellClick, data} = usePreAnalysisContext();
   return (
     <table
       id="preana-preview-sec-1"
@@ -41,9 +41,15 @@ export function GeneralInfoPreview() {
           <td
             id="preana-preview-cell-fapNumber"
             onClick={() => handlePreviewCellClick('fapNumber', 'sec1')}
-            style={{width: '74%', padding: '4px 6px', cursor: 'pointer'}}
+            style={{
+              width: '74%',
+              padding: '4px 6px',
+              cursor: 'pointer',
+              color: data.fapNumber?.includes('Auto') ? '#64748b' : '#000000',
+              fontStyle: data.fapNumber?.includes('Auto') ? 'italic' : 'normal',
+            }}
           >
-            {data.fapNumber}
+            {data.fapNumber || 'Auto (Generated on save)'}
           </td>
         </tr>
         <tr style={{borderBottom: '1px solid #e2e8f0'}}>

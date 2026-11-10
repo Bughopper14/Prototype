@@ -1,5 +1,6 @@
 import {ActivityPage, NibOcrModal} from '@/features/crm/components/lazy';
 import {Documents} from '@/features/documents/components/Documents';
+import {DocumentChecklistTab} from '@/features/documents/components/checklist/DocumentChecklistTab';
 import {FapArchiveModal} from '@/features/fap/components/FapArchiveModal';
 import {FapComparisonModal} from '@/features/fap/components/FapComparisonModal';
 import {DeedReviewDialog} from '@/features/legal/components/DeedReviewDialog';
@@ -90,7 +91,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
                 <p>
                   {
                     [
-                      'Company profile and primary point of contact',
+                      'Company profile, FAP physical form, and application details',
                       'View ownership and stakeholder information. Edit these fields in Legal.',
                       'Business details, bank facilities, financing terms, and equipment units',
                       'Equipment, financing terms, and estimated monthly installment',
@@ -135,6 +136,15 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             filterStage={activeStage}
             onApproveDocument={handleApproveDocument}
             isFapLocked={isFapLocked}
+          />
+        )}
+        {tab === 9 && (
+          <DocumentChecklistTab
+            application={a}
+            draft={state.draft}
+            user={user}
+            onChange={onChange}
+            notify={notify}
           />
         )}
         {tab === 7 && (

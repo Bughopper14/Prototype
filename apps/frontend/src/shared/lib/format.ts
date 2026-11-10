@@ -60,21 +60,35 @@ export function deriveDeedSync(
   latestDeedDate: string;
   experienceYears: number;
   experienceMonths: number;
+  latestDeed: any | null;
+  latestStakeholders: any[];
 } {
-  const deeds: any[] = Array.isArray(legal?.deeds) ? legal.deeds : [];
+  const deeds: any[] = Array.isArray(legal?.deeds)
+    ? legal.deeds
+    : Array.isArray(application?.legal?.deeds)
+      ? application.legal.deeds
+      : [];
   // establishment deed
   const estDeed = deeds.find((d: any) => d.type === 'establishment');
   const estActNo = estDeed?.deedNumber || application?.customer?.establishmentActNo || '';
   const estDateRaw = estDeed?.deedDate || application?.customer?.establishmentDate || '';
   const estDate = String(estDateRaw || '').slice(0, 10);
-  // latest deed: most recent amendment by deedDate, fallback to establishment
+  // latest deed: most recent amendment by deedDate, else the establishment deed, else the first deed
   const amendments = deeds.filter((d: any) => d.type === 'amendment' && d.deedDate);
-  const latestAmendment = amendments.sort((a: any, b: any) =>
-    String(b.deedDate).localeCompare(String(a.deedDate)),
-  )[0];
-  const latestDeed = latestAmendment || estDeed;
+  const latestAmendment =
+    amendments.slice().sort((a: any, b: any) => String(b.deedDate).localeCompare(String(a.deedDate)))[0] ||
+    deeds.find((d: any) => d.type === 'amendment') ||
+    null;
+  const latestDeed = latestAmendment || estDeed || deeds[0] || null;
   const latestNo = latestDeed?.deedNumber || application?.latestDeedNo || '';
   const latestDate = String(latestDeed?.deedDate || '').slice(0, 10) || application?.latestDeedDate || '';
+  // shareholders shown on the FAP come from the latest deed, else the application's list
+  const latestStakeholders =
+    Array.isArray(latestDeed?.stakeholders) && latestDeed.stakeholders.length > 0
+      ? latestDeed.stakeholders
+      : Array.isArray(application?.stakeholders)
+        ? application.stakeholders
+        : [];
   // experience from establishment date
   const {years, months} = calculateAgeYearsMonths(estDate);
   return {
@@ -84,6 +98,8 @@ export function deriveDeedSync(
     latestDeedDate: latestDate,
     experienceYears: years,
     experienceMonths: months,
+    latestDeed,
+    latestStakeholders,
   };
 }
 

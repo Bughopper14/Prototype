@@ -27,6 +27,55 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   repaymentSource: 'fap-cell-repaymentSource',
   locationStatus: 'fap-cell-locationStatus',
 
+  // Financing Proposal
+  financingMethod: 'fap-cell-prop-method',
+  financingValueProp: 'fap-cell-prop-val',
+  currencyChoice: 'fap-cell-prop-curr-choice',
+  applicationSource: 'fap-cell-prop-app-source',
+  flInvestment: 'fap-cell-tc-fl-purpose',
+  flCurrency: 'fap-cell-tc-fl-curr',
+  flDeposit: 'fap-cell-tc-fl-deposit',
+  flRate: 'fap-cell-tc-fl-rate',
+  flTenor: 'fap-cell-tc-fl-tenor',
+  flPayment: 'fap-cell-tc-fl-payment',
+  slbPurpose: 'fap-cell-tc-slb-purpose',
+  slbCurrency: 'fap-cell-tc-slb-curr',
+  slbDeposit: 'fap-cell-tc-slb-deposit',
+  slbRate: 'fap-cell-tc-slb-rate',
+  slbTenor: 'fap-cell-tc-slb-tenor',
+  slbPayment: 'fap-cell-tc-slb-payment',
+  ifPurpose: 'fap-cell-tc-if-purpose',
+  ifCurrency: 'fap-cell-tc-if-curr',
+  ifDownPayment: 'fap-cell-tc-if-dp',
+  ifRate: 'fap-cell-tc-if-rate',
+  ifTenor: 'fap-cell-tc-if-tenor',
+  ifPayment: 'fap-cell-tc-if-payment',
+
+  // Unit Realization Plan
+  propAssetLgHe: 'fap-cell-prop-asset-lg-he',
+  propAssetLgTruck: 'fap-cell-prop-asset-lg-truck',
+  propAssetLgUnit: 'fap-cell-prop-asset-lg-unit',
+  propAssetNlgHe: 'fap-cell-prop-asset-nlg-he',
+  propAssetNlgTruck: 'fap-cell-prop-asset-nlg-truck',
+  propAssetNlgUnit: 'fap-cell-prop-asset-nlg-unit',
+  propAssetTotUnit: 'fap-cell-prop-asset-tot-unit',
+
+  // Notes
+  proposalNotes: 'fap-cell-prop-notes',
+
+  // Document Requirements
+  docReqCompanyProfile: 'fap-cell-doc-company-profile',
+  docReqLegality: 'fap-cell-doc-legality',
+  docReqDeed: 'fap-cell-doc-deed',
+  docReqDecree: 'fap-cell-doc-decree',
+  docReqCopyId: 'fap-cell-doc-copy-id',
+  docReqAuditedFin: 'fap-cell-doc-audited-financial',
+  docReqBankStatements: 'fap-cell-doc-bank-statements',
+  docReqBankFacility: 'fap-cell-doc-bank-facility',
+  docReqProductionReport: 'fap-cell-doc-production-report',
+  docReqFixedAssets: 'fap-cell-doc-fixed-assets',
+  docReqProjectContracts: 'fap-cell-doc-project-contracts',
+
   // Line of Business & Legal Deeds
   mainBusiness: 'fap-cell-mainBusiness',
   establishmentActNo: 'fap-cell-establishmentActNo',
@@ -35,6 +84,7 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   experienceMonths: 'fap-cell-experienceMonths',
   latestDeedNo: 'fap-cell-latestDeedNo',
   latestDeedDate: 'fap-cell-latestDeedDate',
+  shareholderDeedRef: 'fap-cell-shareholderDeedRef',
   nib: 'fap-cell-nib',
   nibDate: 'fap-cell-nib',
   npwp: 'fap-cell-npwp',
@@ -53,62 +103,13 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   picProvince: 'fap-cell-picProvince',
   picPostalCode: 'fap-cell-picPostalCode',
 
-  // Purpose & Assets (Section 05)
-  financingPurposeDetail: 'fap-cell-purpose-business',
-  facilityPurpose: 'fap-cell-purpose-business',
-  assetSummaryHeLiuGong: 'fap-cell-asset-lg-he',
-  assetSummaryTruckLiuGong: 'fap-cell-asset-lg-truck',
-  assetSummaryHeNonLiuGong: 'fap-cell-asset-nlg-he',
-  assetSummaryTruckNonLiuGong: 'fap-cell-asset-nlg-truck',
-
-  // Projects (Section 06)
+  // Projects
   projectOwner: 'fap-cell-proj-0-owner',
   projectLocation: 'fap-cell-proj-0-loc',
   location: 'fap-cell-proj-0-loc',
   projectRole: 'fap-cell-proj-0-role',
   roleInProject: 'fap-cell-proj-0-role',
   contractStatus: 'fap-cell-proj-0-status',
-
-  // References & Banks (Section 07)
-  bankOrFinInstitution: 'fap-cell-ref-0-bank',
-  currency: 'fap-cell-ref-0-currency',
-  creditFacility: 'fap-cell-ref-0-credit',
-  monthlyInstallment: 'fap-cell-ref-0-installment',
-  yearStarted: 'fap-cell-ref-0-year',
-  interestRate: 'fap-cell-ref-0-rate',
-  paymentRecord: 'fap-cell-ref-0-record',
-  facilityStatus: 'fap-cell-ref-0-status',
-  referenceComments: 'fap-cell-ref-comments',
-  comments: 'fap-cell-ref-comments',
-  totalMonthlyInstallment: 'fap-cell-ref-total-installment',
-
-  // Proposal (Section 08)
-  financingMethod: 'fap-cell-prop-method',
-  financingValue: 'fap-cell-prop-val',
-  applicationSource: 'fap-cell-prop-app-source',
-  currencyChoice: 'fap-cell-prop-curr-choice',
-  notes: 'fap-cell-prop-notes',
-
-  // Financial statements & Audited (Section 09)
-  financialAudited: 'fap-cell-fin-audited',
-  isAudited: 'fap-cell-fin-audited',
-  audited: 'fap-cell-fin-audited',
-  fiscalYear: 'fap-cell-fin-bs-yr-0',
-  currentAssets: 'fap-cell-fin-cur-asset-0',
-  nonCurrentAssets: 'fap-cell-fin-noncur-asset-0',
-  totalAssets: 'fap-cell-fin-tot-asset-0',
-  currentLiabilities: 'fap-cell-fin-cur-liab-0',
-  nonCurrentLiabilities: 'fap-cell-fin-noncur-liab-0',
-  totalLiabilities: 'fap-cell-fin-tot-liab-0',
-  equity: 'fap-cell-fin-equity-0',
-  totalLiabAndEquity: 'fap-cell-fin-tot-liab-equity-0',
-  revenue: 'fap-cell-fin-revenue-0',
-  grossMargin: 'fap-cell-fin-gross-profit-0',
-  grossProfit: 'fap-cell-fin-gross-profit-0',
-  operatingMargin: 'fap-cell-fin-op-profit-0',
-  operatingProfit: 'fap-cell-fin-op-profit-0',
-  tax: 'fap-cell-fin-tax-0',
-  netIncome: 'fap-cell-fin-net-income-0',
 
   // Shareholders
   shareholders: 'fap-cell-sh-0-name',
@@ -127,7 +128,6 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
     if (sub === 'pct' || sub === 'share') return `fap-cell-sh-${idx}-pct`;
     if (sub === 'shares' || sub === 'amount') return `fap-cell-sh-${idx}-shares`;
   }
-
   if (
     section?.startsWith('projects') ||
     [
@@ -149,7 +149,6 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
     if (fieldKey === 'contractStatus') return `fap-cell-proj-${rowIndex}-status`;
     return `fap-cell-proj-${rowIndex}-owner`;
   }
-
   if (fieldKey === 'financialAudited' || fieldKey === 'isAudited' || fieldKey === 'audited') {
     return 'fap-cell-fin-audited';
   }
@@ -179,6 +178,7 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
     const m = section?.match(/(?:financial|fin)-(\d+)/);
     if (m) colIdx = parseInt(m[1], 10) || 0;
     if (colIdx > 2) colIdx = 2;
+
     if (fieldKey === 'fiscalYear') return `fap-cell-fin-bs-yr-${colIdx}`;
     if (fieldKey === 'currentAssets') return `fap-cell-fin-cur-asset-${colIdx}`;
     if (fieldKey === 'nonCurrentAssets') return `fap-cell-fin-noncur-asset-${colIdx}`;
@@ -189,8 +189,10 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
     if (fieldKey === 'equity') return `fap-cell-fin-equity-${colIdx}`;
     if (fieldKey === 'totalLiabAndEquity') return `fap-cell-fin-tot-liab-equity-${colIdx}`;
     if (fieldKey === 'revenue') return `fap-cell-fin-revenue-${colIdx}`;
-    if (fieldKey === 'grossMargin' || fieldKey === 'grossProfit') return `fap-cell-fin-gross-profit-${colIdx}`;
-    if (fieldKey === 'operatingMargin' || fieldKey === 'operatingProfit') return `fap-cell-fin-op-profit-${colIdx}`;
+    if (fieldKey === 'grossMargin' || fieldKey === 'grossProfit')
+      return `fap-cell-fin-gross-profit-${colIdx}`;
+    if (fieldKey === 'operatingMargin' || fieldKey === 'operatingProfit')
+      return `fap-cell-fin-op-profit-${colIdx}`;
     if (fieldKey === 'tax') return `fap-cell-fin-tax-${colIdx}`;
     if (fieldKey === 'netIncome') return `fap-cell-fin-net-income-${colIdx}`;
     return `fap-cell-fin-bs-yr-${colIdx}`;
@@ -198,7 +200,6 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
 
   if (fieldKey === 'referenceComments' || fieldKey === 'comments') return 'fap-cell-ref-comments';
   if (fieldKey === 'totalMonthlyInstallment') return 'fap-cell-ref-total-installment';
-
   if (
     section?.startsWith('banks') ||
     section?.startsWith('references') ||

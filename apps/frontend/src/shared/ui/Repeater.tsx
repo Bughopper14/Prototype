@@ -1,133 +1,201 @@
-/** List of Fields blocks with add / remove / paging (directors, shareholders, PICs…). */
-import {blank, toTitleCase, type Field} from '@liugong/shared';
+/** Repeating row collection: grid on large screens, one-row-at-a-time carousel on compact ones. */
+import {Fields} from '@/shared/ui/Fields';
+import {blank, type Field} from '@liugong/shared';
 import {ChevronLeft, ChevronRight, Plus, Trash2} from 'lucide-react';
 import {useEffect, useState} from 'react';
-import {Fields} from './Fields';
 
 export function Repeater({
   title,
+  description,
   fields,
   rows,
   onChange,
   disabled = false,
-  description,
   carousel = false,
   section,
   onFieldFocus,
   onFieldSync,
   activeFieldKey,
+  /** Row the FAP preview points at (clicking a row in the sheet turns the carousel to it). */
   targetRowIndex,
+  /** Called when the carousel turns, so the preview can highlight the same row. */
   onRowChange,
 }: {
   title: string;
+  description?: string;
   fields: Field[];
   rows: any[];
-  onChange: (v: any[]) => void;
+  onChange: (rows: any[]) => void;
   disabled?: boolean;
-  description?: string;
   carousel?: boolean;
   section?: string;
   onFieldFocus?: (k: string, section?: string) => void;
   onFieldSync?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
+  /** Row the FAP preview points at (clicking a row in the sheet turns the carousel to it). */
   targetRowIndex?: number;
+  /** Called when the carousel turns, so the preview can highlight the same row. */
   onRowChange?: (idx: number) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const currentIndex = Math.min(activeIndex, Math.max(rows.length - 1, 0));
+  // With row sync the field section carries the row index ("banks-2"); without it the plain section name.
+  const rowSync = targetRowIndex !== undefined || onRowChange !== undefined;
+  const rowSection = (idx: number) =>
+    rowSync ? `${section || title.toLowerCase()}-${idx}` : section || title.toLowerCase();
 
   useEffect(() => {
-    if (targetRowIndex !== undefined && targetRowIndex >= 0 && targetRowIndex < rows.length) {
+    if (targetRowIndex !== undefined && targetRowIndex >= 0 && targetRowIndex < rows.length)
       setActiveIndex(targetRowIndex);
-    }
   }, [targetRowIndex, rows.length]);
 
+  const focusRow = (idx: number) => {
+    if (rowSync && onFieldFocus && fields.length > 0) onFieldFocus(fields[0].key, rowSection(idx));
+  };
   const changeCarouselPage = (newIdx: number) => {
     const validIdx = Math.max(0, Math.min(newIdx, rows.length - 1));
     setActiveIndex(validIdx);
-    if (onRowChange) onRowChange(validIdx);
-    if (onFieldFocus && fields.length > 0) {
-      const secCtx = section ? `${section}-${validIdx}` : `${title.toLowerCase()}-${validIdx}`;
-      onFieldFocus(fields[0].key, secCtx);
-    }
+    onRowChange?.(validIdx);
+    focusRow(validIdx);
   };
   const addRow = () => {
     onChange([...rows, blank(fields)]);
-    setActiveIndex(rows.length);
+    if (carousel) {
+      const nextIdx = rows.length;
+      setActiveIndex(nextIdx);
+      onRowChange?.(nextIdx);
+      focusRow(nextIdx);
+    }
   };
   const removeRow = (index: number) => {
-    onChange(rows.filter((_, j) => j !== index));
-    setActiveIndex(Math.min(currentIndex, Math.max(rows.length - 2, 0)));
+    const nextRows = rows.filter((_, j) => j !== index);
+    onChange(nextRows);
+    if (carousel) {
+      const nextIdx = Math.min(currentIndex, Math.max(nextRows.length - 1, 0));
+      setActiveIndex(nextIdx);
+      onRowChange?.(nextIdx);
+      focusRow(nextIdx);
+    }
   };
+  const updateRow = (index: number, val: any) => {
+    onChange(rows.map((r, j) => (j === index ? val : r)));
+  };
+
   return (
-    <>
-      <div className="section-title">
+    <div className="repeater">
+      <div className="repeater-head">
         <div>
-          <h3>{toTitleCase(title)}</h3>
-          {description && <p className="muted repeater-description">{description}</p>}
+          <h4>{title}</h4>
+          {description && <p>{description}</p>}
         </div>
         {!disabled && (
-          <button className="button small" onClick={addRow}>
-            <Plus size={15} />
-            Add {title.toLowerCase() === 'equipment units' ? 'unit' : 'row'}
+          <button type="button" className="button small secondary" onClick={addRow}>
+            <Plus size={14} /> Add row
           </button>
         )}
       </div>
-      {carousel && rows.length > 0 && (
-        <div className="repeater-carousel-controls">
-          <button
-            className="button small"
-            disabled={currentIndex === 0}
-            onClick={() => changeCarouselPage(currentIndex - 1)}
-          >
-            <ChevronLeft size={15} />
-            Previous
-          </button>
-          <span>
-            {currentIndex + 1} of {rows.length}
-          </span>
-          <button
-            className="button small"
-            disabled={currentIndex >= rows.length - 1}
-            onClick={() => changeCarouselPage(currentIndex + 1)}
-          >
-            Next
-            <ChevronRight size={15} />
-          </button>
+      {carousel ? (
+        rows.length === 0 ? (
+          <div className="repeater-empty">
+            <p>No {title.toLowerCase()} added yet.</p>
+            {!disabled && (
+              <button type="button" className="button small primary" onClick={addRow}>
+                <Plus size={14} /> Add first {title.toLowerCase().replace(/s$/, '')}
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="repeater-carousel">
+            <div className="carousel-nav">
+              <button
+                type="button"
+                className="button small secondary carousel-nav-btn"
+                disabled={currentIndex === 0}
+                onClick={() => changeCarouselPage(currentIndex - 1)}
+              >
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <div className="carousel-indicator">
+                {rows.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`carousel-dot ${i === currentIndex ? 'active' : ''}`}
+                    onClick={() => changeCarouselPage(i)}
+                    title={`Jump to row ${i + 1}`}
+                  />
+                ))}
+                <span className="carousel-counter">
+                  {currentIndex + 1} of {rows.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                className="button small secondary carousel-nav-btn"
+                disabled={currentIndex === rows.length - 1}
+                onClick={() => changeCarouselPage(currentIndex + 1)}
+              >
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
+            <div className="repeat carousel-item active">
+              <div className="repeat-head">
+                <span className="row-number">
+                  {title.replace(/s$/, '')} #{currentIndex + 1}
+                </span>
+                {!disabled && (
+                  <button
+                    type="button"
+                    className="icon-button danger"
+                    onClick={() => removeRow(currentIndex)}
+                    title="Remove item"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+              <Fields
+                fields={fields}
+                value={rows[currentIndex]}
+                disabled={disabled}
+                onChange={val => updateRow(currentIndex, val)}
+                section={rowSection(currentIndex)}
+                onFieldFocus={onFieldFocus}
+                activeFieldKey={activeFieldKey}
+              />
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="repeater-rows">
+          {rows.map((row, i) => (
+            <div key={i} className="repeat">
+              <div className="repeat-head">
+                <span className="row-number">#{i + 1}</span>
+                {!disabled && (
+                  <button
+                    type="button"
+                    className="icon-button danger"
+                    onClick={() => removeRow(i)}
+                    title="Remove item"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </div>
+              <Fields
+                fields={fields}
+                value={row}
+                disabled={disabled}
+                onChange={val => updateRow(i, val)}
+                section={rowSection(i)}
+                onFieldFocus={onFieldFocus}
+                activeFieldKey={activeFieldKey}
+              />
+            </div>
+          ))}
+          {rows.length === 0 && <p className="muted">No {title.toLowerCase()} added yet.</p>}
         </div>
       )}
-      {rows.length === 0 && <div className="empty-small">No entries yet.</div>}
-      {(carousel ? rows.slice(currentIndex, currentIndex + 1) : rows).map((r, i) => {
-        const rowIndex = carousel ? currentIndex : i;
-        return (
-          <div className="repeat" key={rowIndex}>
-            <div className="repeat-top">
-              <span>
-                {toTitleCase(title)} / {String(rowIndex + 1).padStart(2, '0')}
-              </span>
-              {!disabled && (
-                <button
-                  className="icon-button danger"
-                  aria-label="Remove row"
-                  onClick={() => removeRow(rowIndex)}
-                >
-                  <Trash2 size={15} />
-                </button>
-              )}
-            </div>
-            <Fields
-              fields={fields}
-              value={r}
-              disabled={disabled}
-              section={section || title.toLowerCase()}
-              onFieldFocus={onFieldFocus}
-              onFieldSync={onFieldSync}
-              activeFieldKey={activeFieldKey}
-              onChange={v => onChange(rows.map((x, j) => (rowIndex === j ? v : x)))}
-            />
-          </div>
-        );
-      })}
-    </>
+    </div>
   );
 }

@@ -1,9 +1,12 @@
 /** All state, derived values and handlers of NibOcrModal; shared with its sections through NibOcrModalContext. */
-import {extractWilayahFromAddressAndText} from '@/features/ocr/lib/nib/address-wilayah';
+import {validateCompanyEmail} from '@/features/ocr/lib/nib/validate-email';
+import {EMPTY_NIB_FORM, scanResultToForm, type NibFormData} from '@/features/ocr/lib/nib/scan-to-form';
 import {extractNibTextFromDocument} from '@/features/ocr/lib/nib/extract';
 import {api} from '@/shared/lib/api';
-import {normalizeWilayahInput, useMasterData} from '@/shared/master-data';
+import {useMasterData} from '@/shared/master-data';
 import React, {useEffect, useRef, useState} from 'react';
+
+export {validateCompanyEmail};
 
 export interface NibOcrModalProps {
   open: boolean;
@@ -48,21 +51,7 @@ export function useNibOcrModal({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const [formData, setFormData] = useState({
-    nib: '',
-    companyName: '',
-    alamat: '',
-    email: '',
-    phone: '',
-    tanggalTerbit: '',
-    city: '',
-    district: '',
-    village: '',
-    postalCode: '',
-    province: '',
-    rt: '',
-    rw: '',
-  });
+  const [formData, setFormData] = useState<NibFormData>(EMPTY_NIB_FORM);
 
   // Reset state when modal opens
   useEffect(() => {
@@ -103,70 +92,9 @@ export function useNibOcrModal({
       const res = await api('/ocr/scan', 'POST', uploadPayload);
       if (res && res.data) {
         const d = res.data;
-        const newNib = String(d.nib || '')
-          .replace(/\D/g, '')
-          .slice(0, 13);
-        const newCompanyName = String(d.company_name || d.companyName || '').trim();
-        const rawAddress = String(
-          d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '',
-        ).trim();
-
-        let newProvince = String(d.provinsi || d.province || '').trim();
-        let newCity = String(d.kota || d.city || d.cityRegency || '').trim();
-        let newDistrict = String(d.kecamatan || d.district || '').trim();
-        let newVillage = String(d.kel_desa || d.village || d.kelurahan || '').trim();
-        let newPostal = String(d.kode_pos || d.postalCode || '')
-          .replace(/\D/g, '')
-          .slice(0, 5);
-        let newRt = String(d.rt || '').trim();
-        let newRw = String(d.rw || '').trim();
-
-        // Always resolve & normalize wilayah fields through master data resolver
-        const w = extractWilayahFromAddressAndText(
-          `${rawAddress} ${newProvince} ${newCity} ${newDistrict} ${newVillage}`,
-          rawAddress,
-          master,
-        );
-        newProvince = w.province || normalizeWilayahInput(newProvince);
-        newCity = w.city || normalizeWilayahInput(newCity);
-        newDistrict = w.district || normalizeWilayahInput(newDistrict);
-        newVillage = w.village || normalizeWilayahInput(newVillage);
-        if (w.postalCode && !newPostal) newPostal = w.postalCode;
-        if (w.rt && !newRt) newRt = w.rt;
-        if (w.rw && !newRw) newRw = w.rw;
-
-        const newEmail = String(d.email || '').trim();
-        const newPhone = String(d.phone || d.phoneFax || '').trim();
-        const rawTanggal = String(
-          d.tanggal_terbit || d.establishmentDate || d.nibIssuedDate || d.issueDate || d.tanggalTerbit || '',
-        ).trim();
-        let newTanggal = rawTanggal;
-        const isoMatch = rawTanggal.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-        if (isoMatch) {
-          newTanggal = `${isoMatch[1]}-${isoMatch[2].padStart(2, '0')}-${isoMatch[3].padStart(2, '0')}`;
-        } else {
-          const dmMatch = rawTanggal.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
-          if (dmMatch) {
-            newTanggal = `${dmMatch[3]}-${dmMatch[2].padStart(2, '0')}-${dmMatch[1].padStart(2, '0')}`;
-          }
-        }
-
-        setFormData({
-          nib: newNib,
-          companyName: newCompanyName,
-          alamat: rawAddress,
-          province: newProvince,
-          city: newCity,
-          district: newDistrict,
-          village: newVillage,
-          postalCode: newPostal,
-          email: newEmail,
-          phone: newPhone,
-          tanggalTerbit: newTanggal,
-          rt: newRt,
-          rw: newRw,
-        });
-        setRawText(rawAddress || JSON.stringify(d, null, 2));
+        const {formData: scanned, rawText: scannedText} = scanResultToForm(d, master);
+        setFormData(scanned);
+        setRawText(scannedText);
         if (notify) {
           notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
         }
@@ -254,7 +182,13 @@ export function useNibOcrModal({
     formData.tanggalTerbit,
   ].filter(Boolean).length;
 
+  const emailError = validateCompanyEmail(formData.email);
+
   const handleApply = () => {
+    if (emailError) {
+      if (notify) notify(`Email perusahaan tidak valid: ${emailError}`);
+      return;
+    }
     if (filledCount === 0) {
       if (notify) notify('No NIB data extracted to apply.');
       return;
@@ -304,5 +238,6 @@ export function useNibOcrModal({
     filledCount,
     handleApply,
     hasData,
+    emailError,
   };
 }

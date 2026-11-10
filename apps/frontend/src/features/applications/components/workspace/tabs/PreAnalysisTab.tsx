@@ -4,13 +4,31 @@ import {useWorkspace} from '@/features/applications/components/workspace/Workspa
 import {PreAnalysisForm} from '@/features/crm/components/lazy';
 
 export function PreAnalysisTab() {
-  const {a, user, notify, preAnalysisSaveRef, setPreAnalysisSaving, tab, draft} = useWorkspace();
+  const {
+    a,
+    user,
+    notify,
+    preAnalysisSaveRef,
+    setPreAnalysisSaving,
+    tab,
+    draft,
+    busy,
+    saveNewApplication,
+    setPreAnalysisDraft,
+    assignedPreAnalysisNo,
+  } = useWorkspace();
   return (
     <>
       {tab === 8 && (
         <PreAnalysisForm
-          applicationId={a.id}
-          application={a}
+          key={draft.isNew ? 'new-preana' : draft.id || a.id}
+          applicationId={draft.id || a.id || 'new'}
+          application={draft}
+          isNew={draft.isNew}
+          busy={busy}
+          assignedPreAnalysisNo={assignedPreAnalysisNo}
+          onSaveNewApplication={saveNewApplication}
+          onChange={setPreAnalysisDraft}
           customer={draft.customer}
           pic={draft.pic}
           profile={draft}

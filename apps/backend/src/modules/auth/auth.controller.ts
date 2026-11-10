@@ -1,4 +1,4 @@
-import {Controller, Get, Post, Res} from '@nestjs/common';
+import {Controller, Post, Res} from '@nestjs/common';
 import {z} from 'zod';
 import {pool} from '../../core/db/pool';
 import {ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
@@ -24,7 +24,7 @@ const safeNext = (next?: string | null) =>
   next && next.startsWith('/') && !next.startsWith('//') ? next : '/gallery';
 
 /**
- * /api/auth/*: login, logout, change-password, heartbeat. All public: each one answers signed-out users itself
+ * /api/auth/*: login, logout, change-password. All public: each one answers signed-out users itself
  * (login works without a session; the others reply 401 or simply clear the cookie).
  */
 @Public()
@@ -80,13 +80,6 @@ export class AuthController {
     return {ok: true};
   }
 
-  /** GET keeps plain "/api/auth/logout" links working. */
-  @Get('logout')
-  async logoutRedirect(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    await this.endCurrentSession(req, res);
-    res.redirect(302, '/login');
-  }
-
   @Post('change-password')
   async changePassword(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const actor = await currentActor(req);
@@ -126,7 +119,6 @@ export class AuthController {
       inactivity_timeout_minutes: timeout,
     };
   }
-
   private async endCurrentSession(req: ApiRequest, res: ApiResponse) {
     const actor = await currentActor(req);
     if (actor) {

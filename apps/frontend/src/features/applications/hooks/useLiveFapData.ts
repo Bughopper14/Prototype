@@ -1,7 +1,7 @@
 /** Live FAP sheet data built from the current draft (company, NPWP, address, units…). */
 import {useMasterData} from '@/shared/master-data';
 import {type FapSheetData} from '@/features/fap/lib/types';
-import {calculateAgeYearsMonths} from '@/shared/lib/format';
+import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
 
 export function useLiveFapData({
   master,
@@ -86,11 +86,30 @@ export function useLiveFapData({
       '',
   ).trim();
 
+  // Deed number/date and shareholders on the sheet follow the latest deed in Legal
+  const syncDetail = deriveDeedSync(draft.legal || a.legal, draft);
+  const resolvedDetailStakeholders =
+    syncDetail.latestStakeholders.length > 0
+      ? syncDetail.latestStakeholders
+      : draft.stakeholders || a.stakeholders || [];
+  const finalDetailLatestDeedNo = syncDetail.latestDeedNo || draft.latestDeedNo || a.latestDeedNo || '';
+  const finalDetailLatestDeedDate = String(
+    syncDetail.latestDeedDate || draft.latestDeedDate || a.latestDeedDate || '',
+  ).slice(0, 10);
+  const pickDefined = (draftValue: any, fallback: any) =>
+    draftValue !== undefined && draftValue !== null ? draftValue : fallback;
+
   const liveDetailFapData: FapSheetData = {
     fapNumber: draft.isNew ? 'Auto (Generated on save)' : draft.fapNumber || a.fapNumber || '—',
     applicationDate: draft.applicationDate || a.applicationDate || new Date().toISOString(),
     branchCode: draft.branchCode || a.branchCode || '',
-    customerStatus: customerCategory || draft.customerStatus || a.customerStatus || 'EXISTING',
+    customerStatus:
+      customerCategory ||
+      draft.customerCategory ||
+      draft.customerStatus ||
+      a.customerCategory ||
+      a.customerStatus ||
+      'NEW',
     companyName: liveCompanyName,
     companyType: liveCompanyType,
     nib: liveNib,
@@ -133,14 +152,16 @@ export function useLiveFapData({
         : liveEstablishmentDate
           ? calculateAgeYearsMonths(liveEstablishmentDate).months
           : '',
-    latestDeedNo: draft.latestDeedNo,
-    latestDeedDate: draft.latestDeedDate,
+    latestDeedNo: finalDetailLatestDeedNo,
+    latestDeedDate: finalDetailLatestDeedDate,
+    stakeholders: resolvedDetailStakeholders,
     phoneFax: draft.phoneFax,
     website: draft.website,
     email: draft.email,
     repaymentSource: draft.repaymentSource,
     locationStatus: draft.locationStatus,
-    industrySegment: draft.industrySegment || a.industrySegment,
+    industrySegment: pickDefined(draft.industrySegment, a.industrySegment || a.industry_segment || ''),
+    businessRole: pickDefined(draft.businessRole, a.businessRole || a.business_role || ''),
     pic: draft.pic || a.pic,
     picName: draft.pic?.picName || draft.pic?.name || a.pic?.picName || a.pic?.name || a.picName || '',
     position: draft.pic?.position || a.pic?.position || a.position || '',
@@ -167,24 +188,25 @@ export function useLiveFapData({
       a.pic?.province ||
       '',
     picPostalCode: draft.pic?.postalCode || a.pic?.postalCode || a.picPostalCode || '',
-    selectedDeedNo: draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo,
-    financingPurposeDetail: draft.financingPurposeDetail !== undefined ? draft.financingPurposeDetail : a.financingPurposeDetail,
+    selectedDeedNo:
+      finalDetailLatestDeedNo || draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo || '',
+    financingPurposeDetail: pickDefined(draft.financingPurposeDetail, a.financingPurposeDetail || ''),
     businessRole: draft.businessRole || a.businessRole,
     proposal: draft.proposal || a.proposal,
-    financingProposal: draft.financingProposal || draft.proposal || a.financingProposal || a.proposal,
+    financingProposal: draft.financingProposal || draft.proposal || a.financingProposal || a.proposal || {},
     projects: draft.projects || a.projects,
     bankReferences: draft.bankReferences || a.bankReferences,
-    referenceComments: draft.referenceComments !== undefined ? draft.referenceComments : a.referenceComments,
-    financialStatements: draft.financialStatements || a.financialStatements,
-    financialAudited: draft.financialAudited !== undefined ? draft.financialAudited : a.financialAudited,
+    referenceComments: draft.referenceComments || a.referenceComments || '',
+    financialAudited: pickDefined(draft.financialAudited, a.financialAudited || false),
+    financialStatements: draft.financialStatements || a.financialStatements || [],
     documentRequirements:
       draft.documentRequirements ||
       draft.financingProposal?.documentRequirements ||
       a.financingProposal?.documentRequirements ||
       (draft.proposal || a.proposal)?.documentRequirements,
     facilityPurpose:
-      draft.facilityPurpose ||
       (draft.proposal || a.proposal)?.facilityPurpose ||
+      draft.facilityPurpose ||
       a.facilityPurpose ||
       'INVESTMENT',
     financingMethod: (draft.proposal || a.proposal)?.financingMethod,
@@ -194,16 +216,13 @@ export function useLiveFapData({
     tenorMonths: (draft.proposal || a.proposal)?.tenorMonths,
     paymentMethod: (draft.proposal || a.proposal)?.paymentMethod,
     units: (draft.proposal || a.proposal)?.units,
-    assetSummaryHeLiuGong:
-      draft.assetSummaryHeLiuGong !== undefined ? draft.assetSummaryHeLiuGong : a.assetSummaryHeLiuGong,
-    assetSummaryTruckLiuGong:
-      draft.assetSummaryTruckLiuGong !== undefined ? draft.assetSummaryTruckLiuGong : a.assetSummaryTruckLiuGong,
-    assetSummaryHeNonLiuGong:
-      draft.assetSummaryHeNonLiuGong !== undefined ? draft.assetSummaryHeNonLiuGong : a.assetSummaryHeNonLiuGong,
-    assetSummaryTruckNonLiuGong:
-      draft.assetSummaryTruckNonLiuGong !== undefined
-        ? draft.assetSummaryTruckNonLiuGong
-        : a.assetSummaryTruckNonLiuGong,
+    assetSummaryHeLiuGong: pickDefined(draft.assetSummaryHeLiuGong, a.assetSummaryHeLiuGong),
+    assetSummaryTruckLiuGong: pickDefined(draft.assetSummaryTruckLiuGong, a.assetSummaryTruckLiuGong),
+    assetSummaryHeNonLiuGong: pickDefined(draft.assetSummaryHeNonLiuGong, a.assetSummaryHeNonLiuGong),
+    assetSummaryTruckNonLiuGong: pickDefined(
+      draft.assetSummaryTruckNonLiuGong,
+      a.assetSummaryTruckNonLiuGong,
+    ),
   };
 
   return {

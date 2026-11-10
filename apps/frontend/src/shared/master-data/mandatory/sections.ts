@@ -5,7 +5,13 @@ export const MANDATORY_SECTIONS_FAP = [
   'Registration Office & Company Domicile',
   'Business Profile & Deed Legality',
   'Primary Contact / Person in Charge (PIC)',
+  'Purpose of Financing & Fixed Assets',
   'Industry Segmentation & Active Projects',
+  'Bank Facilities & References',
+  'Financing Proposal',
+  'Financial Statements',
+  'Legal Deeds & Amendments',
+  'Shareholders & Management',
 ] as const;
 
 export const MANDATORY_SECTIONS_PRE = [
@@ -29,7 +35,7 @@ export function cleanSectionName(sec: string): string {
 
 export function normalizeRule(r: any) {
   if (!r) return r;
-  const rawStage = String(r.stage || (r.id > 47 ? 'PRE-AN' : 'FAP')).toUpperCase();
+  const rawStage = String(r.stage || '').toUpperCase();
   const normalizedStage = rawStage === 'PRE-AN' || rawStage === 'PRE' ? 'PRE-AN' : 'FAP';
   const stageRule = {...r, stage: normalizedStage};
   return {
@@ -44,12 +50,12 @@ export function resolveRuleSection(rule: {
   section?: string;
   field_key?: string;
 }): string {
-  const stage = String(rule?.stage || (rule?.id && rule.id > 47 ? 'PRE-AN' : 'FAP')).toUpperCase();
+  const stage = String(rule?.stage || '').toUpperCase();
   const rawSec = cleanSectionName(String(rule?.section || ''));
   const fKey = String(rule?.field_key || '');
 
   // Pre-Analysis Stage Resolution
-  if (stage === 'PRE-AN' || stage === 'PRE' || (rule?.id && rule.id > 47)) {
+  if (stage === 'PRE-AN' || stage === 'PRE') {
     for (const s of MANDATORY_SECTIONS_PRE) {
       if (rawSec.toLowerCase() === s.toLowerCase()) return s;
     }
@@ -66,7 +72,9 @@ export function resolveRuleSection(rule: {
       sec.includes('conclusion') ||
       sec.includes('expert') ||
       sec.includes('judgement') ||
-      sec.includes('recommendation')
+      sec.includes('recommendation') ||
+      sec.includes('prelimenary') ||
+      sec.includes('preliminary')
     )
       return 'Expert Judgement Conclusion';
     return rawSec || 'General Information';
@@ -161,9 +169,20 @@ export function getSectionAliases(secName: string, stage?: string): string[] {
     aliases.push('company', 'office', 'domicile', 'registration', '02', 'profile');
   }
   if (
-    norm.includes('business') ||
-    norm.includes('deed') ||
-    norm.includes('legality') ||
+    norm.includes('legal deeds') ||
+    (norm.includes('legal') && norm.includes('deed')) ||
+    norm.includes('amendment')
+  ) {
+    aliases.push('legal deeds & amendments', 'legal deeds', 'deeds', 'legal');
+  }
+  if (norm.includes('shareholder') || norm.includes('management') || norm.includes('stakeholder')) {
+    aliases.push('shareholders & management', 'shareholders', 'stakeholders', 'management');
+  }
+  if (
+    ((norm.includes('business') || norm.includes('legality')) &&
+      !norm.includes('legal deeds') &&
+      !norm.includes('amendment')) ||
+    (norm.includes('deed') && !norm.includes('legal deeds') && !norm.includes('amendment')) ||
     norm.startsWith('03')
   ) {
     aliases.push('business', 'legality', 'deed', 'profile', '03');
