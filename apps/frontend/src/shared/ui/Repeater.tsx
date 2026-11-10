@@ -1,7 +1,7 @@
 /** List of Fields blocks with add / remove / paging (directors, shareholders, PICs…). */
 import {blank, toTitleCase, type Field} from '@liugong/shared';
 import {ChevronLeft, ChevronRight, Plus, Trash2} from 'lucide-react';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Fields} from './Fields';
 
 export function Repeater({
@@ -16,6 +16,8 @@ export function Repeater({
   onFieldFocus,
   onFieldSync,
   activeFieldKey,
+  targetRowIndex,
+  onRowChange,
 }: {
   title: string;
   fields: Field[];
@@ -28,9 +30,27 @@ export function Repeater({
   onFieldFocus?: (k: string, section?: string) => void;
   onFieldSync?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
+  targetRowIndex?: number;
+  onRowChange?: (idx: number) => void;
 }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const currentIndex = Math.min(activeIndex, Math.max(rows.length - 1, 0));
+
+  useEffect(() => {
+    if (targetRowIndex !== undefined && targetRowIndex >= 0 && targetRowIndex < rows.length) {
+      setActiveIndex(targetRowIndex);
+    }
+  }, [targetRowIndex, rows.length]);
+
+  const changeCarouselPage = (newIdx: number) => {
+    const validIdx = Math.max(0, Math.min(newIdx, rows.length - 1));
+    setActiveIndex(validIdx);
+    if (onRowChange) onRowChange(validIdx);
+    if (onFieldFocus && fields.length > 0) {
+      const secCtx = section ? `${section}-${validIdx}` : `${title.toLowerCase()}-${validIdx}`;
+      onFieldFocus(fields[0].key, secCtx);
+    }
+  };
   const addRow = () => {
     onChange([...rows, blank(fields)]);
     setActiveIndex(rows.length);
@@ -58,7 +78,7 @@ export function Repeater({
           <button
             className="button small"
             disabled={currentIndex === 0}
-            onClick={() => setActiveIndex(i => Math.max(i - 1, 0))}
+            onClick={() => changeCarouselPage(currentIndex - 1)}
           >
             <ChevronLeft size={15} />
             Previous
@@ -69,7 +89,7 @@ export function Repeater({
           <button
             className="button small"
             disabled={currentIndex >= rows.length - 1}
-            onClick={() => setActiveIndex(i => Math.min(i + 1, rows.length - 1))}
+            onClick={() => changeCarouselPage(currentIndex + 1)}
           >
             Next
             <ChevronRight size={15} />

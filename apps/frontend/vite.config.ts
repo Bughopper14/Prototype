@@ -56,6 +56,7 @@ export default defineConfig(({mode}) => {
     plugins: [react(), devBanner(api)],
     resolve: {alias: {'@': path.resolve(__dirname, 'src')}},
     server: {
+      host: '0.0.0.0',
       port: Number(env.PORT || 3000),
       // Fail instead of silently moving to 3001, which is the API port.
       strictPort: true,
@@ -67,6 +68,7 @@ export default defineConfig(({mode}) => {
       },
     },
     preview: {
+      host: '0.0.0.0',
       port: Number(env.PORT || 3000),
       proxy: {
         '/api': {target: api, changeOrigin: false},

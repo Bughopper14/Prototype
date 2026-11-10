@@ -359,8 +359,15 @@ export function useApplicationWorkspace({
     'fap-preview-sec-company': true,
     'fap-preview-sec-business': true,
     'fap-preview-sec-pic': true,
+    'fap-preview-sec-purpose-assets': true,
     'fap-preview-sec-projects': true,
+    'fap-preview-sec-banks': true,
+    'fap-preview-sec-proposal': true,
+    'fap-preview-sec-financial': true,
   });
+  const [financialActiveIndex, setFinancialActiveIndex] = useState<number>(0);
+  const [targetProjectRow, setTargetProjectRow] = useState<number>(0);
+  const [targetBankRow, setTargetBankRow] = useState<number>(0);
   const [activeSyncSection, setActiveSyncSection] = useState<string>('fap-preview-sec-header');
   const [activeSyncField, setActiveSyncField] = useState<string | null>(null);
   const [activeFieldKey, setActiveFieldKey] = useState<string | null>(null);
@@ -378,12 +385,112 @@ export function useApplicationWorkspace({
     },
   );
 
+  const highlightFormElement = (el: HTMLElement | null) => {
+    if (!el) return;
+    el.classList.remove('fap-preview-sync-highlight');
+    void el.offsetWidth;
+    el.classList.add('fap-preview-sync-highlight');
+    setTimeout(() => el.classList.remove('fap-preview-sync-highlight'), 3000);
+  };
+
+  const scrollToFormElement = (fieldKey: string, sectionContext?: string, secId?: string) => {
+    if (!fieldKey && !secId) return;
+
+    const targetSecId =
+      secId ||
+      (sectionContext?.startsWith('projects')
+        ? 'fap-preview-sec-projects'
+        : sectionContext?.startsWith('banks')
+          ? 'fap-preview-sec-banks'
+          : sectionContext === 'proposal'
+            ? 'fap-preview-sec-proposal'
+            : sectionContext === 'company'
+              ? 'fap-preview-sec-company'
+              : sectionContext === 'pic'
+                ? 'fap-preview-sec-pic'
+                : sectionContext === 'business'
+                  ? 'fap-preview-sec-business'
+                  : sectionContext === 'purpose-assets'
+                    ? 'fap-preview-sec-purpose-assets'
+                    : sectionContext?.startsWith('financial')
+                      ? 'fap-preview-sec-financial'
+                      : undefined);
+
+    if (targetSecId) {
+      setOpenSections(prev => ({...prev, [targetSecId]: true}));
+    }
+
+    setTimeout(() => {
+      let el: HTMLElement | null = null;
+      const cleanSec = sectionContext?.replace('fap-preview-sec-', '');
+      if (cleanSec) {
+        el =
+          document.querySelector(`[data-section="${cleanSec}"] [data-field="${fieldKey}"]`) ||
+          document.querySelector(`[data-section="${cleanSec}"] [name="${fieldKey}"]`) ||
+          document.querySelector(`[data-section="${sectionContext}"] [data-field="${fieldKey}"]`);
+      }
+      if (!el && fieldKey) {
+        el = document.querySelector(`[data-field="${fieldKey}"], [name="${fieldKey}"], #fap-form-${fieldKey}`);
+      }
+      if (!el && fieldKey) {
+        if (fieldKey === 'financialAudited' || fieldKey === 'isAudited') {
+          el = document.querySelector('[data-field="financialAudited"]') as HTMLElement;
+        } else if (fieldKey === 'fiscalYear') {
+          el = document.querySelector('[data-field="fiscalYear"]') as HTMLElement;
+        } else if (
+          [
+            'currentAssets',
+            'nonCurrentAssets',
+            'totalAssets',
+            'currentLiabilities',
+            'nonCurrentLiabilities',
+            'totalLiabilities',
+            'equity',
+            'totalLiabAndEquity',
+            'revenue',
+            'grossMargin',
+            'operatingMargin',
+            'tax',
+            'netIncome',
+          ].includes(fieldKey)
+        ) {
+          el = document.querySelector(`[data-field="${fieldKey}"]`) as HTMLElement;
+        } else if (fieldKey === 'referenceComments' || fieldKey === 'comments') {
+          el = document.querySelector('textarea[placeholder*="bank references"]') as HTMLElement;
+        } else if (fieldKey === 'totalMonthlyInstallment') {
+          el = document.querySelector('div[title*="Total Monthly Installment"]') as HTMLElement;
+        } else if (fieldKey === 'industrySegment' || fieldKey === 'businessRole') {
+          el = document.querySelector(`[data-field="${fieldKey}"]`) as HTMLElement;
+        }
+      }
+
+      if (el) {
+        el.scrollIntoView({behavior: 'smooth', block: 'center'});
+        highlightFormElement(el);
+        const input =
+          el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA'
+            ? el
+            : (el.querySelector('input, select, textarea') as HTMLElement);
+        if (input) {
+          input.focus();
+        }
+      } else if (targetSecId) {
+        const acc = document.getElementById(`acc-${targetSecId}`);
+        if (acc) {
+          acc.scrollIntoView({behavior: 'smooth', block: 'start'});
+          highlightFormElement(acc);
+        }
+      }
+    }, 150);
+  };
+
   const handlePreviewSectionClick = (secId: string) => {
     handleTriggerSync(secId);
     setOpenSections(prev => ({...prev, [secId]: true}));
     const formTarget = document.getElementById('acc-' + secId);
     if (formTarget) {
       formTarget.scrollIntoView({behavior: 'smooth', block: 'center'});
+      highlightFormElement(formTarget);
     }
   };
 
@@ -836,6 +943,14 @@ export function useApplicationWorkspace({
     setSideBySide,
     openSections,
     setOpenSections,
+    financialActiveIndex,
+    setFinancialActiveIndex,
+    targetProjectRow,
+    setTargetProjectRow,
+    targetBankRow,
+    setTargetBankRow,
+    highlightFormElement,
+    scrollToFormElement,
     activeSyncSection,
     setActiveSyncSection,
     activeSyncField,

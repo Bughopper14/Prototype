@@ -1,10 +1,15 @@
-/** Customer & PIC accordion: debtor identity, registration office, business profile, PIC, industry. */
+/** Customer & PIC accordion: 9 unified FAP sections matching physical application & live preview. */
 
 import {BusinessProfileSection} from '@/features/applications/components/workspace/customer/BusinessProfileSection';
 import {DebtorIdentitySection} from '@/features/applications/components/workspace/customer/DebtorIdentitySection';
+import {FinancialStatementsSection} from '@/features/applications/components/workspace/customer/FinancialStatementsSection';
+import {FinancingProposalSection} from '@/features/applications/components/workspace/customer/FinancingProposalSection';
 import {PrimaryContactSection} from '@/features/applications/components/workspace/customer/PrimaryContactSection';
+import {PurposeAndAssetsSection} from '@/features/applications/components/workspace/customer/PurposeAndAssetsSection';
+import {ReferencesSection} from '@/features/applications/components/workspace/customer/ReferencesSection';
 import {RegistrationOfficeSection} from '@/features/applications/components/workspace/customer/RegistrationOfficeSection';
 import {SegmentationSection} from '@/features/applications/components/workspace/customer/SegmentationSection';
+
 export function CustomerDetailSections() {
   return (
     <div className="fap-accordion-group">
@@ -20,8 +25,20 @@ export function CustomerDetailSections() {
       {/* 04: Primary Contact / PIC */}
       <PrimaryContactSection />
 
-      {/* 05: Segmentation & Active Projects */}
+      {/* 05: Financing Purpose & List of Fixed Assets */}
+      <PurposeAndAssetsSection />
+
+      {/* 06: Industry Segmentation & Active Projects */}
       <SegmentationSection />
+
+      {/* 07: References */}
+      <ReferencesSection />
+
+      {/* 08: Financing Proposal */}
+      <FinancingProposalSection />
+
+      {/* 09: Financial Statements */}
+      <FinancialStatementsSection />
     </div>
   );
 }

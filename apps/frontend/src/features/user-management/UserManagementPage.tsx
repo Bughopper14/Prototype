@@ -20,13 +20,26 @@ export default function UserManagementPage() {
   if (!allowed) return <Navigate to="/gallery" replace />;
 
   return (
-    <PortalShell name={user.name} wide>
-      <div className="pt-welcome">
-        <div className="pt-pill">
-          <i className="fas fa-circle" style={{fontSize: 6}} /> User Management
+    <PortalShell
+      name={user.name}
+      wide
+      brandText="User Management"
+      brandSub="SYSTEM ADMINISTRATION"
+      showAppsHubBtn={true}
+    >
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-2 pt-2">
+        <div>
+          <h4 className="fw-bold text-secondary mb-0 d-flex align-items-center">
+            <i className="fas fa-shield-alt text-warning me-2" style={{color: '#ff9900'}} />
+            <span style={{color: '#475569', fontSize: '1.4rem', fontWeight: 800}}>System Administration</span>
+          </h4>
+          <small className="text-muted" style={{color: '#94a3b8'}}>
+            Manage users, roles, authorities, and access control
+          </small>
         </div>
-        <h2>Pengguna, Role &amp; Akses</h2>
-        <p>Kelola user, role, authority, aplikasi, audit log, dan sesi aktif.</p>
+        <div className="text-muted small d-none d-md-block" style={{color: '#64748b'}}>
+          Logged in as: <strong className="text-secondary" style={{color: '#334155'}}>{user.name}</strong>
+        </div>
       </div>
       <UserManagement currentUserId={user.portalUserId} />
     </PortalShell>

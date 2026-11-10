@@ -308,10 +308,149 @@ export function FapSheetPreview(props: FapSheetPreviewProps) {
       (cell as HTMLElement).onclick = e => {
         e.stopPropagation();
         const id = (cell as HTMLElement).id;
-        const matchedField = Object.entries(FIELD_TO_CELL_ID_MAP).find(([_, v]) => v === id)?.[0] || '';
-        const matchedSection = CELL_ID_TO_SECTION_MAP[id] || '';
+        let matchedField = Object.entries(FIELD_TO_CELL_ID_MAP).find(([_, v]) => v === id)?.[0] || '';
+        let matchedSection = CELL_ID_TO_SECTION_MAP[id] || '';
+        let extraMeta: any = undefined;
+
+        // Project contracts
+        const projMatch = id.match(/^fap-cell-proj-(\d+)-(owner|loc|role|status)$/);
+        if (projMatch) {
+          const rowIndex = parseInt(projMatch[1], 10);
+          const ftype = projMatch[2];
+          matchedSection = 'fap-preview-sec-projects';
+          extraMeta = {rowIndex, sectionContext: 'projects', repeater: 'projects'};
+          if (ftype === 'owner') matchedField = 'projectOwner';
+          else if (ftype === 'loc') matchedField = 'projectLocation';
+          else if (ftype === 'role') matchedField = 'projectRole';
+          else if (ftype === 'status') matchedField = 'contractStatus';
+        }
+
+        // Bank references
+        const refMatch = id.match(/^fap-cell-ref-(\d+)-(no|bank|currency|credit|installment|year|rate|record|status)$/);
+        if (refMatch) {
+          const rowIndex = parseInt(refMatch[1], 10);
+          const ftype = refMatch[2];
+          matchedSection = 'fap-preview-sec-banks';
+          extraMeta = {rowIndex, sectionContext: 'banks', repeater: 'banks'};
+          if (ftype === 'bank') matchedField = 'bankOrFinInstitution';
+          else if (ftype === 'currency') matchedField = 'currency';
+          else if (ftype === 'credit') matchedField = 'creditFacility';
+          else if (ftype === 'installment') matchedField = 'monthlyInstallment';
+          else if (ftype === 'year') matchedField = 'yearStarted';
+          else if (ftype === 'rate') matchedField = 'interestRate';
+          else if (ftype === 'record') matchedField = 'paymentRecord';
+          else if (ftype === 'status') matchedField = 'facilityStatus';
+        }
+
+        // Financial Statements
+        if (id === 'fap-cell-fin-audited') {
+          matchedSection = 'fap-preview-sec-financial';
+          matchedField = 'financialAudited';
+          extraMeta = {sectionContext: 'financial'};
+        }
+
+        const finMatch = id.match(
+          /^fap-cell-fin-(bs-yr|is-yr|cur-asset|noncur-asset|tot-asset|cur-liab|noncur-liab|tot-liab|equity|tot-liab-equity|revenue|gross-profit|op-profit|tax|net-income)-(\d+)$/,
+        );
+        if (finMatch) {
+          const metric = finMatch[1];
+          const colIdx = parseInt(finMatch[2], 10);
+          matchedSection = 'fap-preview-sec-financial';
+          extraMeta = {rowIndex: colIdx, sectionContext: 'financial', repeater: 'financial'};
+          if (metric === 'bs-yr' || metric === 'is-yr') matchedField = 'fiscalYear';
+          else if (metric === 'cur-asset') matchedField = 'currentAssets';
+          else if (metric === 'noncur-asset') matchedField = 'nonCurrentAssets';
+          else if (metric === 'tot-asset') matchedField = 'totalAssets';
+          else if (metric === 'cur-liab') matchedField = 'currentLiabilities';
+          else if (metric === 'noncur-liab') matchedField = 'nonCurrentLiabilities';
+          else if (metric === 'tot-liab') matchedField = 'totalLiabilities';
+          else if (metric === 'equity') matchedField = 'equity';
+          else if (metric === 'tot-liab-equity') matchedField = 'totalLiabAndEquity';
+          else if (metric === 'revenue') matchedField = 'revenue';
+          else if (metric === 'gross-profit') matchedField = 'grossMargin';
+          else if (metric === 'op-profit') matchedField = 'operatingMargin';
+          else if (metric === 'tax') matchedField = 'tax';
+          else if (metric === 'net-income') matchedField = 'netIncome';
+        }
+
+        // Fixed assets & Purpose
+        if (id.startsWith('fap-cell-asset-')) {
+          matchedSection = 'fap-preview-sec-purpose-assets';
+          extraMeta = {sectionContext: 'purpose-assets'};
+          if (id === 'fap-cell-asset-lg-he') matchedField = 'assetSummaryHeLiuGong';
+          else if (id === 'fap-cell-asset-lg-truck') matchedField = 'assetSummaryTruckLiuGong';
+          else if (id === 'fap-cell-asset-nlg-he') matchedField = 'assetSummaryHeNonLiuGong';
+          else if (id === 'fap-cell-asset-nlg-truck') matchedField = 'assetSummaryTruckNonLiuGong';
+        }
+
+        // Proposal details
+        const propCellMap: Record<string, string> = {
+          'fap-cell-prop-method': 'financingMethod',
+          'fap-cell-prop-curr-choice': 'currencyChoice',
+          'fap-cell-prop-val': 'financingValueProp',
+          'fap-cell-prop-app-source': 'applicationSource',
+          'fap-cell-tc-fl-purpose': 'flInvestment',
+          'fap-cell-tc-fl-curr': 'flCurrency',
+          'fap-cell-tc-fl-deposit': 'flDeposit',
+          'fap-cell-tc-fl-rate': 'flRate',
+          'fap-cell-tc-fl-tenor': 'flTenor',
+          'fap-cell-tc-fl-payment': 'flPayment',
+          'fap-cell-tc-slb-purpose': 'slbPurpose',
+          'fap-cell-tc-slb-curr': 'slbCurrency',
+          'fap-cell-tc-slb-deposit': 'slbDeposit',
+          'fap-cell-tc-slb-rate': 'slbRate',
+          'fap-cell-tc-slb-tenor': 'slbTenor',
+          'fap-cell-tc-slb-payment': 'slbPayment',
+          'fap-cell-tc-if-purpose': 'ifPurpose',
+          'fap-cell-tc-if-curr': 'ifCurrency',
+          'fap-cell-tc-if-dp': 'ifDownPayment',
+          'fap-cell-tc-if-rate': 'ifRate',
+          'fap-cell-tc-if-tenor': 'ifTenor',
+          'fap-cell-tc-if-payment': 'ifPayment',
+          'fap-cell-prop-asset-lg-he': 'propAssetLgHe',
+          'fap-cell-prop-asset-lg-truck': 'propAssetLgTruck',
+          'fap-cell-prop-asset-lg-unit': 'propAssetLgUnit',
+          'fap-cell-prop-asset-nlg-he': 'propAssetNlgHe',
+          'fap-cell-prop-asset-nlg-truck': 'propAssetNlgTruck',
+          'fap-cell-prop-asset-nlg-unit': 'propAssetNlgUnit',
+          'fap-cell-prop-asset-tot-unit': 'propAssetTotUnit',
+          'fap-cell-prop-notes': 'proposalNotes',
+          'fap-cell-doc-company-profile': 'docReqCompanyProfile',
+          'fap-cell-doc-legality': 'docReqLegality',
+          'fap-cell-doc-deed': 'docReqDeed',
+          'fap-cell-doc-decree': 'docReqDecree',
+          'fap-cell-doc-copy-id': 'docReqCopyId',
+          'fap-cell-doc-audited-financial': 'docReqAuditedFin',
+          'fap-cell-doc-bank-statements': 'docReqBankStatements',
+          'fap-cell-doc-bank-facility': 'docReqBankFacility',
+          'fap-cell-doc-production-report': 'docReqProductionReport',
+          'fap-cell-doc-fixed-assets': 'docReqFixedAssets',
+          'fap-cell-doc-project-contracts': 'docReqProjectContracts',
+        };
+
+        if (propCellMap[id]) {
+          matchedSection = 'fap-preview-sec-proposal';
+          matchedField = propCellMap[id];
+          extraMeta = {sectionContext: 'proposal'};
+        }
+
+        if (id === 'fap-cell-ref-total-installment') {
+          matchedSection = 'fap-preview-sec-banks';
+          matchedField = 'totalMonthlyInstallment';
+          extraMeta = {sectionContext: 'banks'};
+        } else if (id === 'fap-cell-ref-comments') {
+          matchedSection = 'fap-preview-sec-banks';
+          matchedField = 'referenceComments';
+          extraMeta = {sectionContext: 'banks'};
+        }
+
+        if (!matchedField) {
+          if (id.startsWith('fap-cell-seg-')) matchedField = 'industrySegment';
+          else if (id.startsWith('fap-cell-role-')) matchedField = 'businessRole';
+        }
+
         if (props.onPreviewCellClick) {
-          props.onPreviewCellClick(matchedField, matchedSection);
+          props.onPreviewCellClick(matchedField, matchedSection, extraMeta);
         } else if (matchedSection && props.onSectionClick) {
           props.onSectionClick(matchedSection);
         }

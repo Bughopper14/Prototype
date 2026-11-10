@@ -55,7 +55,7 @@ export interface FapSheetPreviewProps {
   activeField?: string | null;
   syncTick?: number;
   onSectionClick?: (sectionId: string) => void;
-  onPreviewCellClick?: (fieldKey: string, sectionId?: string) => void;
+  onPreviewCellClick?: (fieldKey: string, sectionId?: string, extraMeta?: any) => void;
   onPrint?: () => void | Promise<void>;
   hideToolbar?: boolean;
   isComparison?: boolean;
