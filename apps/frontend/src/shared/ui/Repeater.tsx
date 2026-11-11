@@ -37,6 +37,7 @@ export function Repeater({
   /** Called when the carousel turns, so the preview can highlight the same row. */
   onRowChange?: (idx: number) => void;
 }) {
+  const singularTitle = title.replace(/ies$/i, 'y').replace(/s$/i, '');
   const [activeIndex, setActiveIndex] = useState(0);
   const currentIndex = Math.min(activeIndex, Math.max(rows.length - 1, 0));
   // With row sync the field section carries the row index ("banks-2"); without it the plain section name.
@@ -100,7 +101,7 @@ export function Repeater({
             <p>No {title.toLowerCase()} added yet.</p>
             {!disabled && (
               <button type="button" className="button small primary" onClick={addRow}>
-                <Plus size={14} /> Add first {title.toLowerCase().replace(/s$/, '')}
+                <Plus size={14} /> Add first {singularTitle.toLowerCase()}
               </button>
             )}
           </div>
@@ -116,16 +117,23 @@ export function Repeater({
                 <ChevronLeft size={16} /> Previous
               </button>
               <div className="carousel-indicator">
-                {rows.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`carousel-dot ${i === currentIndex ? 'active' : ''}`}
-                    onClick={() => changeCarouselPage(i)}
-                    title={`Jump to row ${i + 1}`}
-                  />
-                ))}
+                <span className="carousel-title-label">
+                  {singularTitle} #{currentIndex + 1}
+                </span>
+                {rows.length > 1 && (
+                  <div className="carousel-dots">
+                    {rows.map((_, i) => (
+                      <span
+                        key={i}
+                        className={`carousel-dot ${i === currentIndex ? 'active' : ''}`}
+                        onClick={() => changeCarouselPage(i)}
+                        title={`Jump to row ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
                 <span className="carousel-counter">
-                  {currentIndex + 1} of {rows.length}
+                  ({currentIndex + 1} of {rows.length})
                 </span>
               </div>
               <button
@@ -140,7 +148,7 @@ export function Repeater({
             <div className="repeat carousel-item active">
               <div className="repeat-head">
                 <span className="row-number">
-                  {title.replace(/s$/, '')} #{currentIndex + 1}
+                  {singularTitle} #{currentIndex + 1}
                 </span>
                 {!disabled && (
                   <button

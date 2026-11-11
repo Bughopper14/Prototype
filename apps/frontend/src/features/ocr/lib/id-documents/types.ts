@@ -17,6 +17,7 @@ export interface ParsedKtpData {
   kewarganegaraan?: string;
   citizenship?: 'WNI' | 'WNA';
   alamat?: string;
+  streetAddress?: string;
   rtRw?: string;
   rt?: string;
   rw?: string;

@@ -297,7 +297,7 @@ export const FAP_PAGE_04 = `<table cellpadding="0" cellspacing="0">
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl97 fap-autofill-val" id="fap-cell-shareholderDeedRef" colspan="6" style="mso-ignore:colspan">Berdasarkan Akta/ <font class="font20">Based on Act No…........</font><font class="font19">Tanggal/</font><font class="font20">Date ................</font><font class="font19">.....</font></td>
+<td class="xl97 fap-autofill-val" id="fap-cell-shareholderDeedRef" colspan="6" style="mso-ignore:colspan;text-align:left !important;padding-left:0 !important;">Berdasarkan Akta/ <font class="font20">Based on Act No…........</font><font class="font19">Tanggal/</font><font class="font20">Date ................</font><font class="font19">.....</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -320,10 +320,10 @@ export const FAP_PAGE_04 = `<table cellpadding="0" cellspacing="0">
 <td class="xl179" rowspan="2" style="border-bottom:.5pt solid black">No</td>
 <td class="xl180" colspan="4" rowspan="2" style="border-right:.5pt solid black;
   border-bottom:.5pt solid black">Name</td>
-<td class="xl180" colspan="2" style="border-right:.5pt solid black;border-left:
-  none">Position</td>
 <td class="xl180" colspan="2" rowspan="2" style="border-right:.5pt solid black;
-  border-bottom:.5pt solid black">Amount of Share</td>
+  border-bottom:.5pt solid black;border-left:none">Position</td>
+<td class="xl180" colspan="2" rowspan="2" style="border-right:.5pt solid black;
+  border-bottom:.5pt solid black;padding-left:4px;padding-right:4px;">Amount of Share</td>
 <td class="xl180" colspan="2" rowspan="2" style="border-right:.5pt solid black;
   border-bottom:.5pt solid black">% share<span style="mso-spacerun:yes"> </span></td>
 <td class="xl72"> </td>
@@ -341,8 +341,6 @@ export const FAP_PAGE_04 = `<table cellpadding="0" cellspacing="0">
 <td class="xl97"></td>
 <td class="xl116"></td>
 <td class="xl97"></td>
-<td class="xl120"> </td>
-<td class="xl121"> </td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>

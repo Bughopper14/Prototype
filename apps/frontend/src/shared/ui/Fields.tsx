@@ -11,6 +11,7 @@ export function Fields({
   section,
   onSelectOption,
   onFieldFocus,
+  onFieldSync,
   activeFieldKey,
   onNibOcr,
   customErrors,
@@ -26,6 +27,7 @@ export function Fields({
   section?: string;
   onSelectOption?: (k: string, v: string) => void;
   onFieldFocus?: (k: string, section?: string) => void;
+  onFieldSync?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
   onNibOcr?: () => void;
   customErrors?: Record<string, string>;

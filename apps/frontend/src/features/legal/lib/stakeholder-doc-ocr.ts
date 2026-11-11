@@ -3,6 +3,7 @@ import {splitPersonName} from '@/features/ocr/lib/id-documents/parse-ktp';
 import type {StakeholderDocType} from '@/features/legal/lib/types';
 import {normalizeBirthDate} from '@/shared/lib/dates';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
+import {extractStreetAddress} from '@liugong/shared';
 
 /** Right after an upload: the file, its text and the fields read from it are stored on the stakeholder. */
 export function mergeExtractedDoc(
@@ -49,7 +50,8 @@ export function mergeExtractedDoc(
       nextVal.citizenship = 'FOREIGN';
       nextVal.country = 'CHINA';
     }
-    if (extracted.alamat) nextVal.address = extracted.alamat;
+    const ktpStreet = extracted.streetAddress || extractStreetAddress(extracted.alamat, extracted);
+    if (ktpStreet) nextVal.address = ktpStreet;
     if (extracted.province) nextVal.province = extracted.province;
     if (extracted.cityRegency || extracted.city)
       nextVal.cityRegency = extracted.cityRegency || extracted.city;
@@ -187,7 +189,8 @@ export function applyParsedDoc(curVal: any, docType: StakeholderDocType, parsed:
       nextVal.citizenship = 'FOREIGN';
       nextVal.country = 'CHINA';
     }
-    if (p.alamat) nextVal.address = p.alamat;
+    const ktpStreet = p.streetAddress || extractStreetAddress(p.alamat, p);
+    if (ktpStreet) nextVal.address = ktpStreet;
     if (p.province) nextVal.province = p.province;
     if (p.cityRegency || p.city) nextVal.cityRegency = p.cityRegency || p.city;
     if (p.kecamatan || p.district) nextVal.district = p.kecamatan || p.district;

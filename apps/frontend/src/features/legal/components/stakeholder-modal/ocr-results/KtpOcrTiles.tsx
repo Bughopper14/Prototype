@@ -1,10 +1,14 @@
 /** Fields read from an e-KTP. */
 import {Check, Copy} from 'lucide-react';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
+import {extractStreetAddress, formatKtpFullAddress} from '@liugong/shared';
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
 
 export function KtpOcrTiles() {
   const {copiedKey, ktpParsed, copyToClipboard} = useStakeholderModalContext();
+  const fullDomicile = formatKtpFullAddress(ktpParsed);
+  const streetAddress =
+    ktpParsed.streetAddress || extractStreetAddress(fullDomicile || ktpParsed.alamat, ktpParsed);
   return (
     <div className="ktp-structured-grid">
       <div className="ktp-field-tile highlight">
@@ -98,60 +102,38 @@ export function KtpOcrTiles() {
         <span className="ktp-field-val">{ktpParsed.agama || '—'}</span>
       </div>
 
-      <div className="ktp-field-tile full-width">
+      <div className="ktp-field-tile full-width highlight">
         <div className="ktp-field-meta">
-          <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
-          {(ktpParsed.alamat || ktpParsed.province) && (
+          <span className="ktp-field-key">ALAMAT JALAN (SAMPAI NOMOR)</span>
+          {streetAddress && (
             <button
               type="button"
               className="ktp-tile-copy"
-              onClick={() => {
-                const full = [
-                  ktpParsed.alamat,
-                  ktpParsed.rtRw
-                    ? `RT/RW ${ktpParsed.rtRw}`
-                    : ktpParsed.rt && ktpParsed.rw
-                      ? `RT ${ktpParsed.rt}/RW ${ktpParsed.rw}`
-                      : '',
-                  ktpParsed.kelDesa || ktpParsed.village
-                    ? `Kel. ${ktpParsed.kelDesa || ktpParsed.village}`
-                    : '',
-                  ktpParsed.kecamatan || ktpParsed.district
-                    ? `Kec. ${ktpParsed.kecamatan || ktpParsed.district}`
-                    : '',
-                  ktpParsed.cityRegency || ktpParsed.city,
-                  ktpParsed.province,
-                  ktpParsed.kodePos || ktpParsed.postalCode,
-                ]
-                  .filter(Boolean)
-                  .join(', ');
-                copyToClipboard('alamat', full || ktpParsed.alamat || '');
-              }}
+              onClick={() => copyToClipboard('streetAddress', streetAddress)}
+            >
+              {copiedKey === 'streetAddress' ? <Check size={11} /> : <Copy size={11} />}
+              {copiedKey === 'streetAddress' ? 'Tersalin' : 'Salin'}
+            </button>
+          )}
+        </div>
+        <span className="ktp-field-val address-val">{streetAddress || '—'}</span>
+      </div>
+
+      <div className="ktp-field-tile full-width">
+        <div className="ktp-field-meta">
+          <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
+          {fullDomicile && (
+            <button
+              type="button"
+              className="ktp-tile-copy"
+              onClick={() => copyToClipboard('alamat', fullDomicile)}
             >
               {copiedKey === 'alamat' ? <Check size={11} /> : <Copy size={11} />}
               {copiedKey === 'alamat' ? 'Tersalin' : 'Salin'}
             </button>
           )}
         </div>
-        <span className="ktp-field-val address-val">
-          {[
-            ktpParsed.alamat,
-            ktpParsed.rtRw
-              ? `RT/RW ${ktpParsed.rtRw}`
-              : ktpParsed.rt && ktpParsed.rw
-                ? `RT ${ktpParsed.rt}/RW ${ktpParsed.rw}`
-                : '',
-            ktpParsed.kelDesa || ktpParsed.village ? `Kel. ${ktpParsed.kelDesa || ktpParsed.village}` : '',
-            ktpParsed.kecamatan || ktpParsed.district
-              ? `Kec. ${ktpParsed.kecamatan || ktpParsed.district}`
-              : '',
-            ktpParsed.cityRegency || ktpParsed.city,
-            ktpParsed.province,
-            ktpParsed.kodePos || ktpParsed.postalCode,
-          ]
-            .filter(Boolean)
-            .join(', ') || '—'}
-        </span>
+        <span className="ktp-field-val address-val">{fullDomicile || '—'}</span>
       </div>
 
       <div className="ktp-field-tile">

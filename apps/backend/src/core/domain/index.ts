@@ -12,7 +12,11 @@ export class Problem extends Error {
 export function ensure(ok: unknown, message: string, status = 422, field = 'application'): asserts ok {
   if (!ok) throw new Problem(status, message, [{field, detail: message}]);
 }
-export const money = (v: any) => new Decimal(v ?? 0);
+export const money = (v: any) => {
+  if (v === null || v === undefined) return new Decimal(0);
+  if (typeof v === 'string' && v.trim() === '') return new Decimal(0);
+  return new Decimal(v);
+};
 export function validateStakeholders(rows: any[], requireCompleteOwnership = true) {
   ensure(rows.length > 0, 'At least one shareholder is required', 422, 'stakeholders');
   const total = rows.reduce((s, x) => s.plus(x.sharePercentage), money(0));
@@ -98,7 +102,7 @@ export function validateProposal(p: any, units: any[]) {
   ensure(sum.eq(p.financingValue), 'Financing value must equal total equipment price');
 }
 export function installment(p: any) {
-  const principal = money(p.financingValue).minus(p.downPaymentValue),
+  const principal = money(p.financingValue).minus(money(p.downPaymentValue)),
     rate = money(p.interestRate).div(1200);
   if (!p.tenorMonths) return null;
   if (rate.isZero()) return principal.div(p.tenorMonths).toFixed(2);
@@ -109,13 +113,15 @@ export function installment(p: any) {
     .toFixed(2);
 }
 export function ratios(r: any) {
-  const ratio = (a: any, b: any) => (money(b).isZero() ? null : money(a).div(b).toFixed(2));
+  const ratio = (a: any, b: any) => {
+    const denom = money(b);
+    return denom.isZero() ? null : money(a).div(denom).toFixed(2);
+  };
+  const rev = money(r.revenue);
   return {
     currentRatio: ratio(r.currentAssets, r.currentLiabilities),
     debtToEquity: ratio(r.totalLiabilities, r.equity),
-    netProfitMargin: money(r.revenue).isZero()
-      ? null
-      : money(r.netIncome).div(r.revenue).times(100).toFixed(2),
+    netProfitMargin: rev.isZero() ? null : money(r.netIncome).div(rev).times(100).toFixed(2),
     dscr: null,
     dscrNote: 'Depreciation is not captured in FSD v1; DSCR is unavailable.',
   };

@@ -2,6 +2,22 @@
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
 
+function cleanHtmlText(val?: string): string {
+  if (!val) return '';
+  return val
+    .replace(/<br\s*[\/]?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
+}
+
 export function applyReferences({
   d,
   setText,
@@ -55,5 +71,5 @@ export function applyReferences({
     totalMonthlyInstallment > 0 ? totalMonthlyInstallment.toLocaleString('id-ID') : '',
   );
 
-  setText('fap-cell-ref-comments', d.referenceComments || '');
+  setText('fap-cell-ref-comments', cleanHtmlText(d.referenceComments));
 }

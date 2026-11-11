@@ -1,9 +1,32 @@
-/** Sub-section 2 of the financing proposal: terms for Financial Lease, Sale & Lease Back and Installment Financing. */
+/** Sub-section 2 of the financing proposal: active Terms & Conditions column matching the selected Financing Method. */
+import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {TermsColumn} from '@/features/applications/components/workspace/customer/proposal/TermsColumn';
-import {TERMS_GROUPS} from '@/features/applications/components/workspace/customer/proposal/terms-config';
+import {
+  resolveFinancingMethod,
+  TERMS_GROUPS,
+} from '@/features/applications/components/workspace/customer/proposal/terms-config';
 import {FileText} from 'lucide-react';
 
+function hasAnyValue(obj: Record<string, any> | undefined): boolean {
+  if (!obj) return false;
+  return Object.values(obj).some(v => v !== undefined && v !== null && String(v).trim() !== '');
+}
+
 export function TermsAndConditionsCard() {
+  const {draft} = useWorkspace();
+  const fp = draft.financingProposal || {};
+  const resolved = resolveFinancingMethod(fp.facilityProposed?.financingMethod);
+
+  const activeGroupKey =
+    resolved?.group ||
+    (hasAnyValue(fp.termsSaleAndLeaseBack)
+      ? 'termsSaleAndLeaseBack'
+      : hasAnyValue(fp.termsInstallmentFinancing)
+        ? 'termsInstallmentFinancing'
+        : 'termsFinancialLease');
+
+  const activeConfig = TERMS_GROUPS.find(g => g.group === activeGroupKey) || TERMS_GROUPS[0];
+
   return (
     <div>
       <h5
@@ -23,20 +46,10 @@ export function TermsAndConditionsCard() {
         Terms &amp; Conditions
       </h5>
       <p style={{fontSize: '12px', color: '#64748b', marginBottom: '14px'}}>
-        Detail terms for Financial Lease, Sale &amp; Lease Back, and Installment Financing (all free text)
+        Detail terms for the selected financing method (automatically synced to the FAP form on the right)
       </p>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-          gap: '16px',
-        }}
-      >
-        {TERMS_GROUPS.map(config => (
-          <TermsColumn key={config.group} config={config} />
-        ))}
-      </div>
+      <TermsColumn key={activeConfig.group} config={activeConfig} />
     </div>
   );
 }

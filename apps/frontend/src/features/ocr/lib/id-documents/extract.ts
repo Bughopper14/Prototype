@@ -1,6 +1,7 @@
 /** Sends an ID image to the OCR service and parses the result per document type. */
 import {api} from '@/shared/lib/api';
 import {normalizeBirthDate, toDmyDate} from '@/shared/lib/dates';
+import {extractStreetAddress} from '@liugong/shared';
 import {parseKitasText} from './parse-kitas';
 import {parseKtpText} from './parse-ktp';
 import {parseNpwpText} from './parse-npwp';
@@ -101,6 +102,20 @@ export async function extractKtpTextFromImage(
   const rawDob = d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth || '';
   const dobDmy = toDmyDate(rawDob) || rawDob;
 
+  const rawAlamat = d.fullAddress || d.alamat_lengkap || d.alamat || d.address;
+  const regionHints = {
+    kelDesa: d.kel_desa || d.village,
+    village: d.kel_desa || d.village,
+    kecamatan: d.kecamatan || d.district,
+    district: d.kecamatan || d.district,
+    province: d.provinsi || d.province,
+    cityRegency: d.kabupaten_kota || d.cityRegency || d.city,
+    city: d.kabupaten_kota || d.cityRegency || d.city,
+    kodePos: d.kode_pos || d.postalCode,
+    postalCode: d.kode_pos || d.postalCode,
+  };
+  const streetAddress = d.streetAddress || extractStreetAddress(rawAlamat, regionHints);
+
   return {
     nik: d.nik || d.idNumber,
     nama: d.nama || d.name,
@@ -126,6 +141,7 @@ export async function extractKtpTextFromImage(
       ? 'WNA'
       : 'WNI',
     alamat: d.alamat || d.address || d.fullAddress,
+    streetAddress,
     rtRw: d.rt_rw || d.rtRw,
     rt: d.rt,
     rw: d.rw,

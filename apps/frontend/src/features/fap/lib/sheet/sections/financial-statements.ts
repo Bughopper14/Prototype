@@ -33,8 +33,10 @@ export function applyFinancialStatements({
 
   const fmtFinVal = (val: any) => {
     if (val === undefined || val === null || val === '') return '';
+    if (val === 0 || val === '0' || val === '0.00' || val === 0.0) return '';
     const num = Number(val);
-    return isNaN(num) ? String(val) : num.toLocaleString('id-ID');
+    if (isNaN(num) || num === 0) return '';
+    return num.toLocaleString('id-ID');
   };
 
   for (let i = 0; i < 3; i++) {

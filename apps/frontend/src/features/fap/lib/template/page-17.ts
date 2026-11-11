@@ -5,7 +5,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 </tr>
 </table>
 </span></td>
-<td class="xl145" colspan="2" style="mso-ignore:colspan">Keterangan/Remarks</td>
+<td class="xl145" colspan="2" style="mso-ignore:colspan;padding-left:14px !important;padding-right:10px !important;">Keterangan/Remarks</td>
 <td class="xl104"> </td>
 <td id="fap-cell-fin-bs-yr-0" class="xl172 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none">20.</td>
@@ -26,7 +26,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="125" style="mso-height-source:userset;height:94.05pt">
 <td class="xl143" height="125" style="height:94.05pt"> </td>
-<td class="xl213" colspan="2" style="width:229pt" width="305">Total Aset Lancar/<font class="font20">Total Current Asset</font></td>
+<td class="xl213" colspan="2" style="width:229pt;padding-left:14px !important;padding-right:10px !important;" width="305">Total Aset Lancar/<font class="font20">Total Current Asset</font></td>
 <td class="xl104" style="border-top:none"> </td>
 <td id="fap-cell-fin-cur-asset-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -35,7 +35,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <td id="fap-cell-fin-cur-asset-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl122" style="width:150pt" width="200"></td>
-<td class="xl215" colspan="3" style="width:323pt" width="432">Pendapatan/<font class="font20">Revenue</font></td>
+<td class="xl215" colspan="3" style="width:323pt;padding-left:14px !important;padding-right:10px !important;" width="432">Pendapatan/<font class="font20">Revenue</font></td>
 <td id="fap-cell-fin-revenue-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
 <td id="fap-cell-fin-revenue-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
 <td id="fap-cell-fin-revenue-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
@@ -47,7 +47,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl143" height="106" style="height:79.95pt"> </td>
-<td class="xl213" colspan="2" style="width:229pt" width="305">Total Aset Tetap/<font class="font20">Total Non Current Asset</font></td>
+<td class="xl213" colspan="2" style="width:229pt;padding-left:14px !important;padding-right:10px !important;" width="305">Total Aset Tetap/<font class="font20">Total Non Current Asset</font></td>
 <td class="xl104" style="border-top:none"> </td>
 <td id="fap-cell-fin-noncur-asset-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -56,7 +56,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <td id="fap-cell-fin-noncur-asset-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl122" style="width:150pt" width="200"></td>
-<td class="xl215" colspan="3" style="width:323pt" width="432">Laba Kotor/<font class="font20">Gross Margin</font></td>
+<td class="xl215" colspan="3" style="width:323pt;padding-left:14px !important;padding-right:10px !important;" width="432">Laba Kotor/<font class="font20">Gross Margin</font></td>
 <td id="fap-cell-fin-gross-profit-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
 <td id="fap-cell-fin-gross-profit-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
 <td id="fap-cell-fin-gross-profit-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
@@ -68,7 +68,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl143" height="106" style="height:79.95pt"> </td>
-<td class="xl229" colspan="2" style="width:229pt" width="305">Total Aset/<font class="font18">Total Asset</font></td>
+<td class="xl229" colspan="2" style="width:229pt;padding-left:14px !important;padding-right:10px !important;" width="305">Total Aset/<font class="font18">Total Asset</font></td>
 <td class="xl104" style="border-top:none"> </td>
 <td id="fap-cell-fin-tot-asset-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -77,7 +77,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <td id="fap-cell-fin-tot-asset-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl122" style="width:150pt" width="200"></td>
-<td class="xl215" colspan="3" style="width:323pt" width="432">Laba Usaha/<font class="font20">Operating Margin</font></td>
+<td class="xl215" colspan="3" style="width:323pt;padding-left:14px !important;padding-right:10px !important;" width="432">Laba Usaha/<font class="font20">Operating Margin</font></td>
 <td id="fap-cell-fin-op-profit-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
 <td id="fap-cell-fin-op-profit-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
 <td id="fap-cell-fin-op-profit-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
@@ -90,7 +90,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <tr height="158" style="mso-height-source:userset;height:118.95pt">
 <td class="xl143" height="158" style="height:118.95pt"> </td>
 <td class="xl213" colspan="3" style="border-right:.5pt solid black;
-  width:357pt" width="476">Total Liabilitas Jangka Pendek/<font class="font20">Total
+  width:357pt;padding-left:14px !important;padding-right:10px !important;" width="476">Total Liabilitas Jangka Pendek/<font class="font20">Total
   Current Liabilities</font></td>
 <td id="fap-cell-fin-cur-liab-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -99,7 +99,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <td id="fap-cell-fin-cur-liab-2" class="xl210 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl107"></td>
-<td class="xl209" colspan="3">Pajak/<font class="font20">Tax</font></td>
+<td class="xl209" colspan="3" style="padding-left:14px !important;padding-right:10px !important;">Pajak/<font class="font20">Tax</font></td>
 <td id="fap-cell-fin-tax-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
 <td id="fap-cell-fin-tax-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
 <td id="fap-cell-fin-tax-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
@@ -112,7 +112,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <tr height="136" style="mso-height-source:userset;height:102.45pt">
 <td class="xl143" height="136" style="height:102.45pt"> </td>
 <td class="xl213" colspan="3" style="border-right:.5pt solid black;
-  width:357pt" width="476">Total Liabilitas Jangka Panjang/<font class="font20">Total Non
+  width:357pt;padding-left:14px !important;padding-right:10px !important;" width="476">Total Liabilitas Jangka Panjang/<font class="font20">Total Non
   Current Liabilities</font></td>
 <td id="fap-cell-fin-noncur-liab-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -121,7 +121,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <td id="fap-cell-fin-noncur-liab-2" class="xl105 fap-autofill-val" colspan="3" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl107"></td>
-<td class="xl209" colspan="3">Laba Bersih/<font class="font20">Net Income</font></td>
+<td class="xl209" colspan="3" style="padding-left:14px !important;padding-right:10px !important;">Laba Bersih/<font class="font20">Net Income</font></td>
 <td id="fap-cell-fin-net-income-0" class="xl123 fap-autofill-val" style="border-top:none;border-left:none"> </td>
 <td id="fap-cell-fin-net-income-1" class="xl123 fap-autofill-val" colspan="2" style="border-left:none"> </td>
 <td id="fap-cell-fin-net-income-2" class="xl234 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
@@ -134,7 +134,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl143" height="106" style="height:79.95pt"> </td>
 <td class="xl229" colspan="3" style="border-right:.5pt solid black;
-  width:357pt" width="476">Total Liabilitas/ <font class="font18">Total Liabilities</font></td>
+  width:357pt;padding-left:14px !important;padding-right:10px !important;" width="476">Total Liabilitas/ <font class="font18">Total Liabilities</font></td>
 <td id="fap-cell-fin-tot-liab-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td id="fap-cell-fin-tot-liab-1" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
@@ -157,7 +157,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl143" height="106" style="height:79.95pt"> </td>
-<td class="xl213" colspan="2" style="width:229pt" width="305">Ekuitas/<font class="font20">Equity</font></td>
+<td class="xl213" colspan="2" style="width:229pt;padding-left:14px !important;padding-right:10px !important;" width="305">Ekuitas/<font class="font20">Equity</font></td>
 <td class="xl104" style="border-top:none"> </td>
 <td id="fap-cell-fin-equity-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:
   none"> </td>
@@ -181,7 +181,7 @@ export const FAP_PAGE_17 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="138" style="mso-height-source:userset;height:103.95pt">
 <td class="xl143" height="138" style="height:103.95pt"> </td>
-<td class="xl229" colspan="2" style="width:229pt" width="305">Total Liabilitas
+<td class="xl229" colspan="2" style="width:229pt;padding-left:14px !important;padding-right:10px !important;" width="305">Total Liabilitas
   &amp; Ekuitas/<font class="font18">Total Liabilities &amp; Equity</font></td>
 <td class="xl104" style="border-top:none"> </td>
 <td id="fap-cell-fin-tot-liab-equity-0" class="xl105 fap-autofill-val" colspan="2" style="border-right:.5pt solid black;border-left:

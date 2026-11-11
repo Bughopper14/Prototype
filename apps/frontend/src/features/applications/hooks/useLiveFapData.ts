@@ -191,7 +191,6 @@ export function useLiveFapData({
     selectedDeedNo:
       finalDetailLatestDeedNo || draft.legal?.selectedDeedNo || draft.latestDeedNo || a.customer?.establishmentActNo || '',
     financingPurposeDetail: pickDefined(draft.financingPurposeDetail, a.financingPurposeDetail || ''),
-    businessRole: draft.businessRole || a.businessRole,
     proposal: draft.proposal || a.proposal,
     financingProposal: draft.financingProposal || draft.proposal || a.financingProposal || a.proposal || {},
     projects: draft.projects || a.projects,

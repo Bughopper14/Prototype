@@ -319,10 +319,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if c_kec and c_kel:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_location_kelurahan_desa v
-                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kelurahan_desa v
+                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                           AND REPLACE(UPPER(v.name), ' ', '') = %s
                         LIMIT 1
@@ -331,10 +331,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_pos and c_kec:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_location_kelurahan_desa v
-                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kelurahan_desa v
+                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE v.postal_code = %s
                           AND REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
@@ -343,10 +343,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_pos:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_location_kelurahan_desa v
-                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kelurahan_desa v
+                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE v.postal_code = %s
                         LIMIT 1
                     """, (c_pos,))
@@ -354,9 +354,9 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_kec:
                     cur.execute("""
                         SELECT NULL, NULL, d.name, c.name, p.name
-                        FROM master_location_kecamatan d
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kecamatan d
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
                     """, (c_kec,))
@@ -364,10 +364,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and c_kel:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_location_kelurahan_desa v
-                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kelurahan_desa v
+                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(v.name), ' ', '') = %s
                         LIMIT 1
                     """, (c_kel,))
@@ -377,9 +377,9 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                 if not row and (c_kec or c_kel):
                     cur.execute("""
                         SELECT d.id, d.name, c.name, p.name 
-                        FROM master_location_kecamatan d 
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id 
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kecamatan d 
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id 
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                     """)
                     all_kecs = cur.fetchall()
                     best_kec = None
@@ -393,7 +393,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                                 best_kec = (k_id, k_name, c_name, p_name)
                     if best_kec and best_k_score >= 0.70:
                         k_id, k_name, c_name, p_name = best_kec
-                        cur.execute("SELECT v.name, v.postal_code FROM master_location_kelurahan_desa v WHERE v.kecamatan_id = %s", (k_id,))
+                        cur.execute("SELECT v.name, v.postal_code FROM master_kelurahan_desa v WHERE v.kecamatan_id = %s", (k_id,))
                         all_kels = cur.fetchall()
                         best_kel = None
                         best_v_score = 0
@@ -653,11 +653,18 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         raw_al = re.sub(r'^[~*:\-–—\s]+', '', raw_al)
         raw_al = re.sub(r'\b(?:BOAST|BOASI|BEAST|COAST)\b.*$', '', raw_al, flags=re.IGNORECASE).strip()
         raw_al = re.sub(r'[,.\s\-–—~*|]+$', '', raw_al).strip()
-        if not raw_al.upper().startswith('JL') and not raw_al.upper().startswith('JALAN'):
+        if not re.search(r'\b(?:JL|JALAN|TOWER|GEDUNG|KOMP|KOMPLEK|PERUM|RUKO|BLOK|KAV|KP|KAMPUNG|DUSUN|GG|GANG|NO)\b', raw_al, re.IGNORECASE):
             raw_al = f"JL. {raw_al}"
         extracted["alamat"] = raw_al
         extracted["address"] = raw_al
         extracted["fullAddress"] = raw_al
+        street_only = re.split(
+            r',?\s*\b(?:RT[/\s.]*RW|RT\s*\d|RW\s*\d|DESA[/\s]*KELURAHAN|KELURAHAN|DESA|KEL\.|KECAMATAN|KEC\.|KABUPATEN|KAB\.|KOTA\s+ADM|PROVINSI|PROPINSI|KODE\s*POS)\b',
+            raw_al,
+            flags=re.IGNORECASE,
+        )[0].strip()
+        street_only = re.sub(r'[,;\s\-–—]+$', '', street_only).strip()
+        extracted["streetAddress"] = street_only or raw_al
 
     # 5. Kelurahan & Kecamatan symbols cleanup
     if extracted.get("kel_desa"):
@@ -1577,10 +1584,10 @@ def extract_nib(boxes: list) -> tuple:
                 if c_kec and c_kel:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_location_kelurahan_desa v
-                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kelurahan_desa v
+                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                           AND REPLACE(UPPER(v.name), ' ', '') = %s
                         LIMIT 1
@@ -1589,10 +1596,10 @@ def extract_nib(boxes: list) -> tuple:
                 if not row and c_pos and c_kec:
                     cur.execute("""
                         SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_location_kelurahan_desa v
-                        JOIN master_location_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kelurahan_desa v
+                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE v.postal_code = %s
                           AND REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
@@ -1601,9 +1608,9 @@ def extract_nib(boxes: list) -> tuple:
                 if not row and c_kec:
                     cur.execute("""
                         SELECT NULL, NULL, d.name, c.name, p.name
-                        FROM master_location_kecamatan d
-                        JOIN master_location_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_location_provinsi p ON c.provinsi_id = p.id
+                        FROM master_kecamatan d
+                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
+                        JOIN master_provinsi p ON c.provinsi_id = p.id
                         WHERE REPLACE(UPPER(d.name), ' ', '') = %s
                         LIMIT 1
                     """, (c_kec,))

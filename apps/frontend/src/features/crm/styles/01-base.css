@@ -3734,6 +3734,133 @@ nav button {
   opacity: 0.45;
   cursor: not-allowed;
 }
+.repeater {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.repeater-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.repeater-head h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.repeater-head p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #64748b;
+}
+.repeater-head > .button {
+  flex-shrink: 0;
+}
+.repeater-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.carousel-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.carousel-nav-btn {
+  flex-shrink: 0;
+}
+.carousel-indicator {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 6px 12px;
+  min-height: 32px;
+}
+.carousel-title-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.carousel-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.carousel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.carousel-dot.active {
+  background: #2563eb;
+  transform: scale(1.2);
+}
+.carousel-counter {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+.repeater .repeat {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 0;
+}
+.repeater-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.repeat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f1f5f9;
+}
+.repeat-head .row-number {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+}
+.repeater-empty {
+  background: #ffffff;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+.repeater-empty p {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
 @media (max-width: 1050px) {
   .business-contract-bank-grid {
     grid-template-columns: 1fr;

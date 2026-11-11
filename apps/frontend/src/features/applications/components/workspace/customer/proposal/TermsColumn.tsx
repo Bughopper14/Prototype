@@ -15,15 +15,15 @@ export function TermsColumn({config}: {config: TermsGroupConfig}) {
         flexDirection: 'column',
       }}
     >
-      <div style={{minHeight: '42px', display: 'flex', alignItems: 'center', marginBottom: '14px'}}>
+      <div style={{display: 'flex', alignItems: 'center', marginBottom: '12px'}}>
         <div
           style={{
-            fontSize: '11px',
+            fontSize: '12px',
             fontWeight: 700,
             color: '#002c5f',
             background: config.headerBackground,
-            padding: '6px 10px',
-            borderRadius: '4px',
+            padding: '7px 12px',
+            borderRadius: '6px',
             lineHeight: 1.3,
             width: '100%',
           }}
@@ -31,7 +31,14 @@ export function TermsColumn({config}: {config: TermsGroupConfig}) {
           {config.title}
         </div>
       </div>
-      <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+          gap: '12px',
+          alignItems: 'end',
+        }}
+      >
         {config.fields.map(field => (
           <TermsField key={field.dataField} group={config.group} field={field} />
         ))}

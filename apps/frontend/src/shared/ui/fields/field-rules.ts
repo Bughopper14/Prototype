@@ -6,6 +6,7 @@ import type {Field} from '@liugong/shared';
 export const DIGITS_ONLY_KEYS = ['phone', 'mobilePhone', 'phoneFax', 'rt', 'rw'];
 export const LETTERS_ONLY_KEYS = ['repaymentSource'];
 export const TITLE_CASE_KEYS = [
+  'companyName',
   'mainBusiness',
   'picName',
   'projectOwner',

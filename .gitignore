@@ -30,3 +30,9 @@ apps/backend/scripts/dev/fixtures/
 
 UAT/
 apps/backend/dist-qa/
+
+# Generated database design & mapping Excel exports
+CRM_Current_FAP_Stage_Database_Design.xlsx
+CRM_Database_Design_Master_FAP_PreAnalysis.xlsx
+FAP_Legal_Fields_Mapping.xlsx
+Master_Table_Design_FAP_Legal.xlsx

@@ -1,6 +1,7 @@
 /** Company name. */
 import {Building2, Check, Copy} from 'lucide-react';
 import {useNibOcrModalContext} from '@/features/ocr/components/nib-modal/NibOcrModalContext';
+import {toTitleCase} from '@liugong/shared';
 
 export function NibCompanyNameField() {
   const {copiedKey, formData, setFormData, copyToClipboard} = useNibOcrModalContext();
@@ -50,7 +51,11 @@ export function NibCompanyNameField() {
         type="text"
         value={formData.companyName}
         placeholder=""
-        onChange={e => setFormData({...formData, companyName: e.target.value})}
+        onChange={e => setFormData({...formData, companyName: toTitleCase(e.target.value)})}
+        onBlur={e => {
+          const formatted = toTitleCase(e.target.value.trim());
+          if (formatted !== formData.companyName) setFormData({...formData, companyName: formatted});
+        }}
         style={{
           width: '100%',
           padding: '7px 10px',

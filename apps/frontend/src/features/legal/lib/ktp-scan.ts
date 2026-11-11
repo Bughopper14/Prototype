@@ -1,4 +1,7 @@
 /** How the text read from a KTP photo is merged into the stakeholder form. */
+import {extractStreetAddress} from '@liugong/shared';
+
+const ktpStreet = (parsed: any) => parsed?.streetAddress || extractStreetAddress(parsed?.alamat, parsed);
 
 /** After a scan: keep what the user already typed, fill the empty fields from the KTP. */
 export function mergeKtpScan(
@@ -43,8 +46,9 @@ export function mergeKtpScan(
     nextVal.citizenship = 'FOREIGN';
     nextVal.country = 'CHINA';
   }
-  if (parsed.alamat && !currentVal.address) {
-    nextVal.address = parsed.alamat;
+  const streetAddr = ktpStreet(parsed);
+  if (streetAddr && !currentVal.address) {
+    nextVal.address = streetAddr;
   }
   if (parsed.province && !currentVal.province) nextVal.province = parsed.province;
   if ((parsed.cityRegency || parsed.city) && !currentVal.cityRegency)
@@ -82,7 +86,7 @@ export function ktpTextToStakeholder(v: any, parsed: any) {
       : v.citizenship,
     nationalityType: parsed.citizenship || v.nationalityType,
     country: parsed.kewarganegaraan?.includes('CHINA') ? 'CHINA' : v.country,
-    address: parsed.alamat || v.address,
+    address: ktpStreet(parsed) || v.address,
     province: parsed.province || v.province,
     cityRegency: parsed.cityRegency || parsed.city || v.cityRegency,
     district: parsed.kecamatan || parsed.district || v.district,

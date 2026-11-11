@@ -334,7 +334,7 @@ export const FAP_PAGE_05 = `<tr height="6" style="mso-height-source:userset;heig
 <td class="xl97" colspan="3" style="mso-ignore:colspan;padding-left:10px !important;">Rehabilitasi <font class="font20">(rehabilitation)</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl127">Liugong</td>
+<td class="xl127" style="padding-left:14px !important;padding-right:10px !important;">Liugong</td>
 <td class="xl128 fap-autofill-val" id="fap-cell-asset-lg-he" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl129 fap-autofill-val" id="fap-cell-asset-lg-truck" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl105 fap-autofill-val" id="fap-cell-asset-lg-unit" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
@@ -356,7 +356,7 @@ export const FAP_PAGE_05 = `<tr height="6" style="mso-height-source:userset;heig
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl118">Non Liugong</td>
+<td class="xl118" style="padding-left:14px !important;padding-right:10px !important;">Non Liugong</td>
 <td class="xl104 fap-autofill-val" id="fap-cell-asset-nlg-he" style="text-align:center !important;"> </td>
 <td class="xl118 fap-autofill-val" id="fap-cell-asset-nlg-truck" style="border-left:none;text-align:center !important;"> </td>
 <td class="xl105 fap-autofill-val" id="fap-cell-asset-nlg-unit" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>
@@ -379,7 +379,7 @@ export const FAP_PAGE_05 = `<tr height="6" style="mso-height-source:userset;heig
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl118" style="border-top:none">Total</td>
+<td class="xl118" style="border-top:none;padding-left:14px !important;padding-right:10px !important;">Total</td>
 <td class="xl104 fap-autofill-val" id="fap-cell-asset-tot-he" style="border-top:none;text-align:center !important;"> </td>
 <td class="xl118 fap-autofill-val" id="fap-cell-asset-tot-truck" style="border-top:none;border-left:none;text-align:center !important;"> </td>
 <td class="xl105 fap-autofill-val" id="fap-cell-asset-tot-unit" colspan="2" style="border-right:.5pt solid black;border-left:none;text-align:center !important;"> </td>

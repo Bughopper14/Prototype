@@ -1,8 +1,134 @@
-/** Customer section 06: industry segmentation and main business checkboxes (one choice each). */
+/** Customer section 06: industry segmentation and main business radio groups. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
+
+type SegmentOption = {
+  value: string;
+  label: string;
+  matches: (currentUpper: string) => boolean;
+};
+
+const SEGMENT_OPTIONS: SegmentOption[] = [
+  {value: 'MINING', label: 'Pertambangan/Mining', matches: cur => cur === 'MINING' || cur.includes('MINING')},
+  {
+    value: 'AGRICULTURE',
+    label: 'Pertanian/Agriculture',
+    matches: cur => cur === 'AGRICULTURE' || cur.includes('AGRICULTURE'),
+  },
+  {value: 'FORESTRY', label: 'Kehutanan/Forestry', matches: cur => cur === 'FORESTRY' || cur.includes('FORESTRY')},
+  {
+    value: 'CONSTRUCTION',
+    label: 'Konstruksi/Construction',
+    matches: cur => cur === 'CONSTRUCTION' || cur.includes('CONSTRUCTION'),
+  },
+  {
+    value: 'OIL_AND_GAS',
+    label: 'Oil & Gas',
+    matches: cur => cur === 'OIL_AND_GAS' || cur === 'OIL_GAS' || cur.includes('OIL'),
+  },
+  {value: 'OTHER', label: 'Lainnya/Other', matches: cur => cur === 'OTHER' || cur.includes('OTHER')},
+];
+
+const BUSINESS_ROLE_OPTIONS: SegmentOption[] = [
+  {
+    value: 'CONS_OWNER',
+    label: 'Cons. Owner',
+    matches: cur => cur === 'CONS_OWNER' || cur === 'CONCESSION_OWNER' || cur.includes('OWNER'),
+  },
+  {
+    value: 'CONTRACTORS',
+    label: 'Contractors',
+    matches: cur => cur === 'CONTRACTOR' || cur === 'CONTRACTORS' || cur.includes('KONTRAKTOR'),
+  },
+  {
+    value: 'SUB_CONT',
+    label: 'Sub Cont',
+    matches: cur => cur === 'SUB_CONT' || cur === 'SUB_CONTRACTOR' || cur.startsWith('SUB'),
+  },
+  {value: 'RENTAL', label: 'Rental', matches: cur => cur === 'RENTAL' || cur.includes('RENTAL')},
+  {value: 'OTHER', label: 'Other', matches: cur => cur === 'OTHER' || cur.includes('OTHER')},
+];
+
+function SegmentRadioGroup({
+  fieldKey,
+  title,
+  value,
+  options,
+  disabled,
+  onSelect,
+}: {
+  fieldKey: 'industrySegment' | 'businessRole';
+  title: string;
+  value: unknown;
+  options: SegmentOption[];
+  disabled: boolean;
+  onSelect: (nextValue: string) => void;
+}) {
+  const curUpper = String(value || '').trim().toUpperCase();
+  return (
+    <div data-field={fieldKey}>
+      <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: 8}}>
+        {title}
+      </label>
+      <div
+        role="radiogroup"
+        aria-label={title}
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          background: '#ffffff',
+          border: '1px solid #cbd5e1',
+          borderRadius: 6,
+          padding: '8px 10px',
+        }}
+      >
+        {options.map(opt => {
+          const isSelected = Boolean(curUpper && opt.matches(curUpper));
+          return (
+            <label
+              key={opt.value}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '3px 2px',
+                cursor: disabled ? 'default' : 'pointer',
+                fontSize: '0.8rem',
+                color: isSelected ? '#1d4ed8' : '#334155',
+                fontWeight: isSelected ? 600 : 400,
+              }}
+            >
+              <input
+                type="radio"
+                name={fieldKey}
+                value={opt.value}
+                checked={isSelected}
+                disabled={disabled}
+                onChange={() => {
+                  if (!disabled) onSelect(opt.value);
+                }}
+                style={{
+                  margin: 0,
+                  cursor: disabled ? 'default' : 'pointer',
+                  accentColor: '#2563eb',
+                  flexShrink: 0,
+                }}
+              />
+              <span>{opt.label}</span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export function SegmentChecklist() {
   const {draft, setDraft, handleTriggerFieldSync, canEditCustomerPic} = useWorkspace();
+  const handleSelect = (fieldKey: 'industrySegment' | 'businessRole', nextVal: string) => {
+    setDraft({...draft, [fieldKey]: nextVal});
+    handleTriggerFieldSync(fieldKey, 'business', {[fieldKey]: nextVal});
+  };
   return (
     <div
       style={{
@@ -16,161 +142,22 @@ export function SegmentChecklist() {
         border: '1px solid #e2e8f0',
       }}
     >
-      {/* Segmentasi / Segmentation */}
-      <div data-field="industrySegment">
-        <label
-          style={{display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: 8}}
-        >
-          Segmentasi / Segmentation :
-        </label>
-        <div style={{display: 'flex', flexDirection: 'column', gap: 5}}>
-          {[
-            {value: 'MINING', label: 'Pertambangan/Mining'},
-            {value: 'AGRICULTURE', label: 'Pertanian/Agriculture'},
-            {value: 'FORESTRY', label: 'Kehutanan/Forestry'},
-            {value: 'CONSTRUCTION', label: 'Konstruksi/Construction'},
-            {value: 'OIL_AND_GAS', label: 'Oil & Gas'},
-            {value: 'OTHER', label: 'Lainnya/Other'},
-          ].map(opt => {
-            const curSeg = String(draft.industrySegment || '')
-              .trim()
-              .toUpperCase();
-            const isChecked = Boolean(
-              curSeg &&
-              (curSeg === opt.value ||
-                (opt.value === 'OIL_AND_GAS' && (curSeg === 'OIL_GAS' || curSeg.includes('OIL'))) ||
-                curSeg.includes(opt.value)),
-            );
-            return (
-              <label
-                key={opt.value}
-                onClick={() => {
-                  if (!canEditCustomerPic) return;
-                  const newVal = isChecked ? '' : opt.value;
-                  setDraft({...draft, industrySegment: newVal});
-                  handleTriggerFieldSync('industrySegment', 'business', {industrySegment: newVal});
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: `1px solid ${isChecked ? '#2563eb' : '#cbd5e1'}`,
-                  background: isChecked ? '#eff6ff' : '#ffffff',
-                  cursor: canEditCustomerPic ? 'pointer' : 'default',
-                  fontSize: '0.78rem',
-                  color: isChecked ? '#1d4ed8' : '#334155',
-                  fontWeight: isChecked ? 600 : 400,
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 3,
-                    border: `1.5pt solid ${isChecked ? '#2563eb' : '#94a3b8'}`,
-                    background: isChecked ? '#2563eb' : '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    flexShrink: 0,
-                  }}
-                >
-                  {isChecked ? '✓' : ''}
-                </div>
-                <span>{opt.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Bisnis Utama / Main Business */}
-      <div data-field="businessRole">
-        <label
-          style={{display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: 8}}
-        >
-          Bisnis Utama / Main Business :
-        </label>
-        <div style={{display: 'flex', flexDirection: 'column', gap: 5}}>
-          {[
-            {value: 'CONS_OWNER', label: 'Cons. Owner'},
-            {value: 'CONTRACTORS', label: 'Contractors'},
-            {value: 'SUB_CONT', label: 'Sub Cont'},
-            {value: 'RENTAL', label: 'Rental'},
-            {value: 'OTHER', label: 'Other'},
-          ].map(opt => {
-            const curRole = String(draft.businessRole || '')
-              .trim()
-              .toUpperCase();
-            const isChecked = Boolean(
-              curRole &&
-              (curRole === opt.value ||
-                (opt.value === 'CONTRACTORS' &&
-                  (curRole === 'CONTRACTOR' ||
-                    curRole === 'CONTRACTORS' ||
-                    curRole.includes('KONTRAKTOR'))) ||
-                (opt.value === 'SUB_CONT' &&
-                  (curRole === 'SUB_CONT' || curRole === 'SUB_CONTRACTOR' || curRole.startsWith('SUB'))) ||
-                (opt.value === 'CONS_OWNER' &&
-                  (curRole === 'CONS_OWNER' ||
-                    curRole === 'CONCESSION_OWNER' ||
-                    curRole.includes('OWNER'))) ||
-                curRole.includes(opt.value)),
-            );
-            return (
-              <label
-                key={opt.value}
-                onClick={() => {
-                  if (!canEditCustomerPic) return;
-                  const newVal = isChecked ? '' : opt.value;
-                  setDraft({...draft, businessRole: newVal});
-                  handleTriggerFieldSync('businessRole', 'business', {businessRole: newVal});
-                }}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '6px 10px',
-                  borderRadius: 6,
-                  border: `1px solid ${isChecked ? '#2563eb' : '#cbd5e1'}`,
-                  background: isChecked ? '#eff6ff' : '#ffffff',
-                  cursor: canEditCustomerPic ? 'pointer' : 'default',
-                  fontSize: '0.78rem',
-                  color: isChecked ? '#1d4ed8' : '#334155',
-                  fontWeight: isChecked ? 600 : 400,
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <div
-                  style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 3,
-                    border: `1.5pt solid ${isChecked ? '#2563eb' : '#94a3b8'}`,
-                    background: isChecked ? '#2563eb' : '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    flexShrink: 0,
-                  }}
-                >
-                  {isChecked ? '✓' : ''}
-                </div>
-                <span>{opt.label}</span>
-              </label>
-            );
-          })}
-        </div>
-      </div>
+      <SegmentRadioGroup
+        fieldKey="industrySegment"
+        title="Segmentasi / Segmentation :"
+        value={draft.industrySegment}
+        options={SEGMENT_OPTIONS}
+        disabled={!canEditCustomerPic}
+        onSelect={nextVal => handleSelect('industrySegment', nextVal)}
+      />
+      <SegmentRadioGroup
+        fieldKey="businessRole"
+        title="Bisnis Utama / Main Business :"
+        value={draft.businessRole}
+        options={BUSINESS_ROLE_OPTIONS}
+        disabled={!canEditCustomerPic}
+        onSelect={nextVal => handleSelect('businessRole', nextVal)}
+      />
     </div>
   );
 }

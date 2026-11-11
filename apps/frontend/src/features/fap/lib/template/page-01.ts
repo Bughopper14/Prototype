@@ -1,11 +1,11 @@
 /** Markup of the FAP sheet, part 1. */
 export const FAP_PAGE_01 = `<body class="xl70" link="#0563C1" vlink="#954F72">
 <table border="0" cellpadding="0" cellspacing="0" style="border-collapse:
- collapse;table-layout:fixed;width:2580pt;border-left:1.0pt solid windowtext;" width="3443">
+ collapse;table-layout:fixed;width:2626pt;border-left:1.0pt solid windowtext;" width="3505">
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:3726;
  width:79pt" width="105"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:5831;
- width:123pt" width="164"/>
+ width:145pt" width="194"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:5006;
  width:106pt" width="141"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:6087;
@@ -29,13 +29,13 @@ export const FAP_PAGE_01 = `<body class="xl70" link="#0563C1" vlink="#954F72">
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:3128;
  width:66pt" width="88"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:6456;
- width:136pt" width="182"/>
+ width:160pt" width="214"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:5745;
  width:121pt" width="162"/>
-<col class="xl70" style="mso-width-source:userset;mso-width-alt:9756;
- width:206pt" width="274"/>
-<col class="xl70" style="mso-width-source:userset;mso-width-alt:1137;
- width:24pt" width="32"/>
+<col class="xl70" style="mso-width-source:userset;mso-width-alt:9578;
+ width:202pt" width="269"/>
+<col class="xl70" style="mso-width-source:userset;mso-width-alt:1315;
+ width:28pt" width="37"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:6741;
  width:142pt" width="190"/>
 <col class="xl70" style="mso-width-source:userset;mso-width-alt:4920;

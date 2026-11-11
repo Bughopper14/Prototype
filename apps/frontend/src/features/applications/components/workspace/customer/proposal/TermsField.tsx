@@ -19,32 +19,43 @@ const LABEL_STYLE = {
 export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFieldConfig}) {
   const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
   const terms = draft.financingProposal?.[group] as Record<string, string> | undefined;
-  const value = (field.readKeys || [field.key]).map(k => terms?.[k]).find(Boolean) || '';
+  const rawValue = (field.readKeys || [field.key]).map(k => terms?.[k]).find(Boolean) || '';
+  const value = field.normalizeValue ? field.normalizeValue(rawValue) : rawValue;
+  const updateValue = (val: string) => {
+    const patch = Object.fromEntries([field.key, ...(field.alsoWrite || [])].map(k => [k, val]));
+    setDraft((prev: any) => ({
+      ...prev,
+      financingProposal: {
+        ...(prev.financingProposal || {}),
+        [group]: {...(prev.financingProposal?.[group] || {}), ...patch},
+      },
+    }));
+  };
+  const sharedProps = {
+    id: `fap-form-${field.dataField}`,
+    'data-field': field.dataField,
+    className: 'field-input',
+    style: {width: '100%', boxSizing: 'border-box'} as const,
+    disabled: !canFinance,
+    onFocus: () => handleTriggerFieldSync(field.dataField, 'proposal'),
+  };
   return (
     <div className="field-group" data-field={field.dataField}>
       <label className="field-label" style={LABEL_STYLE}>
         {field.label}
       </label>
-      <input
-        type="text"
-        id={`fap-form-${field.dataField}`}
-        data-field={field.dataField}
-        className="field-input"
-        value={value}
-        disabled={!canFinance}
-        onFocus={() => handleTriggerFieldSync(field.dataField, 'proposal')}
-        onChange={e => {
-          const val = e.target.value;
-          const patch = Object.fromEntries([field.key, ...(field.alsoWrite || [])].map(k => [k, val]));
-          setDraft((prev: any) => ({
-            ...prev,
-            financingProposal: {
-              ...(prev.financingProposal || {}),
-              [group]: {...(prev.financingProposal?.[group] || {}), ...patch},
-            },
-          }));
-        }}
-      />
+      {field.options ? (
+        <select {...sharedProps} value={value} onChange={e => updateValue(e.target.value)}>
+          <option value="">-- Select --</option>
+          {field.options.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input type="text" {...sharedProps} value={value} onChange={e => updateValue(e.target.value)} />
+      )}
     </div>
   );
 }

@@ -14,12 +14,12 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 </table>
 </span><?endif?><!--[if !mso & vml]><span style='width:76.8pt;height:399.0pt'></span><![endif]--></td>
 <td class="xl99" id="fap-cell-tc-fl-purpose">Investment<span style="mso-spacerun:yes"> </span></td>
-<td class="xl132" colspan="2" style="width:171pt" width="228"></td>
+<td class="xl132" colspan="2" style="width:171pt;padding-left:10px !important;" width="228"></td>
 <td class="xl118" id="fap-cell-tc-slb-purpose"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288">working
+<td class="xl203" colspan="2" style="border-left:none;width:216pt;padding-left:10px !important;" width="288">working
   capital / Investment<span style="mso-spacerun:yes"> </span></td>
 <td class="xl118" id="fap-cell-tc-if-purpose"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:327pt" width="436">working
+<td class="xl203" colspan="2" style="border-left:none;width:327pt;padding-left:10px !important;" width="436">working
   capital / <br/>
     Investment<span style="mso-spacerun:yes"> </span></td>
 <td class="xl133"></td>
@@ -34,16 +34,15 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl132" colspan="2" style="width:229pt" width="305">Cara Pembiayaan /
   financing method<span style="mso-spacerun:yes">   </span></td>
-<td class="xl114" style="text-align:right !important;padding-right:6px !important;">:<span style="mso-spacerun:yes"> </span></td>
-<td class="xl190" colspan="2" id="fap-cell-prop-method" style="padding-left:10px !important;"> </td>
+<td class="xl190" colspan="3" style="text-align:left !important;padding-left:8px !important;white-space:nowrap;">:<span id="fap-cell-prop-method" style="padding-left:20px !important;cursor:pointer;"> </span></td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-fl-curr"> </td>
-<td class="xl132" colspan="2" style="width:171pt" width="228"><font class="font19">mata
+<td class="xl132" colspan="2" style="width:171pt;padding-left:10px !important;" width="228"><font class="font19">mata
   uang</font><font class="font20">/currency</font></td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-slb-curr"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288"><font class="font19">mata uang</font><font class="font20">/<br/>
+<td class="xl203" colspan="2" style="border-left:none;width:216pt;padding-left:10px !important;" width="288"><font class="font19">mata uang</font><font class="font20">/<br/>
     currency</font></td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-if-curr"> </td>
-<td class="xl134" style="border-left:none;width:121pt" width="162"><font class="font23">mata uang</font><font class="font22">/<br/>
+<td class="xl134" style="border-left:none;width:121pt;padding-left:10px !important;" width="162"><font class="font23">mata uang</font><font class="font22">/<br/>
     currency</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -61,13 +60,13 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 <td class="xl135" style="border-top:none;text-align:right !important;padding-right:6px !important;" id="fap-cell-prop-curr-choice">: (IDR/USD)</td>
 <td class="xl169" colspan="2" id="fap-cell-prop-val" style="padding-left:10px !important;"> </td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-fl-deposit"> </td>
-<td class="xl132" colspan="2" style="width:171pt" width="228">Simpanan Jaminan /
+<td class="xl132" colspan="2" style="width:171pt;padding-left:10px !important;" width="228">Simpanan Jaminan /
   Security Deposit</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-slb-deposit"> </td>
-<td class="xl205" colspan="2" style="border-left:none;width:216pt" width="288">Simpanan
+<td class="xl205" colspan="2" style="border-left:none;width:216pt;padding-left:10px !important;" width="288">Simpanan
   Jaminan / Security Deposit</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-if-dp"> </td>
-<td class="xl134" style="border-left:none;width:121pt" width="162">Uang Muka /
+<td class="xl134" style="border-left:none;width:121pt;padding-left:10px !important;" width="162">Uang Muka /
   Down Payment<span style="mso-spacerun:yes"> </span></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -81,16 +80,15 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl116" colspan="2" style="mso-ignore:colspan">Application Source<span style="mso-spacerun:yes"> </span></td>
-<td class="xl103" style="border-top:none;text-align:right !important;padding-right:6px !important;">:</td>
-<td class="xl169" colspan="2" id="fap-cell-prop-app-source" style="padding-left:10px !important;"> </td>
+<td class="xl169" colspan="3" style="text-align:left !important;padding-left:8px !important;white-space:nowrap;">:<span id="fap-cell-prop-app-source" style="padding-left:20px !important;cursor:pointer;"> </span></td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-fl-rate"> </td>
 <td class="xl203" colspan="2" style="border-right:.5pt solid black;
-  border-left:none;width:171pt" width="228">Bunga/Interest Rate</td>
+  border-left:none;width:171pt;padding-left:10px !important;" width="228">Bunga/Interest Rate</td>
 <td class="xl118" style="border-top:none;border-left:none" id="fap-cell-tc-slb-rate"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288">Bunga/Interest
+<td class="xl203" colspan="2" style="border-left:none;width:216pt;padding-left:10px !important;" width="288">Bunga/Interest
   Rate</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-if-rate"> </td>
-<td class="xl136" colspan="2" style="mso-ignore:colspan">Bunga/Interest Rate</td>
+<td class="xl136" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Bunga/Interest Rate</td>
 <td class="xl97"></td>
 <td class="xl123" id="fap-cell-doc-copy-id" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Copy
@@ -108,11 +106,11 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-fl-tenor"> </td>
-<td class="xl116" colspan="2" style="mso-ignore:colspan">Jk. Waktu/Tenor</td>
+<td class="xl116" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Jk. Waktu/Tenor</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-slb-tenor"> </td>
-<td class="xl136" colspan="2" style="border-left:none">Jk. Waktu/Tenor</td>
+<td class="xl136" colspan="2" style="border-left:none;padding-left:10px !important;">Jk. Waktu/Tenor</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-if-tenor"> </td>
-<td class="xl116" colspan="2" style="mso-ignore:colspan">Jk. Waktu/Tenor</td>
+<td class="xl116" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Jk. Waktu/Tenor</td>
 <td class="xl97"></td>
 <td class="xl123" id="fap-cell-doc-audited-financial" style="cursor:pointer; border-top:none"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:183pt;padding-left:10px !important;" width="244">Audited
@@ -128,13 +126,13 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-fl-payment"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:171pt" width="228">cara
+<td class="xl203" colspan="2" style="border-left:none;width:171pt;padding-left:10px !important;" width="228">cara
   pembayaran /Payment Method</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-slb-payment"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:216pt" width="288">cara
+<td class="xl203" colspan="2" style="border-left:none;width:216pt;padding-left:10px !important;" width="288">cara
   pembayaran /Payment Method</td>
 <td class="xl118" style="border-top:none" id="fap-cell-tc-if-payment"> </td>
-<td class="xl203" colspan="2" style="border-left:none;width:327pt" width="436">cara
+<td class="xl203" colspan="2" style="border-left:none;width:327pt;padding-left:10px !important;" width="436">cara
   pembayaran /<br/>
     Payment Method</td>
 <td class="xl132" style="width:24pt" width="32"></td>
@@ -189,7 +187,7 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl137" style="border-top:none">Liugong</td>
+<td class="xl137" style="border-top:none;padding-left:14px !important;padding-right:10px !important;">Liugong</td>
 <td class="xl118" id="fap-cell-prop-asset-lg-he" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
 <td class="xl118" id="fap-cell-prop-asset-lg-truck" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
 <td class="xl118" id="fap-cell-prop-asset-lg-unit" style="border-top:none;border-left:none;cursor:pointer;text-align:center;font-weight:bold;"> </td>
@@ -210,7 +208,7 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
-<td class="xl137" style="border-top:none">Non Liugon<span style="display:none">g</span></td>
+<td class="xl137" style="border-top:none;padding-left:14px !important;padding-right:8px !important;white-space:normal !important;line-height:1.15 !important;">Non Liugong</td>
 <td class="xl118" id="fap-cell-prop-asset-nlg-he" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
 <td class="xl118" id="fap-cell-prop-asset-nlg-truck" style="border-top:none;border-left:none;cursor:pointer;text-align:center;"> </td>
 <td class="xl118" id="fap-cell-prop-asset-nlg-unit" style="border-top:none;border-left:none;cursor:pointer;text-align:center;font-weight:bold;"> </td>
@@ -232,7 +230,7 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 <td class="xl71" height="106" style="height:79.95pt"> </td>
 <td class="xl106"></td>
 <td class="xl106"></td>
-<td class="xl106">Total</td>
+<td class="xl106" style="padding-right:14px !important;">Total</td>
 <td class="xl118" id="fap-cell-prop-asset-tot-unit" style="border-top:none;text-align:center;font-weight:bold;"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>

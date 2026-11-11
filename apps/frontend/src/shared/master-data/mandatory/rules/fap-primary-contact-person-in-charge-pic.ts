@@ -16,7 +16,7 @@ export const FAP_PRIMARY_CONTACT_PERSON_IN_CHARGE_PIC_RULES = defineRules(
     [39, 'village', 'Village / Sub-District', 0],
     [40, 'rt', 'RT', 0],
     [41, 'rw', 'RW', 0],
-    [42, 'postalCode', 'ZIP Code', 0],
+    [42, 'postalCode', 'Postal Code', 0],
     [43, 'currentAddress', 'Full Address', 0],
   ],
 );

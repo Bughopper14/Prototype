@@ -1,6 +1,7 @@
 /** The NIB form and how the OCR server's scan result is turned into it. */
 import {extractWilayahFromAddressAndText} from '@/features/ocr/lib/nib/address-wilayah';
 import {normalizeWilayahInput, type useMasterData} from '@/shared/master-data';
+import {toTitleCase} from '@liugong/shared';
 
 export interface NibFormData {
   nib: string;
@@ -39,7 +40,7 @@ export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData
   const newNib = String(d.nib || '')
     .replace(/\D/g, '')
     .slice(0, 13);
-  const newCompanyName = String(d.company_name || d.companyName || '').trim();
+  const newCompanyName = toTitleCase(String(d.company_name || d.companyName || '').trim());
   let rawAddress = String(d.alamat_lengkap || d.fullAddress || d.alamat || d.companyAddress || '').trim();
   // Keep the correspondence address only, without the labels that follow it on the NIB
   if (/korespondensi/i.test(rawAddress)) rawAddress = rawAddress.split(/korespondensi/i).pop() || rawAddress;

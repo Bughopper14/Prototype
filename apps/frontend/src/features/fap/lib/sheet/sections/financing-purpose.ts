@@ -33,7 +33,9 @@ export function applyFinancingPurpose({d, setText}: {d: SheetValues; setText: Ce
         p.includes('MODAL_KERJA') ||
         p.includes('MODAL KERJA') ||
         p.includes('SIKLUS'),
-    ) || facilityPurp === 'WORKING_CAPITAL';
+    ) ||
+    facilityPurp === 'WORKING_CAPITAL' ||
+    facilityPurp === 'WORKING CAPITAL';
 
   setText('fap-cell-purpose-business', isBiz ? '✓' : '');
 

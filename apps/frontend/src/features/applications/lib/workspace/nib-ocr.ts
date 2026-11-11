@@ -1,5 +1,6 @@
 /** Applying what the NIB scan found to the customer draft and to the FAP draft. */
 import {resolveWilayahUpwards, type useMasterData} from '@/shared/master-data';
+import {toTitleCase} from '@liugong/shared';
 
 export interface NibOcrExtract {
   nib?: string;
@@ -18,7 +19,7 @@ export interface NibOcrExtract {
 }
 
 const clean = (extracted: NibOcrExtract) => ({
-  rawComp: extracted.companyName ? String(extracted.companyName).trim() : '',
+  rawComp: extracted.companyName ? toTitleCase(String(extracted.companyName).trim()) : '',
   rawNib: extracted.nib ? String(extracted.nib).replace(/\D/g, '').slice(0, 13) : '',
   rawDate: extracted.tanggalTerbit ? String(extracted.tanggalTerbit).trim() : '',
 });

@@ -138,7 +138,7 @@ export const picFields = [
   f('village', 'Village / Sub-District'),
   f('rt', 'RT'),
   f('rw', 'RW'),
-  f('postalCode', 'ZIP Code'),
+  f('postalCode', 'Postal Code'),
   {...f('currentAddress', 'Full Address', 'textarea'), wide: true},
 ];
 

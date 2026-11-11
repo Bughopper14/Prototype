@@ -5,20 +5,28 @@ export const MAX_FISCAL_YEARS = 3;
 
 /** A blank statement for the year after the latest one (or last year when there is none). */
 export function newFiscalYearRow(rows: any[], forcedYear?: number) {
-  if (forcedYear !== undefined) {
-    return {
-      ...blank(financialFields),
-      fiscalYear: forcedYear,
-      isAudited: false,
-    };
-  }
-  const existingYears = rows.map((r: any) => Number(r.fiscalYear) || 0).filter((y: number) => y > 0);
   const currentYear = new Date().getFullYear();
-  const newYear = existingYears.length > 0 ? Math.max(...existingYears) + 1 : currentYear;
+  let year = forcedYear;
+  if (year === undefined) {
+    const existingYears = rows.map((r: any) => Number(r.fiscalYear) || 0).filter((y: number) => y > 0);
+    year = existingYears.length > 0 ? Math.max(...existingYears) + 1 : currentYear;
+  }
   return {
-    ...blank(financialFields),
-    fiscalYear: newYear,
+    fiscalYear: year,
     isAudited: false,
+    currentAssets: '',
+    nonCurrentAssets: '',
+    totalAssets: '',
+    currentLiabilities: '',
+    nonCurrentLiabilities: '',
+    totalLiabilities: '',
+    equity: '',
+    totalLiabAndEquity: '',
+    revenue: '',
+    grossMargin: '',
+    operatingMargin: '',
+    tax: '',
+    netIncome: '',
   };
 }
 
@@ -27,15 +35,38 @@ export function editStatementRow(r: any, key: string, value: any) {
   const newRow = {...r, [key]: value};
   // Auto-sum totals if component fields are edited
   if (key === 'currentAssets' || key === 'nonCurrentAssets') {
-    newRow.totalAssets = (Number(newRow.currentAssets) || 0) + (Number(newRow.nonCurrentAssets) || 0);
+    const hasCur = newRow.currentAssets !== '' && newRow.currentAssets !== undefined && newRow.currentAssets !== null;
+    const hasNonCur = newRow.nonCurrentAssets !== '' && newRow.nonCurrentAssets !== undefined && newRow.nonCurrentAssets !== null;
+    if (!hasCur && !hasNonCur) {
+      newRow.totalAssets = '';
+    } else {
+      newRow.totalAssets = (Number(newRow.currentAssets) || 0) + (Number(newRow.nonCurrentAssets) || 0);
+    }
   }
   if (key === 'currentLiabilities' || key === 'nonCurrentLiabilities') {
-    newRow.totalLiabilities =
-      (Number(newRow.currentLiabilities) || 0) + (Number(newRow.nonCurrentLiabilities) || 0);
-    newRow.totalLiabAndEquity = (Number(newRow.totalLiabilities) || 0) + (Number(newRow.equity) || 0);
+    const hasCur = newRow.currentLiabilities !== '' && newRow.currentLiabilities !== undefined && newRow.currentLiabilities !== null;
+    const hasNonCur = newRow.nonCurrentLiabilities !== '' && newRow.nonCurrentLiabilities !== undefined && newRow.nonCurrentLiabilities !== null;
+    if (!hasCur && !hasNonCur) {
+      newRow.totalLiabilities = '';
+    } else {
+      newRow.totalLiabilities = (Number(newRow.currentLiabilities) || 0) + (Number(newRow.nonCurrentLiabilities) || 0);
+    }
+    const hasTotL = newRow.totalLiabilities !== '' && newRow.totalLiabilities !== undefined && newRow.totalLiabilities !== null;
+    const hasEq = newRow.equity !== '' && newRow.equity !== undefined && newRow.equity !== null;
+    if (!hasTotL && !hasEq) {
+      newRow.totalLiabAndEquity = '';
+    } else {
+      newRow.totalLiabAndEquity = (Number(newRow.totalLiabilities) || 0) + (Number(newRow.equity) || 0);
+    }
   }
   if (key === 'equity') {
-    newRow.totalLiabAndEquity = (Number(newRow.totalLiabilities) || 0) + (Number(newRow.equity) || 0);
+    const hasTotL = newRow.totalLiabilities !== '' && newRow.totalLiabilities !== undefined && newRow.totalLiabilities !== null;
+    const hasEq = newRow.equity !== '' && newRow.equity !== undefined && newRow.equity !== null;
+    if (!hasTotL && !hasEq) {
+      newRow.totalLiabAndEquity = '';
+    } else {
+      newRow.totalLiabAndEquity = (Number(newRow.totalLiabilities) || 0) + (Number(newRow.equity) || 0);
+    }
   }
   return newRow;
 }

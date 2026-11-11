@@ -1,4 +1,8 @@
 /** Facility proposed (with the currency strike-through) and the three Terms & Conditions boxes. */
+import {
+  normalizeTermsPurpose,
+  resolveFinancingMethod,
+} from '@/features/applications/components/workspace/customer/proposal/terms-config';
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
 
@@ -16,11 +20,16 @@ export function applyProposalAndTerms({
 
   const facProp = prop.facilityProposed || {};
 
-  const tcFl = prop.termsFinancialLease || {};
+  const activeMethod = resolveFinancingMethod(facProp.financingMethod);
+  const showFl = !activeMethod || activeMethod.group === 'termsFinancialLease';
+  const showSlb = !activeMethod || activeMethod.group === 'termsSaleAndLeaseBack';
+  const showIf = !activeMethod || activeMethod.group === 'termsInstallmentFinancing';
 
-  const tcSlb = prop.termsSaleAndLeaseBack || {};
+  const tcFl = showFl ? prop.termsFinancialLease || {} : {};
 
-  const tcIf = prop.termsInstallmentFinancing || {};
+  const tcSlb = showSlb ? prop.termsSaleAndLeaseBack || {} : {};
+
+  const tcIf = showIf ? prop.termsInstallmentFinancing || {} : {};
 
   setText('fap-cell-prop-method', facProp.financingMethod);
 
@@ -53,21 +62,22 @@ export function applyProposalAndTerms({
         el.style.textAlign = 'center';
         el.style.fontWeight = 'bold';
         el.style.color = '#002060';
-        if (valStr.length > 5) {
-          el.style.fontSize = '14pt';
-        } else {
-          el.style.fontSize = '20pt';
-        }
+        el.style.fontSize = '';
       } else {
         el.textContent = defaultLabel;
         el.style.textAlign = '';
         el.style.fontWeight = '';
         el.style.color = '';
+        el.style.fontSize = '';
       }
     }
   };
 
-  setBoxText('fap-cell-tc-fl-purpose', tcFl.workingCapitalInvestment || tcFl.investment, 'Investment');
+  setBoxText(
+    'fap-cell-tc-fl-purpose',
+    normalizeTermsPurpose(tcFl.workingCapitalInvestment || tcFl.investment),
+    'Investment',
+  );
 
   setBoxText('fap-cell-tc-fl-curr', tcFl.currency);
 
@@ -79,7 +89,7 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-fl-payment', tcFl.paymentMethod);
 
-  setBoxText('fap-cell-tc-slb-purpose', tcSlb.workingCapitalInvestment);
+  setBoxText('fap-cell-tc-slb-purpose', normalizeTermsPurpose(tcSlb.workingCapitalInvestment));
 
   setBoxText('fap-cell-tc-slb-curr', tcSlb.currency);
 
@@ -91,7 +101,7 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-slb-payment', tcSlb.paymentMethod);
 
-  setBoxText('fap-cell-tc-if-purpose', tcIf.workingCapitalInvestment);
+  setBoxText('fap-cell-tc-if-purpose', normalizeTermsPurpose(tcIf.workingCapitalInvestment));
 
   setBoxText('fap-cell-tc-if-curr', tcIf.currency);
 

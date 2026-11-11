@@ -16,7 +16,7 @@ import {
   type ParsedPassportData,
 } from '@/features/ocr/lib/id-documents/types';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
-import {type Field} from '@liugong/shared';
+import {extractStreetAddress, formatKtpFullAddress, type Field} from '@liugong/shared';
 import {useEffect, useMemo, useState} from 'react';
 
 export type StakeholderModalDialogProps = {
@@ -234,6 +234,8 @@ export function useStakeholderModal({
   if ((ktpParsed.rt || ktpParsed.rw) && !ktpParsed.rtRw) {
     ktpParsed.rtRw = `${ktpParsed.rt || ''}/${ktpParsed.rw || ''}`.replace(/^\/|\/$/g, '');
   }
+  ktpParsed.streetAddress =
+    ktpParsed.streetAddress || extractStreetAddress(formatKtpFullAddress(ktpParsed) || ktpParsed.alamat, ktpParsed);
 
   const passportParsed: ParsedPassportData = {
     ...(curVal.passportData || {}),

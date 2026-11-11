@@ -1,5 +1,6 @@
 /** KTP OCR text → structured fields (NIK, name, birth place/date, address…). */
 import {normalizeBirthDate, toDmyDate} from '@/shared/lib/dates';
+import {extractStreetAddress} from '@liugong/shared';
 import {ParsedKtpData} from './types';
 
 export function parseBirthPlaceAndDate(rawStr?: string | null): {
@@ -222,7 +223,7 @@ export function parseKtpText(text: string): ParsedKtpData {
     const m = line.match(/^(?:\d+[\.\)]\s*)?alamat[\s:.\-–—=~]+(.*)$/i);
     if (m) {
       let cand = m[1].replace(/^[:.\-–—=~*+\s]+/, '').trim();
-      cand = cand.split(/\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b/i)[0].trim();
+      cand = cand.split(/\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA|KEC|KECAMATAN|KAB|KABUPATEN|KOTA|PROVINSI)\b/i)[0].trim();
       if (cand && cand.length >= 3 && !/^\d{1,3}\/\d{1,3}$/.test(cand)) {
         result.alamat = cand.toUpperCase();
         break;
@@ -237,7 +238,7 @@ export function parseKtpText(text: string): ParsedKtpData {
     );
     if (stLine) {
       let cand = stLine.replace(/^[:.\-–—=~*+\s]+/, '').trim();
-      cand = cand.split(/\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b/i)[0].trim();
+      cand = cand.split(/\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA|KEC|KECAMATAN|KAB|KABUPATEN|KOTA|PROVINSI)\b/i)[0].trim();
       if (cand && cand.length >= 4) result.alamat = cand.toUpperCase();
     }
   }
@@ -336,5 +337,8 @@ export function parseKtpText(text: string): ParsedKtpData {
   }
 
   result.berlaku_hingga = 'SEUMUR HIDUP';
+  if (result.alamat) {
+    result.streetAddress = extractStreetAddress(result.alamat, result);
+  }
   return result;
 }
