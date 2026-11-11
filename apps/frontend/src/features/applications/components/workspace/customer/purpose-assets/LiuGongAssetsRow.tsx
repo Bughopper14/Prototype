@@ -29,11 +29,12 @@ export function LiuGongAssetsRow() {
             fontSize: '0.8rem',
           }}
           disabled={!canEdit}
-          value={draft.assetSummaryHeLiuGong ?? 0}
+          placeholder="0"
+          value={draft.assetSummaryHeLiuGong ?? ''}
           onChange={e =>
             setDraft({
               ...draft,
-              assetSummaryHeLiuGong: parseInt(e.target.value, 10) || 0,
+              assetSummaryHeLiuGong: e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0,
             })
           }
           onFocus={() => handleTriggerFieldSync('assetSummaryHeLiuGong', 'purpose-assets')}
@@ -51,11 +52,13 @@ export function LiuGongAssetsRow() {
             fontSize: '0.8rem',
           }}
           disabled={!canEdit}
-          value={draft.assetSummaryTruckLiuGong ?? 0}
+          placeholder="0"
+          value={draft.assetSummaryTruckLiuGong ?? ''}
           onChange={e =>
             setDraft({
               ...draft,
-              assetSummaryTruckLiuGong: parseInt(e.target.value, 10) || 0,
+              assetSummaryTruckLiuGong:
+                e.target.value === '' ? '' : parseInt(e.target.value, 10) || 0,
             })
           }
           onFocus={() => handleTriggerFieldSync('assetSummaryTruckLiuGong', 'purpose-assets')}

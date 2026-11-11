@@ -61,7 +61,7 @@ export function UnitRealizationPlanCard() {
         const totTruck = lgTruck + nlgTruck;
         const totUnit = lgUnit + nlgUnit;
 
-        const updatePlan = (patch: Record<string, number>) => {
+        const updatePlan = (patch: Record<string, number | string>) => {
           setDraft((prev: any) => ({
             ...prev,
             financingProposal: {
@@ -73,6 +73,8 @@ export function UnitRealizationPlanCard() {
             },
           }));
         };
+
+        const parseQty = (raw: string) => (raw === '' ? '' : parseInt(raw, 10) || 0);
 
         return (
           <div style={{overflowX: 'auto'}}>
@@ -138,9 +140,10 @@ export function UnitRealizationPlanCard() {
                         fontSize: '0.85rem',
                       }}
                       disabled={!canFinance}
-                      value={rPlan.lgHe ?? 0}
+                      placeholder="0"
+                      value={rPlan.lgHe ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetLgHe', 'proposal')}
-                      onChange={e => updatePlan({lgHe: parseInt(e.target.value, 10) || 0})}
+                      onChange={e => updatePlan({lgHe: parseQty(e.target.value)})}
                     />
                   </td>
                   <td style={{padding: '4px'}} data-field="propAssetLgTruck">
@@ -157,9 +160,10 @@ export function UnitRealizationPlanCard() {
                         fontSize: '0.85rem',
                       }}
                       disabled={!canFinance}
-                      value={rPlan.lgTruck ?? 0}
+                      placeholder="0"
+                      value={rPlan.lgTruck ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetLgTruck', 'proposal')}
-                      onChange={e => updatePlan({lgTruck: parseInt(e.target.value, 10) || 0})}
+                      onChange={e => updatePlan({lgTruck: parseQty(e.target.value)})}
                     />
                   </td>
                   <td
@@ -205,9 +209,10 @@ export function UnitRealizationPlanCard() {
                         fontSize: '0.85rem',
                       }}
                       disabled={!canFinance}
-                      value={rPlan.nlgHe ?? 0}
+                      placeholder="0"
+                      value={rPlan.nlgHe ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetNlgHe', 'proposal')}
-                      onChange={e => updatePlan({nlgHe: parseInt(e.target.value, 10) || 0})}
+                      onChange={e => updatePlan({nlgHe: parseQty(e.target.value)})}
                     />
                   </td>
                   <td style={{padding: '4px'}} data-field="propAssetNlgTruck">
@@ -224,9 +229,10 @@ export function UnitRealizationPlanCard() {
                         fontSize: '0.85rem',
                       }}
                       disabled={!canFinance}
-                      value={rPlan.nlgTruck ?? 0}
+                      placeholder="0"
+                      value={rPlan.nlgTruck ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetNlgTruck', 'proposal')}
-                      onChange={e => updatePlan({nlgTruck: parseInt(e.target.value, 10) || 0})}
+                      onChange={e => updatePlan({nlgTruck: parseQty(e.target.value)})}
                     />
                   </td>
                   <td

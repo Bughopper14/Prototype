@@ -1,6 +1,7 @@
 /** The customer directory. */
+import {picFields} from '@liugong/shared';
 import {pool} from '../../../core/db/pool';
-import {databaseValue} from './helpers';
+import {column, databaseValue, directoryFields, picColumn, readFields} from './helpers';
 import {listIntake} from './list';
 
 export async function intakeCustomers() {
@@ -8,20 +9,33 @@ export async function intakeCustomers() {
   if (pool) {
     try {
       const [bpRows] = await pool.query<any[]>(
-        `SELECT id, company_name AS companyName, company_type AS companyType, nib, DATE_FORMAT(nib_date, '%Y-%m-%d') AS nibDate, npwp, establishment_act_no AS establishmentActNo, DATE_FORMAT(establishment_date, '%Y-%m-%d') AS establishmentDate, created_at AS createdAt, updated_at AS updatedAt FROM master_cust_n_pic_business_partner ORDER BY created_at DESC`,
+        `SELECT * FROM master_cust_n_pic_business_partner ORDER BY created_at DESC`,
       );
+      const picMap = new Map<string, any>();
+      try {
+        const [picRows] = await pool.query<any[]>(
+          `SELECT * FROM customer_pic ORDER BY COALESCE(updated_at, created_at) DESC`,
+        );
+        for (const p of picRows) {
+          if (!p.customer_id || picMap.has(p.customer_id)) continue;
+          picMap.set(
+            p.customer_id,
+            Object.fromEntries(picFields.map(f => [f.key, databaseValue(p[picColumn(f.key)], f.type)])),
+          );
+        }
+      } catch (picErr) {
+        console.warn('intakeCustomers customer_pic query error:', picErr);
+      }
+
       for (const r of bpRows) {
         customerMap.set(r.id, {
+          ...readFields(r, directoryFields),
           id: r.id,
-          companyName: r.companyName,
-          companyType: r.companyType,
-          nib: r.nib,
-          nibDate: databaseValue(r.nibDate, 'date'),
-          npwp: r.npwp,
-          establishmentActNo: r.establishmentActNo,
-          establishmentDate: databaseValue(r.establishmentDate, 'date'),
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt,
+          businessPartnerType: r.business_partner_type,
+          customerRelationship: r.customer_relationship,
+          pic: picMap.get(r.id) || null,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
         });
       }
     } catch (e) {
@@ -34,6 +48,18 @@ export async function intakeCustomers() {
     const existing = customerMap.get(r.customer_id);
     const appDate = r.application_date || r.created_at;
     if (existing) {
+      for (const f of directoryFields) {
+        const cur = existing[f.key];
+        const fallbackVal = r[column(f.key)];
+        if (
+          (cur === undefined || cur === null || cur === '') &&
+          fallbackVal !== undefined &&
+          fallbackVal !== null &&
+          fallbackVal !== ''
+        ) {
+          existing[f.key] = databaseValue(fallbackVal, f.type);
+        }
+      }
       if (!existing.createdAt && r.created_at) existing.createdAt = r.created_at;
       if (
         !existing.firstApplicationDate ||
@@ -43,14 +69,9 @@ export async function intakeCustomers() {
       }
     } else {
       customerMap.set(r.customer_id, {
+        ...readFields(r, directoryFields),
         id: r.customer_id,
-        companyName: r.company_name,
-        companyType: r.company_type,
-        nib: r.nib,
-        nibDate: databaseValue(r.nib_date, 'date'),
-        npwp: r.npwp,
-        establishmentActNo: r.establishment_act_no,
-        establishmentDate: databaseValue(r.establishment_date, 'date'),
+        pic: null,
         createdAt: r.created_at,
         firstApplicationDate: appDate,
       });

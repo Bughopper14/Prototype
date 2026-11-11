@@ -50,17 +50,17 @@ export function initDraftBase(a: any) {
     base.financingProposal = {
       facilityProposed: {
         financingMethod: p.financingMethod || '',
-        currencyChoice: p.currency || 'IDR',
+        currencyChoice: p.currency || '',
         financingValue: p.financingValue || '',
         applicationSource: p.applicationSource || '',
       },
       termsFinancialLease: {
-        workingCapitalInvestment: p.facilityPurpose || 'INVESTMENT',
-        currency: p.currency || 'IDR',
+        workingCapitalInvestment: p.facilityPurpose || '',
+        currency: p.currency || '',
         securityDeposit: p.securityDeposit || '',
         interestRate: p.interestRate || '',
         tenor: p.tenorMonths || '',
-        paymentMethod: p.paymentMethod || 'In Arrear',
+        paymentMethod: p.paymentMethod || '',
       },
       notes: p.termsNotes || '',
     };

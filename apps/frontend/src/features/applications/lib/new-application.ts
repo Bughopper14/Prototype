@@ -1,11 +1,5 @@
-import {
-  blank,
-  customerFields,
-  picFields,
-  profileFields,
-  projectFields,
-  proposalFields,
-} from '@liugong/shared';
+import {blank, picFields, profileFields, projectFields, proposalFields} from '@liugong/shared';
+import {applyMasterCustomerToDraft, emptyCustomerRecord} from './master-customer-fill';
 
 export const createDefaultFinancialStatement = (fiscalYear: number, isAudited = false) => ({
   fiscalYear,
@@ -31,8 +25,14 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
   const customer = preselectedCustomerId ? customers.find(c => c.id === preselectedCustomerId) : null;
   const currentYear = new Date().getFullYear();
 
-  return {
+  const baseDraft = {
     ...blank(profileFields),
+    experienceYears: '',
+    experienceMonths: '',
+    assetSummaryHeLiuGong: '',
+    assetSummaryTruckLiuGong: '',
+    assetSummaryHeNonLiuGong: '',
+    assetSummaryTruckNonLiuGong: '',
     id: 'new',
     isNew: true,
     fapNumber: 'Auto (Generated on save)',
@@ -41,8 +41,8 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
     stage: 'FAP Stage',
     customerStatus: category,
     customerCategory: category,
-    customerId: customer?.id || '',
-    customer: customer ? structuredClone(customer) : blank(customerFields),
+    customerId: customer?.id || preselectedCustomerId || '',
+    customer: emptyCustomerRecord(),
     branchCode: '',
     locationStatus: '',
     industrySegment: '',
@@ -64,7 +64,38 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
     stakeholders: [],
     projects: [blank(projectFields)],
     bankReferences: [],
-    proposal: {...blank(proposalFields), units: []},
+    proposal: {
+      ...blank(proposalFields),
+      facilityPurpose: '',
+      financingMethod: '',
+      currency: '',
+      paymentMethod: '',
+      financingValue: '',
+      units: [],
+    },
+    financingProposal: {
+      facilityProposed: {
+        financingMethod: '',
+        currencyChoice: '',
+        financingValue: '',
+        applicationSource: '',
+      },
+      realizationPlan: {
+        lgHe: '',
+        lgTruck: '',
+        nlgHe: '',
+        nlgTruck: '',
+      },
+      termsFinancialLease: {
+        workingCapitalInvestment: '',
+        currency: '',
+        securityDeposit: '',
+        interestRate: '',
+        tenor: '',
+        paymentMethod: '',
+      },
+      notes: '',
+    },
     financialAudited: false,
     financialStatements: [
       createDefaultFinancialStatement(currentYear - 2, false),
@@ -76,4 +107,6 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
     signoffs: [],
     approvalLogs: [],
   };
+
+  return customer ? applyMasterCustomerToDraft(customer, baseDraft) : baseDraft;
 }

@@ -15,6 +15,12 @@ import {useSaveApplication} from '@/features/applications/hooks/useSaveApplicati
 import {useStageSync} from '@/features/applications/hooks/useStageSync';
 import {useWorkspaceAccess} from '@/features/applications/hooks/useWorkspaceAccess';
 import {initDraftBase} from '@/features/applications/lib/financing-proposal';
+import {
+  applyMasterCustomerToDraft,
+  clearMasterCustomerFromDraft,
+  emptyCustomerRecord,
+  sanitizeCustomerForDraft,
+} from '@/features/applications/lib/master-customer-fill';
 import {draftFromApplication} from '@/features/applications/lib/workspace/draft-from-application';
 import {calculateInstallment} from '@/features/applications/lib/workspace/loan-calc';
 import {initialStage, isPreAnalysisApplication} from '@/features/applications/lib/workspace/stage';
@@ -44,12 +50,6 @@ const FAP_CUSTOMER_KEYS = [
   'establishmentDate',
 ];
 
-const sanitizeCustomer = (c: any) => {
-  if (!c) return c;
-  const npwpRaw = String(c.npwp || '').replace(/\D/g, '');
-  return {...c, npwp: /^0+$/.test(npwpRaw) ? '' : c.npwp};
-};
-
 export function useApplicationWorkspace({
   value: a,
   user,
@@ -72,7 +72,7 @@ export function useApplicationWorkspace({
     a.isNew ? a.customerId || '' : a.customerId || a.customer_id || a.customer?.id || '',
   );
   const [customerDraft, setCustomerDraft] = useState<any>(() =>
-    a.customer ? sanitizeCustomer(structuredClone(a.customer)) : blank(customerFields),
+    a.customer ? sanitizeCustomerForDraft(structuredClone(a.customer)) : emptyCustomerRecord(),
   );
   const selectedCustomer = customerId ? customers.find((c: any) => c.id === customerId) : null;
   const fapCustomerFields = customerFields.filter(f => FAP_CUSTOMER_KEYS.includes(f.key));
@@ -101,7 +101,27 @@ export function useApplicationWorkspace({
   function changeCategory(value: string) {
     setCustomerCategory(value);
     setError('');
-    setDraft((prev: any) => ({...prev, customerStatus: value, customerCategory: value}));
+    if (value === 'NEW' && draft.isNew) {
+      setCustomerId('');
+      setCustomerDraft(emptyCustomerRecord());
+      setDraft((prev: any) => clearMasterCustomerFromDraft(prev, 'NEW'));
+    } else {
+      setDraft((prev: any) => ({...prev, customerStatus: value, customerCategory: value}));
+    }
+  }
+
+  function selectExistingCustomer(customer: any | null) {
+    setError('');
+    if (!customer) {
+      setCustomerId('');
+      setCustomerDraft(emptyCustomerRecord());
+      setDraft((prev: any) => clearMasterCustomerFromDraft(prev, customerCategory));
+      return;
+    }
+    setCustomerCategory('EXISTING');
+    setCustomerId(customer.id);
+    setCustomerDraft(sanitizeCustomerForDraft(customer));
+    setDraft((prev: any) => applyMasterCustomerToDraft(customer, prev));
   }
 
   const {nibOcrOpen, setNibOcrOpen, handleApplyNibOcr} = useNibOcr({
@@ -184,8 +204,13 @@ export function useApplicationWorkspace({
   useEffect(() => {
     setDraft(draftFromApplication(a));
     if (a.customer) {
-      setCustomerDraft(sanitizeCustomer(structuredClone(a.customer)));
+      setCustomerDraft(sanitizeCustomerForDraft(structuredClone(a.customer)));
     }
+    const nextCustId = a.isNew ? a.customerId || '' : a.customerId || a.customer_id || a.customer?.id || '';
+    setCustomerId(nextCustId);
+    setCustomerCategory(
+      a.customerCategory || a.customerStatus || (a.isNew ? 'NEW' : a.customerId ? 'EXISTING' : 'NEW'),
+    );
   }, [a]);
 
   const access = useWorkspaceAccess({a, user, draft, activeStage, tab, setTab});
@@ -326,13 +351,14 @@ export function useApplicationWorkspace({
     setCustomerCategory,
     customerId,
     setCustomerId,
-    sanitizeCustomer,
+    sanitizeCustomer: sanitizeCustomerForDraft,
     customerDraft,
     setCustomerDraft,
     nibOcrOpen,
     setNibOcrOpen,
     handleApplyNibOcr,
     selectedCustomer,
+    selectExistingCustomer,
     fapCustomerKeys: FAP_CUSTOMER_KEYS,
     fapCustomerFields,
     changeCategory,

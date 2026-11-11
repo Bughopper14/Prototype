@@ -34,7 +34,7 @@ export function useLiveFapData({
       draft.companyType ||
       (customerCategory === 'EXISTING' ? selectedCustomer?.companyType : '') ||
       a.customer?.companyType ||
-      'CORPORATE',
+      '',
   ).trim();
 
   const liveNib = String(
@@ -207,7 +207,7 @@ export function useLiveFapData({
       (draft.proposal || a.proposal)?.facilityPurpose ||
       draft.facilityPurpose ||
       a.facilityPurpose ||
-      'INVESTMENT',
+      '',
     financingMethod: (draft.proposal || a.proposal)?.financingMethod,
     financingValue: (draft.proposal || a.proposal)?.financingValue,
     downPaymentValue: (draft.proposal || a.proposal)?.downPaymentValue,

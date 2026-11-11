@@ -96,9 +96,15 @@ export function applyCustomerProfile({d, setText}: {d: SheetValues; setText: Cel
 
   setText('fap-cell-establishmentDate', d.establishmentDate);
 
-  setText('fap-cell-experienceYears', d.experienceYears);
+  const hasExperience = Boolean(
+    d.establishmentDate ||
+      Number(d.experienceYears || 0) > 0 ||
+      Number(d.experienceMonths || 0) > 0,
+  );
 
-  setText('fap-cell-experienceMonths', d.experienceMonths);
+  setText('fap-cell-experienceYears', hasExperience ? d.experienceYears : '');
+
+  setText('fap-cell-experienceMonths', hasExperience ? d.experienceMonths : '');
 
   setText('fap-cell-latestDeedNo', d.latestDeedNo);
 

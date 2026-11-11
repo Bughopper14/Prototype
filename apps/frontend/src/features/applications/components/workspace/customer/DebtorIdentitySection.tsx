@@ -1,4 +1,5 @@
 /** Customer section 01: Debtor Identity & Classification. */
+import {CustomerSearchSelect} from '@/features/applications/components/workspace/customer/CustomerSearchSelect';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
@@ -7,11 +8,14 @@ import {ChevronDown, Eye} from 'lucide-react';
 export function DebtorIdentitySection() {
   const {
     a,
+    customers,
     customerCategory,
+    customerId,
     customerDraft,
     setCustomerDraft,
     setNibOcrOpen,
     selectedCustomer,
+    selectExistingCustomer,
     fapCustomerFields,
     changeCategory,
     draft,
@@ -158,6 +162,37 @@ export function DebtorIdentitySection() {
               <option value="NEW">New Customer</option>
             </select>
           </div>
+          {customerCategory === 'EXISTING' && (
+            <div style={{marginBottom: 16, width: '100%'}}>
+              <label
+                style={{
+                  display: 'block',
+                  fontWeight: 600,
+                  fontSize: '0.82rem',
+                  color: '#334155',
+                  marginBottom: 6,
+                }}
+              >
+                Select Customer <span style={{color: '#ef4444'}}>*</span>
+              </label>
+              <CustomerSearchSelect
+                customers={customers}
+                value={customerId}
+                selectedCustomer={selectedCustomer}
+                disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
+                onFocus={() => handleTriggerFieldSync('companyName', 'customer')}
+                onSelect={customer => {
+                  selectExistingCustomer(customer);
+                  if (customer) {
+                    handleTriggerFieldSync('companyName', 'customer');
+                  }
+                }}
+              />
+              <small style={{color: '#64748b', fontSize: '0.73rem', display: 'block', marginTop: 5}}>
+                Pilih customer untuk mengisi otomatis identitas perusahaan, alamat, profil usaha, dan PIC.
+              </small>
+            </div>
+          )}
           <div className="new-customer-fields-block" style={{marginTop: 12}}>
             <Fields
               fields={fapCustomerFields}

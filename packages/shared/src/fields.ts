@@ -281,7 +281,7 @@ export const projectFields = [
   f('projectOwner', 'Project Owner'),
   f('projectLocation', 'Location'),
   f('projectRole', 'Role in Project'),
-  f('contractStatus', 'Contract Status', 'select', ['EXISTING', 'NEW']),
+  {...f('contractStatus', 'Contract Status', 'select', ['EXISTING', 'NEW']), defaultValue: ''},
 ];
 
 export const bankFields = [

@@ -76,7 +76,6 @@ export function applyProposalAndTerms({
   setBoxText(
     'fap-cell-tc-fl-purpose',
     normalizeTermsPurpose(tcFl.workingCapitalInvestment || tcFl.investment),
-    'Investment',
   );
 
   setBoxText('fap-cell-tc-fl-curr', tcFl.currency);

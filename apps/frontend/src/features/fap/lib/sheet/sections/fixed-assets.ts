@@ -39,13 +39,7 @@ export function applyFixedAssets({
 
   const totPct = totUnit > 0 ? '100.0%' : '0.0%';
 
-  const hasAnyAssets = Boolean(
-    (d as any).assetSummaryHeLiuGong !== undefined ||
-    (d as any).assetSummaryTruckLiuGong !== undefined ||
-    (d as any).assetSummaryHeNonLiuGong !== undefined ||
-    (d as any).assetSummaryTruckNonLiuGong !== undefined ||
-    totUnit > 0,
-  );
+  const hasAnyAssets = totUnit > 0;
 
   if (hasAnyAssets && !(props.diffSide === 'ocr' && totUnit === 0)) {
     setText(
