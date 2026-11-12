@@ -64,13 +64,14 @@ export function useLegalEditor({
   useEffect(() => setFormError(''), [editing?.id, stakeholderModal?.deedId, stakeholderModal?.index]);
   // Remark categories come from Master Data (active items); the built-in list is only a fallback
   const defaultRemarkCategories = [
-    {id: 'establishment-deed', name: 'Establishment Deed', remarks: ''},
-    {id: 'amendment-share-change', name: 'Shares', remarks: ''},
-    {id: 'amendment-management-change', name: 'Management', remarks: ''},
-    {id: 'amendment-business-activity-change', name: 'Business Activities', remarks: ''},
-    {id: 'amendment-articles-change', name: 'Articles of Association', remarks: ''},
-    {id: 'amendment-other', name: 'Other', remarks: ''},
+    {id: 'ESTABLISHMENT_DEED', name: 'Establishment Deed', remarks: ''},
+    {id: 'AMENDMENT_SHARE_CHANGE', name: 'Shareholding Change', remarks: ''},
+    {id: 'AMENDMENT_MANAGEMENT_CHANGE', name: 'Management Change', remarks: ''},
+    {id: 'AMENDMENT_BUSINESS_ACTIVITY_CHANGE', name: 'Business Activity Change', remarks: ''},
+    {id: 'AMENDMENT_ARTICLES_CHANGE', name: 'Articles of Association Change', remarks: ''},
+    {id: 'AMENDMENT_OTHER', name: 'Other Amendment', remarks: ''},
   ];
+  const isEstablishmentCat = (id?: string) => id === 'ESTABLISHMENT_DEED' || id === 'establishment-deed';
   const master = useMasterData();
   const mandatoryRules = useMandatoryRules();
   const masterCats = (master.remarkCategoryId || [])
@@ -81,12 +82,12 @@ export function useLegalEditor({
       ? [...masterCats, ...legacyRemarkCategories.filter(l => !masterCats.some(m => m.id === l.id))]
       : defaultRemarkCategories;
   const establishmentDeedCat =
-    remarkCategories.find(x => x.id === 'establishment-deed') || defaultRemarkCategories[0];
-  const amendmentRemarkCategories = remarkCategories.filter(x => x.id !== 'establishment-deed');
+    remarkCategories.find(x => isEstablishmentCat(x.id)) || defaultRemarkCategories[0];
+  const amendmentRemarkCategories = remarkCategories.filter(x => !isEstablishmentCat(x.id));
   const getDeedCategoryIds = (d: any): string[] => {
     if (Array.isArray(d?.remarkCategoryIds) && d.remarkCategoryIds.length > 0) return d.remarkCategoryIds;
     if (d?.remarkCategoryId) return [d.remarkCategoryId];
-    return d?.type === 'establishment' ? ['establishment-deed'] : [];
+    return d?.type === 'establishment' ? ['ESTABLISHMENT_DEED'] : [];
   };
   const deeds = legalDeedList(value, application),
     selectedId =

@@ -39,7 +39,7 @@ export class PreAnalysisController {
     if (appRecord && (missing(data.customerProjectName) || data.customerProjectName === 'New Applicant'))
       data.customerProjectName =
         appRecord.customer?.companyName || appRecord.companyName || data.customerProjectName;
-    await savePreAnalysisData(req.params.id, data);
+    await savePreAnalysisData(req.params.id, data, req.actor?.name || 'System');
     return {success: true, data};
   }
 }

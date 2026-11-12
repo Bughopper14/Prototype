@@ -115,6 +115,146 @@ def get_db_conn():
         database=os.environ['DB_NAME'],
     )
 
+
+def _lookup_wilayah_db(raw_kec: str = "", raw_kel: str = "", raw_pos: str = ""):
+    """Resolves (village, postal_code, district, city, province) against crm_master_* tables."""
+    import re
+    import difflib
+
+    clean_w = lambda s: re.sub(r'[^A-Z0-9]', '', str(s or '').upper())
+    c_kec, c_kel, c_pos = clean_w(raw_kec), clean_w(raw_kel), clean_w(raw_pos)
+    if not (c_kec or c_kel or c_pos):
+        return None
+
+    base_select = """
+        SELECT v.name, p.postal_code, d.name, c.name, pr.name
+        FROM crm_master_villages v
+        JOIN crm_master_districts d ON v.district_id = d.id
+        JOIN crm_master_cities c ON d.city_id = c.id
+        JOIN crm_master_provinces pr ON c.province_id = pr.id
+        LEFT JOIN crm_master_postal_codes p ON v.postal_code_id = p.id
+    """
+    conn = get_db_conn()
+    try:
+        with conn.cursor() as cur:
+            row = None
+            if c_kec and c_kel:
+                cur.execute(
+                    base_select + """
+                    WHERE REPLACE(UPPER(d.name), ' ', '') = %s
+                      AND REPLACE(UPPER(v.name), ' ', '') = %s
+                    LIMIT 1
+                    """,
+                    (c_kec, c_kel),
+                )
+                row = cur.fetchone()
+            if not row and c_pos and c_kec:
+                cur.execute(
+                    base_select + """
+                    WHERE p.postal_code = %s
+                      AND REPLACE(UPPER(d.name), ' ', '') = %s
+                    LIMIT 1
+                    """,
+                    (c_pos, c_kec),
+                )
+                row = cur.fetchone()
+            if not row and c_pos:
+                cur.execute(base_select + " WHERE p.postal_code = %s LIMIT 1", (c_pos,))
+                row = cur.fetchone()
+            if not row and c_kec:
+                cur.execute("""
+                    SELECT NULL, NULL, d.name, c.name, pr.name
+                    FROM crm_master_districts d
+                    JOIN crm_master_cities c ON d.city_id = c.id
+                    JOIN crm_master_provinces pr ON c.province_id = pr.id
+                    WHERE REPLACE(UPPER(d.name), ' ', '') = %s
+                    LIMIT 1
+                """, (c_kec,))
+                row = cur.fetchone()
+            if not row and c_kel:
+                cur.execute(
+                    base_select + " WHERE REPLACE(UPPER(v.name), ' ', '') = %s LIMIT 1",
+                    (c_kel,),
+                )
+                row = cur.fetchone()
+
+            if not row and (c_kec or c_kel):
+                cur.execute("""
+                    SELECT d.id, d.name, c.name, pr.name
+                    FROM crm_master_districts d
+                    JOIN crm_master_cities c ON d.city_id = c.id
+                    JOIN crm_master_provinces pr ON c.province_id = pr.id
+                """)
+                all_kecs = cur.fetchall()
+                best_kec = None
+                best_k_score = 0.0
+                if c_kec:
+                    for k_id, k_name, c_name, pr_name in all_kecs:
+                        clean_k = clean_w(k_name)
+                        score = difflib.SequenceMatcher(None, c_kec, clean_k).ratio()
+                        if score > best_k_score:
+                            best_k_score = score
+                            best_kec = (k_id, k_name, c_name, pr_name)
+                if best_kec and best_k_score >= 0.70:
+                    k_id, k_name, c_name, pr_name = best_kec
+                    cur.execute("""
+                        SELECT v.name, p.postal_code
+                        FROM crm_master_villages v
+                        LEFT JOIN crm_master_postal_codes p ON v.postal_code_id = p.id
+                        WHERE v.district_id = %s
+                    """, (k_id,))
+                    all_kels = cur.fetchall()
+                    best_kel = None
+                    best_v_score = 0.0
+                    if c_kel:
+                        for v_name, v_post in all_kels:
+                            score = difflib.SequenceMatcher(None, c_kel, clean_w(v_name)).ratio()
+                            if score > best_v_score:
+                                best_v_score = score
+                                best_kel = (v_name, v_post)
+                    row = (
+                        best_kel[0] if best_kel and best_v_score >= 0.65 else (all_kels[0][0] if len(all_kels) == 1 else None),
+                        best_kel[1] if best_kel and best_v_score >= 0.65 else (all_kels[0][1] if len(all_kels) == 1 else None),
+                        k_name,
+                        c_name,
+                        pr_name,
+                    )
+            return row
+    finally:
+        conn.close()
+
+
+def _clean_ktp_address(raw_al: str, region_hints=None) -> str:
+    """Cleans OCR artifacts from a KTP street address without fabricating prefixes."""
+    import re
+
+    val = str(raw_al or "").strip().upper()
+    if not val:
+        return ""
+    val = re.sub(r'^(?:ALAMAT|ALAMAL|ALAMA|ALANAT|ATAMAT|AIAMAT)\s*[:：.\-–—=~*+]*\s*', '', val)
+    val = re.sub(r'^[：:~*:\-–—.;,|!\s]+', '', val)
+    val = re.sub(r'\b(?:BOAST|BOASI|BEAST|COAST)\b.*$', '', val).strip()
+    val = re.sub(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL\s*[/.]?\s*DESA|KELURAHAN|KECAMATAN)\b.*$', '', val).strip()
+    val = re.sub(r'[,.\s\-–—~*|：:]+$', '', val).strip()
+
+    # Separate genuinely present prefixes/numbers glued by OCR (without inventing JL.)
+    val = re.sub(r'^\d{1,3}\s*/\s*\d{1,3}\s+', '', val)
+    val = re.sub(r'^JL\.?(?=[A-Z]{3,})', 'JL. ', val)
+    val = re.sub(r'^JALAN(?=[A-Z]{3,})', 'JALAN ', val)
+    val = re.sub(r'([A-Z]{3,})(\d+)', r'\1 \2', val)
+    val = re.sub(r'(\d+)\s*N[O0][.:,;]*\s*(\d+)', r'\1 NO. \2', val)
+    val = re.sub(r'([A-Z]{2,})(N[O0][.:,;]+\s*\d+)', r'\1 \2', val)
+    val = re.sub(r'\bN[O0][.:,;\s]*(\d+)', r'NO. \1', val)
+
+    # Restore spaces in street tokens matching resolved Kel/Kec names (e.g. KEBONKACANG -> KEBON KACANG)
+    for hint in (region_hints or []):
+        h_clean = re.sub(r'\s+', ' ', str(hint or '').upper()).strip()
+        h_compact = re.sub(r'[^A-Z0-9]', '', h_clean)
+        if ' ' in h_clean and len(h_compact) >= 6 and h_compact in val:
+            val = re.sub(rf'\b{re.escape(h_compact)}\b', h_clean, val)
+
+    return re.sub(r'\s+', ' ', val).strip()
+
 def post_process_ktp_full(extracted: dict, boxes=None):
     import re
     import difflib
@@ -307,129 +447,26 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     raw_kec = str(extracted.get("kecamatan") or "").strip()
     raw_kel = str(extracted.get("kel_desa") or "").strip()
     raw_pos = str(extracted.get("kode_pos") or extracted.get("postalCode") or "").strip()
-
-    clean_w = lambda s: re.sub(r'[^A-Z0-9]', '', str(s or '').upper())
-    c_kec, c_kel, c_pos = clean_w(raw_kec), clean_w(raw_kel), clean_w(raw_pos)
-
-    if c_kec or c_kel or c_pos:
+    if raw_kec or raw_kel or raw_pos:
         try:
-            conn = get_db_conn()
-            with conn.cursor() as cur:
-                row = None
-                if c_kec and c_kel:
-                    cur.execute("""
-                        SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE REPLACE(UPPER(d.name), ' ', '') = %s
-                          AND REPLACE(UPPER(v.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_kec, c_kel))
-                    row = cur.fetchone()
-                if not row and c_pos and c_kec:
-                    cur.execute("""
-                        SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE v.postal_code = %s
-                          AND REPLACE(UPPER(d.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_pos, c_kec))
-                    row = cur.fetchone()
-                if not row and c_pos:
-                    cur.execute("""
-                        SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE v.postal_code = %s
-                        LIMIT 1
-                    """, (c_pos,))
-                    row = cur.fetchone()
-                if not row and c_kec:
-                    cur.execute("""
-                        SELECT NULL, NULL, d.name, c.name, p.name
-                        FROM master_kecamatan d
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE REPLACE(UPPER(d.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_kec,))
-                    row = cur.fetchone()
-                if not row and c_kel:
-                    cur.execute("""
-                        SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE REPLACE(UPPER(v.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_kel,))
-                    row = cur.fetchone()
-
-                # Fuzzy fallback if exact match failed
-                if not row and (c_kec or c_kel):
-                    cur.execute("""
-                        SELECT d.id, d.name, c.name, p.name 
-                        FROM master_kecamatan d 
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id 
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                    """)
-                    all_kecs = cur.fetchall()
-                    best_kec = None
-                    best_k_score = 0
-                    if c_kec:
-                        for k_id, k_name, c_name, p_name in all_kecs:
-                            clean_k = re.sub(r'[^A-Z0-9]', '', k_name.upper())
-                            score = difflib.SequenceMatcher(None, c_kec, clean_k).ratio()
-                            if score > best_k_score:
-                                best_k_score = score
-                                best_kec = (k_id, k_name, c_name, p_name)
-                    if best_kec and best_k_score >= 0.70:
-                        k_id, k_name, c_name, p_name = best_kec
-                        cur.execute("SELECT v.name, v.postal_code FROM master_kelurahan_desa v WHERE v.kecamatan_id = %s", (k_id,))
-                        all_kels = cur.fetchall()
-                        best_kel = None
-                        best_v_score = 0
-                        if c_kel:
-                            for v_name, v_post in all_kels:
-                                clean_v = re.sub(r'[^A-Z0-9]', '', v_name.upper())
-                                score = difflib.SequenceMatcher(None, c_kel, clean_v).ratio()
-                                if score > best_v_score:
-                                    best_v_score = score
-                                    best_kel = (v_name, v_post)
-                        row = (
-                            best_kel[0] if best_kel and best_v_score >= 0.65 else (all_kels[0][0] if all_kels and len(all_kels) == 1 else None),
-                            best_kel[1] if best_kel and best_v_score >= 0.65 else (all_kels[0][1] if all_kels and len(all_kels) == 1 else None),
-                            k_name,
-                            c_name,
-                            p_name
-                        )
-
-                if row:
-                    if row[0]:
-                        extracted["kel_desa"] = row[0]
-                        extracted["village"] = row[0]
-                    if row[1]:
-                        extracted["kode_pos"] = row[1]
-                        extracted["postalCode"] = row[1]
-                    if row[2]:
-                        extracted["kecamatan"] = row[2]
-                        extracted["district"] = row[2]
-                    if row[3]:
-                        extracted["kabupaten_kota"] = row[3]
-                        extracted["cityRegency"] = row[3]
-                        extracted["city"] = row[3]
-                    if row[4]:
-                        extracted["provinsi"] = row[4]
-                        extracted["province"] = row[4]
-            conn.close()
+            row = _lookup_wilayah_db(raw_kec, raw_kel, raw_pos)
+            if row:
+                if row[0]:
+                    extracted["kel_desa"] = row[0]
+                    extracted["village"] = row[0]
+                if row[1]:
+                    extracted["kode_pos"] = row[1]
+                    extracted["postalCode"] = row[1]
+                if row[2]:
+                    extracted["kecamatan"] = row[2]
+                    extracted["district"] = row[2]
+                if row[3]:
+                    extracted["kabupaten_kota"] = row[3]
+                    extracted["cityRegency"] = row[3]
+                    extracted["city"] = row[3]
+                if row[4]:
+                    extracted["provinsi"] = row[4]
+                    extracted["province"] = row[4]
         except Exception as we:
             print(f"[OCR] Wilayah reverse-lookup error: {we}")
 
@@ -650,21 +687,21 @@ def post_process_ktp_full(extracted: dict, boxes=None):
                         break
 
     if raw_al:
-        raw_al = re.sub(r'^[~*:\-–—\s]+', '', raw_al)
-        raw_al = re.sub(r'\b(?:BOAST|BOASI|BEAST|COAST)\b.*$', '', raw_al, flags=re.IGNORECASE).strip()
-        raw_al = re.sub(r'[,.\s\-–—~*|]+$', '', raw_al).strip()
-        if not re.search(r'\b(?:JL|JALAN|TOWER|GEDUNG|KOMP|KOMPLEK|PERUM|RUKO|BLOK|KAV|KP|KAMPUNG|DUSUN|GG|GANG|NO)\b', raw_al, re.IGNORECASE):
-            raw_al = f"JL. {raw_al}"
-        extracted["alamat"] = raw_al
-        extracted["address"] = raw_al
-        extracted["fullAddress"] = raw_al
-        street_only = re.split(
-            r',?\s*\b(?:RT[/\s.]*RW|RT\s*\d|RW\s*\d|DESA[/\s]*KELURAHAN|KELURAHAN|DESA|KEL\.|KECAMATAN|KEC\.|KABUPATEN|KAB\.|KOTA\s+ADM|PROVINSI|PROPINSI|KODE\s*POS)\b',
+        raw_al = _clean_ktp_address(
             raw_al,
-            flags=re.IGNORECASE,
-        )[0].strip()
-        street_only = re.sub(r'[,;\s\-–—]+$', '', street_only).strip()
-        extracted["streetAddress"] = street_only or raw_al
+            [extracted.get("kel_desa"), extracted.get("kecamatan")],
+        )
+        if raw_al:
+            extracted["alamat"] = raw_al
+            extracted["address"] = raw_al
+            extracted["fullAddress"] = raw_al
+            street_only = re.split(
+                r',?\s*\b(?:RT[/\s.]*RW|RT\s*\d|RW\s*\d|DESA[/\s]*KELURAHAN|KELURAHAN|DESA|KEL\.|KECAMATAN|KEC\.|KABUPATEN|KAB\.|KOTA\s+ADM|PROVINSI|PROPINSI|KODE\s*POS)\b',
+                raw_al,
+                flags=re.IGNORECASE,
+            )[0].strip()
+            street_only = re.sub(r'[,;\s\-–—]+$', '', street_only).strip()
+            extracted["streetAddress"] = street_only or raw_al
 
     # 5. Kelurahan & Kecamatan symbols cleanup
     if extracted.get("kel_desa"):
@@ -790,7 +827,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
             except Exception:
                 pass
 
-    if not tl or tl == "JAKALA" or "JAK" in tl:
+    if tl and (tl == "JAKALA" or tl.startswith("JAK") or "JAKARTA" in tl):
         tl = "JAKARTA"
 
     extracted["tempat_lahir"] = tl
@@ -804,7 +841,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
 def extract_ktp_nib_style(boxes: list) -> tuple:
     import re
 
-    sorted_boxes = sorted(boxes, key=lambda b: (b.get("y_min", 0.0), b.get("x_min", 0.0)))
+    sorted_boxes = sorted(boxes, key=lambda b: ((b.get("y_min", 0.0) + b.get("y_max", 0.0)) / 2.0, b.get("x_min", 0.0)))
     lines = []
     full_text_list = []
     for b in sorted_boxes:
@@ -813,6 +850,97 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
             lines.append(t)
             full_text_list.append(t)
     full_text = "\n".join(full_text_list)
+
+    heights = sorted([max(6.0, float(b.get("y_max", 0.0)) - float(b.get("y_min", 0.0))) for b in sorted_boxes])
+    med_h = heights[len(heights) // 2] if heights else 24.0
+    row_tol = max(14.0, med_h * 0.65)
+    page_w = max([float(b.get("page_width") or b.get("x_max") or 1000) for b in sorted_boxes] or [1000.0])
+
+    def _yc(b):
+        return (float(b.get("y_min", 0.0)) + float(b.get("y_max", 0.0))) / 2.0
+
+    KTP_LABEL_RE = re.compile(
+        r'^(?:nik|nama|tempat|tempav|tempa[tfl]|jenis\s*kel|jeniske|gol\.?\s*darah|got\.?\s*darah|alamat|alamal|atamat|aiamat|rt\s*[/\\|!i1u]?\s*rw|rtirw|rirw|rurw|btirw|kel\s*[\/\.]?\s*desa|kev\s*desa|kell\s*desa|keldesa|ke\/?desa|kecamatan|kocamatan|agama|status\s*per|pekerjaan|pekeraan|pekenaan|kewarganegaraan|berlaku|borlaku|beriaku)\b',
+        re.IGNORECASE,
+    )
+    label_boxes = [b for b in sorted_boxes if KTP_LABEL_RE.search((b.get("text") or "").strip())]
+
+    def _find_label_box(label_pat: str):
+        rx = re.compile(label_pat, re.IGNORECASE)
+        for b in sorted_boxes:
+            if rx.search((b.get("text") or "").strip()):
+                return b
+        return None
+
+    def _spatial_row_value(label_pat: str, strip_prefix_pat: str, allow_next_row: bool = False) -> str:
+        lb = _find_label_box(label_pat)
+        if not lb:
+            return ""
+        lb_txt = (lb.get("text") or "").strip()
+        lb_yc = _yc(lb)
+        lb_xmin = float(lb.get("x_min", 0.0))
+        lb_xmax = float(lb.get("x_max", 0.0))
+        other_labels_y = [_yc(ob) for ob in label_boxes if ob is not lb]
+
+        parts = []
+        # Inline value in the same box after label prefix / colon
+        m_inline = re.search(strip_prefix_pat + r'[\s:：.\-–—=~*+]*(.+)$', lb_txt, re.IGNORECASE)
+        if m_inline:
+            cand_in = re.sub(r'^[:：.\-–—=~*+\s]+', '', m_inline.group(1)).strip()
+            # Guard against matching suffix of the label itself when only label is in box
+            if cand_in and len(cand_in) >= 2:
+                parts.append(cand_in)
+
+        # Boxes strictly to the right on the same spatial row (closer to this label than any other label)
+        same_row = []
+        for b in sorted_boxes:
+            if b is lb or b in label_boxes:
+                continue
+            bx_min = float(b.get("x_min", 0.0))
+            byc = _yc(b)
+            t_raw = (b.get("text") or "").strip()
+            # Exclude right-edge photo signature city/date region on full KTP cards
+            if bx_min > page_w * 0.70 and lb_xmin < page_w * 0.35:
+                continue
+            if bx_min <= lb_xmin + max(18.0, (lb_xmax - lb_xmin) * 0.45):
+                continue
+            dy = abs(byc - lb_yc)
+            if dy > row_tol:
+                continue
+            if any(abs(byc - oy) + 1.5 < dy for oy in other_labels_y):
+                continue
+            if allow_next_row and re.match(r'^[：:.\s]*\d{1,3}\s*[/\\|]\s*\d{1,3}\b', t_raw):
+                continue
+            same_row.append(b)
+        same_row.sort(key=lambda b: float(b.get("x_min", 0.0)))
+        for rb in same_row:
+            t_rb = (rb.get("text") or "").strip()
+            if t_rb:
+                parts.append(t_rb)
+
+        # Optional 2nd continuation line (for wrapped Alamat above RT/RW)
+        if allow_next_row and same_row:
+            next_labels_y = [oy for oy in other_labels_y if oy > lb_yc + med_h * 0.5]
+            next_limit_y = min(next_labels_y) if next_labels_y else (lb_yc + med_h * 2.5)
+            val_col_x = float(same_row[0].get("x_min", 0.0))
+            cont = []
+            for b in sorted_boxes:
+                if b is lb or b in same_row or b in label_boxes:
+                    continue
+                bx_min = float(b.get("x_min", 0.0))
+                byc = _yc(b)
+                if bx_min < max(lb_xmax, val_col_x - 30.0):
+                    continue
+                if bx_min > page_w * 0.70 and lb_xmin < page_w * 0.35:
+                    continue
+                if lb_yc + med_h * 0.65 < byc < next_limit_y - med_h * 0.35:
+                    t_c = re.sub(r'^[：:.\s]+', '', (b.get("text") or "")).strip()
+                    if t_c and not re.match(r'^\d{1,3}\s*[/\\|]?\s*\d{1,3}$', t_c) and not re.search(r'^\d{2}-\d{2}-\d{4}$', t_c):
+                        cont.append(t_c)
+            parts.extend(cont)
+
+        raw_val = " ".join(parts).strip()
+        return re.sub(r'^[:：.\-–—=~*+\s]+', '', raw_val).strip()
 
     month_map = {
         'JAN': '01', 'JANUARI': '01', 'JANUARY': '01',
@@ -892,13 +1020,18 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
             s = s.replace(old, new)
         return re.sub(r'\D', '', s)
 
-    nik_match = re.search(r'(?:nik|nik\s*[:\.]|nomor\s+induk)[\s:.\-–—]*([0-9A-Za-z\s]{14,24})', full_text, re.IGNORECASE)
-    if nik_match:
-        cand = clean_nik_digits(nik_match.group(1))
-        if len(cand) == 16:
-            nik = cand
-        elif len(cand) > 16:
+    nik_spatial = _spatial_row_value(r'^(?:nik|nomor\s+induk)\b', r'^(?:nik|nomor\s+induk)')
+    if nik_spatial:
+        cand = clean_nik_digits(nik_spatial)
+        if len(cand) >= 16:
             nik = cand[:16]
+
+    if not nik:
+        nik_match = re.search(r'(?:nik|nik\s*[:\.]|nomor\s+induk)[\s:.\-–—]*([0-9A-Za-z\s]{14,24})', full_text, re.IGNORECASE)
+        if nik_match:
+            cand = clean_nik_digits(nik_match.group(1))
+            if len(cand) >= 16:
+                nik = cand[:16]
 
     if not nik:
         for idx, line in enumerate(lines):
@@ -919,19 +1052,26 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
             nik = all_16[0]
 
     # 3. Nama
-    for idx, line in enumerate(lines):
-        m_name = re.search(r'^(?:\d+[\.\)]\s*)?nama[\s:.\-–—=~]+(.*)$', line.strip(), re.IGNORECASE)
-        if m_name:
-            cand = m_name.group(1).strip()
-            cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', cand).strip()
-            if len(cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat', cand, re.IGNORECASE):
-                nama = cand.upper()
-                break
-            elif not cand and idx + 1 < len(lines):
-                next_cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', lines[idx + 1].strip()).strip()
-                if len(next_cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat|jenis|kelamin', next_cand, re.IGNORECASE):
-                    nama = next_cand.upper()
+    nama_spatial = _spatial_row_value(r'^(?:\d+[\.\)]\s*)?(?:nama|name)\b', r'^(?:\d+[\.\)]\s*)?(?:nama|name)')
+    if nama_spatial:
+        cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', nama_spatial).strip()
+        if len(cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat', cand, re.IGNORECASE):
+            nama = cand.upper()
+
+    if not nama:
+        for idx, line in enumerate(lines):
+            m_name = re.search(r'^(?:\d+[\.\)]\s*)?nama[\s:.\-–—=~]+(.*)$', line.strip(), re.IGNORECASE)
+            if m_name:
+                cand = m_name.group(1).strip()
+                cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', cand).strip()
+                if len(cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat', cand, re.IGNORECASE):
+                    nama = cand.upper()
                     break
+                elif not cand and idx + 1 < len(lines):
+                    next_cand = re.sub(r'[^a-zA-Z\s\.,\'-]', '', lines[idx + 1].strip()).strip()
+                    if len(next_cand) >= 3 and not re.search(r'tempat|lahir|nik|alamat|jenis|kelamin', next_cand, re.IGNORECASE):
+                        nama = next_cand.upper()
+                        break
 
     if not nama:
         m_name_all = re.search(r'(?:nama|name)[\s:.\-–—=~]*([A-Za-z\s\.,\'-]{3,50})(?:$|\n|tempat|lahir)', full_text, re.IGNORECASE)
@@ -944,7 +1084,7 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
     ttl_label_box = None
     for b in sorted_boxes:
         t = (b.get("text") or "").strip()
-        if re.search(r'(?:tempat[/\s\.]*tgl[/\s\.]*lahir|tempavtgl|tempatlgl|tempat[/\s\.]*lahir|tgl\s*lahir)', t, re.IGNORECASE) and not re.search(r'berlaku|hingga', t, re.IGNORECASE):
+        if re.search(r'(?:tempa[tvl][/.\s]*[til1]g[l1i][/.\s]*lahir|tempav[til1]g[l1i]|tempat[til1]g[l1i]|tempa[tvl][/.\s]*lahir|[til1]g[l1i]\s*lahir)', t, re.IGNORECASE) and not re.search(r'berlaku|hingga', t, re.IGNORECASE):
             ttl_label_box = b
             break
 
@@ -986,15 +1126,23 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
                 tempat_lahir = m_p.group(1).strip().upper()
 
     if not tanggal_lahir:
+        berlaku_y = [
+            (b.get('y_min', 0.0) + b.get('y_max', 0.0)) / 2.0
+            for b in sorted_boxes
+            if re.search(r'berlaku|hingga', (b.get('text') or ''), re.IGNORECASE)
+        ]
         for b in sorted_boxes:
             t = (b.get('text') or '').strip()
             y_min = b.get('y_min', 0.0)
+            y_c_box = (y_min + b.get('y_max', 0.0)) / 2.0
             x_min = b.get('x_min', 0.0)
             p_w = b.get('page_width', 1000) or 1000
             p_h = b.get('page_height', 1000) or 1000
             if y_min > p_h * 0.55 and x_min > p_w * 0.5:
                 continue
-            m_dob = re.search(r'\b(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})\b', t)
+            if any(abs(y_c_box - by) < 25 for by in berlaku_y):
+                continue
+            m_dob = re.search(r'(?<!\d)(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})(?!\d)', t)
             if m_dob:
                 p_date = parse_indo_date(m_dob.group(1))
                 if p_date:
@@ -1041,19 +1189,31 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
             golongan_darah = gd
 
     # 6. Alamat
-    for idx, line in enumerate(lines):
-        m_al = re.search(r'^(?:\d+[\.\)]\s*)?alamat[\s:.\-–—=~]+(.*)$', line.strip(), re.IGNORECASE)
-        if m_al:
-            val = m_al.group(1).strip()
-            val = re.sub(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b.*$', '', val, flags=re.IGNORECASE).strip()
-            val = re.sub(r'[,.\s\-–—*~|]+$', '', val).strip()
-            if len(val) >= 4:
-                alamat = val.upper()
-                break
+    al_spatial = _spatial_row_value(
+        r'^(?:\d+[\.\)]\s*)?(?:alamat|alamal|alama|alanat|atamat|aiamat)\b',
+        r'^(?:\d+[\.\)]\s*)?(?:alamat|alamal|alama|alanat|atamat|aiamat)',
+        allow_next_row=True,
+    )
+    if al_spatial:
+        val = re.sub(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b.*$', '', al_spatial, flags=re.IGNORECASE).strip()
+        val = re.sub(r'[,.\s\-–—*~|：:]+$', '', val).strip()
+        if len(val) >= 4 and not re.fullmatch(r'\d{1,3}\s*/\s*\d{1,3}', val):
+            alamat = val.upper()
+
+    if not alamat:
+        for idx, line in enumerate(lines):
+            m_al = re.search(r'^(?:\d+[\.\)]\s*)?(?:alamat|alamal|alama|alanat|atamat|aiamat)[\s:：.\-–—=~]+(.*)$', line.strip(), re.IGNORECASE)
+            if m_al:
+                val = m_al.group(1).strip()
+                val = re.sub(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b.*$', '', val, flags=re.IGNORECASE).strip()
+                val = re.sub(r'[,.\s\-–—*~|]+$', '', val).strip()
+                if len(val) >= 4 and not re.fullmatch(r'\d{1,3}\s*/\s*\d{1,3}', val):
+                    alamat = val.upper()
+                    break
 
     if not alamat:
         for line in lines:
-            m_st = re.search(r'\b(?:JL|JALAN|KP|KAMPUNG|KOMP|KOMPLEK|GG|GANG|DUSUN)\b[.\s]+([^\n\r]+)', line, re.IGNORECASE)
+            m_st = re.search(r'\b(?:JL|JALAN|KP|KAMPUNG|KOMP|KOMPLEK|GG|GANG|DUSUN)\b[.\s]*([^\n\r]+)', line, re.IGNORECASE)
             if m_st:
                 val = m_st.group(0).strip()
                 val = re.split(r'\b(?:RT[/\s.]*RW|RT\s*\d|KEL|DESA)\b', val, flags=re.IGNORECASE)[0].strip()
@@ -1063,25 +1223,55 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
                     break
 
     # 7. RT & RW
-    m_rtrw = re.search(r'\b(?:rt[/\s.:]*(\d{1,3}))[\s/,\-]+(?:rw[/\s.:]*(\d{1,3}))\b', full_text, re.IGNORECASE)
-    if m_rtrw:
-        rt = m_rtrw.group(1).zfill(3)
-        rw = m_rtrw.group(2).zfill(3)
-    else:
-        m_slash = re.search(r'\brt[i/|!\s]*rw[\s:.\-–—=]*(\d{1,3})[/\s\-]+(\d{1,3})\b', full_text, re.IGNORECASE)
-        if m_slash:
-            rt = m_slash.group(1).zfill(3)
-            rw = m_slash.group(2).zfill(3)
+    rtrw_spatial = _spatial_row_value(
+        r'^(?:rt\s*[/\\|!i1u]?\s*rw|rtirw|rirw|rurw|btirw|rtaw|m8/18)\b',
+        r'^(?:rt\s*[/\\|!i1u]?\s*rw|rtirw|rirw|rurw|btirw|rtaw|m8/18)',
+    )
+    if rtrw_spatial:
+        m_rtsp = re.search(r'(\d{1,3})\s*[/,\-\\\|]\s*(\d{1,3})', rtrw_spatial)
+        if not m_rtsp:
+            m_rtsp = re.search(r'\b(0\d{2})[71]?(0\d{2})\b', re.sub(r'\D', '', rtrw_spatial))
+        if m_rtsp:
+            rt = m_rtsp.group(1).zfill(3)
+            rw = m_rtsp.group(2).zfill(3)
+    if not rt or not rw:
+        m_rtrw = re.search(r'\b(?:rt[/\s.:]*(\d{1,3}))[\s/,\-]+(?:rw[/\s.:]*(\d{1,3}))\b', full_text, re.IGNORECASE)
+        if m_rtrw:
+            rt = m_rtrw.group(1).zfill(3)
+            rw = m_rtrw.group(2).zfill(3)
+        else:
+            m_slash = re.search(r'\brt[i/|!\s]*rw[\s:.\-–—=]*(\d{1,3})[/\s\-]+(\d{1,3})\b', full_text, re.IGNORECASE)
+            if m_slash:
+                rt = m_slash.group(1).zfill(3)
+                rw = m_slash.group(2).zfill(3)
 
     # 8. Kel/Desa
-    m_kd = re.search(r'(?:kel\s*[\/\.]?\s*desa|kelurahan|desa)[\s:.\-–—=~]*([A-Za-z0-9\s]+?)(?:$|\n|kecamatan|rt|rw)', full_text, re.IGNORECASE)
-    if m_kd:
-        kel_desa = re.sub(r'[^A-Za-z0-9\s]', '', m_kd.group(1)).strip().upper()
+    kel_spatial = _spatial_row_value(
+        r'^(?:kel\s*[\/\.]?\s*desa|kelurahan|desa|kev\s*desa|kell\s*desa|keldesa|kelldesa|kevdesa|ke\/?desa)\b',
+        r'^(?:kel\s*[\/\.]?\s*desa|kelurahan|desa|kev\s*desa|kell\s*desa|keldesa|kelldesa|kevdesa|ke\/?desa)',
+    )
+    if kel_spatial:
+        kel_cand = re.sub(r'[^A-Za-z0-9\s]', '', kel_spatial).strip().upper()
+        if kel_cand and not re.search(r'^\d{1,3}\s*/\s*\d{1,3}$', kel_cand):
+            kel_desa = kel_cand
+    if not kel_desa:
+        m_kd = re.search(r'(?:kel\s*[\/\.]?\s*desa|kelurahan|desa|kev\s*desa|kell\s*desa|keldesa|kevdesa|ke\/?desa)[\s:.\-–—=~]*([A-Za-z0-9\s]+?)(?:$|\n|kecamatan|rt|rw)', full_text, re.IGNORECASE)
+        if m_kd:
+            kel_desa = re.sub(r'[^A-Za-z0-9\s]', '', m_kd.group(1)).strip().upper()
 
     # 9. Kecamatan
-    m_kc = re.search(r'(?:kecamatan|kec\.?)[\s:.\-–—=~]*([A-Za-z0-9\s]+?)(?:$|\n|kabupaten|kota|kelurahan|agama)', full_text, re.IGNORECASE)
-    if m_kc:
-        kecamatan = re.sub(r'[^A-Za-z0-9\s]', '', m_kc.group(1)).strip().upper()
+    kec_spatial = _spatial_row_value(
+        r'^(?:kecamatan|kocamatan|kec\.?)\b',
+        r'^(?:kecamatan|kocamatan|kec\.?)',
+    )
+    if kec_spatial:
+        kec_cand = re.sub(r'[^A-Za-z0-9\s]', '', kec_spatial).strip().upper()
+        if kec_cand and not re.search(r'^(?:ISLAM|KRISTEN|KATOLIK|HINDU|BUDDHA|KONGHUCU)$', kec_cand):
+            kecamatan = kec_cand
+    if not kecamatan:
+        m_kc = re.search(r'(?:kecamatan|kocamatan|kec\.?)[\s:.\-–—=~]*([A-Za-z0-9\s]+?)(?:$|\n|kabupaten|kota|kelurahan|agama)', full_text, re.IGNORECASE)
+        if m_kc:
+            kecamatan = re.sub(r'[^A-Za-z0-9\s]', '', m_kc.group(1)).strip().upper()
 
     # 10. Agama
     for rel in ['ISLAM', 'KRISTEN', 'KATHOLIK', 'KATOLIK', 'HINDU', 'BUDDHA', 'BUDHA', 'KONGHUCU', 'KHONGHUCU']:
@@ -1576,63 +1766,24 @@ def extract_nib(boxes: list) -> tuple:
 
     if kecamatan or kelurahan or kode_pos:
         try:
-            conn = get_db_conn()
-            with conn.cursor() as cur:
-                clean_w = lambda s: re.sub(r'[^A-Z0-9]', '', str(s or '').upper())
-                c_kec, c_kel, c_pos = clean_w(kecamatan), clean_w(kelurahan), clean_w(kode_pos)
-                row = None
-                if c_kec and c_kel:
-                    cur.execute("""
-                        SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE REPLACE(UPPER(d.name), ' ', '') = %s
-                          AND REPLACE(UPPER(v.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_kec, c_kel))
-                    row = cur.fetchone()
-                if not row and c_pos and c_kec:
-                    cur.execute("""
-                        SELECT v.name, v.postal_code, d.name, c.name, p.name
-                        FROM master_kelurahan_desa v
-                        JOIN master_kecamatan d ON v.kecamatan_id = d.id
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE v.postal_code = %s
-                          AND REPLACE(UPPER(d.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_pos, c_kec))
-                    row = cur.fetchone()
-                if not row and c_kec:
-                    cur.execute("""
-                        SELECT NULL, NULL, d.name, c.name, p.name
-                        FROM master_kecamatan d
-                        JOIN master_kabupaten_kota c ON d.kabupaten_kota_id = c.id
-                        JOIN master_provinsi p ON c.provinsi_id = p.id
-                        WHERE REPLACE(UPPER(d.name), ' ', '') = %s
-                        LIMIT 1
-                    """, (c_kec,))
-                    row = cur.fetchone()
-                if row:
-                    if row[0] and not data.get("village"):
-                        data["village"] = row[0]
-                        data["kel_desa"] = row[0]
-                    if row[1] and not data.get("postalCode"):
-                        data["postalCode"] = row[1]
-                        data["kode_pos"] = row[1]
-                    if row[2]:
-                        data["district"] = row[2]
-                        data["kecamatan"] = row[2]
-                    if row[3]:
-                        data["city"] = row[3]
-                        data["cityRegency"] = row[3]
-                        data["kota"] = row[3]
-                    if row[4]:
-                        data["province"] = row[4]
-                        data["provinsi"] = row[4]
-            conn.close()
+            row = _lookup_wilayah_db(kecamatan, kelurahan, kode_pos)
+            if row:
+                if row[0] and not data.get("village"):
+                    data["village"] = row[0]
+                    data["kel_desa"] = row[0]
+                if row[1] and not data.get("postalCode"):
+                    data["postalCode"] = row[1]
+                    data["kode_pos"] = row[1]
+                if row[2]:
+                    data["district"] = row[2]
+                    data["kecamatan"] = row[2]
+                if row[3]:
+                    data["city"] = row[3]
+                    data["cityRegency"] = row[3]
+                    data["kota"] = row[3]
+                if row[4]:
+                    data["province"] = row[4]
+                    data["provinsi"] = row[4]
         except Exception as we:
             print(f"[OCR] NIB Wilayah reverse-lookup error: {we}")
 

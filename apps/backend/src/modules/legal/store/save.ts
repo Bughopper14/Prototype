@@ -1,223 +1,357 @@
-/** Saves the deeds and stakeholders of an application. */
-import {pool} from '../../../core/db/pool';
-import crypto from 'node:crypto';
-import {validateInput} from '@liugong/shared';
-import Decimal from 'decimal.js';
+/** Transactional persistence for legal deeds, remark categories, review metadata, and stakeholders. */
+import {randomUUID} from 'node:crypto';
 import {ageFromDateOfBirth} from '@liugong/shared';
-import {stakeholderFields} from '@liugong/shared';
-import {col, mapStakeholder, upsert} from './helpers';
+import {
+  cleanNullableString,
+  enumOrNull,
+  resolveMasterId,
+} from '../../../core/db/crm-lookups';
+import {pool} from '../../../core/db/pool';
+import {cleanDecimal, cleanNullableInt, dateStr, shortCode} from '../../applications/intake/helpers';
+import {
+  normalizeCitizenship,
+  normalizeIdType,
+  normalizeRemarkCategoryCode,
+  splitFullName,
+} from './helpers';
 import {stakeholderLocationNames} from './locations';
 import {readLegal} from './read';
+import {mapReviewStatus, syncDeedReviewChildren} from './deed-review';
+import {linkStakeholderIdentityDocuments} from '../../identity-documents/identity-documents.store';
 
-export async function saveLegal(applicationId: string, incoming: any, final = false) {
-  if (!pool) throw Error('MySQL is not configured');
-  const rawList = Array.isArray(incoming)
-    ? incoming
-    : Array.isArray(incoming?.deeds)
-      ? incoming.deeds
-      : incoming
-        ? [incoming]
-        : [];
-  if (!Array.isArray(rawList)) throw Object.assign(Error('Daftar akta tidak valid'), {status: 422});
-  const deeds = structuredClone(rawList),
-    ids = new Set<string>();
-  const seenDeedNumbers = new Map<string, string>();
-  for (const d of deeds) {
-    const rawNo = String(d.deedNumber || '')
-      .trim()
-      .toLowerCase();
-    if (rawNo) {
-      if (seenDeedNumbers.has(rawNo)) {
-        throw Object.assign(Error('This deed number has already been entered in this application.'), {
-          status: 422,
-        });
-      }
-      seenDeedNumbers.set(rawNo, d.id || '');
-    }
-  }
-  for (let i = 0; i < deeds.length; i++) {
-    const d = deeds[i];
-    d.id = d.id || crypto.randomUUID();
-    if (ids.has(d.id)) d.id = crypto.randomUUID();
-    if (!['establishment', 'amendment'].includes(d.type)) {
-      d.type = i === 0 ? 'establishment' : 'amendment';
-    }
-    ids.add(d.id);
-    if (final) {
-      for (const key of ['deedNumber', 'deedDate', 'ministerialDecreeNumber', 'ministerialDecreeDate'])
-        if (!d[key]) throw Object.assign(Error(key + ' wajib diisi sebelum submit'), {status: 422});
-      validateInput({...d, stakeholders: undefined});
-    }
-    d._stakeholdersPassed = d.stakeholders !== undefined && d.stakeholders !== null;
-    d.stakeholders = d.stakeholders || [];
-    let total = new Decimal(0);
-    const stakeholderIds = new Set<string>();
-    for (const s of d.stakeholders) {
-      s.id = s.id || crypto.randomUUID();
-      if (stakeholderIds.has(s.id)) s.id = crypto.randomUUID();
-      stakeholderIds.add(s.id);
-      if (final) {
-        validateInput(s);
-        if (
-          !s.email ||
-          !s.mobilePhone ||
-          s.primaryCapital === undefined ||
-          s.primaryCapital === null ||
-          s.primaryCapital === ''
-        )
-          throw Object.assign(Error('Email, Mobile phone dan Primary capital wajib diisi sebelum submit'), {
-            status: 422,
-          });
-        if (![s.firstName, s.lastName, s.name].some((x: any) => String(x || '').trim()))
-          throw Object.assign(Error('Nama stakeholder wajib diisi sebelum submit'), {status: 422});
-      }
-      const pct = new Decimal(s.sharePercentage || 0);
-      total = total.plus(pct);
-    }
-    if (final && !total.eq(100))
-      throw Object.assign(Error('Total Percentage share pada setiap akta wajib tepat 100% sebelum submit.'), {
-        status: 422,
-      });
-  }
-  const c = await pool.getConnection();
+export async function saveLegal(applicationId: string, incoming: any, _final = false) {
+  const deeds = Array.isArray(incoming?.deeds) ? incoming.deeds : [];
+  const selectedDeedId = cleanNullableString(incoming?.selectedDeedId);
+
+  const conn = await pool.getConnection();
   try {
-    await c.beginTransaction();
-    await c.execute('SELECT application_id FROM all_applications WHERE application_id=? FOR UPDATE', [
-      applicationId,
-    ]);
-    for (const d of deeds) {
-      // A deed built in the browser from the FAP (system-/legacy- id) that is already stored keeps its row
-      if (!d.id || d.id.startsWith('system-') || d.id.startsWith('legacy-')) {
-        const [match] = await c.execute<any[]>(
-          "SELECT id FROM daftar_akta WHERE application_id=? AND deleted_at IS NULL AND (LOWER(TRIM(nomor_akta))=LOWER(TRIM(?)) OR (akta=? AND ?='establishment')) LIMIT 1",
-          [
-            applicationId,
-            d.deedNumber || '',
-            d.type === 'establishment' ? 'Akta pendirian' : 'Akta perubahan',
-            d.type,
-          ],
-        );
-        if (match[0]?.id) d.id = match[0].id;
-      }
-      if (!d._stakeholdersPassed) {
-        const [existingRows] = await c.execute<any[]>(
-          'SELECT s.*, COALESCE(k.document_path, pass.document_path) AS document_path, COALESCE(k.file_name, pass.file_name) AS file_name, d.id AS district_master_id, v.id AS village_master_id FROM legal_stakeholder s LEFT JOIN ktp k ON (k.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND k.nik=s.id_number AND k.document_path IS NOT NULL)) LEFT JOIN passport pass ON (pass.stakeholder_id=s.id OR (s.id_number IS NOT NULL AND s.id_number != "" AND pass.passport_number=s.id_number AND pass.document_path IS NOT NULL)) LEFT JOIN master_location_provinsi p ON (p.name=s.province OR p.id=s.province) LEFT JOIN master_location_kabupaten_kota c ON (c.name=s.city_regency OR c.id=s.city_regency) AND c.provinsi_id=p.id LEFT JOIN master_location_kecamatan d ON (d.name=s.district OR d.id=s.district) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=s.village OR v.id=s.village) AND v.kecamatan_id=d.id WHERE s.akta_id=? AND s.deleted_at IS NULL ORDER BY s.created_at,s.id',
-          [d.id],
-        );
-        if (existingRows.length > 0) d.stakeholders = existingRows.map(mapStakeholder);
-      }
-      const deedDateStr = d.deedDate ? String(d.deedDate).slice(0, 10).trim() || null : null;
-      const skDateStr = d.ministerialDecreeDate
-        ? String(d.ministerialDecreeDate).slice(0, 10).trim() || null
-        : null;
-      const expiry = deedDateStr ? new Date(deedDateStr + 'T00:00:00Z') : null;
-      if (expiry) expiry.setUTCFullYear(expiry.getUTCFullYear() + 5);
-      const until = expiry ? expiry.toISOString().slice(0, 10) : null;
-      const active = until ? until >= new Date().toISOString().slice(0, 10) : true;
-      const assignedDeedId = await upsert(c, 'daftar_akta', d.id, {
-        application_id: applicationId,
-        akta: d.type === 'establishment' ? 'Akta pendirian' : 'Akta perubahan',
-        nomor_akta: d.deedNumber || '',
-        tanggal: deedDateStr || new Date().toISOString().slice(0, 10),
-        status: active ? 'Aktif' : 'Tidak aktif',
-        berlaku_sampai: until,
-        sk_menteri: d.ministerialDecreeNumber || null,
-        tanggal_sk_menteri: skDateStr,
-        kategori_remarks: d.remarkCategoryId || null,
-        remarks: d.remarks || null,
-        representative: d.parties?.representative || null,
-        pemegang_saham_perusahaan: d.parties?.companyShareholder || null,
-        stakeholders: d.stakeholders.length,
-        jumlah_shareholder: d.stakeholders.filter((s: any) => Number(s.sharePercentage) > 0).length,
-        total_kepemilikan: d.stakeholders
-          .reduce((v: Decimal, s: any) => v.plus(s.sharePercentage || 0), new Decimal(0))
-          .toFixed(2),
-        is_selected: Boolean(d.id === incoming.selectedDeedId),
-      });
-      d.id = assignedDeedId;
+    await conn.beginTransaction();
 
-      for (const s of d.stakeholders) {
-        if (s.dateOfBirth) {
-          Object.assign(s, ageFromDateOfBirth(s.dateOfBirth));
-        }
-        if (!s.firstName && (s.name || s.fullName)) {
-          const parts = String(s.name || s.fullName || '')
-            .trim()
-            .split(/\s+/);
-          s.firstName = parts[0] || '';
-          s.middleName = parts.length > 2 ? parts.slice(1, -1).join(' ') : '';
-          s.lastName = parts.length > 1 ? parts.slice(-1)[0] : '';
-        }
-        const stored = await stakeholderLocationNames(c, s);
-        const value = Object.fromEntries(
-          stakeholderFields.map(f => {
-            let val = stored[f.key];
-            if (val === '' || val === undefined) val = null;
-            if (f.type === 'number' && val !== null) {
-              const num = Number(val);
-              val = isNaN(num) ? null : num;
-            }
-            if (f.type === 'date' && val !== null) {
-              val = String(val).slice(0, 10).trim() || null;
-            }
-            return [col(f.key), val];
-          }),
-        );
-        const [old] = await c.execute<any[]>(
-          'SELECT id FROM legal_stakeholder WHERE id=? AND akta_id=? AND application_id=?',
-          [s.id, d.id, applicationId],
-        );
-        const assignedStakeholderId = await upsert(c, 'legal_stakeholder', old[0]?.id || s.id, {
-          akta_id: d.id,
-          application_id: applicationId,
-          ...value,
-        });
-        s.id = assignedStakeholderId;
-      }
-      const stakeholderIds = d.stakeholders.map((s: any) => s.id);
-      if (d._stakeholdersPassed) {
-        await c.execute(
-          `UPDATE legal_stakeholder SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE akta_id=? AND deleted_at IS NULL ${stakeholderIds.length ? 'AND id NOT IN (' + stakeholderIds.map(() => '?').join(',') + ')' : ''}`,
-          [d.id, ...stakeholderIds],
-        );
-      }
-    }
-    const savedIds = deeds.map((d: any) => d.id);
-    for (const table of ['legal_stakeholder', 'daftar_akta'])
-      await c.execute(
-        `UPDATE ${table} SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=? AND deleted_at IS NULL ${savedIds.length ? 'AND ' + (table === 'daftar_akta' ? 'id' : 'akta_id') + ' NOT IN (' + savedIds.map(() => '?').join(',') + ')' : ''}`,
-        [applicationId, ...savedIds],
+    const keepDeedIds = deeds.map((d: any) => String(d?.id || randomUUID()).slice(0, 36));
+    if (keepDeedIds.length > 0) {
+      const ph = keepDeedIds.map(() => '?').join(',');
+      await conn.execute(
+        `UPDATE crm_fap_legal_deeds
+         SET deleted_at = CURRENT_TIMESTAMP(3), is_selected = 0, updated_at = CURRENT_TIMESTAMP(3)
+         WHERE application_id = ? AND deleted_at IS NULL AND id NOT IN (${ph})`,
+        [applicationId, ...keepDeedIds],
       );
-    const estDeed = deeds.find((d: any) => d.type === 'establishment');
-    if (estDeed && estDeed.deedNumber) {
-      await c.execute(
-        'UPDATE new_application_fap_stage f JOIN all_applications a ON a.id_fap_stage = f.id_fap_stage SET f.establishment_act_no = ?, f.establishment_date = ? WHERE a.application_id = ?',
-        [estDeed.deedNumber, estDeed.deedDate ? String(estDeed.deedDate).slice(0, 10) : null, applicationId],
+      await conn.execute(
+        `UPDATE crm_fap_legal_stakeholders
+         SET is_active = 0, deleted_at = CURRENT_TIMESTAMP(3), updated_at = CURRENT_TIMESTAMP(3)
+         WHERE application_id = ? AND deleted_at IS NULL AND deed_id NOT IN (${ph})`,
+        [applicationId, ...keepDeedIds],
+      );
+    } else {
+      await conn.execute(
+        `UPDATE crm_fap_legal_deeds
+         SET deleted_at = CURRENT_TIMESTAMP(3), is_selected = 0, updated_at = CURRENT_TIMESTAMP(3)
+         WHERE application_id = ? AND deleted_at IS NULL`,
+        [applicationId],
+      );
+      await conn.execute(
+        `UPDATE crm_fap_legal_stakeholders
+         SET is_active = 0, deleted_at = CURRENT_TIMESTAMP(3), updated_at = CURRENT_TIMESTAMP(3)
+         WHERE application_id = ? AND deleted_at IS NULL`,
+        [applicationId],
       );
     }
-    const amendments = deeds
-      .filter((d: any) => d.type === 'amendment' && d.deedDate)
-      .sort(
-        (a: any, b: any) =>
-          String(b.deedDate).localeCompare(String(a.deedDate)) ||
-          String(b.createdAt || '').localeCompare(String(a.createdAt || '')),
-      );
-    if (amendments.length > 0 && amendments[0].deedNumber) {
-      await c.execute(
-        'UPDATE new_application_pre_analisis p JOIN all_applications a ON a.id_pre_analysis = p.id_pre_analysis SET p.latest_deed_no = ?, p.latest_deed_date = ? WHERE a.application_id = ?',
+
+    const latestIndex = deeds.length - 1;
+    let estDeedNo: string | null = null;
+    let estDeedDate: string | null = null;
+    let latestDeedNo: string | null = null;
+    let latestDeedDate: string | null = null;
+
+    for (let i = 0; i < deeds.length; i++) {
+      const d = deeds[i];
+      const deedId = keepDeedIds[i];
+      const isEstablishment = String(d?.type || '').toLowerCase() === 'establishment';
+      const deedType: 'ESTABLISHMENT' | 'AMENDMENT' = isEstablishment ? 'ESTABLISHMENT' : 'AMENDMENT';
+      const deedNumber = cleanNullableString(d?.deedNumber)?.slice(0, 255) || 'DRAFT';
+      const deedDate = dateStr(d?.deedDate) || new Date().toISOString().slice(0, 10);
+      const deedStatus = enumOrNull(d?.deedStatus, ['ACTIVE', 'INACTIVE']) || 'ACTIVE';
+      const isSelected = selectedDeedId ? deedId === selectedDeedId : i === latestIndex;
+      const isLatest = i === latestIndex;
+
+      if (isEstablishment) {
+        estDeedNo = cleanNullableString(d?.deedNumber)?.slice(0, 150) ?? estDeedNo;
+        estDeedDate = dateStr(d?.deedDate) ?? estDeedDate;
+      }
+      if (cleanNullableString(d?.deedNumber)) {
+        latestDeedNo = cleanNullableString(d?.deedNumber)?.slice(0, 150) ?? latestDeedNo;
+        latestDeedDate = dateStr(d?.deedDate) ?? latestDeedDate;
+      }
+
+      await conn.execute(
+        `INSERT INTO crm_fap_legal_deeds (
+          id, application_id, deed_type, deed_number, deed_date, notary_name, deed_status,
+          valid_until, ministerial_decree_number, ministerial_decree_date, remarks,
+          representative_note, company_shareholder_note, is_selected, is_latest_deed, deleted_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL)
+        ON DUPLICATE KEY UPDATE
+          deed_type=VALUES(deed_type), deed_number=VALUES(deed_number), deed_date=VALUES(deed_date),
+          notary_name=VALUES(notary_name), deed_status=VALUES(deed_status), valid_until=VALUES(valid_until),
+          ministerial_decree_number=VALUES(ministerial_decree_number),
+          ministerial_decree_date=VALUES(ministerial_decree_date), remarks=VALUES(remarks),
+          representative_note=VALUES(representative_note),
+          company_shareholder_note=VALUES(company_shareholder_note),
+          is_selected=VALUES(is_selected), is_latest_deed=VALUES(is_latest_deed),
+          deleted_at=NULL, updated_at=CURRENT_TIMESTAMP(3)`,
         [
-          amendments[0].deedNumber,
-          amendments[0].deedDate ? String(amendments[0].deedDate).slice(0, 10) : null,
+          deedId,
           applicationId,
+          deedType,
+          deedNumber,
+          deedDate,
+          cleanNullableString(d?.notaryName)?.slice(0, 200) ?? null,
+          deedStatus,
+          dateStr(d?.validUntil),
+          cleanNullableString(d?.ministerialDecreeNumber)?.slice(0, 255) ?? null,
+          dateStr(d?.ministerialDecreeDate),
+          cleanNullableString(d?.remarks),
+          cleanNullableString(d?.representativeNote),
+          cleanNullableString(d?.companyShareholderNote),
+          isSelected ? 1 : 0,
+          isLatest ? 1 : 0,
         ],
       );
+
+      // Remark categories junction
+      await conn.execute('DELETE FROM crm_fap_legal_deed_remark_categories WHERE deed_id = ?', [deedId]);
+      const rawCats: unknown[] = [];
+      if (d?.remarkCategoryId) rawCats.push(d.remarkCategoryId);
+      if (Array.isArray(d?.remarkCategoryIds)) rawCats.push(...d.remarkCategoryIds);
+      const seenCatIds = new Set<string>();
+      for (const rc of rawCats) {
+        const normCode = normalizeRemarkCategoryCode(rc);
+        if (!normCode) continue;
+        const rcId = await resolveMasterId('crm_master_legal_remark_categories', normCode, undefined, conn as any);
+        if (!rcId || seenCatIds.has(rcId)) continue;
+        seenCatIds.add(rcId);
+        await conn.execute(
+          `INSERT INTO crm_fap_legal_deed_remark_categories (id, deed_id, remark_category_id)
+           VALUES (?,?,?)`,
+          [randomUUID(), deedId, rcId],
+        );
+      }
+
+      // Preserve review state + extended deed UI metadata relationally in crm_fap_legal_deed_reviews
+      const [revRows] = await conn.query<any[]>(
+        'SELECT * FROM crm_fap_legal_deed_reviews WHERE application_id = ? AND deed_id = ? LIMIT 1',
+        [applicationId, deedId],
+      );
+      const revRow = revRows[0];
+      const nextReview = d?.review || {
+        status: revRow?.workflow_status || 'DRAFT',
+        revision: Number(revRow?.revision || 1),
+      };
+      const dbStatus = mapReviewStatus(nextReview.status);
+      const revId = revRow?.id || randomUUID();
+
+      await conn.execute(
+        `INSERT INTO crm_fap_legal_deed_reviews (
+          id, application_id, deed_id, review_status, source, deed_created_at,
+          workflow_status, revision, document_id,
+          submitted_by_id, submitted_by, submitted_at,
+          checked_by_id, checked_by, checked_at,
+          rejected_by, rejected_at, rejection_reason,
+          correction_by, correction_at, correction_note,
+          info_added, approved_by, approved_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ON DUPLICATE KEY UPDATE
+          review_status = VALUES(review_status),
+          source = VALUES(source),
+          deed_created_at = COALESCE(VALUES(deed_created_at), deed_created_at),
+          workflow_status = VALUES(workflow_status),
+          revision = VALUES(revision),
+          document_id = VALUES(document_id),
+          submitted_by_id = VALUES(submitted_by_id),
+          submitted_by = VALUES(submitted_by),
+          submitted_at = VALUES(submitted_at),
+          checked_by_id = VALUES(checked_by_id),
+          checked_by = VALUES(checked_by),
+          checked_at = VALUES(checked_at),
+          rejected_by = VALUES(rejected_by),
+          rejected_at = VALUES(rejected_at),
+          rejection_reason = VALUES(rejection_reason),
+          correction_by = VALUES(correction_by),
+          correction_at = VALUES(correction_at),
+          correction_note = VALUES(correction_note),
+          info_added = COALESCE(VALUES(info_added), info_added),
+          approved_by = COALESCE(VALUES(approved_by), approved_by),
+          approved_at = COALESCE(VALUES(approved_at), approved_at),
+          updated_at = CURRENT_TIMESTAMP(3)`,
+        [
+          revId,
+          applicationId,
+          deedId,
+          dbStatus,
+          d?.source || revRow?.source || 'manual',
+          d?.createdAt || revRow?.deed_created_at || new Date().toISOString(),
+          String(nextReview.status || 'DRAFT').slice(0, 30),
+          Number(nextReview.revision || 1),
+          nextReview.documentId ?? revRow?.document_id ?? null,
+          nextReview.submittedById ?? revRow?.submitted_by_id ?? null,
+          nextReview.submittedBy ?? revRow?.submitted_by ?? null,
+          nextReview.submittedAt ?? revRow?.submitted_at ?? null,
+          nextReview.checkedById !== undefined ? nextReview.checkedById : revRow?.checked_by_id ?? null,
+          nextReview.checkedBy !== undefined ? nextReview.checkedBy : revRow?.checked_by ?? null,
+          nextReview.checkedAt !== undefined ? nextReview.checkedAt : revRow?.checked_at ?? null,
+          nextReview.rejectedBy !== undefined ? nextReview.rejectedBy : revRow?.rejected_by ?? null,
+          nextReview.rejectedAt !== undefined ? nextReview.rejectedAt : revRow?.rejected_at ?? null,
+          nextReview.rejectionReason !== undefined ? nextReview.rejectionReason : revRow?.rejection_reason ?? null,
+          nextReview.correctionBy !== undefined ? nextReview.correctionBy : revRow?.correction_by ?? null,
+          nextReview.correctionAt !== undefined ? nextReview.correctionAt : revRow?.correction_at ?? null,
+          nextReview.correctionNote !== undefined ? nextReview.correctionNote : revRow?.correction_note ?? null,
+          d?.infoAdded !== undefined ? d.infoAdded : revRow?.info_added ?? null,
+          nextReview.approvedBy ?? revRow?.approved_by ?? null,
+          d?.approvedAt ? new Date(d.approvedAt) : revRow?.approved_at ?? null,
+        ],
+      );
+
+      await syncDeedReviewChildren(conn, revId, applicationId, deedId, {
+        reviewHistory: Array.isArray(d?.reviewHistory) ? d.reviewHistory : undefined,
+        approvedSnapshot: d?.approvedSnapshot,
+        comparisonBefore: nextReview.comparisonBefore,
+        parties: d?.parties,
+        categoryRemarks: d?.categoryRemarks,
+      });
+
+      // Stakeholders for this deed
+      const deedStakeholders = Array.isArray(d?.stakeholders)
+        ? d.stakeholders
+        : isSelected && Array.isArray(incoming?.stakeholders)
+          ? incoming.stakeholders
+          : [];
+
+      await conn.execute(
+        `UPDATE crm_fap_legal_stakeholders
+         SET is_active = 0, deleted_at = CURRENT_TIMESTAMP(3), updated_at = CURRENT_TIMESTAMP(3)
+         WHERE deed_id = ? AND is_active = 1`,
+        [deedId],
+      );
+
+      for (const s of deedStakeholders) {
+        if (!s) continue;
+        const stId = String(s.id || randomUUID()).slice(0, 36);
+        const {ids: loc} = await stakeholderLocationNames(conn, s);
+        const [repTypeId, posId, desId] = await Promise.all([
+          resolveMasterId('crm_master_legal_representative_types', s.representativeType, undefined, conn as any),
+          resolveMasterId('crm_master_stakeholder_positions', s.position, undefined, conn as any),
+          resolveMasterId('crm_master_legal_designations', s.designation, undefined, conn as any),
+        ]);
+        const {firstName, middleName, lastName} = splitFullName(s);
+        const dob = dateStr(s.dateOfBirth);
+        const calcAge = dob ? ageFromDateOfBirth(dob) : null;
+
+        await conn.execute(
+          `INSERT INTO crm_fap_legal_stakeholders (
+            id, deed_id, application_id, representative_type_id, position_id, designation_id,
+            stakeholder_type, is_signatory, id_type, id_number, id_number_secondary,
+            title, first_name, middle_name, last_name, date_of_birth, age_years, age_months,
+            marital_status, occupation, email, mobile_phone, gender,
+            share_percentage, deposited_capital, primary_capital, citizenship,
+            country_id, province_id, city_id, district_id, village_id, postal_code_id,
+            foreign_region_text, rt, rw, address, is_inherited, source_deed_id,
+            deleted_at, is_active
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,NULL,1)
+          ON DUPLICATE KEY UPDATE
+            deed_id=VALUES(deed_id), representative_type_id=VALUES(representative_type_id),
+            position_id=VALUES(position_id), designation_id=VALUES(designation_id),
+            stakeholder_type=VALUES(stakeholder_type), is_signatory=VALUES(is_signatory),
+            id_type=VALUES(id_type), id_number=VALUES(id_number),
+            id_number_secondary=VALUES(id_number_secondary), title=VALUES(title),
+            first_name=VALUES(first_name), middle_name=VALUES(middle_name), last_name=VALUES(last_name),
+            date_of_birth=VALUES(date_of_birth), age_years=VALUES(age_years), age_months=VALUES(age_months),
+            marital_status=VALUES(marital_status), occupation=VALUES(occupation),
+            email=VALUES(email), mobile_phone=VALUES(mobile_phone), gender=VALUES(gender),
+            share_percentage=VALUES(share_percentage), deposited_capital=VALUES(deposited_capital),
+            primary_capital=VALUES(primary_capital), citizenship=VALUES(citizenship),
+            country_id=VALUES(country_id), province_id=VALUES(province_id), city_id=VALUES(city_id),
+            district_id=VALUES(district_id), village_id=VALUES(village_id), postal_code_id=VALUES(postal_code_id),
+            foreign_region_text=VALUES(foreign_region_text), rt=VALUES(rt), rw=VALUES(rw),
+            address=VALUES(address), is_inherited=VALUES(is_inherited), source_deed_id=VALUES(source_deed_id),
+            deleted_at=NULL, is_active=1, updated_at=CURRENT_TIMESTAMP(3)`,
+          [
+            stId,
+            deedId,
+            applicationId,
+            repTypeId,
+            posId,
+            desId,
+            enumOrNull(s.stakeholderType || s.type, ['INDIVIDUAL', 'CORPORATE']) || 'INDIVIDUAL',
+            enumOrNull(s.isSignatory, ['YES', 'NO']),
+            normalizeIdType(s.idType),
+            shortCode(s.idNumber, 50),
+            shortCode(s.idNumberSecondary, 50),
+            enumOrNull(s.title, ['MR', 'MRS', 'MS', 'DR', 'OTHER']),
+            firstName,
+            middleName,
+            lastName,
+            dob,
+            calcAge ? Number(calcAge.ageYears) : cleanNullableInt(s.ageYears),
+            calcAge ? Number(calcAge.ageMonths) : cleanNullableInt(s.ageMonths),
+            enumOrNull(s.maritalStatus, ['SINGLE', 'MARRIED', 'DIVORCED', 'WIDOWED', 'OTHER']),
+            shortCode(s.occupation, 100),
+            shortCode(s.email, 255),
+            shortCode(s.mobilePhone, 30),
+            enumOrNull(s.gender, ['MALE', 'FEMALE', 'OTHER']),
+            cleanDecimal(s.sharePercentage, 0) ?? 0,
+            cleanDecimal(s.depositedCapital),
+            cleanDecimal(s.primaryCapital),
+            normalizeCitizenship(s.citizenship || s.nationalityType),
+            loc.countryId,
+            loc.provinceId,
+            loc.cityId,
+            loc.districtId,
+            loc.villageId,
+            loc.postalCodeId,
+            shortCode(s.foreignRegionText, 255),
+            shortCode(s.rt, 5),
+            shortCode(s.rw, 5),
+            cleanNullableString(s.address),
+            s.isInherited ? 1 : 0,
+            cleanNullableString(s.sourceDeedId)?.slice(0, 36) ?? null,
+          ],
+        );
+
+        await linkStakeholderIdentityDocuments(conn, stId, s);
+      }
     }
-    await c.commit();
+
+    // Sync Establishment & Latest Deed numbers back to Application Profile + Master Business Partner
+    if (estDeedNo || latestDeedNo) {
+      await conn.execute(
+        `UPDATE crm_fap_application_profiles
+         SET establishment_act_no = COALESCE(?, establishment_act_no),
+             establishment_date = COALESCE(?, establishment_date),
+             latest_deed_no = COALESCE(?, latest_deed_no),
+             latest_deed_date = COALESCE(?, latest_deed_date),
+             updated_at = CURRENT_TIMESTAMP(3)
+         WHERE application_id = ?`,
+        [estDeedNo, estDeedDate, latestDeedNo, latestDeedDate, applicationId],
+      );
+      await conn.execute(
+        `UPDATE crm_master_business_partners bp
+         JOIN crm_applications a ON a.customer_id = bp.id
+         SET bp.establishment_act_no = COALESCE(?, bp.establishment_act_no),
+             bp.establishment_date = COALESCE(?, bp.establishment_date),
+             bp.latest_deed_no = COALESCE(?, bp.latest_deed_no),
+             bp.latest_deed_date = COALESCE(?, bp.latest_deed_date),
+             bp.updated_at = CURRENT_TIMESTAMP(3)
+         WHERE a.id = ?`,
+        [estDeedNo, estDeedDate, latestDeedNo, latestDeedDate, applicationId],
+      );
+    }
+
+    await conn.commit();
   } catch (e) {
-    await c.rollback();
+    await conn.rollback();
     throw e;
   } finally {
-    c.release();
+    conn.release();
   }
+
   return readLegal(applicationId);
 }

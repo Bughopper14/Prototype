@@ -21,6 +21,7 @@ import {useEffect, useMemo, useState} from 'react';
 
 export type StakeholderModalDialogProps = {
   modal: any;
+  applicationId?: string;
   editorLocked: boolean;
   formError: string;
   onClose: () => void;
@@ -33,6 +34,7 @@ export type StakeholderModalDialogProps = {
 
 export function useStakeholderModal({
   modal,
+  applicationId,
   editorLocked,
   formError,
   onClose,
@@ -164,7 +166,7 @@ export function useStakeholderModal({
       } else {
         onChangeValue({
           ...curVal,
-          idType: 'NONE',
+          idType: '',
         });
       }
     }
@@ -278,7 +280,10 @@ export function useStakeholderModal({
           NPWP: extractNpwpTextFromImage,
           KITAS: extractKitasTextFromImage,
         }[targetType];
-        const extracted = await extract(f, f.name);
+        const extracted = await extract(f, f.name, {
+          applicationId: modal?.applicationId ?? applicationId,
+          stakeholderId: curVal.id,
+        });
         onChangeValue(mergeExtractedDoc(curVal, targetType, extracted, dataUrl, f));
       } catch (err: any) {
         console.warn('OCR error:', err);

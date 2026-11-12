@@ -14,11 +14,18 @@ export function mergeExtractedDoc(
   f: {name: string; type: string},
 ) {
   let nextVal = {...curVal};
+  const storedUrl = extracted?.fileUrl || dataUrl;
+  const storedName = extracted?.fileName || f.name;
+  const storedPath = extracted?.documentPath || undefined;
+  const ocrId = extracted?.ocrRecordId || undefined;
   if (targetType === 'KTP') {
     nextVal = {
       ...nextVal,
-      ktpUrl: dataUrl,
-      ktpFileName: f.name,
+      ktpUrl: storedUrl,
+      ktpFileName: storedName,
+      ktpDocumentPath: storedPath,
+      ktpOcrId: ocrId,
+      ktpRemoved: false,
       ktpMime: f.type,
       ktpOcrText: extracted.rawText || '',
       ktpData: extracted,
@@ -66,8 +73,11 @@ export function mergeExtractedDoc(
   } else if (targetType === 'PASSPORT') {
     nextVal = {
       ...nextVal,
-      passportUrl: dataUrl,
-      passportFileName: f.name,
+      passportUrl: storedUrl,
+      passportFileName: storedName,
+      passportDocumentPath: storedPath,
+      passportOcrId: ocrId,
+      passportRemoved: false,
       passportMime: f.type,
       passportOcrText: extracted.rawText || '',
       passportData: extracted,
@@ -99,8 +109,11 @@ export function mergeExtractedDoc(
   } else if (targetType === 'NPWP') {
     nextVal = {
       ...nextVal,
-      npwpUrl: dataUrl,
-      npwpFileName: f.name,
+      npwpUrl: storedUrl,
+      npwpFileName: storedName,
+      npwpDocumentPath: storedPath,
+      npwpOcrId: ocrId,
+      npwpRemoved: false,
       npwpMime: f.type,
       npwpOcrText: extracted.rawText || '',
       npwpData: extracted,
@@ -125,8 +138,11 @@ export function mergeExtractedDoc(
   } else if (targetType === 'KITAS') {
     nextVal = {
       ...nextVal,
-      kitasUrl: dataUrl,
-      kitasFileName: f.name,
+      kitasUrl: storedUrl,
+      kitasFileName: storedName,
+      kitasDocumentPath: storedPath,
+      kitasOcrId: ocrId,
+      kitasRemoved: false,
       kitasMime: f.type,
       kitasOcrText: extracted.rawText || '',
       kitasData: extracted,
@@ -271,6 +287,9 @@ export function applyParsedDoc(curVal: any, docType: StakeholderDocType, parsed:
 const CLEARED = (prefix: string) => ({
   [prefix + 'Url']: undefined,
   [prefix + 'FileName']: undefined,
+  [prefix + 'DocumentPath']: undefined,
+  [prefix + 'OcrId']: undefined,
+  [prefix + 'Removed']: true,
   [prefix + 'Mime']: undefined,
   [prefix + 'OcrText']: '',
   [prefix + 'Data']: undefined,
@@ -279,5 +298,11 @@ const CLEARED = (prefix: string) => ({
 /** The stakeholder without the file (and OCR text) of one document type. */
 export function withoutDoc(curVal: any, docType: StakeholderDocType) {
   const prefix = {KTP: 'ktp', PASSPORT: 'passport', NPWP: 'npwp', KITAS: 'kitas'}[docType];
-  return {...curVal, ...CLEARED(prefix)};
+  const removedUrl = curVal?.[prefix + 'Url'];
+  const clearsPrimary = removedUrl && curVal?.fileUrl === removedUrl;
+  return {
+    ...curVal,
+    ...CLEARED(prefix),
+    ...(clearsPrimary ? {fileUrl: undefined, document_path: undefined, file_name: undefined} : {}),
+  };
 }

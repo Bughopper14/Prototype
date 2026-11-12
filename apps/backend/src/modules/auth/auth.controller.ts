@@ -52,7 +52,7 @@ export class AuthController {
     if (!parsed.success) return fail('Enter username and password', 422);
     const {username, password, next} = parsed.data;
 
-    const [rows] = await pool.query<any[]>('SELECT * FROM users WHERE username = ? AND is_active = 1', [
+    const [rows] = await pool.query<any[]>('SELECT * FROM users_users WHERE username = ? AND is_active = 1', [
       username.trim(),
     ]);
     const user = rows[0];
@@ -68,9 +68,14 @@ export class AuthController {
     const admin = await isAdminUser(user.id, user.username);
     const timeout = await userTimeoutMinutes(user.id, admin);
     const unlimited = timeout === 0 || admin;
-    const sessionId = await createSessionRecord(user.id, admin, ip, req.headers.get('user-agent'));
-    await logAudit(user.id, 'User Login', 'Portal Hub', ip);
-    res.setHeader('Set-Cookie', sessionCookie(signSession(user.id, sessionId, unlimited), req.headers, unlimited));
+    const {sid} = await createSessionRecord(
+      user.id,
+      ip,
+      req.headers.get('user-agent') || null,
+      'Portal Hub',
+    );
+    await logAudit(user.id, 'User Login', ip, 'Portal Hub');
+    res.setHeader('Set-Cookie', sessionCookie(signSession(user.id, sid, unlimited), req.headers, unlimited));
     return isForm ? res.redirect(303, safeNext(next)) : {ok: true, redirect: safeNext(next)};
   }
 
@@ -92,18 +97,18 @@ export class AuthController {
     if (!current_password || !new_password) return {success: false, error: 'Semua field wajib diisi.'};
     if (String(new_password).length < 6) return {success: false, error: 'Password baru minimal 6 karakter.'};
 
-    const [rows] = await pool.query<any[]>('SELECT password_hash FROM users WHERE id = ? AND is_active = 1', [
+    const [rows] = await pool.query<any[]>('SELECT password_hash FROM users_users WHERE id = ? AND is_active = 1', [
       actor.portalUserId,
     ]);
     if (!rows[0]) return {success: false, error: 'User tidak ditemukan.'};
     if (!verifyPassword(current_password, rows[0].password_hash))
       return {success: false, error: 'Password saat ini salah.'};
 
-    await pool.query('UPDATE users SET password_hash = ? WHERE id = ?', [
+    await pool.query('UPDATE users_users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?', [
       hashPassword(new_password),
       actor.portalUserId,
     ]);
-    await logAudit(actor.portalUserId, 'Changed Password', 'Portal Hub', clientIp(req));
+    await logAudit(actor.portalUserId, 'Changed Password', clientIp(req), 'Portal Hub');
     return {success: true};
   }
 
@@ -122,8 +127,8 @@ export class AuthController {
   private async endCurrentSession(req: ApiRequest, res: ApiResponse) {
     const actor = await currentActor(req);
     if (actor) {
-      await endSession(actor.sessionId);
-      await logAudit(actor.portalUserId, 'User Logout', 'Portal Hub', clientIp(req));
+      if (actor.sessionId) await endSession(actor.sessionId);
+      await logAudit(actor.portalUserId, 'User Logout', clientIp(req), 'Portal Hub');
     }
     res.setHeader('Set-Cookie', sessionCookie(null, req.headers));
   }

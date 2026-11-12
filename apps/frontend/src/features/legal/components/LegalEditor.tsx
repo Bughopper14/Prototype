@@ -68,6 +68,7 @@ export function LegalEditor(props: LegalEditorProps) {
         {stakeholderModal && (
           <StakeholderModalDialog
             modal={stakeholderModal}
+            applicationId={props.application?.id}
             editorLocked={editorLocked}
             formError={formError}
             onClose={() => {

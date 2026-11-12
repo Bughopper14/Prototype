@@ -88,8 +88,6 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   nib: 'fap-cell-nib',
   nibDate: 'fap-cell-nib',
   npwp: 'fap-cell-npwp',
-  sktNo: 'fap-cell-npwp',
-  sppkpNo: 'fap-cell-npwp',
 
   // PIC Information
   picName: 'fap-cell-picName',

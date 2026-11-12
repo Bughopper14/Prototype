@@ -27,15 +27,29 @@ def _log(message: str) -> None:
     sys.stderr.write(f"[ocr] {message}\n")
 
 
-def _ocr_image(image: np.ndarray) -> Boxes:
-    """RapidOCR first; if it finds nothing try auto-orientation, then Tesseract."""
+def _ocr_image(image: np.ndarray, doc_type: str = "") -> Tuple[Boxes, np.ndarray]:
+    """RapidOCR first; applies KTP orientation + stripe cleaning when scanning KTP, else standard fallback."""
+    if doc_type == "ktp":
+        oriented, _ = DocumentPreprocessor.orient_ktp_image(image, OCREngine.process_image)
+        clean_bgr, clean_gray, _ = DocumentPreprocessor.enhance_ktp_for_ocr(oriented)
+        boxes = OCREngine.process_image(clean_bgr)
+        if boxes:
+            boxes = DocumentPreprocessor.refine_ktp_box_spacing(
+                clean_gray, boxes, OCREngine.get_engine()
+            )
+        else:
+            boxes = forms.TesseractEngine.process_image(clean_bgr)
+        return boxes, clean_bgr
+
     boxes = OCREngine.process_image(image)
+    work_img = image
     if not boxes:
-        oriented, _ = DocumentPreprocessor.auto_orient_image(image)
-        boxes = OCREngine.process_image(oriented)
+        work_img, _ = DocumentPreprocessor.auto_orient_image(image)
+        boxes = OCREngine.process_image(work_img)
     if not boxes:
         boxes = forms.TesseractEngine.process_image(image)
-    return boxes
+        work_img = image
+    return boxes, work_img
 
 
 def _digital_text_boxes(pdf) -> Boxes:
@@ -68,15 +82,16 @@ def _read_pdf(path: Path, doc_type: str) -> Tuple[Boxes, int]:
             return digital, page_count
 
         kind = "nib" if doc_type == "nib" or "nib" in path.name.lower() else (
-            "fap" if doc_type == "fap" or "fap" in path.name.lower() else "")
+            "fap" if doc_type == "fap" or "fap" in path.name.lower() else doc_type)
         matrix = pymupdf.Matrix(PDF_DPI.get(kind, DEFAULT_PDF_DPI) / 72.0, PDF_DPI.get(kind, DEFAULT_PDF_DPI) / 72.0)
         boxes: Boxes = []
         for index in range(min(page_count, MAX_PDF_PAGES.get(kind, DEFAULT_MAX_PDF_PAGES))):
             pixmap = pdf[index].get_pixmap(matrix=matrix, alpha=False)
             rgb = np.frombuffer(pixmap.samples, dtype=np.uint8).reshape(pixmap.h, pixmap.w, pixmap.n)
-            page_boxes = _ocr_image(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR))
+            page_boxes, work_img = _ocr_image(cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR), doc_type=doc_type)
+            wh, ww = work_img.shape[:2]
             for box in page_boxes:
-                box.update(page=index + 1, page_width=pixmap.w, page_height=pixmap.h)
+                box.update(page=index + 1, page_width=ww, page_height=wh)
             boxes.extend(page_boxes)
             # NIB: the first page already carries the 13-digit number and the company identity
             if kind == "nib" and re.search(r"\b\d{13}\b", " ".join(b.get("text") or "" for b in page_boxes)):
@@ -86,22 +101,15 @@ def _read_pdf(path: Path, doc_type: str) -> Tuple[Boxes, int]:
         pdf.close()
 
 
-def _read_image(path: Path) -> Tuple[Boxes, int]:
+def _read_image(path: Path, doc_type: str = "") -> Tuple[Boxes, int]:
     image, page_count = DocumentPreprocessor.load_document(path)
     height, width = image.shape[:2]
     if max(height, width) > MAX_IMAGE_SIDE:
         scale = MAX_IMAGE_SIDE / max(height, width)
         image = cv2.resize(image, (int(width * scale), int(height * scale)), interpolation=cv2.INTER_AREA)
 
-    boxes = OCREngine.process_image(image)
-    if not boxes:
-        oriented, _ = DocumentPreprocessor.auto_orient_image(image)
-        deskewed, _ = DocumentPreprocessor.deskew_image(oriented)
-        boxes = OCREngine.process_image(deskewed)
-    if not boxes:
-        boxes = forms.TesseractEngine.process_image(image)
-
-    height, width = image.shape[:2]
+    boxes, work_img = _ocr_image(image, doc_type=doc_type)
+    height, width = work_img.shape[:2]
     for box in boxes:
         box.update(page=1, page_width=width, page_height=height)
     return boxes, page_count
@@ -186,7 +194,7 @@ def process_document(file_path: str, doc_type: str = "auto") -> Dict[str, Any]:
         except Exception as error:  # fall back to the image path below
             _log(f"PDF extraction note: {error}")
     if not boxes:
-        boxes, page_count = _read_image(path)
+        boxes, page_count = _read_image(path, doc_type)
 
     wrong = _wrong_document(doc_type, boxes)
     if wrong:

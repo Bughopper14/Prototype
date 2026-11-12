@@ -38,8 +38,6 @@ export function sanitizeCustomerForDraft(customer: any): Record<string, any> {
     nib: customer.nib || '',
     nibDate: customer.nibDate ? String(customer.nibDate).slice(0, 10) : '',
     npwp: /^0+$/.test(npwpRaw) ? '' : customer.npwp || '',
-    sktNo: customer.sktNo || '',
-    sppkpNo: customer.sppkpNo || '',
     establishmentActNo: customer.establishmentActNo || '',
     establishmentDate: customer.establishmentDate ? String(customer.establishmentDate).slice(0, 10) : '',
   };

@@ -27,9 +27,10 @@ async function main() {
   try {
     await admin.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4`);
     await admin.query(`USE \`${database}\``);
-    for (const file of ['schema.sql', 'seed.sql']) {
-      await admin.query(await fs.readFile(path.resolve('db', file), 'utf8'));
-      console.log(`applied db/${file}`);
+    const storageDir = path.resolve('../../storage');
+    for (const file of ['plan-schema.sql', 'plan-seed.sql']) {
+      await admin.query(await fs.readFile(path.join(storageDir, file), 'utf8'));
+      console.log(`applied storage/${file}`);
     }
   } finally {
     await admin.end();

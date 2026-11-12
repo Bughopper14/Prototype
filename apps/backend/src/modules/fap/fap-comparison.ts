@@ -75,6 +75,6 @@ export const latestFapFile = async (id: string) => {
 export async function clearFapDifferences(id: string, remarks: unknown) {
   if (remarks !== undefined) await saveFapRemarks(id, String(remarks || ''));
   const lock = await getSubmitLock(id);
-  await saveFapComparison(id, {...(lock.ocrComparison || {}), isFap: true, hasDifferences: false, diffs: []});
+  await saveFapComparison(id, {...(lock.ocrComparison || {}), isFap: true, status: 'APPROVED', hasDifferences: false, diffs: []});
   await syncSubmitLock(id);
 }

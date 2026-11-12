@@ -1,83 +1,68 @@
-/** Field lists and small helpers shared by the intake queries. */
-import {customerFields, profileFields, applicationOnlyProfileKeys} from '@liugong/shared';
+/** Shared helpers for CRM application intake & partner mapping against crm_liugong1. */
+import {cleanNullableString, parsePortalUserId} from '../../../core/db/crm-lookups';
 
-const fapCustomer = [
-  'companyName',
-  'companyType',
-  'nib',
-  'nibDate',
-  'npwp',
-  'establishmentActNo',
-  'establishmentDate',
-  'experienceYears',
-  'experienceMonths',
-];
-const fapProfile = [
-  'branchCode',
-  'companyAddress',
-  'province',
-  'city',
-  'district',
-  'village',
-  'rt',
-  'rw',
-  'postalCode',
-];
-export const fapFields = [
-  ...customerFields.filter(f => fapCustomer.includes(f.key)),
-  ...profileFields.filter(f => fapProfile.includes(f.key)),
-];
-export const preFields = [
-  ...customerFields.filter(f => !fapCustomer.includes(f.key)),
-  ...profileFields.filter(
-    f => f.key !== 'customerStatus' && !fapProfile.includes(f.key) && !fapCustomer.includes(f.key),
-  ),
-];
-export const directoryFields = [
-  ...customerFields,
-  ...profileFields.filter(f => f.key !== 'customerStatus' && !applicationOnlyProfileKeys.includes(f.key)),
-];
-export const column = (s: string) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
-export const picColumn = (s: string) =>
-  s === 'district'
-    ? 'kecamatan'
-    : s === 'village'
-      ? 'kelurahan'
-      : s === 'currentAddress'
-        ? 'alamat_pic'
-        : column(s);
-export const same = (a: any, b: any) => String(a ?? '') === String(b ?? '');
-export const databaseValue = (value: any, type?: string) =>
-  value instanceof Date ? value.toISOString().slice(0, 10) : value;
-export const fieldType = (f: any) =>
-  f.key === 'experienceYears' || f.key === 'experienceMonths'
-    ? 'INT'
-    : f.type === 'date'
-      ? 'DATE'
-      : f.type === 'number'
-        ? 'INT'
-        : 'TEXT';
-export const sanitizeFieldValue = (value: any, type?: string) => {
-  if (value === undefined || value === null) return null;
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) return null;
-    if (type === 'date') return trimmed.slice(0, 10);
-    return trimmed;
+export const sanitizeFieldValue = (value: any, type?: string): any => {
+  if (value === undefined || value === null || value === '') return null;
+  if (type === 'number' || type === 'decimal' || type === 'currency') {
+    const num = Number(String(value).replace(/,/g, ''));
+    return Number.isFinite(num) ? num : null;
   }
-  if (type === 'date') return null;
-  if (type === 'number' && typeof value === 'number' && Number.isNaN(value)) return null;
-  return value;
+  if (type === 'date') return dateStr(value);
+  return String(value).trim() || null;
 };
-export const readFields = (row: any, fields: readonly any[]) =>
-  Object.fromEntries(fields.map(f => [f.key, databaseValue(row[column(f.key)], f.type)]));
-export const inputFields = (input: any, fields: readonly any[]) =>
-  Object.fromEntries(fields.map(f => [column(f.key), sanitizeFieldValue(input?.[f.key], f.type)]));
-export const fieldValues = (input: any, fields: readonly any[]) =>
-  fields.map(f => sanitizeFieldValue(input?.[f.key], f.type));
-export const customerDirectoryValues = (customer: any, profile: any, relationship: string) => ({
-  ...inputFields({...customer, ...profile}, directoryFields),
-  customer_relationship: relationship,
-});
+
+export function dateStr(v: unknown): string | null {
+  if (v === undefined || v === null || v === '') return null;
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    const yyyy = v.getFullYear();
+    const mm = String(v.getMonth() + 1).padStart(2, '0');
+    const dd = String(v.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const s = String(v).trim();
+  if (!s || s === 'null' || s === 'undefined') return null;
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+export function cleanDecimal(v: unknown, fallback: number | null = null): number | null {
+  if (v === undefined || v === null || v === '') return fallback;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : fallback;
+  const raw = String(v).trim().replace(/[^\d.,-]/g, '');
+  if (!raw) return fallback;
+  let normalized = raw;
+  if ((raw.match(/\./g) || []).length > 1) normalized = raw.replace(/\./g, '').replace(',', '.');
+  else if (raw.includes('.') && raw.includes(',')) normalized = raw.replace(/\./g, '').replace(',', '.');
+  else if ((raw.match(/,/g) || []).length > 1) normalized = raw.replace(/,/g, '');
+  else normalized = raw.replace(',', '.');
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+export function cleanInt(v: unknown, fallback = 0): number {
+  const num = cleanDecimal(v);
+  return num === null ? fallback : Math.max(0, Math.trunc(num));
+}
+
+export function cleanNullableInt(v: unknown): number | null {
+  const num = cleanDecimal(v);
+  return num === null ? null : Math.trunc(num);
+}
+
+export function actorMeta(actor: any) {
+  const userId = parsePortalUserId(actor?.id);
+  const actorName = String(actor?.name || actor?.username || 'System').slice(0, 150);
+  const actorRole = String(actor?.role || 'SYSTEM').slice(0, 30);
+  return {userId, actorName, actorRole};
+}
+
+export const shortCode = (v: unknown, maxLen: number): string | null => {
+  const s = cleanNullableString(v);
+  return s ? s.slice(0, maxLen) : null;
+};
+
 export const mysqlError = (message: string, status = 422) => Object.assign(new Error(message), {status});

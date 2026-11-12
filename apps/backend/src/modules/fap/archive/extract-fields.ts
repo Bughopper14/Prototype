@@ -20,8 +20,6 @@ export function extractArchiveFields(currentApp: any) {
       ? String(currentApp?.nibDate || cust.nibDate || prof.nibDate).slice(0, 10)
       : null;
   const npwp = currentApp?.npwp || cust.npwp || prof.npwp || null;
-  const sktNo = currentApp?.sktNo || cust.sktNo || prof.sktNo || null;
-  const sppkpNo = currentApp?.sppkpNo || cust.sppkpNo || prof.sppkpNo || null;
   const establishmentActNo =
     currentApp?.establishmentActNo || cust.establishmentActNo || prof.establishmentActNo || null;
   const establishmentDate =
@@ -114,8 +112,6 @@ export function extractArchiveFields(currentApp: any) {
       establishmentDate,
       latestDeedNo,
       latestDeedDate,
-      sktNo,
-      sppkpNo,
       phoneFax,
       email,
       website,
@@ -164,8 +160,6 @@ export function extractArchiveFields(currentApp: any) {
     nib,
     nibDate,
     npwp,
-    sktNo,
-    sppkpNo,
     establishmentActNo,
     establishmentDate,
     latestDeedNo,

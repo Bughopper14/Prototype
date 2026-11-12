@@ -13,8 +13,11 @@ export function mergeKtpScan(
   const f = file;
   const nextVal: any = {
     ...currentVal,
-    ktpUrl: dataUrl,
-    ktpFileName: f.name,
+    ktpUrl: parsed?.fileUrl || dataUrl,
+    ktpFileName: parsed?.fileName || f.name,
+    ktpDocumentPath: parsed?.documentPath || undefined,
+    ktpOcrId: parsed?.ocrRecordId || undefined,
+    ktpRemoved: false,
     ktpMime: f.type,
     ktpOcrText: parsed.rawText || '',
   };

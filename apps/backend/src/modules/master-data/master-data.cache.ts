@@ -1,62 +1,74 @@
-import zlib from 'node:zlib';
-import type {PoolConnection} from 'mysql2/promise';
-import {pool} from '../../core/db/pool';
-import {defaultMasterCatalog, type MasterCatalog} from '@liugong/shared';
-import {locationCatalog} from './repositories/location.repository';
-import {customerMasterCatalog} from './repositories/customer-masters.repository';
+import {gzipSync} from 'node:zlib';
+import type {MasterCatalog} from '@liugong/shared';
+import {clearCrmLookupCache} from '../../core/db/crm-lookups';
 import {businessMasterCatalog} from './repositories/business-masters.repository';
-import {legalMasterCatalog} from './repositories/legal-masters.repository';
-import {financeMasterCatalog} from './repositories/finance-masters.repository';
-import {equipmentMasterCatalog} from './repositories/equipment-masters.repository';
+import {customerMasterCatalog} from './repositories/customer-masters.repository';
 import {documentMasterCatalog} from './repositories/document-masters.repository';
+import {equipmentMasterCatalog} from './repositories/equipment-masters.repository';
+import {financeMasterCatalog} from './repositories/finance-masters.repository';
+import {legalMasterCatalog} from './repositories/legal-masters.repository';
+import {locationCatalog} from './repositories/location.repository';
 import {preanalysisMasterCatalog} from './repositories/preanalysis-masters.repository';
 
-/** The merged master-data catalog (about 15 MB of JSON), cached in memory together with its gzip form. */
+export type Queryable = any;
 
-let cachedCatalog: {catalog: any; revision: number} | null = null;
-let cachedGzip: Buffer | null = null;
-
-type Queryable = Pick<PoolConnection, 'query'>;
-
-export function invalidateMasterData() {
-  cachedCatalog = null;
-  cachedGzip = null;
+export interface MasterDataPayload {
+  catalog: MasterCatalog;
+  revision: number;
 }
 
-export const masterDataGzip = (data: unknown) =>
-  (cachedGzip ??= zlib.gzipSync(Buffer.from(JSON.stringify(data), 'utf-8')));
+let cachedData: MasterDataPayload | null = null;
+let cachedGzip: Buffer | null = null;
+let currentRevision = 1;
+let inFlight: Promise<MasterDataPayload> | null = null;
 
-export async function masterData(conn?: Queryable, forceRefresh = false) {
-  if (cachedCatalog && !forceRefresh && !conn) return cachedCatalog;
+export function invalidateMasterData(bumpRevision = false) {
+  if (bumpRevision) currentRevision += 1;
+  cachedData = null;
+  cachedGzip = null;
+  clearCrmLookupCache();
+}
 
-  const [rows] = await (conn || pool).query<any[]>('SELECT catalog, revision FROM master_data WHERE id = 1');
-  const raw = rows[0]?.catalog;
-  const stored = raw ? (typeof raw === 'string' ? JSON.parse(raw) : raw) : {};
-  const defaults = defaultMasterCatalog();
-  const merged: any = {...defaults, ...stored};
+export const masterDataGzip = (data: unknown) => {
+  if (data === cachedData && cachedGzip) return cachedGzip;
+  return gzipSync(JSON.stringify(data));
+};
 
-  // Location lists always include the built-in entries, even when a saved catalog predates them.
-  for (const key of ['district', 'village', 'postalCode'] as const) {
-    merged[key] = merged[key] || [];
-    const seen = new Set(merged[key].map((item: any) => item.value));
-    for (const item of (defaults as any)[key] || []) {
-      if (!seen.has(item.value)) {
-        merged[key].push(item);
-        seen.add(item.value);
-      }
-    }
+export async function masterData(_conn?: Queryable, forceRefresh = false): Promise<MasterDataPayload> {
+  if (cachedData && !forceRefresh) return cachedData;
+  if (inFlight && !forceRefresh) return inFlight;
+
+  inFlight = (async () => {
+    const empty: MasterCatalog = {};
+    const [cust, loc, biz, eq, fin, leg, doc, pa] = await Promise.all([
+      customerMasterCatalog(empty),
+      locationCatalog(empty),
+      businessMasterCatalog(empty),
+      equipmentMasterCatalog(empty),
+      financeMasterCatalog(empty),
+      legalMasterCatalog(empty),
+      documentMasterCatalog(empty),
+      preanalysisMasterCatalog(empty),
+    ]);
+    const merged: MasterCatalog = {
+      ...cust,
+      ...loc,
+      ...biz,
+      ...eq,
+      ...fin,
+      ...leg,
+      ...doc,
+      ...pa,
+    };
+    const payload: MasterDataPayload = {catalog: merged, revision: currentRevision};
+    cachedData = payload;
+    cachedGzip = gzipSync(JSON.stringify(payload));
+    return payload;
+  })();
+
+  try {
+    return await inFlight;
+  } finally {
+    inFlight = null;
   }
-
-  let catalog = await locationCatalog(merged as MasterCatalog);
-  catalog = await customerMasterCatalog(catalog);
-  catalog = await businessMasterCatalog(catalog);
-  catalog = await legalMasterCatalog(catalog);
-  catalog = await financeMasterCatalog(catalog);
-  catalog = await equipmentMasterCatalog(catalog);
-  catalog = await documentMasterCatalog(catalog);
-  catalog = await preanalysisMasterCatalog(catalog);
-
-  const result = {catalog, revision: rows[0]?.revision || 0};
-  if (!conn) cachedCatalog = result;
-  return result;
 }

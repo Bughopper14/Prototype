@@ -21,9 +21,9 @@ export class PortalController {
   async apps(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const apps = await many<PortalApp>(
       `SELECT a.id, a.app_name, a.url_path, a.description, a.icon_class, r.role_name
-     FROM applications a
-     JOIN user_app_roles uar ON a.id = uar.app_id
-     JOIN roles r ON uar.role_id = r.id
+     FROM users_applications a
+     JOIN users_user_app_roles uar ON a.id = uar.app_id
+     JOIN users_roles r ON uar.role_id = r.id
      WHERE uar.user_id = ? ORDER BY a.id`,
       [req.actor.portalUserId],
     );

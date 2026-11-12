@@ -1,93 +1,72 @@
-import {pool} from '../../../core/db/pool';
-import {auditTable} from '../../users/users.repository';
-import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import crypto from 'node:crypto';
-import {syncApplicationDocuments} from '../../documents/documents.repository';
+import type {MasterCatalog} from '@liugong/shared';
+import {clearCrmLookupCache, cleanNullableString, normalizeCode, resolveWorkflowStageByCode} from '../../../core/db/crm-lookups';
+import {pool} from '../../../core/db/pool';
 
-const table = 'master_document_jenis_dokumen_wajib';
-export async function initializeDocumentMasters(seed: MasterCatalog) {
-  if (!pool) return;
-  await pool.query(`CREATE TABLE IF NOT EXISTS ${table} (
-  id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
-  department VARCHAR(20) NOT NULL,is_required BOOLEAN NOT NULL DEFAULT FALSE,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL
- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-  await auditTable(table);
-  const [rows] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM ${table}`);
-  if (Number(rows[0].total) === 0)
-    for (const item of seed.documents)
-      await pool.execute(
-        `INSERT INTO ${table} (id,code,name,department,is_required,is_active) VALUES (?,?,?,?,?,?)`,
-        [
-          crypto.randomUUID(),
-          item.value,
-          item.name,
-          item.role || 'BS',
-          item.required ? 1 : 0,
-          item.active ? 1 : 0,
-        ],
-      );
+export async function initializeDocumentMasters(_seed: MasterCatalog) {
+  return;
 }
-export async function documentMasterCatalog(catalog: MasterCatalog): Promise<MasterCatalog> {
-  if (!pool) return catalog;
+
+export async function documentMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
+  if (!pool) return {documents: []};
   const [rows] = await pool.query<any[]>(
-    `SELECT code,name,department,is_required,is_active FROM ${table} ORDER BY created_at,id`,
+    'SELECT code, name, title, department_code, is_mandatory, is_active FROM crm_master_document_types ORDER BY sort_order ASC, name ASC',
   );
   return {
-    ...catalog,
-    documents: rows.map(
-      row =>
-        ({
-          value: row.code,
-          name: row.name,
-          role: row.department,
-          required: !!row.is_required,
-          active: !!row.is_active,
-        }) satisfies MasterItem,
-    ),
+    documents: rows.map(r => ({
+      value: r.code,
+      name: r.name || r.title,
+      active: Boolean(r.is_active),
+      required: Boolean(r.is_mandatory),
+      role: r.department_code || 'MKT',
+    })),
   };
 }
+
 export async function saveDocumentMasters(catalog: MasterCatalog) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const c = await pool.getConnection();
+  if (!pool || !Array.isArray(catalog.documents)) return;
+  const conn = await pool.getConnection();
   try {
-    await c.beginTransaction();
-    for (const item of catalog.documents) {
-      const [rows] = await c.execute<any[]>(
-        `SELECT name,department,is_required,is_active FROM ${table} WHERE code=? FOR UPDATE`,
-        [item.value],
+    await conn.beginTransaction();
+    const preStage = await resolveWorkflowStageByCode('PRE_ANALYSIS', conn);
+    const fapStage = await resolveWorkflowStageByCode('FAP_STAGE', conn);
+    for (let i = 0; i < catalog.documents.length; i++) {
+      const item = catalog.documents[i];
+      const rawCode = cleanNullableString(item?.value);
+      const name = cleanNullableString(item?.name) || rawCode;
+      if (!rawCode || !name) continue;
+      const code = normalizeCode(rawCode).slice(0, 60) || rawCode;
+      const role = String(item.role || 'MKT').trim().toUpperCase().slice(0, 30);
+      const isMandatory = item.required ? 1 : 0;
+      const active = item.active === false ? 0 : 1;
+      const stageId = code === 'FAP' ? fapStage?.id ?? preStage?.id ?? null : preStage?.id ?? null;
+
+      const [existing] = await conn.execute<any[]>(
+        'SELECT id FROM crm_master_document_types WHERE id = ? OR LOWER(code) = LOWER(?) LIMIT 1',
+        [rawCode, code],
       );
-      if (rows.length) {
-        const old = rows[0];
-        if (
-          old.name !== item.name ||
-          old.department !== item.role ||
-          !!old.is_required !== item.required ||
-          !!old.is_active !== item.active
-        )
-          await c.execute(
-            `UPDATE ${table} SET name=?,department=?,is_required=?,is_active=?,updated_at=CURRENT_TIMESTAMP(3) WHERE code=?`,
-            [item.name, item.role || 'BS', item.required ? 1 : 0, item.active ? 1 : 0, item.value],
-          );
-      } else
-        await c.execute(
-          `INSERT INTO ${table} (id,code,name,department,is_required,is_active) VALUES (?,?,?,?,?,?)`,
-          [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.role || 'BS',
-            item.required ? 1 : 0,
-            item.active ? 1 : 0,
-          ],
+      if (existing.length) {
+        await conn.execute(
+          `UPDATE crm_master_document_types
+           SET name = ?, title = ?, department_code = ?, is_mandatory = ?, sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP(3)
+           WHERE id = ?`,
+          [name, name, role, isMandatory, i + 1, active, existing[0].id],
         );
+      } else {
+        await conn.execute(
+          `INSERT INTO crm_master_document_types
+            (id, stage_id, code, name, title, department_code, is_mandatory, sort_order, is_active)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [crypto.randomUUID(), stageId, code, name, name, role, isMandatory, i + 1, active],
+        );
+      }
     }
-    await c.commit();
-    await syncApplicationDocuments();
+    await conn.commit();
+    clearCrmLookupCache();
   } catch (e) {
-    await c.rollback();
+    await conn.rollback();
     throw e;
   } finally {
-    c.release();
+    conn.release();
   }
 }

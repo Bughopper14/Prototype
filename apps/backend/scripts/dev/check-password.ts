@@ -10,7 +10,7 @@ async function main() {
     '| wrong rejected:',
     !verifyPassword('nope', hash),
   );
-  const [rows] = await pool.query<any[]>('SELECT username, password_hash FROM users');
+  const [rows] = await pool.query<any[]>('SELECT username, password_hash FROM users_users');
   for (const u of rows)
     console.log(
       `${u.username}: format=${String(u.password_hash).split('$')[0]} parsed-without-error=${verifyPassword('definitely-wrong', u.password_hash) === false}`,

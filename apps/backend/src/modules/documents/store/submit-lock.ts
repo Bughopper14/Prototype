@@ -1,84 +1,93 @@
-/** Whether the FAP can be submitted (signed document present). */
+/** Submit-lock and FAP OCR comparison status reader/updater on crm_liugong1. */
 import {pool} from '../../../core/db/pool';
 
-export async function syncSubmitLock(applicationId: string) {
-  if (!pool) return {isLocked: 1, fapDocUploaded: 0, stage: 'FAP_STAGE', ocrComparison: null, remarks: null};
-  try {
-    const [rows] = await pool.execute<any[]>(
-      `
-   SELECT COUNT(f.id) AS file_count
-   FROM application_document_checklist d
-   JOIN application_document_file f ON f.checklist_id = d.id
-   WHERE d.application_id = ?
-     AND (UPPER(d.document_code) = 'FAP' OR LOWER(d.document_name) LIKE '%fap%')
-  `,
-      [applicationId],
+export async function getSubmitLock(applicationId: string) {
+  const [appRows] = await pool.query<any[]>(
+    'SELECT is_fap_doc_uploaded, is_fap_form_locked FROM crm_applications WHERE id = ? LIMIT 1',
+    [applicationId],
+  );
+  const app = appRows[0];
+
+  const [fapFiles] = await pool.query<any[]>(
+    `SELECT f.id
+     FROM crm_application_document_files f
+     JOIN crm_application_document_checklists c ON c.id = f.checklist_id
+     JOIN crm_master_document_types dt ON dt.id = c.document_type_id
+     WHERE f.application_id = ? AND dt.code = 'FAP' AND f.deleted_at IS NULL AND f.is_current_active = 1
+     LIMIT 1`,
+    [applicationId],
+  );
+  const fapDocUploaded = fapFiles.length > 0 || Boolean(app?.is_fap_doc_uploaded);
+  const isFapFormLocked = Boolean(app?.is_fap_form_locked);
+
+  const [compRows] = await pool.query<any[]>(
+    `SELECT c.* FROM crm_fap_document_ocr_comparisons c
+     WHERE c.application_id = ?
+     ORDER BY COALESCE(c.updated_at, c.created_at) DESC
+     LIMIT 1`,
+    [applicationId],
+  );
+  const comp = compRows[0] || null;
+  let diffs: any[] = [];
+  if (comp) {
+    const [discRows] = await pool.query<any[]>(
+      `SELECT section_name, field_key, field_label, system_value, ocr_value, resolution_status
+       FROM crm_fap_document_ocr_discrepancies
+       WHERE comparison_id = ?
+       ORDER BY created_at ASC`,
+      [comp.id],
     );
-    const hasUploaded = Number(rows[0]?.file_count || 0) > 0;
-    const isLocked = hasUploaded ? 0 : 1;
-    const [appCheck] = await pool.execute<any[]>(
-      'SELECT application_id FROM all_applications WHERE application_id = ?',
-      [applicationId],
-    );
-    if (!appCheck.length)
-      return {
-        isLocked,
-        fapDocUploaded: hasUploaded ? 1 : 0,
-        stage: 'FAP_STAGE',
-        ocrComparison: null,
-        remarks: null,
-      };
-    await pool.execute(
-      `
-   INSERT INTO application_submit_lock (application_id, is_locked, stage, fap_doc_uploaded, unlocked_at)
-   VALUES (?, ?, 'FAP_STAGE', ?, ?)
-   ON DUPLICATE KEY UPDATE
-     is_locked = VALUES(is_locked),
-     fap_doc_uploaded = VALUES(fap_doc_uploaded),
-     ocr_comparison_json = IF(VALUES(fap_doc_uploaded) = 0, NULL, ocr_comparison_json),
-     unlocked_at = IF(VALUES(is_locked) = 0, COALESCE(unlocked_at, CURRENT_TIMESTAMP(3)), NULL),
-     updated_at = CURRENT_TIMESTAMP(3)
-  `,
-      [applicationId, isLocked, hasUploaded ? 1 : 0, hasUploaded ? new Date() : null],
-    );
-    return {
-      isLocked,
-      fapDocUploaded: hasUploaded ? 1 : 0,
-      stage: 'FAP_STAGE',
-      ocrComparison: null,
-      remarks: null,
-    };
-  } catch (err) {
-    console.warn('syncSubmitLock error:', err);
-    return {isLocked: 1, fapDocUploaded: 0, stage: 'FAP_STAGE', ocrComparison: null, remarks: null};
+    diffs = discRows.map(d => ({
+      section: d.section_name,
+      field: d.field_key,
+      label: d.field_label,
+      systemValue: d.system_value || '',
+      ocrValue: d.ocr_value || '',
+      status: d.resolution_status,
+    }));
   }
+
+  const ocrComparison = comp
+    ? {
+        id: comp.id,
+        isFap: true,
+        status: comp.comparison_status,
+        hasDifferences: Boolean(comp.has_differences),
+        diffs,
+        remarks: comp.remarks || '',
+        reviewedBy: comp.reviewed_by || '',
+        reviewedAt: comp.reviewed_at || null,
+      }
+    : null;
+
+  return {
+    fapDocUploaded,
+    fap_doc_uploaded: fapDocUploaded ? 1 : 0,
+    isFapDocUploaded: fapDocUploaded,
+    isFapFormLocked,
+    is_fap_form_locked: isFapFormLocked ? 1 : 0,
+    submitLocked: !fapDocUploaded,
+    isLocked: !fapDocUploaded ? 1 : 0,
+    fapFormRemarks: comp?.remarks || '',
+    ocrComparison,
+    ocr_comparison_json: ocrComparison,
+  };
 }
 
-export async function getSubmitLock(applicationId: string) {
-  if (!pool) return {isLocked: 1, fapDocUploaded: 0, stage: 'FAP_STAGE', ocrComparison: null, remarks: null};
-  try {
-    const [rows] = await pool.execute<any[]>('SELECT * FROM application_submit_lock WHERE application_id=?', [
-      applicationId,
-    ]);
-    if (!rows.length) return await syncSubmitLock(applicationId);
-    let ocrComparison = null;
-    if (rows[0].ocr_comparison_json) {
-      try {
-        ocrComparison = JSON.parse(rows[0].ocr_comparison_json);
-      } catch {}
-    }
-    const remarks = rows[0].remarks || ocrComparison?.remarks || null;
-    if (ocrComparison) {
-      ocrComparison.remarks = remarks || '';
-    }
-    return {
-      isLocked: Number(rows[0].is_locked),
-      fapDocUploaded: Number(rows[0].fap_doc_uploaded),
-      stage: rows[0].stage || 'FAP_STAGE',
-      ocrComparison,
-      remarks,
-    };
-  } catch {
-    return {isLocked: 1, fapDocUploaded: 0, stage: 'FAP_STAGE', ocrComparison: null, remarks: null};
-  }
+export async function syncSubmitLock(applicationId: string) {
+  const [fapFiles] = await pool.query<any[]>(
+    `SELECT f.id
+     FROM crm_application_document_files f
+     JOIN crm_application_document_checklists c ON c.id = f.checklist_id
+     JOIN crm_master_document_types dt ON dt.id = c.document_type_id
+     WHERE f.application_id = ? AND dt.code = 'FAP' AND f.deleted_at IS NULL AND f.is_current_active = 1
+     LIMIT 1`,
+    [applicationId],
+  );
+  const uploaded = fapFiles.length > 0 ? 1 : 0;
+  await pool.execute(
+    'UPDATE crm_applications SET is_fap_doc_uploaded = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?',
+    [uploaded, applicationId],
+  );
+  return getSubmitLock(applicationId);
 }

@@ -1,132 +1,255 @@
-/** One application with everything the workspace needs. */
+/** Hydrates complete application detail from normalized crm_liugong1 tables. */
+import {resolveLocationNames, resolveMasterCodeOrName} from '../../../core/db/crm-lookups';
 import {pool} from '../../../core/db/pool';
-import {customerFields, profileFields, picFields} from '@liugong/shared';
-import {readLegal} from '../../legal/legal.repository';
-import {getSubmitLock, readApplicationDocuments} from '../../documents/documents.repository';
+import {readChecklistForApplication} from '../../documents/store/read';
+import {getSubmitLock} from '../../documents/store/submit-lock';
+import {readLegalForApplication} from '../../legal/store/read';
 import {readBusiness} from '../business.repository';
 import {readFinancialStatements} from '../financial-statements.repository';
-import {databaseValue, fapFields, picColumn, preFields, readFields} from './helpers';
+import {getBusinessPartnerById} from './customers';
+import {dateStr} from './helpers';
 
 export async function intakeDetail(id: string) {
-  if (!pool) return null;
-  const [rows] = await pool.execute<any[]>(
-    `SELECT a.application_id,a.created_at app_created_at,a.updated_at app_updated_at,f.*,p.* FROM all_applications a LEFT JOIN new_application_fap_stage f ON f.id_fap_stage=a.id_fap_stage LEFT JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis WHERE a.application_id=?`,
+  const [appRows] = await pool.query<any[]>(
+    `SELECT a.*,
+            ws.code AS status_code, ws.name AS status_name,
+            st.code AS stage_code, st.name AS stage_name,
+            br.code AS branch_code, br.name AS branch_name
+     FROM crm_applications a
+     JOIN crm_master_workflow_statuses ws ON ws.id = a.current_status_id
+     JOIN crm_master_workflow_stages st ON st.id = ws.stage_id
+     LEFT JOIN crm_master_branches br ON br.id = a.branch_id
+     WHERE a.id = ? AND a.deleted_at IS NULL
+     LIMIT 1`,
     [id],
   );
-  if (!rows.length) return null;
-  const row = rows[0];
-  const customer = {
-    ...readFields(
-      row,
-      fapFields.filter(f => customerFields.some(x => x.key === f.key)),
+  const app = appRows[0];
+  if (!app) return null;
+
+  const [
+    [profRows],
+    [picRows],
+    [progressRows],
+    [signoffRows],
+    [transRows],
+    customer,
+    business,
+    financialStatements,
+    documentChecks,
+    legalBundle,
+    submitLock,
+  ] = await Promise.all([
+    pool.query<any[]>('SELECT * FROM crm_fap_application_profiles WHERE application_id = ? LIMIT 1', [id]),
+    pool.query<any[]>('SELECT * FROM crm_fap_primary_contacts WHERE application_id = ? LIMIT 1', [id]),
+    pool.query<any[]>(
+      `SELECT sp.*, st.code AS stage_code, st.name AS stage_name
+       FROM crm_application_stage_progress sp
+       JOIN crm_master_workflow_stages st ON st.id = sp.stage_id
+       WHERE sp.application_id = ?`,
+      [id],
     ),
-    ...readFields(
-      row,
-      preFields.filter(f => customerFields.some(x => x.key === f.key)),
+    pool.query<any[]>(
+      `SELECT s.*, st.code AS stage_code, st.name AS stage_name
+       FROM crm_application_signoffs s
+       JOIN crm_master_workflow_stages st ON st.id = s.stage_id
+       WHERE s.application_id = ?
+       ORDER BY s.signed_at ASC`,
+      [id],
     ),
-    id: row.customer_id,
-  };
-  const profile = {
-    ...readFields(
-      row,
-      fapFields.filter(f => profileFields.some(x => x.key === f.key)),
+    pool.query<any[]>(
+      `SELECT t.*, fs.code AS from_code, ts.code AS to_code, ts.name AS to_name
+       FROM crm_application_stage_transitions t
+       LEFT JOIN crm_master_workflow_statuses fs ON fs.id = t.from_status_id
+       JOIN crm_master_workflow_statuses ts ON ts.id = t.to_status_id
+       WHERE t.application_id = ?
+       ORDER BY t.transitioned_at ASC`,
+      [id],
     ),
-    ...readFields(
-      row,
-      preFields.filter(f => profileFields.some(x => x.key === f.key)),
-    ),
-    customerStatus: row.customer_category,
-  };
-  if (row.district || row.village) {
-    const [pLocs] = await pool.execute<any[]>(
-      `SELECT d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM master_location_provinsi pr LEFT JOIN master_location_kabupaten_kota c ON c.name=? AND c.provinsi_id=pr.id LEFT JOIN master_location_kecamatan d ON (d.name=? OR d.id=?) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=? OR v.id=?) AND v.kecamatan_id=d.id WHERE pr.name=?`,
-      [
-        row.city || '',
-        row.district || '',
-        row.district || '',
-        row.village || '',
-        row.village || '',
-        row.province || '',
-      ],
-    );
-    if (pLocs.length) {
-      profile.district = pLocs[0].district_name || row.district;
-      profile.village = pLocs[0].village_name || row.village;
-    }
-  }
-  const [pics] = await pool.execute<any[]>(
-    `SELECT cp.*,d.id AS district_master_id,v.id AS village_master_id, d.name AS district_name, v.name AS village_name FROM customer_pic cp LEFT JOIN master_location_provinsi pr ON pr.name=cp.province LEFT JOIN master_location_kabupaten_kota c ON c.name=cp.city AND c.provinsi_id=pr.id LEFT JOIN master_location_kecamatan d ON (d.name=cp.kecamatan OR d.id=cp.kecamatan) AND d.kabupaten_kota_id=c.id LEFT JOIN master_location_kelurahan_desa v ON (v.name=cp.kelurahan OR v.id=cp.kelurahan) AND v.kecamatan_id=d.id WHERE cp.application_id=?`,
-    [id],
-  );
-  const legal = await readLegal(id);
-  const pic = pics[0]
+    getBusinessPartnerById(app.customer_id),
+    readBusiness(id),
+    readFinancialStatements(id),
+    readChecklistForApplication(id),
+    readLegalForApplication(id),
+    getSubmitLock(id),
+  ]);
+
+  const prof = profRows[0] || {};
+  const picRow = picRows[0] || null;
+
+  const [
+    profLoc,
+    picLoc,
+    companyType,
+    locationStatus,
+    industrySegment,
+    businessRole,
+    picPosition,
+  ] = await Promise.all([
+    resolveLocationNames(prof),
+    picRow ? resolveLocationNames(picRow) : Promise.resolve({country: 'Indonesia', province: '', city: '', district: '', village: '', postalCode: ''}),
+    resolveMasterCodeOrName('crm_master_business_categories', prof.business_category_id, 'code'),
+    resolveMasterCodeOrName('crm_master_premise_statuses', prof.premise_status_id, 'code'),
+    resolveMasterCodeOrName('crm_master_industry_segments', prof.industry_segment_id, 'code'),
+    resolveMasterCodeOrName('crm_master_business_roles', prof.business_role_id, 'code'),
+    picRow ? resolveMasterCodeOrName('crm_master_pic_positions', picRow.position_id, 'code') : Promise.resolve(''),
+  ]);
+
+  const hasPreProgress = progressRows.some(r => r.stage_code === 'PRE_ANALYSIS');
+  const stage =
+    app.stage_code === 'FAP_STAGE' && hasPreProgress ? 'Pre-analysis' : app.stage_name || 'FAP Stage';
+
+  const pic = picRow
     ? {
-        ...Object.fromEntries(picFields.map(f => [f.key, databaseValue(pics[0][picColumn(f.key)], f.type)])),
-        district: pics[0].district_name || pics[0].kecamatan,
-        village: pics[0].village_name || pics[0].kelurahan,
-        id: pics[0].id,
-        createdAt: pics[0].created_at,
-        updatedAt: pics[0].updated_at,
+        id: picRow.id,
+        picName: picRow.pic_name || '',
+        position: picPosition || '',
+        phone: picRow.phone || '',
+        email: picRow.email || '',
+        country: picLoc.country || 'Indonesia',
+        province: picLoc.province || '',
+        city: picLoc.city || '',
+        district: picLoc.district || '',
+        village: picLoc.village || '',
+        postalCode: picLoc.postalCode || '',
+        rt: picRow.rt || '',
+        rw: picRow.rw || '',
+        currentAddress: picRow.current_address || '',
+      }
+    : {
+        picName: '',
+        position: '',
+        phone: '',
+        email: '',
+        country: 'Indonesia',
+        province: '',
+        city: '',
+        district: '',
+        village: '',
+        postalCode: '',
+        rt: '',
+        rw: '',
+        currentAddress: '',
+      };
+
+  const signoffs = signoffRows.map(s => ({
+    id: s.id,
+    stage: s.stage_name || s.stage_code,
+    role: s.role_code,
+    actorUserId: s.actor_user_id,
+    actorName: s.actor_name,
+    decision: s.decision,
+    remarks: s.remarks || '',
+    signedAt: s.signed_at,
+  }));
+
+  const approvalLogs = transRows.map(t => ({
+    id: t.id,
+    action: t.action_code,
+    fromStatus: t.from_code || '',
+    previousStatus: t.from_code || '',
+    toStatus: t.to_code,
+    newStatus: t.to_code,
+    toStatusName: t.to_name,
+    comments: t.comments || '',
+    actorUserId: t.actor_user_id,
+    actorName: t.actor_name,
+    actionBy: t.actor_name,
+    actorRole: t.actor_role,
+    userRole: t.actor_role,
+    createdAt: t.transitioned_at,
+    actionTimestamp: t.transitioned_at,
+  }));
+
+  const latestSt = financialStatements[financialStatements.length - 1];
+  const ratios = latestSt
+    ? {
+        currentRatio: latestSt.currentRatio,
+        debtToEquity: latestSt.debtToEquityRatio,
+        netProfitMargin: latestSt.netProfitMarginPct,
       }
     : null;
-  const [docRows] = await pool.execute<any[]>(
-    `SELECT COALESCE(MAX(is_mandatory), 0) AS is_doc_mandatory FROM application_document_checklist WHERE application_id = ?`,
-    [id],
-  );
-  const [mandatoryList] = await pool.query<any[]>(
-    'SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory',
-  );
-  const mandatoryConfig = {
-    customerPic: mandatoryList.some(
-      r =>
-        Boolean(r.section) &&
-        r.section !== 'Financing' &&
-        r.section !== 'Financial Statements' &&
-        r.section !== 'Legal' &&
-        Boolean(r.mandatory),
-    ),
-    financing: mandatoryList.some(r => r.section === 'Financing' && Boolean(r.mandatory)),
-    financialStatements: mandatoryList.some(
-      r => r.section === 'Financial Statements' && Boolean(r.mandatory),
-    ),
-    legal: mandatoryList.some(r => r.section === 'Legal' && Boolean(r.mandatory)),
-    documents: Boolean(docRows[0]?.is_doc_mandatory),
-  };
-  const submitLock = await getSubmitLock(id);
-  const stage =
-    submitLock.stage === 'PRE_ANALYSIS' ||
-    ['SUBMITTED_TO_BS', 'BS_VERIFIED', 'IN_CA_LEGAL_REVIEW', 'CREDIT_COMMITTEE_REVIEW', 'APPROVED'].includes(
-      row.application_status,
-    )
-      ? 'Pre-analysis'
-      : 'FAP Stage';
+
+  const companyName = prof.company_name || customer?.companyName || '';
+  const nib = prof.nib || customer?.nib || '';
+  const npwp = prof.npwp || customer?.npwp || '';
+
   return {
-    ...profile,
-    id: row.application_id,
-    companyName: customer.companyName,
-    customerId: row.customer_id,
-    customer,
-    establishmentActNo: customer.establishmentActNo,
-    establishmentDate: customer.establishmentDate,
-    nibDate: customer.nibDate,
-    fapNumber: row.fap_registration_number,
-    applicationDate: databaseValue(row.application_date, 'date'),
-    createdAt: row.app_created_at,
-    updatedAt: row.app_updated_at || row.updated_at,
-    status: row.application_status,
+    id: app.id,
+    fapNumber: app.fap_registration_number,
+    applicationDate: dateStr(app.application_date) || '',
+    customerId: app.customer_id,
+    customerCategory: app.customer_category,
+    customerStatus: app.customer_category,
+    status: app.status_code,
+    statusName: app.status_name,
     stage,
-    legal,
+    isFapDocUploaded: Boolean(app.is_fap_doc_uploaded),
+    isFapFormLocked: Boolean(app.is_fap_form_locked),
+    fapDocUploaded: Boolean(app.is_fap_doc_uploaded),
+    fapFormLocked: Boolean(app.is_fap_form_locked),
+    latestFreezeVersion: Number(app.latest_freeze_version ?? 0),
+    makerUserId: app.maker_user_id,
+    makerName: app.maker_name || '',
+    branchCode: app.branch_code || app.branch_name || customer?.branchCode || '',
+    companyName,
+    companyType: companyType || customer?.companyType || '',
+    nib,
+    nibDate: dateStr(prof.nib_date) || customer?.nibDate || '',
+    npwp,
+    establishmentActNo: prof.establishment_act_no || customer?.establishmentActNo || '',
+    establishmentDate: dateStr(prof.establishment_date) || customer?.establishmentDate || '',
+    latestDeedNo: prof.latest_deed_no || customer?.latestDeedNo || '',
+    latestDeedDate: dateStr(prof.latest_deed_date) || customer?.latestDeedDate || '',
+    locationStatus: locationStatus || customer?.locationStatus || '',
+    companyAddress: prof.company_address || customer?.companyAddress || '',
+    country: profLoc.country || 'Indonesia',
+    province: profLoc.province || customer?.province || '',
+    city: profLoc.city || customer?.city || '',
+    district: profLoc.district || customer?.district || '',
+    village: profLoc.village || customer?.village || '',
+    postalCode: profLoc.postalCode || customer?.postalCode || '',
+    rt: prof.rt ?? customer?.rt ?? '',
+    rw: prof.rw ?? customer?.rw ?? '',
+    phoneFax: prof.phone_fax || customer?.phoneFax || '',
+    email: prof.company_email || customer?.email || '',
+    website: prof.website || customer?.website || '',
+    mainBusiness: prof.main_business || customer?.mainBusiness || '',
+    repaymentSource: prof.repayment_source || customer?.repaymentSource || '',
+    experienceYears: Number(prof.experience_years ?? customer?.experienceYears ?? 0),
+    experienceMonths: Number(prof.experience_months ?? customer?.experienceMonths ?? 0),
+    assetSummaryHeLiuGong: Number(prof.asset_he_liugong ?? customer?.assetSummaryHeLiuGong ?? 0),
+    assetSummaryTruckLiuGong: Number(prof.asset_truck_liugong ?? customer?.assetSummaryTruckLiuGong ?? 0),
+    assetSummaryHeNonLiuGong: Number(prof.asset_he_non_liugong ?? customer?.assetSummaryHeNonLiuGong ?? 0),
+    assetSummaryTruckNonLiuGong: Number(prof.asset_truck_non_liugong ?? customer?.assetSummaryTruckNonLiuGong ?? 0),
+    industrySegment: industrySegment || customer?.industrySegment || '',
+    businessRole: businessRole || customer?.businessRole || '',
+    referenceComments: prof.reference_comments || business.bankReferences[0]?.comments || '',
+    financialAudited: Boolean(prof.is_financial_audited),
+    customer: customer || {
+      id: app.customer_id,
+      companyName,
+      companyType,
+      nib,
+      npwp,
+    },
     pic,
-    stakeholders:
-      legal.deeds.find((d: any) => d.id === legal.selectedDeedId)?.stakeholders ||
-      legal.deeds[0]?.stakeholders ||
-      [],
-    ...(await readBusiness(id)),
-    ...(await readFinancialStatements(id)),
-    documentChecks: await readApplicationDocuments(id),
-    mandatoryConfig,
+    projects: business.projects,
+    bankReferences: business.bankReferences,
+    proposal: business.proposal,
+    financingProposal: business.financingProposal,
+    financingProposalJson: business.financingProposalJson,
+    financingPurposeDetail: business.financingPurposeDetail,
+    documentRequirements: business.documentRequirements,
+    financingPurposes: business.purposes,
+    financialStatements,
+    ratios,
+    documentChecks,
+    legal: legalBundle.legal,
+    stakeholders: legalBundle.stakeholders,
     submitLock,
-    approvalLogs: [],
-    signoffs: [],
+    signoffs,
+    approvalLogs,
+    createdAt: app.created_at,
+    updatedAt: app.updated_at,
   };
 }

@@ -9,7 +9,7 @@ const g = globalThis as unknown as {__crmReady?: Promise<void>};
 export function ready(): Promise<void> {
   g.__crmReady ??= (async () => {
     try {
-      await pool.query('SELECT 1 FROM application_activity LIMIT 1');
+      await pool.query('SELECT 1 FROM crm_application_activity_logs LIMIT 1');
     } catch (error: any) {
       g.__crmReady = undefined;
       if (error?.code === 'ER_NO_SUCH_TABLE') {

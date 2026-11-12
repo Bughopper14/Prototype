@@ -41,30 +41,81 @@ export function StakeholderDetailDialog({
     setTimeout(() => setCopied(null), 2000);
   };
 
-  // Scanned identity documents live in storage/documents/<ktp|passport|…>/ (see storedDocumentUrl).
-  const isPassport = String(item.idType || '').startsWith('PASSPORT');
-  const idFolder = isPassport ? 'passport' : 'ktp';
-  const docLabel = isPassport ? 'Passport' : 'KTP';
-  const [docUrl, setDocUrl] = useState<string | null>(
+  // Scanned identity documents live in storage/documents/<ktp|passport|npwp|kitas>/ (see storedDocumentUrl).
+  const isPassport = String(item.idType || '').toUpperCase().startsWith('PASSPORT');
+  const candidateDocs: Array<{type: 'ktp' | 'npwp' | 'passport' | 'kitas'; label: string; directUrl: string | null}> =
+    (
+      isPassport
+        ? [
+            {type: 'passport' as const, label: 'Passport', url: item.passportUrl},
+            {type: 'kitas' as const, label: 'KITAS', url: item.kitasUrl},
+            {type: 'ktp' as const, label: 'KTP', url: item.ktpUrl},
+            {type: 'npwp' as const, label: 'NPWP', url: item.npwpUrl},
+          ]
+        : [
+            {type: 'ktp' as const, label: 'KTP', url: item.ktpUrl},
+            {type: 'npwp' as const, label: 'NPWP', url: item.npwpUrl},
+            {type: 'passport' as const, label: 'Passport', url: item.passportUrl},
+            {type: 'kitas' as const, label: 'KITAS', url: item.kitasUrl},
+          ]
+    ).map(c => ({
+      type: c.type,
+      label: c.label,
+      directUrl: c.url ? storedDocumentUrl(c.url) : null,
+    }));
+
+  const defaultDocType = candidateDocs[0].type;
+  const fallbackPrimaryUrl =
+    candidateDocs.find(c => c.directUrl)?.directUrl ||
     storedDocumentUrl(item.fileUrl) ||
-      storedDocumentUrl(item.document_path) ||
-      (item.file_name ? `/documents/${idFolder}/${item.file_name}` : null) ||
-      item.ktpUrl ||
-      (item.name?.includes('GUOHUI CHEN') ? '/img/ktp-guohui-chen.png' : null),
-  );
+    storedDocumentUrl(item.document_path) ||
+    (item.file_name ? `/documents/${defaultDocType}/${item.file_name}` : null) ||
+    (item.name?.includes('GUOHUI CHEN') ? '/img/ktp-guohui-chen.png' : null);
+
+  const initialLabel =
+    candidateDocs.find(c => c.directUrl)?.label ||
+    (fallbackPrimaryUrl?.includes('/npwp/')
+      ? 'NPWP'
+      : fallbackPrimaryUrl?.includes('/kitas/')
+        ? 'KITAS'
+        : fallbackPrimaryUrl?.includes('/passport/')
+          ? 'Passport'
+          : isPassport
+            ? 'Passport'
+            : 'KTP');
+
+  const [docUrl, setDocUrl] = useState<string | null>(fallbackPrimaryUrl);
+  const [docLabel, setDocLabel] = useState<string>(initialLabel);
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
-    if (docUrl || !item.id) return;
-    fetch(`/api/v1/stakeholders/documents/${idFolder}/${item.id}`)
-      .then(res => (res.ok ? res.json() : null))
-      .then(json => {
-        if (json?.data?.fileUrl) {
-          setDocUrl(json.data.fileUrl);
+    setDocUrl(fallbackPrimaryUrl);
+    setDocLabel(initialLabel);
+    setImgError(false);
+    if (fallbackPrimaryUrl || !item.id) return;
+
+    let cancelled = false;
+    (async () => {
+      for (const candidate of candidateDocs) {
+        try {
+          const res = await fetch(`/api/v1/stakeholders/documents/${candidate.type}/${item.id}`);
+          if (!res.ok) continue;
+          const json = await res.json();
+          if (!cancelled && json?.data?.fileUrl) {
+            setDocUrl(json.data.fileUrl);
+            setDocLabel(candidate.label);
+            setImgError(false);
+            return;
+          }
+        } catch {
+          /* try next candidate document type */
         }
-      })
-      .catch(() => {});
-  }, [item.id, idFolder, docUrl]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [item.id, fallbackPrimaryUrl, initialLabel]);
 
   const masterData = useMasterData();
   const districtName =
@@ -359,7 +410,7 @@ export function StakeholderDetailDialog({
 
             {docUrl && !imgError ? (
               <div className="detail-ktp-preview-box">
-                {docUrl.toLowerCase().endsWith('.pdf') ? (
+                {/\.pdf(\?|#|$)/i.test(docUrl) || docUrl.startsWith('data:application/pdf') ? (
                   <iframe
                     src={docUrl}
                     title={`${docLabel} Preview`}

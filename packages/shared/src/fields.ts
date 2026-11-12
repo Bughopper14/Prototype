@@ -85,7 +85,7 @@ export const profileFields = [
   f('mainBusiness', 'Main Business'),
   f('experienceYears', 'Experience · Years', 'number'),
   f('experienceMonths', 'Experience · Months', 'number'),
-  f('locationStatus', 'Business Premises', 'select', ['OWNED', 'RENTED']),
+  f('locationStatus', 'Business Premises', 'select', ['OWNED', 'RENTED', 'OTHER']),
   f('repaymentSource', 'Source of Repayment'),
   f('latestDeedNo', 'Latest Deed Number'),
   f('latestDeedDate', 'Latest Deed Date', 'date'),
@@ -120,8 +120,6 @@ export const customerFields = [
   f('nib', 'NIB'),
   f('nibDate', 'NIB Established Date', 'date'),
   f('npwp', 'NPWP'),
-  f('sktNo', 'SKT Number'),
-  f('sppkpNo', 'SPPKP Number'),
   f('establishmentActNo', 'Establishment Deed Number'),
   f('establishmentDate', 'Establishment Deed Date', 'date'),
 ];
@@ -143,7 +141,6 @@ export const picFields = [
 ];
 
 export const STAKEHOLDER_POSITIONS = [
-  'NONE',
   'MAIN_DIRECTOR',
   'DIRECTOR',
   'MAIN_COMMISSIONER',
@@ -153,7 +150,6 @@ export const STAKEHOLDER_POSITIONS = [
 ] as const;
 
 export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
-  NONE: 'None',
   MAIN_DIRECTOR: 'Main Director',
   DIRECTOR: 'Director',
   MAIN_COMMISSIONER: 'Main Commissioner',
@@ -182,12 +178,12 @@ export function formatStakeholderPosition(val?: string | null): string {
 
 /** Any stored position wording (English, Indonesian, legacy) → its STAKEHOLDER_POSITIONS key. */
 export function normalizeStakeholderPositionKey(pos?: string | null): string {
-  if (!pos) return 'NONE';
+  if (!pos) return '';
   const clean = String(pos)
     .trim()
     .toUpperCase()
     .replace(/[\s-]+/g, '_');
-  if (['NONE', '', '_', 'SHAREHOLDER'].includes(clean)) return 'NONE';
+  if (['NONE', '', '_', 'SHAREHOLDER'].includes(clean)) return '';
   if (['MAIN_DIRECTOR', 'PRESIDENT_DIRECTOR', 'DIREKTUR_UTAMA'].includes(clean)) return 'MAIN_DIRECTOR';
   if (['DIRECTOR', 'DIREKTUR'].includes(clean)) return 'DIRECTOR';
   if (['MAIN_COMMISSIONER', 'PRESIDENT_COMMISSIONER', 'KOMISARIS_UTAMA'].includes(clean))
@@ -196,12 +192,11 @@ export function normalizeStakeholderPositionKey(pos?: string | null): string {
   if (['BOARD_OF_DIRECTORS', 'BOD', 'DIREKSI'].includes(clean)) return 'BOARD_OF_DIRECTORS';
   if (['AUTORIZED_REPRESENTATIVE', 'AUTHORIZED_REPRESENTATIVE', 'KUASA_HUKUM'].includes(clean))
     return 'AUTORIZED_REPRESENTATIVE';
-  return 'NONE';
+  return '';
 }
 
 export const stakeholderFields = [
   f('representativeType', 'Representative Type', 'select', [
-    'NONE',
     'DIRECTOR',
     'SHAREHOLDER',
     'AUTHORIZED_SIGNATORY',
@@ -209,7 +204,6 @@ export const stakeholderFields = [
   ]),
   {
     ...f('positions', 'Positions', 'select', [
-      'NONE',
       'MAIN_DIRECTOR',
       'DIRECTOR',
       'MAIN_COMMISSIONER',
@@ -221,14 +215,15 @@ export const stakeholderFields = [
     defaultValue: '',
   },
   f('stakeholderType', 'Type', 'select', ['INDIVIDUAL', 'CORPORATE']),
-  {...f('signatory', 'Signatory', 'select', ['NONE', 'YES', 'NO']), defaultValue: ''},
+  {...f('signatory', 'Signatory', 'select', ['YES', 'NO']), defaultValue: ''},
   {
-    ...f('idType', 'ID Type', 'select', ['NONE', 'KTP_NPWP', 'PASSPORT_KITAS']),
-    optionLabels: {NONE: 'None', KTP_NPWP: 'KTP - NPWP', PASSPORT_KITAS: 'PASSPORT - KITAS'},
+    ...f('idType', 'ID Type', 'select', ['KTP_NPWP', 'PASSPORT_KITAS']),
+    optionLabels: {KTP_NPWP: 'KTP - NPWP', PASSPORT_KITAS: 'PASSPORT - KITAS'},
+    defaultValue: '',
   },
   f('idNumber', 'ID Number - [KTP or PASSPORT]'),
   f('idNumberSecondary', 'ID Number - [NPWP or KITAS]'),
-  {...f('title', 'Title', 'select', ['NONE', 'MR', 'MRS', 'MS', 'DR', 'OTHER']), defaultValue: ''},
+  {...f('title', 'Title', 'select', ['MR', 'MRS', 'MS', 'DR', 'OTHER']), defaultValue: ''},
   f('firstName', 'First Name'),
   f('middleName', 'Middle Name'),
   f('lastName', 'Last Name'),
@@ -237,7 +232,6 @@ export const stakeholderFields = [
   f('ageMonths', 'Age · Months', 'number'),
   {
     ...f('maritalStatus', 'Marital Status', 'select', [
-      'NONE',
       'SINGLE',
       'MARRIED',
       'DIVORCED',
@@ -248,7 +242,6 @@ export const stakeholderFields = [
   },
   {
     ...f('designation', 'Designation', 'select', [
-      'NONE',
       'DIRECTOR',
       'COMMISSIONER',
       'PRESIDENT_DIRECTOR',
@@ -256,12 +249,12 @@ export const stakeholderFields = [
       'MANAGER',
       'OTHER',
     ]),
-    defaultValue: '', // new rows show the grey placeholder, not "None"
+    defaultValue: '',
   },
   f('occupation', 'Occupation'),
   {...f('email', 'Email', 'email'), required: true},
   {...f('mobilePhone', 'Mobile Phone', 'tel'), required: true},
-  {...f('gender', 'Gender', 'select', ['NONE', 'MALE', 'FEMALE', 'OTHER']), defaultValue: ''},
+  {...f('gender', 'Gender', 'select', ['MALE', 'FEMALE', 'OTHER']), defaultValue: ''},
   f('sharePercentage', 'Percentage Share', 'number'),
   f('depositedCapital', 'Deposited Capital (IDR)', 'number'),
   {...f('primaryCapital', 'Primary Capital (IDR)', 'number'), required: true},

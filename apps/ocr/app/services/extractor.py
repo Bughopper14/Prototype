@@ -710,7 +710,7 @@ class InformationExtractor:
         # 2. Comprehensive label patterns for Indonesian KTP
         label_patterns = [
             ("nama", r'^\s*nam[a-z]?\b', "nama"),
-            ("tempat_tanggal_lahir", r'(?:tempat|pat)?[/\s]*tgl[a-z/\s]*lahir|tgl[/\s]*lahir', "tempat_tanggal_lahir"),
+            ("tempat_tanggal_lahir", r'(?:tempa[tvl]|pat)[/\s\.]*[til1]g[l1i][/\s\.]*lahir|tempa[tvl][/.\s]*[til1]g[l1i]|(?:tempa[tvl][/.\s]*)?[til1]g[l1i][/.\s]*lahir', "tempat_tanggal_lahir"),
             ("jenis_kelamin", r'jenis[/\s]*kelamin', "jenis_kelamin"),
             ("golongan_darah", r'gol[.,\s]*darah', "golongan_darah"),
             ("alamat", r'^\s*alamat\b', "alamat"),

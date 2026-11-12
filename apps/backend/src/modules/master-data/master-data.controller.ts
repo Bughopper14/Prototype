@@ -17,10 +17,27 @@ import {requireAuthority} from '../auth/session';
 
 /* ---------- mandatory-field rules ---------- */
 
-const MANDATORY_SQL =
-  'SELECT id, stage, section, field_key, field_label, mandatory FROM master_mandatory ORDER BY stage, section, id';
+const MANDATORY_SQL = `
+  SELECT
+    r.id,
+    CASE WHEN s.code = 'PRE_ANALYSIS' THEN 'PRE-AN' ELSE 'FAP' END AS stage,
+    r.section_name AS section,
+    r.field_key,
+    r.field_label,
+    r.is_mandatory AS mandatory
+  FROM crm_master_field_mandatory_rules r
+  JOIN crm_master_workflow_stages s ON s.id = r.stage_id
+  WHERE r.is_active = 1
+  ORDER BY stage, r.section_name, r.field_key`;
 
 const listMandatory = async () => (await pool.query<any[]>(MANDATORY_SQL))[0];
+
+let masterSaveQueue: Promise<unknown> = Promise.resolve();
+const runExclusiveSave = <T>(fn: () => Promise<T>): Promise<T> => {
+  const next = masterSaveQueue.then(fn, fn);
+  masterSaveQueue = next.catch(() => undefined);
+  return next;
+};
 
 @Controller(API_PREFIX)
 export class MasterDataController {
@@ -38,7 +55,7 @@ export class MasterDataController {
   }
 
   @Put('master-data')
-  async saveCatalog(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+  async saveCatalog(@ApiReq() req: ApiRequest, @Res() _res: ApiResponse) {
     requireAuthority(req.actor, 'crm_manage_master_data', 'crm_quick_add_master_option');
     if (req.body.group && Array.isArray(req.body.items)) return this.saveGroup(req.body);
     let catalog: MasterCatalog;
@@ -48,23 +65,23 @@ export class MasterDataController {
       throw new Problem(422, e.message);
     }
 
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-      await conn.query('SELECT id FROM master_data WHERE id=1 FOR UPDATE');
-      const previous = await masterData(conn, true);
-      ensure(
-        req.body.revision === previous.revision,
-        'Master data telah berubah. Muat ulang lalu simpan kembali.',
-        409,
-      );
+    return runExclusiveSave(async () => {
+      const previous = await masterData(pool, true);
+      if (req.body.revision !== undefined) {
+        ensure(
+          req.body.revision === previous.revision,
+          'Master data telah berubah. Muat ulang lalu simpan kembali.',
+          409,
+        );
+      }
       for (const rows of Object.values(previous.catalog as Record<string, any[]>)) {
         const values = new Set((rows || []).map(x => x.value));
-        for (const row of rows || [])
+        for (const row of rows || []) {
           ensure(
             values.has(row.value),
             'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.',
           );
+        }
       }
       await saveLocations(catalog, previous.catalog);
       await saveCustomerMasters(catalog);
@@ -74,45 +91,36 @@ export class MasterDataController {
       await saveEquipmentMasters(catalog);
       await saveDocumentMasters(catalog);
       await savePreanalysisMasters(catalog);
-      await conn.query('UPDATE master_data SET catalog=?,revision=revision+1 WHERE id=1', [
-        JSON.stringify(catalog),
-      ]);
-      await conn.commit();
-    } catch (e) {
-      await conn.rollback();
-      throw e;
-    } finally {
-      conn.release();
-    }
-    invalidateMasterData();
-    return masterData(undefined, true);
+      invalidateMasterData(true);
+      return masterData(undefined, true);
+    });
   }
 
   /** Saves one master group only (adding an option from a form, or one list in Master Data). */
-  private async saveGroup(body: {group: string; items: unknown[]; revision: number}) {
+  private async saveGroup(body: {group: string; items: unknown[]; revision?: number}) {
     const group = String(body.group);
-    let items;
+    let items: any[];
     try {
       items = validateMasterGroupItems(group, body.items);
     } catch (e: any) {
       throw new Problem(422, e.message);
     }
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-      await conn.query('SELECT id FROM master_data WHERE id=1 FOR UPDATE');
-      const previous = await masterData(conn, true);
-      ensure(
-        body.revision === previous.revision,
-        'Master data telah berubah. Muat ulang lalu simpan kembali.',
-        409,
-      );
+    return runExclusiveSave(async () => {
+      const previous = await masterData(pool, true);
+      if (body.revision !== undefined) {
+        ensure(
+          body.revision === previous.revision,
+          'Master data telah berubah. Muat ulang lalu simpan kembali.',
+          409,
+        );
+      }
       const kept = new Set(items.map(x => x.value));
-      for (const row of (previous.catalog as Record<string, any[]>)[group] || [])
+      for (const row of (previous.catalog as Record<string, any[]>)[group] || []) {
         ensure(
           kept.has(row.value),
           'Data lama harus dipertahankan. Gunakan status tidak aktif untuk menonaktifkan pilihan.',
         );
+      }
       const catalog = {...previous.catalog, [group]: items} as MasterCatalog;
       if (['country', 'province', 'city', 'district', 'village', 'postalCode'].includes(group))
         await saveLocations(catalog, previous.catalog);
@@ -128,40 +136,32 @@ export class MasterDataController {
         await saveEquipmentMasters(catalog);
       else if (group === 'documents') await saveDocumentMasters(catalog);
       else if (group === 'preanInvestmentPlanOptions') await savePreanalysisMasters(catalog, group);
-      await conn.query('UPDATE master_data SET catalog=?,revision=revision+1 WHERE id=1', [
-        JSON.stringify(catalog),
-      ]);
-      await conn.commit();
-    } catch (e) {
-      await conn.rollback();
-      throw e;
-    } finally {
-      conn.release();
-    }
-    invalidateMasterData();
-    return masterData(undefined, true);
+      invalidateMasterData(true);
+      return masterData(undefined, true);
+    });
   }
 
   @Public()
   @Get('mandatory')
-  mandatoryRules(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+  mandatoryRules(@ApiReq() _req: ApiRequest, @Res() _res: ApiResponse) {
     return listMandatory();
   }
 
   @Put('mandatory')
-  async updateMandatoryRule(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+  async updateMandatoryRule(@ApiReq() req: ApiRequest, @Res() _res: ApiResponse) {
     requireAuthority(req.actor, 'crm_manage_master_data');
     const {id, section, fieldKey, field_key, mandatory} = req.body;
     const flag = mandatory === 1 || mandatory === true || mandatory === '1' ? 1 : 0;
+    const actor = req.actor?.name || req.actor?.username || null;
     if (id !== undefined && id !== null) {
-      await pool.execute('UPDATE master_mandatory SET mandatory=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', [
-        flag,
-        id,
-      ]);
+      await pool.execute(
+        'UPDATE crm_master_field_mandatory_rules SET is_mandatory=?, updated_at=CURRENT_TIMESTAMP(3), updated_by=? WHERE id=?',
+        [flag, actor, id],
+      );
     } else if (section && (fieldKey || field_key)) {
       await pool.execute(
-        'UPDATE master_mandatory SET mandatory=?, updated_at=CURRENT_TIMESTAMP WHERE section=? AND field_key=?',
-        [flag, section, fieldKey || field_key],
+        'UPDATE crm_master_field_mandatory_rules SET is_mandatory=?, updated_at=CURRENT_TIMESTAMP(3), updated_by=? WHERE section_name=? AND field_key=?',
+        [flag, actor, section, fieldKey || field_key],
       );
     }
     return listMandatory();

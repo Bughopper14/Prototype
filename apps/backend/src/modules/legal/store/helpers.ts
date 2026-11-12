@@ -1,107 +1,169 @@
-/** Column helpers and the stakeholder / deed row mapping. */
-import {stakeholderFields} from '@liugong/shared';
-import {storedDocumentUrl} from '@liugong/shared';
-import {ageFromDateOfBirth} from '@liugong/shared';
-import crypto from 'node:crypto';
+/** Shared mappers and enum/alias resolvers for CRM legal deeds and stakeholders on crm_liugong1. */
+import {ageFromDateOfBirth, storedDocumentUrl} from '@liugong/shared';
+import {
+  cleanNullableString,
+  enumOrNull,
+  normalizeCode,
+  resolveLocationNames,
+  resolveMasterCodeOrName,
+} from '../../../core/db/crm-lookups';
+import {dateStr} from '../../applications/intake/helpers';
+import type {IdentityDocType, StoredIdentityRow} from '../../identity-documents/identity-documents.store';
 
-export const col = (s: string) => s.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
-const canonical = (v: any) =>
-  JSON.stringify(v, (_k, x) =>
-    x && typeof x === 'object' && !Array.isArray(x)
-      ? Object.fromEntries(Object.entries(x).sort(([a], [b]) => a.localeCompare(b)))
-      : x,
-  );
-export const asDate = (v: any) =>
-  v instanceof Date ? v.toISOString().slice(0, 10) : v ? String(v).slice(0, 10) : null;
-const numberFields = new Set(stakeholderFields.filter(f => f.type === 'number').map(f => col(f.key)));
-const dateFields = new Set([
-  ...stakeholderFields.filter(f => f.type === 'date').map(f => col(f.key)),
-  'tanggal',
-  'tanggal_akta',
-  'tanggal_sk_menteri',
-  'berlaku_sampai',
-]);
-const comparable = (key: string, value: any) =>
-  value === null || value === undefined
-    ? ''
-    : numberFields.has(key)
-      ? Number(value)
-      : dateFields.has(key)
-        ? asDate(value)
-        : String(value);
-export const mapStakeholder = (row: any) => {
-  const docPath = row.document_path || '';
-  const fileName = row.file_name || (docPath ? docPath.split(/[/\\]/).pop() : '');
-  const idFolder = String(row.id_type || '').startsWith('PASSPORT') ? 'passport' : 'ktp';
-  const fileUrl = storedDocumentUrl(docPath) || (fileName ? `/documents/${idFolder}/${fileName}` : null);
-  return {
-    ...Object.fromEntries(
-      stakeholderFields.map(f => [f.key, f.type === 'date' ? asDate(row[col(f.key)]) : row[col(f.key)]]),
-    ),
-    ...ageFromDateOfBirth(asDate(row.date_of_birth)),
-    district: row.district,
-    village: row.village,
-    id: row.id,
-    name: [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' '),
-    document_path: docPath,
-    file_name: fileName,
-    fileUrl: fileUrl,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
+export const REMARK_CATEGORY_ALIASES: Record<string, string> = {
+  'establishment-deed': 'ESTABLISHMENT_DEED',
+  ESTABLISHMENT_DEED: 'ESTABLISHMENT_DEED',
+  'amendment-management': 'AMENDMENT_MANAGEMENT_CHANGE',
+  'amendment-management-change': 'AMENDMENT_MANAGEMENT_CHANGE',
+  AMENDMENT_MANAGEMENT_CHANGE: 'AMENDMENT_MANAGEMENT_CHANGE',
+  'amendment-articles': 'AMENDMENT_ARTICLES_CHANGE',
+  'amendment-articles-change': 'AMENDMENT_ARTICLES_CHANGE',
+  AMENDMENT_ARTICLES_CHANGE: 'AMENDMENT_ARTICLES_CHANGE',
+  'amendment-share': 'AMENDMENT_SHARE_CHANGE',
+  'amendment-share-change': 'AMENDMENT_SHARE_CHANGE',
+  AMENDMENT_SHARE_CHANGE: 'AMENDMENT_SHARE_CHANGE',
+  'amendment-business': 'AMENDMENT_BUSINESS_ACTIVITY_CHANGE',
+  'amendment-business-activity': 'AMENDMENT_BUSINESS_ACTIVITY_CHANGE',
+  'amendment-business-activity-change': 'AMENDMENT_BUSINESS_ACTIVITY_CHANGE',
+  AMENDMENT_BUSINESS_ACTIVITY_CHANGE: 'AMENDMENT_BUSINESS_ACTIVITY_CHANGE',
+  'amendment-other': 'AMENDMENT_OTHER',
+  AMENDMENT_OTHER: 'AMENDMENT_OTHER',
 };
 
-const tableColumnsCache = new Map<string, Set<string>>();
-async function getTableColumns(c: any, table: string): Promise<Set<string>> {
-  let cols = tableColumnsCache.get(table);
-  if (!cols) {
-    const [rows] = await c.execute(`DESCRIBE \`${table}\``);
-    cols = new Set(rows.map((r: any) => r.Field));
-    tableColumnsCache.set(table, cols);
-  }
-  return cols;
+export function normalizeRemarkCategoryCode(raw: unknown): string {
+  const s = cleanNullableString(raw);
+  if (!s) return '';
+  return REMARK_CATEGORY_ALIASES[s] || REMARK_CATEGORY_ALIASES[s.toLowerCase()] || normalizeCode(s);
 }
 
-export async function upsert(
-  c: any,
-  table: string,
-  id: string,
-  rawValues: Record<string, any>,
-): Promise<string> {
-  const validCols = await getTableColumns(c, table);
-  const values: Record<string, any> = {};
-  for (const [k, v] of Object.entries(rawValues)) {
-    if (validCols.has(k)) {
-      values[k] = v === '' || v === undefined ? null : v;
+export function normalizeIdType(raw: unknown): 'KTP_NPWP' | 'PASSPORT_KITAS' | null {
+  const s = cleanNullableString(raw);
+  if (!s) return null;
+  const up = normalizeCode(s);
+  if (up === 'KTP_NPWP' || up === 'KTP' || up === 'NPWP') return 'KTP_NPWP';
+  if (up === 'PASSPORT_KITAS' || up === 'PASSPORT' || up === 'KITAS' || up === 'EKITAS') return 'PASSPORT_KITAS';
+  return null;
+}
+
+export function normalizeCitizenship(raw: unknown): 'INDONESIAN' | 'FOREIGN' {
+  const up = normalizeCode(raw);
+  if (up === 'FOREIGN' || up === 'WNA') return 'FOREIGN';
+  return 'INDONESIAN';
+}
+
+export function splitFullName(s: any) {
+  const first = cleanNullableString(s?.firstName);
+  const middle = cleanNullableString(s?.middleName);
+  const last = cleanNullableString(s?.lastName);
+  if (first || middle || last) {
+    return {
+      firstName: first?.slice(0, 100) ?? null,
+      middleName: middle?.slice(0, 100) ?? null,
+      lastName: last?.slice(0, 100) ?? null,
+    };
+  }
+  const full = cleanNullableString(s?.name || s?.fullName);
+  if (!full) return {firstName: null, middleName: null, lastName: null};
+  const parts = full.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return {firstName: parts[0].slice(0, 100), middleName: null, lastName: null};
+  if (parts.length === 2) return {firstName: parts[0].slice(0, 100), middleName: null, lastName: parts[1].slice(0, 100)};
+  return {
+    firstName: parts[0].slice(0, 100),
+    middleName: parts.slice(1, -1).join(' ').slice(0, 100),
+    lastName: parts[parts.length - 1].slice(0, 100),
+  };
+}
+
+export async function mapStakeholder(
+  row: any,
+  db?: any,
+  ocrDocs?: Partial<Record<IdentityDocType, StoredIdentityRow>> | null,
+) {
+  const [loc, representativeType, position, designation] = await Promise.all([
+    resolveLocationNames(row, db),
+    resolveMasterCodeOrName('crm_master_legal_representative_types', row.representative_type_id, 'code', db),
+    resolveMasterCodeOrName('crm_master_stakeholder_positions', row.position_id, 'code', db),
+    resolveMasterCodeOrName('crm_master_legal_designations', row.designation_id, 'code', db),
+  ]);
+
+  const dob = dateStr(row.date_of_birth) || '';
+  const age = dob ? ageFromDateOfBirth(dob) : null;
+  const fullName = [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' ').trim();
+  const citizenship = row.citizenship || 'INDONESIAN';
+
+  const docMeta: Record<string, any> = {};
+  const resolvedUrls: Partial<Record<IdentityDocType, {url: string; path: string; name: string}>> = {};
+  for (const t of ['ktp', 'npwp', 'passport', 'kitas'] as IdentityDocType[]) {
+    const rec = ocrDocs?.[t];
+    if (!rec) continue;
+    const rawPath = rec.document_path || (rec.file_name ? `/documents/${t}/${rec.file_name}` : '');
+    const url = storedDocumentUrl(rawPath);
+    if (!url) continue;
+    resolvedUrls[t] = {url, path: rawPath, name: rec.file_name || ''};
+    docMeta[`${t}Url`] = url;
+    docMeta[`${t}DocumentPath`] = rawPath;
+    if (rec.file_name) docMeta[`${t}FileName`] = rec.file_name;
+    docMeta[`${t}OcrId`] = rec.id;
+    if (rec.ocr_data) {
+      docMeta[`${t}Data`] = rec.ocr_data;
     }
   }
-  let targetId = id;
-  let [rows] = (await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`, [targetId])) as any;
-  if (rows[0] && values.application_id && rows[0].application_id !== values.application_id) {
-    targetId = crypto.randomUUID();
-    [rows] = (await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`, [targetId])) as any;
-  } else if (rows[0] && values.akta_id && rows[0].akta_id && rows[0].akta_id !== values.akta_id) {
-    targetId = crypto.randomUUID();
-    [rows] = (await c.execute(`SELECT * FROM \`${table}\` WHERE id=? FOR UPDATE`, [targetId])) as any;
-  }
-  const keys = Object.keys(values),
-    old = rows[0];
-  const changed =
-    !old || Boolean(old.deleted_at) || keys.some(k => comparable(k, old[k]) !== comparable(k, values[k]));
-  if (!changed) return targetId;
-  if (old)
-    await c.execute(
-      `UPDATE \`${table}\` SET ${keys.map(k => '`' + k + '`=?').join(',')},deleted_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
-      [...Object.values(values), targetId],
-    );
-  else
-    await c.execute(
-      `INSERT INTO \`${table}\` (id,${keys.map(k => '`' + k + '`').join(',')}) VALUES (${Array(
-        keys.length + 1,
-      )
-        .fill('?')
-        .join(',')})`,
-      [targetId, ...Object.values(values)],
-    );
-  return targetId;
+
+  const order: IdentityDocType[] = String(row.id_type || '').toUpperCase().startsWith('PASSPORT')
+    ? ['passport', 'kitas', 'ktp', 'npwp']
+    : ['ktp', 'npwp', 'passport', 'kitas'];
+  const primaryDoc = order.map(t => resolvedUrls[t]).find(Boolean) || null;
+
+  return {
+    id: row.id,
+    deedId: row.deed_id,
+    applicationId: row.application_id,
+    stakeholderType: row.stakeholder_type || 'INDIVIDUAL',
+    type: row.stakeholder_type || 'INDIVIDUAL',
+    representativeType: representativeType || '',
+    position: position || '',
+    designation: designation || '',
+    isSignatory: row.is_signatory || '',
+    idType: row.id_type || '',
+    idNumber: row.id_number || '',
+    idNumberSecondary: row.id_number_secondary || '',
+    title: row.title || '',
+    firstName: row.first_name || '',
+    middleName: row.middle_name || '',
+    lastName: row.last_name || '',
+    name: fullName,
+    dateOfBirth: dob,
+    ageYears: age ? age.ageYears : (row.age_years ?? ''),
+    ageMonths: age ? age.ageMonths : (row.age_months ?? ''),
+    maritalStatus: row.marital_status || '',
+    occupation: row.occupation || '',
+    email: row.email || '',
+    mobilePhone: row.mobile_phone || '',
+    gender: row.gender || '',
+    sharePercentage: Number(row.share_percentage ?? 0),
+    depositedCapital: row.deposited_capital !== null && row.deposited_capital !== undefined ? Number(row.deposited_capital) : '',
+    primaryCapital: row.primary_capital !== null && row.primary_capital !== undefined ? Number(row.primary_capital) : '',
+    citizenship,
+    nationalityType: citizenship === 'FOREIGN' ? 'WNA' : 'WNI',
+    country: loc.country || (citizenship === 'INDONESIAN' ? 'Indonesia' : ''),
+    province: loc.province || '',
+    city: loc.city || '',
+    cityRegency: loc.city || '',
+    district: loc.district || '',
+    village: loc.village || '',
+    postalCode: loc.postalCode || '',
+    postalZip: loc.postalCode || '',
+    foreignRegionText: row.foreign_region_text || '',
+    rt: row.rt || '',
+    rw: row.rw || '',
+    address: row.address || '',
+    isInherited: Boolean(row.is_inherited),
+    sourceDeedId: row.source_deed_id || '',
+    ...docMeta,
+    ...(primaryDoc
+      ? {fileUrl: primaryDoc.url, document_path: primaryDoc.path, file_name: primaryDoc.name}
+      : {}),
+  };
 }
+
+export const enumClean = enumOrNull;

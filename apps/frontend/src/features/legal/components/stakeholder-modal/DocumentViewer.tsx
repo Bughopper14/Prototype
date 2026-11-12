@@ -73,7 +73,10 @@ export function DocumentViewer() {
           </div>
 
           <div className="ktp-img-stage">
-            {currentAsset.mime?.includes('pdf') || currentAsset.fileName?.toLowerCase().endsWith('.pdf') ? (
+            {currentAsset.mime?.includes('pdf') ||
+            currentAsset.fileName?.toLowerCase().endsWith('.pdf') ||
+            /\.pdf(\?|#|$)/i.test(String(currentAsset.url || '')) ||
+            String(currentAsset.url || '').startsWith('data:application/pdf') ? (
               <iframe title={`${docType} PDF`} src={currentAsset.url} className="ktp-preview-iframe" />
             ) : (
               <div className="ktp-img-viewport">

@@ -1,147 +1,139 @@
-import {pool} from '../../../core/db/pool';
-import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import crypto from 'node:crypto';
-import {auditTable} from '../../users/users.repository';
+import type {MasterCatalog, MasterItem} from '@liugong/shared';
+import {clearCrmLookupCache, cleanNullableString, normalizeCode, resolveMasterId} from '../../../core/db/crm-lookups';
+import {pool} from '../../../core/db/pool';
 
-const groups = [
-  ['unitCategory', 'master_equipment_unit_category', null],
-  ['brand', 'master_equipment_brand', 'unit_category'],
-  ['unitType', 'master_equipment_type', 'brand'],
-  ['modelName', 'master_equipment_model', 'type'],
-  ['assetName', 'master_equipment_asset_name', 'model'],
-] as const;
-
-export async function initializeEquipmentMasters(seed: MasterCatalog) {
-  if (!pool) return;
-  for (const [key, table, parentColumn] of groups) {
-    await pool.query(`CREATE TABLE IF NOT EXISTS \`${table}\` (
-   id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
-   ${parentColumn ? `\`${parentColumn}\` VARCHAR(150) NULL,` : ''}is_active BOOLEAN NOT NULL DEFAULT TRUE,
-   created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-    const [columns] = await pool.query<any[]>(
-      'SELECT COLUMN_NAME FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name=?',
-      [table],
-    );
-    const names = new Set(columns.map(row => row.COLUMN_NAME));
-    if (names.has('parent_value')) {
-      if (parentColumn && !names.has(parentColumn))
-        await pool.query(`ALTER TABLE \`${table}\` RENAME COLUMN parent_value TO \`${parentColumn}\``);
-      else if (!parentColumn) await pool.query(`ALTER TABLE \`${table}\` DROP COLUMN parent_value`);
-      else
-        throw new Error(
-          `Both parent_value and ${parentColumn} exist in ${table}; resolve the duplicate columns before startup.`,
-        );
-    } else if (parentColumn && !names.has(parentColumn))
-      await pool.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${parentColumn}\` VARCHAR(150) NULL`);
-    const [count] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM \`${table}\``);
-    await auditTable(table);
-    if (Number(count[0].total) === 0)
-      for (const item of seed[key])
-        await pool.execute(
-          `INSERT INTO \`${table}\` (id,code,name,is_active${parentColumn ? `,\`${parentColumn}\`` : ''}) VALUES (?,?,?,?${parentColumn ? ',?' : ''})`,
-          [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.active ? 1 : 0,
-            ...(parentColumn ? [item.parentValue || null] : []),
-          ],
-        );
-  }
-  for (let i = 1; i < groups.length; i++) {
-    const [, table, column] = groups[i],
-      parentTable = groups[i - 1][1];
-    const [orphans] = await pool.query<any[]>(
-      `SELECT c.code FROM \`${table}\` c LEFT JOIN \`${parentTable}\` p ON p.code=c.\`${column}\` WHERE c.\`${column}\` IS NOT NULL AND p.id IS NULL`,
-    );
-    if (orphans.length)
-      throw new Error(`Relasi induk tidak valid di ${table}: ${orphans.map(x => x.code).join(', ')}`);
-    const constraint = `fk_${table}_parent`;
-    const [existing] = await pool.query<any[]>(
-      'SELECT CONSTRAINT_NAME FROM information_schema.table_constraints WHERE constraint_schema=DATABASE() AND table_name=? AND constraint_name=?',
-      [table, constraint],
-    );
-    if (!existing.length)
-      await pool.query(
-        `ALTER TABLE \`${table}\` ADD CONSTRAINT \`${constraint}\` FOREIGN KEY (\`${column}\`) REFERENCES \`${parentTable}\` (code) ON UPDATE CASCADE ON DELETE RESTRICT`,
-      );
-  }
+export async function initializeEquipmentMasters(_seed: MasterCatalog) {
+  return;
 }
 
-export async function equipmentMasterCatalog(catalog: MasterCatalog): Promise<MasterCatalog> {
-  if (!pool) return catalog;
-  const result = {...catalog};
-  for (const [key, table, parentColumn] of groups) {
-    const [rows] = await pool.query<any[]>(
-      `SELECT code,name,is_active,${parentColumn ? `\`${parentColumn}\`` : 'NULL'} AS parent_value FROM \`${table}\` ORDER BY created_at,id`,
-    );
-    result[key] = rows.map(
-      row =>
-        ({
-          value: row.code,
-          name: row.name,
-          active: !!row.is_active,
-          ...(row.parent_value ? {parentValue: row.parent_value} : {}),
-        }) satisfies MasterItem,
-    );
-  }
-  return result;
+export async function equipmentMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
+  if (!pool) return {unitCategory: [], brand: [], unitType: [], modelName: [], assetName: []};
+  const [cats] = await pool.query<any[]>('SELECT id, code, name, is_active FROM crm_master_equipment_categories ORDER BY sort_order ASC, name ASC');
+  const [brands] = await pool.query<any[]>(
+    `SELECT b.id, b.code, b.name, b.is_active, c.code AS parent_code
+     FROM crm_master_equipment_brands b
+     JOIN crm_master_equipment_categories c ON c.id = b.category_id
+     ORDER BY b.name ASC`,
+  );
+  const [types] = await pool.query<any[]>(
+    `SELECT t.id, t.code, t.name, t.is_active, b.code AS parent_code
+     FROM crm_master_equipment_types t
+     JOIN crm_master_equipment_brands b ON b.id = t.brand_id
+     ORDER BY t.name ASC`,
+  );
+  const [models] = await pool.query<any[]>(
+    `SELECT m.id, m.code, m.name, m.is_active, t.code AS parent_code
+     FROM crm_master_equipment_models m
+     JOIN crm_master_equipment_types t ON t.id = m.type_id
+     ORDER BY m.name ASC`,
+  );
+  const [assets] = await pool.query<any[]>(
+    `SELECT a.id, a.code, a.name, a.is_active, m.code AS parent_code
+     FROM crm_master_equipment_assets a
+     JOIN crm_master_equipment_models m ON m.id = a.model_id
+     ORDER BY a.name ASC`,
+  );
+
+  const mapChild = (rows: any[]): MasterItem[] =>
+    rows.map(r => ({
+      value: r.code || r.name,
+      name: r.name,
+      active: Boolean(r.is_active),
+      parentValue: r.parent_code,
+    }));
+
+  return {
+    unitCategory: cats.map(c => ({value: c.code, name: c.name, active: Boolean(c.is_active)})),
+    brand: mapChild(brands),
+    unitType: mapChild(types),
+    modelName: mapChild(models),
+    assetName: mapChild(assets),
+  };
 }
 
 export async function saveEquipmentMasters(catalog: MasterCatalog) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const c = await pool.getConnection();
+  if (!pool) return;
+  const conn = await pool.getConnection();
   try {
-    await c.beginTransaction();
-    for (const [key, table, parentColumn] of groups)
-      for (const item of catalog[key]) {
-        const parent = parentColumn ? item.parentValue || null : null;
-        const [rows] = await c.execute<any[]>(
-          `SELECT name,is_active,${parentColumn ? `\`${parentColumn}\`` : 'NULL'} AS parent_value FROM \`${table}\` WHERE code=? FOR UPDATE`,
-          [item.value],
+    await conn.beginTransaction();
+
+    if (Array.isArray(catalog.unitCategory)) {
+      for (let i = 0; i < catalog.unitCategory.length; i++) {
+        const item = catalog.unitCategory[i];
+        const raw = cleanNullableString(item?.value);
+        const name = cleanNullableString(item?.name) || raw;
+        if (!raw || !name) continue;
+        const code = normalizeCode(raw).slice(0, 50) || raw;
+        const active = item.active === false ? 0 : 1;
+        const [ex] = await conn.execute<any[]>(
+          'SELECT id FROM crm_master_equipment_categories WHERE id = ? OR LOWER(code) = LOWER(?) LIMIT 1',
+          [raw, code],
         );
-        if (parentColumn) {
-          const unchanged =
-            rows.length &&
-            rows[0].name === item.name &&
-            !!rows[0].is_active === item.active &&
-            (rows[0].parent_value || null) === parent;
-          if (!parent && !unchanged)
-            throw Object.assign(new Error(`Pilih induk untuk ${item.name}.`), {status: 422});
-          if (parent) {
-            const parentGroup = groups[groups.findIndex(g => g[0] === key) - 1][0];
-            if (!catalog[parentGroup].some(x => x.value === parent))
-              throw Object.assign(new Error(`Induk ${item.name} tidak tersedia.`), {status: 422});
-          }
-        }
-        if (rows.length) {
-          if (
-            rows[0].name !== item.name ||
-            (rows[0].parent_value || null) !== parent ||
-            !!rows[0].is_active !== item.active
-          )
-            await c.execute(
-              `UPDATE \`${table}\` SET name=?,is_active=?,updated_at=CURRENT_TIMESTAMP(3)${parentColumn ? `,\`${parentColumn}\`=?` : ''} WHERE code=?`,
-              [item.name, item.active ? 1 : 0, ...(parentColumn ? [parent] : []), item.value],
-            );
-        } else
-          await c.execute(
-            `INSERT INTO \`${table}\` (id,code,name,is_active${parentColumn ? `,\`${parentColumn}\`` : ''}) VALUES (?,?,?,?${parentColumn ? ',?' : ''})`,
-            [
-              crypto.randomUUID(),
-              item.value,
-              item.name,
-              item.active ? 1 : 0,
-              ...(parentColumn ? [parent] : []),
-            ],
+        if (ex.length) {
+          await conn.execute(
+            'UPDATE crm_master_equipment_categories SET name = ?, sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?',
+            [name, i + 1, active, ex[0].id],
           );
+        } else {
+          await conn.execute(
+            'INSERT INTO crm_master_equipment_categories (id, code, name, sort_order, is_active) VALUES (?, ?, ?, ?, ?)',
+            [crypto.randomUUID(), code, name, i + 1, active],
+          );
+        }
       }
-    await c.commit();
+    }
+
+    const levels: Array<{
+      items: MasterItem[] | undefined;
+      table: string;
+      parentCol: string;
+      parentTable: string;
+    }> = [
+      {items: catalog.brand, table: 'crm_master_equipment_brands', parentCol: 'category_id', parentTable: 'crm_master_equipment_categories'},
+      {items: catalog.unitType, table: 'crm_master_equipment_types', parentCol: 'brand_id', parentTable: 'crm_master_equipment_brands'},
+      {items: catalog.modelName, table: 'crm_master_equipment_models', parentCol: 'type_id', parentTable: 'crm_master_equipment_types'},
+      {items: catalog.assetName, table: 'crm_master_equipment_assets', parentCol: 'model_id', parentTable: 'crm_master_equipment_models'},
+    ];
+
+    for (const lvl of levels) {
+      if (!Array.isArray(lvl.items)) continue;
+      for (const item of lvl.items) {
+        const code = cleanNullableString(item?.value);
+        const name = cleanNullableString(item?.name) || code;
+        if (!code || !name) continue;
+        const active = item.active === false ? 0 : 1;
+        let parentId = await resolveMasterId(lvl.parentTable, item.parentValue, undefined, conn);
+        if (!parentId) {
+          const [firstParent] = await conn.query<any[]>(`SELECT id FROM \`${lvl.parentTable}\` ORDER BY created_at LIMIT 1`);
+          parentId = firstParent[0]?.id ?? null;
+        }
+        if (!parentId) continue;
+
+        const [ex] = await conn.execute<any[]>(
+          `SELECT id FROM \`${lvl.table}\` WHERE id = ? OR LOWER(code) = LOWER(?) LIMIT 1`,
+          [code, code],
+        );
+        if (ex.length) {
+          await conn.execute(
+            `UPDATE \`${lvl.table}\` SET ${lvl.parentCol} = ?, name = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`,
+            [parentId, name, active, ex[0].id],
+          );
+        } else {
+          await conn.execute(
+            `INSERT INTO \`${lvl.table}\` (id, ${lvl.parentCol}, code, name, is_active) VALUES (?, ?, ?, ?, ?)`,
+            [crypto.randomUUID(), parentId, code.slice(0, 80), name.slice(0, 150), active],
+          );
+        }
+      }
+    }
+
+    await conn.commit();
+    clearCrmLookupCache();
   } catch (e) {
-    await c.rollback();
+    await conn.rollback();
     throw e;
   } finally {
-    c.release();
+    conn.release();
   }
 }

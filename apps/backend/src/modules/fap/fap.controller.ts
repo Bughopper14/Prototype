@@ -34,16 +34,16 @@ export class FapController {
     const lock = await getSubmitLock(id);
     const currentApp = await intakeDetail(id);
     let comp = lock.ocrComparison;
-    if (!comp || !comp.extractedData || Object.keys(comp.extractedData).length === 0) {
-      if (currentApp) comp = await compareFapDocumentOcr(id, file.fileName, currentApp);
+    if (!comp || !(comp as any).extractedData || Object.keys((comp as any).extractedData).length === 0) {
+      if (currentApp) comp = await compareFapDocumentOcr(id, file.fileKey || file.fileName, currentApp);
     } else if (currentApp) {
-      comp.diffs = computeFapDiffs(currentApp, comp.extractedData);
+      comp.diffs = computeFapDiffs(currentApp, (comp as any).extractedData);
       comp.hasDifferences = comp.diffs.length > 0;
       await saveFapComparison(id, comp);
     }
-    comp = comp || {isFap: true, hasDifferences: false, diffs: []};
-    comp.remarks = lock.remarks || comp.remarks || fap.notes || '';
-    return {status: 'success', comparison: comp};
+    const resolvedComp: any = comp || {isFap: true, hasDifferences: false, diffs: []};
+    resolvedComp.remarks = lock.fapFormRemarks || resolvedComp.remarks || fap.notes || '';
+    return {status: 'success', comparison: resolvedComp};
   }
 
   @Post('applications/:id/fap-comparison/remarks')
@@ -68,7 +68,7 @@ export class FapController {
       res.status(400);
       return {error: 'Belum ada dokumen FAP yang diunggah'};
     }
-    return {success: true, comparison: await compareFapDocumentOcr(id, file.fileName, currentApp)};
+    return {success: true, comparison: await compareFapDocumentOcr(id, file.fileKey || file.fileName, currentApp)};
   }
 
   @Post('applications/:id/fap-changes/approve')
@@ -82,7 +82,7 @@ export class FapController {
     }
     await clearFapDifferences(id, req.body?.remarks);
     await exec(
-      "UPDATE application_submit_lock SET stage='PRE_ANALYSIS', is_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?",
+      'UPDATE crm_applications SET is_fap_form_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?',
       [id],
     );
     try {

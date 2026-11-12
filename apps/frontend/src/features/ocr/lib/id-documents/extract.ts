@@ -20,6 +20,11 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([u8arr], {type: mime});
 }
 
+export type IdDocScanContext = {
+  applicationId?: string;
+  stakeholderId?: string;
+};
+
 // -------------------------------------------------------------
 // Unified Scanner Caller
 // -------------------------------------------------------------
@@ -27,10 +32,15 @@ export async function extractIdDocumentFromImage(
   fileOrInput: File | Blob | string,
   docType: 'ktp' | 'passport' | 'npwp' | 'kitas' = 'ktp',
   fileName?: string,
+  context?: IdDocScanContext,
 ): Promise<{
   docType: string;
   data: any;
   rawText: string;
+  fileUrl?: string;
+  documentPath?: string;
+  fileName?: string;
+  ocrRecordId?: string;
 }> {
   try {
     const uploadPayload = new FormData();
@@ -47,6 +57,8 @@ export async function extractIdDocumentFromImage(
       uploadPayload.append('file', fileOrInput, fileName || `${docType}_scan.jpg`);
     }
     uploadPayload.append('doc_type', docType);
+    if (context?.applicationId) uploadPayload.append('application_id', context.applicationId);
+    if (context?.stakeholderId) uploadPayload.append('stakeholder_id', context.stakeholderId);
 
     const res = await api('/ocr/scan', 'POST', uploadPayload);
     if (res && res.data) {
@@ -55,6 +67,10 @@ export async function extractIdDocumentFromImage(
         docType: res.doc_type || docType,
         data: d,
         rawText: typeof d === 'string' ? d : JSON.stringify(d, null, 2),
+        fileUrl: res.fileUrl || undefined,
+        documentPath: res.document_path || res.storedPath || undefined,
+        fileName: res.fileName || undefined,
+        ocrRecordId: res.ocrId || res.id || undefined,
       };
     }
   } catch (err: any) {
@@ -82,8 +98,9 @@ export async function extractIdDocumentFromImage(
 export async function extractKtpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-): Promise<ParsedKtpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName);
+  context?: IdDocScanContext,
+): Promise<ParsedKtpData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, context);
   const d = res.data || {};
   const sLower = String(d.status_perkawinan || d.maritalStatus || d.status || '').toLowerCase();
   const isSingle = sLower.includes('belum') || sLower.includes('tidak') || sLower.includes('single');
@@ -158,14 +175,19 @@ export async function extractKtpTextFromImage(
     pekerjaan: d.pekerjaan || d.occupation,
     berlaku_hingga: d.berlaku_hingga || 'SEUMUR HIDUP',
     rawText: res.rawText || '',
+    fileUrl: res.fileUrl,
+    documentPath: res.documentPath,
+    fileName: res.fileName,
+    ocrRecordId: res.ocrRecordId,
   };
 }
 
 export async function extractPassportTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-): Promise<ParsedPassportData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName);
+  context?: IdDocScanContext,
+): Promise<ParsedPassportData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName, context);
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
@@ -188,14 +210,19 @@ export async function extractPassportTextFromImage(
     mrzLine1: d.mrz_line1 || d.mrzLine1,
     mrzLine2: d.mrz_line2 || d.mrzLine2,
     rawText: res.rawText || '',
+    fileUrl: res.fileUrl,
+    documentPath: res.documentPath,
+    fileName: res.fileName,
+    ocrRecordId: res.ocrRecordId,
   };
 }
 
 export async function extractNpwpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-): Promise<ParsedNpwpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName);
+  context?: IdDocScanContext,
+): Promise<ParsedNpwpData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName, context);
   const d = res.data || {};
   return {
     npwpNumber: d.npwp_number || d.npwpNumber,
@@ -208,14 +235,19 @@ export async function extractNpwpTextFromImage(
     kpp: d.kpp,
     tanggalTerdaftar: d.tanggal_terdaftar || d.tanggalTerdaftar,
     rawText: res.rawText || '',
+    fileUrl: res.fileUrl,
+    documentPath: res.documentPath,
+    fileName: res.fileName,
+    ocrRecordId: res.ocrRecordId,
   };
 }
 
 export async function extractKitasTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-): Promise<ParsedKitasData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName);
+  context?: IdDocScanContext,
+): Promise<ParsedKitasData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName, context);
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
@@ -231,5 +263,9 @@ export async function extractKitasTextFromImage(
       normalizeBirthDate(d.berlaku_hingga || d.berlakuHingga) || d.berlaku_hingga || d.berlakuHingga,
     instansiPenerbit: d.instansi_penerbit || d.instansiPenerbit || 'Direktorat Jenderal Imigrasi',
     rawText: res.rawText || '',
+    fileUrl: res.fileUrl,
+    documentPath: res.documentPath,
+    fileName: res.fileName,
+    ocrRecordId: res.ocrRecordId,
   };
 }

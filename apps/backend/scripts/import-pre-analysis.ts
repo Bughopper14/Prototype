@@ -1,14 +1,12 @@
 /**
- * Imports Pre-Analysis data from the legacy file store (<application-id>.json) into MySQL.
- *
- * A file is applied only when its application exists, its contents differ from the database row, and the file is
- * newer than the row. The replaced form_data is saved to storage/backups first.
+ * Imports Pre-Analysis data from the legacy file store (<application-id>.json) into MySQL (crm_liugong1).
  *
  * Usage: pnpm import:pre-analysis -- <folder> [--apply]   (without --apply it only reports)
  */
-import {pool} from '../src/core/db/pool';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import {pool} from '../src/core/db/pool';
+import {getPreAnalysisData, savePreAnalysisData} from '../src/modules/pre-analysis/pre-analysis.repository';
 
 async function main() {
   const folder = process.argv.slice(2).find(arg => !arg.startsWith('--'));
@@ -21,7 +19,7 @@ async function main() {
   for (const file of (await fs.readdir(folder)).filter(f => f.endsWith('.json'))) {
     const id = path.basename(file, '.json');
     const full = path.join(folder, file);
-    const [apps] = await pool.query<any[]>('SELECT 1 FROM all_applications WHERE application_id = ?', [id]);
+    const [apps] = await pool.query<any[]>('SELECT 1 FROM crm_applications WHERE id = ? AND deleted_at IS NULL', [id]);
     if (!apps.length) {
       console.log(`skip   ${id}  (application is not in this database)`);
       continue;
@@ -29,15 +27,11 @@ async function main() {
 
     const incoming = await fs.readFile(full, 'utf8');
     const [rows] = await pool.query<any[]>(
-      'SELECT form_data, updated_at FROM application_pre_analysis WHERE application_id = ?',
+      'SELECT id, updated_at FROM crm_pre_analysis_forms WHERE application_id = ? AND deleted_at IS NULL LIMIT 1',
       [id],
     );
     const current = rows[0];
     const modified = (await fs.stat(full)).mtime;
-    if (current && JSON.stringify(JSON.parse(current.form_data)) === JSON.stringify(JSON.parse(incoming))) {
-      console.log(`same   ${id}`);
-      continue;
-    }
     if (current && current.updated_at && new Date(current.updated_at) >= modified) {
       console.log(`older  ${id}  (database row is newer, kept)`);
       continue;
@@ -47,13 +41,14 @@ async function main() {
       `${apply ? 'apply ' : 'would '} ${id}  (file ${modified.toISOString()} vs row ${current?.updated_at?.toISOString?.() ?? 'none'})`,
     );
     if (!apply) continue;
-    if (current)
-      await fs.writeFile(path.join(backups, `pre-analysis-${id}-${Date.now()}.json`), current.form_data);
-    await pool.query(
-      `INSERT INTO application_pre_analysis (application_id, form_data) VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE form_data = VALUES(form_data)`,
-      [id, JSON.stringify(JSON.parse(incoming))],
-    );
+    if (current) {
+      const existingData = await getPreAnalysisData(id);
+      await fs.writeFile(
+        path.join(backups, `pre-analysis-${id}-${Date.now()}.json`),
+        JSON.stringify(existingData, null, 2),
+      );
+    }
+    await savePreAnalysisData(id, JSON.parse(incoming), 'import-pre-analysis');
   }
   await pool.end();
 }

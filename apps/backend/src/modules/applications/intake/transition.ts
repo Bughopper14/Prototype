@@ -1,142 +1,133 @@
-/** Workflow transitions of an application. */
+/** Workflow stage transitions backed by crm_master_workflow, stage progress, transitions, and signoffs. */
+import {randomUUID} from 'node:crypto';
+import {cleanNullableString} from '../../../core/db/crm-lookups';
 import {pool} from '../../../core/db/pool';
-import {getSubmitLock} from '../../documents/documents.repository';
-import {mysqlError, picColumn} from './helpers';
+import {Problem} from '../../../core/domain';
+import {requireAuthority} from '../../auth/session';
 import {intakeDetail} from './detail';
+import {actorMeta} from './helpers';
+
+const ACTION_ALIAS: Record<string, string> = {
+  SUBMIT_TO_BS: 'SUBMIT',
+};
 
 export async function transitionIntake(
   id: string,
-  action: string,
-  actor: {name: string; role: string; isAdmin?: boolean; authorities?: string[]},
-  comments: string = '',
+  body: {action?: string; comments?: string; rejectReasonId?: string},
+  actor: any,
 ) {
-  if (!pool) throw mysqlError('MySQL is not configured', 503);
-  const detail = await intakeDetail(id);
-  if (!detail) throw mysqlError('Application not found', 404);
+  const rawAction = String(body?.action || '').trim().toUpperCase();
+  if (!rawAction) throw new Problem(422, 'Workflow action is required.');
+  const workflowAction = ACTION_ALIAS[rawAction] || rawAction;
+  const {userId, actorName, actorRole} = actorMeta(actor);
+  const comments = cleanNullableString(body?.comments);
 
-  const isAdmin = actor.role === 'ADMIN' || Boolean((actor as any).isAdmin);
-  const can = (authority: string) => isAdmin || (actor.authorities || []).includes(authority);
-  let currentStatus = detail.status || 'DRAFT';
-
-  if (action === 'SUBMIT_TO_BS') {
-    if (!can('crm_workflow_submit')) {
-      throw mysqlError('Hanya tim Marketing yang dapat mengajukan ke Branch Support', 403);
-    }
-    if (!['DRAFT', 'RETURNED'].includes(currentStatus)) {
-      throw mysqlError('Hanya aplikasi dengan status DRAFT atau RETURNED yang dapat diajukan', 409);
-    }
-
-    // 1. Check mandatory constraints from mandatory table
-    const [mandatoryList] = await pool.query<any[]>(
-      'SELECT section, field_key, field_label, mandatory FROM master_mandatory WHERE mandatory = 1',
-    );
-    const picMandatory = mandatoryList
-      .filter(
-        m =>
-          m.section === 'Primary Contact (PIC)' ||
-          m.section.includes('PIC') ||
-          m.section.includes('Primary Contact'),
-      )
-      .map(m => m.field_key);
-    if (picMandatory.length) {
-      const [picRows] = await pool.execute<any[]>('SELECT * FROM customer_pic WHERE application_id = ?', [
-        id,
-      ]);
-      const picRow = picRows[0];
-      for (const key of picMandatory) {
-        const col = picColumn(key);
-        if (!picRow || !String(picRow[col] || '').trim()) {
-          throw mysqlError(
-            `Bagian Customer & PIC (${key}) wajib diisi dan disimpan sebelum submit ke BS.`,
-            422,
-          );
-        }
-      }
-    }
-
-    // 5. Check Document Checklist mandatory constraint
-    const [docRows] = await pool.execute<any[]>(
-      `SELECT adc.document_name 
-    FROM application_document_checklist adc 
-    LEFT JOIN application_document_file adf ON adf.checklist_id = adc.id 
-    WHERE adc.application_id = ? AND adc.is_mandatory = 1 
-    GROUP BY adc.id, adc.document_name 
-    HAVING COUNT(adf.id) = 0`,
-      [id],
-    );
-    const submitLock = await getSubmitLock(id);
-    if (submitLock.isLocked) {
-      throw mysqlError('Please upload the signed FAP Stage document in the Documents tab first.', 422);
-    }
-    if (docRows.length > 0) {
-      const missingDocNames = docRows.map((r: any) => r.document_name).join(', ');
-      throw mysqlError(`Unggah dokumen wajib terlebih dahulu: ${missingDocNames}`, 422);
-    }
-
-    // 6. Check Legal deeds & total percentage share constraint before submit
-    const [deedRows] = await pool.execute<any[]>(
-      'SELECT id, akta, nomor_akta, total_kepemilikan FROM daftar_akta WHERE application_id = ? AND deleted_at IS NULL',
-      [id],
-    );
-    if (!deedRows.length) {
-      throw mysqlError('Minimal harus ada 1 akta (Akta pendirian) sebelum diajukan ke BS.', 422);
-    }
-    for (const d of deedRows) {
-      const total = Number(d.total_kepemilikan || 0);
-      if (Math.abs(total - 100) > 0.01) {
-        throw mysqlError(
-          `Total kepemilikan saham pada ${d.akta} (${d.nomor_akta || 'tanpa nomor'}) wajib tepat 100% sebelum submit ke BS. Saat ini ${total.toFixed(2)}%.`,
-          422,
-        );
-      }
-    }
-
-    // All mandatory checks passed (or optional if is_mandatory=0)
-    currentStatus = 'SUBMITTED_TO_BS';
-  } else if (action === 'VERIFY_BS') {
-    if (!can('crm_workflow_verify_documents'))
-      throw mysqlError('Akun ini tidak dapat memverifikasi berkas', 403);
-    currentStatus = 'BS_VERIFIED';
-  } else if (action === 'START_REVIEW') {
-    if (!can('crm_workflow_start_review')) throw mysqlError('Akun ini tidak dapat memulai review', 403);
-    currentStatus = 'IN_CA_LEGAL_REVIEW';
-  } else if (action === 'RECOMMEND_CA' || action === 'RECOMMEND_LEGAL') {
-    if (!can(action === 'RECOMMEND_CA' ? 'crm_workflow_recommend_credit' : 'crm_workflow_recommend_legal'))
-      throw mysqlError('Akun ini tidak dapat melakukan sign-off ini', 403);
-    currentStatus = 'CREDIT_COMMITTEE_REVIEW';
-  } else if (action === 'APPROVE_COMMITTEE' || action === 'REJECT_COMMITTEE') {
-    if (!can('crm_workflow_final_decision'))
-      throw mysqlError('Akun ini tidak dapat memutuskan sebagai Komite Kredit', 403);
-    currentStatus = action === 'APPROVE_COMMITTEE' ? 'APPROVED' : 'REJECTED';
-  } else if (action === 'RETURN') {
-    if (!can('crm_workflow_return')) throw mysqlError('Akun ini tidak dapat mengembalikan aplikasi', 403);
-    currentStatus = 'RETURNED';
-  }
-
-  const c = await pool.getConnection();
+  const conn = await pool.getConnection();
   try {
-    await c.beginTransaction();
-    const [appRows] = await c.execute<any[]>(
-      'SELECT id_pre_analysis FROM all_applications WHERE application_id = ? FOR UPDATE',
+    await conn.beginTransaction();
+
+    const [appRows] = await conn.query<any[]>(
+      'SELECT * FROM crm_applications WHERE id = ? AND deleted_at IS NULL LIMIT 1',
       [id],
     );
-    if (appRows.length) {
-      await c.execute(
-        'UPDATE new_application_pre_analisis SET application_status = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id_pre_analysis = ?',
-        [currentStatus, appRows[0].id_pre_analysis],
-      );
-      await c.execute(
-        'UPDATE all_applications SET updated_at = CURRENT_TIMESTAMP(3) WHERE application_id = ?',
-        [id],
-      );
+    const app = appRows[0];
+    if (!app) throw new Problem(404, 'Application not found.');
+
+    const [wfRows] = await conn.query<any[]>(
+      `SELECT w.*, a.authority_name,
+              ts.id AS after_status_id, ts.code AS after_status_code, ts.stage_id AS after_stage_id, ts.is_terminal
+       FROM crm_master_workflow w
+       JOIN users_authorities a ON a.id = w.authority_id
+       JOIN crm_master_workflow_statuses ts ON ts.id = w.after_status_id
+       WHERE w.before_status_id = ? AND w.action = ?
+       LIMIT 1`,
+      [app.current_status_id, workflowAction],
+    );
+    const wf = wfRows[0];
+    if (!wf) {
+      throw new Problem(422, `Action "${rawAction}" is not valid for the current application status.`);
     }
-    await c.commit();
+
+    requireAuthority(actor, wf.authority_name);
+
+    const isReturningToMaker = wf.after_status_code === 'RETURNED' || wf.after_status_code === 'DRAFT';
+    await conn.execute(
+      `UPDATE crm_applications
+       SET current_status_id = ?, is_fap_form_locked = ?, updated_at = CURRENT_TIMESTAMP(3), updated_by = ?
+       WHERE id = ?`,
+      [wf.after_status_id, isReturningToMaker ? 0 : 1, actorName, id],
+    );
+
+    const submittedAtExpr = workflowAction === 'SUBMIT' ? 'CURRENT_TIMESTAMP(3)' : 'NULL';
+    const completedAtExpr = wf.is_terminal ? 'CURRENT_TIMESTAMP(3)' : 'NULL';
+    await conn.execute(
+      `INSERT INTO crm_application_stage_progress (
+        id, application_id, stage_id, status_id, is_locked, started_at, submitted_at, completed_at,
+        assigned_user_id, assigned_user_name, created_by, updated_by
+      ) VALUES (?,?,?,?,?,CURRENT_TIMESTAMP(3),${submittedAtExpr},${completedAtExpr},?,?,?,?)
+      ON DUPLICATE KEY UPDATE
+        status_id = VALUES(status_id),
+        is_locked = VALUES(is_locked),
+        submitted_at = COALESCE(VALUES(submitted_at), submitted_at),
+        completed_at = COALESCE(VALUES(completed_at), completed_at),
+        assigned_user_id = VALUES(assigned_user_id),
+        assigned_user_name = VALUES(assigned_user_name),
+        updated_at = CURRENT_TIMESTAMP(3),
+        updated_by = VALUES(updated_by)`,
+      [
+        randomUUID(),
+        id,
+        wf.after_stage_id,
+        wf.after_status_id,
+        wf.is_terminal ? 1 : 0,
+        userId,
+        actorName,
+        actorName,
+        actorName,
+      ],
+    );
+
+    await conn.execute(
+      `INSERT INTO crm_application_stage_transitions (
+        id, application_id, workflow_id, from_status_id, to_status_id, action_code,
+        reject_reason_id, comments, actor_user_id, actor_name, actor_role
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        randomUUID(),
+        id,
+        wf.id,
+        app.current_status_id,
+        wf.after_status_id,
+        rawAction,
+        cleanNullableString(body?.rejectReasonId),
+        comments,
+        userId,
+        actorName,
+        actorRole,
+      ],
+    );
+
+    const signoffDecision =
+      workflowAction === 'APPROVE_COMMITTEE'
+        ? 'APPROVED'
+        : workflowAction === 'REJECT_COMMITTEE'
+          ? 'REJECTED'
+          : 'SIGNED';
+
+    await conn.execute(
+      `INSERT INTO crm_application_signoffs (
+        id, application_id, stage_id, role_code, actor_user_id, actor_name, decision, remarks
+      ) VALUES (?,?,?,?,?,?,?,?)`,
+      [randomUUID(), id, wf.after_stage_id, actorRole, userId, actorName, signoffDecision, comments],
+    );
+
+    await conn.commit();
   } catch (e) {
-    await c.rollback();
+    await conn.rollback();
     throw e;
   } finally {
-    c.release();
+    conn.release();
   }
 
-  return await intakeDetail(id);
+  return intakeDetail(id);
 }

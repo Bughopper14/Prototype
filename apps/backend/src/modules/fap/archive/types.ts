@@ -1,8 +1,10 @@
-/** Shape of an archived FAP submission. */
+/** Shape of an archived (frozen) FAP submission mapped from crm_frozen_fap_applications + child tables. */
 
 export interface FapArchiveRecord {
   id: string;
   application_id: string;
+  freeze_version: number;
+  is_latest_freeze: boolean;
   fap_registration_number: string | null;
   application_date: string | null;
   branch_code: string | null;
@@ -13,8 +15,6 @@ export interface FapArchiveRecord {
   nib: string | null;
   nib_date: string | null;
   npwp: string | null;
-  skt_no: string | null;
-  sppkp_no: string | null;
   establishment_act_no: string | null;
   establishment_date: string | null;
   latest_deed_no: string | null;
@@ -37,8 +37,8 @@ export interface FapArchiveRecord {
   business_role: string | null;
   asset_summary_he_liu_gong: number | null;
   asset_summary_truck_liu_gong: number | null;
-  asset_summary_he_non_liu_gong: number | null;
-  asset_summary_truck_non_liu_gong: number | null;
+  asset_summary_he_non_liugong: number | null;
+  asset_summary_truck_non_liugong: number | null;
   pic_name: string | null;
   pic_position: string | null;
   pic_phone: string | null;
@@ -49,10 +49,6 @@ export interface FapArchiveRecord {
   pic_city: string | null;
   pic_province: string | null;
   pic_postal_code: string | null;
-  pic_id_number: string | null;
-  pic_gender: string | null;
-  pic_birth_place: string | null;
-  pic_birth_date: string | null;
   projects: any;
   stakeholders: any;
   bank_references: any;
@@ -71,6 +67,7 @@ export interface FapArchiveRecord {
   ocr_document_path: string | null;
   ocr_document_filename: string | null;
   stage_at_submission: string;
+  status_at_submission?: string;
   submitted_by_user_id: string | null;
   submitted_by_user_name: string | null;
   submitted_at: string;

@@ -3,7 +3,7 @@ import {formatStakeholderPosition, normalizeStakeholderPositionKey} from '@liugo
 export function normalizeStakeholderIdType(
   rawType: string | undefined,
   s?: any,
-): 'NONE' | 'KTP_NPWP' | 'PASSPORT_KITAS' {
+): '' | 'KTP_NPWP' | 'PASSPORT_KITAS' {
   const t = String(rawType || '')
     .toUpperCase()
     .trim();
@@ -15,7 +15,7 @@ export function normalizeStakeholderIdType(
     if (s.ktpUrl || s.ktpOcrText || s.npwpUrl || s.npwpOcrText) return 'KTP_NPWP';
     if (s.nationalityType === 'WNA' || s.citizenship === 'FOREIGN') return 'PASSPORT_KITAS';
   }
-  return 'NONE';
+  return '';
 }
 
 /** Value stored in the address fields of a foreign (PASSPORT - KITAS) stakeholder. */
@@ -72,7 +72,7 @@ export function stakeholderEditorValues(s: any) {
     ...s,
     // Board position from the Positions list, whatever wording it was stored with
     positions: normalizeStakeholderPositionKey(s.positions || s.position || ''),
-    representativeType: s.representativeType || 'NONE',
+    representativeType: s.representativeType && s.representativeType !== 'NONE' ? s.representativeType : '',
     signatory: s.signatory || '',
     idType: resolvedIdType,
     idNumberSecondary,
@@ -111,12 +111,11 @@ export function stakeholderForSave(s: any) {
       ? 'PASSPORT_KITAS'
       : rawIdType === 'KTP_NPWP' || ['KTP', 'NPWP'].includes(rawIdType)
         ? 'KTP_NPWP'
-        : rawIdType === 'NONE'
-          ? 'NONE'
-          : 'NONE';
+        : null;
   return {
     ...s,
     name,
+    representativeType: s.representativeType && s.representativeType !== 'NONE' ? s.representativeType : null,
     positions: s.positions && s.positions !== 'NONE' ? s.positions : null,
     position: formatStakeholderPosition(s.positions || s.position) || '',
     nationalityType: s.citizenship === 'FOREIGN' ? 'WNA' : 'WNI',

@@ -14,9 +14,9 @@ import {clearSessionCache, type Actor} from '../auth/session';
 /** True when the user holds the portal-wide `manage_system` authority (required for everything under /um). */
 export async function canManageSystem(actor: Actor) {
   const allowed = await one(
-    `SELECT 1 AS ok FROM user_app_roles uar
-     JOIN role_authorities ra ON ra.role_id = uar.role_id
-     JOIN authorities au ON au.id = ra.authority_id
+    `SELECT 1 AS ok FROM users_user_app_roles uar
+     JOIN users_role_authorities ra ON ra.role_id = uar.role_id
+     JOIN users_authorities au ON au.id = ra.authority_id
      WHERE uar.user_id = ? AND au.authority_name = 'manage_system' LIMIT 1`,
     [actor.portalUserId],
   );

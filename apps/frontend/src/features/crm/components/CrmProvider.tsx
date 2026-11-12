@@ -56,7 +56,8 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   const [rows, setRows] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [serverNotifications, setServerNotifications] = useState<any[]>([]);
-  const [activities, setActivities] = useState<SystemActivity[]>(() => getStoredActivities());
+  const [serverActivities, setServerActivities] = useState<SystemActivity[]>([]);
+  const [storedActivities, setStoredActivities] = useState<SystemActivity[]>(() => getStoredActivities());
   const [readActivityIds, setReadActivityIds] = useState(() => getReadActivityIds());
   const [readNotificationIds, setReadNotificationIds] = useState(() => getReadNotificationIds());
   const [loading, setLoading] = useState(false);
@@ -73,17 +74,19 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
     try {
       // Only ask for what the user's role may read; the API refuses the rest.
       const can = (authority: string) => hasAuthority(user, authority);
-      const [applications, customerList, masterData, notifications] = await Promise.all([
+      const [applications, customerList, masterData, notifications, activityList] = await Promise.all([
         can('crm_view_applications') ? api('/applications') : [],
         can('crm_view_customers') || can('crm_create_application') ? api('/customers') : [],
         api('/master-data'),
         can('crm_view_notifications') ? api('/notifications') : [],
+        can('crm_view_activity') || can('crm_view_app_activity') ? api('/activity').catch(() => []) : [],
       ]);
       setServerNotifications(notifications);
+      setServerActivities(Array.isArray(activityList) ? activityList : []);
       setMasterData(masterData);
       setRows(applications);
       setCustomers(customerList);
-      setActivities(getStoredActivities());
+      setStoredActivities(getStoredActivities());
       setError('');
     } catch (e: any) {
       if (!e?.message?.toLowerCase().includes('session') && !e?.message?.toLowerCase().includes('sesi')) {
@@ -118,7 +121,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   // Activity and notification read-state is shared through browser events (see system-activity.ts).
   useEffect(() => {
     const sync = () => {
-      setActivities(getStoredActivities());
+      setStoredActivities(getStoredActivities());
       setReadActivityIds(getReadActivityIds());
       setReadNotificationIds(getReadNotificationIds());
     };
@@ -129,6 +132,30 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
       window.removeEventListener('crm-notification-state-change', sync);
     };
   }, []);
+
+  const activities = useMemo<SystemActivity[]>(() => {
+    const byId = new Map<string, SystemActivity>();
+    for (const item of serverActivities) {
+      byId.set(item.id, {
+        ...item,
+        companyName: item.companyName || 'Application',
+        section: item.section || 'Workspace',
+        tabIndex: Number(item.tabIndex ?? 0),
+        actionType: (item.actionType || 'UPDATE') as SystemActivity['actionType'],
+        title: item.title || 'Application updated',
+        details: item.details || '',
+        actionBy: item.actionBy || 'System',
+        userRole: item.userRole || '',
+        timestamp: item.timestamp || (item as any).actionTimestamp || new Date().toISOString(),
+      });
+    }
+    for (const item of storedActivities) {
+      byId.set(item.id, item);
+    }
+    return [...byId.values()].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [serverActivities, storedActivities]);
 
   const notifications = useMemo<SystemNotificationItem[]>(() => {
     const byId = new Map<string, SystemNotificationItem>();
@@ -144,7 +171,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
         title: n.title,
         message: n.message,
         priority: 'normal',
-        taskType: 'Deed Review',
+        taskType: n.taskType || 'Deed Review',
         createdAt: n.createdAt,
         readAt: n.readAt,
       });

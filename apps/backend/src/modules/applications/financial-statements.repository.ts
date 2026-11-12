@@ -1,150 +1,143 @@
+/** Financial statement persistence and derived KPIs on crm_fap_financial_statements. */
+import {randomUUID} from 'node:crypto';
+import type {PoolConnection} from 'mysql2/promise';
 import {pool} from '../../core/db/pool';
-import {validateFinancials, ratios} from '../../core/domain';
-import {z} from 'zod';
-import crypto from 'node:crypto';
 
-const metrics = {
-  currentAssets: 'current_assets',
-  nonCurrentAssets: 'non_current_assets',
-  totalAssets: 'total_assets',
-  currentLiabilities: 'current_liabilities',
-  nonCurrentLiabilities: 'non_current_liabilities',
-  totalLiabilities: 'total_liabilities',
-  equity: 'equity',
-  totalLiabAndEquity: 'total_liabilities_and_equity',
-  revenue: 'revenue',
-  grossMargin: 'gross_profit',
-  operatingMargin: 'operating_profit_ebit',
-  tax: 'tax',
-  netIncome: 'net_income',
-} as const;
+type Db = Pick<PoolConnection, 'query' | 'execute'>;
+
+export const num = (v: unknown) => {
+  if (v === undefined || v === null || v === '') return 0;
+  const parsed = Number(String(v).replace(/,/g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
 export async function initializeFinancialStatements() {
-  if (!pool) return;
-  await pool.query(`CREATE TABLE IF NOT EXISTS financial_statement (
-  id CHAR(36) PRIMARY KEY,application_id CHAR(36) NOT NULL,fiscal_year INT NOT NULL,is_audited BOOLEAN NOT NULL DEFAULT FALSE,
-  ${Object.values(metrics)
-    .map(column => `\`${column}\` DECIMAL(20,2) NOT NULL`)
-    .join(',')},
-  balance_check BOOLEAN NOT NULL,current_ratio DECIMAL(30,8) NULL,debt_equity DECIMAL(30,8) NULL,net_profit_margin DECIMAL(30,8) NULL,
-  created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL,deleted_at TIMESTAMP(3) NULL,
-  UNIQUE KEY application_year(application_id,fiscal_year),
-  CONSTRAINT fk_financial_statement_application FOREIGN KEY(application_id) REFERENCES all_applications(application_id)
- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  await pool.query('SELECT 1 FROM crm_fap_financial_statements LIMIT 1');
 }
-export async function readFinancialStatements(applicationId: string) {
-  if (!pool) return {financialStatements: [], ratios: []};
-  const [rows] = await pool.execute<any[]>(
-    'SELECT * FROM financial_statement WHERE application_id=? AND deleted_at IS NULL ORDER BY fiscal_year',
+
+export async function readFinancialStatements(applicationId: string, db: Db = pool) {
+  const [rows] = await db.query<any[]>(
+    `SELECT * FROM crm_fap_financial_statements
+     WHERE application_id = ? AND deleted_at IS NULL AND is_active = 1
+     ORDER BY fiscal_year ASC`,
     [applicationId],
   );
-  const statements = rows.map(row => ({
-    id: row.id,
-    fiscalYear: row.fiscal_year,
-    isAudited: !!row.is_audited,
-    ...Object.fromEntries(
-      Object.entries(metrics).map(([key, column]) => {
-        const val = row[column];
-        return [key, val === null || val === undefined ? '' : Number(val) === 0 ? '' : val];
-      }),
-    ),
+  return rows.map(r => ({
+    id: r.id,
+    fiscalYear: Number(r.fiscal_year),
+    isAudited: Boolean(r.is_audited),
+    currentAssets: Number(r.current_assets),
+    nonCurrentAssets: Number(r.non_current_assets),
+    totalAssets: Number(r.total_assets),
+    currentLiabilities: Number(r.current_liabilities),
+    nonCurrentLiabilities: Number(r.non_current_liabilities),
+    totalLiabilities: Number(r.total_liabilities),
+    equity: Number(r.equity),
+    totalLiabAndEquity: Number(r.total_liabilities_and_equity),
+    revenue: Number(r.revenue),
+    grossMargin: Number(r.gross_profit),
+    operatingMargin: Number(r.operating_profit_ebit),
+    tax: Number(r.tax),
+    netIncome: Number(r.net_income),
+    isBalanced: Boolean(r.is_balanced),
+    currentRatio: r.current_ratio !== null ? Number(r.current_ratio) : null,
+    debtToEquityRatio: r.debt_to_equity_ratio !== null ? Number(r.debt_to_equity_ratio) : null,
+    netProfitMarginPct: r.net_profit_margin_pct !== null ? Number(r.net_profit_margin_pct) : null,
   }));
-  return {
-    financialStatements: statements,
-    ratios: statements.map(row => ({fiscalYear: row.fiscalYear, ...ratios(row)})),
-  };
 }
+
 export async function saveFinancialStatements(
   applicationId: string,
-  input: unknown,
-  actor: {role: string; isAdmin?: boolean; authorities?: string[]},
+  statements: any[],
+  isAudited = false,
+  actorName = 'System',
+  conn?: Db,
 ) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const amount = z
-    .union([
-      z.string().regex(/^-?\d{1,18}(\.\d{1,2})?$/),
-      z.number().finite(),
-      z.literal(''),
-      z.null(),
-      z.undefined(),
-    ])
-    .transform(val => {
-      if (val === null || val === undefined || val === '') return '0.00';
-      return String(val);
-    });
-  const schema = z.object({
-    fiscalYear: z.number().int().min(1900).max(new Date().getFullYear() + 10),
-    isAudited: z.boolean(),
-    ...Object.fromEntries(Object.keys(metrics).map(key => [key, amount])),
-  });
-  const rows = z.array(schema).max(3).parse(input);
-  try {
-    validateFinancials(rows);
-  } catch (e: any) {}
+  const run = async (db: Db) => {
+    await db.execute(
+      `UPDATE crm_fap_financial_statements
+       SET is_active = NULL, deleted_at = CURRENT_TIMESTAMP(3), updated_by = ?
+       WHERE application_id = ? AND is_active = 1`,
+      [actorName, applicationId],
+    );
+
+    const seenYears = new Set<number>();
+    for (const s of statements || []) {
+      const fiscalYear = Math.trunc(Number(s?.fiscalYear));
+      if (!Number.isFinite(fiscalYear) || fiscalYear < 1900 || seenYears.has(fiscalYear)) continue;
+      seenYears.add(fiscalYear);
+
+      const currentAssets = num(s.currentAssets);
+      const nonCurrentAssets = num(s.nonCurrentAssets);
+      const totalAssets = currentAssets + nonCurrentAssets;
+      const currentLiabilities = num(s.currentLiabilities);
+      const nonCurrentLiabilities = num(s.nonCurrentLiabilities);
+      const totalLiabilities = currentLiabilities + nonCurrentLiabilities;
+      const equity = num(s.equity);
+      const totalLiabAndEquity = totalLiabilities + equity;
+      const revenue = num(s.revenue);
+      const grossProfit = num(s.grossMargin ?? s.grossProfit);
+      const operatingProfit = num(s.operatingMargin ?? s.operatingProfitEbit);
+      const tax = num(s.tax);
+      const netIncome = num(s.netIncome);
+
+      const isBalanced = Math.abs(totalAssets - totalLiabAndEquity) < 0.01 ? 1 : 0;
+      const currentRatio = currentLiabilities > 0 ? Number((currentAssets / currentLiabilities).toFixed(6)) : null;
+      const debtToEquityRatio = equity !== 0 ? Number((totalLiabilities / equity).toFixed(6)) : null;
+      const netProfitMarginPct = revenue !== 0 ? Number(((netIncome / revenue) * 100).toFixed(6)) : null;
+      const rowAudited = s.isAudited !== undefined ? (s.isAudited ? 1 : 0) : isAudited ? 1 : 0;
+
+      await db.execute(
+        `INSERT INTO crm_fap_financial_statements (
+          id, application_id, fiscal_year, is_audited,
+          current_assets, non_current_assets, total_assets,
+          current_liabilities, non_current_liabilities, total_liabilities,
+          equity, total_liabilities_and_equity,
+          revenue, gross_profit, operating_profit_ebit, tax, net_income,
+          is_balanced, current_ratio, debt_to_equity_ratio, net_profit_margin_pct,
+          is_active, created_by, updated_by
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)`,
+        [
+          randomUUID(),
+          applicationId,
+          fiscalYear,
+          rowAudited,
+          currentAssets,
+          nonCurrentAssets,
+          totalAssets,
+          currentLiabilities,
+          nonCurrentLiabilities,
+          totalLiabilities,
+          equity,
+          totalLiabAndEquity,
+          revenue,
+          grossProfit,
+          operatingProfit,
+          tax,
+          netIncome,
+          isBalanced,
+          currentRatio,
+          debtToEquityRatio,
+          netProfitMarginPct,
+          actorName,
+          actorName,
+        ],
+      );
+    }
+
+    await db.execute(
+      `UPDATE crm_fap_application_profiles
+       SET is_financial_audited = ?, updated_at = CURRENT_TIMESTAMP(3), updated_by = ?
+       WHERE application_id = ?`,
+      [isAudited ? 1 : 0, actorName, applicationId],
+    );
+  };
+
+  if (conn) return run(conn);
   const c = await pool.getConnection();
   try {
     await c.beginTransaction();
-    const [apps] = await c.execute<any[]>(
-      'SELECT p.application_status FROM all_applications a JOIN new_application_pre_analisis p ON p.id_pre_analysis=a.id_pre_analysis WHERE a.application_id=? FOR UPDATE',
-      [applicationId],
-    );
-    if (!apps.length) throw Object.assign(new Error('Application not found'), {status: 404});
-    const status = apps[0].application_status;
-    if (!(
-      actor.isAdmin ||
-      actor.role === 'ADMIN' ||
-      ((actor.authorities || []).includes('crm_edit_app_financial') &&
-        ['DRAFT', 'RETURNED', 'IN_CA_LEGAL_REVIEW'].includes(status))
-    ))
-      throw Object.assign(new Error('Financial statements are locked at this workflow stage'), {status: 403});
-    const years = rows.map(row => row.fiscalYear);
-    await c.execute(
-      `UPDATE financial_statement SET deleted_at=CURRENT_TIMESTAMP(3),updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=? AND deleted_at IS NULL ${years.length ? 'AND fiscal_year NOT IN (' + years.map(() => '?').join(',') + ')' : ''}`,
-      [applicationId, ...years],
-    );
-    for (const row of rows) {
-      const ratio = ratios(row),
-        columns = [
-          'is_audited',
-          ...Object.values(metrics),
-          'balance_check',
-          'current_ratio',
-          'debt_equity',
-          'net_profit_margin',
-        ];
-      const values = [
-        row.isAudited ? 1 : 0,
-        ...Object.keys(metrics).map(key => (row as any)[key]),
-        1,
-        ratio.currentRatio,
-        ratio.debtToEquity,
-        ratio.netProfitMargin,
-      ];
-      const [old] = await c.execute<any[]>(
-        'SELECT * FROM financial_statement WHERE application_id=? AND fiscal_year=?',
-        [applicationId, row.fiscalYear],
-      );
-      if (old.length) {
-        if (
-          old[0].deleted_at ||
-          columns.some(
-            (col, i) =>
-              Number(old[0][col]) !== Number(values[i]) || (old[0][col] === null) !== (values[i] === null),
-          )
-        )
-          await c.execute(
-            `UPDATE financial_statement SET ${columns.map(col => `\`${col}\`=?`).join(',')},deleted_at=NULL,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
-            [...values, old[0].id],
-          );
-      } else
-        await c.execute(
-          `INSERT INTO financial_statement (id,application_id,fiscal_year,${columns.map(col => `\`${col}\``).join(',')}) VALUES (${Array(
-            columns.length + 3,
-          )
-            .fill('?')
-            .join(',')})`,
-          [crypto.randomUUID(), applicationId, row.fiscalYear, ...values],
-        );
-    }
+    await run(c);
     await c.commit();
   } catch (e) {
     await c.rollback();

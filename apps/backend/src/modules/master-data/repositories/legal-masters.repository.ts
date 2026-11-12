@@ -1,91 +1,77 @@
-import {pool} from '../../../core/db/pool';
-import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import crypto from 'node:crypto';
+import type {MasterCatalog} from '@liugong/shared';
+import {clearCrmLookupCache, cleanNullableString, normalizeCode} from '../../../core/db/crm-lookups';
+import {pool} from '../../../core/db/pool';
+import {readSimpleCatalog, saveSimpleCatalog, type SimpleTableSpec} from './simple-master.helper';
 
-const groups = [
-  ['remarkCategoryId', 'master_legal_kategori_remarks', 'master_legal_kategori_akta_perubahan'],
-  ['representativeType', 'master_legal_representative_type', 'legal_representative_type'],
-  ['designation', 'master_legal_designation_name', 'legal_designation_name'],
-] as const;
+const SIMPLE_SPECS: SimpleTableSpec[] = [
+  {key: 'representativeType', table: 'crm_master_legal_representative_types'},
+  {key: 'designation', table: 'crm_master_legal_designations'},
+];
 
-export async function initializeLegalMasters(seed: MasterCatalog) {
-  if (!pool) return;
-  for (const [key, table, legacyTable] of groups) {
-    const [existing] = await pool.query<any[]>(
-      `SELECT TABLE_NAME FROM information_schema.tables WHERE table_schema=DATABASE() AND TABLE_NAME IN (?,?)`,
-      [table, legacyTable],
-    );
-    const names = new Set(existing.map(row => row.TABLE_NAME));
-    if (names.has(legacyTable) && !names.has(table)) {
-      await pool.query(`DROP TRIGGER IF EXISTS audit_${legacyTable}_insert`);
-      await pool.query(`DROP TRIGGER IF EXISTS audit_${legacyTable}_update`);
-      await pool.query(`RENAME TABLE ${legacyTable} TO ${table}`);
-    }
-    await pool.query(`CREATE TABLE IF NOT EXISTS ${table} (
-   id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
-   is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-    const [count] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM ${table}`);
-    if (Number(count[0].total) === 0)
-      for (const item of seed[key])
-        await pool.execute(`INSERT INTO ${table} (id,code,name,is_active) VALUES (?,?,?,?)`, [
-          crypto.randomUUID(),
-          item.value,
-          item.name,
-          item.active ? 1 : 0,
-        ]);
-  }
+export async function initializeLegalMasters(_seed: MasterCatalog) {
+  return;
 }
 
-export async function legalMasterCatalog(catalog: MasterCatalog): Promise<MasterCatalog> {
-  if (!pool) return catalog;
-  const result = {...catalog};
-  for (const [key, table] of groups) {
-    const [rows] = await pool.query<any[]>(`SELECT code,name,is_active FROM ${table} ORDER BY created_at,id`);
-    result[key] = rows.map(
-      row => ({value: row.code, name: row.name, active: !!row.is_active}) satisfies MasterItem,
+export async function legalMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
+  const catalog = await readSimpleCatalog(SIMPLE_SPECS);
+  if (pool) {
+    const [remarks] = await pool.query<any[]>(
+      'SELECT code, name, deed_scope, is_active FROM crm_master_legal_remark_categories ORDER BY sort_order ASC, name ASC',
     );
+    catalog.remarkCategoryId = remarks.map(r => ({
+      value: r.code,
+      name: r.name,
+      active: Boolean(r.is_active),
+    }));
+  } else {
+    catalog.remarkCategoryId = [];
   }
-  return result;
+  return catalog;
 }
 
 export async function saveLegalMasters(catalog: MasterCatalog) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const c = await pool.getConnection();
-  try {
-    await c.beginTransaction();
-    for (const [key, table] of groups) {
-      const currentCodes = (catalog[key] || []).map(x => x.value);
-      if (currentCodes.length > 0) {
-        const placeholders = currentCodes.map(() => '?').join(',');
-        await c.query(`DELETE FROM ${table} WHERE code NOT IN (${placeholders})`, currentCodes);
-      } else {
-        await c.query(`DELETE FROM ${table}`);
+  const filtered: MasterCatalog = {
+    representativeType: (catalog.representativeType || []).filter(i => cleanNullableString(i?.value) !== null),
+    designation: (catalog.designation || []).filter(i => cleanNullableString(i?.value) !== null),
+  };
+  await saveSimpleCatalog(SIMPLE_SPECS, filtered);
+
+  if (pool && Array.isArray(catalog.remarkCategoryId)) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (let i = 0; i < catalog.remarkCategoryId.length; i++) {
+        const item = catalog.remarkCategoryId[i];
+        const rawVal = cleanNullableString(item?.value);
+        const name = cleanNullableString(item?.name) || rawVal;
+        if (!rawVal || !name) continue;
+        const code = normalizeCode(rawVal).slice(0, 80) || rawVal;
+        const scope = code.includes('ESTABLISHMENT') || /pendirian/i.test(name) ? 'ESTABLISHMENT' : 'AMENDMENT';
+        const active = item.active === false ? 0 : 1;
+        const [existing] = await conn.execute<any[]>(
+          'SELECT id FROM crm_master_legal_remark_categories WHERE id = ? OR LOWER(code) = LOWER(?) LIMIT 1',
+          [rawVal, code],
+        );
+        if (existing.length) {
+          await conn.execute(
+            'UPDATE crm_master_legal_remark_categories SET name = ?, deed_scope = ?, sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?',
+            [name, scope, i + 1, active, existing[0].id],
+          );
+        } else {
+          await conn.execute(
+            'INSERT INTO crm_master_legal_remark_categories (id, code, name, deed_scope, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)',
+            [crypto.randomUUID(), code, name, scope, i + 1, active],
+          );
+        }
       }
-      for (const item of catalog[key] || []) {
-        const [rows] = await c.execute<any[]>(`SELECT name,is_active FROM ${table} WHERE code=? FOR UPDATE`, [
-          item.value,
-        ]);
-        if (rows.length) {
-          if (rows[0].name !== item.name || !!rows[0].is_active !== item.active)
-            await c.execute(
-              `UPDATE ${table} SET name=?,is_active=?,updated_at=CURRENT_TIMESTAMP(3) WHERE code=?`,
-              [item.name, item.active ? 1 : 0, item.value],
-            );
-        } else
-          await c.execute(`INSERT INTO ${table} (id,code,name,is_active) VALUES (?,?,?,?)`, [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.active ? 1 : 0,
-          ]);
-      }
+      await conn.commit();
+      clearCrmLookupCache();
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
     }
-    await c.commit();
-  } catch (e) {
-    await c.rollback();
-    throw e;
-  } finally {
-    c.release();
   }
 }

@@ -1,4 +1,4 @@
-/** Pre-Analysis numbers (roman month, sequence) and the list of numbers in use. */
+/** Pre-Analysis numbers (roman month, sequence) and the list of numbers in use on crm_liugong1. */
 import {pool} from '../../../core/db/pool';
 
 export const romanMonths = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
@@ -37,22 +37,17 @@ export function generatePreAnalysisNo(existingNumbers: string[], dateInput?: str
 
 export async function getAllPreAnalysisNumbers(): Promise<string[]> {
   const numbers: string[] = [];
-
   if (pool) {
     try {
-      const [rows] = await pool.query<any[]>('SELECT form_data FROM application_pre_analysis');
-      if (rows && rows.length > 0) {
-        for (const row of rows) {
-          try {
-            const parsed = typeof row.form_data === 'string' ? JSON.parse(row.form_data) : row.form_data;
-            if (parsed && parsed.preAnalysisNo) numbers.push(parsed.preAnalysisNo);
-          } catch {}
-        }
+      const [rows] = await pool.query<any[]>(
+        'SELECT pre_analysis_no FROM crm_pre_analysis_forms WHERE deleted_at IS NULL AND pre_analysis_no IS NOT NULL',
+      );
+      for (const row of rows) {
+        if (row.pre_analysis_no) numbers.push(row.pre_analysis_no);
       }
     } catch (e) {
-      console.warn('Failed to query numbers from MySQL:', e);
+      console.warn('Failed to query Pre-Analysis numbers from MySQL:', e);
     }
   }
-
   return numbers;
 }

@@ -1,99 +1,74 @@
-import {auditTable} from '../../users/users.repository';
-import {pool} from '../../../core/db/pool';
-import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import crypto from 'node:crypto';
+import type {MasterCatalog} from '@liugong/shared';
+import {clearCrmLookupCache, cleanNullableString, normalizeCode} from '../../../core/db/crm-lookups';
+import {pool} from '../../../core/db/pool';
+import {readSimpleCatalog, saveSimpleCatalog, type SimpleTableSpec} from './simple-master.helper';
 
-const groups = [
-  ['facilityPurpose', 'master_finance_facility_purpose'],
-  ['financingMethod', 'master_finance_facility_method'],
-  ['currency', 'master_finance_currency'],
-  ['paymentMethod', 'master_finance_payment_timing'],
-] as const;
+const SIMPLE_SPECS: SimpleTableSpec[] = [
+  {key: 'facilityPurpose', table: 'crm_master_facility_purposes'},
+  {key: 'financingMethod', table: 'crm_master_financing_methods'},
+  {key: 'currency', table: 'crm_master_currencies'},
+];
 
-export async function initializeFinanceMasters(seed: MasterCatalog) {
-  if (!pool) return;
-  for (const [key, table] of groups) {
-    await pool.query(`CREATE TABLE IF NOT EXISTS \`${table}\` (
-   id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
-   ${key === 'paymentMethod' ? "timing ENUM('advance','arrear') NOT NULL DEFAULT 'arrear'," : ''}is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-    await auditTable(table);
-    const [count] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM \`${table}\``);
-    if (Number(count[0].total) === 0)
-      for (const item of seed[key])
-        await pool.execute(
-          `INSERT INTO \`${table}\` (id,code,name,is_active${key === 'paymentMethod' ? ',timing' : ''}) VALUES (?,?,?,?${key === 'paymentMethod' ? ',?' : ''})`,
-          [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.active ? 1 : 0,
-            ...(key === 'paymentMethod' ? [item.timing || 'arrear'] : []),
-          ],
-        );
-  }
+export async function initializeFinanceMasters(_seed: MasterCatalog) {
+  return;
 }
 
-export async function financeMasterCatalog(catalog: MasterCatalog): Promise<MasterCatalog> {
-  if (!pool) return catalog;
-  const result = {...catalog};
-  for (const [key, table] of groups) {
-    const [rows] = await pool.query<any[]>(
-      `SELECT code,name,is_active${key === 'paymentMethod' ? ',timing' : ''} FROM \`${table}\` ORDER BY created_at,id`,
+export async function financeMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
+  const catalog = await readSimpleCatalog(SIMPLE_SPECS);
+  if (pool) {
+    const [timings] = await pool.query<any[]>(
+      'SELECT code, name, timing_type, is_active FROM crm_master_payment_timings ORDER BY sort_order ASC, name ASC',
     );
-    result[key] = rows.map(
-      row =>
-        ({
-          value: row.code,
-          name: row.name,
-          active: !!row.is_active,
-          ...(key === 'paymentMethod' ? {timing: row.timing} : {}),
-        }) satisfies MasterItem,
-    );
+    catalog.paymentMethod = timings.map(r => ({
+      value: r.code,
+      name: r.name,
+      active: Boolean(r.is_active),
+      timing: String(r.timing_type || 'ARREAR').toLowerCase(),
+    }));
+  } else {
+    catalog.paymentMethod = [];
   }
-  return result;
+  return catalog;
 }
 
 export async function saveFinanceMasters(catalog: MasterCatalog) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const c = await pool.getConnection();
-  try {
-    await c.beginTransaction();
-    for (const [key, table] of groups) {
-      for (const item of catalog[key]) {
-        const [rows] = await c.execute<any[]>(
-          `SELECT name,is_active${key === 'paymentMethod' ? ',timing' : ''} FROM \`${table}\` WHERE code=? FOR UPDATE`,
-          [item.value],
+  await saveSimpleCatalog(SIMPLE_SPECS, catalog);
+  if (pool && Array.isArray(catalog.paymentMethod)) {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      for (let i = 0; i < catalog.paymentMethod.length; i++) {
+        const item = catalog.paymentMethod[i];
+        const rawVal = cleanNullableString(item?.value);
+        const name = cleanNullableString(item?.name) || rawVal;
+        if (!rawVal || !name) continue;
+        const code = normalizeCode(rawVal).slice(0, 50) || rawVal;
+        const timingType = String(item.timing || '').toLowerCase().includes('advance') ? 'ADVANCE' : 'ARREAR';
+        const active = item.active === false ? 0 : 1;
+        const [existing] = await conn.execute<any[]>(
+          'SELECT id FROM crm_master_payment_timings WHERE id = ? OR LOWER(code) = LOWER(?) OR LOWER(name) = LOWER(?) LIMIT 1',
+          [rawVal, code, name],
         );
-        if (rows.length) {
-          if (
-            rows[0].name !== item.name ||
-            !!rows[0].is_active !== item.active ||
-            (key === 'paymentMethod' && rows[0].timing !== item.timing)
-          )
-            await c.execute(
-              `UPDATE \`${table}\` SET name=?,is_active=?${key === 'paymentMethod' ? ',timing=?' : ''},updated_at=CURRENT_TIMESTAMP(3) WHERE code=?`,
-              [
-                item.name,
-                item.active ? 1 : 0,
-                ...(key === 'paymentMethod' ? [item.timing || 'arrear'] : []),
-                item.value,
-              ],
-            );
-        } else
-          await c.execute(`INSERT INTO \`${table}\` (id,code,name,is_active) VALUES (?,?,?,?)`, [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.active ? 1 : 0,
-          ]);
+        if (existing.length) {
+          await conn.execute(
+            'UPDATE crm_master_payment_timings SET name = ?, timing_type = ?, sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?',
+            [name, timingType, i + 1, active, existing[0].id],
+          );
+        } else {
+          await conn.execute(
+            'INSERT INTO crm_master_payment_timings (id, code, name, timing_type, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)',
+            [crypto.randomUUID(), code, name, timingType, i + 1, active],
+          );
+        }
       }
+      await conn.commit();
+      clearCrmLookupCache();
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
     }
-    await c.commit();
-  } catch (e) {
-    await c.rollback();
-    throw e;
-  } finally {
-    c.release();
   }
 }

@@ -10,16 +10,11 @@ import {createSessionRecord, isAdminUser, signSession, SESSION_COOKIE} from '../
 async function main() {
   const username = process.argv[2];
   if (!username) throw new Error('Usage: mint-session.ts <username>');
-  const [rows] = await pool.query<any[]>('SELECT id FROM users WHERE username = ? AND is_active = 1', [
+  const [rows] = await pool.query<any[]>('SELECT id, username FROM users_users WHERE username = ? AND is_active = 1', [
     username,
   ]);
   if (!rows[0]) throw new Error(`No active user "${username}"`);
-  const sid = await createSessionRecord(
-    rows[0].id,
-    await isAdminUser(rows[0].id, username),
-    '127.0.0.1',
-    'dev-mint',
-  );
+  const {sid} = await createSessionRecord(rows[0].id, '127.0.0.1', 'dev-mint', 'CRM Dashboard');
   console.log(`${SESSION_COOKIE}=${signSession(rows[0].id, sid)}`);
   await pool.end();
 }
