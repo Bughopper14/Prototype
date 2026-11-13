@@ -21,7 +21,9 @@ uat-result.md
 file-test/
 
 .turbo/
-storage/
+storage/documents/
+storage/files/
+storage/mydocuments/
 *.tsbuildinfo
 apps/ocr/tessdata/
 apps/ocr/.venv/
