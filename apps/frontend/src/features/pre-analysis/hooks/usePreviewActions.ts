@@ -59,4 +59,3 @@ export function usePreviewActions(
   return {handlePreviewCellClick};
 }
 
-export type PreviewActionsState = ReturnType<typeof usePreviewActions>;

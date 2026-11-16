@@ -49,7 +49,7 @@ export function StakeholderDetailDialog({
       storedDocumentUrl(item.document_path) ||
       (item.file_name ? `/documents/${idFolder}/${item.file_name}` : null) ||
       item.ktpUrl ||
-      (item.name?.includes('GUOHUI CHEN') ? '/img/ktp-guohui-chen.png' : null),
+      null,
   );
   const [imgError, setImgError] = useState(false);
 

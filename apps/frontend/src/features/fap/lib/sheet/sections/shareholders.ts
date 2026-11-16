@@ -1,7 +1,7 @@
 /** Shareholders table, up to 8 rows. */
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
-import {formatStakeholderPosition} from '@liugong/shared';
+import {currentMasterData} from '@/shared/master-data';
 
 export function applyShareholders({d, setText}: {d: SheetValues; setText: CellWriters['setText']}) {
   // Shareholders up to 8
@@ -17,7 +17,7 @@ export function applyShareholders({d, setText}: {d: SheetValues; setText: CellWr
         ? item.sharePercentage
         : item.sharePercent || item.percent || item.percentage;
     setText(`fap-cell-sh-${i}-name`, shName || '');
-    setText(`fap-cell-sh-${i}-pos`, formatStakeholderPosition(item.positions || item.position));
+    setText(`fap-cell-sh-${i}-pos`, (currentMasterData().positions || []).find(p => p.value === item.positions)?.name || item.position || '');
     setText(
       `fap-cell-sh-${i}-shares`,
       shareVal !== undefined && shareVal !== null && shareVal !== ''

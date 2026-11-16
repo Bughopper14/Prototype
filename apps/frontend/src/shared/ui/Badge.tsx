@@ -1,12 +1,13 @@
 /** Status pill (draft, review, approved…). */
-import {statusLabel} from '@/shared/lib/format';
+import {statusName, useMasterData} from '@/shared/master-data';
 import {label} from '@liugong/shared';
 
 export function Badge({status}: {status: string}) {
+  const master = useMasterData();
   return (
     <span className={'badge ' + status?.toLowerCase()}>
       <i />
-      {statusLabel[status] || label(status)}
+      {statusName(status, master) || label(status)}
     </span>
   );
 }

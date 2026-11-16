@@ -24,8 +24,6 @@ export const MANDATORY_SECTIONS_PRE = [
   'Expert Judgement Conclusion',
 ] as const;
 
-export const MANDATORY_SECTIONS = [...MANDATORY_SECTIONS_FAP, ...MANDATORY_SECTIONS_PRE] as const;
-
 export function cleanSectionName(sec: string): string {
   if (!sec) return '';
   return String(sec)

@@ -3,13 +3,11 @@ import {ChevronDown} from 'lucide-react';
 import type {Dispatch, SetStateAction} from 'react';
 
 export function ReviewShareholders({
-  deed,
   closedRows,
   setClosedRows,
   detailRows,
   holders,
 }: {
-  deed: any;
   closedRows: Record<number, boolean>;
   setClosedRows: Dispatch<SetStateAction<Record<number, boolean>>>;
   detailRows: (r: any) => (readonly [string, string])[];

@@ -43,7 +43,7 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('currentProjects', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {renderProjectGroupListPreview(data.currentProjects, 'PT Handalan Putramas Santosa (HPS)')}
+              {renderProjectGroupListPreview(data.currentProjects)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -53,7 +53,7 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('historyProjects', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {renderProjectGroupListPreview(data.historyProjects, 'PT Pangan Sejahtera Santosa (PASS)')}
+              {renderProjectGroupListPreview(data.historyProjects)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -63,7 +63,7 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('investmentProjectPlans', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              {renderProjectGroupListPreview(data.investmentProjectPlans, 'PT Harta Putramas Santosa (HTPS)')}
+              {renderProjectGroupListPreview(data.investmentProjectPlans)}
             </td>
           </tr>
           <tr style={{borderBottom: '1px solid #e2e8f0'}}>
@@ -113,7 +113,7 @@ export function ProjectInfoPreview() {
               onClick={() => handlePreviewCellClick('projectStatus', 'sec2')}
               style={{padding: '4px 6px', cursor: 'pointer'}}
             >
-              <span style={{fontWeight: 600}}>{data.projectStatus || 'Ongoing'}</span>
+              <span style={{fontWeight: 600}}>{data.projectStatus || '-'}</span>
               {data.projectStatusRemarks ? ` - ${data.projectStatusRemarks}` : ''}
             </td>
           </tr>

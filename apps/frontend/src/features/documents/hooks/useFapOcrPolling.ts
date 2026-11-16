@@ -38,12 +38,7 @@ export function useFapOcrPolling({
             setRemarksSaveStatus('idle');
           }
 
-          if (
-            comp &&
-            (!comp.extractedData ||
-              Object.keys(comp.extractedData).length === 0 ||
-              comp.status === 'processing')
-          ) {
+          if (comp?.status === 'processing') {
             setIsFapOcrScanning(true);
             let attempts = 0;
             pollTimer = setInterval(async () => {
@@ -55,10 +50,10 @@ export function useFapOcrPolling({
               try {
                 const compRes = await api(`/applications/${a.id}/fap-comparison`);
                 const c = compRes?.comparison;
-                if (c && c.extractedData && Object.keys(c.extractedData).length > 0) {
+                if (c?.status !== 'processing') {
                   clearInterval(pollTimer);
                   if (!isCancelled) {
-                    setFapComparison(c);
+                    setFapComparison(c || null);
                     setIsFapOcrScanning(false);
                   }
                 } else if (attempts >= 45) {

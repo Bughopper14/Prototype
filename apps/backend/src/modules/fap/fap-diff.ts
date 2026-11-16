@@ -1,309 +1,177 @@
 import {experienceFromEstablishmentDate} from '@liugong/shared';
 
-export function computeFapDiffs(
-  currentApp: any,
-  extracted: any,
-): Array<{field: string; label: string; oldValue: string; newValue: string}> {
-  const toIsoDate = (val: string) => {
-    if (!val) return null;
-    const s = String(val).trim();
-    const mIso = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
-    if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
-    const mDmy = s.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
-    if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
-    return null;
-  };
+/** One difference between the system data and the signed FAP document; '' means the value is empty. */
+export type FapDiff = {field: string; label: string; oldValue: string; newValue: string; section?: string};
 
-  const diffs: Array<{field: string; label: string; oldValue: string; newValue: string}> = [];
-  const compareField = (key: string, label: string, oldVal: any, newVal: any, isNumber = false) => {
-    const sNew = newVal !== undefined && newVal !== null ? String(newVal).trim() : '';
-    const sOld = oldVal !== undefined && oldVal !== null ? String(oldVal).trim() : '';
+/** Where the master (crm_master_field_mandatory_rules) names a field: its label and section. */
+export type FieldRule = {label: string; section: string};
+/** Finds the master rule of a field; `anchor` is a field that only exists in the wanted section (so a repeated key such as city picks the right one). */
+export type RuleLookup = (key: string, anchor?: string) => FieldRule | undefined;
 
-    // If both are empty / blank, no difference
-    if (!sNew && !sOld) return;
+const text = (v: any) => (v !== undefined && v !== null ? String(v).trim() : '');
 
-    if (isNumber) {
-      if (key === 'experienceMonths' && ((sOld === '0' && !sNew) || (sNew === '0' && !sOld))) {
-        return;
-      }
-      if (!sNew && sOld) {
-        diffs.push({field: key, label, oldValue: sOld, newValue: '— (Kosong di dokumen)'});
-        return;
-      }
-      if (sNew && !sOld) {
-        diffs.push({field: key, label, oldValue: '—', newValue: sNew});
-        return;
-      }
-      const nNew = Number(sNew.replace(/[^\d.-]/g, ''));
-      const nOld = Number(sOld.replace(/[^\d.-]/g, ''));
-      if (!isNaN(nNew) && !isNaN(nOld) && nNew === nOld) return;
-    } else {
-      const cleanNew = sNew.replace(/\s+/g, ' ').toUpperCase();
-      const cleanOld = sOld.replace(/\s+/g, ' ').toUpperCase();
-      if (cleanNew === cleanOld) return;
+const toIsoDate = (val: string) => {
+  const mIso = val.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+  if (mIso) return `${mIso[1]}-${mIso[2].padStart(2, '0')}-${mIso[3].padStart(2, '0')}`;
+  const mDmy = val.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (mDmy) return `${mDmy[3]}-${mDmy[2].padStart(2, '0')}-${mDmy[1].padStart(2, '0')}`;
+  return null;
+};
 
-      // If one is empty and the other is not, it is a difference!
-      if (!cleanNew && cleanOld) {
-        diffs.push({field: key, label, oldValue: sOld, newValue: '— (Kosong di dokumen)'});
-        return;
-      }
-      if (cleanNew && !cleanOld) {
-        diffs.push({field: key, label, oldValue: '—', newValue: sNew});
-        return;
-      }
-
-      // Date normalization (DD/MM/YYYY vs YYYY-MM-DD)
-      if (key.toLowerCase().includes('date') || key.toLowerCase().includes('tanggal')) {
-        const dNew = toIsoDate(sNew);
-        const dOld = toIsoDate(sOld);
-        if (dNew && dOld && dNew === dOld) return;
-      }
-
-      // NIB / NPWP digit comparison
-      if (key === 'nib' || key === 'npwp') {
-        const dNew = sNew.replace(/\D/g, '');
-        const dOld = sOld.replace(/\D/g, '');
-        if (dNew && dOld && dNew === dOld) return;
-      }
-
-      // Phone numbers digit comparison (e.g. 021-52998877 vs 02152998877)
-      if (key === 'phoneFax' || key === 'picPhone' || key.toLowerCase().includes('phone')) {
-        const dNew = sNew.replace(/\D/g, '');
-        const dOld = sOld.replace(/\D/g, '');
-        if (dNew && dOld && (dNew === dOld || dNew.endsWith(dOld) || dOld.endsWith(dNew))) return;
-      }
-
-      // Province normalization (e.g. Jawa Timu vs Jawa Timur)
-      if (key.toLowerCase().includes('province') || key.toLowerCase().includes('provinsi')) {
-        const normProv = (s: string) =>
-          s
-            .replace(/\s+/g, ' ')
-            .replace(/TIMU\b/gi, 'TIMUR')
-            .trim()
-            .toUpperCase();
-        if (normProv(sNew) === normProv(sOld)) return;
-      }
-
-      // Address normalization (Jl. vs JI. vs J1., whitespace, punctuation, Timu -> Timur)
-      if (key.toLowerCase().includes('address') || key.toLowerCase().includes('alamat')) {
-        const normAddr = (s: string) =>
-          s
-            .replace(/\bJ[I1L]\.?\s*/gi, 'JL. ')
-            .replace(/TIMU\b/gi, 'TIMUR')
-            .replace(/[\s,.-]+/g, ' ')
-            .trim()
-            .toUpperCase();
-        if (normAddr(sNew) === normAddr(sOld)) return;
-      }
-
-      // Deed numbers (ignore spaces & hyphens differences)
-      if (key.toLowerCase().includes('deed') || key.toLowerCase().includes('act')) {
-        const normDeed = (s: string) => s.replace(/[\s\-_/.]/g, '').toUpperCase();
-        if (normDeed(sNew) === normDeed(sOld)) return;
-      }
-
-      // Facility Purpose normalization (Investasi vs Investment vs WORKING_CAPITAL)
-      if (key.toLowerCase().includes('purpose') || key.toLowerCase().includes('tujuan')) {
-        const normPurpose = (s: string) => {
-          const u = s.toUpperCase();
-          if (u.includes('INVEST')) return 'INVESTMENT';
-          if (u.includes('MODAL') || u.includes('WORKING')) return 'WORKING_CAPITAL';
-          return u;
-        };
-        if (normPurpose(sNew) === normPurpose(sOld)) return;
-      }
-    }
-
-    diffs.push({
-      field: key,
-      label,
-      oldValue: sOld || '—',
-      newValue: sNew || '— (Kosong di dokumen)',
-    });
-  };
-
-  compareField(
-    'applicationDate',
-    'Tanggal / Application Date',
-    currentApp.applicationDate,
-    extracted.applicationDate,
-  );
-  compareField('branchCode', 'Cabang / Branch Code', currentApp.branchCode, extracted.branchCode);
-  compareField(
-    'customerStatus',
-    'Status Debitur (New / Existing)',
-    currentApp.customerStatus || currentApp.customerCategory,
-    extracted.customerStatus,
-  );
-  compareField(
-    'companyType',
-    'Tipe Perusahaan / Segmen',
-    currentApp.customer?.companyType || currentApp.companyType,
-    extracted.companyType,
-  );
-  compareField(
-    'companyName',
-    'Nama Perusahaan',
-    currentApp.customer?.companyName || currentApp.companyName,
-    extracted.companyName,
-  );
-  compareField(
-    'nib',
-    'Nomor Induk Berusaha (NIB)',
-    currentApp.customer?.nib || currentApp.nib,
-    extracted.nib,
-  );
-  compareField('npwp', 'NPWP Perusahaan', currentApp.customer?.npwp || currentApp.npwp, extracted.npwp);
-  compareField(
-    'companyAddress',
-    'Alamat Perusahaan',
-    currentApp.companyAddress || currentApp.customer?.companyAddress,
-    extracted.companyAddress,
-  );
-  compareField('rt', 'RT', currentApp.rt || currentApp.customer?.rt, extracted.rt);
-  compareField('rw', 'RW', currentApp.rw || currentApp.customer?.rw, extracted.rw);
-  compareField('city', 'Kota / Kabupaten', currentApp.city || currentApp.customer?.city, extracted.city);
-  compareField(
-    'province',
-    'Provinsi',
-    currentApp.province || currentApp.customer?.province,
-    extracted.province,
-  );
-  compareField(
-    'postalCode',
-    'Kode Pos',
-    currentApp.postalCode || currentApp.customer?.postalCode,
-    extracted.postalCode,
-  );
-  compareField('phoneFax', 'Telepon / Fax', currentApp.phoneFax, extracted.phoneFax);
-  compareField('email', 'Email Perusahaan', currentApp.email, extracted.email);
-  compareField('website', 'Website Perusahaan', currentApp.website, extracted.website);
-  compareField('mainBusiness', 'Bidang Usaha Utama', currentApp.mainBusiness, extracted.mainBusiness);
-  compareField(
-    'establishmentActNo',
-    'Nomor Akta Pendirian',
-    currentApp.establishmentActNo || currentApp.legal?.establishmentActNo,
-    extracted.establishmentActNo,
-  );
-  compareField(
-    'establishmentDate',
-    'Tanggal Akta Pendirian',
-    currentApp.establishmentDate || currentApp.legal?.establishmentDate,
-    extracted.establishmentDate,
-  );
-
-  // Calculate system experience (fallback to establishmentDate)
-  const estDateForExp =
-    currentApp.establishmentDate ||
-    currentApp.customer?.establishmentDate ||
-    currentApp.legal?.establishmentDate;
-  let sysExpYears: any =
-    currentApp.experienceYears !== undefined &&
-    currentApp.experienceYears !== null &&
-    currentApp.experienceYears !== ''
-      ? currentApp.experienceYears
-      : currentApp.customer?.experienceYears !== undefined &&
-          currentApp.customer?.experienceYears !== null &&
-          currentApp.customer?.experienceYears !== ''
-        ? currentApp.customer.experienceYears
-        : '';
-  let sysExpMonths: any =
-    currentApp.experienceMonths !== undefined &&
-    currentApp.experienceMonths !== null &&
-    currentApp.experienceMonths !== ''
-      ? currentApp.experienceMonths
-      : currentApp.customer?.experienceMonths !== undefined &&
-          currentApp.customer?.experienceMonths !== null &&
-          currentApp.customer?.experienceMonths !== ''
-        ? currentApp.customer.experienceMonths
-        : '';
-  if (sysExpYears === '' && estDateForExp) {
-    const expCalc = experienceFromEstablishmentDate(estDateForExp);
-    sysExpYears = expCalc.experienceYears;
-    sysExpMonths = expCalc.experienceMonths;
+/** True when the system value and the document value of one FAP field are not the same (after normalising). */
+function differs(key: string, system: string, document: string, isNumber: boolean) {
+  if (!system && !document) return false;
+  if (isNumber) {
+    if (key === 'experienceMonths' && ((system === '0' && !document) || (document === '0' && !system))) return false;
+    if (!system || !document) return true;
+    const a = Number(system.replace(/[^\d.-]/g, ''));
+    const b = Number(document.replace(/[^\d.-]/g, ''));
+    return !(!isNaN(a) && !isNaN(b) && a === b);
   }
+  const upper = (s: string) => s.replace(/\s+/g, ' ').toUpperCase();
+  if (upper(system) === upper(document)) return false;
+  if (!system || !document) return true;
+  const k = key.toLowerCase();
+  const same = (norm: (s: string) => string | null) => {
+    const a = norm(system);
+    return !!a && a === norm(document);
+  };
+  if (k.includes('date') && same(toIsoDate)) return false;
+  if ((key === 'nib' || key === 'npwp') && same(s => s.replace(/\D/g, ''))) return false;
+  if (k.includes('phone')) {
+    const a = system.replace(/\D/g, '');
+    const b = document.replace(/\D/g, '');
+    if (a && b && (a === b || a.endsWith(b) || b.endsWith(a))) return false;
+  }
+  if (k.includes('province') && same(s => upper(s).replace(/TIMU\b/g, 'TIMUR').trim())) return false;
+  if (
+    k.includes('address') &&
+    same(s =>
+      s
+        .replace(/\bJ[I1L]\.?\s*/gi, 'JL. ')
+        .replace(/TIMU\b/gi, 'TIMUR')
+        .replace(/[\s,.-]+/g, ' ')
+        .trim()
+        .toUpperCase(),
+    )
+  )
+    return false;
+  if ((k.includes('deed') || k.includes('act')) && same(s => s.replace(/[\s\-_/.]/g, '').toUpperCase())) return false;
+  if (k.includes('purpose')) {
+    const purpose = (s: string) => {
+      const u = s.toUpperCase();
+      if (u.includes('INVEST')) return 'INVESTMENT';
+      if (u.includes('MODAL') || u.includes('WORKING')) return 'WORKING_CAPITAL';
+      return u;
+    };
+    if (same(purpose)) return false;
+  }
+  return true;
+}
 
-  // Document experience: strictly reflect the physical document boxes (empty if unfilled in document)
-  let docExpYears: any =
-    extracted.experienceYears !== undefined &&
-    extracted.experienceYears !== null &&
-    extracted.experienceYears !== ''
-      ? String(extracted.experienceYears)
-      : '';
-  let docExpMonths: any =
-    extracted.experienceMonths !== undefined &&
-    extracted.experienceMonths !== null &&
-    extracted.experienceMonths !== ''
-      ? String(extracted.experienceMonths)
-      : '';
+/** Business experience of the application: the stored years/months, otherwise counted from the establishment date. */
+function experience(app: any) {
+  const pick = (a: any, b: any) => (a !== undefined && a !== null && a !== '' ? a : b !== undefined && b !== null && b !== '' ? b : '');
+  let years = pick(app.experienceYears, app.customer?.experienceYears);
+  let months = pick(app.experienceMonths, app.customer?.experienceMonths);
+  const established = app.establishmentDate || app.customer?.establishmentDate || app.legal?.establishmentDate;
+  if (years === '' && established) {
+    const e = experienceFromEstablishmentDate(established);
+    years = e.experienceYears;
+    months = e.experienceMonths;
+  }
+  return {years, months};
+}
 
-  compareField('experienceYears', 'Pengalaman Usaha (Tahun)', sysExpYears, docExpYears, true);
-  compareField('experienceMonths', 'Pengalaman Usaha (Bulan)', sysExpMonths, docExpMonths, true);
+/**
+ * The FAP fields printed on the signed document (RT / RW are not on the form): key, system value and whether the value is
+ * a number. Province and city are compared by name. The label and section come from the master rule named by `rule`
+ * (`anchor` picks the section when a key repeats); `label` is only used for a field the master has no rule for.
+ */
+const FIELDS: {key: string; label: string; rule?: string; anchor?: string; system: (app: any) => any; number?: boolean}[] = [
+  {key: 'applicationDate', label: 'Tanggal / Application Date', system: a => a.applicationDate},
+  {key: 'branchCode', rule: 'branchCode', anchor: 'companyAddress', label: 'Cabang / Branch Code', system: a => a.branchCode},
+  {key: 'customerStatus', rule: 'customerCategory', label: 'Status Debitur (New / Existing)', system: a => a.customerStatus || a.customerCategory},
+  {key: 'companyType', rule: 'companyType', label: 'Tipe Perusahaan / Segmen', system: a => a.customer?.companyType || a.companyType},
+  {key: 'companyName', rule: 'companyName', label: 'Nama Perusahaan', system: a => a.customer?.companyName || a.companyName},
+  {key: 'nib', rule: 'nib', label: 'Nomor Induk Berusaha (NIB)', system: a => a.customer?.nib || a.nib},
+  {key: 'npwp', rule: 'npwp', label: 'NPWP Perusahaan', system: a => a.customer?.npwp || a.npwp},
+  {key: 'companyAddress', rule: 'companyAddress', anchor: 'companyAddress', label: 'Alamat Perusahaan', system: a => a.companyAddress || a.customer?.companyAddress},
+  {key: 'city', rule: 'city', anchor: 'companyAddress', label: 'Kota / Kabupaten', system: a => a.city || a.customer?.city},
+  {key: 'province', rule: 'province', anchor: 'companyAddress', label: 'Provinsi', system: a => a.province || a.customer?.province},
+  {key: 'postalCode', rule: 'postalCode', anchor: 'companyAddress', label: 'Kode Pos', system: a => a.postalCode || a.customer?.postalCode},
+  {key: 'phoneFax', rule: 'phoneFax', label: 'Telepon / Fax', system: a => a.phoneFax},
+  {key: 'email', rule: 'email', anchor: 'companyAddress', label: 'Email Perusahaan', system: a => a.email},
+  {key: 'website', rule: 'website', label: 'Website Perusahaan', system: a => a.website},
+  {key: 'mainBusiness', rule: 'mainBusiness', label: 'Bidang Usaha Utama', system: a => a.mainBusiness},
+  {
+    key: 'establishmentActNo',
+    rule: 'establishmentActNo', label: 'Nomor Akta Pendirian',
+    system: a => a.establishmentActNo || a.legal?.establishmentActNo,
+  },
+  {
+    key: 'establishmentDate',
+    rule: 'establishmentDate', label: 'Tanggal Akta Pendirian',
+    system: a => a.establishmentDate || a.legal?.establishmentDate,
+  },
+  {key: 'experienceYears', rule: 'experienceYears', label: 'Pengalaman Usaha (Tahun)', system: a => experience(a).years, number: true},
+  {key: 'experienceMonths', rule: 'experienceMonths', label: 'Pengalaman Usaha (Bulan)', system: a => experience(a).months, number: true},
+  {key: 'latestDeedNo', rule: 'latestDeedNo', label: 'Nomor Akta Perubahan Terakhir', system: a => a.latestDeedNo || a.legal?.latestDeedNo},
+  {
+    key: 'latestDeedDate',
+    rule: 'latestDeedDate', label: 'Tanggal Akta Perubahan Terakhir',
+    system: a => a.latestDeedDate || a.legal?.latestDeedDate,
+  },
+  {key: 'repaymentSource', rule: 'repaymentSource', label: 'Sumber Pengembalian', system: a => a.repaymentSource},
+  {key: 'locationStatus', rule: 'locationStatus', label: 'Status Lokasi Usaha', system: a => a.locationStatus},
+  {key: 'picName', rule: 'picName', label: 'Nama PIC', system: a => a.pic?.picName || a.pic?.name},
+  {key: 'picPosition', rule: 'position', anchor: 'picName', label: 'Jabatan PIC', system: a => a.pic?.position},
+  {key: 'picPhone', rule: 'phone', anchor: 'picName', label: 'No. HP / Telepon PIC', system: a => a.pic?.phone || a.pic?.mobilePhone},
+  {key: 'picEmail', rule: 'email', anchor: 'picName', label: 'Email PIC', system: a => a.pic?.email},
+  {key: 'picAddress', rule: 'currentAddress', anchor: 'picName', label: 'Alamat Domisili PIC', system: a => a.pic?.currentAddress || a.pic?.address},
+  {key: 'picCity', rule: 'city', anchor: 'picName', label: 'Kota PIC', system: a => a.pic?.city},
+  {key: 'picProvince', rule: 'province', anchor: 'picName', label: 'Provinsi PIC', system: a => a.pic?.province},
+  {key: 'picPostalCode', rule: 'postalCode', anchor: 'picName', label: 'Kode Pos PIC', system: a => a.pic?.postalCode},
+  {key: 'financingValue', rule: 'financingValueProp', label: 'Nilai Pembiayaan', system: a => a.proposal?.financingValue, number: true},
+  {key: 'downPaymentValue', label: 'Uang Muka (DP)', system: a => a.proposal?.downPaymentValue, number: true},
+  {key: 'tenorMonths', label: 'Tenor (Bulan)', system: a => a.proposal?.tenorMonths, number: true},
+  {key: 'facilityPurpose', label: 'Tujuan Pembiayaan', system: a => a.proposal?.facilityPurpose || a.facilityPurpose},
+  {key: 'financingMethod', rule: 'financingMethod', label: 'Metode Pembayaran', system: a => a.proposal?.financingMethod},
+];
 
-  compareField(
-    'latestDeedNo',
-    'Nomor Akta Perubahan Terakhir',
-    currentApp.latestDeedNo || currentApp.legal?.latestDeedNo,
-    extracted.latestDeedNo,
-  );
-  compareField(
-    'latestDeedDate',
-    'Tanggal Akta Perubahan Terakhir',
-    currentApp.latestDeedDate || currentApp.legal?.latestDeedDate,
-    extracted.latestDeedDate,
-  );
-  compareField(
-    'repaymentSource',
-    'Sumber Pengembalian',
-    currentApp.repaymentSource,
-    extracted.repaymentSource,
-  );
-  compareField('locationStatus', 'Status Lokasi Usaha', currentApp.locationStatus, extracted.locationStatus);
-  compareField('picName', 'Nama PIC', currentApp.pic?.picName || currentApp.pic?.name, extracted.picName);
-  compareField('picPosition', 'Jabatan PIC', currentApp.pic?.position, extracted.picPosition);
-  compareField(
-    'picPhone',
-    'No. HP / Telepon PIC',
-    currentApp.pic?.phone || currentApp.pic?.mobilePhone,
-    extracted.picPhone,
-  );
-  compareField('picEmail', 'Email PIC', currentApp.pic?.email, extracted.picEmail);
-  compareField(
-    'picAddress',
-    'Alamat Domisili PIC',
-    currentApp.pic?.currentAddress || currentApp.pic?.address,
-    extracted.picAddress,
-  );
-  compareField('picCity', 'Kota PIC', currentApp.pic?.city, extracted.picCity);
-  compareField('picProvince', 'Provinsi PIC', currentApp.pic?.province, extracted.picProvince);
-  compareField('picPostalCode', 'Kode Pos PIC', currentApp.pic?.postalCode, extracted.picPostalCode);
-  compareField(
-    'financingValue',
-    'Nilai Pembiayaan',
-    currentApp.proposal?.financingValue,
-    extracted.financingValue,
-    true,
-  );
-  compareField(
-    'downPaymentValue',
-    'Uang Muka (DP)',
-    currentApp.proposal?.downPaymentValue,
-    extracted.downPaymentValue,
-    true,
-  );
-  compareField('tenorMonths', 'Tenor (Bulan)', currentApp.proposal?.tenorMonths, extracted.tenorMonths, true);
-  compareField(
-    'facilityPurpose',
-    'Tujuan Pembiayaan',
-    currentApp.proposal?.facilityPurpose || currentApp.facilityPurpose || 'INVESTMENT',
-    extracted.facilityPurpose,
-  );
-  compareField(
-    'financingMethod',
-    'Metode Pembayaran',
-    currentApp.proposal?.financingMethod,
-    extracted.financingMethod,
-  );
+/**
+ * Every FAP field whose value in the OCR result of the signed document differs from the application. A field the OCR
+ * could not read (null / missing) is skipped; a field read as empty ('') is a difference.
+ */
+const withRule = (f: (typeof FIELDS)[number], rule: RuleLookup, diff: FapDiff): FapDiff => {
+  const found = f.rule ? rule(f.rule, f.anchor) : undefined;
+  return found ? {...diff, label: found.label, section: found.section} : diff;
+};
 
+export function computeFapDiffs(app: any, extracted: any, rule: RuleLookup): FapDiff[] {
+  const diffs: FapDiff[] = [];
+  for (const f of FIELDS) {
+    if (extracted[f.key] === null || extracted[f.key] === undefined) continue;
+    const system = text(f.system(app));
+    const document = text(extracted[f.key]);
+    if (differs(f.key, system, document, !!f.number))
+      diffs.push(withRule(f, rule, {field: f.key, label: f.label, oldValue: system, newValue: document}));
+  }
   return diffs;
+}
+
+/**
+ * The stored differences that still exist against the current application data: a field drops out once the system
+ * value equals the stored document value. The system value of the remaining ones is refreshed.
+ */
+export function recheckFapDiffs(app: any, stored: FapDiff[]): FapDiff[] {
+  const byKey = new Map(FIELDS.map(f => [f.key, f]));
+  const out: FapDiff[] = [];
+  for (const d of stored) {
+    const f = byKey.get(d.field);
+    if (!f) continue;
+    const system = text(f.system(app));
+    if (differs(f.key, system, text(d.newValue), !!f.number)) out.push({...d, oldValue: system});
+  }
+  return out;
 }

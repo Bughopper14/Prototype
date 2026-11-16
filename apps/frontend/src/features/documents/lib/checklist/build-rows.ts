@@ -1,17 +1,18 @@
 /** Works out, for every required document, where it comes from and whether it is there. */
-import {MASTER_DOC_DEFINITIONS} from '@/features/documents/lib/checklist/definitions';
+import type {MasterDocDef} from '@/features/documents/lib/checklist/definitions';
 import {RESOLVERS} from '@/features/documents/lib/checklist/resolvers';
 import type {ChecklistRow, RowState} from '@/features/documents/lib/checklist/types';
 
-export function buildChecklistRows(a: any, draft: any, allStakeholders: any[]): ChecklistRow[] {
+export function buildChecklistRows(
+  definitions: MasterDocDef[],
+  a: any,
+  draft: any,
+  allStakeholders: any[],
+): ChecklistRow[] {
   const checkList = a.documentChecks || [];
 
-  return MASTER_DOC_DEFINITIONS.map(def => {
-    const chk = checkList.find(
-      (c: any) =>
-        String(c.documentCode).toUpperCase() === def.code ||
-        String(c.documentName).toLowerCase() === def.name.toLowerCase(),
-    );
+  return definitions.map(def => {
+    const chk = checkList.find((c: any) => c.documentCode === def.code);
     const files = chk?.files || [];
 
     const row: RowState = {
@@ -30,6 +31,7 @@ export function buildChecklistRows(a: any, draft: any, allStakeholders: any[]): 
       ...def,
       ...row,
       chkId: chk?.id,
+      check: chk,
       status: chk?.status || (row.isAvailable ? 'UPLOADED' : 'PENDING'),
       files,
     };

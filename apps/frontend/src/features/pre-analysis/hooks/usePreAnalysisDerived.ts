@@ -18,12 +18,7 @@ export function usePreAnalysisDerived({data, todayDateStr}: PreAnalysisDataState
 
   const masterCatalog = useMasterData();
 
-  const investmentPlanMasterItems = masterCatalog.preanInvestmentPlanOptions?.filter(x => x.active) || [
-    {value: 'SD', name: 'SD (Security Deposit / Down Payment)', active: true},
-    {value: 'Tenor', name: 'Tenor', active: true},
-    {value: 'Rate', name: 'Rate', active: true},
-    {value: 'Adm', name: 'Adm (Administration Fee)', active: true},
-  ];
+  const investmentPlanMasterItems = (masterCatalog.preanInvestmentPlanOptions || []).filter(x => x.active);
 
   const hasSelectedRecommendation = recStr.length > 0 && (isNotRecommended || isProcessWithAr || isFullDoc);
 
@@ -43,4 +38,3 @@ export function usePreAnalysisDerived({data, todayDateStr}: PreAnalysisDataState
   };
 }
 
-export type PreAnalysisDerivedState = ReturnType<typeof usePreAnalysisDerived>;

@@ -10,6 +10,7 @@ export function ChecklistTable({
   onPreview,
   onUpload,
   onDelete,
+  onVerify,
 }: {
   rows: ChecklistRow[];
   uploadingCode: string | null;
@@ -17,6 +18,7 @@ export function ChecklistTable({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
+  onVerify?: (row: ChecklistRow) => void;
 }) {
   return (
     <div className="table-scroll doc-table-wrapper">
@@ -43,6 +45,7 @@ export function ChecklistTable({
               onPreview={onPreview}
               onUpload={onUpload}
               onDelete={onDelete}
+              onVerify={onVerify}
             />
           ))}
 

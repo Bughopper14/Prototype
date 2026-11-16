@@ -1,16 +1,26 @@
 import {validateInput} from './input-validation';
+/**
+ * Deed review states of crm_fap_legal_deed_reviews.review_status. DRAFT means the deed has no review row yet (never
+ * submitted). NEEDS_REVISION covers both a rejected deed and a deed returned with remarks, and an approved deed that
+ * was changed afterwards: it has to be submitted again.
+ */
 export const deedReviewLabels: Record<string, string> = {
   DRAFT: 'Draft',
-  PENDING_CHECK: 'Pending Legal Check',
-  PENDING_APPROVAL: 'Pending Legal Approval',
+  PENDING: 'Pending Legal Approval',
   APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  NEEDS_CORRECTION: 'Needs correction',
+  NEEDS_REVISION: 'Needs revision',
 };
 /** Authorities (managed in user management, stored in the DB) that gate the deed review. */
 export const DEED_APPROVE_AUTHORITY = 'crm_deed_approve';
 export const DEED_EDIT_AUTHORITY = 'crm_edit_app_legal';
-type DeedActor = {id?: string; name?: string; role?: string; isAdmin?: boolean; authorities?: string[]};
+type DeedActor = {
+  id?: string;
+  name?: string;
+  username?: string;
+  role?: string;
+  isAdmin?: boolean;
+  authorities?: string[];
+};
 const isAdminActor = (actor: DeedActor | null | undefined) =>
   Boolean(actor?.isAdmin || actor?.role === 'ADMIN');
 /** True when the actor holds the authority (from the DB roles); administrators hold every authority. */
@@ -34,6 +44,7 @@ const fields = [
   'createdAt',
   'deedNumber',
   'deedDate',
+  'notaryName',
   'ministerialDecreeNumber',
   'ministerialDecreeDate',
   'remarks',
@@ -56,9 +67,8 @@ export function deedStatusLabel(deed: any) {
   const status = reviewStatus(deed);
   return deedReviewLabels[status] || status;
 }
-/** A deed the reviewer gave back to the submitter (rejected, or needs correction): it can be changed and submitted again. */
-export const deedSentBack = (deed: any) => ['REJECTED', 'NEEDS_CORRECTION'].includes(reviewStatus(deed));
-export const deedPending = (deed: any) => ['PENDING_CHECK', 'PENDING_APPROVAL'].includes(reviewStatus(deed));
+/** A deed given back to the submitter (rejected, remarks, or changed after approval): change it and submit again. */
+export const deedPending = (deed: any) => reviewStatus(deed) === 'PENDING';
 export function publishedDeeds(legal: any) {
   return (legal?.deeds || [])
     .filter((d: any) => d.approvedSnapshot)
@@ -73,19 +83,18 @@ export function mergeLegal(previous: any, incoming: any) {
     ids.add(input.id);
     const old = prior.find((d: any) => d.id === input.id),
       data = deedData(input);
-    if (!old) return {...data, review: {status: 'DRAFT', revision: 1}, reviewHistory: []};
+    if (!old) return {...data, review: {status: 'DRAFT', revision: 1}};
     const changed = JSON.stringify(deedData(old)) !== JSON.stringify(data);
     assert(
       !changed || !deedPending(old),
       'Akta sedang diperiksa. Tunggu hasil pemeriksaan sebelum mengubah data.',
       409,
     );
+    // A changed deed that was ever submitted must be submitted again; a deed never submitted stays a draft.
+    const review = old.review || {status: 'DRAFT', revision: 1};
     return {
       ...data,
-      review: changed
-        ? {status: 'DRAFT', revision: (old.review?.revision || 0) + 1}
-        : old.review || {status: 'DRAFT', revision: 1},
-      reviewHistory: old.reviewHistory || [],
+      review: changed && reviewStatus(old) !== 'DRAFT' ? {...review, status: 'NEEDS_REVISION'} : review,
       ...(old.approvedSnapshot ? {approvedSnapshot: old.approvedSnapshot, approvedAt: old.approvedAt} : {}),
     };
   });
@@ -105,14 +114,18 @@ export function mergeLegal(previous: any, incoming: any) {
         );
     }
   }
-  const {establishment, amendment, ...current} = incoming;
-  return {...current, deeds};
+  return {...incoming, deeds};
 }
+/**
+ * One review action on a deed: SUBMIT (draft or needs revision → PENDING), APPROVE (PENDING → APPROVED, by someone
+ * other than the submitter), REJECT or REMARKS (PENDING → NEEDS_REVISION, with the reason). Returns the deed with its
+ * new review; the caller stores it.
+ */
 export function deedTransition(
   deed: any,
   action: string,
   actor: DeedActor & {id: string; name: string; role: string},
-  options: {revision: number; documentId?: string; comments?: string; beforeSnapshot?: any},
+  options: {revision: number; comments?: string},
   now = new Date(),
 ) {
   assert(deed, 'Akta tidak ditemukan.', 404);
@@ -123,17 +136,12 @@ export function deedTransition(
   );
   const status = reviewStatus(deed),
     comments = String(options.comments || '').trim(),
-    date = now.toISOString(),
-    revision = (deed.review?.revision || 1) + 1;
+    date = now.toISOString();
   assert(comments.length <= 10000, 'Catatan maksimal 10.000 karakter.');
-  let next = '';
+  const review: any = {...deed.review};
   if (action === 'SUBMIT') {
     assert(actorCan(actor, DEED_EDIT_AUTHORITY), 'Akun ini tidak memiliki hak untuk mengajukan akta.', 403);
-    assert(
-      ['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(status),
-      'Akta sudah diajukan atau disetujui.',
-      409,
-    );
+    assert(['DRAFT', 'NEEDS_REVISION'].includes(status), 'Akta sudah diajukan atau disetujui.', 409);
     for (const key of ['deedNumber', 'deedDate', 'ministerialDecreeNumber', 'ministerialDecreeDate'])
       assert(String(deed[key] || '').trim(), `${key} wajib diisi sebelum mengajukan akta.`);
     assert(['establishment', 'amendment'].includes(deed.type), 'Pilih jenis akta.');
@@ -142,17 +150,13 @@ export function deedTransition(
         deed.remarkCategoryId || (Array.isArray(deed.remarkCategoryIds) && deed.remarkCategoryIds.length),
         'Kategori akta perubahan wajib dipilih.',
       );
-
     assert(
       Array.isArray(deed.stakeholders) && deed.stakeholders.length,
       'Tambahkan stakeholder/shareholder sebelum mengajukan akta.',
     );
     validateInput(deedData(deed), now, false);
     for (const r of deed.stakeholders) {
-      validateInput(
-        {...r, nationalityType: r.citizenship === 'FOREIGN' ? 'WNA' : r.nationalityType || 'WNI'},
-        now,
-      );
+      validateInput({...r, nationalityType: r.citizenship === 'FOREIGN' ? 'WNA' : 'WNI'}, now);
       assert(
         [r.firstName, r.lastName, r.name].some(x => String(x || '').trim()),
         'Nama stakeholder wajib diisi.',
@@ -160,97 +164,38 @@ export function deedTransition(
       for (const key of ['email', 'mobilePhone', 'primaryCapital', 'idNumber'])
         assert(String(r[key] ?? '').trim(), `${key} stakeholder wajib diisi.`);
     }
-    next = 'PENDING_CHECK';
-  } else if (action === 'CHECK') {
-    assert(actorCan(actor, DEED_APPROVE_AUTHORITY), 'Akun ini tidak memiliki hak untuk memeriksa akta.', 403);
-    assert(status === 'PENDING_CHECK', 'Akta belum menunggu pemeriksaan.', 409);
-    if (!isAdminActor(actor))
-      assert(deed.review.submittedById !== actor.id, 'Pengaju dan pemeriksa harus berbeda.', 403);
-    next = 'PENDING_APPROVAL';
+    Object.assign(review, {status: 'PENDING', notes: null, submittedBy: actor.username || actor.name, submittedAt: date});
   } else if (action === 'APPROVE') {
-    assert(
-      actorCan(actor, DEED_APPROVE_AUTHORITY),
-      'Akun ini tidak memiliki hak untuk menyetujui akta.',
-      403,
-    );
-    assert(status === 'PENDING_APPROVAL', 'Akta harus lolos pemeriksaan terlebih dahulu.', 409);
+    assert(actorCan(actor, DEED_APPROVE_AUTHORITY), 'Akun ini tidak memiliki hak untuk menyetujui akta.', 403);
+    assert(status === 'PENDING', 'Akta belum diajukan untuk approval.', 409);
     if (!isAdminActor(actor))
-      assert(deed.review.checkedById !== actor.id, 'Pemeriksa dan approver harus berbeda.', 403);
-    next = 'APPROVED';
-  } else if (action === 'REJECT') {
+      assert(review.submittedBy !== (actor.username || actor.name), 'Pengaju dan approver harus berbeda.', 403);
+    Object.assign(review, {status: 'APPROVED', notes: comments || null, approvedBy: actor.name, approvedAt: date});
+  } else if (action === 'REJECT' || action === 'REMARKS') {
     assert(
-      actorCan(actor, DEED_APPROVE_AUTHORITY) && ['PENDING_CHECK', 'PENDING_APPROVAL'].includes(status),
-      'Penolakan tidak tersedia untuk akun/status ini.',
+      actorCan(actor, DEED_APPROVE_AUTHORITY) && status === 'PENDING',
+      'Pengembalian akta tidak tersedia untuk akun/status ini.',
       403,
     );
-    assert(comments, 'Alasan penolakan wajib diisi.');
-    next = 'REJECTED';
-  } else if (action === 'REMARKS') {
-    assert(
-      actorCan(actor, DEED_APPROVE_AUTHORITY) && ['PENDING_CHECK', 'PENDING_APPROVAL'].includes(status),
-      'Remarks tidak tersedia untuk akun/status ini.',
-      403,
-    );
-    assert(comments, 'Remarks wajib diisi.');
-    // Back to the submitter to change something and submit again; unlike REJECT, the deed itself is not refused.
-    next = 'NEEDS_CORRECTION';
+    assert(comments, action === 'REJECT' ? 'Alasan penolakan wajib diisi.' : 'Remarks wajib diisi.');
+    Object.assign(review, {status: 'NEEDS_REVISION', notes: comments});
   } else throw new DeedWorkflowError('Aksi approval tidak valid.');
-  const review: any = {...deed.review, status: next, revision};
-  if (action === 'SUBMIT')
-    Object.assign(review, {
-      comparisonBefore: options.beforeSnapshot ? structuredClone(options.beforeSnapshot) : null,
-      documentId: options.documentId,
-      submittedById: actor.id,
-      submittedBy: actor.name,
-      submittedAt: date,
-      checkedById: null,
-      checkedBy: null,
-      checkedAt: null,
-      approvedBy: null,
-      rejectedBy: null,
-      rejectionReason: null,
-      correctionNote: null,
-    });
-  if (action === 'CHECK')
-    Object.assign(review, {checkedById: actor.id, checkedBy: actor.name, checkedAt: date});
-  if (action === 'APPROVE') Object.assign(review, {approvedBy: actor.name, approvedAt: date});
-  if (action === 'REJECT')
-    Object.assign(review, {
-      rejectedBy: actor.name,
-      rejectedAt: date,
-      rejectionReason: comments,
-    });
-  if (action === 'REMARKS')
-    Object.assign(review, {correctionBy: actor.name, correctionAt: date, correctionNote: comments});
   return {
     ...deed,
     review,
-    reviewHistory: [
-      ...(deed.reviewHistory || []),
-      {
-        action,
-        status: next,
-        actor: actor.name,
-        role: actor.role,
-        at: date,
-        comments,
-        documentId: review.documentId,
-        revision,
-      },
-    ],
-    ...(next === 'APPROVED' ? {approvedSnapshot: deedData(deed), approvedAt: date} : {}),
+    ...(action === 'APPROVE' ? {approvedSnapshot: deedData(deed), approvedAt: date} : {}),
   };
 }
 
+/**
+ * Legal data can be edited in every workflow stage except the last one (stages run in parallel).
+ * application.workflowFlags comes from the backend (crm_master_workflow_stages).
+ */
 export function canEditLegal(actor: any, application: any) {
   if (!actor) return false;
   if (isAdminActor(actor)) return true;
   if (!actorCan(actor, DEED_EDIT_AUTHORITY)) return false;
-  return (
-    ['DRAFT', 'RETURNED'].includes(application?.status) ||
-    (!['APPROVED', 'REJECTED', 'CREDIT_COMMITTEE_REVIEW'].includes(application?.status) &&
-      (application?.legal?.deeds || []).some((d: any) => deedSentBack(d)))
-  );
+  return !application?.workflowFlags?.lastStage;
 }
 
 export function saveSingleDeed(previous: any, deedId: string, input: any) {
@@ -259,11 +204,7 @@ export function saveSingleDeed(previous: any, deedId: string, input: any) {
   try {
     validateInput({deeds: [data]});
   } catch (e) {}
-  const prior = Array.isArray(previous?.deeds)
-    ? previous.deeds
-    : ['establishment', 'amendment']
-        .filter(type => previous?.[type] && Object.values(previous[type]).some(Boolean))
-        .map(type => ({id: `legacy-${type}`, type, ...previous[type]}));
+  const prior = Array.isArray(previous?.deeds) ? previous.deeds : [];
   const target = mergeLegal({deeds: prior.filter((d: any) => d.id === deedId)}, {deeds: [data]}).deeds[0];
   return {
     ...previous,

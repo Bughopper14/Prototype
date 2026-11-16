@@ -39,7 +39,7 @@ export function ArchiveSnapshotViewer({
             fontFamily: 'monospace',
           }}
         >
-          {JSON.stringify(current.fap_stage_data, null, 2)}
+          {JSON.stringify(current.snapshot, null, 2)}
         </pre>
       )}
     </div>

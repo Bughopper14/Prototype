@@ -4,11 +4,9 @@ import type {SystemNotificationItem} from '@/features/activity/lib/types';
 
 export function NotificationsHeader({
   unreadList,
-  notifications,
   onMarkAllRead,
 }: {
   unreadList: SystemNotificationItem[];
-  notifications: SystemNotificationItem[];
   onMarkAllRead: () => void;
 }) {
   return (

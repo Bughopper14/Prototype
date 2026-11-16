@@ -1,5 +1,5 @@
 /** One row of the checklist table. */
-import {CheckCircle2, Clock} from 'lucide-react';
+import {CheckCircle2, Clock, ShieldCheck, XCircle} from 'lucide-react';
 import {DocumentRowActions} from '@/features/documents/components/checklist/DocumentRowActions';
 import {DocumentSourceCell} from '@/features/documents/components/checklist/DocumentSourceCell';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
@@ -12,6 +12,7 @@ export function ChecklistRowItem({
   onPreview,
   onUpload,
   onDelete,
+  onVerify,
 }: {
   row: ChecklistRow;
   index: number;
@@ -20,7 +21,15 @@ export function ChecklistRowItem({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
+  onVerify?: (row: ChecklistRow) => void;
 }) {
+  const checkedBy = [
+    ['BS', row.check?.checkedByBs],
+    ['CA', row.check?.checkedByCa],
+    ['LEGAL', row.check?.checkedByLegal],
+  ]
+    .filter(([, done]) => done)
+    .map(([dept]) => dept);
   return (
     <tr className={`doc-checklist-row ${row.isAvailable ? 'row-available' : 'row-pending'}`}>
       <td style={{textAlign: 'center', fontWeight: 600, color: '#64748b'}}>{index + 1}</td>
@@ -51,15 +60,28 @@ export function ChecklistRowItem({
 
       {/* Status Kelengkapan */}
       <td>
-        {row.isAvailable ? (
-          <span className="status-pill status-ready">
-            <CheckCircle2 size={13} style={{marginRight: 4}} /> Sudah Ada
-          </span>
-        ) : (
-          <span className="status-pill status-missing">
-            <Clock size={13} style={{marginRight: 4}} /> Belum Ada
-          </span>
-        )}
+        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4}}>
+          {row.isAvailable ? (
+            <span className="status-pill status-ready">
+              <CheckCircle2 size={13} style={{marginRight: 4}} /> Sudah Ada
+            </span>
+          ) : (
+            <span className="status-pill status-missing">
+              <Clock size={13} style={{marginRight: 4}} /> Belum Ada
+            </span>
+          )}
+          {row.status === 'VERIFIED' && (
+            <span className="status-pill status-ready">
+              <ShieldCheck size={13} style={{marginRight: 4}} /> Terverifikasi
+            </span>
+          )}
+          {row.status === 'REJECTED' && (
+            <span className="status-pill status-missing">
+              <XCircle size={13} style={{marginRight: 4}} /> Ditolak
+            </span>
+          )}
+          {checkedBy.length > 0 && <small className="muted">Dicek: {checkedBy.join(', ')}</small>}
+        </div>
       </td>
 
       {/* Sumber Integrasi & Bukti */}
@@ -76,6 +98,7 @@ export function ChecklistRowItem({
           onPreview={onPreview}
           onUpload={onUpload}
           onDelete={onDelete}
+          onVerify={onVerify}
         />
       </td>
     </tr>

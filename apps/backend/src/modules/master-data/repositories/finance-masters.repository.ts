@@ -1,99 +1,80 @@
-import {auditTable} from '../../users/users.repository';
-import {pool} from '../../../core/db/pool';
+import {Injectable} from '@nestjs/common';
 import type {MasterCatalog, MasterItem} from '@liugong/shared';
-import crypto from 'node:crypto';
+import {CrmDatabase} from '../../../core/db/crm-database';
+import {CRM} from '../../../core/db/crm-tables';
+import {MasterTableRepository, type MasterTable} from './master-table';
 
-const groups = [
-  ['facilityPurpose', 'master_finance_facility_purpose'],
-  ['financingMethod', 'master_finance_facility_method'],
-  ['currency', 'master_finance_currency'],
-  ['paymentMethod', 'master_finance_payment_timing'],
-] as const;
+const tables: MasterTable[] = [
+  {key: 'facilityPurpose', table: CRM.masterFacilityPurposes},
+  {key: 'financingMethod', table: CRM.masterFinancingMethods},
+  {key: 'currency', table: CRM.masterCurrencies, extras: [{column: 'symbol', field: 'symbol'}]},
+  {
+    key: 'paymentMethod',
+    table: CRM.masterPaymentTimings,
+    // The catalog keeps the lowercase timing ('advance' / 'arrear') the calculators read; the table stores ADVANCE / ARREAR.
+    extras: [
+      {
+        column: 'timing_type',
+        field: 'timing',
+        read: v => (v ? String(v).toLowerCase() : null),
+        write: v => (v ? String(v).toUpperCase() : 'ARREAR'),
+      },
+    ],
+  },
+];
 
-export async function initializeFinanceMasters(seed: MasterCatalog) {
-  if (!pool) return;
-  for (const [key, table] of groups) {
-    await pool.query(`CREATE TABLE IF NOT EXISTS \`${table}\` (
-   id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
-   ${key === 'paymentMethod' ? "timing ENUM('advance','arrear') NOT NULL DEFAULT 'arrear'," : ''}is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-    await auditTable(table);
-    const [count] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM \`${table}\``);
-    if (Number(count[0].total) === 0)
-      for (const item of seed[key])
-        await pool.execute(
-          `INSERT INTO \`${table}\` (id,code,name,is_active${key === 'paymentMethod' ? ',timing' : ''}) VALUES (?,?,?,?${key === 'paymentMethod' ? ',?' : ''})`,
-          [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.active ? 1 : 0,
-            ...(key === 'paymentMethod' ? [item.timing || 'arrear'] : []),
-          ],
-        );
-  }
-}
+/**
+ * Financing masters (facility purpose, financing method, currency, payment timing) plus, read only, the FAP Section 05
+ * purpose options and Section 08 document requirements. Each of those names its FAP sheet cell (param_key); they are
+ * wired into the FAP form together with crm_fap_financing_purposes / crm_fap_doc_requirements.
+ */
+@Injectable()
+export class FinanceMastersRepository {
+  static readonly groups = tables.map(t => t.key);
+  constructor(
+    private readonly db: CrmDatabase,
+    private readonly masterTables: MasterTableRepository,
+  ) {}
 
-export async function financeMasterCatalog(catalog: MasterCatalog): Promise<MasterCatalog> {
-  if (!pool) return catalog;
-  const result = {...catalog};
-  for (const [key, table] of groups) {
-    const [rows] = await pool.query<any[]>(
-      `SELECT code,name,is_active${key === 'paymentMethod' ? ',timing' : ''} FROM \`${table}\` ORDER BY created_at,id`,
+  async catalog(catalog: MasterCatalog): Promise<MasterCatalog> {
+    const result = await this.masterTables.read(tables, catalog);
+    const [purposes] = await this.db.pool.query<any[]>(
+      `SELECT o.code,o.label,o.group_label,o.param_key,o.is_visible,o.is_active,p.code AS purpose_code
+       FROM ${CRM.masterFinancingPurposeOptions} o JOIN ${CRM.masterFacilityPurposes} p ON p.id=o.facility_purpose_id
+       ORDER BY o.sort_order,o.created_at,o.id`,
     );
-    result[key] = rows.map(
-      row =>
-        ({
-          value: row.code,
-          name: row.name,
-          active: !!row.is_active,
-          ...(key === 'paymentMethod' ? {timing: row.timing} : {}),
-        }) satisfies MasterItem,
+    const [requirements] = await this.db.pool.query<any[]>(
+      `SELECT code,label,param_key,is_visible,is_active FROM ${CRM.masterFapDocumentRequirements}
+       ORDER BY sort_order,created_at,id`,
     );
+    return {
+      ...result,
+      financingPurposeOption: purposes.map(
+        row =>
+          ({
+            value: row.code,
+            name: row.label,
+            active: !!row.is_active,
+            parentValue: row.purpose_code,
+            paramKey: row.param_key,
+            groupLabel: row.group_label,
+            visible: !!row.is_visible,
+          }) satisfies MasterItem,
+      ),
+      fapDocumentRequirement: requirements.map(
+        row =>
+          ({
+            value: row.code,
+            name: row.label,
+            active: !!row.is_active,
+            paramKey: row.param_key,
+            visible: !!row.is_visible,
+          }) satisfies MasterItem,
+      ),
+    };
   }
-  return result;
-}
 
-export async function saveFinanceMasters(catalog: MasterCatalog) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const c = await pool.getConnection();
-  try {
-    await c.beginTransaction();
-    for (const [key, table] of groups) {
-      for (const item of catalog[key]) {
-        const [rows] = await c.execute<any[]>(
-          `SELECT name,is_active${key === 'paymentMethod' ? ',timing' : ''} FROM \`${table}\` WHERE code=? FOR UPDATE`,
-          [item.value],
-        );
-        if (rows.length) {
-          if (
-            rows[0].name !== item.name ||
-            !!rows[0].is_active !== item.active ||
-            (key === 'paymentMethod' && rows[0].timing !== item.timing)
-          )
-            await c.execute(
-              `UPDATE \`${table}\` SET name=?,is_active=?${key === 'paymentMethod' ? ',timing=?' : ''},updated_at=CURRENT_TIMESTAMP(3) WHERE code=?`,
-              [
-                item.name,
-                item.active ? 1 : 0,
-                ...(key === 'paymentMethod' ? [item.timing || 'arrear'] : []),
-                item.value,
-              ],
-            );
-        } else
-          await c.execute(`INSERT INTO \`${table}\` (id,code,name,is_active) VALUES (?,?,?,?)`, [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.active ? 1 : 0,
-          ]);
-      }
-    }
-    await c.commit();
-  } catch (e) {
-    await c.rollback();
-    throw e;
-  } finally {
-    c.release();
+  save(catalog: MasterCatalog, by: string | null) {
+    return this.masterTables.save(tables, catalog, by);
   }
 }

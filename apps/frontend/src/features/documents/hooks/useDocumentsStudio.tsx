@@ -1,6 +1,6 @@
 /** All state, derived values and handlers of Documents; shared with its sections through DocumentsContext. */
-import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
-import {useMasterData} from '@/shared/master-data';
+import {hasAuthority} from '@/shared/lib/auth';
+import {stageName, useMasterData} from '@/shared/master-data';
 import {useEffect, useMemo, useRef, useState} from 'react';
 
 export type DocumentsProps = {
@@ -17,6 +17,14 @@ import {useDocumentFileActions} from '@/features/documents/hooks/useDocumentFile
 import {useFapOcrPolling} from '@/features/documents/hooks/useFapOcrPolling';
 import {useFapSectionNav} from '@/features/documents/hooks/useFapSectionNav';
 import {useFapSheetData} from '@/features/documents/hooks/useFapSheetData';
+/** Document types shown as the evidence of each stage (FAP form, pre-analysis sheet, committee approval). */
+const EVIDENCE_CODES = ['FAP', 'PREANALYSIS', 'ICLF'];
+const BADGE_CLASS: Record<string, string> = {
+  FAP: 'stage-badge-fap',
+  PREANALYSIS: 'stage-badge-preanalysis',
+  ICLF: 'stage-badge-iclf',
+};
+
 export function useDocumentsStudio({
   a,
   user,
@@ -26,43 +34,28 @@ export function useDocumentsStudio({
   onApproveDocument,
   isFapLocked,
 }: DocumentsProps) {
-  const evidenceDefs = [
-    {
-      code: 'FAP',
-      name: 'fap',
-      title: 'FAP (Financing Application Form)',
-      stage: 'FAP Intake',
-      badgeClass: 'stage-badge-fap',
-      role: 'MKT',
-      desc: 'Official signed financing application form from debtor',
-    },
-    {
-      code: 'PREANALYSIS',
-      name: 'Preanalysis',
-      title: 'Pre-analysis Document',
-      stage: 'Pre-analysis',
-      badgeClass: 'stage-badge-preanalysis',
-      role: 'CA',
-      desc: 'Initial review and credit feasibility analysis by Credit Analyst',
-    },
-    {
-      code: 'ICLF',
-      name: 'Iclf',
-      title: 'ICLF (Credit Committee Review)',
-      stage: 'Credit Committee',
-      badgeClass: 'stage-badge-iclf',
-      role: 'COMMITTEE',
-      desc: 'Approval recommendation and minutes of the financing committee meeting',
-    },
-  ];
+  const master = useMasterData();
+  // The stage documents shown here; their title, department, description and stage come from Master Data.
+  const evidenceDefs = EVIDENCE_CODES.map(code => {
+    const doc = (master.documents || []).find(d => d.value === code);
+    return {
+      code,
+      name: doc?.name || code,
+      title: doc?.title || doc?.name || code,
+      stageCode: doc?.stage || '',
+      stage: stageName(doc?.stage),
+      badgeClass: BADGE_CLASS[code],
+      role: doc?.role || '',
+      desc: doc?.description || '',
+    };
+  });
 
-  const defaultCode =
-    filterStage === 'Pre-analysis' ? 'PREANALYSIS' : filterStage === 'ICLF' ? 'ICLF' : 'FAP';
+  const stageDocument = (stage?: string) => evidenceDefs.find(d => d.stageCode === stage)?.code;
+  const defaultCode = stageDocument(filterStage) || evidenceDefs[0].code;
   const [selectedCode, setSelectedCode] = useState<string>(defaultCode);
   useEffect(() => {
-    if (filterStage === 'Pre-analysis') setSelectedCode('PREANALYSIS');
-    else if (filterStage === 'ICLF') setSelectedCode('ICLF');
-    else if (filterStage === 'FAP Stage') setSelectedCode('FAP');
+    const code = stageDocument(filterStage);
+    if (code) setSelectedCode(code);
   }, [filterStage]);
 
   const [activeFileUrl, setActiveFileUrl] = useState<string>('');
@@ -120,7 +113,6 @@ export function useDocumentsStudio({
   }, [selectedCode]);
   const [fapNavFilter, setFapNavFilter] = useState<string>('all');
   const [fapNavTick, setFapNavTick] = useState<number>(() => Date.now());
-  const master = useMasterData();
   const {sectionFieldMap, fapSectionTitles, filteredDiffs, scrollToFapField, scrollToFapSection} =
     useFapSectionNav({
       setActiveFileUrl,
@@ -138,15 +130,8 @@ export function useDocumentsStudio({
     });
 
   const items = evidenceDefs.map(def => {
-    const chk = (a.documentChecks || []).find(
-      (d: any) =>
-        String(d.documentCode).toUpperCase() === def.code ||
-        String(d.documentName).toLowerCase() === def.name.toLowerCase(),
-    ) || {
-      id: `demo-doc-${a.id}-${def.code}`,
+    const chk = (a.documentChecks || []).find((d: any) => d.documentCode === def.code) || {
       documentCode: def.code,
-      documentName: def.name,
-      assignedRole: def.role,
       status: 'PENDING',
       files: [],
     };

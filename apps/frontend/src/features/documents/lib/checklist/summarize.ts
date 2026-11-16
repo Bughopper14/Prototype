@@ -11,5 +11,8 @@ export function summarizeRows(rows: ChecklistRow[]) {
     mandatoryCount: rows.filter(r => r.isMandatory).length,
     mandatoryAvailableCount: rows.filter(r => r.isMandatory && r.isAvailable).length,
     systemLinkedCount: rows.filter(r => r.sourceType === 'SYSTEM_LINKED').length,
+    /** Which documents are still missing (names), mandatory ones first. */
+    missingMandatory: rows.filter(r => r.isMandatory && !r.isAvailable).map(r => r.title || r.name),
+    missingOptional: rows.filter(r => !r.isMandatory && !r.isAvailable).map(r => r.title || r.name),
   };
 }

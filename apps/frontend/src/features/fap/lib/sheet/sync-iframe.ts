@@ -54,18 +54,18 @@ export function syncIframeValues({
 
   applyIdentityAndCustomer({d, props, setText, isNoneVal, formatFapDate});
   applyCustomerProfile({d, setText});
-  applyFinancingPurpose({d, setText});
+  applyFinancingPurpose({d, setText, master});
   applyFixedAssets({d, props, setText, isNoneVal});
   applyReferences({d, setText, isNoneVal});
   applyProjects({d, setText, isNoneVal});
-  applyProposalAndTerms({doc, d, setText});
+  applyProposalAndTerms({doc, d, setText, master});
   applyRealizationPlan({d, setText});
   applyNotes({doc, d});
-  applyDocumentChecklist({doc, d});
+  applyDocumentChecklist({doc, d, master});
   applyShareholders({d, setText});
   applyFinancialStatements({doc, d, setText});
   applyDebtorSignature({d, setText});
-  attachCellClickListeners({doc, d, props});
+  attachCellClickListeners({doc, props});
   highlightDiffCells({doc, props});
   fitCustomerBox({doc});
 }

@@ -71,7 +71,6 @@ export function SegmentationSection() {
             targetRowIndex={targetProjectRow}
             onRowChange={setTargetProjectRow}
             onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `projects-${targetProjectRow || 0}`)}
-            onFieldSync={(k, s) => handleTriggerFieldSync(k, s || `projects-${targetProjectRow || 0}`)}
             activeFieldKey={activeFieldKey}
             onChange={projects => setDraft({...draft, projects})}
           />

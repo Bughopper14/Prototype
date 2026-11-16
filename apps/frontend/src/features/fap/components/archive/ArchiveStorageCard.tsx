@@ -33,7 +33,7 @@ export function ArchiveStorageCard({
           <FolderCheck size={16} />
           <span>Lokasi Penyimpanan Dokumen (Physical Document Storage Path)</span>
         </div>
-        {current.ocr_document_path && (
+        {current.fapFile?.path && (
           <button
             type="button"
             className="button small"
@@ -44,7 +44,7 @@ export function ArchiveStorageCard({
               alignItems: 'center',
               gap: 4,
             }}
-            onClick={() => handleCopyPath(current.ocr_document_path)}
+            onClick={() => handleCopyPath(current.fapFile?.path)}
           >
             {copied ? <Check size={12} style={{color: '#10b981'}} /> : <Copy size={12} />}
             <span>{copied ? 'Copied!' : 'Copy Path'}</span>
@@ -60,15 +60,15 @@ export function ArchiveStorageCard({
           fontSize: 12,
           fontFamily: 'monospace',
           wordBreak: 'break-all',
-          color: current.ocr_document_path ? '#0f172a' : '#94a3b8',
+          color: current.fapFile?.path ? '#0f172a' : '#94a3b8',
         }}
       >
-        {current.ocr_document_path ||
+        {current.fapFile?.path ||
           'Lokasi dokumen fisik: Belum terindeks pada direktori server atau diunggah secara virtual'}
       </div>
-      {current.ocr_document_filename && (
+      {current.fapFile?.name && (
         <div style={{marginTop: 6, fontSize: 11, color: '#64748b'}}>
-          Nama File Dokumen: <strong>{current.ocr_document_filename}</strong>
+          Nama File Dokumen: <strong>{current.fapFile?.name}</strong>
         </div>
       )}
     </div>

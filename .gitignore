@@ -30,3 +30,14 @@ apps/backend/scripts/dev/fixtures/
 
 UAT/
 apps/backend/dist-qa/
+
+migration.md
+deleted.md
+
+compare-notes.md
+
+# All markdown notes stay local (files already tracked by git, such as README.md and TECHNICAL.md, are not affected by this rule)
+*.md
+
+# Working notes live in md/ (README.md and TECHNICAL.md stay in the root)
+md/
