@@ -1,4 +1,5 @@
 import {Controller, Delete, Get, Post, Res} from '@nestjs/common';
+import {strToU8, zipSync} from 'fflate';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import {CrmDatabase} from '../../core/db/crm-database';
@@ -144,6 +145,54 @@ export class DocumentsController {
       req.actor,
     );
     return this.applications.detail(id, req.actor);
+  }
+
+  /**
+   * All files of the Document Checklist as one ZIP, in a folder per workflow stage (`<stage>/<CODE>_<file name>`).
+   * Documents linked from other sections without an uploaded file have nothing to put in it. Files already compressed
+   * (PDF, images) are stored as they are.
+   */
+  @Get('applications/:id/documents/zip')
+  async zip(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_app_documents');
+    const id = req.params.id;
+    const application = await this.applications.detailOr404(id, req.actor);
+    const entries = await this.documents.filesForZip(id);
+    ensure(entries.length, 'Belum ada berkas di Document Checklist untuk diunduh.', 404);
+
+    const safe = (s: string) => s.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim() || '_';
+    const used = new Set<string>();
+    const files: Record<string, Uint8Array> = {};
+    const unreadable: string[] = [];
+    for (const e of entries) {
+      let data: Buffer;
+      try {
+        data = await this.storage.read(e.fileKey);
+      } catch {
+        unreadable.push(`${e.code} ${e.fileName}`);
+        continue;
+      }
+      const folder = safe(e.stageName || 'Lainnya');
+      // Uploaded names usually start with the document code already; do not repeat it.
+      const base = safe(e.fileName);
+      const prefix = base.toUpperCase().startsWith(`${e.code.toUpperCase()}_`) ? '' : `${safe(e.code)}_`;
+      let name = `${folder}/${prefix}${base}`;
+      for (let n = 2; used.has(name.toLowerCase()); n++) name = `${folder}/${prefix}v${e.version}_${n}_${base}`;
+      used.add(name.toLowerCase());
+      files[name] = new Uint8Array(data);
+    }
+    ensure(Object.keys(files).length, 'Berkas tidak dapat dibaca dari penyimpanan.', 500);
+    if (unreadable.length)
+      files['CATATAN.txt'] = strToU8(
+        `Berkas berikut tidak dapat dibaca dari penyimpanan dan tidak ikut diunduh:\n${unreadable.join('\n')}\n`,
+      );
+
+    const zip = Buffer.from(zipSync(files, {level: 0}));
+    const label = safe(String(application.fapNumber || id)).replace(/\s+/g, '_');
+    res
+      .setHeader('Content-Type', 'application/zip')
+      .setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`Dokumen_${label}.zip`)}`);
+    return res.send(zip);
   }
 
   /** A short-lived link to a file: inline for the preview, or `?download=1` to save it. */
