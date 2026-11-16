@@ -5,7 +5,7 @@ import {CrmDatabase} from '../../core/db/crm-database';
 import {Problem, ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {StorageService} from '../../core/storage';
-import {ActivityService} from '../activity/activity.service';
+import {recordActivity} from '../activity/activity-log';
 import {ApplicationsService} from '../applications/applications.service';
 import {requireAuthority, signFileToken, verifyFileToken} from '../auth/session';
 import {FapComparisonService} from '../fap/fap-comparison.service';
@@ -44,7 +44,6 @@ export class DocumentsController {
     private readonly applications: ApplicationsService,
     private readonly documents: DocumentsRepository,
     private readonly comparisons: FapComparisonService,
-    private readonly activity: ActivityService,
     private readonly storage: StorageService,
   ) {}
 
@@ -85,7 +84,7 @@ export class DocumentsController {
         by,
       ),
     );
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: current.workflowStage?.code,
@@ -131,7 +130,7 @@ export class DocumentsController {
       await this.documents.deleteFile(conn, id, fileId, req.actor.username || null);
     });
     if (!(await this.documents.currentFapFile(id)).file) await this.comparisons.forget(id);
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: current.workflowStage?.code,

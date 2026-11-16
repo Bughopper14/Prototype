@@ -4,7 +4,8 @@ import {businessToday, customerFields, picFields, profileFields} from '@liugong/
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
-import {ActivityService} from '../activity/activity.service';
+import {activityFeed, deedHistory, logActivity, recordActivity} from '../activity/activity-log';
+import {notifyHolders} from '../activity/notifications';
 import type {Actor as SessionActor} from '../auth/session';
 import {BusinessPartnersRepository} from '../customers/business-partners.repository';
 import {DocumentsRepository} from '../documents/documents.repository';
@@ -39,7 +40,6 @@ export class ApplicationsService {
     private readonly legalData: LegalRepository,
     private readonly documents: DocumentsRepository,
     private readonly fapOcr: FapOcrRepository,
-    private readonly activity: ActivityService,
     private readonly freezes: FapFreezeRepository,
   ) {}
 
@@ -178,8 +178,8 @@ export class ApplicationsService {
     };
     const legal = await this.legalData.read(id);
     // Review history of each deed comes from the activity log (DEED_* rows).
-    const deedHistory = await this.activity.activity.deedHistory(id);
-    for (const d of legal.deeds as any[]) d.reviewHistory = deedHistory.get(d.id) || [];
+    const history = await deedHistory(id);
+    for (const d of legal.deeds as any[]) d.reviewHistory = history.get(d.id) || [];
     const firstStage = wf.stages[0];
     const firstLocked = progress.some((p: any) => p.stage_id === firstStage?.id && p.is_locked);
     const ocrComparison = await this.fapOcr.read(id);
@@ -303,7 +303,7 @@ export class ApplicationsService {
     }
     const company = String(customer.companyName).trim();
     const categoryName = category === 'EXISTING' ? 'Existing Customer' : 'New Customer';
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: stage.code,
@@ -442,7 +442,7 @@ export class ApplicationsService {
       await this.documents.verify(conn, id, checklistId, body, by(actor));
     });
     const status = wf.statusById.get(app.current_status_id);
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: wf.stageById.get(status?.stageId || '')?.code,
@@ -481,7 +481,7 @@ export class ApplicationsService {
     });
     const submitted = await this.detail(id, actor);
     const next = wf.stages[1];
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: first.code,
@@ -577,7 +577,7 @@ export class ApplicationsService {
         );
     });
     const {fapNumber, company} = await this.label(id);
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: toStage.code,
@@ -591,7 +591,7 @@ export class ApplicationsService {
       actor,
     );
     // Whoever may act on the new status (crm_master_workflow) is told the application waits for them.
-    await this.activity.notifyHolders(
+    await notifyHolders(
       wf.rules.filter(r => r.beforeStatusId === to.id).map(r => r.authority),
       actor,
       {
@@ -607,7 +607,7 @@ export class ApplicationsService {
   /** Activity of one application, newest first. */
   async activityOf(id: string) {
     ensure(await this.apps.get(id), 'Application not found', 404);
-    return this.activity.activity.feed({applicationId: id, limit: 500});
+    return activityFeed({applicationId: id, limit: 500});
   }
 
   /** A field-level change list recorded by the workspace after a save (always an UPDATE; the actor is the session). */
@@ -620,7 +620,7 @@ export class ApplicationsService {
     ensure(app, 'Application not found', 404);
     const wf = await this.workflow.load();
     const status = wf.statusById.get(app.current_status_id);
-    await this.activity.activity.log(
+    await logActivity(
       {
         applicationId: id,
         stageCode: wf.stageById.get(status?.stageId || '')?.code,
