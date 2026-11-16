@@ -62,9 +62,8 @@ export function DeedReviewDialog({
       })
       .filter(Boolean) as (readonly [string, string])[];
   const canSubmit =
-      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(status),
-    canCheck = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING_CHECK',
-    canApprove = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING_APPROVAL';
+      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'NEEDS_REVISION'].includes(status),
+    canApprove = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING';
   useEffect(() => {
     let live = true;
     setUrl('');
@@ -117,12 +116,11 @@ export function DeedReviewDialog({
       <section className="modal deed-review-modal" role="dialog" aria-modal="true" aria-label="Deed review">
         <ReviewHeader application={application} deed={deed} busy={busy} onClose={onClose} />
         <div className="modal-body">
-          <ReviewNotices deed={deed} status={status} error={error} />
+          <ReviewNotices deed={deed} status={status} />
           <ReviewSummary deed={deed} master={master} />
           {deed.type === 'amendment' && <DeedComparison legal={application.legal} deed={deed} />}
           <ReviewDocument
             application={application}
-            deed={deed}
             canSubmit={canSubmit}
             busy={busy}
             documentId={documentId}
@@ -135,15 +133,12 @@ export function DeedReviewDialog({
             onUpdated={onUpdated}
           />
           <ReviewShareholders
-            deed={deed}
             closedRows={closedRows}
             setClosedRows={setClosedRows}
             detailRows={detailRows}
             holders={holders}
           />
           <ReviewComments
-            deed={deed}
-            canCheck={canCheck}
             canApprove={canApprove}
             error={error}
             comments={comments}
@@ -152,9 +147,7 @@ export function DeedReviewDialog({
           <ReviewHistory deed={deed} />
         </div>
         <ReviewActions
-          deed={deed}
           canSubmit={canSubmit}
-          canCheck={canCheck}
           canApprove={canApprove}
           busy={busy}
           comments={comments}

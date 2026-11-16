@@ -1,4 +1,4 @@
-import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
+import {hasAuthority} from '@/shared/lib/auth';
 import {date} from '@/shared/lib/format';
 import {IconBox} from '@/shared/ui/IconBox';
 import {label} from '@liugong/shared';

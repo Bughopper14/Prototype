@@ -1,8 +1,9 @@
 /** Where the PREANALYSIS document comes from and whether it is available. */
 import type {ResolverContext} from '@/features/documents/lib/checklist/types';
+import {STAGE} from '@/shared/master-data';
 
 export function resolvePreanalysis({a, draft, files, row}: ResolverContext) {
-  const isPreStage = a.stage === 'Pre-analysis' || draft.stage === 'Pre-analysis';
+  const isPreStage = a.stage === STAGE.PRE_ANALYSIS || draft.stage === STAGE.PRE_ANALYSIS;
 
   if (files.length > 0) {
     row.isAvailable = true;

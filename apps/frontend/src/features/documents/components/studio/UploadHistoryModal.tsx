@@ -3,6 +3,7 @@ import {Modal} from '@/shared/ui/Modal';
 import {Download, Eye, FileText, Trash2} from 'lucide-react';
 
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
+import {downloadFile} from '@/features/documents/lib/download-file';
 
 export function UploadHistoryModal() {
   const {
@@ -16,6 +17,7 @@ export function UploadHistoryModal() {
     canUpload,
     previewFile,
     handleDeleteFile,
+    setError,
   } = useDocumentsStudioContext();
   return (
     <>
@@ -114,17 +116,15 @@ export function UploadHistoryModal() {
                         >
                           <Eye size={13} /> {isPreviewed ? 'Active' : 'Preview'}
                         </button>
-                        <a
-                          href={`/api/v1/files/${f.id}/download`}
-                          download={f.fileName}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => downloadFile(f.id).catch(e => setError(e.message))}
                           className="button small"
                           title="Download file"
                           style={{display: 'inline-flex', alignItems: 'center'}}
                         >
                           <Download size={13} />
-                        </a>
+                        </button>
                         {canUpload && !(isFapLocked && activeItem.code === 'FAP') && (
                           <button
                             type="button"

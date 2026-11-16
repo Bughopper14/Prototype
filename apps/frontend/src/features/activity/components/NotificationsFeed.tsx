@@ -32,7 +32,6 @@ export function EnhancedNotificationsPage({
     <section className="panel" style={{padding: '24px 28px', borderRadius: 12}}>
       <NotificationsHeader
         unreadList={unreadList}
-        notifications={notifications}
         onMarkAllRead={onMarkAllRead}
       />
       <NotificationsFilters
@@ -57,7 +56,6 @@ export function EnhancedNotificationsPage({
 
         <NotificationsEmptyState
           filter={filter}
-          search={search}
           displayList={displayList}
           notifications={notifications}
         />

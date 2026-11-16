@@ -38,7 +38,6 @@ export function ActivityPage({
     <section className="panel" style={{padding: '24px 28px', borderRadius: 12}}>
       <ActivityHeader
         unreadList={unreadList}
-        activities={activities}
         title={title}
         subtitle={subtitle}
         onMarkAllRead={onMarkAllRead}
@@ -66,7 +65,6 @@ export function ActivityPage({
         <ActivityEmptyState
           filter={filter}
           setFilter={setFilter}
-          search={search}
           displayList={displayList}
           activities={activities}
           emptyMessage={emptyMessage}

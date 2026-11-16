@@ -1,16 +1,13 @@
 /** Makes every data cell clickable so the form can jump to the matching field. */
-import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {FapSheetPreviewProps} from '@/features/fap/lib/types';
 import {FIELD_TO_CELL_ID_MAP} from '@/features/fap/lib/field-cells';
 import {CELL_ID_TO_SECTION_MAP} from '@/features/fap/lib/section-cells';
 
 export function attachCellClickListeners({
   doc,
-  d,
   props,
 }: {
   doc: Document;
-  d: SheetValues;
   props: FapSheetPreviewProps;
 }) {
   // Attach click listeners to all data cells

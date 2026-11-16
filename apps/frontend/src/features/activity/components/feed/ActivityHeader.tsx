@@ -4,13 +4,11 @@ import {type SystemActivity} from '@/features/activity/lib/types';
 
 export function ActivityHeader({
   unreadList,
-  activities,
   title,
   subtitle,
   onMarkAllRead,
 }: {
   unreadList: SystemActivity[];
-  activities: SystemActivity[];
   title: string;
   subtitle: string;
   onMarkAllRead: () => void;

@@ -4,12 +4,10 @@ import type {SystemNotificationItem} from '@/features/activity/lib/types';
 
 export function NotificationsEmptyState({
   filter,
-  search,
   displayList,
   notifications,
 }: {
   filter: 'all' | 'unread';
-  search: string;
   displayList: SystemNotificationItem[];
   notifications: SystemNotificationItem[];
 }) {

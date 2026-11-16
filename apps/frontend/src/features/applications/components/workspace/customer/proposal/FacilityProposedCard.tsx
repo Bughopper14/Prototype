@@ -1,9 +1,11 @@
 /** Sub-section 1 of the financing proposal: the facility proposed (method, value, currency choice). */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
+import {useMasterData} from '@/shared/master-data';
 import {FileText} from 'lucide-react';
 
 export function FacilityProposedCard() {
   const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  const master = useMasterData();
   return (
     <div
       style={{
@@ -74,7 +76,7 @@ export function FacilityProposedCard() {
                 background: '#fff',
               }}
             >
-              {(['IDR', 'USD'] as const).map(c => {
+              {(master.currency || []).filter(x => x.active).map(x => x.value).map(c => {
                 const currentChoice = draft.financingProposal?.facilityProposed?.currencyChoice;
                 const isSel = currentChoice === c;
                 return (

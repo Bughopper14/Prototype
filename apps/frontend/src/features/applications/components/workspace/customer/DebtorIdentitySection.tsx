@@ -2,7 +2,9 @@
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
-import {ChevronDown, Eye} from 'lucide-react';
+import {blank, customerFields} from '@liugong/shared';
+import {ChevronDown, Eye, Search, X} from 'lucide-react';
+import {useState} from 'react';
 
 export function DebtorIdentitySection() {
   const {
@@ -24,7 +26,56 @@ export function DebtorIdentitySection() {
     toggleSection,
     liveCompanyName,
     canEditCustomerPic,
+    customers,
+    customerId,
+    setCustomerId,
+    sanitizeCustomer,
   } = useWorkspace();
+  // An existing customer is chosen from the customer directory; its identity then comes from that record.
+  const [query, setQuery] = useState('');
+  const choosing = draft.isNew && customerCategory === 'EXISTING';
+  const chosen = choosing && customerId ? customers.find((c: any) => c.id === customerId) : null;
+  const digits = (v: unknown) => String(v ?? '').replace(/\D/g, '');
+  const matches = query.trim()
+    ? customers
+        .filter((c: any) => {
+          const q = query.trim().toLowerCase();
+          const d = digits(query);
+          return (
+            String(c.companyName || '').toLowerCase().includes(q) ||
+            (d.length >= 3 && (digits(c.nib).includes(d) || digits(c.npwp).includes(d)))
+          );
+        })
+        .slice(0, 8)
+    : [];
+  // The identity card shows the customer; the same sync as typing in it (deed number and experience follow).
+  const syncCustomer = (c: any) => {
+    setCustomerDraft(c);
+    const legalDeeds: any[] = Array.isArray(draft.legal?.deeds) ? draft.legal.deeds : [];
+    const hasLegalEstablishment = legalDeeds.some((d: any) => d.type === 'establishment');
+    const hasLegalAmendment = legalDeeds.some((d: any) => d.type === 'amendment');
+    const estDate = String(c.establishmentDate || '').slice(0, 10);
+    const exp = calculateAgeYearsMonths(estDate);
+    setDraft((prev: any) => ({
+      ...prev,
+      customer: c,
+      // If no establishment deed in legal yet, use the registered one as latest
+      ...(!hasLegalAmendment && !hasLegalEstablishment
+        ? {latestDeedNo: c.establishmentActNo || prev.latestDeedNo || '', latestDeedDate: estDate || prev.latestDeedDate || ''}
+        : {}),
+      // Experience always calculated from establishmentDate
+      ...(estDate ? {experienceYears: exp.years, experienceMonths: exp.months} : {}),
+    }));
+  };
+  const chooseCustomer = (c: any) => {
+    setCustomerId(c.id);
+    setQuery('');
+    syncCustomer(sanitizeCustomer(structuredClone(c)));
+  };
+  const clearCustomer = () => {
+    setCustomerId('');
+    syncCustomer(blank(customerFields));
+  };
   return (
     <div
       className={`fap-accordion-card ${openSections['fap-preview-sec-header'] ? 'is-open' : 'is-closed'}`}
@@ -135,6 +186,8 @@ export function DebtorIdentitySection() {
               disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
               onFocus={() => handleTriggerFieldSync('customerCategory', 'header')}
               onChange={e => {
+                // a customer chosen for Existing is released when the category goes back to New
+                if (draft.isNew && e.target.value !== 'EXISTING' && customerId) clearCustomer();
                 changeCategory(e.target.value);
                 handleTriggerFieldSync(
                   e.target.value === 'EXISTING' ? 'fap-cell-custExisting' : 'fap-cell-custNew',
@@ -157,39 +210,110 @@ export function DebtorIdentitySection() {
               <option value="EXISTING">Existing Customer</option>
               <option value="NEW">New Customer</option>
             </select>
+            {choosing && canEditCustomerPic && (
+              <div style={{marginTop: 10}} data-field="existingCustomer">
+                {chosen ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      border: '1px solid #2563eb',
+                      background: '#eff6ff',
+                      fontSize: '0.82rem',
+                    }}
+                  >
+                    <span>
+                      <strong>{chosen.companyName}</strong>
+                      <span className="muted">
+                        {' '}
+                        · NIB {chosen.nib || '-'} · NPWP {chosen.npwp || '-'}
+                      </span>
+                    </span>
+                    <button type="button" className="button small" onClick={clearCustomer}>
+                      <X size={12} /> Change
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{position: 'relative'}}>
+                      <Search size={14} style={{position: 'absolute', left: 10, top: 12, color: '#64748b'}} />
+                      <input
+                        type="search"
+                        value={query}
+                        placeholder="Search existing customer by company name, NIB or NPWP"
+                        onChange={e => setQuery(e.target.value)}
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '10px 12px 10px 32px',
+                          borderRadius: 8,
+                          border: '1px solid #cbd5e1',
+                          fontSize: '0.875rem',
+                        }}
+                      />
+                    </div>
+                    {query.trim() && (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 8,
+                          background: '#ffffff',
+                          maxHeight: 240,
+                          overflowY: 'auto',
+                        }}
+                      >
+                        {matches.length ? (
+                          matches.map((c: any) => (
+                            <button
+                              type="button"
+                              key={c.id}
+                              onClick={() => chooseCustomer(c)}
+                              style={{
+                                display: 'block',
+                                width: '100%',
+                                textAlign: 'left',
+                                padding: '8px 12px',
+                                border: 0,
+                                borderBottom: '1px solid #f1f5f9',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                fontSize: '0.82rem',
+                              }}
+                            >
+                              <strong>{c.companyName}</strong>
+                              <span className="muted">
+                                {' '}
+                                · NIB {c.nib || '-'} · NPWP {c.npwp || '-'}
+                              </span>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="muted" style={{padding: '10px 12px', fontSize: '0.82rem'}}>
+                            No matching customer. Check the spelling or choose New Customer.
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <div className="new-customer-fields-block" style={{marginTop: 12}}>
             <Fields
               fields={fapCustomerFields}
-              onNibOcr={canEditCustomerPic ? () => setNibOcrOpen(true) : undefined}
+              onNibOcr={canEditCustomerPic && !chosen ? () => setNibOcrOpen(true) : undefined}
               value={customerDraft}
-              disabled={!canEditCustomerPic}
+              disabled={!canEditCustomerPic || !!chosen}
               section="customer"
               onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
-              onFieldSync={k => handleTriggerFieldSync(k, 'customer')}
               activeFieldKey={activeFieldKey}
-              onChange={c => {
-                setCustomerDraft(c);
-                // Sync establishment deed to latestDeed and experience if no deeds in legal yet
-                const legalDeeds: any[] = Array.isArray(draft.legal?.deeds) ? draft.legal.deeds : [];
-                const hasLegalEstablishment = legalDeeds.some((d: any) => d.type === 'establishment');
-                const hasLegalAmendment = legalDeeds.some((d: any) => d.type === 'amendment');
-                const estDate = String(c.establishmentDate || '').slice(0, 10);
-                const exp = calculateAgeYearsMonths(estDate);
-                setDraft((prev: any) => ({
-                  ...prev,
-                  customer: c,
-                  // If no establishment deed in legal yet, use manual input as latest
-                  ...(!hasLegalAmendment && !hasLegalEstablishment
-                    ? {
-                        latestDeedNo: c.establishmentActNo || prev.latestDeedNo || '',
-                        latestDeedDate: estDate || prev.latestDeedDate || '',
-                      }
-                    : {}),
-                  // Experience always calculated from establishmentDate
-                  ...(estDate ? {experienceYears: exp.years, experienceMonths: exp.months} : {}),
-                }));
-              }}
+              onChange={syncCustomer}
             />
           </div>
         </div>

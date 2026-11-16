@@ -5,14 +5,12 @@ import {type SystemActivity} from '@/features/activity/lib/types';
 export function ActivityEmptyState({
   filter,
   setFilter,
-  search,
   displayList,
   activities,
   emptyMessage,
 }: {
   filter: 'all' | 'unread';
   setFilter: (v: 'all' | 'unread') => void;
-  search: string;
   displayList: SystemActivity[];
   activities: SystemActivity[];
   emptyMessage: string | undefined;

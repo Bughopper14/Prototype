@@ -55,9 +55,8 @@ export function StakeholderFields() {
         if (f.key === 'idType') {
           return {
             ...f,
-            options: ['NONE', 'KTP_NPWP', 'PASSPORT_KITAS'],
+            options: ['KTP_NPWP', 'PASSPORT_KITAS'],
             optionLabels: {
-              NONE: 'None',
               KTP_NPWP: 'KTP - NPWP',
               PASSPORT_KITAS: 'PASSPORT - KITAS',
             },

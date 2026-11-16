@@ -13,8 +13,6 @@ export interface PreAnalysisProjectGroup {
   projects: PreAnalysisProjectItem[];
 }
 
-export type PreAnalysisProjectGroupOrItem = PreAnalysisProjectGroup | PreAnalysisProjectItem;
-
 export interface MilestoneItem {
   year: string;
   milestone?: string;

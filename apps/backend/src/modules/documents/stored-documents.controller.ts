@@ -3,7 +3,8 @@ import path from 'node:path';
 import {Controller, Get, Req, Res} from '@nestjs/common';
 import type {Response} from 'express';
 import type {HttpRequest} from '../../core/http/api-request';
-import {documentsDir} from '../../core/storage';
+import {StorageService} from '../../core/storage';
+import {requireAuthority} from '../auth/session';
 
 const CONTENT_TYPES: Record<string, string> = {
   '.pdf': 'application/pdf',
@@ -14,34 +15,28 @@ const CONTENT_TYPES: Record<string, string> = {
   '.gif': 'image/gif',
 };
 
-/** GET /documents/<type>/<file>: identity documents stored on disk, for signed-in users only (SessionGuard). */
+/** GET /documents/<type>/<file>: identity documents stored on disk, for signed-in users who may view them. */
 @Controller('documents')
 export class StoredDocumentsController {
+  constructor(private readonly storage: StorageService) {}
+
   @Get('*path')
   async file(@Req() req: HttpRequest, @Res() res: Response) {
-    const segments = ([] as string[]).concat((req.params as any).path ?? []);
-    let file = path.resolve(documentsDir, ...segments);
-    if (!file.startsWith(documentsDir + path.sep)) {
-      const protoFile = path.resolve(documentsDir, '../../../prototype-src/storage/documents', ...segments);
-      if (protoFile.includes('..')) return res.status(404).send('Not found');
-      file = protoFile;
-    }
-    try {
-      await fs.access(file);
-    } catch {
-      const altFile = path.resolve(documentsDir, '../../../prototype-src/storage/documents', ...segments);
-      try {
-        await fs.access(altFile);
-        file = altFile;
-      } catch {}
-    }
+    requireAuthority(
+      req.actor!,
+      'crm_view_app_stakeholders',
+      'crm_view_app_legal',
+      'crm_view_app_documents',
+      'crm_view_document_desk',
+      'crm_edit_app_stakeholders',
+      'crm_edit_app_legal',
+    );
+    const file = this.storage.documentPath(([] as string[]).concat((req.params as any).path ?? []));
+    if (!file) return res.status(404).send('Not found');
     try {
       const body = await fs.readFile(file);
       res
-        .setHeader(
-          'Content-Type',
-          CONTENT_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
-        )
+        .setHeader('Content-Type', CONTENT_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream')
         .setHeader('Cache-Control', 'private, max-age=300')
         .send(body);
     } catch {

@@ -1,10 +1,10 @@
 /** Confirm submitting the FAP stage. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {Modal} from '@/shared/ui/Modal';
-import {ArrowRight, Loader2, Lock} from 'lucide-react';
+import {ArrowRight, Loader2} from 'lucide-react';
 
 export function SubmitFapConfirmDialog() {
-  const {a, submitFapConfirm, setSubmitFapConfirm, draft, busy, error, isSubmitLocked, submitFapStage} =
+  const {a, submitFapConfirm, setSubmitFapConfirm, draft, busy, error, submitFapStage} =
     useWorkspace();
   return (
     <>
@@ -21,25 +21,13 @@ export function SubmitFapConfirmDialog() {
               Once submitted, the Pre-analysis stage (Business & banks, Financial statements, Documents) will
               be unlocked for data entry.
             </p>
-            {isSubmitLocked && (
-              <div
-                className="error"
-                style={{display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12}}
-              >
-                <Lock size={15} />{' '}
-                <span>
-                  Please upload the signed FAP form document on the Documents tab first to unlock the submit
-                  button.
-                </span>
-              </div>
-            )}
             {error && <div className="error">{error}</div>}
           </div>
           <div className="modal-actions">
             <button className="button" onClick={() => setSubmitFapConfirm(false)}>
               Cancel
             </button>
-            <button className="button primary" disabled={busy || isSubmitLocked} onClick={submitFapStage}>
+            <button className="button primary" disabled={busy} onClick={submitFapStage}>
               {busy ? <Loader2 size={15} className="spin" /> : <ArrowRight size={15} />}Submit to Pre-analysis
             </button>
           </div>

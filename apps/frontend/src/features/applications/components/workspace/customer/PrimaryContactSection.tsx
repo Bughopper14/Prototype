@@ -62,7 +62,6 @@ export function PrimaryContactSection() {
             disabled={!canEditCustomerPic}
             section="pic"
             onFieldFocus={k => handleTriggerFieldSync(k, 'pic')}
-            onFieldSync={k => handleTriggerFieldSync(k, 'pic')}
             activeFieldKey={activeFieldKey}
             onChange={pic => setDraft({...draft, pic})}
           />

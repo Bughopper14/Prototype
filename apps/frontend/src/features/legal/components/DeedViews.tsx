@@ -1,5 +1,5 @@
 import {date, deedValidity} from '@/shared/lib/format';
-import {deedPending, legalDeedFields, publishedDeeds} from '@liugong/shared';
+import {deedPending, publishedDeeds} from '@liugong/shared';
 import {Users} from 'lucide-react';
 
 export const deedNames: Record<string, string> = {
@@ -9,11 +9,7 @@ export const deedNames: Record<string, string> = {
 
 export function legalDeedList(legal: any, application: any) {
   const appId = application?.id || 'app';
-  const saved: any[] = Array.isArray(legal.deeds) ? legal.deeds : [];
-  const legacy = ['establishment', 'amendment']
-    .filter(type => legal[type] && Object.values(legal[type]).some(Boolean))
-    .map(type => ({id: `legacy-${type}-${appId}`, type, ...legal[type]}));
-  const entered = Array.isArray(legal.deeds) ? saved : legacy;
+  const entered: any[] = Array.isArray(legal.deeds) ? legal.deeds : [];
   const system: any[] = [];
   const estNo = String(application?.customer?.establishmentActNo || '')
     .trim()
@@ -64,21 +60,6 @@ export function legalDeedList(legal: any, application: any) {
   return [...filteredSystem, ...entered].filter(x => !legal.hiddenDeedIds?.includes(x.id));
 }
 
-export function selectedLegalStakeholders(legal: any, application: any, fallback: any[]) {
-  const deeds = legalDeedList(legal, application),
-    selected = deeds.find(x => x.id === legal.selectedDeedId) || deeds[0];
-  return selected && Array.isArray(selected.stakeholders) ? selected.stakeholders : fallback;
-}
-
-export function shareholderNames(parties: any): string[] {
-  return Array.isArray(parties?.shareholders)
-    ? parties.shareholders
-    : parties?.shareholder
-      ? [parties.shareholder]
-      : [];
-}
-
-/** Read-only stakeholder view: shows only deeds that were submitted and approved (never drafts or pending reviews). */
 export function StakeholderDeedView({legal}: {legal: any}) {
   const pending = (legal?.deeds || []).filter((d: any) => deedPending(d)).length;
   const deeds = [...publishedDeeds(legal)].sort((a, b) => {
@@ -222,40 +203,6 @@ export function StakeholderDeedView({legal}: {legal: any}) {
           No deeds registered yet. Please add deeds and stakeholders through the Legal tab.
         </div>
       )}
-    </div>
-  );
-}
-
-export function LegalStakeholderSummary({legal, application}: {legal: any; application: any}) {
-  const deeds = legalDeedList(legal, application),
-    deed =
-      deeds.find(x => x.id === legal.selectedDeedId) ||
-      deeds.find(x => x.type === (legal.selectedDeed || 'establishment')) ||
-      deeds[0],
-    parties = deed?.parties || {};
-  if (!deed?.deedNumber) return null;
-  return (
-    <div className="legal-stakeholder-summary">
-      <div className="section-title">
-        <h3>Selected deed data</h3>
-        <span className="subtle-chip">{deedNames[deed.type]}</span>
-      </div>
-      <div className="legal-summary-grid">
-        {legalDeedFields.map(f => (
-          <div key={f.key}>
-            <small>{f.label}</small>
-            <strong>{f.type === 'date' ? date(deed[f.key]) : deed[f.key] || 'â€”'}</strong>
-          </div>
-        ))}
-        {deed.infoAdded && (
-          <>
-            <div>
-              <small>Shareholders</small>
-              <strong>{shareholderNames(parties).filter(Boolean).join(', ') || 'â€”'}</strong>
-            </div>
-          </>
-        )}
-      </div>
     </div>
   );
 }

@@ -35,7 +35,7 @@ export function DeedEditorModal() {
           const availableChips =
             editing.type === 'amendment'
               ? amendmentRemarkCategories
-              : [establishmentDeedCat, ...amendmentRemarkCategories];
+              : [...(establishmentDeedCat ? [establishmentDeedCat] : []), ...amendmentRemarkCategories];
           const currentSelectedCategoryIds = getDeedCategoryIds(editing);
           const toggleCategory = (catId: string) => {
             if (editorLocked) return;
@@ -80,9 +80,11 @@ export function DeedEditorModal() {
                           const newType = e.target.value;
                           const nextCats =
                             newType === 'establishment'
-                              ? ['establishment-deed']
+                              ? establishmentDeedCat
+                                ? [establishmentDeedCat.id]
+                                : []
                               : editing.remarkCategoryIds?.filter(
-                                  (x: string) => x !== 'establishment-deed',
+                                  (x: string) => x !== establishmentDeedCat?.id,
                                 ) || [];
                           setEditing({
                             ...editing,

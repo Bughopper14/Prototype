@@ -1,0 +1,609 @@
+/*
+ * Document Checklist tab: metric cards, panel head, toolbar, matrix table, stage / department badges, file pills and
+ * row actions. The metric cards override the older .doc-checklist-bento-card rule of 12-keith-sync.css (a single row
+ * with a big icon tile): this one stacks label, number and caption.
+ */
+
+/* The page position is kept by the toolbar logic (keep-in-view.ts); the browser must not shift it on its own. */
+.doc-checklist-container {
+  overflow-anchor: none;
+  /* Full width like the other tabs (Activity, Documents): the older rule capped it at 1300px and centered it. */
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 20px 0 0;
+}
+
+/* ---- Metric cards ---- */
+.doc-checklist-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.doc-checklist-bento-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: none;
+  text-align: left;
+  transform: none;
+}
+.doc-checklist-bento-card:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: #cbd5e1;
+}
+.doc-checklist-bento-card .bento-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.doc-checklist-bento-card .bento-lbl {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+.doc-checklist-bento-card .bento-icon {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+.doc-checklist-bento-card .bento-val {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: #0f172a !important;
+  font-variant-numeric: tabular-nums;
+}
+.bento-total-ratio {
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+.doc-checklist-bento-card .bento-sub {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #64748b;
+}
+.doc-checklist-bento-card .bento-sub.text-green {
+  color: #15803d !important;
+}
+.doc-checklist-bento-card .bento-sub.text-amber {
+  color: #b45309 !important;
+}
+.bento-progress {
+  height: 4px;
+  margin: 4px 0 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+.bento-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #16a34a;
+}
+.card-mandatory .bento-progress span {
+  background: #2563eb;
+}
+.bento-missing {
+  margin: 6px 0 0;
+  padding: 8px 0 0 16px;
+  border-top: 1px solid #f1f5f9;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #475569;
+}
+.bento-missing li + li {
+  margin-top: 2px;
+}
+.bento-missing em {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+.bento-missing .tag-wajib {
+  color: #b91c1c;
+}
+.bento-missing .tag-opsional {
+  color: #94a3b8;
+}
+.bento-missing .bento-more {
+  list-style: none;
+  margin-left: -16px;
+  color: #94a3b8;
+}
+
+.doc-checklist-panel {
+  margin-top: 18px;
+}
+
+/* ---- Panel head and "download all" ---- */
+.doc-checklist-panel .doc-checklist-head {
+  align-items: flex-start;
+  padding: 20px 24px 6px;
+}
+.doc-checklist-panel .doc-checklist-head h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+.doc-checklist-panel .doc-checklist-head p {
+  max-width: 720px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: #64748b;
+}
+.doc-zip-btn {
+  flex-shrink: 0;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+}
+.doc-zip-btn:disabled {
+  background: #cbd5e1;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+}
+.doc-zip-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* ---- Toolbar: one stable row; the controls never change between views ---- */
+.doc-checklist-panel .doc-checklist-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px 16px;
+  margin: 0;
+}
+.doc-search-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 240px;
+  min-width: 200px;
+  max-width: 440px;
+  height: 38px;
+  padding: 0 12px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #64748b;
+}
+.doc-search-input:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+.doc-search-input input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 12.5px;
+  color: #0f172a;
+}
+.clear-search-btn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  cursor: pointer;
+}
+.doc-filters-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+}
+.filter-select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.filter-select-wrap .filter-icon {
+  position: absolute;
+  left: 11px;
+  color: #64748b;
+  pointer-events: none;
+}
+.doc-filter-select {
+  height: 38px;
+  padding: 0 28px 0 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #fff;
+  font-size: 12.5px;
+  color: #0f172a;
+  cursor: pointer;
+}
+.filter-select-wrap .filter-icon + .doc-filter-select {
+  padding-left: 32px;
+}
+.doc-filter-select:focus {
+  outline: 0;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.doc-view-switch {
+  display: inline-flex;
+  align-items: stretch;
+  height: 38px;
+  padding: 3px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.doc-view-switch button {
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.doc-view-switch button.active {
+  background: #fff;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+/* ---- Matrix table ---- */
+.doc-table-wrapper {
+  border-top: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+.doc-checklist-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.doc-checklist-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 11px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: left;
+  white-space: nowrap;
+}
+.doc-checklist-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.doc-checklist-row:hover td {
+  background: #f8fafc;
+}
+
+.doc-meta-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.doc-code-badge {
+  flex-shrink: 0;
+  min-width: 56px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.doc-primary-name {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+}
+.doc-sub-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Department colors, shared by the code badge and the department pill */
+.badge-mkt,
+.dept-mkt {
+  background: #e0ecff;
+  color: #1e40af;
+}
+.badge-bs,
+.dept-bs {
+  background: #d9f5ef;
+  color: #0f766e;
+}
+.badge-ca,
+.dept-ca {
+  background: #ebe7fd;
+  color: #5b21b6;
+}
+.badge-legal,
+.dept-legal {
+  background: #fde7f1;
+  color: #9d174d;
+}
+.badge-committee,
+.dept-committee {
+  background: #fdf0d0;
+  color: #92400e;
+}
+.dept-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* Stage badge: small outlined pill, one color per stage */
+.stage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.stage-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.stage-fap_stage {
+  background: #f5f9ff;
+  border-color: #cfe0fb;
+  color: #1d4ed8;
+}
+.stage-pre_analysis {
+  background: #f8f6ff;
+  border-color: #e0d9fb;
+  color: #6d28d9;
+}
+.stage-iclf {
+  background: #fffaf0;
+  border-color: #f6e3b4;
+  color: #a16207;
+}
+
+/* Stage groups (collapsible) */
+.doc-group-row td {
+  padding: 0;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+.doc-group-row:hover td {
+  background: #f1f5f9;
+}
+.doc-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 16px;
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  text-align: left;
+  cursor: pointer;
+}
+.doc-group-toggle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.doc-group-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.mandatory-tag {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tag-required {
+  background: #fde8e8;
+  color: #b91c1c;
+}
+.tag-optional {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.status-ready {
+  background: #e3f6e8;
+  color: #15803d;
+}
+.status-missing {
+  background: #fdf0d0;
+  color: #92400e;
+}
+
+/* ---- Source and files ---- */
+.doc-source-details-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.chip-system {
+  background: #f3f0ff;
+  color: #5b21b6;
+}
+.chip-manual {
+  background: #e8f0fe;
+  color: #1e40af;
+}
+.source-sub-text {
+  margin: 0;
+  font-size: 11.5px;
+  color: #475569;
+  line-height: 1.45;
+}
+.doc-file-pills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+.doc-file-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.file-pill-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #334155;
+}
+.file-pill-size {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+.file-delete-icon-btn {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+}
+.file-delete-icon-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ---- Row actions ---- */
+.doc-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.doc-action-btn {
+  gap: 6px;
+  border-radius: 8px;
+}
+.doc-action-btn.btn-delete {
+  padding: 8px 9px;
+  color: #dc2626;
+}
+.doc-action-btn.btn-delete:hover {
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+.locked-action-indicator {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #94a3b8;
+}
+
+/* Narrow screens: the toolbar may wrap, it is the only place that does */
+@media (max-width: 1100px) {
+  .doc-checklist-panel .doc-checklist-toolbar {
+    flex-wrap: wrap;
+  }
+  .doc-search-input {
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .doc-filters-group {
+    flex-wrap: wrap;
+  }
+}
+@media (max-width: 760px) {
+  .doc-checklist-panel .doc-checklist-head {
+    flex-direction: column;
+    padding: 18px 16px 6px;
+  }
+  .doc-checklist-panel .doc-checklist-toolbar {
+    padding: 12px 16px 14px;
+  }
+  .doc-zip-btn {
+    width: 100%;
+  }
+}

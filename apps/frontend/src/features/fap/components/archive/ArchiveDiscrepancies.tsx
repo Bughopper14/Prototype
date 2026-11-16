@@ -72,7 +72,7 @@ export function ArchiveDiscrepancies({discrepancies}: {discrepancies: any[]}) {
                     {diff.label || diff.field}
                   </td>
                   <td style={{padding: '8px 10px', color: '#0f172a', background: '#f8fafc'}}>
-                    {diff.oldValue || diff.systemValue || '—'}
+                    {diff.systemValue || '—'}
                   </td>
                   <td
                     style={{
@@ -82,7 +82,7 @@ export function ArchiveDiscrepancies({discrepancies}: {discrepancies: any[]}) {
                       fontWeight: 500,
                     }}
                   >
-                    {diff.newValue || diff.ocrValue || '—'}
+                    {diff.ocrValue || '— (Kosong di dokumen)'}
                   </td>
                   <td style={{padding: '8px 10px'}}>
                     <span

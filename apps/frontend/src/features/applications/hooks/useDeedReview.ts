@@ -30,15 +30,10 @@ export function useDeedReview({
     setBusy(true);
     try {
       if (canLegal) {
-        const list = legalDeedList(draft.legal || {}, a),
-          selected =
-            draft.legal?.selectedDeedId ||
-            list.find(x => x.type === (draft.legal?.selectedDeed || 'establishment'))?.id ||
-            list[0]?.id,
-          target = list.find(d => d.id === id);
+        const target = legalDeedList(draft.legal || {}, a).find(d => d.id === id);
         if (!target) throw Error('Deed not found.');
         // The draft is only saved before a submission; reviewers (check/approve) have no edit rights and nothing to save
-        if (['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(reviewStatus(target))) {
+        if (['DRAFT', 'NEEDS_REVISION'].includes(reviewStatus(target))) {
           const deed = deedData({
             ...target,
             stakeholders: Array.isArray(target.stakeholders) ? target.stakeholders : draft.stakeholders || [],

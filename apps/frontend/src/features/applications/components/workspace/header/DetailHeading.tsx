@@ -1,4 +1,5 @@
 /** Application title, customer name and status badge. */
+import {STAGE, initialStatusCode, stageName} from '@/shared/master-data';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {date} from '@/shared/lib/format';
 import {Badge} from '@/shared/ui/Badge';
@@ -29,9 +30,9 @@ export function DetailHeading() {
         <div style={{display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap'}}>
           <h1>{liveCompanyName || (draft.isNew ? 'New Financing Application' : 'Financing Application')}</h1>
           <span
-            className={`stage-pill-indicator ${currentAppStage === 'FAP Stage' ? 'stage-fap' : 'stage-preanalysis'}`}
+            className={`stage-pill-indicator ${currentAppStage === STAGE.FAP ? 'stage-fap' : 'stage-preanalysis'}`}
           >
-            Active Stage: {currentAppStage}
+            Active Stage: {stageName(currentAppStage)}
           </span>
         </div>
         <p>
@@ -48,7 +49,7 @@ export function DetailHeading() {
           )}
         </p>
       </div>
-      <Badge status={draft.isNew ? 'DRAFT' : a.status} />
+      <Badge status={draft.isNew ? initialStatusCode() : a.status} />
     </div>
   );
 }

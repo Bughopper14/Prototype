@@ -1,6 +1,5 @@
 /** Creating a new application: its customer, the FAP form data typed so far and the Pre-Analysis draft. */
 import {useState} from 'react';
-import {recordSystemActivity} from '@/features/activity/lib/activity-store';
 import {
   bankReferencesWithComments,
   mergedProposal,
@@ -8,9 +7,9 @@ import {
 } from '@/features/applications/lib/financing-proposal';
 import {api} from '@/shared/lib/api';
 import {validateInput} from '@liugong/shared';
+import {firstStageCode} from '@/shared/master-data';
 
 export function useNewApplication({
-  user,
   customers,
   customerId,
   setCustomerId,
@@ -30,7 +29,6 @@ export function useNewApplication({
   onCustomerCreated,
   notify,
 }: {
-  user: any;
   customers: any[];
   customerId: string;
   setCustomerId: (v: string) => void;
@@ -121,7 +119,7 @@ export function useNewApplication({
         draft?.companyName ||
         '';
       const safePayload = {
-        branchCode: profileData.branchCode || 'JKT01',
+        branchCode: profileData.branchCode || '',
         companyName: finalCompanyName,
         companyAddress: profileData.companyAddress || '',
         city: profileData.city || '',
@@ -130,15 +128,15 @@ export function useNewApplication({
         phoneFax: profileData.phoneFax || '',
         email: profileData.email || customerDraft.email || '',
         mainBusiness: profileData.mainBusiness || '',
-        locationStatus: profileData.locationStatus || 'OWNED',
-        repaymentSource: profileData.repaymentSource || 'Operating Cash Flow',
+        locationStatus: profileData.locationStatus || '',
+        repaymentSource: profileData.repaymentSource || '',
         // Segment and main business start unticked on the FAP form (section 06)
         industrySegment: profileData.industrySegment ?? '',
         businessRole: profileData.businessRole ?? '',
         ...profileData,
         customerId: id,
         customerStatus: customerCategory,
-        stage: activeStage || 'FAP Stage',
+        stage: activeStage || firstStageCode(),
       };
       const application = await api('/applications', 'POST', safePayload);
 
@@ -163,7 +161,7 @@ export function useNewApplication({
           ...(canFinance
             ? {proposal: mergedProposal(draft), financialStatements: draft.financialStatements || []}
             : {}),
-          stage: activeStage || 'FAP Stage',
+          stage: activeStage || firstStageCode(),
         });
       } catch (err) {
         console.warn('Initial FAP form sync:', err);
@@ -186,33 +184,7 @@ export function useNewApplication({
       notify(
         `Aplikasi ${application.fapNumber}${assignedPreNo ? ` · Pre-Analysis ${assignedPreNo}` : ''} berhasil dibuat. Anda dapat melanjutkan pengisian Stakeholders, Proposal, dan Pre-Analysis.`,
       );
-      try {
-        recordSystemActivity({
-          applicationId: application.id,
-          fapNumber: application.fapNumber,
-          companyName: finalCompanyName,
-          section: 'Customer & PIC',
-          tabIndex: 0,
-          actionType: 'CREATE',
-          title: `Created new application for ${finalCompanyName}`,
-          details: `Initiated FAP Stage (${application.fapNumber || 'Draft'}), Category: ${customerCategory === 'EXISTING' ? 'Existing Customer' : 'New Customer'}. Ready for data entry.`,
-          changes: [
-            {label: 'Application Number', newValue: application.fapNumber || 'Draft'},
-            {
-              label: 'Customer Category',
-              newValue: customerCategory === 'EXISTING' ? 'Existing Customer' : 'New Customer',
-            },
-            {label: 'Company Name', newValue: finalCompanyName},
-            {label: 'Initial Stage', newValue: 'FAP Stage'},
-          ],
-          actionBy: user?.name || 'System User',
-          userRole: user?.role || 'MKT',
-          createNotification: true,
-          notificationMessage: `New application ${application.fapNumber || ''} created for ${finalCompanyName}. Ready for review.`,
-        });
-      } catch (actErr) {
-        console.error('Activity record error:', actErr);
-      }
+      // The server logs the creation in the activity feed.
       let fullApp: any;
       try {
         fullApp = await api(`/applications/${application.id}`);

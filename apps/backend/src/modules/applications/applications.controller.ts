@@ -1,178 +1,121 @@
 import {Controller, Get, Patch, Post, Put, Res} from '@nestjs/common';
 import {z} from 'zod';
-import {pool} from '../../core/db/pool';
-import {ensure} from '../../core/domain';
-import {detailOr404} from './application-detail';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {logActivity} from '../activity/activity-log';
-import {saveBusiness} from './business.repository';
-import {saveFinancialStatements} from './financial-statements.repository';
-import {createIntake, intakeDetail, listIntake, saveCustomerPic, transitionIntake} from './intake.repository';
 import {requireAuthority} from '../auth/session';
-import {getSubmitLock, verifyApplicationDocument} from '../documents/documents.repository';
-import {recordFapSubmissionArchive} from '../fap/fap-archive.repository';
-
-const DEFAULT_PROFILE: Record<string, string> = {
-  branchCode: 'JKT01',
-  customerStatus: 'NEW',
-  locationStatus: 'OWNED',
-  repaymentSource: 'Operating Cash Flow',
-  industrySegment: 'MINING',
-  businessRole: 'CONTRACTOR',
-};
-
-async function createApplication(req: ApiRequest) {
-  requireAuthority(req.actor, 'crm_create_application');
-  const body = req.body || {};
-  const profile: Record<string, any> = {...DEFAULT_PROFILE, ...body};
-  for (const key of Object.keys(DEFAULT_PROFILE))
-    if (!String(profile[key] ?? '').trim()) profile[key] = DEFAULT_PROFILE[key];
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(profile.email || '').trim())) profile.email = '';
-
-  const customerId = body.customerId ? z.string().uuid().parse(body.customerId) : undefined;
-  const category = body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW');
-  let customer: Record<string, any> = body.customer || {};
-  if (customerId) {
-    const [rows] = await pool.query<any[]>('SELECT * FROM master_cust_n_pic_business_partner WHERE id=?', [
-      customerId,
-    ]);
-    ensure(rows[0], 'Customer not found', 404);
-    const c = rows[0];
-    customer = {
-      companyName: c.company_name,
-      companyType: c.company_type,
-      nib: c.nib,
-      npwp: c.npwp,
-      establishmentActNo: c.establishment_act_no,
-      establishmentDate: c.establishment_date,
-      nibDate: c.nib_date,
-    };
-  }
-  const created = await createIntake({customerCategory: category, customerId, customer, profile});
-  await logActivity(req.actor, created.id, 'DRAFT', 'DRAFT', 'Application created');
-  return detailOr404(created.id);
-}
-
-/* ---------- page saves ---------- */
-
-/** Business sections are persisted together, so unspecified sections are carried over from the saved record. */
-async function saveBusinessMerged(id: string, patchBody: Record<string, any>) {
-  const current = await detailOr404(id);
-  await saveBusiness(id, {
-    projects: patchBody.projects ?? current.projects ?? [],
-    bankReferences: patchBody.bankReferences ?? current.bankReferences ?? [],
-    proposal: patchBody.proposal ?? current.proposal ?? null,
-  });
-}
+import {ApplicationsService} from './applications.service';
 
 @Controller(API_PREFIX)
 export class ApplicationsController {
+  constructor(private readonly applications: ApplicationsService) {}
+
   @Get('applications')
   list(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_applications');
-    return listIntake();
+    return this.applications.list(req.actor);
   }
 
   @Post('applications')
   async create(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_create_application');
+    const body = req.body || {};
+    if (body.customerId) z.string().uuid().parse(body.customerId);
     res.status(201);
-    return createApplication(req);
+    return this.applications.create(body, req.actor);
   }
 
   @Get('applications/:id')
   detail(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_applications');
-    return detailOr404(req.params.id);
+    return this.applications.detailOr404(req.params.id, req.actor);
   }
 
   @Put('applications/:id/page-1')
   async saveProfilePage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     const id = req.params.id;
-    const existing = await detailOr404(id);
     const b = req.body || {};
-    if (b.profile || b.pic) requireAuthority(req.actor, 'crm_edit_app_customer_pic');
-    if (b.bankReferences || (!b.profile && !b.pic && Array.isArray(b.projects)))
-      requireAuthority(req.actor, 'crm_edit_app_business_banks');
+    // Every part of the body that is written needs the authority of its section, and it is checked before anything
+    // else (also before the application is looked up). A part of the body that is not listed here is never written.
+    const needs: string[][] = [];
+    if (b.profile || b.pic) needs.push(['crm_edit_app_customer_pic']);
+    if (b.bankReferences || (!b.profile && !b.pic && Array.isArray(b.projects))) needs.push(['crm_edit_app_business_banks']);
     // FAP section 08 (financing proposal) and 09 (financial statements) are saved from the FAP form too
-    if (b.proposal || b.financialStatements)
-      requireAuthority(req.actor, 'crm_edit_app_financing_units', 'crm_edit_app_financial');
-    if (b.profile || b.pic) {
-      if (Array.isArray(b.projects)) await saveBusinessMerged(id, {projects: b.projects});
-      await saveCustomerPic(id, b);
-    }
-    if (b.bankReferences || b.proposal || (!b.profile && !b.pic && Array.isArray(b.projects))) {
-      await saveBusinessMerged(id, {
-        projects: b.projects,
-        bankReferences: b.bankReferences,
-        proposal: b.proposal,
-      });
-    }
-    if (Array.isArray(b.financialStatements))
-      await saveFinancialStatements(id, b.financialStatements, req.actor);
-    await logActivity(
-      req.actor,
-      id,
-      existing.status,
-      existing.status,
-      'Profile and business information updated',
-    );
-    return intakeDetail(id);
+    if (b.proposal || b.financingProposal || b.financialStatements)
+      needs.push(['crm_edit_app_financing_units', 'crm_edit_app_financial']);
+    // Section 05 (financing purposes) lives with the company profile
+    if (!b.profile && !b.pic && b.financingPurposeDetail !== undefined) needs.push(['crm_edit_app_customer_pic']);
+    for (const any of needs.length ? needs : [['crm_view_applications']]) requireAuthority(req.actor, ...any);
+    await this.applications.detailOr404(id, req.actor);
+    if (!needs.length) return this.applications.detailOr404(id, req.actor); // nothing to write
+    // The screen sends the updatedAt it loaded; it is checked once, by the first write of this request.
+    const checked = !!(b.profile || b.pic);
+    if (checked) await this.applications.saveCustomerAndContact(id, b, req.actor, b.expectedUpdatedAt);
+    // FAP sections 05–09: only the sections present in the body are written.
+    await this.applications.saveFapSections(id, b, req.actor, checked ? undefined : b.expectedUpdatedAt);
+    return this.applications.detailOr404(id, req.actor);
   }
 
+  /** Activity tab of one application. */
+  @Get('applications/:id/activity')
+  activity(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_app_activity', 'crm_view_activity');
+    return this.applications.activityOf(req.params.id);
+  }
+
+  /** The workspace records what a save changed, field by field (the feed shows old → new values). */
+  @Post('applications/:id/activity')
+  recordActivity(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_applications');
+    const text = (max: number) =>
+      z.preprocess(v => (v === null || v === undefined ? undefined : String(v)), z.string().max(max).optional());
+    const body = z
+      .object({
+        section: z.string().min(1).max(100),
+        tabIndex: z.number().int().min(0).max(99).nullable().optional(),
+        title: z.string().min(1).max(255),
+        details: z.string().max(20000).optional(),
+        changes: z
+          .array(
+            z.object({
+              section: text(100),
+              subSection: text(200),
+              field: text(100),
+              label: z.preprocess(v => String(v ?? ''), z.string().max(200)),
+              oldValue: text(5000),
+              newValue: text(5000),
+            }),
+          )
+          .max(500)
+          .optional(),
+      })
+      .parse(req.body || {});
+    res.status(201);
+    return this.applications.recordClientActivity(req.params.id, body, req.actor);
+  }
+
+  /** "Submit FAP stage": locks the first stage; the status is changed only by workflow actions. */
   @Put('applications/:id/stage')
-  async updateStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+  async submitStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_workflow_submit', 'crm_verify_app_documents');
-    const id = req.params.id;
-    const stage = String(req.body?.stage || 'Pre-analysis');
-    if (stage === 'Pre-analysis') {
-      const lock = await getSubmitLock(id).catch(() => null);
-      if (lock?.isLocked) {
-        res.status(403);
-        return {error: 'Please upload the signed FAP Stage document in the Documents tab first.'};
-      }
-    }
-    await pool.query(
-      'UPDATE application_submit_lock SET stage=?, updated_at=CURRENT_TIMESTAMP(3) WHERE application_id=?',
-      [stage === 'Pre-analysis' ? 'PRE_ANALYSIS' : 'FAP_STAGE', id],
-    );
-    if (stage === 'Pre-analysis') {
-      try {
-        await recordFapSubmissionArchive(id, await intakeDetail(id), req.actor, req.body?.remarks);
-      } catch (e) {
-        console.error('recordFapSubmissionArchive error on stage update:', e);
-      }
-    }
-    return {success: true, stage};
+    return this.applications.submitFirstStage(req.params.id, req.actor, req.body?.remarks);
   }
 
+  /** The list of what is still missing for the final approval, shown when the Approve dialog opens. */
+  @Get('applications/:id/approval-check')
+  approvalCheck(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_applications');
+    return this.applications.approvalCheck(req.params.id);
+  }
+
+  /** One action of crm_master_workflow; the service checks that it exists for the current status and the actor. */
   @Post('applications/:id/transition')
   async transition(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    const id = req.params.id;
     const {action, comments} = z
       .object({
-        action: z.enum([
-          'SUBMIT_TO_BS',
-          'VERIFY_BS',
-          'START_REVIEW',
-          'RECOMMEND_CA',
-          'RECOMMEND_LEGAL',
-          'APPROVE_COMMITTEE',
-          'REJECT_COMMITTEE',
-          'RETURN',
-        ]),
+        action: z.string().trim().min(1).max(30),
         comments: z.string().trim().max(10000).default(''),
       })
       .parse(req.body);
-    const before = await detailOr404(id);
-    const updated = await transitionIntake(id, action, req.actor, comments);
-    await logActivity(
-      req.actor,
-      id,
-      before.status,
-      updated?.status ?? before.status,
-      comments || action.replaceAll('_', ' '),
-    );
-    return updated;
+    return this.applications.transition(req.params.id, action, req.actor, comments);
   }
 
   @Patch('applications/:id/checklist/:checklistId/verify')
@@ -188,10 +131,7 @@ export class ApplicationsController {
         notes: z.string().max(10000).optional(),
       })
       .parse(req.body);
-    const isAdmin = req.actor.isAdmin || req.actor.role === 'ADMIN';
-    const id = req.params.id;
-    await detailOr404(id);
-    await verifyApplicationDocument(id, req.params.checklistId, body, isAdmin);
-    return intakeDetail(id);
+    await this.applications.verifyDocument(req.params.id, req.params.checklistId, body, req.actor);
+    return this.applications.detailOr404(req.params.id, req.actor);
   }
 }

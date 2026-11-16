@@ -11,6 +11,7 @@ import fapComparison from '../styles/09-fap-comparison.css?raw';
 import approvedExcel from '../styles/10-approved-excel.css?raw';
 import shell from '../styles/11-shell.css?raw';
 import keithSync from '../styles/12-keith-sync.css?raw';
+import documentChecklist from '../styles/13-document-checklist.css?raw';
 
 const CRM_CSS = [
   base,
@@ -25,6 +26,7 @@ const CRM_CSS = [
   approvedExcel,
   shell,
   keithSync,
+  documentChecklist,
 ].join('');
 
 export function CrmStyles() {

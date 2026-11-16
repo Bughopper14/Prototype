@@ -1,16 +1,21 @@
 /** Facility proposed (with the currency strike-through) and the three Terms & Conditions boxes. */
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
+import type {MasterCatalog} from '@liugong/shared';
 
 export function applyProposalAndTerms({
   doc,
   d,
   setText,
+  master,
 }: {
   doc: Document;
   d: SheetValues;
   setText: CellWriters['setText'];
+  master: MasterCatalog;
 }) {
+  // Payment timing is stored as its master code (IN_ARREAR / IN_ADVANCE); the sheet prints its name.
+  const paymentName = (code: any) => (master.paymentMethod || []).find(x => x.value === code)?.name || code;
   // Financing Proposal & Terms and Conditions
   const prop = d.financingProposal || {};
 
@@ -67,7 +72,7 @@ export function applyProposalAndTerms({
     }
   };
 
-  setBoxText('fap-cell-tc-fl-purpose', tcFl.workingCapitalInvestment || tcFl.investment, 'Investment');
+  setBoxText('fap-cell-tc-fl-purpose', tcFl.workingCapitalInvestment);
 
   setBoxText('fap-cell-tc-fl-curr', tcFl.currency);
 
@@ -77,7 +82,7 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-fl-tenor', tcFl.tenor);
 
-  setBoxText('fap-cell-tc-fl-payment', tcFl.paymentMethod);
+  setBoxText('fap-cell-tc-fl-payment', paymentName(tcFl.paymentMethod));
 
   setBoxText('fap-cell-tc-slb-purpose', tcSlb.workingCapitalInvestment);
 
@@ -89,7 +94,7 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-slb-tenor', tcSlb.tenor);
 
-  setBoxText('fap-cell-tc-slb-payment', tcSlb.paymentMethod);
+  setBoxText('fap-cell-tc-slb-payment', paymentName(tcSlb.paymentMethod));
 
   setBoxText('fap-cell-tc-if-purpose', tcIf.workingCapitalInvestment);
 
@@ -101,5 +106,5 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-if-tenor', tcIf.tenor);
 
-  setBoxText('fap-cell-tc-if-payment', tcIf.paymentMethod);
+  setBoxText('fap-cell-tc-if-payment', paymentName(tcIf.paymentMethod));
 }

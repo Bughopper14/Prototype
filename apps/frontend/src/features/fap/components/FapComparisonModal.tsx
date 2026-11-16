@@ -2,6 +2,7 @@ import {Editor} from '@tinymce/tinymce-react';
 import {createPortal} from 'react-dom';
 import {useState} from 'react';
 import {Pencil, AlertCircle, AlertTriangle, X, Loader2, CheckCircle} from 'lucide-react';
+import {RerunOcrNotice} from '@/features/fap/components/RerunOcrNotice';
 
 export function FapComparisonModal({
   comparison,
@@ -12,7 +13,7 @@ export function FapComparisonModal({
 }: {
   comparison: any;
   onClose: () => void;
-  onApprove: (data: any) => void;
+  onApprove: () => void;
   onCorrect: () => void;
   busy: boolean;
 }) {
@@ -87,6 +88,7 @@ export function FapComparisonModal({
         </div>
 
         <div className="modal-body" style={{padding: '20px', overflowY: 'auto', flex: 1}}>
+          {comparison.needsRerun && <RerunOcrNotice />}
           <div
             style={{
               background: '#fffbeb',
@@ -170,7 +172,7 @@ export function FapComparisonModal({
                           display: 'inline-block',
                         }}
                       >
-                        {d.newValue}
+                        {d.newValue || '— (Kosong di dokumen)'}
                       </span>
                     </td>
                   </tr>
@@ -220,7 +222,7 @@ export function FapComparisonModal({
             type="button"
             className="button primary"
             disabled={busy}
-            onClick={() => onApprove(comparison.extractedData)}
+            onClick={() => onApprove()}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

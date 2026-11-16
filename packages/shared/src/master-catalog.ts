@@ -9,6 +9,24 @@ export type MasterItem = {
   areaCode?: string;
   region?: string;
   zipCode?: string;
+  /** Currency symbol (crm_master_currencies.symbol). */
+  symbol?: string;
+  /** BANK / MULTIFINANCE / OTHER (crm_master_financial_institutions.institution_type). */
+  institutionType?: string;
+  /** ALL / ESTABLISHMENT / AMENDMENT (crm_master_legal_remark_categories.deed_scope). */
+  deedScope?: string;
+  /** Document types: display title, default section, description and workflow stage code. */
+  title?: string;
+  section?: string;
+  description?: string;
+  stage?: string;
+  /** FAP checklist options: the FAP sheet cell id, the group heading and whether the box is shown. */
+  paramKey?: string;
+  groupLabel?: string;
+  visible?: boolean;
+  /** Workflow: stage order (workflowStage) and whether a status is final (workflowStatus). */
+  sequence?: number;
+  terminal?: boolean;
 };
 export type MasterCatalog = Record<string, MasterItem[]>;
 export type MasterGroup = {key: string; name: string; section: string; parent?: string; parentField?: string};
@@ -18,9 +36,11 @@ export const masterGroups: MasterGroup[] = [
   {key: 'industrySegment', name: 'Industry', section: 'Customer & PIC'},
   {key: 'businessRole', name: 'Business Role', section: 'Customer & PIC'},
   {key: 'position', name: 'Position PIC', section: 'Customer & PIC'},
+  {key: 'locationStatus', name: 'Business Premises Status', section: 'Customer & PIC'},
   {key: 'remarkCategoryId', name: 'Remarks Category', section: 'Legal'},
   {key: 'representativeType', name: 'Representative Type', section: 'Legal'},
   {key: 'designation', name: 'Designation', section: 'Legal'},
+  {key: 'positions', name: 'Stakeholder Position', section: 'Legal'},
   {key: 'country', name: 'Country', section: 'Address'},
   {key: 'province', name: 'Province', section: 'Address', parent: 'country', parentField: 'country'},
   {key: 'city', name: 'City / Regency', section: 'Address', parent: 'province', parentField: 'province'},
@@ -49,268 +69,12 @@ export const masterGroups: MasterGroup[] = [
   {key: 'preanInvestmentPlanOptions', name: 'Investment Plan Options', section: 'Pre-Analysis'},
 ];
 export const masterKey = (key: string) => (key === 'cityRegency' ? 'city' : key);
-const options = (values: string[]): MasterItem[] =>
-  values.map(value => ({
-    value,
-    name: value
-      .replaceAll('_', ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, x => x.toUpperCase()),
-    active: true,
-  }));
-const initialDistricts: [string, string][] = [
-  ['Pasar Minggu', 'Jakarta Selatan'],
-  ['Kebayoran Baru', 'Jakarta Selatan'],
-  ['Cilandak', 'Jakarta Selatan'],
-  ['Setiabudi', 'Jakarta Selatan'],
-  ['Tebet', 'Jakarta Selatan'],
-  ['Gambir', 'Jakarta'],
-  ['Tanah Abang', 'Jakarta'],
-  ['Menteng', 'Jakarta'],
-  ['Grogol Petamburan', 'Jakarta'],
-  ['Kelapa Gading', 'Jakarta'],
-  ['Balikpapan Kota', 'Balikpapan'],
-  ['Balikpapan Selatan', 'Balikpapan'],
-  ['Balikpapan Utara', 'Balikpapan'],
-  ['Balikpapan Barat', 'Balikpapan'],
-  ['Samarinda Kota', 'Samarinda'],
-  ['Samarinda Ulu', 'Samarinda'],
-  ['Samarinda Ilir', 'Samarinda'],
-  ['Samarinda Utara', 'Samarinda'],
-  ['Ilir Barat I', 'Palembang'],
-  ['Ilir Timur I', 'Palembang'],
-  ['Sukarami', 'Palembang'],
-  ['Bukit Kecil', 'Palembang'],
-  ['Medan Kota', 'Medan'],
-  ['Medan Petisah', 'Medan'],
-  ['Medan Barat', 'Medan'],
-  ['Medan Sunggal', 'Medan'],
-  ['Tegalsari', 'Surabaya'],
-  ['Genteng', 'Surabaya'],
-  ['Gubeng', 'Surabaya'],
-  ['Wonokromo', 'Surabaya'],
-  ['Rungkut', 'Surabaya'],
-];
-
-const initialPostalCodes: [string, string, string][] = [
-  ['12550', '12550 - Ragunan', 'Jakarta Selatan'],
-  ['12520', '12520 - Pasar Minggu', 'Jakarta Selatan'],
-  ['12510', '12510 - Pejaten Barat', 'Jakarta Selatan'],
-  ['12190', '12190 - Senayan', 'Jakarta Selatan'],
-  ['12160', '12160 - Melawai', 'Jakarta Selatan'],
-  ['12430', '12430 - Cilandak Barat', 'Jakarta Selatan'],
-  ['12920', '12920 - Karet Setiabudi', 'Jakarta Selatan'],
-  ['12930', '12930 - Karet Semanggi', 'Jakarta Selatan'],
-  ['12940', '12940 - Karet Kuningan', 'Jakarta Selatan'],
-  ['12810', '12810 - Tebet Barat', 'Jakarta Selatan'],
-  ['10110', '10110 - Gambir', 'Jakarta'],
-  ['10120', '10120 - Kebon Kelapa', 'Jakarta'],
-  ['10250', '10250 - Kampung Bali', 'Jakarta'],
-  ['10240', '10240 - Kebon Kacang', 'Jakarta'],
-  ['10310', '10310 - Menteng', 'Jakarta'],
-  ['11450', '11450 - Tanjung Duren', 'Jakarta'],
-  ['14240', '14240 - Kelapa Gading Barat', 'Jakarta'],
-  ['76111', '76111 - Prapatan', 'Balikpapan'],
-  ['76112', '76112 - Klandasan Ulu', 'Balikpapan'],
-  ['76113', '76113 - Klandasan Ilir', 'Balikpapan'],
-  ['76115', '76115 - Sepinggan', 'Balikpapan'],
-  ['76114', '76114 - Damai', 'Balikpapan'],
-  ['76125', '76125 - Muara Rapak', 'Balikpapan'],
-  ['76126', '76126 - Batu Ampar', 'Balikpapan'],
-  ['75111', '75111 - Bugis', 'Samarinda'],
-  ['75112', '75112 - Pelabuhan', 'Samarinda'],
-  ['75124', '75124 - Air Putih', 'Samarinda'],
-  ['75123', '75123 - Dadi Mulya', 'Samarinda'],
-  ['75117', '75117 - Sungai Pinang', 'Samarinda'],
-  ['30137', '30137 - Demang Lebar Daun', 'Palembang'],
-  ['30139', '30139 - Bukit Baru', 'Palembang'],
-  ['30122', '30122 - 16 Ilir', 'Palembang'],
-  ['30152', '30152 - Sukarami', 'Palembang'],
-  ['30135', '30135 - Bukit Kecil', 'Palembang'],
-  ['20212', '20212 - Pasar Baru', 'Medan'],
-  ['20213', '20213 - Mesjid', 'Medan'],
-  ['20112', '20112 - Petisah Tengah', 'Medan'],
-  ['20111', '20111 - Kesawan', 'Medan'],
-  ['20122', '20122 - Sunggal', 'Medan'],
-  ['60262', '60262 - Tegalsari', 'Surabaya'],
-  ['60261', '60261 - Kedungdoro', 'Surabaya'],
-  ['60271', '60271 - Embong Kaliasin', 'Surabaya'],
-  ['60281', '60281 - Gubeng', 'Surabaya'],
-  ['60242', '60242 - Wonokromo', 'Surabaya'],
-  ['60293', '60293 - Rungkut Kidul', 'Surabaya'],
-];
-
-const initialVillages: [string, string, string][] = [
-  ['Ragunan', 'Pasar Minggu', '12550'],
-  ['Pasar Minggu', 'Pasar Minggu', '12550'],
-  ['Pejaten Barat', 'Pasar Minggu', '12510'],
-  ['Senayan', 'Kebayoran Baru', '12190'],
-  ['Melawai', 'Kebayoran Baru', '12160'],
-  ['Cilandak Barat', 'Cilandak', '12430'],
-  ['Karet', 'Setiabudi', '12920'],
-  ['Karet Semanggi', 'Setiabudi', '12930'],
-  ['Karet Kuningan', 'Setiabudi', '12940'],
-  ['Tebet Barat', 'Tebet', '12810'],
-  ['Gambir', 'Gambir', '10110'],
-  ['Kebon Kelapa', 'Gambir', '10120'],
-  ['Kampung Bali', 'Tanah Abang', '10250'],
-  ['Kebon Kacang', 'Tanah Abang', '10240'],
-  ['Menteng', 'Menteng', '10310'],
-  ['Tanjung Duren Utara', 'Grogol Petamburan', '11450'],
-  ['Kelapa Gading Barat', 'Kelapa Gading', '14240'],
-  ['Prapatan', 'Balikpapan Kota', '76111'],
-  ['Klandasan Ulu', 'Balikpapan Kota', '76112'],
-  ['Klandasan Ilir', 'Balikpapan Kota', '76113'],
-  ['Sepinggan', 'Balikpapan Selatan', '76115'],
-  ['Damai', 'Balikpapan Selatan', '76114'],
-  ['Muara Rapak', 'Balikpapan Utara', '76125'],
-  ['Batu Ampar', 'Balikpapan Utara', '76126'],
-  ['Bugis', 'Samarinda Kota', '75111'],
-  ['Pelabuhan', 'Samarinda Kota', '75112'],
-  ['Air Putih', 'Samarinda Ulu', '75124'],
-  ['Dadi Mulya', 'Samarinda Ulu', '75123'],
-  ['Sungai Pinang Luar', 'Samarinda Ilir', '75117'],
-  ['Demang Lebar Daun', 'Ilir Barat I', '30137'],
-  ['Bukit Baru', 'Ilir Barat I', '30139'],
-  ['16 Ilir', 'Ilir Timur I', '30122'],
-  ['Sukarami', 'Sukarami', '30152'],
-  ['24 Ilir', 'Bukit Kecil', '30135'],
-  ['Pasar Baru', 'Medan Kota', '20212'],
-  ['Mesjid', 'Medan Kota', '20213'],
-  ['Petisah Tengah', 'Medan Petisah', '20112'],
-  ['Kesawan', 'Medan Barat', '20111'],
-  ['Sunggal', 'Medan Sunggal', '20122'],
-  ['Tegalsari', 'Tegalsari', '60262'],
-  ['Kedungdoro', 'Tegalsari', '60261'],
-  ['Embong Kaliasin', 'Genteng', '60271'],
-  ['Gubeng', 'Gubeng', '60281'],
-  ['Wonokromo', 'Wonokromo', '60242'],
-  ['Rungkut Kidul', 'Rungkut', '60293'],
-];
-
-export function defaultMasterCatalog(): MasterCatalog {
-  const result: MasterCatalog = {
-    branchCode: options(['JKT01', 'BPN01', 'PLB01', 'MDN01', 'SBY01']),
-    companyType: options(['CORPORATE', 'COMMERCIAL', 'MICRO', 'LIUGONG_USER']),
-    industrySegment: options(['MINING', 'AGRICULTURE', 'FORESTRY', 'CONSTRUCTION', 'OIL_AND_GAS', 'OTHER']),
-    businessRole: options(['CONS_OWNER', 'CONTRACTORS', 'SUB_CONT', 'RENTAL', 'OTHER']),
-    position: options(['Finance Director', 'Director', 'Manager', 'Staff']),
-    representativeType: options(['NONE', 'DIRECTOR', 'SHAREHOLDER', 'AUTHORIZED_SIGNATORY', 'OTHER']),
-    designation: options([
-      'NONE',
-      'DIRECTOR',
-      'COMMISSIONER',
-      'PRESIDENT_DIRECTOR',
-      'OWNER',
-      'MANAGER',
-      'OTHER',
-    ]),
-    country: options(['Indonesia']),
-    province: options([
-      'DKI Jakarta',
-      'Kalimantan Timur',
-      'Sumatera Selatan',
-      'Sumatera Utara',
-      'Jawa Timur',
-    ]),
-    city: options([
-      'Jakarta Selatan',
-      'Jakarta',
-      'Balikpapan',
-      'Samarinda',
-      'Palembang',
-      'Medan',
-      'Surabaya',
-    ]),
-    district: initialDistricts.map(([value, parentValue]) => ({
-      value,
-      name: value,
-      active: true,
-      parentValue,
-    })),
-    village: initialVillages.map(([value, parentValue, zipCode]) => ({
-      value,
-      name: value,
-      active: true,
-      parentValue,
-      zipCode,
-    })),
-    postalCode: initialPostalCodes.map(([value, name, parentValue]) => ({
-      value,
-      name,
-      active: true,
-      parentValue,
-    })),
-    bankOrFinInstitution: options(['Bank Mandiri', 'Bank BCA', 'Bank BRI', 'Bank BNI']),
-    projectRole: options(['Main Contractor', 'Subcontractor', 'Project Owner']),
-    applicationSource: options(['Direct', 'Dealer', 'Referral']),
-    unitCategory: options(['HE', 'TRUCK']),
-    brand: options(['LiuGong']),
-    unitType: options(['Hydraulic Excavator']),
-    modelName: options(['936E']),
-    assetName: options(['Excavator']),
-    facilityPurpose: options(['INVESTMENT', 'WORKING_CAPITAL']),
-    financingMethod: options(['FINANCIAL_LEASE', 'SALE_AND_LEASE_BACK', 'INSTALLMENT_FINANCING']),
-    currency: options(['IDR']),
-    paymentMethod: [
-      {value: 'In Arrear', name: 'In Arrear', active: true, timing: 'arrear'},
-      {value: 'In Advance', name: 'In Advance', active: true, timing: 'advance'},
-    ],
-    remarkCategoryId: [
-      ['establishment-deed', 'Establishment Deed'],
-      ['amendment-share-change', 'Shares'],
-      ['amendment-management-change', 'Management'],
-      ['amendment-business-activity-change', 'Business Activities'],
-      ['amendment-articles-change', 'Articles of Association'],
-      ['amendment-other', 'Other'],
-      ['akta-pendirian', 'Akta Pendirian'],
-      ['akta-perubahan', 'Akta Perubahan'],
-    ].map(([value, name]) => ({value, name, active: true})),
-    documents: [
-      ['FAP', 'fap', 'MKT', true],
-      ['PREANALYSIS', 'Preanalysis', 'CA', true],
-      ['ICLF', 'Iclf', 'COMMITTEE', true],
-      ['NIB', 'Business registration (NIB)', 'BS', true],
-      ['NPWP', 'Company tax registration (NPWP)', 'BS', true],
-      ['DEED', 'Establishment & latest deed', 'LEGAL', true],
-      ['KTP', 'Directors’ identification', 'BS', true],
-      ['FINANCIALS', 'Financial statements · 3 years', 'CA', true],
-      ['BANK', 'Bank statements · 6 months', 'CA', true],
-      ['CONTRACT', 'Project contracts / purchase orders', 'CA', false],
-      ['QUOTATION', 'Equipment quotation', 'BS', true],
-      ['LEGAL_OPINION', 'Legal opinion', 'LEGAL', true],
-      ['EKITAS', 'E-KITAS for foreign shareholders', 'LEGAL', false],
-    ].map(([value, name, role, required]) => ({
-      value: String(value),
-      name: String(name),
-      role: String(role),
-      required: Boolean(required),
-      active: true,
-    })),
-    preanInvestmentPlanOptions: [
-      {value: 'SD', name: 'SD (Security Deposit / Down Payment)', active: true},
-      {value: 'Tenor', name: 'Tenor', active: true},
-      {value: 'Rate', name: 'Rate', active: true},
-      {value: 'Provision', name: 'Provision', active: true},
-      {value: 'Adm', name: 'Adm (Administration Fee)', active: true},
-    ],
-  };
-  result.province.forEach(x => (x.parentValue = 'Indonesia'));
-  const cityParents: Record<string, string> = {
-    'Jakarta Selatan': 'DKI Jakarta',
-    Jakarta: 'DKI Jakarta',
-    Balikpapan: 'Kalimantan Timur',
-    Samarinda: 'Kalimantan Timur',
-    Palembang: 'Sumatera Selatan',
-    Medan: 'Sumatera Utara',
-    Surabaya: 'Jawa Timur',
-  };
-  result.city.forEach(x => (x.parentValue = cityParents[x.value]));
-  result.unitType[0].parentValue = 'LiuGong';
-  result.modelName[0].parentValue = 'Hydraulic Excavator';
-  result.assetName[0].parentValue = '936E';
-  for (const key of ['branchCode', 'currency', 'unitCategory']) result[key].forEach(x => (x.name = x.value));
-  return result;
+/**
+ * An empty catalog with every group present. All values come from the crm_ master tables (plan-seed.sql); nothing is
+ * hardcoded here any more.
+ */
+export function emptyMasterCatalog(): MasterCatalog {
+  return Object.fromEntries(masterGroups.map(g => [g.key, [] as MasterItem[]]));
 }
 
 export function validateMasterGroupItems(
@@ -408,6 +172,13 @@ export function validateMasterGroupItems(
       ...(row.parentValue ? {parentValue: String(row.parentValue)} : {}),
       ...(groupKey === 'documents' ? {role: row.role, required: row.required} : {}),
       ...(groupKey === 'paymentMethod' ? {timing: row.timing} : {}),
+      ...(groupKey === 'currency' && typeof row.symbol === 'string' ? {symbol: row.symbol.trim().slice(0, 10)} : {}),
+      ...(groupKey === 'bankOrFinInstitution' && ['BANK', 'MULTIFINANCE', 'OTHER'].includes(row.institutionType)
+        ? {institutionType: row.institutionType}
+        : {}),
+      ...(groupKey === 'remarkCategoryId' && ['ALL', 'ESTABLISHMENT', 'AMENDMENT'].includes(row.deedScope)
+        ? {deedScope: row.deedScope}
+        : {}),
     };
   });
 

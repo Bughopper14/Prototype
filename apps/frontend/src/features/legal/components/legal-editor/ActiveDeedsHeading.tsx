@@ -19,7 +19,7 @@ export function ActiveDeedsHeading() {
           reference.
         </p>
       </div>
-      {!disabled && ['DRAFT', 'RETURNED'].includes(application.status) && (
+      {!disabled && !application.workflowFlags?.lastStage && (
         <div className="legal-table-actions">
           <button className="button small" onClick={openAdd}>
             <Plus size={15} />

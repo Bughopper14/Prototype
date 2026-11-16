@@ -41,6 +41,12 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
     return str;
   };
 
+  /** Display name of a master code (PIC position, premise status, project role); other text is shown as typed. */
+  const masterName = (grp: string, val: any) => {
+    const str = String(val ?? '').trim();
+    return ((master as any)?.[grp] || []).find((x: any) => x.value === str)?.name || str;
+  };
+
   const formatDate = (val: any) => {
     if (!val) return '';
     try {
@@ -56,20 +62,20 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
   };
 
   return {
-    fapNumber: isOcrSide ? raw.fapNumber || '' : pick(raw.fapNumber, app.fapNumber, '0006/AF/03/2026'),
+    fapNumber: isOcrSide ? raw.fapNumber || '' : pick(raw.fapNumber, app.fapNumber),
     applicationDate: isOcrSide
       ? raw.applicationDate
         ? formatDate(raw.applicationDate)
         : ''
       : formatDate(pick(raw.applicationDate, app.applicationDate, new Date().toISOString())),
-    branchCode: isOcrSide ? raw.branchCode || '' : pick(raw.branchCode, app.branchCode, 'JKT01'),
+    branchCode: isOcrSide ? raw.branchCode || '' : pick(raw.branchCode, app.branchCode),
     customerStatus: isOcrSide
       ? (raw.customerStatus || raw.customerCategory || '').toUpperCase()
       : pick(
           raw.customerStatus || raw.customerCategory,
           app.customerCategory || app.customerStatus,
           cust.customerCategory || cust.customerStatus || prof.customerStatus,
-          'NEW',
+          '',
         ).toUpperCase(),
     companyType: pick(raw.companyType, cust.companyType, '').toUpperCase(),
     companyName: pick(raw.companyName, cust.companyName, ''),
@@ -146,9 +152,9 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
     website: pick(raw.website, prof.website, ''),
     email: pick(raw.email, prof.email, ''),
     repaymentSource: pick(raw.repaymentSource, prof.repaymentSource, ''),
-    locationStatus: pick(raw.locationStatus, prof.locationStatus, ''),
+    locationStatus: masterName('locationStatus', pick(raw.locationStatus, prof.locationStatus, '')),
     picName: pick(raw.picName, p.picName, p.name, ''),
-    position: pick(raw.position, p.position, ''),
+    position: masterName('position', pick(raw.position, p.position, '')),
     phone: pick(raw.phone, p.phone, p.mobilePhone, ''),
     picEmail: pick(raw.picEmail, p.email, ''),
     currentAddress: pick(raw.currentAddress, p.currentAddress, ''),
@@ -167,7 +173,7 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
       (app as any).financingPurposeDetail,
       '',
     ),
-    facilityPurpose: pick((raw as any).facilityPurpose, (app as any).facilityPurpose, 'INVESTMENT'),
+    facilityPurpose: pick((raw as any).facilityPurpose, (app as any).facilityPurpose),
     assetSummaryHeLiuGong:
       Number(
         pick(
@@ -205,7 +211,10 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
         ),
       ) || 0,
     stakeholders: isOcrSide ? raw.stakeholders || [] : sh,
-    projects: isOcrSide ? (raw as any).projects || [] : proj,
+    projects: (isOcrSide ? (raw as any).projects || [] : proj).map((x: any) => ({
+      ...x,
+      projectRole: masterName('projectRole', x.projectRole || x.roleInProject),
+    })),
     bankReferences: isOcrSide
       ? (raw as any).bankReferences || []
       : props.data?.bankReferences ||

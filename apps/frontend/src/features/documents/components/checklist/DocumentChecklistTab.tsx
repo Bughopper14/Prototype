@@ -3,7 +3,9 @@ import {ChecklistMetrics} from '@/features/documents/components/checklist/Checkl
 import {ChecklistTable} from '@/features/documents/components/checklist/ChecklistTable';
 import {ChecklistToolbar} from '@/features/documents/components/checklist/ChecklistToolbar';
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
+import {VerifyDocumentDialog} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {useDocumentChecklist} from '@/features/documents/hooks/useDocumentChecklist';
+import {FileArchive, Loader2} from 'lucide-react';
 
 export interface DocumentChecklistTabProps {
   application: any;
@@ -13,8 +15,8 @@ export interface DocumentChecklistTabProps {
   notify: (msg: string) => void;
 }
 
-export function DocumentChecklistTab({application, draft, onChange, notify}: DocumentChecklistTabProps) {
-  const c = useDocumentChecklist({application, draft, onChange, notify});
+export function DocumentChecklistTab({application, draft, user, onChange, notify}: DocumentChecklistTabProps) {
+  const c = useDocumentChecklist({application, draft, user, onChange, notify});
 
   return (
     <div className="doc-checklist-container">
@@ -44,6 +46,21 @@ export function DocumentChecklistTab({application, draft, onChange, notify}: Doc
               dapat dihapus dan diganti kapan saja.
             </p>
           </div>
+          <button
+            type="button"
+            className="button primary doc-zip-btn"
+            disabled={c.zipping || c.fileCount === 0}
+            title={
+              c.fileCount === 0
+                ? 'Belum ada berkas yang diunggah'
+                : `Unduh ${c.fileCount} berkas dalam satu ZIP, dikelompokkan per tahap`
+            }
+            onClick={c.handleDownloadAll}
+          >
+            {c.zipping ? <Loader2 size={15} className="spin" /> : <FileArchive size={15} />}
+            <span>{c.zipping ? 'Menyiapkan ZIP...' : 'Unduh Semua (ZIP)'}</span>
+            {!c.zipping && c.fileCount > 0 && <span className="doc-zip-count">{c.fileCount}</span>}
+          </button>
         </div>
 
         <ChecklistToolbar
@@ -53,17 +70,37 @@ export function DocumentChecklistTab({application, draft, onChange, notify}: Doc
           setSelectedDept={c.setSelectedDept}
           selectedStatus={c.selectedStatus}
           setSelectedStatus={c.setSelectedStatus}
+          stages={c.stages}
+          selectedStage={c.selectedStage}
+          setSelectedStage={c.setSelectedStage}
+          grouped={c.grouped}
+          setGrouped={c.changeView}
+          toolbarRef={c.toolbarRef}
         />
 
         <ChecklistTable
           rows={c.filteredRows}
+          grouped={c.grouped}
+          collapsedStages={c.collapsedStages}
+          onToggleStage={c.toggleStage}
           uploadingCode={c.uploadingCode}
           deletingFileId={c.deletingFileId}
           onPreview={c.handleOpenPreview}
           onUpload={c.handleTriggerUpload}
           onDelete={c.handleDeleteManualFile}
+          onVerify={c.canVerify ? c.openVerify : undefined}
         />
       </section>
+
+      {c.verifying && (
+        <VerifyDocumentDialog
+          row={c.verifying}
+          busy={c.verifyBusy}
+          error={c.verifyError}
+          onSubmit={c.handleVerify}
+          onClose={() => c.setVerifying(null)}
+        />
+      )}
 
       {c.previewModal && (
         <DocumentPreviewModal preview={c.previewModal} onClose={() => c.setPreviewModal(null)} />

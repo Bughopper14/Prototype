@@ -1,9 +1,12 @@
 /** Sub-section 5 of the financing proposal: the documents required for this proposal. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
+import {useMasterData} from '@/shared/master-data';
 import {FolderCheck} from 'lucide-react';
 
 export function DocumentRequirementsCard() {
   const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  // The requirements, their labels and sheet cells come from Master Data (crm_master_fap_document_requirements).
+  const master = useMasterData();
   return (
     <div
       style={{
@@ -44,35 +47,10 @@ export function DocumentRequirementsCard() {
           gap: '10px',
         }}
       >
-        {[
-          {key: 'companyProfile', label: 'Company Profile', field: 'docReqCompanyProfile'},
-          {key: 'legality', label: 'Legality (e.g. NIB, SIUJK, SIUP, etc)', field: 'docReqLegality'},
-          {
-            key: 'deedEstablishment',
-            label: 'Deed establishment & Deed Amendments',
-            field: 'docReqDeed',
-          },
-          {key: 'decreeMinistryOfLaw', label: 'Decree of the ministry of law', field: 'docReqDecree'},
-          {
-            key: 'copyIdBodShareholder',
-            label: 'Copy of ID, BOD, and Shareholder',
-            field: 'docReqCopyId',
-          },
-          {
-            key: 'auditedFinancialStatements',
-            label: 'Audited Financial Statements',
-            field: 'docReqAuditedFin',
-          },
-          {key: 'bankStatements', label: 'Bank Statements', field: 'docReqBankStatements'},
-          {
-            key: 'bankFinancingFacility',
-            label: 'Bank or Financing Facility',
-            field: 'docReqBankFacility',
-          },
-          {key: 'productionReport', label: 'Production report', field: 'docReqProductionReport'},
-          {key: 'listOfFixedAssets', label: 'List of fixed assets', field: 'docReqFixedAssets'},
-          {key: 'projectContracts', label: 'Project Contracts', field: 'docReqProjectContracts'},
-        ].map(docItem => {
+        {(master.fapDocumentRequirement || [])
+          .filter(x => x.active && x.visible !== false)
+          .map(x => ({key: x.value, label: x.name, field: x.value, cell: x.paramKey || x.value}))
+          .map(docItem => {
           const docReq = draft.financingProposal?.documentRequirements || {};
           const isChecked = !!docReq[docItem.key];
           return (
@@ -91,8 +69,8 @@ export function DocumentRequirementsCard() {
                 cursor: canFinance ? 'pointer' : 'default',
                 transition: 'all 0.15s ease',
               }}
-              onFocus={() => handleTriggerFieldSync(docItem.field, 'proposal')}
-              onClick={() => handleTriggerFieldSync(docItem.field, 'proposal')}
+              onFocus={() => handleTriggerFieldSync(docItem.cell, 'proposal')}
+              onClick={() => handleTriggerFieldSync(docItem.cell, 'proposal')}
             >
               <input
                 type="checkbox"
@@ -111,7 +89,7 @@ export function DocumentRequirementsCard() {
                       },
                     },
                   }));
-                  handleTriggerFieldSync(docItem.field, 'proposal');
+                  handleTriggerFieldSync(docItem.cell, 'proposal');
                 }}
               />
               <span

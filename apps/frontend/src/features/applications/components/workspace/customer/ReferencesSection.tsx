@@ -70,7 +70,6 @@ export function ReferencesSection() {
             targetRowIndex={targetBankRow}
             onRowChange={setTargetBankRow}
             onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `banks-${targetBankRow || 0}`)}
-            onFieldSync={(k, s) => handleTriggerFieldSync(k, s || `banks-${targetBankRow || 0}`)}
             activeFieldKey={activeFieldKey}
             onChange={bankReferences => setDraft({...draft, bankReferences})}
           />
