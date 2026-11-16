@@ -56,10 +56,9 @@ export default defineConfig(({mode}) => {
     plugins: [react(), devBanner(api)],
     resolve: {alias: {'@': path.resolve(__dirname, 'src')}},
     server: {
+      // Listen on all interfaces so other devices on the same WiFi can open http://<LAN-IP>:3000.
       host: '0.0.0.0',
       port: Number(env.PORT || 3000),
-      // Listen on all interfaces so other devices on the same WiFi can open http://<LAN-IP>:3000.
-      host: true,
       // Fail instead of silently moving to 3001, which is the API port.
       strictPort: true,
       // The browser only talks to this origin; /api and /documents are forwarded to the NestJS backend.
@@ -72,7 +71,6 @@ export default defineConfig(({mode}) => {
     preview: {
       host: '0.0.0.0',
       port: Number(env.PORT || 3000),
-      host: true,
       proxy: {
         '/api': {target: api, changeOrigin: false},
         '/documents': {target: api, changeOrigin: false},

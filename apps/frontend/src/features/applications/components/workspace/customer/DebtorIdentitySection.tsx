@@ -30,8 +30,6 @@ export function DebtorIdentitySection() {
     toggleSection,
     liveCompanyName,
     canEditCustomerPic,
-    customers,
-    customerId,
     setCustomerId,
     sanitizeCustomer,
   } = useWorkspace();

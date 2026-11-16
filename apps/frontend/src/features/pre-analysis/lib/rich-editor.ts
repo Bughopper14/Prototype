@@ -157,8 +157,8 @@ export const pickImageFile = (callback: (url: string, meta?: any) => void) => {
 };
 
 /** Pasted / dropped images are kept inside the text as data URLs. */
-export const imageUploadHandler = (blobInfo: any) =>
-  new Promise((resolve, reject) => {
+export const imageUploadHandler = (blobInfo: any): Promise<string> =>
+  new Promise<string>((resolve, reject) => {
     try {
       const base64 = 'data:' + blobInfo.blob().type + ';base64,' + blobInfo.base64();
       resolve(base64);

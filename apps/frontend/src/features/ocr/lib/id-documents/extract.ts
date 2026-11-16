@@ -88,6 +88,7 @@ export async function extractIdDocumentFromImage(
 export async function extractKtpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
+  _meta?: unknown,
 ): Promise<ParsedKtpData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName);
   const d = res.data || {};
@@ -149,6 +150,7 @@ export async function extractKtpTextFromImage(
 export async function extractPassportTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
+  _meta?: unknown,
 ): Promise<ParsedPassportData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName);
   const d = res.data || {};
@@ -180,6 +182,7 @@ export async function extractPassportTextFromImage(
 export async function extractNpwpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
+  _meta?: unknown,
 ): Promise<ParsedNpwpData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName);
   const d = res.data || {};
@@ -201,6 +204,7 @@ export async function extractNpwpTextFromImage(
 export async function extractKitasTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
+  _meta?: unknown,
 ): Promise<ParsedKitasData> {
   const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName);
   const d = res.data || {};
