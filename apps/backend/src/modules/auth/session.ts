@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import {mysqlActor} from '../../core/db/audit-context';
 import {pool} from '../../core/db/pool';
+import {USER_TABLES} from '../../core/db/user-tables';
 import {one} from '../../core/db/query';
 import {Problem} from '../../core/domain';
 import {findUser, getAuthoritiesForActor, syncCrmUser} from '../users/users.repository';
@@ -81,9 +82,9 @@ export async function isAdminUser(userId: number, username?: string) {
   if (username === 'admin') return true;
   const row = await one<{ok: number}>(
     `SELECT 1 AS ok
-     FROM users_users u
-     LEFT JOIN users_user_app_roles uar ON uar.user_id = u.id
-     LEFT JOIN users_roles r ON r.id = uar.role_id
+     FROM ${USER_TABLES.users} u
+     LEFT JOIN ${USER_TABLES.user_app_roles} uar ON uar.user_id = u.id
+     LEFT JOIN ${USER_TABLES.roles} r ON r.id = uar.role_id
      WHERE u.id = ? AND (u.is_admin = 1 OR r.role_name = 'Super Admin')
      LIMIT 1`,
     [userId],
@@ -97,8 +98,8 @@ export async function resolveCrmRole(userId: number, username: string): Promise<
   }
   const row = await one<{role_id: number; role_name: string}>(
     `SELECT r.id AS role_id, r.role_name
-     FROM users_user_app_roles uar
-     JOIN users_roles r ON r.id = uar.role_id
+     FROM ${USER_TABLES.user_app_roles} uar
+     JOIN ${USER_TABLES.roles} r ON r.id = uar.role_id
      WHERE uar.user_id = ? AND uar.app_id = 2
      ORDER BY r.id ASC
      LIMIT 1`,
@@ -121,7 +122,7 @@ export async function resolveCrmRole(userId: number, username: string): Promise<
 
 export async function userTimeoutMinutes(userId: number, admin: boolean) {
   const row = await one<{session_timeout_minutes: number | null}>(
-    'SELECT session_timeout_minutes FROM users_users WHERE id = ?',
+    `SELECT session_timeout_minutes FROM ${USER_TABLES.users} WHERE id = ?`,
     [userId],
   );
   if (row?.session_timeout_minutes !== undefined && row?.session_timeout_minutes !== null) {
@@ -142,19 +143,19 @@ export async function createSessionRecord(
   const expiresSql = timeout > 0 ? 'DATE_ADD(NOW(), INTERVAL ? MINUTE)' : 'NULL';
   const params = timeout > 0 ? [userId, sid, ip, userAgent, appName, timeout] : [userId, sid, ip, userAgent, appName];
   await pool.execute(
-    `INSERT INTO users_session_logs
+    `INSERT INTO ${USER_TABLES.session_logs}
       (user_id, session_id, ip_address, user_agent, app_name, login_time, last_activity, expires_at, is_invalidated)
      VALUES (?, ?, ?, ?, ?, NOW(), NOW(), ${expiresSql}, 0)`,
     params,
   );
-  await pool.execute('UPDATE users_users SET last_login_at = NOW() WHERE id = ?', [userId]).catch(() => {});
+  await pool.execute(`UPDATE ${USER_TABLES.users} SET last_login_at = NOW() WHERE id = ?`, [userId]).catch(() => {});
   return {sid, unlimited: timeout === 0};
 }
 
 export async function endSession(sid: string) {
   if (!pool || !sid) return;
   await pool.execute(
-    'UPDATE users_session_logs SET is_invalidated = 1, logout_time = COALESCE(logout_time, NOW()) WHERE session_id = ?',
+    `UPDATE ${USER_TABLES.session_logs} SET is_invalidated = 1, logout_time = COALESCE(logout_time, NOW()) WHERE session_id = ?`,
     [sid],
   );
 }
@@ -168,7 +169,7 @@ export async function logAudit(
   if (!pool) return;
   await pool
     .execute(
-      'INSERT INTO users_audit_logs (user_id, action, app_name, ip_address, timestamp) VALUES (?, ?, ?, ?, NOW())',
+      `INSERT INTO ${USER_TABLES.audit_logs} (user_id, action, app_name, ip_address, timestamp) VALUES (?, ?, ?, ?, NOW())`,
       [userId, action, appName, ip],
     )
     .catch(() => {});
@@ -213,7 +214,7 @@ export async function authenticate(token: string | null): Promise<SessionCheck> 
     `SELECT is_invalidated, logout_time,
             TIMESTAMPDIFF(SECOND, COALESCE(last_activity, login_time), NOW()) AS idle,
             IF(expires_at IS NOT NULL AND expires_at < NOW(), 1, 0) AS expired
-     FROM users_session_logs
+     FROM ${USER_TABLES.session_logs}
      WHERE session_id = ? AND user_id = ?
      LIMIT 1`,
     [payload.sid, user.id],
@@ -226,7 +227,7 @@ export async function authenticate(token: string | null): Promise<SessionCheck> 
   if (timeout > 0) {
     if (Number(s.expired || 0) === 1 || Number(s.idle || 0) > timeout * 60) {
       await pool.query(
-        'UPDATE users_session_logs SET is_invalidated = 1, logout_time = NOW() WHERE session_id = ?',
+        `UPDATE ${USER_TABLES.session_logs} SET is_invalidated = 1, logout_time = NOW() WHERE session_id = ?`,
         [payload.sid],
       );
       return {
@@ -238,7 +239,7 @@ export async function authenticate(token: string | null): Promise<SessionCheck> 
 
   const expiresUpdate = timeout > 0 ? ', expires_at = DATE_ADD(NOW(), INTERVAL ? MINUTE)' : '';
   const updateParams = timeout > 0 ? [timeout, payload.sid] : [payload.sid];
-  await pool.query(`UPDATE users_session_logs SET last_activity = NOW()${expiresUpdate} WHERE session_id = ?`, updateParams);
+  await pool.query(`UPDATE ${USER_TABLES.session_logs} SET last_activity = NOW()${expiresUpdate} WHERE session_id = ?`, updateParams);
 
   const name = user.full_name || user.username;
   const id = await syncCrmUser({

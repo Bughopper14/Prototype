@@ -5,6 +5,7 @@
  * --admin grants the Super Admin role on every portal application.
  */
 import {pool} from '../src/core/db/pool';
+import {USER_TABLES} from '../src/core/db/user-tables';
 import {hashPassword} from '../src/modules/auth/password';
 
 async function main() {
@@ -14,14 +15,14 @@ async function main() {
     throw new Error('Usage: pnpm user:create -- <username> <password> "<Full Name>" [--admin]');
   }
   const [result] = await pool.execute<any>(
-    'INSERT INTO users_users (username, password_hash, full_name, is_admin, is_active) VALUES (?, ?, ?, ?, 1)',
+    `INSERT INTO ${USER_TABLES.users} (username, password_hash, full_name, is_admin, is_active) VALUES (?, ?, ?, ?, 1)`,
     [username, hashPassword(password), fullName, admin ? 1 : 0],
   );
   const userId = result.insertId;
   if (admin) {
     await pool.execute(
-      `INSERT IGNORE INTO users_user_app_roles (user_id, app_id, role_id)
-       SELECT ?, r.app_id, r.id FROM users_roles r WHERE r.role_name = 'Super Admin'`,
+      `INSERT IGNORE INTO ${USER_TABLES.user_app_roles} (user_id, app_id, role_id)
+       SELECT ?, r.app_id, r.id FROM ${USER_TABLES.roles} r WHERE r.role_name = 'Super Admin'`,
       [userId],
     );
   }

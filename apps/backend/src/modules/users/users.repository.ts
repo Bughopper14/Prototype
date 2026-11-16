@@ -1,6 +1,7 @@
 import {AUTHORITY_CATALOG, DEED_APPROVE_AUTHORITY} from '@liugong/shared';
 import type {PoolConnection} from 'mysql2/promise';
 import {pool} from '../../core/db/pool';
+import {USER_TABLES} from '../../core/db/user-tables';
 import {exec, many, one} from '../../core/db/query';
 import {hashPassword} from '../auth/password';
 
@@ -18,11 +19,11 @@ export async function ensureUsersSchemaColumns() {
   ];
   for (const [col, def] of cols) {
     const [existing] = await pool.query<any[]>(
-      `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'users_users' AND column_name = ?`,
+      `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '${USER_TABLES.users}' AND column_name = ?`,
       [col],
     );
     if (!existing.length) {
-      await pool.query(`ALTER TABLE users_users ADD COLUMN \`${col}\` ${def}`);
+      await pool.query(`ALTER TABLE ${USER_TABLES.users} ADD COLUMN \`${col}\` ${def}`);
     }
   }
 }
@@ -59,9 +60,9 @@ export async function getAuthoritiesForActor(
   if (!portalUserId) return [];
   const rows = await many<{authority_name: string}>(
     `SELECT DISTINCT a.authority_name
-     FROM users_user_app_roles uar
-     JOIN users_role_authorities ra ON ra.role_id = uar.role_id
-     JOIN users_authorities a ON a.id = ra.authority_id
+     FROM ${USER_TABLES.user_app_roles} uar
+     JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id
+     JOIN ${USER_TABLES.authorities} a ON a.id = ra.authority_id
      WHERE uar.user_id = ? AND uar.app_id = 2`,
     [portalUserId],
   );
@@ -69,20 +70,20 @@ export async function getAuthoritiesForActor(
 }
 
 export async function userCount() {
-  const row = await one<{n: number}>('SELECT COUNT(*) AS n FROM users_users');
+  const row = await one<{n: number}>(`SELECT COUNT(*) AS n FROM ${USER_TABLES.users}`);
   return Number(row?.n ?? 0);
 }
 
 export async function findUser(login: string, byId = false) {
   return one(
-    `SELECT * FROM users_users WHERE ${byId ? 'id = ?' : 'username = ? OR email = ?'} LIMIT 1`,
+    `SELECT * FROM ${USER_TABLES.users} WHERE ${byId ? 'id = ?' : 'username = ? OR email = ?'} LIMIT 1`,
     byId ? [login] : [login, login],
   );
 }
 
 export async function createUser(body: any, bootstrap = false) {
   const result = await exec(
-    `INSERT INTO users_users
+    `INSERT INTO ${USER_TABLES.users}
       (username, password_hash, full_name, position, department, email, phone, is_active, is_admin, session_timeout_minutes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
@@ -100,8 +101,8 @@ export async function createUser(body: any, bootstrap = false) {
   );
   if (bootstrap) {
     await exec(
-      `INSERT IGNORE INTO users_user_app_roles (user_id, app_id, role_id)
-       SELECT ?, r.app_id, r.id FROM users_roles r WHERE r.role_name = 'Super Admin'`,
+      `INSERT IGNORE INTO ${USER_TABLES.user_app_roles} (user_id, app_id, role_id)
+       SELECT ?, r.app_id, r.id FROM ${USER_TABLES.roles} r WHERE r.role_name = 'Super Admin'`,
       [result.insertId],
     );
   }
@@ -119,7 +120,7 @@ export async function syncCrmUser(input: {
   if (pool && input.id) {
     await pool
       .execute(
-        `UPDATE users_users
+        `UPDATE ${USER_TABLES.users}
          SET last_login_at = COALESCE(last_login_at, NOW()),
              is_admin = GREATEST(is_admin, ?),
              updated_at = CURRENT_TIMESTAMP(3)
@@ -134,9 +135,9 @@ export async function syncCrmUser(input: {
 export async function canUserApproveDeed(portalUserId: number): Promise<boolean> {
   const row = await one(
     `SELECT 1 AS ok
-     FROM users_user_app_roles uar
-     JOIN users_role_authorities ra ON ra.role_id = uar.role_id
-     JOIN users_authorities au ON au.id = ra.authority_id
+     FROM ${USER_TABLES.user_app_roles} uar
+     JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id
+     JOIN ${USER_TABLES.authorities} au ON au.id = ra.authority_id
      WHERE uar.user_id = ? AND uar.app_id = 2 AND au.authority_name = ? LIMIT 1`,
     [portalUserId, DEED_APPROVE_AUTHORITY],
   );

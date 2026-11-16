@@ -1,5 +1,6 @@
 /** Dev check: Werkzeug-compatible hashing round-trips, and a stored portal hash is parsed without error. */
 import {pool} from '../../src/core/db/pool';
+import {USER_TABLES} from '../../src/core/db/user-tables';
 import {hashPassword, verifyPassword} from '../../src/modules/auth/password';
 
 async function main() {
@@ -10,7 +11,7 @@ async function main() {
     '| wrong rejected:',
     !verifyPassword('nope', hash),
   );
-  const [rows] = await pool.query<any[]>('SELECT username, password_hash FROM users_users');
+  const [rows] = await pool.query<any[]>(`SELECT username, password_hash FROM ${USER_TABLES.users}`);
   for (const u of rows)
     console.log(
       `${u.username}: format=${String(u.password_hash).split('$')[0]} parsed-without-error=${verifyPassword('definitely-wrong', u.password_hash) === false}`,

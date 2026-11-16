@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import {DEED_APPROVE_AUTHORITY} from '@liugong/shared';
 import {pool} from '../../core/db/pool';
+import {USER_TABLES} from '../../core/db/user-tables';
 import {parsePortalUserId} from '../../core/db/crm-lookups';
 
 export async function newNotification(
@@ -32,9 +33,9 @@ export async function notifyLegalApprovers(
   const exceptNum = parsePortalUserId(exceptUserId) ?? -1;
   const [rows] = await pool.query<any[]>(
     `SELECT DISTINCT uar.user_id
-     FROM users_user_app_roles uar
-     JOIN users_role_authorities ra ON ra.role_id = uar.role_id
-     JOIN users_authorities au ON au.id = ra.authority_id
+     FROM ${USER_TABLES.user_app_roles} uar
+     JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id
+     JOIN ${USER_TABLES.authorities} au ON au.id = ra.authority_id
      WHERE uar.app_id = 2 AND au.authority_name = ? AND uar.user_id <> ?`,
     [DEED_APPROVE_AUTHORITY, exceptNum],
   );

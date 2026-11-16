@@ -2,6 +2,7 @@
 import {randomUUID} from 'node:crypto';
 import {cleanNullableString} from '../../../core/db/crm-lookups';
 import {pool} from '../../../core/db/pool';
+import {USER_TABLES} from '../../../core/db/user-tables';
 import {Problem} from '../../../core/domain';
 import {requireAuthority} from '../../auth/session';
 import {intakeDetail} from './detail';
@@ -37,7 +38,7 @@ export async function transitionIntake(
       `SELECT w.*, a.authority_name,
               ts.id AS after_status_id, ts.code AS after_status_code, ts.stage_id AS after_stage_id, ts.is_terminal
        FROM crm_master_workflow w
-       JOIN users_authorities a ON a.id = w.authority_id
+       JOIN ${USER_TABLES.authorities} a ON a.id = w.authority_id
        JOIN crm_master_workflow_statuses ts ON ts.id = w.after_status_id
        WHERE w.before_status_id = ? AND w.action = ?
        LIMIT 1`,

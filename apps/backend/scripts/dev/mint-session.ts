@@ -5,12 +5,13 @@
  * Usage: tsx --import ./src/config/load-env.ts scripts/dev/mint-session.ts <username>
  */
 import {pool} from '../../src/core/db/pool';
+import {USER_TABLES} from '../../src/core/db/user-tables';
 import {createSessionRecord, isAdminUser, signSession, SESSION_COOKIE} from '../../src/modules/auth/session';
 
 async function main() {
   const username = process.argv[2];
   if (!username) throw new Error('Usage: mint-session.ts <username>');
-  const [rows] = await pool.query<any[]>('SELECT id, username FROM users_users WHERE username = ? AND is_active = 1', [
+  const [rows] = await pool.query<any[]>(`SELECT id, username FROM ${USER_TABLES.users} WHERE username = ? AND is_active = 1`, [
     username,
   ]);
   if (!rows[0]) throw new Error(`No active user "${username}"`);

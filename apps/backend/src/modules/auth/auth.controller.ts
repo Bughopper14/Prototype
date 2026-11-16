@@ -1,6 +1,7 @@
 import {Controller, Post, Res} from '@nestjs/common';
 import {z} from 'zod';
 import {pool} from '../../core/db/pool';
+import {USER_TABLES} from '../../core/db/user-tables';
 import {ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {Public} from '../../core/http/public.decorator';
 import {hashPassword, verifyPassword} from './password';
@@ -52,7 +53,7 @@ export class AuthController {
     if (!parsed.success) return fail('Enter username and password', 422);
     const {username, password, next} = parsed.data;
 
-    const [rows] = await pool.query<any[]>('SELECT * FROM users_users WHERE username = ? AND is_active = 1', [
+    const [rows] = await pool.query<any[]>(`SELECT * FROM ${USER_TABLES.users} WHERE username = ? AND is_active = 1`, [
       username.trim(),
     ]);
     const user = rows[0];
@@ -97,14 +98,14 @@ export class AuthController {
     if (!current_password || !new_password) return {success: false, error: 'Semua field wajib diisi.'};
     if (String(new_password).length < 6) return {success: false, error: 'Password baru minimal 6 karakter.'};
 
-    const [rows] = await pool.query<any[]>('SELECT password_hash FROM users_users WHERE id = ? AND is_active = 1', [
+    const [rows] = await pool.query<any[]>(`SELECT password_hash FROM ${USER_TABLES.users} WHERE id = ? AND is_active = 1`, [
       actor.portalUserId,
     ]);
     if (!rows[0]) return {success: false, error: 'User tidak ditemukan.'};
     if (!verifyPassword(current_password, rows[0].password_hash))
       return {success: false, error: 'Password saat ini salah.'};
 
-    await pool.query('UPDATE users_users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?', [
+    await pool.query(`UPDATE ${USER_TABLES.users} SET password_hash = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, [
       hashPassword(new_password),
       actor.portalUserId,
     ]);
