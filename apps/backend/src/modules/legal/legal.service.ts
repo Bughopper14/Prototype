@@ -10,7 +10,8 @@ import {
 } from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {ensure} from '../../core/domain';
-import {ActivityService} from '../activity/activity.service';
+import {recordActivity} from '../activity/activity-log';
+import {notifyHolders, notifyUsers} from '../activity/notifications';
 import type {Actor} from '../auth/session';
 import {ApplicationsService} from '../applications/applications.service';
 import {LegalRepository} from './legal.repository';
@@ -24,7 +25,6 @@ export class LegalService {
     private readonly db: CrmDatabase,
     private readonly applications: ApplicationsService,
     private readonly legal: LegalRepository,
-    private readonly activity: ActivityService,
   ) {}
 
   /**
@@ -64,7 +64,7 @@ export class LegalService {
     const legal = a.legal || {deeds: []};
     ensure(canEditLegal(actor, a), 'Akun/tahap ini tidak dapat mengubah akta.', 403);
     await this.store(id, legal, saveSingleDeed(legal, deedId, deed), actor);
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: a.workflowStage?.code,
@@ -91,7 +91,7 @@ export class LegalService {
     const updated = deedTransition(deed, body.action, actor, {revision: body.revision, comments: body.comments});
     await this.db.transaction(conn => this.legal.saveReview(conn, id, updated, by(actor)));
     const status = updated.review?.status;
-    await this.activity.record(
+    await recordActivity(
       {
         applicationId: id,
         stageCode: a.workflowStage?.code,
@@ -109,7 +109,7 @@ export class LegalService {
     );
     const where = `${a.fapNumber} · ${a.companyName || ''} · Akta ${deed.deedNumber}`;
     if (body.action === 'SUBMIT')
-      await this.activity.notifyHolders([DEED_APPROVE_AUTHORITY], actor, {
+      await notifyHolders([DEED_APPROVE_AUTHORITY], actor, {
         applicationId: id,
         deedId,
         type: 'DEED_REVIEW',
@@ -118,7 +118,7 @@ export class LegalService {
       });
     // The deed was reviewed: the user who submitted it acts next.
     else if (deed.review?.submittedBy)
-      await this.activity.notifyUsers([deed.review.submittedBy], actor, {
+      await notifyUsers([deed.review.submittedBy], actor, {
         applicationId: id,
         deedId,
         type: 'DEED_REVIEW',
