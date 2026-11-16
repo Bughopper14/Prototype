@@ -4,7 +4,7 @@ import {EMPTY_NIB_FORM, scanResultToForm, type NibFormData} from '@/features/ocr
 import {extractNibTextFromDocument} from '@/features/ocr/lib/nib/extract';
 import {api} from '@/shared/lib/api';
 import {useMasterData} from '@/shared/master-data';
-import {toTitleCase} from '@liugong/shared';
+import {formatCompanyName, toTitleCase} from '@liugong/shared';
 import React, {useEffect, useRef, useState} from 'react';
 
 export {validateCompanyEmail};
@@ -122,7 +122,7 @@ export function useNibOcrModal({
           setRawText(extracted.rawText);
           setFormData({
             nib: extracted.nib || '',
-            companyName: toTitleCase(extracted.companyName || ''),
+            companyName: formatCompanyName(extracted.companyName || ''),
             alamat: extracted.alamat || '',
             email: extracted.email || '',
             phone: extracted.phone || '',

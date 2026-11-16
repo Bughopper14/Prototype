@@ -68,6 +68,44 @@ export function toTitleCase(str: string): string {
   });
 }
 
+/**
+ * Formats company name with proper legal entity casing:
+ * - 2-letter / acronym prefixes (PT, CV, UD, PD, FA, KSP) are strictly UPPERCASE
+ * - Subsequent words are Title Case / Camel Case
+ * - Preserves dots and spacing (e.g. "PT. Semangat Bersama" or "PT Semangat Bersama")
+ */
+export function formatCompanyName(str: string): string {
+  if (!str) return '';
+  const legalUpper = new Set(['pt', 'cv', 'ud', 'pd', 'fa', 'ksp']);
+  const legalTitle = new Set(['koperasi', 'yayasan', 'perum', 'perusda', 'firma']);
+
+  let formatted = toTitleCase(str);
+
+  const m = formatted.match(/^([a-zA-Z]+)(\.?)([\s]*)(.*)$/);
+  if (m) {
+    const rawWord = m[1].toLowerCase();
+    if (legalUpper.has(rawWord)) {
+      const prefix = m[1].toUpperCase();
+      const dot = m[2] ? '.' : '';
+      const space = m[3];
+      const rest = m[4] ? toTitleCase(m[4]) : '';
+      formatted = prefix + dot + space + rest;
+    } else if (legalTitle.has(rawWord)) {
+      const prefix = rawWord.charAt(0).toUpperCase() + rawWord.slice(1);
+      const dot = m[2] ? '.' : '';
+      const space = m[3];
+      const rest = m[4] ? toTitleCase(m[4]) : '';
+      formatted = prefix + dot + space + rest;
+    }
+  }
+
+  formatted = formatted.replace(/\bTBK\b/g, 'Tbk');
+  formatted = formatted.replace(/\bKOPERASI\b/g, 'Koperasi');
+  formatted = formatted.replace(/\bPERUM\b/g, 'Perum');
+
+  return formatted;
+}
+
 export const profileFields = [
   f('branchCode', 'Branch', 'select', ['JKT01', 'BPN01', 'PLB01', 'MDN01', 'SBY01']),
   f('customerStatus', 'Customer Relationship', 'select', ['NEW', 'EXISTING']),

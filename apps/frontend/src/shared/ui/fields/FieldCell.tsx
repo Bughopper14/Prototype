@@ -2,6 +2,7 @@
 import {isFieldMandatory, MasterSelect, useMandatoryRules, useMasterData} from '@/shared/master-data';
 import {
   fieldInputError,
+  formatCompanyName,
   inputLimits,
   label,
   masterGroups,
@@ -67,6 +68,7 @@ export function FieldCell({
   const isDigitsOnly = DIGITS_ONLY_KEYS.includes(f.key);
   const isLettersOnly = LETTERS_ONLY_KEYS.includes(f.key);
   const isTitleCaseField = TITLE_CASE_KEYS.includes(f.key);
+  const formatText = (text: string) => (f.key === 'companyName' ? formatCompanyName(text) : toTitleCase(text));
   const isAgeField = AGE_KEYS.includes(f.key);
   const isFieldDisabled = disabled || isAgeField || !!f.locked;
   const ageStyle = isAgeField
@@ -89,7 +91,7 @@ export function FieldCell({
     } else if (isTitleCaseField) {
       let v = e.target.value;
       if (isLettersOnly) v = v.replace(/\d/g, '');
-      v = toTitleCase(v);
+      v = formatText(v);
       e.target.value = v;
       update(v);
     } else if (isLettersOnly) {
@@ -111,7 +113,7 @@ export function FieldCell({
             : isLettersOnly
               ? rawPasted.replace(/\d/g, '')
               : rawPasted;
-          if (isTitleCaseField) pasted = toTitleCase(pasted);
+          if (isTitleCaseField) pasted = formatText(pasted);
           if (!pasted) return;
           const input = e.currentTarget;
           const start = input.selectionStart ?? 0,
@@ -121,14 +123,14 @@ export function FieldCell({
           if (isDigitsOnly) nextVal = nextVal.replace(/\D/g, '');
           if (isLettersOnly) nextVal = nextVal.replace(/\d/g, '');
           if (['rt', 'rw'].includes(f.key)) nextVal = nextVal.slice(0, 3);
-          if (isTitleCaseField) nextVal = toTitleCase(nextVal);
+          if (isTitleCaseField) nextVal = formatText(nextVal);
           input.value = nextVal;
           update(nextVal);
         }
       : undefined;
   const handleBlur = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (isTitleCaseField && e.target.value) {
-      const v = toTitleCase(e.target.value);
+      const v = formatText(e.target.value);
       if (v !== e.target.value) {
         e.target.value = v;
         update(v);
@@ -235,7 +237,7 @@ export function FieldCell({
           }}
           onBlur={handleBlur}
           onChange={e => {
-            const v = isTitleCaseField ? toTitleCase(e.target.value) : e.target.value;
+            const v = isTitleCaseField ? formatText(e.target.value) : e.target.value;
             update(v);
           }}
         />
