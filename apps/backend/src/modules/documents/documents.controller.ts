@@ -1,23 +1,15 @@
-import {GetObjectCommand} from '@aws-sdk/client-s3';
-import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
 import {Controller, Delete, Get, Post, Res} from '@nestjs/common';
-import fs from 'node:fs/promises';
+import crypto from 'node:crypto';
 import path from 'node:path';
-import {many} from '../../core/db/query';
+import {CrmDatabase} from '../../core/db/crm-database';
 import {Problem, ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {documentsDir, filesDir, putStoredFile, removeStoredDocument, s3} from '../../core/storage';
-import {logActivity} from '../activity/activity-log';
-import {intakeDetail} from '../applications/intake.repository';
+import {StorageService} from '../../core/storage';
+import {ActivityService} from '../activity/activity.service';
+import {ApplicationsService} from '../applications/applications.service';
 import {requireAuthority, signFileToken, verifyFileToken} from '../auth/session';
-import {
-  deleteApplicationDocumentFile,
-  readApplicationDocuments,
-  readDocumentFile,
-  saveFapComparison,
-  uploadApplicationDocument,
-} from './documents.repository';
-import {compareFapDocumentOcr, isFapChecklist} from '../fap/fap-comparison';
+import {FapComparisonService} from '../fap/fap-comparison.service';
+import {DocumentsRepository, FAP_DOCUMENT_CODE} from './documents.repository';
 
 const IMAGE_SIGNATURES = {
   png: Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
@@ -47,18 +39,27 @@ function formattedUploadName(applicationId: string, originalname: string, mimety
 
 @Controller(API_PREFIX)
 export class DocumentsController {
+  constructor(
+    private readonly db: CrmDatabase,
+    private readonly applications: ApplicationsService,
+    private readonly documents: DocumentsRepository,
+    private readonly comparisons: FapComparisonService,
+    private readonly activity: ActivityService,
+    private readonly storage: StorageService,
+  ) {}
+
+  /** Documents are locked once the application is in the last workflow stage (committee and decision). */
+  private async unlocked(id: string, actor: any) {
+    const current = await this.applications.detailOr404(id, actor);
+    const isAdmin = actor.isAdmin || actor.role === 'ADMIN';
+    ensure(isAdmin || !current.workflowFlags?.lastStage, 'Documents are locked at this stage', 409);
+    return current;
+  }
+
   @Get('document-desk')
   documentDesk(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_document_desk');
-    return many(`
-  SELECT d.id AS checklist_id, d.application_id, d.document_code, d.document_name, d.assigned_role, d.is_mandatory, d.status,
-         f.fap_registration_number AS fap_number, f.company_name,
-         (SELECT COUNT(*) FROM application_document_file x WHERE x.checklist_id = d.id) AS file_count
-  FROM application_document_checklist d
-  JOIN all_applications a ON a.application_id = d.application_id
-  JOIN new_application_fap_stage f ON f.id_fap_stage = a.id_fap_stage
-  ORDER BY CASE d.status WHEN 'REJECTED' THEN 0 WHEN 'PENDING' THEN 1 WHEN 'UPLOADED' THEN 2 ELSE 3 END,
-           a.created_at DESC, d.document_name`);
+    return this.documents.desk();
   }
 
   @Post('applications/:id/documents/upload')
@@ -68,57 +69,85 @@ export class DocumentsController {
     const file = req.file;
     ensure(file, 'Choose a file');
     assertValidUpload(file);
-    const current = await intakeDetail(id);
-    ensure(current, 'Application not found', 404);
-
+    const current = await this.unlocked(id, req.actor);
     const fileName = formattedUploadName(id, file.originalname, file.mimetype);
-    const result = await uploadApplicationDocument(
-      id,
-      String(req.body.checklistId),
-      {...file, originalname: fileName},
-      req.actor.id,
-      async key => {
-        await putStoredFile(key, file.buffer, file.mimetype);
-        if (!s3) {
-          await fs.mkdir(documentsDir, {recursive: true});
-          await fs.writeFile(path.join(documentsDir, fileName), file.buffer).catch(() => {});
-        }
-      },
+    const storageKey = crypto.randomUUID();
+    await this.storage.put(storageKey, file.buffer, file.mimetype);
+    // A named copy for the OCR service (local storage only)
+    await this.storage.saveNamedCopy(fileName, file.buffer).catch(() => undefined);
+    const by = req.actor.username || req.actor.name;
+    const saved = await this.db.transaction(conn =>
+      this.documents.addFile(
+        conn,
+        id,
+        String(req.body.checklistId || req.body.documentCode || ''),
+        {fileName, storageKey, storagePath: this.storage.usesS3 ? null : fileName, size: file.size, mimeType: file.mimetype},
+        by,
+      ),
     );
-    await logActivity(req.actor, id, current.status, current.status, `Document uploaded: ${fileName}`);
+    await this.activity.record(
+      {
+        applicationId: id,
+        stageCode: current.workflowStage?.code,
+        section: 'Documents',
+        tabIndex: 6,
+        actionType: 'UPDATE',
+        title: `Document uploaded: ${fileName}`,
+        details: `${saved.documentCode} · ${file.mimetype} · ${file.size} bytes`,
+        previousStatus: current.status,
+        newStatus: current.status,
+      },
+      req.actor,
+    );
 
     let fapComparison: unknown = null;
-    if (
-      String(req.body.checklistId || '')
-        .toUpperCase()
-        .includes('FAP') ||
-      String(req.body.documentCode || '').toUpperCase() === 'FAP'
-    ) {
+    if (saved.documentCode === FAP_DOCUMENT_CODE) {
       // Give the OCR comparison a few seconds, otherwise let it finish in the background.
       fapComparison = await Promise.race([
-        compareFapDocumentOcr(id, fileName, current),
-        new Promise(resolve =>
-          setTimeout(() => resolve({isFap: true, status: 'processing', diffs: []}), 6000),
-        ),
+        this.comparisons.run(id, req.actor),
+        new Promise(resolve => setTimeout(() => resolve({isFap: true, status: 'processing', diffs: []}), 6000)),
       ]).catch(() => ({isFap: true, status: 'processing', diffs: []}));
     }
     res.status(201);
-    return {...result, fileName, fapComparison};
+    return {
+      id: saved.id,
+      checklistId: saved.checklistId,
+      fileName,
+      fileKey: storageKey,
+      fileSize: file.size,
+      mimeType: file.mimetype,
+      uploadedBy: by,
+      fapComparison,
+    };
   }
 
   @Delete('applications/:id/documents/files/:fileId')
   async deleteFile(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_delete_app_documents');
     const {id, fileId} = req.params;
-    const current = await intakeDetail(id);
-    ensure(current, 'Application not found', 404);
-    await deleteApplicationDocumentFile(id, fileId, removeStoredDocument);
-    const fap = (await readApplicationDocuments(id)).find(isFapChecklist);
-    if (!fap?.files?.length) await saveFapComparison(id, null);
-    await logActivity(req.actor, id, current.status, current.status, 'Document file deleted');
-    return intakeDetail(id);
+    const current = await this.unlocked(id, req.actor);
+    const removed = await this.documents.readFile(fileId);
+    await this.db.transaction(async conn => {
+      await this.documents.deleteFile(conn, id, fileId, req.actor.username || null);
+    });
+    if (!(await this.documents.currentFapFile(id)).file) await this.comparisons.forget(id);
+    await this.activity.record(
+      {
+        applicationId: id,
+        stageCode: current.workflowStage?.code,
+        section: 'Documents',
+        tabIndex: 6,
+        actionType: 'UPDATE',
+        title: `Document file deleted: ${removed?.fileName ?? fileId}`,
+        previousStatus: current.status,
+        newStatus: current.status,
+      },
+      req.actor,
+    );
+    return this.applications.detail(id, req.actor);
   }
 
+  /** A short-lived link to a file: inline for the preview, or `?download=1` to save it. */
   @Get('files/:id/url')
   async fileUrl(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(
@@ -128,19 +157,12 @@ export class DocumentsController {
       'crm_edit_app_legal',
       'crm_deed_approve',
     );
-    const file = await readDocumentFile(req.params.id);
+    const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
-    const url = s3
-      ? await getSignedUrl(
-          s3,
-          new GetObjectCommand({
-            Bucket: process.env.S3_BUCKET,
-            Key: file.fileKey,
-            ResponseContentDisposition: 'inline',
-          }),
-          {expiresIn: 900},
-        )
-      : `/api/v1/files/${file.id}/content?token=${signFileToken(file.id, req.actor.id)}`;
+    const download = req.query.download === '1';
+    const url = this.storage.usesS3
+      ? await this.storage.signedUrl(file.fileKey, file.fileName, download)
+      : `/api/v1/files/${file.id}/content?token=${signFileToken(file.id, req.actor.id)}${download ? '&download=1' : ''}`;
     return {url, expiresIn: 900};
   }
 
@@ -153,11 +175,14 @@ export class DocumentsController {
       throw new Problem(403, 'Document link has expired');
     }
     ensure(token.fileId === req.params.id && token.userId === req.actor.id, 'Invalid document link', 403);
-    const file = await readDocumentFile(req.params.id);
+    const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
     res
       .setHeader('Content-Type', file.mimeType)
-      .setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(file.fileName)}`);
-    return res.send(await fs.readFile(path.join(filesDir, file.fileKey)));
+      .setHeader(
+        'Content-Disposition',
+        `${req.query.download === '1' ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+      );
+    return res.send(await this.storage.read(file.fileKey));
   }
 }

@@ -32,8 +32,8 @@ export function ArchiveVersionSelector({
             {archives.map((arc, idx) => (
               <option key={arc.id || idx} value={idx}>
                 Snapshot #{archives.length - idx} —{' '}
-                {new Date(arc.submitted_at || arc.created_at).toLocaleString('en-GB')} by{' '}
-                {arc.submitted_by_user_name || 'System'}
+                {new Date(arc.frozenAt).toLocaleString('en-GB')} by{' '}
+                {arc.frozenByName}
               </option>
             ))}
           </select>

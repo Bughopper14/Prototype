@@ -7,11 +7,9 @@ import {useEffect, useState} from 'react';
 export function DocumentDesk({
   rows,
   open,
-  user,
 }: {
   rows: any[];
   open: (id: string, tab?: number) => void;
-  user: any;
 }) {
   const [items, setItems] = useState<any[]>([]),
     [search, setSearch] = useState(''),

@@ -37,11 +37,11 @@ export function FapArchiveModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const discrepancies = Array.isArray(current?.ocr_discrepancies) ? current.ocr_discrepancies : [];
+  const discrepancies = Array.isArray(current?.discrepancies) ? current.discrepancies : [];
 
   return (
     <Modal
-      title="FAP Stage Submission Archive (Immutable Database Records)"
+      title="FAP Stage Submission Archive (Read-only Records)"
       onClose={onClose}
       className="modal-fap-comparison"
     >
@@ -79,7 +79,7 @@ export function FapArchiveModal({
               gap: 4,
             }}
           >
-            <ShieldCheck size={14} /> Immutable (DB Trigger Protected)
+            <ShieldCheck size={14} /> Read-only snapshot
           </span>
         </div>
 

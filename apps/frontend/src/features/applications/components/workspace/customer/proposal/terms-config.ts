@@ -7,10 +7,6 @@ export interface TermsFieldConfig {
   label: string;
   /** Key under the group that is written. */
   key: string;
-  /** Extra keys written with the same value (the first field of Financial Lease keeps a legacy key). */
-  alsoWrite?: string[];
-  /** Keys tried in order when reading. Defaults to [key]. */
-  readKeys?: string[];
 }
 
 export interface TermsGroupConfig {
@@ -33,13 +29,7 @@ export const TERMS_GROUPS: TermsGroupConfig[] = [
     title: 'Sewa Pembiayaan / Financial Lease',
     headerBackground: '#e0f2fe',
     fields: [
-      {
-        dataField: 'flInvestment',
-        label: 'Working Capital / Investment',
-        key: 'investment',
-        alsoWrite: ['workingCapitalInvestment'],
-        readKeys: ['workingCapitalInvestment', 'investment'],
-      },
+      {dataField: 'flInvestment', label: 'Working Capital / Investment', key: 'workingCapitalInvestment'},
       {dataField: 'flCurrency', label: 'Mata Uang / Currency', key: 'currency'},
       {dataField: 'flDeposit', label: 'Simpanan Jaminan / Security Deposit', key: 'securityDeposit'},
       ...COMMON_TAIL('fl'),

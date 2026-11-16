@@ -1,5 +1,5 @@
 /** View, upload / replace and delete (or lock) buttons of a document row. */
-import {Upload, Trash2, Lock, Eye, Loader2} from 'lucide-react';
+import {Upload, Trash2, Lock, Eye, Loader2, ShieldCheck} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function DocumentRowActions({
@@ -9,6 +9,7 @@ export function DocumentRowActions({
   onPreview,
   onUpload,
   onDelete,
+  onVerify,
 }: {
   row: ChecklistRow;
   isUploading: boolean;
@@ -16,6 +17,7 @@ export function DocumentRowActions({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
+  onVerify?: (row: ChecklistRow) => void;
 }) {
   return (
     <div className="doc-row-actions">
@@ -29,6 +31,19 @@ export function DocumentRowActions({
         >
           <Eye size={13} />
           <span>Lihat</span>
+        </button>
+      )}
+
+      {/* Verification by BS / CA / Legal */}
+      {onVerify && row.isAvailable && row.chkId && (
+        <button
+          type="button"
+          className="button small doc-action-btn"
+          title="Verifikasi Dokumen"
+          onClick={() => onVerify(row)}
+        >
+          <ShieldCheck size={13} />
+          <span>Verifikasi</span>
         </button>
       )}
 

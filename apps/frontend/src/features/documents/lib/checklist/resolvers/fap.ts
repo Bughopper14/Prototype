@@ -2,9 +2,10 @@
 import type {ResolverContext} from '@/features/documents/lib/checklist/types';
 
 export function resolveFap({a, files, row}: ResolverContext) {
-  const fapComparison = a.submitLock?.ocrComparison || a.submitLock?.ocr_comparison_json;
+  const fapComparison = a.submitLock?.ocrComparison;
 
-  const hasFapUpload = files.length > 0 || Boolean(a.submitLock?.fap_doc_uploaded);
+  // submitLock.isLocked is 0 once the signed FAP form has a file (crm_applications.is_fap_doc_uploaded)
+  const hasFapUpload = files.length > 0 || Number(a.submitLock?.isLocked) === 0;
 
   if (hasFapUpload || fapComparison) {
     row.isAvailable = true;

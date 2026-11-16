@@ -13,14 +13,12 @@ export function PreAnalysisRichEditor({
   value,
   onChange,
   onFocus,
-  placeholder,
   height = 160,
   dataField,
 }: {
   value: string;
   onChange: (val: string) => void;
   onFocus?: () => void;
-  placeholder?: string;
   height?: number;
   dataField?: string;
 }) {

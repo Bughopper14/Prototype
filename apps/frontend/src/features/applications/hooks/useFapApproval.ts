@@ -1,11 +1,10 @@
 /** Approving the physical FAP document, dismissing its discrepancies and submitting the FAP stage. */
-import {recordSystemActivity} from '@/features/activity/lib/activity-store';
 import {api} from '@/shared/lib/api';
+import {STAGE} from '@/shared/master-data';
 
 export function useFapApproval({
   a,
   draft,
-  user,
   onChange,
   notify,
   setBusy,
@@ -14,12 +13,10 @@ export function useFapApproval({
   setActiveStage,
   setTab,
   setSubmitFapConfirm,
-  setCustomerDetailLocked,
   setFapComparisonModal,
 }: {
   a: any;
   draft: any;
-  user: any;
   onChange: (a: any) => void;
   notify: (s: string) => void;
   setBusy: (v: boolean) => void;
@@ -28,39 +25,18 @@ export function useFapApproval({
   setActiveStage: (v: string) => void;
   setTab: (v: number) => void;
   setSubmitFapConfirm: (v: boolean) => void;
-  setCustomerDetailLocked: (v: boolean) => void;
   setFapComparisonModal: (v: any) => void;
 }) {
   const handleApproveDocument = (updatedApp?: any) => {
-    localStorage.removeItem(`crm_locked_customer_${a.id}`);
-    setCustomerDetailLocked(false);
-    const nextApp = {...(updatedApp || a), customerDetailLocked: false, stage: 'Pre-analysis'};
-    setDraft((prev: any) => ({...prev, ...nextApp, customerDetailLocked: false}));
+    const nextApp = {...(updatedApp || a), stage: STAGE.PRE_ANALYSIS};
+    setDraft((prev: any) => ({...prev, ...nextApp}));
     if (onChange) onChange(nextApp);
-    setActiveStage('Pre-analysis');
+    setActiveStage(STAGE.PRE_ANALYSIS);
     setTab(8);
-    try {
-      recordSystemActivity({
-        applicationId: a.id,
-        fapNumber: a.fapNumber,
-        companyName: a.customer?.companyName || draft.customer?.companyName || 'Application',
-        section: 'Documents',
-        tabIndex: 8,
-        actionType: 'APPROVE',
-        title: `Approved Document & Locked Customer/PIC for ${a.customer?.companyName || draft.customer?.companyName || 'Application'}`,
-        details:
-          'Physical FAP document approved. Customer & PIC locked, application advanced to Pre-analysis.',
-        actionBy: user?.name || 'System User',
-        userRole: user?.displayRole || user?.role || '',
-        createNotification: true,
-        notificationMessage: `Application ${a.fapNumber || ''} for ${a.customer?.companyName || 'Debtor'} advanced to Pre-analysis stage.`,
-      });
-    } catch (actErr) {
-      console.error('Activity record error:', actErr);
-    }
+    // The server logs the stage submission in the activity feed.
   };
 
-  const handleApproveFapChangesInDetail = async (extractedData?: any) => {
+  const handleApproveFapChangesInDetail = async () => {
     setBusy(true);
     try {
       const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
@@ -88,10 +64,10 @@ export function useFapApproval({
     setBusy(true);
     setError('');
     try {
-      const updated = {...draft, stage: 'Pre-analysis'};
-      await api('/applications/' + a.id + '/stage', 'PUT', {stage: 'Pre-analysis'});
+      const updated = {...draft, stage: STAGE.PRE_ANALYSIS};
+      await api(`/applications/${a.id}/stage`, 'PUT', {});
       setDraft(updated);
-      setActiveStage('Pre-analysis');
+      setActiveStage(STAGE.PRE_ANALYSIS);
       setTab(8);
       setSubmitFapConfirm(false);
       notify('FAP Stage submitted. Pre-analysis stage is now active.');

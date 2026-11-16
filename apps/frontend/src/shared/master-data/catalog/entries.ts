@@ -3,6 +3,11 @@ import {masterGroups, masterKey, type MasterCatalog} from '@liugong/shared';
 import {equipmentChildren} from './store';
 import {matchesMasterItem} from '../wilayah';
 
+/** Alphabetical order for dropdown choices (Indonesian collation, numbers by value); "Other" style choices go last. */
+const isOther = (label: string) => /(other|others|lainnya)/i.test(label);
+export const compareLabels = (a: string, b: string) =>
+  Number(isOther(a)) - Number(isOther(b)) || a.localeCompare(b, 'id', {numeric: true, sensitivity: 'base'});
+
 export function masterEntries(data: MasterCatalog, key: string, value: any) {
   const group = masterGroups.find(g => g.key === masterKey(key));
   if (!group) return null;
@@ -51,6 +56,12 @@ export function masterEntries(data: MasterCatalog, key: string, value: any) {
     parentValue = parent?.value || parentValue;
   }
   if (group.key === 'district' || group.key === 'city') {
+    if (!parentValue && group.key === 'district' && value?.province) {
+      // no city yet: the districts of the cities of the chosen province (parent ids of each level)
+      const province = data.province?.find(x => matchesMasterItem(x, value.province));
+      const cities = new Set((data.city || []).filter(x => x.parentValue === province?.value).map(x => x.value));
+      if (province) return (data.district || []).filter(x => x.active && !!x.parentValue && cities.has(x.parentValue));
+    }
     if (!parentValue) return (data[group.key] || []).slice(0, 50);
     return (data[group.key] || []).filter(x => x.active && x.parentValue === parentValue);
   }
@@ -62,11 +73,14 @@ export function masterEntries(data: MasterCatalog, key: string, value: any) {
 }
 export function resetMasterChildren(key: string, next: any, fieldKeys: string[]) {
   const changed = new Set([masterKey(key)]);
+  // the record may carry the same value under an alias key (city / cityRegency): keep both in step
+  for (const k of Object.keys(next)) if (k !== key && masterKey(k) === masterKey(key)) next[k] = next[key];
   for (let pass = 0; pass < masterGroups.length; pass++)
     for (const group of masterGroups)
       if (group.parent && changed.has(group.parent) && !changed.has(group.key)) {
         changed.add(group.key);
-        for (const child of fieldKeys) if (masterKey(child) === group.key) next[child] = '';
+        // also the alias keys the record carries (e.g. cityRegency next to city), or the old parent stays behind
+        for (const child of new Set([...fieldKeys, ...Object.keys(next)])) if (masterKey(child) === group.key) next[child] = '';
       }
   return next;
 }

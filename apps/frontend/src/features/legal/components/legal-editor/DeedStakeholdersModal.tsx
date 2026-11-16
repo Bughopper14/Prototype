@@ -121,9 +121,10 @@ export function DeedStakeholdersModal() {
                     index: -1,
                     value: {
                       ...blank(stakeholderFields),
+                      id: crypto.randomUUID(),
                       representativeType: 'SHAREHOLDER',
-                      positions: 'NONE',
-                      idType: 'NONE',
+                      positions: '',
+                      idType: '',
                     },
                   });
                   setStakeholderList(null);

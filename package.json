@@ -12,7 +12,6 @@
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:setup": "pnpm --filter @liugong/backend db:setup",
     "user:create": "pnpm --filter @liugong/backend user:create",
     "import:pre-analysis": "pnpm --filter @liugong/backend import:pre-analysis"
   },

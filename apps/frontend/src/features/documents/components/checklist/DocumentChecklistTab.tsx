@@ -3,6 +3,7 @@ import {ChecklistMetrics} from '@/features/documents/components/checklist/Checkl
 import {ChecklistTable} from '@/features/documents/components/checklist/ChecklistTable';
 import {ChecklistToolbar} from '@/features/documents/components/checklist/ChecklistToolbar';
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
+import {VerifyDocumentDialog} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {useDocumentChecklist} from '@/features/documents/hooks/useDocumentChecklist';
 
 export interface DocumentChecklistTabProps {
@@ -13,8 +14,8 @@ export interface DocumentChecklistTabProps {
   notify: (msg: string) => void;
 }
 
-export function DocumentChecklistTab({application, draft, onChange, notify}: DocumentChecklistTabProps) {
-  const c = useDocumentChecklist({application, draft, onChange, notify});
+export function DocumentChecklistTab({application, draft, user, onChange, notify}: DocumentChecklistTabProps) {
+  const c = useDocumentChecklist({application, draft, user, onChange, notify});
 
   return (
     <div className="doc-checklist-container">
@@ -62,8 +63,19 @@ export function DocumentChecklistTab({application, draft, onChange, notify}: Doc
           onPreview={c.handleOpenPreview}
           onUpload={c.handleTriggerUpload}
           onDelete={c.handleDeleteManualFile}
+          onVerify={c.canVerify ? c.openVerify : undefined}
         />
       </section>
+
+      {c.verifying && (
+        <VerifyDocumentDialog
+          row={c.verifying}
+          busy={c.verifyBusy}
+          error={c.verifyError}
+          onSubmit={c.handleVerify}
+          onClose={() => c.setVerifying(null)}
+        />
+      )}
 
       {c.previewModal && (
         <DocumentPreviewModal preview={c.previewModal} onClose={() => c.setPreviewModal(null)} />

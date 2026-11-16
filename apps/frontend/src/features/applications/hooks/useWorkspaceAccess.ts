@@ -7,8 +7,8 @@ import {
   TAB_VIEW_AUTHORITY,
   TABS,
 } from '@/features/applications/lib/workspace/tabs';
-import {workflowActions} from '@/features/applications/lib/workspace/workflow-actions';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
+import {STAGE, useMasterData, workflowStages} from '@/shared/master-data';
 
 export function useWorkspaceAccess({
   a,
@@ -25,16 +25,16 @@ export function useWorkspaceAccess({
   tab: number;
   setTab: (v: number) => void;
 }) {
-  const isFapStage = activeStage === 'FAP Stage';
-  const fapChk = (a.documentChecks || []).find(
-    (d: any) =>
-      String(d.documentCode).toUpperCase() === 'FAP' || String(d.documentName).toLowerCase() === 'fap',
-  );
-  const hasSignedFap = Boolean(fapChk && Array.isArray(fapChk.files) && fapChk.files.length > 0);
-  const isDbLocked = a.submitLock !== undefined ? Number(a.submitLock.isLocked) === 1 : !hasSignedFap;
-  const isSubmitLocked = !draft.isNew && isDbLocked;
+  const isFapStage = activeStage === STAGE.FAP;
   const preAnalysisReached = isPreAnalysisReached(a, draft);
-  const currentAppStage = preAnalysisReached ? 'Pre-analysis' : 'FAP Stage';
+  // The stage the workspace is showing, or the stage of the application's status when that is a later one (for example
+  // ICLF, which has no screen of its own yet): "Active Stage" names the stage the application is really in.
+  const master = useMasterData();
+  const stageCodes = workflowStages(master).map(s => s.value);
+  const viewStage = preAnalysisReached ? STAGE.PRE_ANALYSIS : STAGE.FAP;
+  const realStage: string | undefined = a.workflowStage?.code;
+  const currentAppStage =
+    realStage && stageCodes.indexOf(realStage) > stageCodes.indexOf(viewStage) ? realStage : viewStage;
 
   const stageOrder = stageTabOrder(activeStage);
   const tabOrder = stageOrder.filter(id => hasAuthority(user, TAB_VIEW_AUTHORITY[id]));
@@ -54,10 +54,6 @@ export function useWorkspaceAccess({
 
   return {
     isFapStage,
-    fapChk,
-    hasSignedFap,
-    isDbLocked,
-    isSubmitLocked,
     isPreAnalysisReached: preAnalysisReached,
     currentAppStage,
     tabs: TABS,
@@ -70,6 +66,6 @@ export function useWorkspaceAccess({
     canEditCustomerPic,
     canEdit,
     canFinance,
-    actions: workflowActions(user, a.status),
+    actions: (a.availableActions || []) as string[],
   };
 }

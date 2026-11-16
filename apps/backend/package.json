@@ -8,7 +8,6 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "db:setup": "tsx --import ./src/config/load-env.ts scripts/db-setup.ts",
     "user:create": "tsx --import ./src/config/load-env.ts scripts/create-user.ts",
     "import:pre-analysis": "tsx --import ./src/config/load-env.ts scripts/import-pre-analysis.ts"
   },

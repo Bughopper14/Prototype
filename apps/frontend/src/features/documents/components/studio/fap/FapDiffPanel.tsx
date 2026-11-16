@@ -3,6 +3,7 @@ import {AlertTriangle, CheckCircle, Loader2, RefreshCw, Sparkles} from 'lucide-r
 
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
 
+import {RerunOcrNotice} from '@/features/fap/components/RerunOcrNotice';
 import {FapDiffActions} from '@/features/documents/components/studio/fap/FapDiffActions';
 import {FapVerificationRemarks} from '@/features/documents/components/studio/fap/FapVerificationRemarks';
 export function FapDiffPanel() {
@@ -45,6 +46,8 @@ export function FapDiffPanel() {
               </button>
             </div>
           </div>
+
+          {fapComparison.needsRerun && <RerunOcrNotice />}
 
           {/* Notice Alert Banner */}
           {fapComparison.hasDifferences ? (
@@ -143,7 +146,7 @@ export function FapDiffPanel() {
                               display: 'inline-block',
                             }}
                           >
-                            {d.newValue}
+                            {d.newValue || '— (Kosong di dokumen)'}
                           </span>
                         </td>
                         <td style={{textAlign: 'center'}}>

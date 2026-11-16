@@ -30,8 +30,7 @@ export function ReviewSummary({deed, master}: {deed: any; master: ReturnType<typ
             )
               .map(
                 (id: string) =>
-                  master.remarkCategoryId.find(x => x.value === id)?.name ||
-                  (id === 'establishment-deed' ? 'Establishment deed' : id),
+                  master.remarkCategoryId.find(x => x.value === id)?.name || id,
               )
               .join(', ') || '—'}
           </dd>

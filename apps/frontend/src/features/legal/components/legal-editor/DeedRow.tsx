@@ -67,8 +67,8 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
         <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
           {deedStatusLabel(x)}
         </span>
-        {(x.review?.rejectionReason || x.review?.correctionNote) && (
-          <small className="text-red">{x.review.rejectionReason || x.review.correctionNote}</small>
+        {reviewStatus(x) === 'NEEDS_REVISION' && x.review?.notes && (
+          <small className="text-red">{x.review.notes}</small>
         )}
         <small>{x.source === 'Sistem' ? 'Initial system data' : 'Legal Input'}</small>
       </td>
@@ -151,12 +151,11 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
             }}
           >
             {hasAuthority(user, DEED_EDIT_AUTHORITY) &&
-            ['DRAFT', 'REJECTED', 'NEEDS_CORRECTION'].includes(reviewStatus(x))
-              ? (x.reviewHistory || []).length
+            ['DRAFT', 'NEEDS_REVISION'].includes(reviewStatus(x))
+              ? reviewStatus(x) === 'NEEDS_REVISION'
                 ? 'Resubmit Deed'
                 : 'Submit Deed'
-              : hasAuthority(user, DEED_APPROVE_AUTHORITY) &&
-                  ['PENDING_CHECK', 'PENDING_APPROVAL'].includes(reviewStatus(x))
+              : hasAuthority(user, DEED_APPROVE_AUTHORITY) && reviewStatus(x) === 'PENDING'
                 ? 'Review Deed'
                 : 'View Review'}
           </button>

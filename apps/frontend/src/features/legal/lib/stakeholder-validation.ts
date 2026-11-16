@@ -28,8 +28,7 @@ export function stakeholderSaveError({
     if (
       val === undefined ||
       val === null ||
-      String(val).trim() === '' ||
-      (f.type === 'select' && val === 'NONE')
+      String(val).trim() === ''
     ) {
       return `${f.label} is mandatory and must be filled.`;
     }

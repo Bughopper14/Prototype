@@ -1,9 +1,9 @@
-import {formatStakeholderPosition, normalizeStakeholderPositionKey} from '@liugong/shared';
+import {currentMasterData} from '@/shared/master-data';
 
 export function normalizeStakeholderIdType(
   rawType: string | undefined,
   s?: any,
-): 'NONE' | 'KTP_NPWP' | 'PASSPORT_KITAS' {
+): '' | 'KTP_NPWP' | 'PASSPORT_KITAS' {
   const t = String(rawType || '')
     .toUpperCase()
     .trim();
@@ -15,7 +15,7 @@ export function normalizeStakeholderIdType(
     if (s.ktpUrl || s.ktpOcrText || s.npwpUrl || s.npwpOcrText) return 'KTP_NPWP';
     if (s.nationalityType === 'WNA' || s.citizenship === 'FOREIGN') return 'PASSPORT_KITAS';
   }
-  return 'NONE';
+  return '';
 }
 
 /** Value stored in the address fields of a foreign (PASSPORT - KITAS) stakeholder. */
@@ -57,8 +57,6 @@ export function applyForeignAddress(s: any, prev?: any) {
   if (!wasForeign && !FOREIGN_REGION_KEYS.some(k => s[k] === FOREIGN_REGION_VALUE)) return s;
   const next = {...s};
   for (const k of FOREIGN_REGION_KEYS) if (next[k] === FOREIGN_REGION_VALUE) next[k] = '';
-  if (next.citizenship === 'INDONESIAN' && !/^indonesia$/i.test(String(next.country || '').trim()))
-    next.country = 'Indonesia';
   return next;
 }
 
@@ -70,9 +68,8 @@ export function stakeholderEditorValues(s: any) {
   const idNumberSecondary = s.idNumberSecondary || s.taxId || s.npwp || s.permitNumber || s.niora || '';
   return {
     ...s,
-    // Board position from the Positions list, whatever wording it was stored with
-    positions: normalizeStakeholderPositionKey(s.positions || s.position || ''),
-    representativeType: s.representativeType || 'NONE',
+    positions: s.positions || '',
+    representativeType: s.representativeType || '',
     signatory: s.signatory || '',
     idType: resolvedIdType,
     idNumberSecondary,
@@ -89,7 +86,7 @@ export function stakeholderEditorValues(s: any) {
     depositedCapital: s.depositedCapital ?? s.shareAmount ?? 0,
     primaryCapital: s.primaryCapital ?? 0,
     citizenship: s.citizenship || (s.nationalityType === 'WNA' ? 'FOREIGN' : 'INDONESIAN'),
-    country: s.country || 'Indonesia',
+    country: s.country || '',
   };
 }
 
@@ -111,21 +108,20 @@ export function stakeholderForSave(s: any) {
       ? 'PASSPORT_KITAS'
       : rawIdType === 'KTP_NPWP' || ['KTP', 'NPWP'].includes(rawIdType)
         ? 'KTP_NPWP'
-        : rawIdType === 'NONE'
-          ? 'NONE'
-          : 'NONE';
+        : '';
   return {
     ...s,
     name,
-    positions: s.positions && s.positions !== 'NONE' ? s.positions : null,
-    position: formatStakeholderPosition(s.positions || s.position) || '',
+    positions: s.positions || null,
+    // Display name of the position (crm_master_stakeholder_positions)
+    position: (currentMasterData().positions || []).find(p => p.value === s.positions)?.name || '',
     nationalityType: s.citizenship === 'FOREIGN' ? 'WNA' : 'WNI',
     idType,
     idNumber: s.idNumber || s.nik || s.passportNumber || '',
     idNumberSecondary: s.idNumberSecondary || s.taxId || s.npwp || s.permitNumber || '',
     taxNumber: s.idNumberSecondary || s.taxId || s.npwp || null,
-    email: s.email || 'shareholder@liugong.local',
-    mobilePhone: s.mobilePhone || '08123456789',
+    email: s.email || '',
+    mobilePhone: s.mobilePhone || '',
     primaryCapital:
       s.primaryCapital !== undefined && s.primaryCapital !== null && s.primaryCapital !== ''
         ? s.primaryCapital

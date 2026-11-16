@@ -1,3 +1,4 @@
+import {STAGE, initialStatusCode} from '@/shared/master-data';
 import {
   blank,
   customerFields,
@@ -18,8 +19,8 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
     isNew: true,
     fapNumber: 'Auto (Generated on save)',
     applicationDate: new Date().toISOString().slice(0, 10),
-    status: 'DRAFT',
-    stage: 'FAP Stage',
+    status: initialStatusCode(),
+    stage: STAGE.FAP,
     customerStatus: category,
     customerCategory: category,
     customerId: customer?.id || '',

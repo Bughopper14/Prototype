@@ -18,20 +18,6 @@ export const LABEL_INLINE_FLEX: CSSProperties = {
   alignItems: 'center',
   marginBottom: '4px',
 };
-export const LABEL_SMALL: CSSProperties = {
-  fontSize: '0.68rem',
-  fontWeight: 600,
-  color: '#64748b',
-  display: 'block',
-  marginBottom: '2px',
-};
-export const LABEL_COMPACT: CSSProperties = {
-  fontSize: '0.72rem',
-  fontWeight: 600,
-  color: '#475569',
-  display: 'block',
-  marginBottom: '3px',
-};
 
 /** The input itself. */
 export const INPUT_BASE: CSSProperties = {
@@ -49,11 +35,4 @@ export const INPUT_BASE_WHITE: CSSProperties = {
   border: '1px solid #cbd5e1',
   backgroundColor: '#ffffff',
   color: '#1e293b',
-};
-export const INPUT_COMPACT: CSSProperties = {
-  width: '100%',
-  padding: '5px 8px',
-  fontSize: '0.75rem',
-  borderRadius: '4px',
-  border: '1px solid #cbd5e1',
 };

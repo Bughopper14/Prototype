@@ -123,4 +123,3 @@ export function usePreAnalysisPrint({viewMode}: PreAnalysisViewState, {data}: Pr
   return {handlePrint, pdfIframeRef};
 }
 
-export type PreAnalysisPrintState = ReturnType<typeof usePreAnalysisPrint>;

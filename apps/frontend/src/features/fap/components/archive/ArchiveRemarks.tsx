@@ -30,7 +30,7 @@ export function ArchiveRemarks({current}: {current: any}) {
           whiteSpace: 'pre-wrap',
         }}
       >
-        {current.comparison_remarks ||
+        {current.comparisonRemarks ||
           'Tidak ada catatan khusus / keterangan remarks tambahan saat verifikasi dokumen FAP.'}
       </div>
     </div>

@@ -6,9 +6,10 @@ import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {useKtpOcr} from '@/features/legal/hooks/useKtpOcr';
 import {classifyDeeds} from '@/features/legal/lib/classify-deeds';
 import {stakeholderSaveError} from '@/features/legal/lib/stakeholder-validation';
+import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {isFieldMandatory, useMandatoryRules, useMasterData} from '@/shared/master-data';
-import {deedPending, deedSentBack, legalDeedFields, DEED_EDIT_AUTHORITY} from '@liugong/shared';
+import {deedPending, legalDeedFields, DEED_EDIT_AUTHORITY} from '@liugong/shared';
 import {useEffect, useState} from 'react';
 
 export type LegalEditorProps = {
@@ -52,41 +53,21 @@ export function useLegalEditor({
     [viewStakeholderDetail, setViewStakeholderDetail] = useState<any>(null),
     [deleteStakeholder, setDeleteStakeholder] = useState<any>(null),
     [shareholderCountDeed, setShareholderCountDeed] = useState<any>(null),
-    [viewRemarkDeed, setViewRemarkDeed] = useState<any>(null),
-    [legacyRemarkCategories] = useState<any[]>(() => {
-      try {
-        const stored = JSON.parse(localStorage.getItem('liugong-los-remarks-master-v1') || '[]');
-        return Array.isArray(stored) ? stored : [];
-      } catch {
-        return [];
-      }
-    });
+    [viewRemarkDeed, setViewRemarkDeed] = useState<any>(null);
   useEffect(() => setFormError(''), [editing?.id, stakeholderModal?.deedId, stakeholderModal?.index]);
-  // Remark categories come from Master Data (active items); the built-in list is only a fallback
-  const defaultRemarkCategories = [
-    {id: 'establishment-deed', name: 'Establishment Deed', remarks: ''},
-    {id: 'amendment-share-change', name: 'Shares', remarks: ''},
-    {id: 'amendment-management-change', name: 'Management', remarks: ''},
-    {id: 'amendment-business-activity-change', name: 'Business Activities', remarks: ''},
-    {id: 'amendment-articles-change', name: 'Articles of Association', remarks: ''},
-    {id: 'amendment-other', name: 'Other', remarks: ''},
-  ];
+  // Remark categories come from Master Data (crm_master_legal_remark_categories), active items only. deedScope says
+  // which deed type a category belongs to: ESTABLISHMENT, AMENDMENT or ALL.
   const master = useMasterData();
   const mandatoryRules = useMandatoryRules();
-  const masterCats = (master.remarkCategoryId || [])
-    .filter((x: any) => x.active !== false && x.value !== 'akta-pendirian' && x.value !== 'akta-perubahan')
-    .map((x: any) => ({id: x.value, name: x.name, remarks: ''}));
-  const remarkCategories =
-    masterCats.length > 0
-      ? [...masterCats, ...legacyRemarkCategories.filter(l => !masterCats.some(m => m.id === l.id))]
-      : defaultRemarkCategories;
-  const establishmentDeedCat =
-    remarkCategories.find(x => x.id === 'establishment-deed') || defaultRemarkCategories[0];
-  const amendmentRemarkCategories = remarkCategories.filter(x => x.id !== 'establishment-deed');
+  const remarkCategories = (master.remarkCategoryId || [])
+    .filter((x: any) => x.active !== false)
+    .map((x: any) => ({id: x.value, name: x.name, remarks: '', deedScope: x.deedScope || 'ALL'}));
+  const establishmentDeedCat = remarkCategories.find(x => x.deedScope === 'ESTABLISHMENT');
+  const amendmentRemarkCategories = remarkCategories.filter(x => x.deedScope !== 'ESTABLISHMENT');
   const getDeedCategoryIds = (d: any): string[] => {
     if (Array.isArray(d?.remarkCategoryIds) && d.remarkCategoryIds.length > 0) return d.remarkCategoryIds;
     if (d?.remarkCategoryId) return [d.remarkCategoryId];
-    return d?.type === 'establishment' ? ['establishment-deed'] : [];
+    return d?.type === 'establishment' && establishmentDeedCat ? [establishmentDeedCat.id] : [];
   };
   const deeds = legalDeedList(value, application),
     selectedId =
@@ -99,7 +80,7 @@ export function useLegalEditor({
     (!checkIsAdmin(user) &&
       (!hasAuthority(user, DEED_EDIT_AUTHORITY) ||
         deedPending(d) ||
-        (!['DRAFT', 'RETURNED'].includes(application.status) && !deedSentBack(d))));
+        application.workflowFlags?.lastStage));
   const [returnToReview, setReturnToReview] = useState<string | null>(null);
   useEffect(() => {
     if (!editRequest) return;
@@ -145,6 +126,7 @@ export function useLegalEditor({
           stakeholders: savedRows,
         });
         if (res && res.legal) {
+          await saveStakeholderScans(rows);
           onChange(res.legal);
           // The server may give a browser-built deed its stored id: find it by id, number or type
           const target = deeds.find(d => d.id === deedId);
@@ -248,6 +230,7 @@ export function useLegalEditor({
       try {
         const res = await api(`/applications/${application.id}/page-legal`, 'PUT', {legal: nextLegal});
         if (res && res.legal) {
+          await saveStakeholderScans(currentStakeholders);
           onChange(res.legal);
           const currentDeed = res.legal.deeds?.find((d: any) => d.id === editing.id) || res.legal.deeds?.[0];
           if (currentDeed && currentDeed.stakeholders) {
@@ -386,13 +369,10 @@ export function useLegalEditor({
     setShareholderCountDeed,
     viewRemarkDeed,
     setViewRemarkDeed,
-    legacyRemarkCategories,
-    defaultRemarkCategories,
     establishmentDeedCat,
     isTypeMandatory,
     isRemarksMandatory,
     master,
-    masterCats,
     remarkCategories,
     amendmentRemarkCategories,
     getDeedCategoryIds,

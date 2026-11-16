@@ -1,7 +1,7 @@
 /** Loads the saved Pre-Analysis, keeps its numbers in step with the application, reports changes upward and saves. */
 import {useRef, useState, useEffect} from 'react';
 import {api} from '@/shared/lib/api';
-import {getTodaySignatureDate, defaultInitialData} from '@/features/pre-analysis/lib/defaults';
+import {getTodaySignatureDate} from '@/features/pre-analysis/lib/defaults';
 import {ensureProjectGroups} from '@/features/pre-analysis/lib/projects';
 import {computePreAnalysisDiffs} from '@/features/pre-analysis/lib/diff';
 import type {PreAnalysisFormProps} from '@/features/pre-analysis/lib/types';
@@ -12,6 +12,8 @@ export function usePreAnalysisPersistence(
   {setData, data}: PreAnalysisDataState,
 ) {
   const initialDataRef = useRef<any>(null);
+  // The version of the form that was loaded: the server refuses a save when someone else changed the form since
+  const versionRef = useRef<string | null>(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -24,37 +26,13 @@ export function usePreAnalysisPersistence(
       .then(res => {
         if (isMounted && res && res.success && res.data) {
           const raw = res.data;
+          versionRef.current = res.version ?? null;
           const today = getTodaySignatureDate();
           // Always ensure signature date reflects today's current date when opening document
           raw.signatureDate = today;
-          if (
-            raw.starGroupMilestonesNarrative &&
-            (!raw.companyBackground || !raw.companyBackground.includes('STAR Group'))
-          ) {
-            raw.companyBackground =
-              `${raw.companyBackground || ''}\n\n${raw.starGroupMilestonesNarrative}`.trim();
-          }
-          raw.currentProjects = ensureProjectGroups(
-            raw.currentProjects,
-            defaultInitialData.currentProjects as any,
-            'PT Handalan Putramas Santosa (HPS)',
-          );
-          raw.historyProjects = ensureProjectGroups(
-            raw.historyProjects,
-            defaultInitialData.historyProjects as any,
-            'PT Pangan Sejahtera Santosa (PASS)',
-          );
-          raw.investmentProjectPlans = ensureProjectGroups(
-            raw.investmentProjectPlans,
-            defaultInitialData.investmentProjectPlans as any,
-            'PT Harta Putramas Santosa (HTPS)',
-          );
-          if (!raw.investmentPlanSelected) {
-            raw.investmentPlanSelected = defaultInitialData.investmentPlanSelected;
-          }
-          if (!raw.investmentPlanRemarks) {
-            raw.investmentPlanRemarks = defaultInitialData.investmentPlanRemarks;
-          }
+          raw.currentProjects = ensureProjectGroups(raw.currentProjects);
+          raw.historyProjects = ensureProjectGroups(raw.historyProjects);
+          raw.investmentProjectPlans = ensureProjectGroups(raw.investmentProjectPlans);
           setData(prev => ({...prev, ...raw}));
           initialDataRef.current = structuredClone(raw);
         }
@@ -93,8 +71,10 @@ export function usePreAnalysisPersistence(
     setSaving(true);
     props.onSavingChange?.(true);
     try {
-      const json = await api(`/applications/${props.applicationId}/pre-analysis`, 'PUT', data);
+      const version = versionRef.current ? `?version=${encodeURIComponent(versionRef.current)}` : '';
+      const json = await api(`/applications/${props.applicationId}/pre-analysis${version}`, 'PUT', data);
       if (json && json.success) {
+        versionRef.current = json.version ?? versionRef.current;
         setSaveStatus('saved');
         props.notify?.('Pre-Analysis Form saved successfully!');
         const diffs = computePreAnalysisDiffs(initialDataRef.current, data);
@@ -104,8 +84,9 @@ export function usePreAnalysisPersistence(
       } else {
         setSaveStatus('error');
       }
-    } catch {
+    } catch (e: any) {
       setSaveStatus('error');
+      props.notify?.(e?.message || 'Failed to save the Pre-Analysis.');
     } finally {
       setSaving(false);
       props.onSavingChange?.(false);
@@ -121,4 +102,3 @@ export function usePreAnalysisPersistence(
   return {saveStatus, handleSave, saving};
 }
 
-export type PreAnalysisPersistenceState = ReturnType<typeof usePreAnalysisPersistence>;

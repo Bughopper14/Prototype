@@ -27,4 +27,3 @@ export function useRequiredMark() {
   return {reqMark};
 }
 
-export type RequiredMarkState = ReturnType<typeof useRequiredMark>;

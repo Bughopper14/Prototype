@@ -4,7 +4,6 @@ import {api} from '@/shared/lib/api';
 
 export function ReviewDocument({
   application,
-  deed,
   canSubmit,
   busy,
   documentId,
@@ -17,7 +16,6 @@ export function ReviewDocument({
   onUpdated,
 }: {
   application: any;
-  deed: any;
   canSubmit: boolean;
   busy: boolean;
   documentId: string;

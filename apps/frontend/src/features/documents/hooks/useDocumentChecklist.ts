@@ -2,6 +2,10 @@
 import {useMemo, useRef, useState} from 'react';
 import {api} from '@/shared/lib/api';
 import {buildChecklistRows} from '@/features/documents/lib/checklist/build-rows';
+import {documentDefinitions} from '@/features/documents/lib/checklist/definitions';
+import {useMasterData} from '@/shared/master-data';
+import {hasAuthority} from '@/shared/lib/auth';
+import type {VerifyBody} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {collectStakeholders} from '@/features/documents/lib/checklist/collect-stakeholders';
 import {filterRows} from '@/features/documents/lib/checklist/filter-rows';
 import {summarizeRows} from '@/features/documents/lib/checklist/summarize';
@@ -10,11 +14,13 @@ import type {ChecklistRow, PreviewState, StatusFilter} from '@/features/document
 export function useDocumentChecklist({
   application: a,
   draft,
+  user,
   onChange,
   notify,
 }: {
   application: any;
   draft: any;
+  user: any;
   onChange: (updatedApp: any) => void;
   notify: (msg: string) => void;
 }) {
@@ -26,11 +32,17 @@ export function useDocumentChecklist({
   const [previewModal, setPreviewModal] = useState<PreviewState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [targetUploadCode, setTargetUploadCode] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState<ChecklistRow | null>(null);
+  const [verifyBusy, setVerifyBusy] = useState(false);
+  const [verifyError, setVerifyError] = useState('');
+  const canVerify = hasAuthority(user, 'crm_verify_app_documents');
 
+  const master = useMasterData();
+  const definitions = useMemo(() => documentDefinitions(master), [master]);
   const allStakeholders = useMemo(() => collectStakeholders(a, draft), [a, draft]);
   const checklistRows = useMemo(
-    () => buildChecklistRows(a, draft, allStakeholders),
-    [a, draft, allStakeholders],
+    () => buildChecklistRows(definitions, a, draft, allStakeholders),
+    [definitions, a, draft, allStakeholders],
   );
   const stats = summarizeRows(checklistRows);
   const filteredRows = useMemo(
@@ -111,7 +123,36 @@ export function useDocumentChecklist({
     });
   };
 
+  const openVerify = (row: ChecklistRow) => {
+    setVerifyError('');
+    setVerifying(row);
+  };
+
+  /** Saves the department's verification; the server checks the workflow status and returns the application. */
+  const handleVerify = async (body: VerifyBody) => {
+    if (!verifying?.chkId) return;
+    setVerifyBusy(true);
+    setVerifyError('');
+    try {
+      const updated = await api(`/applications/${a.id}/checklist/${verifying.chkId}/verify`, 'PATCH', body);
+      onChange(updated);
+      notify(`Dokumen ${verifying.code} ${body.isVerified ? 'terverifikasi' : 'ditolak'} oleh ${body.department}.`);
+      setVerifying(null);
+    } catch (err: any) {
+      setVerifyError(err.message || 'Verifikasi gagal disimpan.');
+    } finally {
+      setVerifyBusy(false);
+    }
+  };
+
   return {
+    canVerify,
+    verifying,
+    setVerifying,
+    verifyBusy,
+    verifyError,
+    openVerify,
+    handleVerify,
     searchTerm,
     setSearchTerm,
     selectedDept,

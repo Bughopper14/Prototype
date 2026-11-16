@@ -1,6 +1,5 @@
 /** Competition information table. */
 import {Trash2} from 'lucide-react';
-import {DEFAULT_COMPETITION_TABLE} from '@/features/pre-analysis/lib/defaults';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function CompetitionTableEditor() {
@@ -50,7 +49,7 @@ export function CompetitionTableEditor() {
               </tr>
             </thead>
             <tbody>
-              {(data.competitionTable || DEFAULT_COMPETITION_TABLE).map((c, idx) => (
+              {(data.competitionTable || []).map((c, idx) => (
                 <tr key={idx} style={{borderBottom: '1px solid #f1f5f9'}}>
                   <td style={{padding: '4px 6px'}}>
                     <input
@@ -58,7 +57,7 @@ export function CompetitionTableEditor() {
                       data-field="competitionTable"
                       value={c.finco || ''}
                       onChange={e => {
-                        const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
+                        const copy = [...(data.competitionTable || [])];
                         copy[idx] = {...copy[idx], finco: e.target.value};
                         updateField('competitionTable', copy);
                       }}
@@ -78,7 +77,7 @@ export function CompetitionTableEditor() {
                       data-field="competitionTable"
                       value={c.rate || ''}
                       onChange={e => {
-                        const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
+                        const copy = [...(data.competitionTable || [])];
                         copy[idx] = {...copy[idx], rate: e.target.value};
                         updateField('competitionTable', copy);
                       }}
@@ -98,7 +97,7 @@ export function CompetitionTableEditor() {
                       data-field="competitionTable"
                       value={c.purpose || ''}
                       onChange={e => {
-                        const copy = [...(data.competitionTable || DEFAULT_COMPETITION_TABLE)];
+                        const copy = [...(data.competitionTable || [])];
                         copy[idx] = {...copy[idx], purpose: e.target.value};
                         updateField('competitionTable', copy);
                       }}
@@ -116,7 +115,7 @@ export function CompetitionTableEditor() {
                     <button
                       type="button"
                       onClick={() => {
-                        const copy = (data.competitionTable || DEFAULT_COMPETITION_TABLE).filter(
+                        const copy = (data.competitionTable || []).filter(
                           (_, i) => i !== idx,
                         );
                         updateField('competitionTable', copy);

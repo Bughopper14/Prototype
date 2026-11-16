@@ -1,4 +1,7 @@
-/** Indonesian region (wilayah) name matching and upward lookup (village → district → city → province). */
+/**
+ * Indonesian region (wilayah) name matching and upward lookup (village → district → city → province). The upward lookup
+ * follows the parent id of each level (crm_master_* foreign keys) and fills the levels above with master ids.
+ */
 import {type MasterCatalog, type MasterItem} from '@liugong/shared';
 
 export const cleanWilayahStr = (s: string) =>
@@ -105,13 +108,16 @@ export function resolveWilayahUpwards(record: any, data: MasterCatalog) {
     provItem = pList.find(x => matchesMasterItem(x, rawProv));
   }
 
-  // Auto-populate upward hierarchy if missing
-  if (provItem && (!next.province || next.province === '')) {
-    next.province = provItem.name;
+  // Fill the levels above from the parent ids. When the city was found through the district / village that was just
+  // chosen (its parent id), that city and its province win over a different value already in the record.
+  const cityFromChild = !!districtItem?.parentValue;
+  const differs = (item: MasterItem, current: unknown) => !!current && !matchesMasterItem(item, String(current));
+  if (provItem && (!next.province || (cityFromChild && differs(provItem, next.province)))) {
+    next.province = provItem.value;
   }
-  if (cityItem && (!next.cityRegency || next.cityRegency === '')) {
-    next.cityRegency = cityItem.name;
-    next.city = cityItem.name;
+  if (cityItem && (!(next.city || next.cityRegency) || (cityFromChild && differs(cityItem, next.city || next.cityRegency)))) {
+    next.cityRegency = cityItem.value;
+    next.city = cityItem.value;
   }
   if (
     districtItem &&
@@ -120,7 +126,7 @@ export function resolveWilayahUpwards(record: any, data: MasterCatalog) {
       cleanWilayahStr(next.district) === cleanWilayahStr(districtItem.name) ||
       next.district === districtItem.value)
   ) {
-    next.district = districtItem.name;
+    next.district = districtItem.value;
   }
   if (
     villageItem &&
@@ -129,7 +135,7 @@ export function resolveWilayahUpwards(record: any, data: MasterCatalog) {
       cleanWilayahStr(next.village) === cleanWilayahStr(villageItem.name) ||
       next.village === villageItem.value)
   ) {
-    next.village = villageItem.name;
+    next.village = villageItem.value;
     if (!next.postalCode && villageItem.zipCode) {
       next.postalCode = villageItem.zipCode;
     }

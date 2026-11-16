@@ -1,14 +1,18 @@
-/** Activity + notification cache in localStorage, read markers and recordSystemActivity. */
+/**
+ * Activity feed from the server (crm_application_activity_logs) and the per-browser "seen" markers.
+ * The server logs its own actions (create, workflow, documents, deed review); the workspace records what a save
+ * changed, field by field, with recordSystemActivity.
+ */
+import {api} from '@/shared/lib/api';
 import {resolveSubSectionName} from './sub-section';
-import {ActivityChangeItem, SystemActivity, SystemNotificationItem} from './types';
-
-const ACTIVITY_STORAGE_KEY = 'crm_system_activities_v3';
+import {ActivityChangeItem, SystemActivity} from './types';
 
 const ACTIVITY_READ_KEY = 'crm_activity_read_ids_v2';
 
-const NOTIFICATION_STORAGE_KEY = 'crm_system_notifications_v3';
-
 const NOTIFICATION_READ_KEY = 'crm_notification_read_ids_v2';
+
+/** Fired after the feed changed (an activity was recorded) or a "seen" marker changed. */
+export const ACTIVITY_EVENT = 'crm-activity-state-change';
 
 export function getReadActivityIds(): Set<string> {
   if (typeof window === 'undefined') return new Set();
@@ -24,7 +28,7 @@ export function saveReadActivityIds(ids: Set<string>) {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(ACTIVITY_READ_KEY, JSON.stringify(Array.from(ids)));
-    window.dispatchEvent(new CustomEvent('crm-activity-state-change'));
+    window.dispatchEvent(new CustomEvent(ACTIVITY_EVENT));
   } catch {}
 }
 
@@ -46,182 +50,59 @@ export function saveReadNotificationIds(ids: Set<string>) {
   } catch {}
 }
 
-export function getStoredActivities(): SystemActivity[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(ACTIVITY_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: SystemActivity[] = JSON.parse(raw);
-    const cleaned = parsed.filter(
-      a =>
-        !a.id.startsWith('seed-') && !a.companyName?.includes('Company #') && !a.title?.includes('Company #'),
-    );
-
-    // Normalize and enrich stored activities so all cards show Bagian, Sub Section, Kolom, and Old -> New
-    const enriched = cleaned.map(a => {
-      // If Pre Analysis Form card has empty changes, enrich it with standard evaluation details
-      if (
-        (a.section === 'Pre Analysis form' ||
-          a.title?.includes('Pre-Analysis') ||
-          a.details?.includes('credit remarks')) &&
-        (!a.changes || a.changes.length === 0)
-      ) {
-        return {
-          ...a,
-          changes: [
-            {
-              section: 'Pre Analysis form',
-              subSection: 'Credit Evaluation & Analyst Remarks',
-              field: 'creditRemarks',
-              label: 'Credit Analyst Remarks & Evaluation',
-              oldValue: 'Drafting initial evaluation',
-              newValue: 'Saved credit analyst evaluation, risk flags, and qualitative remarks.',
-            },
-            {
-              section: 'Pre Analysis form',
-              subSection: 'Facility Structure & Proposed Terms',
-              field: 'proposedTerms',
-              label: 'Active vs Proposed Terms',
-              oldValue: 'Pending term verification',
-              newValue: 'Verified active vs proposed credit facility terms.',
-            },
-          ],
-        };
-      }
-
-      // If activity has changes, ensure section & subSection are populated
-      if (a.changes && a.changes.length > 0) {
-        const fixedChanges = a.changes.map(ch => ({
-          ...ch,
-          section: ch.section || a.section || 'Customer & PIC',
-          subSection: ch.subSection || resolveSubSectionName(ch.field || ch.label, ch.section || a.section),
-        }));
-        return {
-          ...a,
-          changes: fixedChanges,
-        };
-      }
-      return a;
-    });
-
-    localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(enriched));
-    return enriched;
-  } catch {
-    return [];
-  }
+/** Every change row names its section and sub section, so the cards can show Bagian › Sub Section › Kolom. */
+function normalize(a: SystemActivity): SystemActivity {
+  if (!a.changes?.length) return a;
+  return {
+    ...a,
+    changes: a.changes.map(ch => ({
+      ...ch,
+      section: ch.section || a.section,
+      subSection: ch.subSection || resolveSubSectionName(ch.field || ch.label, ch.section || a.section),
+    })),
+  };
 }
 
-export function saveStoredActivities(activities: SystemActivity[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    const cleanList = activities.filter(
-      a =>
-        !a.id.startsWith('seed-') && !a.companyName?.includes('Company #') && !a.title?.includes('Company #'),
-    );
-    localStorage.setItem(ACTIVITY_STORAGE_KEY, JSON.stringify(cleanList.slice(0, 200)));
-    window.dispatchEvent(new CustomEvent('crm-activity-state-change'));
-  } catch {}
+/** Activity page: newest entries of every application. */
+export async function fetchActivities(): Promise<SystemActivity[]> {
+  const rows: SystemActivity[] = await api('/activity');
+  return rows.map(normalize);
 }
 
-export function getStoredNotifications(): SystemNotificationItem[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(NOTIFICATION_STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: SystemNotificationItem[] = JSON.parse(raw);
-    const cleaned = parsed.filter(
-      n =>
-        !n.id.startsWith('seed-') && !n.companyName?.includes('Company #') && !n.title?.includes('Company #'),
-    );
-    if (cleaned.length !== parsed.length) {
-      localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(cleaned));
-    }
-    return cleaned;
-  } catch {
-    return [];
-  }
-}
-
-export function saveStoredNotifications(notifications: SystemNotificationItem[]) {
-  if (typeof window === 'undefined') return;
-  try {
-    const cleanList = notifications.filter(
-      n =>
-        !n.id.startsWith('seed-') && !n.companyName?.includes('Company #') && !n.title?.includes('Company #'),
-    );
-    localStorage.setItem(NOTIFICATION_STORAGE_KEY, JSON.stringify(cleanList.slice(0, 150)));
-    window.dispatchEvent(new CustomEvent('crm-notification-state-change'));
-  } catch {}
+/** Activity tab: entries of one application. */
+export async function fetchApplicationActivities(applicationId: string): Promise<SystemActivity[]> {
+  const rows: SystemActivity[] = await api(`/applications/${applicationId}/activity`);
+  return rows.map(normalize);
 }
 
 /**
- * Record a new real system activity and optional notification task
+ * Records what a save changed. The server stores it as an UPDATE of the signed-in user; notifications are decided by
+ * the server (workflow and deed review), not here.
  */
-export function recordSystemActivity(params: {
+export async function recordSystemActivity(params: {
   applicationId?: string;
   fapNumber?: string;
-  companyName: string;
+  companyName?: string;
   section: string;
   tabIndex: number;
-  actionType: 'CREATE' | 'UPDATE' | 'APPROVE' | 'SUBMIT' | 'VERIFY' | 'LOCK' | 'REJECT';
+  actionType?: 'UPDATE';
   title: string;
   details: string;
   changes?: ActivityChangeItem[];
-  actionBy: string;
+  actionBy?: string;
   userRole?: string;
-  createNotification?: boolean;
-  notificationMessage?: string;
 }) {
-  const newActivity: SystemActivity = {
-    id: 'act-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-    applicationId: params.applicationId,
-    fapNumber: params.fapNumber,
-    companyName: params.companyName || 'Application',
-    section: params.section,
-    tabIndex: params.tabIndex,
-    actionType: params.actionType,
-    title: params.title,
-    details: params.details,
-    changes: params.changes && params.changes.length > 0 ? params.changes : undefined,
-    actionBy: params.actionBy || 'System User',
-    userRole: params.userRole || 'MKT',
-    timestamp: new Date().toISOString(),
-    read: false,
-  };
-
-  const existing = getStoredActivities();
-  saveStoredActivities([newActivity, ...existing]);
-
-  if (params.createNotification) {
-    const newNotif: SystemNotificationItem = {
-      id: 'notif-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
-      applicationId: params.applicationId,
-      fapNumber: params.fapNumber,
-      companyName: params.companyName || 'Application',
+  if (!params.applicationId) return;
+  try {
+    await api(`/applications/${params.applicationId}/activity`, 'POST', {
       section: params.section,
       tabIndex: params.tabIndex,
       title: params.title,
-      message: params.notificationMessage || params.details,
-      priority: params.actionType === 'APPROVE' ? 'high' : 'normal',
-      taskType: params.section,
-      createdAt: new Date().toISOString(),
-      readAt: null,
-    };
-    const currentNotifs = getStoredNotifications();
-    saveStoredNotifications([newNotif, ...currentNotifs]);
+      details: params.details,
+      changes: params.changes?.length ? params.changes : undefined,
+    });
+    window.dispatchEvent(new CustomEvent(ACTIVITY_EVENT));
+  } catch (e) {
+    console.error('Activity record error:', e);
   }
-}
-
-export function purgePlaceholderData() {
-  if (typeof window === 'undefined') return;
-  try {
-    getStoredActivities();
-    getStoredNotifications();
-  } catch {}
-}
-
-if (typeof window !== 'undefined') {
-  try {
-    purgePlaceholderData();
-  } catch {}
 }

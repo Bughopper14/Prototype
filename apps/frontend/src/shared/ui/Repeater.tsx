@@ -14,7 +14,6 @@ export function Repeater({
   carousel = false,
   section,
   onFieldFocus,
-  onFieldSync,
   activeFieldKey,
   targetRowIndex,
   onRowChange,
@@ -28,7 +27,6 @@ export function Repeater({
   carousel?: boolean;
   section?: string;
   onFieldFocus?: (k: string, section?: string) => void;
-  onFieldSync?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
   /** Row the FAP preview points at (clicking a row in the sheet turns the carousel to it). */
   targetRowIndex?: number;
@@ -137,7 +135,6 @@ export function Repeater({
               disabled={disabled}
               section={secCtx}
               onFieldFocus={onFieldFocus}
-              onFieldSync={onFieldSync}
               activeFieldKey={activeFieldKey}
               onChange={v => onChange(rows.map((x, j) => (rowIndex === j ? v : x)))}
             />

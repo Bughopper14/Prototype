@@ -1,5 +1,4 @@
 /** Competition information table of the document. */
-import {DEFAULT_COMPETITION_TABLE} from '@/features/pre-analysis/lib/defaults';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function CompetitionPreview() {
@@ -38,7 +37,7 @@ export function CompetitionPreview() {
           </tr>
         </thead>
         <tbody>
-          {(data.competitionTable || DEFAULT_COMPETITION_TABLE).map((c, idx) => (
+          {(data.competitionTable || []).map((c, idx) => (
             <tr key={idx}>
               <td style={{padding: '3px 6px', border: '1px solid #e2e8f0'}}>{c.finco}</td>
               <td style={{padding: '3px 6px', border: '1px solid #e2e8f0'}}>{c.rate}</td>

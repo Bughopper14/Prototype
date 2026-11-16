@@ -66,7 +66,6 @@ export function RegistrationOfficeSection() {
               disabled={!canEditCustomerPic}
               section="company"
               onFieldFocus={k => handleTriggerFieldSync(k, 'company')}
-              onFieldSync={k => handleTriggerFieldSync(k, 'company')}
               activeFieldKey={activeFieldKey}
               onChange={setDraft}
             />
@@ -95,7 +94,6 @@ export function RegistrationOfficeSection() {
               disabled={!canEditCustomerPic}
               section="company"
               onFieldFocus={k => handleTriggerFieldSync(k, 'company')}
-              onFieldSync={k => handleTriggerFieldSync(k, 'company')}
               activeFieldKey={activeFieldKey}
               onChange={setDraft}
             />

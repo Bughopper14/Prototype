@@ -1,9 +1,9 @@
 /** Pulls province / city / district / village out of the NIB address text. */
 import {cleanWilayahStr, matchWilayahName, normalizeWilayahInput} from '@/shared/master-data';
-import {defaultMasterCatalog, type MasterCatalog} from '@liugong/shared';
+import {emptyMasterCatalog, type MasterCatalog} from '@liugong/shared';
 
 export function extractWilayahFromAddressAndText(rawText: string, alamat: string, catalog?: MasterCatalog) {
-  const master = catalog || defaultMasterCatalog();
+  const master = catalog || emptyMasterCatalog();
   const vList = master.village || [];
   const dList = master.district || [];
   const cList = master.city || [];

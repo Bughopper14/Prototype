@@ -1,5 +1,9 @@
 /** Preview, upload and delete stage files; save FAP remarks; approve, dismiss or re-run the FAP comparison. */
 import {api} from '@/shared/lib/api';
+import {STAGE} from '@/shared/master-data';
+
+/** Document type of the signed FAP form (crm_master_document_types.code); its upload starts the OCR comparison. */
+const FAP_CODE = 'FAP';
 
 export function useDocumentFileActions({
   setActiveFileUrl,
@@ -38,27 +42,13 @@ export function useDocumentFileActions({
 }) {
   async function previewFile(f: any) {
     try {
-      if (f.demoData && f.demoData.startsWith('data:')) {
-        setActiveFileUrl(f.demoData);
-        setActiveFile(f);
-        setZoom(1);
-        setRotation(0);
-        return;
-      }
       const v = await api(`/files/${f.id}/url`);
       setActiveFileUrl(v.url);
       setActiveFile(f);
       setZoom(1);
       setRotation(0);
     } catch (e: any) {
-      if (f.demoData) {
-        setActiveFileUrl(f.demoData);
-        setActiveFile(f);
-        setZoom(1);
-        setRotation(0);
-      } else {
-        setError(e.message || 'Failed to load document preview.');
-      }
+      setError(e.message || 'Failed to load document preview.');
     }
   }
 
@@ -75,7 +65,7 @@ export function useDocumentFileActions({
       onChange(updated);
       notify(`Evidence ${item.title} uploaded successfully.`);
       if (res?.fapComparison?.isFap) {
-        if (res.fapComparison.status === 'processing' || !res.fapComparison.extractedData) {
+        if (res.fapComparison.status === 'processing') {
           setIsFapOcrScanning(true);
           setRightViewMode('ocr');
           notify(
@@ -87,7 +77,7 @@ export function useDocumentFileActions({
             try {
               const compRes = await api(`/applications/${a.id}/fap-comparison`);
               const c = compRes?.comparison;
-              if (c && c.extractedData && Object.keys(c.extractedData).length > 0) {
+              if (c && c.status !== 'processing') {
                 clearInterval(pollTimer);
                 setIsFapOcrScanning(false);
                 setFapComparison(c);
@@ -124,7 +114,7 @@ export function useDocumentFileActions({
         setIsFapOcrScanning(false);
       }
       const updatedChk = (updated.documentChecks || []).find(
-        (d: any) => d.id === item.chk.id || String(d.documentCode).toUpperCase() === item.code,
+        (d: any) => d.documentCode === item.code,
       );
       if (updatedChk?.files?.length) {
         previewFile(updatedChk.files[updatedChk.files.length - 1]);
@@ -141,29 +131,11 @@ export function useDocumentFileActions({
     setBusy(true);
     setError('');
     try {
-      try {
-        await api(`/applications/${a.id}/documents/${fileId}`, 'DELETE');
-      } catch (err1: any) {
-        await api(`/applications/${a.id}/documents/files/${fileId}`, 'DELETE');
-      }
-      const updated = await api(`/applications/${a.id}`);
+      const updated = await api(`/applications/${a.id}/documents/files/${fileId}`, 'DELETE');
       onChange(updated);
 
-      const isFap =
-        item.code === 'FAP' ||
-        String(item.documentCode || '').toUpperCase() === 'FAP' ||
-        String(item.chk?.documentCode || '').toUpperCase() === 'FAP' ||
-        String(item.name || '')
-          .toUpperCase()
-          .includes('FAP') ||
-        String(item.title || '')
-          .toUpperCase()
-          .includes('FAP');
-      const updatedFap = (updated.documentChecks || []).find(
-        (d: any) =>
-          String(d.documentCode).toUpperCase() === 'FAP' ||
-          String(d.documentName).toLowerCase().includes('fap'),
-      );
+      const isFap = item.code === FAP_CODE;
+      const updatedFap = (updated.documentChecks || []).find((d: any) => d.documentCode === FAP_CODE);
       const remainingFapFiles = updatedFap?.files?.length || 0;
 
       if (isFap) {
@@ -216,14 +188,13 @@ export function useDocumentFileActions({
       const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
         remarks: fapRemarks,
       });
-      localStorage.setItem(`crm_locked_customer_${a.id}`, 'true');
       const updated = res?.application || (await api(`/applications/${a.id}`));
       setFapComparison(null);
       notify('Physical FAP document approved. Customer & PIC details locked, proceeding to Pre-analysis.');
       if (onApproveDocument) {
         onApproveDocument(updated);
       } else {
-        onChange({...updated, customerDetailLocked: true, stage: 'Pre-analysis'});
+        onChange({...updated, stage: STAGE.PRE_ANALYSIS});
       }
     } catch (err: any) {
       setError('Failed to approve document: ' + err.message);

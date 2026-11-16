@@ -9,10 +9,16 @@ export function PortalShell({
   name,
   children,
   wide = false,
+  brandText,
+  brandSub,
+  showAppsHubBtn = false,
 }: {
   name: string;
   children: ReactNode;
   wide?: boolean;
+  brandText?: string;
+  brandSub?: string;
+  showAppsHubBtn?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -54,12 +60,17 @@ export function PortalShell({
               <img src="/img/logo.png" alt="LiuGong Finance Indonesia" />
             </div>
             <div className="pt-brand-text-wrap">
-              <span className="pt-brand-text">LiuGong Apps Portal</span>
-              <span className="pt-brand-sub">Finance Indonesia</span>
+              <span className="pt-brand-text">{brandText || 'LiuGong Apps Portal'}</span>
+              <span className="pt-brand-sub">{brandSub || 'Finance Indonesia'}</span>
             </div>
           </a>
 
           <div className="pt-actions">
+            {showAppsHubBtn && (
+              <a href="/gallery" className="btn-apps-hub d-none d-md-inline-flex">
+                <i className="fas fa-th-large me-1" /> Apps Hub
+              </a>
+            )}
             <div className="pt-dropdown pt-desktop-only" ref={menuRef}>
               <button
                 className="pt-user-btn"
@@ -164,7 +175,7 @@ export function PortalShell({
       )}
 
       <main>
-        <div className="pt-content">
+        <div className={`pt-content${wide ? ' wide' : ''}`}>
           <div className={`pt-container${wide ? ' wide' : ''}`}>{children}</div>
         </div>
       </main>

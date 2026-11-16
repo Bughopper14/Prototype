@@ -19,7 +19,7 @@ const LABEL_STYLE = {
 export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFieldConfig}) {
   const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
   const terms = draft.financingProposal?.[group] as Record<string, string> | undefined;
-  const value = (field.readKeys || [field.key]).map(k => terms?.[k]).find(Boolean) || '';
+  const value = terms?.[field.key] || '';
   return (
     <div className="field-group" data-field={field.dataField}>
       <label className="field-label" style={LABEL_STYLE}>
@@ -35,7 +35,7 @@ export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFi
         onFocus={() => handleTriggerFieldSync(field.dataField, 'proposal')}
         onChange={e => {
           const val = e.target.value;
-          const patch = Object.fromEntries([field.key, ...(field.alsoWrite || [])].map(k => [k, val]));
+          const patch = {[field.key]: val};
           setDraft((prev: any) => ({
             ...prev,
             financingProposal: {

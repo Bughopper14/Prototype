@@ -1,20 +1,18 @@
 /** Activity feed of this application: live sync, read markers, jump to the changed section. */
 import {
+  ACTIVITY_EVENT,
+  fetchApplicationActivities,
   getReadActivityIds,
-  getStoredActivities,
   saveReadActivityIds,
 } from '@/features/activity/lib/activity-store';
-import {type SystemActivity} from '@/features/activity/lib/types';
-import {statusLabel} from '@/shared/lib/format';
+import {STAGE} from '@/shared/master-data';
 import {useEffect, useMemo} from 'react';
 
 export function useApplicationActivity({
   activeStage,
   setActiveStage,
   setTab,
-  draft,
   setError,
-  liveCompanyName,
   isPreAnalysisReached,
   localActivities,
   setLocalActivities,
@@ -25,9 +23,7 @@ export function useApplicationActivity({
   activeStage: string;
   setActiveStage: React.Dispatch<React.SetStateAction<string>>;
   setTab: React.Dispatch<React.SetStateAction<number>>;
-  draft: any;
   setError: React.Dispatch<React.SetStateAction<string>>;
-  liveCompanyName: string;
   isPreAnalysisReached: boolean;
   localActivities: import('@/features/activity/lib/types').SystemActivity[];
   setLocalActivities: React.Dispatch<
@@ -37,82 +33,32 @@ export function useApplicationActivity({
   a: any;
   notify: (s: string) => void;
 }) {
+  // The application's feed comes from the server (crm_application_activity_logs), refreshed after each recorded change.
   useEffect(() => {
+    // A new application has no activity until it is saved
+    if (!a.id || a.isNew) return;
+    let live = true;
+    const load = () =>
+      fetchApplicationActivities(String(a.id))
+        .then(list => live && setLocalActivities(list))
+        .catch(() => {});
     const handleActivitySync = () => {
-      setLocalActivities(getStoredActivities());
+      load();
       setLocalReadIds(getReadActivityIds());
     };
-    window.addEventListener('crm-activity-state-change', handleActivitySync);
+    load();
+    window.addEventListener(ACTIVITY_EVENT, handleActivitySync);
     return () => {
-      window.removeEventListener('crm-activity-state-change', handleActivitySync);
+      live = false;
+      window.removeEventListener(ACTIVITY_EVENT, handleActivitySync);
     };
-  }, []);
+  }, [a.id]);
 
-  const applicationActivities = useMemo(() => {
-    const currentAppId = String(a.id || '');
-    const currentFapNo = String(a.fapNumber || '')
-      .trim()
-      .toLowerCase();
-    const currentCompanyName = String(
-      a.customer?.companyName || draft.customer?.companyName || liveCompanyName || '',
-    )
-      .trim()
-      .toLowerCase();
-
-    const matched = localActivities.filter(act => {
-      if (act.applicationId && String(act.applicationId) === currentAppId) return true;
-      if (act.fapNumber && currentFapNo && String(act.fapNumber).trim().toLowerCase() === currentFapNo)
-        return true;
-      if (!act.applicationId && !act.fapNumber && act.companyName && currentCompanyName) {
-        if (String(act.companyName).trim().toLowerCase() === currentCompanyName) return true;
-      }
-      return false;
-    });
-
-    const existingTitles = new Set(matched.map(m => `${m.title}_${m.timestamp}`));
-    const workflowLogs: SystemActivity[] = (a.approvalLogs || [])
-      .map((l: any, idx: number) => {
-        const timestamp = l.actionTimestamp
-          ? new Date(l.actionTimestamp).toISOString()
-          : new Date().toISOString();
-        const actionLabel = statusLabel[l.newStatus] || l.newStatus || 'Updated';
-        const title = `Workflow: ${actionLabel} by ${l.actionBy || 'User'}`;
-        return {
-          id: `app-log-${l.id || idx}-${currentAppId}`,
-          applicationId: a.id,
-          fapNumber: a.fapNumber,
-          companyName: a.customer?.companyName || draft.customer?.companyName || 'Application',
-          section: 'Documents',
-          tabIndex: 6,
-          actionType: (l.newStatus === 'APPROVED'
-            ? 'APPROVE'
-            : l.newStatus?.includes('SUBMIT')
-              ? 'SUBMIT'
-              : 'UPDATE') as any,
-          title,
-          details: l.comments
-            ? `Comments: "${l.comments}" (Transition: ${statusLabel[l.previousStatus] || l.previousStatus} ➔ ${statusLabel[l.newStatus] || l.newStatus})`
-            : `Application moved to ${statusLabel[l.newStatus] || l.newStatus}.`,
-          actionBy: l.actionBy || 'System',
-          userRole: l.userRole || 'Workflow',
-          timestamp,
-          read: true,
-        };
-      })
-      .filter((wl: any) => !existingTitles.has(`${wl.title}_${wl.timestamp}`));
-
-    return [...matched, ...workflowLogs].sort(
-      (x, y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime(),
-    );
-  }, [
-    localActivities,
-    a.id,
-    a.fapNumber,
-    a.customer?.companyName,
-    draft.customer?.companyName,
-    liveCompanyName,
-    a.approvalLogs,
-  ]);
+  // Workflow moves are logged by the server too, so the feed already holds them (no merge with approvalLogs).
+  const applicationActivities = useMemo(
+    () => [...localActivities].sort((x, y) => new Date(y.timestamp).getTime() - new Date(x.timestamp).getTime()),
+    [localActivities],
+  );
 
   const handleMarkAppActivityRead = (id: string) => {
     setLocalReadIds(prev => {
@@ -138,13 +84,13 @@ export function useApplicationActivity({
   const handleOpenSectionFromActivity = (_appId: string, targetTabIndex?: number) => {
     if (targetTabIndex !== undefined) {
       if (targetTabIndex === 8) {
-        setActiveStage('Pre-analysis');
+        setActiveStage(STAGE.PRE_ANALYSIS);
       } else if ([0, 5, 1].includes(targetTabIndex)) {
-        if (activeStage !== 'FAP Stage' && !isPreAnalysisReached) {
-          setActiveStage('FAP Stage');
+        if (activeStage !== STAGE.FAP && !isPreAnalysisReached) {
+          setActiveStage(STAGE.FAP);
         }
       } else if ([2, 4].includes(targetTabIndex)) {
-        setActiveStage('Pre-analysis');
+        setActiveStage(STAGE.PRE_ANALYSIS);
       }
       setTab(targetTabIndex);
       setError('');

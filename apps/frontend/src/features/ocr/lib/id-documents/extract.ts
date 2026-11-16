@@ -5,7 +5,7 @@ import {parseKitasText} from './parse-kitas';
 import {parseKtpText} from './parse-ktp';
 import {parseNpwpText} from './parse-npwp';
 import {parsePassportText, resolveGender} from './parse-passport';
-import {ParsedKitasData, ParsedKtpData, ParsedNpwpData, ParsedPassportData} from './types';
+import {IdScan, ParsedKitasData, ParsedKtpData, ParsedNpwpData, ParsedPassportData} from './types';
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const parts = dataUrl.split(',');
@@ -30,6 +30,7 @@ export async function extractIdDocumentFromImage(
   docType: string;
   data: any;
   rawText: string;
+  scan?: IdScan;
 }> {
   try {
     const uploadPayload = new FormData();
@@ -54,6 +55,12 @@ export async function extractIdDocumentFromImage(
         docType: res.doc_type || docType,
         data: d,
         rawText: typeof d === 'string' ? d : JSON.stringify(d, null, 2),
+        scan: {
+          docType: String(res.doc_type || docType).toLowerCase(),
+          data: d,
+          fileName: res.file_name || null,
+          documentPath: res.document_path || null,
+        },
       };
     }
   } catch (err: any) {
@@ -92,6 +99,7 @@ export async function extractKtpTextFromImage(
   const resolvedMarital = isSingle ? 'SINGLE' : isMarried ? 'MARRIED' : isDivorced ? 'DIVORCED' : 'SINGLE';
 
   return {
+    scan: res.scan,
     nik: d.nik || d.idNumber,
     nama: d.nama || d.name,
     firstName: d.firstName,
@@ -147,6 +155,7 @@ export async function extractPassportTextFromImage(
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
   return {
+    scan: res.scan,
     passportNumber: d.passport_number || d.passportNumber,
     countryCode: d.country_code || d.countryCode,
     countryName: d.country_name || d.countryName || d.nationality,
@@ -175,6 +184,7 @@ export async function extractNpwpTextFromImage(
   const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName);
   const d = res.data || {};
   return {
+    scan: res.scan,
     npwpNumber: d.npwp_number || d.npwpNumber,
     rawNpwp: d.raw_npwp || d.rawNpwp,
     nama: d.nama,
@@ -197,6 +207,7 @@ export async function extractKitasTextFromImage(
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
   return {
+    scan: res.scan,
     permitNumber: d.permit_number || d.permitNumber,
     niora: d.niora,
     nama: d.nama,

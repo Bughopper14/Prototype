@@ -1,93 +1,86 @@
-import {pool} from '../../../core/db/pool';
-import {auditTable} from '../../users/users.repository';
-import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import crypto from 'node:crypto';
-import {syncApplicationDocuments} from '../../documents/documents.repository';
+import type {MasterCatalog, MasterItem} from '@liugong/shared';
+import {Injectable} from '@nestjs/common';
+import {CrmDatabase} from '../../../core/db/crm-database';
+import {CRM} from '../../../core/db/crm-tables';
+import {DocumentsRepository} from '../../documents/documents.repository';
 
-const table = 'master_document_jenis_dokumen_wajib';
-export async function initializeDocumentMasters(seed: MasterCatalog) {
-  if (!pool) return;
-  await pool.query(`CREATE TABLE IF NOT EXISTS ${table} (
-  id CHAR(36) PRIMARY KEY,code VARCHAR(150) NOT NULL UNIQUE,name VARCHAR(150) NOT NULL,
-  department VARCHAR(20) NOT NULL,is_required BOOLEAN NOT NULL DEFAULT FALSE,
-  is_active BOOLEAN NOT NULL DEFAULT TRUE,created_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),updated_at TIMESTAMP(3) NULL
- ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
-  await auditTable(table);
-  const [rows] = await pool.query<any[]>(`SELECT COUNT(*) AS total FROM ${table}`);
-  if (Number(rows[0].total) === 0)
-    for (const item of seed.documents)
-      await pool.execute(
-        `INSERT INTO ${table} (id,code,name,department,is_required,is_active) VALUES (?,?,?,?,?,?)`,
-        [
-          crypto.randomUUID(),
-          item.value,
-          item.name,
-          item.role || 'BS',
-          item.required ? 1 : 0,
-          item.active ? 1 : 0,
-        ],
-      );
-}
-export async function documentMasterCatalog(catalog: MasterCatalog): Promise<MasterCatalog> {
-  if (!pool) return catalog;
-  const [rows] = await pool.query<any[]>(
-    `SELECT code,name,department,is_required,is_active FROM ${table} ORDER BY created_at,id`,
-  );
-  return {
-    ...catalog,
-    documents: rows.map(
-      row =>
-        ({
-          value: row.code,
-          name: row.name,
-          role: row.department,
-          required: !!row.is_required,
-          active: !!row.is_active,
-        }) satisfies MasterItem,
-    ),
-  };
-}
-export async function saveDocumentMasters(catalog: MasterCatalog) {
-  if (!pool) throw new Error('MySQL is not configured');
-  const c = await pool.getConnection();
-  try {
-    await c.beginTransaction();
-    for (const item of catalog.documents) {
-      const [rows] = await c.execute<any[]>(
-        `SELECT name,department,is_required,is_active FROM ${table} WHERE code=? FOR UPDATE`,
-        [item.value],
-      );
-      if (rows.length) {
-        const old = rows[0];
-        if (
-          old.name !== item.name ||
-          old.department !== item.role ||
-          !!old.is_required !== item.required ||
-          !!old.is_active !== item.active
-        )
-          await c.execute(
-            `UPDATE ${table} SET name=?,department=?,is_required=?,is_active=?,updated_at=CURRENT_TIMESTAMP(3) WHERE code=?`,
-            [item.name, item.role || 'BS', item.required ? 1 : 0, item.active ? 1 : 0, item.value],
-          );
-      } else
-        await c.execute(
-          `INSERT INTO ${table} (id,code,name,department,is_required,is_active) VALUES (?,?,?,?,?,?)`,
-          [
-            crypto.randomUUID(),
-            item.value,
-            item.name,
-            item.role || 'BS',
-            item.required ? 1 : 0,
-            item.active ? 1 : 0,
-          ],
+/** Document types for the checklist. `stage` is the workflow stage code (FAP_STAGE, PRE_ANALYSIS, ICLF) or absent. */
+@Injectable()
+export class DocumentMastersRepository {
+  static readonly groups = ['documents'];
+  constructor(
+    private readonly db: CrmDatabase,
+    private readonly checklists: DocumentsRepository,
+  ) {}
+
+  async catalog(catalog: MasterCatalog): Promise<MasterCatalog> {
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT d.code,d.name,d.title,d.department_code,d.default_section,d.description,d.is_mandatory,d.is_active,
+              s.code AS stage_code
+       FROM ${CRM.masterDocumentTypes} d LEFT JOIN ${CRM.masterWorkflowStages} s ON s.id=d.stage_id
+       ORDER BY d.sort_order,d.created_at,d.id`,
+    );
+    return {
+      ...catalog,
+      documents: rows.map(
+        row =>
+          ({
+            value: row.code,
+            name: row.name,
+            title: row.title,
+            role: row.department_code,
+            required: !!row.is_mandatory,
+            active: !!row.is_active,
+            ...(row.default_section ? {section: row.default_section} : {}),
+            ...(row.description ? {description: row.description} : {}),
+            ...(row.stage_code ? {stage: row.stage_code} : {}),
+          }) satisfies MasterItem,
+      ),
+    };
+  }
+
+  /** The Master Data screen edits name, department, required and active. A new type gets its name as title. */
+  async save(catalog: MasterCatalog, by: string | null) {
+    await this.db.transaction(async c => {
+      for (const item of catalog.documents || []) {
+        const [rows] = await c.execute<any[]>(
+          `SELECT name,department_code,is_mandatory,is_active FROM ${CRM.masterDocumentTypes} WHERE code=? FOR UPDATE`,
+          [item.value],
         );
-    }
-    await c.commit();
-    await syncApplicationDocuments();
-  } catch (e) {
-    await c.rollback();
-    throw e;
-  } finally {
-    c.release();
+        const department = item.role || 'BS';
+        if (rows.length) {
+          const old = rows[0];
+          if (
+            old.name !== item.name ||
+            old.department_code !== department ||
+            !!old.is_mandatory !== !!item.required ||
+            !!old.is_active !== item.active
+          )
+            await c.execute(
+              `UPDATE ${CRM.masterDocumentTypes} SET name=?,department_code=?,is_mandatory=?,is_active=?,updated_by=?
+               WHERE code=?`,
+              [item.name, department, item.required ? 1 : 0, item.active ? 1 : 0, by, item.value],
+            );
+        } else
+          await c.execute(
+            `INSERT INTO ${CRM.masterDocumentTypes}
+               (id,code,name,title,department_code,is_mandatory,is_active,sort_order,created_by)
+             SELECT ?,?,?,?,?,?,?,COALESCE(MAX(sort_order),0)+1,? FROM ${CRM.masterDocumentTypes}`,
+            [
+              crypto.randomUUID(),
+              item.value,
+              item.name,
+              item.title || item.name,
+              department,
+              item.required ? 1 : 0,
+              item.active ? 1 : 0,
+              by,
+            ],
+          );
+      }
+    });
+    // Every application gets the new document types in its checklist.
+    await this.checklists.syncAllApplications(by);
   }
 }

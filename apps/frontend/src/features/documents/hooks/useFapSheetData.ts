@@ -1,4 +1,7 @@
-/** FAP sheet data for the two panes: live from the application, and from the OCR of the uploaded FAP. */
+/**
+ * FAP sheet data for the two panes: live from the application, and the signed FAP document. Only the fields where the
+ * document differed are stored (comparison.documentValues); every other field of the document matched the system.
+ */
 import {useMasterData} from '@/shared/master-data';
 import {type FapSheetData} from '@/features/fap/lib/types';
 import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
@@ -44,9 +47,9 @@ export function useFapSheetData({
       fapNumber: a.fapNumber || '-',
       applicationDate: a.applicationDate || new Date().toISOString(),
       branchCode: a.branchCode || a.profile?.branchCode || '',
-      customerStatus: a.customerCategory || a.customerStatus || a.profile?.customerStatus || 'NEW',
+      customerStatus: a.customerCategory || a.customerStatus || a.profile?.customerStatus || '',
       companyName: a.customer?.companyName || a.companyName || '',
-      companyType: a.customer?.companyType || a.companyType || 'PT',
+      companyType: a.customer?.companyType || a.companyType || '',
       nib: a.customer?.nib || a.nib || '',
       nibDate: a.customer?.nibDate || a.nibDate || '',
       npwp: a.customer?.npwp || a.npwp || '',
@@ -91,13 +94,13 @@ export function useFapSheetData({
       picPostalCode: docPic.postalCode || a.picPostalCode || '',
       selectedDeedNo: finalLatestDeedNo || a.selectedDeedNo || a.customer?.establishmentActNo || '',
       stakeholders: resolvedStakeholders,
-      facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || 'INVESTMENT',
+      facilityPurpose: a.proposal?.facilityPurpose || a.facilityPurpose || '',
       financingMethod: a.proposal?.financingMethod || a.financingMethod || '',
       financingValue: a.proposal?.financingValue || a.financingValue || '',
       downPaymentValue: a.proposal?.downPaymentValue || a.downPaymentValue || '',
       interestRate: a.proposal?.interestRate || a.interestRate || '',
       tenorMonths: a.proposal?.tenorMonths || a.tenorMonths || '',
-      paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || 'In Arrear',
+      paymentMethod: a.proposal?.paymentMethod || a.paymentMethod || '',
       industrySegment: a.industrySegment || a.industry_segment || '',
       businessRole: a.businessRole || a.business_role || '',
       proposal: a.proposal || {},
@@ -108,7 +111,15 @@ export function useFapSheetData({
   }, [a, master]);
 
   const ocrFapData: FapSheetData = useMemo(() => {
-    const ext = fapComparison?.extractedData || {};
+    const ext: any = fapComparison
+      ? {
+          ...liveFapData,
+          picPosition: liveFapData.position,
+          picPhone: liveFapData.phone,
+          picAddress: liveFapData.currentAddress,
+          ...(fapComparison.documentValues || {}),
+        }
+      : {};
     return {
       fapNumber: ext.fapNumber || a.fapNumber || '',
       applicationDate: ext.applicationDate || '',
@@ -166,7 +177,7 @@ export function useFapSheetData({
         paymentMethod: ext.paymentMethod || '',
       },
     };
-  }, [fapComparison, a.fapNumber]);
+  }, [fapComparison, liveFapData, a.fapNumber]);
 
   return {liveFapData, ocrFapData};
 }

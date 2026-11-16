@@ -5,6 +5,7 @@ import {
   isPreAnalysisApplication,
   isPreAnalysisReached,
 } from '@/features/applications/lib/workspace/stage';
+import {STAGE} from '@/shared/master-data';
 
 export function useStageSync({
   a,
@@ -29,8 +30,8 @@ export function useStageSync({
   useEffect(() => {
     if (initialTab !== undefined) {
       setTab(initialTab);
-      if (initialTab === 8) setActiveStage('Pre-analysis');
-      else if ([0, 5, 1].includes(initialTab) && !isPreAnalysisReached(a, draft)) setActiveStage('FAP Stage');
+      if (initialTab === 8) setActiveStage(STAGE.PRE_ANALYSIS);
+      else if ([0, 5, 1].includes(initialTab) && !isPreAnalysisReached(a, draft)) setActiveStage(STAGE.FAP);
     }
   }, [initialTab, a.id]);
 }
