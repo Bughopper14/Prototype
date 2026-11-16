@@ -37,7 +37,7 @@ export function applyReferences({
     if (item) {
       setText(`fap-cell-ref-${i}-no`, String(i + 1));
       setText(`fap-cell-ref-${i}-bank`, item.bankOrFinInstitution || '');
-      setText(`fap-cell-ref-${i}-currency`, item.currency || 'IDR');
+      setText(`fap-cell-ref-${i}-currency`, item.currency || '');
       setText(
         `fap-cell-ref-${i}-credit`,
         item.creditFacility ? Number(item.creditFacility).toLocaleString('id-ID') : '',

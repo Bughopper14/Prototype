@@ -1,45 +1,11 @@
 /** Sub-section 1 of the financing proposal: the facility proposed (method, value, currency choice). */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {parseMoney} from '@/features/applications/lib/financing-proposal';
-import {
-  FINANCING_METHODS,
-  resolveFinancingMethod,
-} from '@/features/applications/components/workspace/customer/proposal/terms-config';
+import {useMasterData} from '@/shared/master-data';
 import {FileText} from 'lucide-react';
-
-const ALLOWED_KEYS = new Set([
-  'Backspace',
-  'Tab',
-  'Enter',
-  'Escape',
-  'ArrowLeft',
-  'ArrowRight',
-  'ArrowUp',
-  'ArrowDown',
-  'Delete',
-  'Home',
-  'End',
-]);
-
-function sanitizeNumericInput(raw: string): string {
-  const cleaned = raw.replace(/[^\d.]/g, '');
-  const dotIdx = cleaned.indexOf('.');
-  if (dotIdx === -1) return cleaned;
-  return cleaned.slice(0, dotIdx + 1) + cleaned.slice(dotIdx + 1).replace(/\./g, '');
-}
 
 export function FacilityProposedCard() {
   const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
-  const facProp = draft.financingProposal?.facilityProposed || {};
-  const resolvedMethod = resolveFinancingMethod(facProp.financingMethod);
-  const rawFinVal = facProp.financingValue;
-  const displayFinVal =
-    rawFinVal === undefined || rawFinVal === null || rawFinVal === ''
-      ? ''
-      : /^\d*\.?\d*$/.test(String(rawFinVal).trim())
-        ? String(rawFinVal).trim()
-        : String(parseMoney(rawFinVal) || '');
-
+  const master = useMasterData();
   return (
     <div
       style={{
@@ -74,55 +40,28 @@ export function FacilityProposedCard() {
       >
         <div className="field-group" data-field="financingMethod">
           <label className="field-label">Cara Pembiayaan / Financing Method</label>
-          <select
+          <input
+            type="text"
             id="fap-form-financingMethod"
             data-field="financingMethod"
             className="field-input"
-            style={{width: '100%'}}
-            value={resolvedMethod?.label || ''}
+            value={draft.financingProposal?.facilityProposed?.financingMethod || ''}
             disabled={!canFinance}
             onFocus={() => handleTriggerFieldSync('financingMethod', 'proposal')}
             onChange={e => {
               const val = e.target.value;
-              setDraft((prev: any) => {
-                const prevFp = prev.financingProposal || {};
-                const prevMethod = resolveFinancingMethod(prevFp.facilityProposed?.financingMethod);
-                const nextMethod = resolveFinancingMethod(val);
-                const currChoice = prevFp.facilityProposed?.currencyChoice || '';
-                const nextFp: any = {
-                  ...prevFp,
+              setDraft((prev: any) => ({
+                ...prev,
+                financingProposal: {
+                  ...(prev.financingProposal || {}),
                   facilityProposed: {
-                    ...(prevFp.facilityProposed || {}),
+                    ...(prev.financingProposal?.facilityProposed || {}),
                     financingMethod: val,
                   },
-                };
-                if (prevMethod && prevMethod.group !== nextMethod?.group && currChoice) {
-                  if (prevFp[prevMethod.group]?.currency === currChoice) {
-                    nextFp[prevMethod.group] = {
-                      ...(prevFp[prevMethod.group] || {}),
-                      currency: '',
-                    };
-                  }
-                }
-                if (nextMethod && currChoice) {
-                  nextFp[nextMethod.group] = {
-                    ...(prevFp[nextMethod.group] || {}),
-                    currency: currChoice,
-                  };
-                }
-                return {...prev, financingProposal: nextFp};
-              });
+                },
+              }));
             }}
-          >
-            <option value="" disabled>
-              -- Select Financing Method --
-            </option>
-            {FINANCING_METHODS.map(m => (
-              <option key={m.label} value={m.label}>
-                {m.label}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         <div className="field-group" data-field="financingValueProp">
@@ -137,8 +76,8 @@ export function FacilityProposedCard() {
                 background: '#fff',
               }}
             >
-              {(['IDR', 'USD'] as const).map(c => {
-                const currentChoice = facProp.currencyChoice;
+              {(master.currency || []).filter(x => x.active).map(x => x.value).map(c => {
+                const currentChoice = draft.financingProposal?.facilityProposed?.currencyChoice;
                 const isSel = currentChoice === c;
                 return (
                   <button
@@ -148,24 +87,16 @@ export function FacilityProposedCard() {
                     disabled={!canFinance}
                     onClick={() => {
                       const nextVal = isSel ? '' : c;
-                      setDraft((prev: any) => {
-                        const prevFp = prev.financingProposal || {};
-                        const activeMethod = resolveFinancingMethod(prevFp.facilityProposed?.financingMethod);
-                        const nextFp: any = {
-                          ...prevFp,
+                      setDraft((prev: any) => ({
+                        ...prev,
+                        financingProposal: {
+                          ...(prev.financingProposal || {}),
                           facilityProposed: {
-                            ...(prevFp.facilityProposed || {}),
+                            ...(prev.financingProposal?.facilityProposed || {}),
                             currencyChoice: nextVal,
                           },
-                        };
-                        if (activeMethod) {
-                          nextFp[activeMethod.group] = {
-                            ...(prevFp[activeMethod.group] || {}),
-                            currency: nextVal,
-                          };
-                        }
-                        return {...prev, financingProposal: nextFp};
-                      });
+                        },
+                      }));
                       handleTriggerFieldSync('currencyChoice', 'proposal');
                     }}
                     style={{
@@ -186,37 +117,15 @@ export function FacilityProposedCard() {
             </div>
             <input
               type="text"
-              inputMode="decimal"
               id="fap-form-financingValueProp"
               data-field="financingValueProp"
               className="field-input"
               style={{flex: 1}}
-              value={displayFinVal}
+              value={draft.financingProposal?.facilityProposed?.financingValue || ''}
               disabled={!canFinance}
               onFocus={() => handleTriggerFieldSync('financingValueProp', 'proposal')}
-              onKeyDown={e => {
-                if (e.ctrlKey || e.metaKey || ALLOWED_KEYS.has(e.key)) return;
-                if (/^\d$/.test(e.key)) return;
-                if (e.key === '.' && !displayFinVal.includes('.')) return;
-                e.preventDefault();
-              }}
-              onPaste={e => {
-                e.preventDefault();
-                const pasted = sanitizeNumericInput(e.clipboardData.getData('text') || '');
-                if (!pasted) return;
-                setDraft((prev: any) => ({
-                  ...prev,
-                  financingProposal: {
-                    ...(prev.financingProposal || {}),
-                    facilityProposed: {
-                      ...(prev.financingProposal?.facilityProposed || {}),
-                      financingValue: pasted,
-                    },
-                  },
-                }));
-              }}
               onChange={e => {
-                const val = sanitizeNumericInput(e.target.value);
+                const val = e.target.value;
                 setDraft((prev: any) => ({
                   ...prev,
                   financingProposal: {

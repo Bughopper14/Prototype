@@ -38,3 +38,13 @@ CRM_Current_FAP_Stage_Database_Design.xlsx
 CRM_Database_Design_Master_FAP_PreAnalysis.xlsx
 FAP_Legal_Fields_Mapping.xlsx
 Master_Table_Design_FAP_Legal.xlsx
+
+migration.md
+deleted.md
+compare-notes.md
+
+# All markdown notes stay local (files already tracked by git, such as README.md and TECHNICAL.md, are not affected by this rule)
+*.md
+
+# Working notes live in md/ (README.md and TECHNICAL.md stay in the root)
+md/

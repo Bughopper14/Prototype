@@ -1,10 +1,10 @@
 /**
  * FAP sections 05 (purpose & assets), 07 (references) and 08 (financing proposal) keep their form state in
- * the draft as `financingPurposeDetail`, `referenceComments` and `financingProposal`. The database stores the
- * proposal as `financingProposalJson` on the application profile, the comments on the first bank reference,
- * and the summary terms in `financing_detail` (draft.proposal).
+ * the draft as `financingPurposeDetail`, `referenceComments` and `financingProposal`. The backend stores them in
+ * crm_fap_financing_purposes, crm_fap_bank_facilities, crm_fap_financing_proposals, crm_fap_proposal_terms and
+ * crm_fap_doc_requirements, and returns the same shape. No value is defaulted here: empty stays empty.
  */
-import {bankFields, blank, projectFields} from '@liugong/shared';
+import {bankFields, blank, FAP_TERMS_COLUMNS, projectFields} from '@liugong/shared';
 
 /** Reads a number typed the Indonesian way ("1.500.000.000", "11,5", "11.5% Flat", "36 Bulan"). */
 export function parseMoney(val: any): number {
@@ -45,30 +45,6 @@ export function initDraftBase(a: any) {
       /* stored JSON is broken: fall back to the summary terms below */
     }
   }
-  if (!base.financingProposal && base.proposal) {
-    const p = base.proposal;
-    base.financingProposal = {
-      facilityProposed: {
-        financingMethod: p.financingMethod || '',
-        currencyChoice: p.currency || '',
-        financingValue: p.financingValue || '',
-        applicationSource: p.applicationSource || '',
-      },
-      termsFinancialLease: {
-        workingCapitalInvestment: p.facilityPurpose || '',
-        currency: p.currency || '',
-        securityDeposit: p.securityDeposit || '',
-        interestRate: p.interestRate || '',
-        tenor: p.tenorMonths || '',
-        paymentMethod: p.paymentMethod || '',
-      },
-      notes: p.termsNotes || '',
-    };
-  }
-  if (base.proposal?.termsNotes && !base.financingProposal?.notes) {
-    if (!base.financingProposal) base.financingProposal = {};
-    base.financingProposal.notes = base.proposal.termsNotes;
-  }
   return base;
 }
 
@@ -85,19 +61,17 @@ export function bankReferencesWithComments(draft: any) {
 /** The section 08 proposal folded into the summary terms stored in financing_detail. */
 export function mergedProposal(draft: any) {
   const fp = draft.financingProposal || {};
-  const method = fp.facilityProposed?.financingMethod || draft.proposal?.financingMethod || 'FINANCIAL_LEASE';
-  const upper = String(method).toUpperCase();
-  const terms = upper.includes('SALE')
-    ? fp.termsSaleAndLeaseBack || {}
-    : upper.includes('INSTALLMENT') || upper.includes('PEMBELIAN')
-      ? fp.termsInstallmentFinancing || {}
-      : fp.termsFinancialLease || {};
+  const method = fp.facilityProposed?.financingMethod || draft.proposal?.financingMethod || '';
+  // The terms column of the printed FAP that belongs to the chosen financing method
+  const column = (Object.entries(FAP_TERMS_COLUMNS).find(([, code]) => code === method)?.[0] ||
+    '') as keyof typeof FAP_TERMS_COLUMNS | '';
+  const terms = (column && fp[column]) || {};
   const pick = (formValue: any, fallback: any) =>
     formValue !== undefined && formValue !== '' ? parseMoney(formValue) : fallback;
   return {
     ...(draft.proposal || {}),
     financingMethod: method,
-    currency: fp.facilityProposed?.currencyChoice || terms.currency || draft.proposal?.currency || 'IDR',
+    currency: fp.facilityProposed?.currencyChoice || terms.currency || draft.proposal?.currency || '',
     financingValue: pick(
       fp.facilityProposed?.financingValue,
       draft.proposal?.financingValue !== undefined ? parseMoney(draft.proposal.financingValue) : null,
@@ -109,10 +83,9 @@ export function mergedProposal(draft: any) {
       terms.tenor,
       draft.proposal?.tenorMonths ? parseMoney(draft.proposal.tenorMonths) : null,
     ),
-    paymentMethod: terms.paymentMethod || draft.proposal?.paymentMethod || 'In Arrear',
-    applicationSource:
-      fp.facilityProposed?.applicationSource || draft.proposal?.applicationSource || 'DIRECT_SALES',
-    facilityPurpose: terms.workingCapitalInvestment || draft.proposal?.facilityPurpose || 'INVESTMENT',
+    paymentMethod: terms.paymentMethod || draft.proposal?.paymentMethod || '',
+    applicationSource: fp.facilityProposed?.applicationSource || draft.proposal?.applicationSource || '',
+    facilityPurpose: terms.workingCapitalInvestment || draft.proposal?.facilityPurpose || '',
     termsNotes: fp.notes !== undefined ? fp.notes : draft.notes || draft.proposal?.termsNotes || '',
     units: draft.proposal?.units || [],
   };
@@ -123,6 +96,7 @@ export function proposalProfileValues(draft: any) {
   return {
     financingProposalJson: JSON.stringify(draft.financingProposal || {}),
     referenceComments: draft.referenceComments || '',
+    financialAudited: Boolean(draft.financialAudited),
     financingPurposeDetail: draft.financingPurposeDetail || '',
     assetSummaryHeLiuGong: Number(draft.assetSummaryHeLiuGong) || 0,
     assetSummaryTruckLiuGong: Number(draft.assetSummaryTruckLiuGong) || 0,
@@ -130,10 +104,3 @@ export function proposalProfileValues(draft: any) {
     assetSummaryTruckNonLiuGong: Number(draft.assetSummaryTruckNonLiuGong) || 0,
   };
 }
-
-/** Rich-text from TinyMCE ends up in plain profile/bank columns: drop the wrapper of an empty editor. */
-export const isEmptyHtml = (html: any) =>
-  !String(html || '')
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, '')
-    .trim();

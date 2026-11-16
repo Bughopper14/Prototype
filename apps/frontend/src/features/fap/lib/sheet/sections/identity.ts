@@ -1,6 +1,7 @@
 /** FAP number, date, branch, customer status and the company / PIC contact cells. */
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {FapSheetPreviewProps} from '@/features/fap/lib/types';
+import {CHECKBOX_CELLS} from '@/features/fap/lib/field-cells';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
 
 export function applyIdentityAndCustomer({
@@ -22,40 +23,10 @@ export function applyIdentityAndCustomer({
 
   setText('fap-cell-branchCode', d.branchCode);
 
-  const custStatusUpper = String(d.customerStatus || '').toUpperCase();
-
-  if ((props.diffSide === 'ocr' && !custStatusUpper) || isNoneVal(custStatusUpper)) {
-    setText('fap-cell-custNew', '');
-    setText('fap-cell-custExisting', '');
-  } else {
-    const isNew = custStatusUpper.includes('NEW') || custStatusUpper.includes('BARU');
-    const isExisting = custStatusUpper.includes('EXISTING') || custStatusUpper.includes('LAMA');
-    setText('fap-cell-custNew', isNew ? '✓' : '');
-    setText('fap-cell-custExisting', isExisting ? '✓' : '');
-  }
-
-  const compTypeUpper = String(d.companyType || '').toUpperCase();
-
-  const isCorp =
-    compTypeUpper.includes('CORPORATE') ||
-    compTypeUpper.includes('PT') ||
-    compTypeUpper.includes('PERSEROAN');
-
-  const isComm =
-    compTypeUpper.includes('COMMERCIAL') || compTypeUpper.includes('CV') || compTypeUpper.includes('FIRMA');
-
-  const isMicro = compTypeUpper.includes('MICRO') || compTypeUpper.includes('MIKRO');
-
-  const isLiuGongUser =
-    compTypeUpper.includes('LIUGONG') || compTypeUpper.includes('USER') || compTypeUpper.includes('USED');
-
-  setText('fap-cell-corporate', isCorp ? '✓' : '');
-
-  setText('fap-cell-commercial', isComm ? '✓' : '');
-
-  setText('fap-cell-micro', isMicro ? '✓' : '');
-
-  setText('fap-cell-liugongUser', isLiuGongUser ? '✓' : '');
+  const noStatus = (props.diffSide === 'ocr' && !d.customerStatus) || isNoneVal(d.customerStatus);
+  for (const [code, cell] of Object.entries(CHECKBOX_CELLS.customerCategory))
+    setText(cell, !noStatus && d.customerStatus === code ? '✓' : '');
+  for (const [code, cell] of Object.entries(CHECKBOX_CELLS.companyType)) setText(cell, d.companyType === code ? '✓' : '');
 
   setText('fap-cell-companyName', d.companyName);
 

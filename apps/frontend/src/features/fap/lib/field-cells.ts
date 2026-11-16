@@ -1,5 +1,31 @@
 /** Form field key → FAP sheet cell id, used to highlight the cell being edited. */
 
+/** Checkbox cell of each master code, per field. A code without a cell (e.g. business category MAKRO) ticks nothing. */
+export const CHECKBOX_CELLS: Record<string, Record<string, string>> = {
+  industrySegment: {
+    MINING: 'fap-cell-seg-mining',
+    AGRICULTURE: 'fap-cell-seg-agriculture',
+    FORESTRY: 'fap-cell-seg-forestry',
+    CONSTRUCTION: 'fap-cell-seg-construction',
+    OIL_AND_GAS: 'fap-cell-seg-oilgas',
+    OTHER: 'fap-cell-seg-other',
+  },
+  businessRole: {
+    CONS_OWNER: 'fap-cell-role-consowner',
+    CONTRACTORS: 'fap-cell-role-contractors',
+    SUB_CONT: 'fap-cell-role-subcont',
+    RENTAL: 'fap-cell-role-rental',
+    OTHER: 'fap-cell-role-other',
+  },
+  companyType: {
+    CORPORATE: 'fap-cell-corporate',
+    COMMERCIAL: 'fap-cell-commercial',
+    MICRO: 'fap-cell-micro',
+    LIUGONG_USER: 'fap-cell-liugongUser',
+  },
+  customerCategory: {NEW: 'fap-cell-custNew', EXISTING: 'fap-cell-custExisting'},
+};
+
 export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   // Application / Header
   applicationDate: 'fap-cell-applicationDate',
@@ -64,17 +90,6 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   proposalNotes: 'fap-cell-prop-notes',
 
   // Document Requirements
-  docReqCompanyProfile: 'fap-cell-doc-company-profile',
-  docReqLegality: 'fap-cell-doc-legality',
-  docReqDeed: 'fap-cell-doc-deed',
-  docReqDecree: 'fap-cell-doc-decree',
-  docReqCopyId: 'fap-cell-doc-copy-id',
-  docReqAuditedFin: 'fap-cell-doc-audited-financial',
-  docReqBankStatements: 'fap-cell-doc-bank-statements',
-  docReqBankFacility: 'fap-cell-doc-bank-facility',
-  docReqProductionReport: 'fap-cell-doc-production-report',
-  docReqFixedAssets: 'fap-cell-doc-fixed-assets',
-  docReqProjectContracts: 'fap-cell-doc-project-contracts',
 
   // Line of Business & Legal Deeds
   mainBusiness: 'fap-cell-mainBusiness',
@@ -117,6 +132,8 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
 };
 
 export function resolveFieldToCellId(fieldKey: string, section?: string | null, extraData?: any): string {
+  // Master-driven checklists (document requirements, financing purposes) pass the sheet cell (param_key) itself.
+  if (fieldKey.startsWith('fap-cell-')) return fieldKey;
   const shMatch = fieldKey.match(/^stakeholder_(\d+)_(name|pos|position|pct|share|shares|amount)$/i);
   if (shMatch) {
     const idx = shMatch[1];
@@ -253,38 +270,9 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
     if (picMap[fieldKey]) return picMap[fieldKey];
   }
 
-  if (fieldKey === 'industrySegment') {
-    const seg = String(extraData?.industrySegment || '').toUpperCase();
-    if (seg.includes('MINING') || seg.includes('TAMBANG')) return 'fap-cell-seg-mining';
-    if (seg.includes('AGRI') || seg.includes('TANI')) return 'fap-cell-seg-agriculture';
-    if (seg.includes('FOREST') || seg.includes('HUTAN')) return 'fap-cell-seg-forestry';
-    if (seg.includes('CONST') || seg.includes('KONSTRUKSI')) return 'fap-cell-seg-construction';
-    if (seg.includes('OIL') || seg.includes('GAS')) return 'fap-cell-seg-oilgas';
-    if (seg.includes('OTHER') || seg.includes('LAIN')) return 'fap-cell-seg-other';
-    return 'fap-cell-seg-mining';
-  }
-
-  if (fieldKey === 'businessRole') {
-    const role = String(extraData?.businessRole || '').toUpperCase();
-    if (role.includes('CONS') || role.includes('OWNER')) return 'fap-cell-role-consowner';
-    if (role.includes('CONTRACTOR') || role.includes('KONTRAKTOR')) return 'fap-cell-role-contractors';
-    if (role.includes('SUB') || role.includes('CONT')) return 'fap-cell-role-subcont';
-    if (role.includes('RENTAL') || role.includes('SEWA')) return 'fap-cell-role-rental';
-    if (role.includes('OTHER') || role.includes('LAIN')) return 'fap-cell-role-other';
-    return 'fap-cell-role-consowner';
-  }
-
-  if (fieldKey === 'companyType') {
-    const val = String(extraData?.companyType || '').toUpperCase();
-    if (val.includes('COMMERCIAL')) return 'fap-cell-commercial';
-    if (val.includes('MICRO')) return 'fap-cell-micro';
-    return 'fap-cell-corporate';
-  }
-
-  if (fieldKey === 'customerCategory') {
-    const cat = String(extraData?.customerCategory || '').toUpperCase();
-    return cat === 'EXISTING' ? 'fap-cell-custExisting' : 'fap-cell-custNew';
-  }
+  // Checkbox cells are chosen by the master code stored on the application (industry segment, business role, business category, customer status)
+  const checkbox = CHECKBOX_CELLS[fieldKey]?.[String(extraData?.[fieldKey] ?? '')];
+  if (checkbox) return checkbox;
 
   if (FIELD_TO_CELL_ID_MAP[fieldKey]) {
     return FIELD_TO_CELL_ID_MAP[fieldKey];

@@ -32,9 +32,11 @@ export function ReferencesSection() {
           <div className="fap-acc-titles">
             <div className="fap-acc-title-row">
               <h4 className="fap-acc-title">References</h4>
-              <span className="fap-acc-badge">{draft.bankReferences?.length || 0} Facilities</span>
+              <span className={`fap-acc-badge ${(draft.bankReferences?.length || 0) > 0 ? 'success' : ''}`}>
+                {draft.bankReferences?.length || 0} References
+              </span>
             </div>
-            <p className="fap-acc-subtitle">Bank & leasing facility references and historical track record</p>
+            <p className="fap-acc-subtitle">Existing company credit facilities, bank references, and loans</p>
           </div>
         </div>
         <div className="fap-acc-header-right">
@@ -64,13 +66,12 @@ export function ReferencesSection() {
             rows={draft.bankReferences || []}
             disabled={!canEdit}
             carousel
-            onChange={r => setDraft({...draft, bankReferences: r})}
             section="banks"
-            onFieldFocus={handleTriggerFieldSync}
-            onFieldSync={handleTriggerFieldSync}
-            activeFieldKey={activeFieldKey}
             targetRowIndex={targetBankRow}
             onRowChange={setTargetBankRow}
+            onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `banks-${targetBankRow || 0}`)}
+            activeFieldKey={activeFieldKey}
+            onChange={bankReferences => setDraft({...draft, bankReferences})}
           />
 
           {/* Total Monthly Installment */}
@@ -119,14 +120,15 @@ export function ReferencesSection() {
               Comments
             </label>
             <CrmRichTextEditor
-              value={draft.referenceComments || ''}
-              onChange={val => setDraft({...draft, referenceComments: val})}
-              placeholder="Additional comments or bank facility notes..."
-              height={140}
-              disabled={!canEdit}
+              id="fap-form-referenceComments"
               dataField="referenceComments"
-              onFocus={() => handleTriggerFieldSync('referenceComments', 'banks')}
+              value={draft.referenceComments || ''}
+              disabled={!canEdit}
+              height={200}
               onClick={() => handleTriggerFieldSync('referenceComments', 'banks')}
+              onChange={val => {
+                setDraft((prev: any) => ({...prev, referenceComments: val}));
+              }}
             />
           </div>
         </div>

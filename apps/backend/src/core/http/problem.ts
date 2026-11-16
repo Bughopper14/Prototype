@@ -22,6 +22,7 @@ export function toProblem(error: any): {status: number; body: Record<string, unk
   let status: number = error instanceof HttpException ? error.getStatus() : error?.status || 500;
   let message: string = error?.message || 'Request failed';
   let errors = error?.errors || [];
+  const missing = error?.missing;
   if (error instanceof z.ZodError) {
     status = 422;
     message = 'Validation failed';
@@ -50,6 +51,7 @@ export function toProblem(error: any): {status: number; body: Record<string, unk
       error: status === 422 ? 'Unprocessable Entity' : message,
       message,
       errors,
+      ...(missing ? {missing} : {}),
       timestamp: new Date().toISOString(),
     },
   };

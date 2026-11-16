@@ -1,70 +1,18 @@
 import fs from 'node:fs/promises';
-import path from 'node:path';
-import {DeleteObjectCommand, PutObjectCommand, S3Client} from '@aws-sdk/client-s3';
-
-/** File storage: local disk under STORAGE_DIR, or S3/MinIO when the S3_* variables are set. */
-
 import fsSync from 'node:fs';
-const envStorage = process.env.STORAGE_DIR;
-const resolvedEnv = envStorage ? path.resolve(envStorage) : null;
-export const STORAGE_DIR =
-  resolvedEnv && fsSync.existsSync(resolvedEnv)
-    ? resolvedEnv
-    : fsSync.existsSync(path.resolve(process.cwd(), 'storage'))
-      ? path.resolve(process.cwd(), 'storage')
-      : fsSync.existsSync(path.resolve(__dirname, '../../../../storage'))
-        ? path.resolve(__dirname, '../../../../storage')
-        : path.resolve(process.cwd(), 'storage');
-export const documentsDir = path.join(STORAGE_DIR, 'documents');
-export const filesDir = path.join(STORAGE_DIR, 'files');
+import path from 'node:path';
+import {GetObjectCommand, PutObjectCommand, S3Client} from '@aws-sdk/client-s3';
+import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
+import {Global, Injectable, Module} from '@nestjs/common';
 
-export const s3 = process.env.S3_BUCKET
-  ? new S3Client({
-      region: process.env.S3_REGION || 'ap-southeast-1',
-      endpoint: process.env.S3_ENDPOINT || undefined,
-      forcePathStyle: !!process.env.S3_ENDPOINT,
-      credentials: {
-        accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
-        secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
-      },
-    })
-  : null;
-
-export async function putStoredFile(key: string, body: Buffer, contentType: string) {
-  if (s3) {
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET,
-        Key: key,
-        Body: body,
-        ContentType: contentType,
-        ServerSideEncryption: 'AES256',
-      }),
-    );
-    return;
-  }
-  await fs.mkdir(filesDir, {recursive: true});
-  await fs.writeFile(path.join(filesDir, key), body);
-}
-
-export async function removeStoredDocument(key: string) {
-  if (s3) await s3.send(new DeleteObjectCommand({Bucket: process.env.S3_BUCKET, Key: key}));
-  else {
-    await fs.rm(path.join(filesDir, key), {force: true});
-    const protoFiles = path.resolve(STORAGE_DIR, '../prototype-src/storage/files', key);
-    await fs.rm(protoFiles, {force: true}).catch(() => undefined);
-  }
-}
-
-export async function mirrorFileToPrototypeSrc(savedFilePath: string, buffer: Buffer) {
-  try {
-    const rel = path.relative(documentsDir, savedFilePath);
-    const protoTarget = path.resolve(STORAGE_DIR, '../prototype-src/storage/documents', rel);
-    if (fsSync.existsSync(path.resolve(STORAGE_DIR, '../prototype-src/storage'))) {
-      await fs.mkdir(path.dirname(protoTarget), {recursive: true});
-      await fs.writeFile(protoTarget, buffer);
-    }
-  } catch {}
+/** Storage root: STORAGE_DIR when it exists, otherwise the `storage` folder of the backend. */
+function storageRoot() {
+  const fromEnv = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_DIR) : null;
+  if (fromEnv && fsSync.existsSync(fromEnv)) return fromEnv;
+  const inCwd = path.resolve(process.cwd(), 'storage');
+  if (fsSync.existsSync(inCwd)) return inCwd;
+  const inRepo = path.resolve(__dirname, '../../../../storage');
+  return fsSync.existsSync(inRepo) ? inRepo : inCwd;
 }
 
 function timestamp(date = new Date()) {
@@ -73,45 +21,136 @@ function timestamp(date = new Date()) {
   return `${day}_${two(date.getHours())}${two(date.getMinutes())}${two(date.getSeconds())}`;
 }
 
-/** Builds a unique, sanitised path under storage/documents/<type>/ for an uploaded identity document. */
-export async function generateDocumentStorageInfo(
-  docTypeRaw: string,
-  appIdRaw: string,
-  stakeholderIdRaw: string,
-  originalName: string,
-) {
-  const docType =
-    String(docTypeRaw || 'general')
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]/g, '') || 'general';
-  const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
-  const cleanStakeholder = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
-  const extension = (path.extname(originalName) || '.jpg').toLowerCase();
-  const typeDir = path.join(documentsDir, docType);
-  await fs.mkdir(typeDir, {recursive: true});
+/**
+ * File storage: uploaded checklist files under files/ (or S3/MinIO when the S3_* variables are set), and named copies
+ * under documents/ that the OCR worker reads (FAP documents, identity documents).
+ */
+@Injectable()
+export class StorageService {
+  readonly documentsDir: string;
+  readonly filesDir: string;
+  private readonly bucket = process.env.S3_BUCKET || null;
+  private readonly s3 = this.bucket
+    ? new S3Client({
+        region: process.env.S3_REGION || 'ap-southeast-1',
+        endpoint: process.env.S3_ENDPOINT || undefined,
+        forcePathStyle: !!process.env.S3_ENDPOINT,
+        credentials: {
+          accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+        },
+      })
+    : null;
 
-  let baseName = `${docType}_${cleanApp}`;
-  if (cleanStakeholder && cleanStakeholder !== cleanApp && cleanStakeholder !== 'unknown') {
-    baseName += `_${cleanStakeholder}`;
+  constructor() {
+    const root = storageRoot();
+    this.documentsDir = path.join(root, 'documents');
+    this.filesDir = path.join(root, 'files');
   }
-  baseName += `_${timestamp()}`;
 
-  let fileName = `${baseName}${extension}`;
-  for (let counter = 1; ; counter++) {
-    try {
-      await fs.access(path.join(typeDir, fileName));
-      fileName = `${baseName}_${counter}${extension}`;
-    } catch {
-      break;
+  get usesS3() {
+    return !!this.s3;
+  }
+
+  /** Stores an uploaded checklist file under its storage key. */
+  async put(key: string, body: Buffer, contentType: string) {
+    if (this.s3) {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket!,
+          Key: key,
+          Body: body,
+          ContentType: contentType,
+          ServerSideEncryption: 'AES256',
+        }),
+      );
+      return;
     }
+    await fs.mkdir(this.filesDir, {recursive: true});
+    await fs.writeFile(path.join(this.filesDir, key), body);
   }
 
-  return {
-    docType,
-    fileName,
-    typeDir,
-    savedFilePath: path.join(typeDir, fileName),
-    relativePath: `Documents/${docType}/${fileName}`,
-    fileUrl: `/documents/${docType}/${fileName}`,
-  };
+  /** Contents of a locally stored checklist file. */
+  read(key: string) {
+    return fs.readFile(path.join(this.filesDir, path.basename(key)));
+  }
+
+  /** A pre-signed S3 link (15 minutes), inline or as a download. Only when S3 is configured. */
+  signedUrl(key: string, fileName: string, download: boolean) {
+    const disposition = `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+    return getSignedUrl(
+      this.s3!,
+      new GetObjectCommand({Bucket: this.bucket!, Key: key, ResponseContentDisposition: disposition}),
+      {expiresIn: 900},
+    );
+  }
+
+  /** A named copy under documents/ for the OCR worker (local storage only). */
+  async saveNamedCopy(fileName: string, body: Buffer) {
+    if (this.s3) return;
+    await fs.mkdir(this.documentsDir, {recursive: true});
+    await fs.writeFile(path.join(this.documentsDir, path.basename(fileName)), body);
+  }
+
+  /** The named copy of an upload under documents/, also when only the name prefix matches. */
+  async locateNamedCopy(fileName: string) {
+    const base = path.basename(fileName);
+    const exact = path.join(this.documentsDir, base);
+    try {
+      if ((await fs.stat(exact)).isFile()) return exact;
+    } catch {}
+    const prefix = base.split('_[')[0];
+    try {
+      const match = (await fs.readdir(this.documentsDir)).find(f => f.startsWith(prefix));
+      if (match) return path.join(this.documentsDir, match);
+    } catch {}
+    return exact;
+  }
+
+  /** A file under documents/ from its URL segments, or null when the path leaves that folder. */
+  documentPath(segments: string[]) {
+    const file = path.resolve(this.documentsDir, ...segments);
+    return file.startsWith(this.documentsDir + path.sep) ? file : null;
+  }
+
+  /** A unique, sanitised path under documents/<type>/ for an uploaded identity document. */
+  async identityDocumentTarget(docTypeRaw: string, appIdRaw: string, stakeholderIdRaw: string, originalName: string) {
+    const docType =
+      String(docTypeRaw || 'general')
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '') || 'general';
+    const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
+    const cleanStakeholder = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
+    const extension = (path.extname(originalName) || '.jpg').toLowerCase();
+    const typeDir = path.join(this.documentsDir, docType);
+    await fs.mkdir(typeDir, {recursive: true});
+
+    let baseName = `${docType}_${cleanApp}`;
+    if (cleanStakeholder && cleanStakeholder !== cleanApp && cleanStakeholder !== 'unknown') {
+      baseName += `_${cleanStakeholder}`;
+    }
+    baseName += `_${timestamp()}`;
+
+    let fileName = `${baseName}${extension}`;
+    for (let counter = 1; ; counter++) {
+      try {
+        await fs.access(path.join(typeDir, fileName));
+        fileName = `${baseName}_${counter}${extension}`;
+      } catch {
+        break;
+      }
+    }
+
+    return {
+      docType,
+      fileName,
+      savedFilePath: path.join(typeDir, fileName),
+      relativePath: `Documents/${docType}/${fileName}`,
+      fileUrl: `/documents/${docType}/${fileName}`,
+    };
+  }
 }
+
+@Global()
+@Module({providers: [StorageService], exports: [StorageService]})
+export class StorageModule {}

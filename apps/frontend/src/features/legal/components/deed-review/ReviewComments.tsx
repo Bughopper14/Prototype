@@ -1,15 +1,11 @@
 /** Comment box for the reviewer and the error message. */
 
 export function ReviewComments({
-  deed,
-  canCheck,
   canApprove,
   error,
   comments,
   setComments,
 }: {
-  deed: any;
-  canCheck: boolean;
   canApprove: boolean;
   error: string;
   comments: string;
@@ -17,7 +13,7 @@ export function ReviewComments({
 }) {
   return (
     <>
-      {(canCheck || canApprove) && (
+      {canApprove && (
         <label className="deed-review-comments">
           Remarks (optional when approving, required for Remarks or Reject)
           <textarea
@@ -30,10 +26,10 @@ export function ReviewComments({
           />
         </label>
       )}
-      {(canCheck || canApprove) && !comments.trim() && (
+      {canApprove && !comments.trim() && (
         <ul className="muted deed-review-hint">
           <li>
-            <b>{canCheck ? 'Verification passed' : 'Approve deed'}</b>: the deed is correct. Remarks are
+            <b>Approve deed</b>: the deed is correct. Remarks are
             optional.
           </li>
           <li>

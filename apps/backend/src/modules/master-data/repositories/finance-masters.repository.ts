@@ -1,74 +1,80 @@
-import crypto from 'node:crypto';
-import type {MasterCatalog} from '@liugong/shared';
-import {clearCrmLookupCache, cleanNullableString, normalizeCode} from '../../../core/db/crm-lookups';
-import {pool} from '../../../core/db/pool';
-import {readSimpleCatalog, saveSimpleCatalog, type SimpleTableSpec} from './simple-master.helper';
+import {Injectable} from '@nestjs/common';
+import type {MasterCatalog, MasterItem} from '@liugong/shared';
+import {CrmDatabase} from '../../../core/db/crm-database';
+import {CRM} from '../../../core/db/crm-tables';
+import {MasterTableRepository, type MasterTable} from './master-table';
 
-const SIMPLE_SPECS: SimpleTableSpec[] = [
-  {key: 'facilityPurpose', table: 'crm_master_facility_purposes'},
-  {key: 'financingMethod', table: 'crm_master_financing_methods'},
-  {key: 'currency', table: 'crm_master_currencies'},
+const tables: MasterTable[] = [
+  {key: 'facilityPurpose', table: CRM.masterFacilityPurposes},
+  {key: 'financingMethod', table: CRM.masterFinancingMethods},
+  {key: 'currency', table: CRM.masterCurrencies, extras: [{column: 'symbol', field: 'symbol'}]},
+  {
+    key: 'paymentMethod',
+    table: CRM.masterPaymentTimings,
+    // The catalog keeps the lowercase timing ('advance' / 'arrear') the calculators read; the table stores ADVANCE / ARREAR.
+    extras: [
+      {
+        column: 'timing_type',
+        field: 'timing',
+        read: v => (v ? String(v).toLowerCase() : null),
+        write: v => (v ? String(v).toUpperCase() : 'ARREAR'),
+      },
+    ],
+  },
 ];
 
-export async function initializeFinanceMasters(_seed: MasterCatalog) {
-  return;
-}
+/**
+ * Financing masters (facility purpose, financing method, currency, payment timing) plus, read only, the FAP Section 05
+ * purpose options and Section 08 document requirements. Each of those names its FAP sheet cell (param_key); they are
+ * wired into the FAP form together with crm_fap_financing_purposes / crm_fap_doc_requirements.
+ */
+@Injectable()
+export class FinanceMastersRepository {
+  static readonly groups = tables.map(t => t.key);
+  constructor(
+    private readonly db: CrmDatabase,
+    private readonly masterTables: MasterTableRepository,
+  ) {}
 
-export async function financeMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
-  const catalog = await readSimpleCatalog(SIMPLE_SPECS);
-  if (pool) {
-    const [timings] = await pool.query<any[]>(
-      'SELECT code, name, timing_type, is_active FROM crm_master_payment_timings ORDER BY sort_order ASC, name ASC',
+  async catalog(catalog: MasterCatalog): Promise<MasterCatalog> {
+    const result = await this.masterTables.read(tables, catalog);
+    const [purposes] = await this.db.pool.query<any[]>(
+      `SELECT o.code,o.label,o.group_label,o.param_key,o.is_visible,o.is_active,p.code AS purpose_code
+       FROM ${CRM.masterFinancingPurposeOptions} o JOIN ${CRM.masterFacilityPurposes} p ON p.id=o.facility_purpose_id
+       ORDER BY o.sort_order,o.created_at,o.id`,
     );
-    catalog.paymentMethod = timings.map(r => ({
-      value: r.code,
-      name: r.name,
-      active: Boolean(r.is_active),
-      timing: String(r.timing_type || 'ARREAR').toLowerCase(),
-    }));
-  } else {
-    catalog.paymentMethod = [];
+    const [requirements] = await this.db.pool.query<any[]>(
+      `SELECT code,label,param_key,is_visible,is_active FROM ${CRM.masterFapDocumentRequirements}
+       ORDER BY sort_order,created_at,id`,
+    );
+    return {
+      ...result,
+      financingPurposeOption: purposes.map(
+        row =>
+          ({
+            value: row.code,
+            name: row.label,
+            active: !!row.is_active,
+            parentValue: row.purpose_code,
+            paramKey: row.param_key,
+            groupLabel: row.group_label,
+            visible: !!row.is_visible,
+          }) satisfies MasterItem,
+      ),
+      fapDocumentRequirement: requirements.map(
+        row =>
+          ({
+            value: row.code,
+            name: row.label,
+            active: !!row.is_active,
+            paramKey: row.param_key,
+            visible: !!row.is_visible,
+          }) satisfies MasterItem,
+      ),
+    };
   }
-  return catalog;
-}
 
-export async function saveFinanceMasters(catalog: MasterCatalog) {
-  await saveSimpleCatalog(SIMPLE_SPECS, catalog);
-  if (pool && Array.isArray(catalog.paymentMethod)) {
-    const conn = await pool.getConnection();
-    try {
-      await conn.beginTransaction();
-      for (let i = 0; i < catalog.paymentMethod.length; i++) {
-        const item = catalog.paymentMethod[i];
-        const rawVal = cleanNullableString(item?.value);
-        const name = cleanNullableString(item?.name) || rawVal;
-        if (!rawVal || !name) continue;
-        const code = normalizeCode(rawVal).slice(0, 50) || rawVal;
-        const timingType = String(item.timing || '').toLowerCase().includes('advance') ? 'ADVANCE' : 'ARREAR';
-        const active = item.active === false ? 0 : 1;
-        const [existing] = await conn.execute<any[]>(
-          'SELECT id FROM crm_master_payment_timings WHERE id = ? OR LOWER(code) = LOWER(?) OR LOWER(name) = LOWER(?) LIMIT 1',
-          [rawVal, code, name],
-        );
-        if (existing.length) {
-          await conn.execute(
-            'UPDATE crm_master_payment_timings SET name = ?, timing_type = ?, sort_order = ?, is_active = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?',
-            [name, timingType, i + 1, active, existing[0].id],
-          );
-        } else {
-          await conn.execute(
-            'INSERT INTO crm_master_payment_timings (id, code, name, timing_type, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)',
-            [crypto.randomUUID(), code, name, timingType, i + 1, active],
-          );
-        }
-      }
-      await conn.commit();
-      clearCrmLookupCache();
-    } catch (e) {
-      await conn.rollback();
-      throw e;
-    } finally {
-      conn.release();
-    }
+  save(catalog: MasterCatalog, by: string | null) {
+    return this.masterTables.save(tables, catalog, by);
   }
 }

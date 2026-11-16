@@ -1,4 +1,5 @@
-import {date, money, statusLabel} from '@/shared/lib/format';
+import {date, money} from '@/shared/lib/format';
+import {statusName, useMasterData, workflowStatuses} from '@/shared/master-data';
 import {Badge} from '@/shared/ui/Badge';
 import {label} from '@liugong/shared';
 import {ArrowUpRight, Building2, ChevronLeft, ChevronRight, Download, Search, Settings2} from 'lucide-react';
@@ -17,6 +18,7 @@ export function ApplicationTable({
   documentMode?: boolean;
   onViewAll?: () => void;
 }) {
+  const master = useMasterData();
   const [search, setSearch] = useState(''),
     [status, setStatus] = useState('ALL'),
     [branch, setBranch] = useState('ALL'),
@@ -42,7 +44,7 @@ export function ApplicationTable({
         r.fap_number,
         r.company_name,
         r.branch_code,
-        statusLabel[r.status],
+        statusName(r.status),
         r.financing_value || 0,
         String(r.application_date).slice(0, 10),
       ]),
@@ -103,9 +105,9 @@ export function ApplicationTable({
         <div className="filters">
           <select aria-label="Filter status" value={status} onChange={e => setStatus(e.target.value)}>
             <option value="ALL">All statuses</option>
-            {Object.entries(statusLabel).map(([s, l]) => (
-              <option key={s} value={s}>
-                {l}
+            {workflowStatuses(master).map(s => (
+              <option key={s.value} value={s.value}>
+                {s.name}
               </option>
             ))}
           </select>

@@ -1,7 +1,7 @@
 /** Master-data catalog shared by every form: in-memory store, React hook and save. */
 import {api} from '@/shared/lib/api';
 import {
-  defaultMasterCatalog,
+  emptyMasterCatalog,
   validateMasterCatalog,
   validateMasterGroupItems,
   type MasterCatalog,
@@ -11,17 +11,13 @@ import {useEffect, useState} from 'react';
 export const equipmentChildren = new Set(['brand', 'unitType', 'modelName', 'assetName']);
 export const locationGroups = new Set(['province', 'city', 'district', 'village']);
 
-let catalog = defaultMasterCatalog(),
+let catalog = emptyMasterCatalog(),
   revision = 0;
+/** The current catalog outside React (helpers and plain functions). */
+export const currentMasterData = () => catalog;
+
 export function setMasterData(data: {catalog: MasterCatalog; revision: number}) {
-  const def = defaultMasterCatalog();
-  const next = {...def, ...data.catalog};
-  for (const k of ['district', 'village', 'postalCode'] as const) {
-    if (!next[k] || next[k].length === 0) {
-      next[k] = def[k];
-    }
-  }
-  catalog = next;
+  catalog = {...emptyMasterCatalog(), ...data.catalog};
   revision = data.revision;
   window.dispatchEvent(new Event('master-data-updated'));
 }

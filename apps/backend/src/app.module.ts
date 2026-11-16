@@ -1,8 +1,10 @@
 import {Module} from '@nestjs/common';
 import {APP_FILTER, APP_GUARD, APP_INTERCEPTOR} from '@nestjs/core';
+import {CrmDatabaseModule} from './core/db/crm-database';
 import {ApiResultInterceptor} from './core/http/api-result.interceptor';
 import {OriginGuard, SessionGuard, WriteValidationGuard} from './core/http/guards';
 import {ProblemFilter} from './core/http/problem.filter';
+import {StorageModule} from './core/storage';
 import {ActivityModule} from './modules/activity/activity.module';
 import {ApplicationsModule} from './modules/applications/applications.module';
 import {AuthModule} from './modules/auth/auth.module';
@@ -24,6 +26,8 @@ import {UsersModule} from './modules/users/users.module';
  */
 @Module({
   imports: [
+    CrmDatabaseModule,
+    StorageModule,
     SystemModule,
     AuthModule,
     PortalModule,

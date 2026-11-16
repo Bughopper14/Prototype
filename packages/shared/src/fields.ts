@@ -107,7 +107,7 @@ export function formatCompanyName(str: string): string {
 }
 
 export const profileFields = [
-  f('branchCode', 'Branch', 'select', ['JKT01', 'BPN01', 'PLB01', 'MDN01', 'SBY01']),
+  f('branchCode', 'Branch', 'select'),
   f('customerStatus', 'Customer Relationship', 'select', ['NEW', 'EXISTING']),
   f('companyAddress', 'Company Address'),
   f('province', 'Province'),
@@ -123,19 +123,12 @@ export const profileFields = [
   f('mainBusiness', 'Main Business'),
   f('experienceYears', 'Experience · Years', 'number'),
   f('experienceMonths', 'Experience · Months', 'number'),
-  f('locationStatus', 'Business Premises', 'select', ['OWNED', 'RENTED', 'OTHER']),
+  f('locationStatus', 'Business Premises', 'select'),
   f('repaymentSource', 'Source of Repayment'),
   f('latestDeedNo', 'Latest Deed Number'),
   f('latestDeedDate', 'Latest Deed Date', 'date'),
-  f('industrySegment', 'Industry', 'select', [
-    'MINING',
-    'AGRICULTURE',
-    'FORESTRY',
-    'CONSTRUCTION',
-    'OIL_AND_GAS',
-    'OTHER',
-  ]),
-  f('businessRole', 'Business Role', 'select', ['CONS_OWNER', 'CONTRACTORS', 'SUB_CONT', 'RENTAL', 'OTHER']),
+  f('industrySegment', 'Industry', 'select'),
+  f('businessRole', 'Business Role', 'select'),
   f('assetSummaryHeLiuGong', 'Asset Summary HE LiuGong', 'number'),
   f('assetSummaryTruckLiuGong', 'Asset Summary Truck LiuGong', 'number'),
   f('assetSummaryHeNonLiuGong', 'Asset Summary HE Non-LiuGong', 'number'),
@@ -145,16 +138,9 @@ export const profileFields = [
   f('financingProposalJson', 'Financing Proposal JSON'),
 ];
 
-/** Profile keys that belong to one application only, never copied to the customer directory. */
-export const applicationOnlyProfileKeys = [
-  'financingPurposeDetail',
-  'referenceComments',
-  'financingProposalJson',
-];
-
 export const customerFields = [
   f('companyName', 'Company Name'),
-  f('companyType', 'Business Category', 'select', ['CORPORATE', 'COMMERCIAL', 'MICRO', 'LIUGONG_USER']),
+  f('companyType', 'Business Category', 'select'),
   f('nib', 'NIB'),
   f('nibDate', 'NIB Established Date', 'date'),
   f('npwp', 'NPWP'),
@@ -233,25 +219,13 @@ export function normalizeStakeholderPositionKey(pos?: string | null): string {
   return '';
 }
 
+/**
+ * Stakeholder fields (crm_fap_legal_stakeholders). Representative type, position and designation are Master Data
+ * selects; the other selects are the ENUM values of the table, and an empty choice is stored as NULL.
+ */
 export const stakeholderFields = [
-  f('representativeType', 'Representative Type', 'select', [
-    'DIRECTOR',
-    'SHAREHOLDER',
-    'AUTHORIZED_SIGNATORY',
-    'OTHER',
-  ]),
-  {
-    ...f('positions', 'Positions', 'select', [
-      'MAIN_DIRECTOR',
-      'DIRECTOR',
-      'MAIN_COMMISSIONER',
-      'COMMISSIONER',
-      'BOARD_OF_DIRECTORS',
-      'AUTORIZED_REPRESENTATIVE',
-    ]),
-    optionLabels: STAKEHOLDER_POSITION_LABELS,
-    defaultValue: '',
-  },
+  f('representativeType', 'Representative Type', 'select'),
+  {...f('positions', 'Positions', 'select'), defaultValue: ''},
   f('stakeholderType', 'Type', 'select', ['INDIVIDUAL', 'CORPORATE']),
   {...f('signatory', 'Signatory', 'select', ['YES', 'NO']), defaultValue: ''},
   {
@@ -278,17 +252,7 @@ export const stakeholderFields = [
     ]),
     defaultValue: '',
   },
-  {
-    ...f('designation', 'Designation', 'select', [
-      'DIRECTOR',
-      'COMMISSIONER',
-      'PRESIDENT_DIRECTOR',
-      'OWNER',
-      'MANAGER',
-      'OTHER',
-    ]),
-    defaultValue: '',
-  },
+  {...f('designation', 'Designation', 'select'), defaultValue: ''},
   f('occupation', 'Occupation'),
   {...f('email', 'Email', 'email'), required: true},
   {...f('mobilePhone', 'Mobile Phone', 'tel'), required: true},
@@ -317,45 +281,29 @@ export const projectFields = [
 
 export const bankFields = [
   f('bankOrFinInstitution', 'Bank / Financial Institution'),
-  f('currency', 'Currency', 'select', ['IDR']),
+  f('currency', 'Currency', 'select'),
   f('creditFacility', 'Credit Facility (IDR)', 'number'),
   f('monthlyInstallment', 'Monthly Installment (IDR)', 'number'),
   f('yearStarted', 'Year Started', 'number'),
   f('interestRate', 'Interest Rate (%)', 'number'),
   f('paymentRecord', 'Payment Record'),
-  f('facilityStatus', 'Facility Status', 'select', ['Active', 'Settled']),
+  f('facilityStatus', 'Facility Status', 'select', ['ACTIVE', 'SETTLED']),
   f('comments', 'Comments'),
 ];
 
 export const proposalFields = [
-  f('facilityPurpose', 'Facility Purpose', 'select', ['INVESTMENT', 'WORKING_CAPITAL']),
+  f('facilityPurpose', 'Facility Purpose', 'select'),
   f('purposeDetail', 'Purpose Details'),
-  f('financingMethod', 'Financing Method', 'select', [
-    'FINANCIAL_LEASE',
-    'SALE_AND_LEASE_BACK',
-    'INSTALLMENT_FINANCING',
-  ]),
-  f('currency', 'Currency', 'select', ['IDR']),
+  f('financingMethod', 'Financing Method', 'select'),
+  f('currency', 'Currency', 'select'),
   f('financingValue', 'Total Equipment Value (IDR)', 'number'),
   f('downPaymentValue', 'Down Payment (IDR)', 'number'),
   f('securityDeposit', 'Security Deposit (IDR)', 'number'),
   f('interestRate', 'Annual Interest Rate (%)', 'number'),
   f('tenorMonths', 'Tenor (Months)', 'number'),
-  f('paymentMethod', 'Payment Timing', 'select', ['In Arrear', 'In Advance']),
+  f('paymentMethod', 'Payment Timing', 'select'),
   f('applicationSource', 'Application Source'),
   f('termsNotes', 'Terms and Notes'),
-];
-
-export const unitFields = [
-  f('assetName', 'Asset Name'),
-  f('unitCategory', 'Unit Category', 'select', ['HE', 'TRUCK']),
-  f('brand', 'Brand'),
-  f('unitType', 'Type'),
-  f('modelName', 'Model'),
-  {...f('classTon', 'Class', 'number'), unit: 'ton'},
-  f('quantity', 'Total Unit', 'number'),
-  f('years', 'Years', 'number'),
-  {...f('specifications', 'Specifications', 'textarea'), wide: true},
 ];
 
 export const financialFields = [
@@ -388,4 +336,3 @@ export const legalDeedFields = [
   f('ministerialDecreeNumber', 'Ministerial Decree Number'),
   f('ministerialDecreeDate', 'Ministerial Decree Date', 'date'),
 ];
-export const legalPartyFields: Field[] = [];

@@ -1,16 +1,5 @@
 import {normalizeBirthDate} from './dates';
 
-export const statusLabel: Record<string, string> = {
-  DRAFT: 'Draft',
-  SUBMITTED_TO_BS: 'BS verification',
-  BS_VERIFIED: 'BS verified',
-  IN_CA_LEGAL_REVIEW: 'CA & Legal review',
-  CREDIT_COMMITTEE_REVIEW: 'Committee review',
-  APPROVED: 'Approved',
-  REJECTED: 'Rejected',
-  RETURNED: 'Returned',
-};
-
 export const money = (n: any, compact = false) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',

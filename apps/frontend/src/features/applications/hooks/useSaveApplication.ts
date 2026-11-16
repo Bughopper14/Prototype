@@ -6,10 +6,11 @@ import {
   mergedProposal,
   proposalProfileValues,
 } from '@/features/applications/lib/financing-proposal';
+import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
-import {money} from '@/shared/lib/format';
+import {STAGE} from '@/shared/master-data';
 
 export function useSaveApplication({
   customerCategory,
@@ -59,7 +60,6 @@ export function useSaveApplication({
     setBusy(true);
     setError('');
     try {
-      const stakeholdersChanged = JSON.stringify(draft.stakeholders) !== JSON.stringify(a.stakeholders);
       const hasPicData =
         draft.pic &&
         Object.values(draft.pic).some(
@@ -105,7 +105,7 @@ export function useSaveApplication({
         ...(draft.customer || {}),
         ...(customerDraft || {}),
         companyName: resolvedName,
-        companyType: liveCompanyType || 'CORPORATE',
+        companyType: liveCompanyType,
         nib: liveNib || customerDraft?.nib || draft.customer?.nib || '',
         npwp: liveNpwp || customerDraft?.npwp || draft.customer?.npwp || '',
         establishmentActNo:
@@ -158,30 +158,21 @@ export function useSaveApplication({
               ...(canBanks ? {bankReferences} : {}),
               ...(canFinance ? {proposal, financialStatements: draft.financialStatements || []} : {}),
             }
-          : tab === 2
-            ? {
-                projects: cleanProjects,
-                bankReferences,
-                proposal,
-              }
-            : tab === 3
-              ? {
-                  proposal,
-                }
-              : tab === 4
-                ? {
-                    financialStatements: draft.financialStatements,
-                  }
-                : {
-                    legal: legalPayload,
-                    stakeholders: (draft.stakeholders || []).map(stakeholderForSave),
-                  };
+          : tab === 4
+            ? {financialStatements: draft.financialStatements}
+            : {
+                legal: legalPayload,
+                stakeholders: (draft.stakeholders || []).map(stakeholderForSave),
+              };
 
-      const currentStage = activeStage || draft.stage || a.stage || 'FAP Stage';
-      const v = await api(`/applications/${a.id}/page-${tab < 3 ? 1 : tab === 5 ? 'legal' : 2}`, 'PUT', {
+      const currentStage = activeStage || draft.stage || a.stage || STAGE.FAP;
+      const v = await api(`/applications/${a.id}/page-${tab === 5 ? 'legal' : 1}`, 'PUT', {
         ...body,
         stage: currentStage,
+        // The server refuses the save when someone else changed the application after it was loaded here
+        ...(tab === 5 ? {} : {expectedUpdatedAt: a.updatedAt}),
       });
+      if (tab === 5) await saveStakeholderScans(deedsWithStakeholders.flatMap((d: any) => d.stakeholders || []));
       const nextApp = {
         ...a,
         ...v,
@@ -200,8 +191,6 @@ export function useSaveApplication({
         const tabNamesList: Record<number, string> = {
           0: 'FAP Form',
           1: 'Stakeholders',
-          2: 'Business & banks',
-          3: 'Financing & units',
           4: 'Financial statements',
           5: 'Legal',
           6: 'Documents',
@@ -229,10 +218,7 @@ export function useSaveApplication({
           if (tab === 0)
             changeSnippet = `Saved company profile, contact details, NIB (${customerPayload.nib || 'N/A'}), and NPWP (${customerPayload.npwp || 'N/A'}).`;
           else if (tab === 1) changeSnippet = `Saved share ownership and stakeholder list.`;
-          else if (tab === 2)
-            changeSnippet = `Updated business operations, industry segment, and bank reference info.`;
-          else if (tab === 3 || tab === 4)
-            changeSnippet = `Updated financing value (${money(draft.proposal?.financingValue)}) and equipment unit terms.`;
+          else if (tab === 4) changeSnippet = `Updated the financial statements.`;
           else if (tab === 5) changeSnippet = `Updated legal deeds and shareholder registers.`;
           else if (tab === 6) changeSnippet = `Updated document desk checklist records.`;
           else if (tab === 8)

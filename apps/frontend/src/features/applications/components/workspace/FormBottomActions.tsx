@@ -1,6 +1,6 @@
 /** Back / save / submit buttons under the form tabs. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {ArrowLeft, ArrowRight, Loader2, Lock, Save} from 'lucide-react';
+import {ArrowLeft, ArrowRight, Loader2, Save} from 'lucide-react';
 
 export function FormBottomActions() {
   const {
@@ -15,7 +15,6 @@ export function FormBottomActions() {
     setComments,
     setSaveConfirm,
     isFapStage,
-    isSubmitLocked,
     actions,
     save,
     canLegal,
@@ -41,7 +40,7 @@ export function FormBottomActions() {
             {busy ? <Loader2 size={15} className="spin" /> : <Save size={15} />}Save & Create Application
           </button>
         ) : (
-          (tab === 0 || tab === 2 || tab === 3 || tab === 4 || tab === 5) &&
+          (tab === 0 || tab === 4 || tab === 5) &&
           canSaveTab && (
             <button
               className="button primary"
@@ -55,19 +54,12 @@ export function FormBottomActions() {
         {actions.length > 0 && (
           <div className="workflow-buttons">
             {actions.map(action => {
-              const isSubmitFap = isFapStage && action === 'SUBMIT_TO_BS';
-              const isActionLocked = (isSubmitFap || action === 'SUBMIT_TO_BS') && isSubmitLocked;
+              const isSubmitFap = isFapStage && action === 'SUBMIT';
               return (
                 <button
                   key={action}
                   className={
                     'button ' + (action === 'RETURN' || action === 'REJECT_COMMITTEE' ? '' : 'primary')
-                  }
-                  disabled={isActionLocked}
-                  title={
-                    isActionLocked
-                      ? 'Please upload the signed FAP Stage document in the Documents tab first to proceed.'
-                      : undefined
                   }
                   onClick={() => {
                     if (isSubmitFap) {
@@ -79,12 +71,11 @@ export function FormBottomActions() {
                     }
                   }}
                 >
-                  {isActionLocked && <Lock size={13} style={{marginRight: 4}} />}
                   {isSubmitFap
                     ? 'Submit'
                     : (
                         {
-                          SUBMIT_TO_BS: 'Submit to BS',
+                          SUBMIT: 'Submit to BS',
                           VERIFY_BS: 'Complete BS verification',
                           START_REVIEW: 'Start CA & Legal review',
                           RECOMMEND_CA: 'Sign off · CA',

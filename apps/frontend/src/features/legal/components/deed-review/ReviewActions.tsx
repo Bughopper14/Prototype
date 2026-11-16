@@ -2,9 +2,7 @@
 import {AlertCircle, Check, FileText, Pencil, Send} from 'lucide-react';
 
 export function ReviewActions({
-  deed,
   canSubmit,
-  canCheck,
   canApprove,
   busy,
   comments,
@@ -14,9 +12,7 @@ export function ReviewActions({
   onEdit,
   action,
 }: {
-  deed: any;
   canSubmit: boolean;
-  canCheck: boolean;
   canApprove: boolean;
   busy: boolean;
   comments: string;
@@ -32,7 +28,7 @@ export function ReviewActions({
         <button className="button" disabled={busy} onClick={onClose}>
           Close
         </button>
-        {(canCheck || canApprove) && (
+        {canApprove && (
           <button
             className="button"
             disabled={busy || !comments.trim()}
@@ -43,7 +39,7 @@ export function ReviewActions({
             Remarks
           </button>
         )}
-        {(canCheck || canApprove) && (
+        {canApprove && (
           <button
             className="button danger"
             disabled={busy || !comments.trim()}
@@ -69,17 +65,7 @@ export function ReviewActions({
         {canSubmit && (
           <button className="button primary" disabled={busy} onClick={() => action('SUBMIT')}>
             <Send size={14} />
-            {(deed.reviewHistory || []).length ? 'Resubmit for Legal Approval' : 'Submit for Legal Approval'}
-          </button>
-        )}
-        {canCheck && (
-          <button
-            className="button primary"
-            disabled={busy || Boolean(documentId && !url)}
-            onClick={() => action('CHECK')}
-          >
-            <Check size={14} />
-            Verification passed
+            {status === 'NEEDS_REVISION' ? 'Resubmit for Legal Approval' : 'Submit for Legal Approval'}
           </button>
         )}
         {canApprove && (

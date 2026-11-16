@@ -19,7 +19,8 @@ changing the code.
 ```bash
 pnpm install
 cp apps/backend/.env.example apps/backend/.env   # DB_*, JWT_SECRET (production), optional S3_*, CORS_ORIGINS
-pnpm db:setup                                    # creates the database, applies db/schema.sql + db/seed.sql, runs migrations
+mysql -u root -p < apps/backend/db/plan-schema.sql   # creates crm_liugong with every table
+mysql -u root -p < apps/backend/db/plan-seed.sql     # all reference / master data
 pnpm user:create admin "<password>" "System Admin" --admin       # fresh database only
 pnpm dev                                         # frontend http://localhost:3000, API http://localhost:3001
 ```
@@ -35,7 +36,7 @@ Root scripts (run through Turborepo, `packages/shared` is always built first):
 | `pnpm build` | shared → `dist/`, backend → `apps/backend/dist/`, frontend → `apps/frontend/dist/` |
 | `pnpm typecheck` | `tsc --noEmit` in every package |
 | `pnpm format` / `format:check` | Prettier for the whole repo |
-| `pnpm db:setup`, `pnpm user:create`, `pnpm import:pre-analysis <folder> [--apply]` | backend scripts |
+| `pnpm user:create`, `pnpm import:pre-analysis <folder> [--apply]` | backend scripts |
 
 Run one package only with `pnpm --filter @liugong/backend <script>` (or `@liugong/frontend`, `@liugong/shared`).
 
@@ -113,7 +114,7 @@ apps/
         activity/                   activity feed, notifications, workspace menus
         system/                     health checks
     db/                             schema.sql (all DDL), seed.sql (reference data), reset-data.sql
-    scripts/                        db-setup, create-user, import-pre-analysis, dev/ (e2e, mint-session, check-password)
+    scripts/                        create-user, import-pre-analysis, dev/ (mint-session, check-password)
   ocr/                              Python OCR service (see OCR below)
 packages/
   shared/src/                       age, deed-workflow, experience, fields, input-validation, master-catalog
@@ -166,11 +167,21 @@ authority for; the API enforces roles independently (for example every `/um/*` r
 
 ## Database
 
-`apps/backend/db/schema.sql` is the single source of truth for tables. `pnpm db:setup` is idempotent: it creates the
-database, applies the schema and `db/seed.sql`, then runs the migration and seeding helpers (including the audit triggers
-that fill `created_by` / `updated_by`). The running app never creates tables.
+The CRM is moving, module by module, to the `crm_liugong` design: `apps/backend/db/plan-schema.sql` (tables) and
+`apps/backend/db/plan-seed.sql` (all seed data), documented in `apps/backend/db/CRM_Liugong_Database_Design.xlsx`.
+The backend does not create or alter `crm_` tables; the schema and seed files own them.
 
-`db/reset-data.sql` empties every table and keeps the structure (read its header first; back up before running it).
+CRM table names come from one place, `apps/backend/src/core/db/crm-tables.ts`: `CRM.masterBranches` gives
+`crm_master_branches` with the `CRM_PREFIX` from `.env` (default `crm_`). When `CRM_DB` is set, CRM queries use that
+database while `DB_NAME` stays on the database the users / auth tables live in. A file uses either CRM tables or users
+tables, never both. Users / auth (`users_*`, `modules/users`, `modules/auth`, `modules/portal`) is owned separately.
+
+Moved so far: all master data (Master Data screen, catalog, mandatory-field rules). Applications, FAP sections, legal,
+documents / OCR, activity and the FAP freeze still use the old tables until their phase.
+
+Each CRM module becomes Nest providers when it moves: repositories are `@Injectable` classes that receive
+`CrmDatabase` (`core/db/crm-database.ts`, a global provider around the pool) and are injected into the module's
+service / controller. `modules/master-data` is the reference: `MasterDataService` plus one repository per master group.
 
 Pre-Analysis form data is one JSON document per application in `application_pre_analysis.form_data`.
 
@@ -221,18 +232,6 @@ suggestion: names and dates need to be checked by a person.
 
 ## Testing
 
-`apps/backend/scripts/dev/e2e-write-flow.ts` drives the real HTTP API end to end (login, customer, application, saves,
-legal, upload/verify, FAP approval and OCR comparison, workflow, user management, logout). It writes data, so use a
-throw-away database (from `apps/backend`):
-
-```bash
-DB_NAME=crm_test pnpm db:setup
-DB_NAME=crm_test pnpm user:create e2e-admin "E2e-Pass-123" "E2E Admin" --admin
-pnpm build && DB_NAME=crm_test API_PORT=3100 node dist/main.js     # in another terminal
-npx tsx scripts/dev/e2e-write-flow.ts
-```
-
-The FAP OCR step also needs `apps/ocr/.venv` and `scripts/dev/fixtures/test_doc_fap_stage.pdf` (git-ignored).
 `scripts/dev/mint-session.ts <username>` prints a session cookie for manual API checks with curl.
 
 ## Known gaps
@@ -242,5 +241,5 @@ The FAP OCR step also needs `apps/ocr/.venv` and `scripts/dev/fixtures/test_doc_
 - `GET /api/v1/master-data` sends about 15 MB per first load; it should be split or loaded lazily.
 - OCR with `doc_type=auto` misdetects KTP/NPWP and fails on the NIB PDF; the UI always sends an explicit type.
 - Web-push notifications of the old portal are not ported.
-- Repositories still contain legacy `CREATE TABLE` / `ALTER` migration code next to `db/schema.sql`; they are only executed by
-  `db:setup` and can be removed once all environments are on the current schema.
+- CRM modules not yet moved to crm_liugong still contain old `CREATE TABLE` / `ALTER` helpers; nothing runs them any more
+  and each is removed when its module moves.

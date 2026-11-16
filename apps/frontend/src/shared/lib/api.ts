@@ -52,6 +52,7 @@ async function request(path: string, method: string, body?: unknown) {
       : '';
     throw Object.assign(new Error(fieldErrors || data.message || data.error || 'Request failed'), {
       code: data?.code,
+      missing: data?.missing,
     });
   }
   return data;
@@ -91,12 +92,4 @@ export function hasAuth(authority: string, user = currentUser): boolean {
   if (!user) return false;
   if (user.isAdmin || user.displayRole === 'Admin' || user.username === 'admin') return true;
   return Array.isArray(user.authorities) && user.authorities.includes(authority);
-}
-
-let lastActivity = '';
-
-export function logActivity(action: string) {
-  if (!action || lastActivity === action) return;
-  lastActivity = action;
-  api('/user-activity', 'POST', {action}).catch(() => {});
 }

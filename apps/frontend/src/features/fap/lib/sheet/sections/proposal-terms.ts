@@ -1,35 +1,31 @@
 /** Facility proposed (with the currency strike-through) and the three Terms & Conditions boxes. */
-import {
-  normalizeTermsPurpose,
-  resolveFinancingMethod,
-} from '@/features/applications/components/workspace/customer/proposal/terms-config';
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
+import type {MasterCatalog} from '@liugong/shared';
 
 export function applyProposalAndTerms({
   doc,
   d,
   setText,
+  master,
 }: {
   doc: Document;
   d: SheetValues;
   setText: CellWriters['setText'];
+  master: MasterCatalog;
 }) {
+  // Payment timing is stored as its master code (IN_ARREAR / IN_ADVANCE); the sheet prints its name.
+  const paymentName = (code: any) => (master.paymentMethod || []).find(x => x.value === code)?.name || code;
   // Financing Proposal & Terms and Conditions
   const prop = d.financingProposal || {};
 
   const facProp = prop.facilityProposed || {};
 
-  const activeMethod = resolveFinancingMethod(facProp.financingMethod);
-  const showFl = !activeMethod || activeMethod.group === 'termsFinancialLease';
-  const showSlb = !activeMethod || activeMethod.group === 'termsSaleAndLeaseBack';
-  const showIf = !activeMethod || activeMethod.group === 'termsInstallmentFinancing';
+  const tcFl = prop.termsFinancialLease || {};
 
-  const tcFl = showFl ? prop.termsFinancialLease || {} : {};
+  const tcSlb = prop.termsSaleAndLeaseBack || {};
 
-  const tcSlb = showSlb ? prop.termsSaleAndLeaseBack || {} : {};
-
-  const tcIf = showIf ? prop.termsInstallmentFinancing || {} : {};
+  const tcIf = prop.termsInstallmentFinancing || {};
 
   setText('fap-cell-prop-method', facProp.financingMethod);
 
@@ -62,21 +58,21 @@ export function applyProposalAndTerms({
         el.style.textAlign = 'center';
         el.style.fontWeight = 'bold';
         el.style.color = '#002060';
-        el.style.fontSize = '';
+        if (valStr.length > 5) {
+          el.style.fontSize = '14pt';
+        } else {
+          el.style.fontSize = '20pt';
+        }
       } else {
         el.textContent = defaultLabel;
         el.style.textAlign = '';
         el.style.fontWeight = '';
         el.style.color = '';
-        el.style.fontSize = '';
       }
     }
   };
 
-  setBoxText(
-    'fap-cell-tc-fl-purpose',
-    normalizeTermsPurpose(tcFl.workingCapitalInvestment || tcFl.investment),
-  );
+  setBoxText('fap-cell-tc-fl-purpose', tcFl.workingCapitalInvestment);
 
   setBoxText('fap-cell-tc-fl-curr', tcFl.currency);
 
@@ -86,9 +82,9 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-fl-tenor', tcFl.tenor);
 
-  setBoxText('fap-cell-tc-fl-payment', tcFl.paymentMethod);
+  setBoxText('fap-cell-tc-fl-payment', paymentName(tcFl.paymentMethod));
 
-  setBoxText('fap-cell-tc-slb-purpose', normalizeTermsPurpose(tcSlb.workingCapitalInvestment));
+  setBoxText('fap-cell-tc-slb-purpose', tcSlb.workingCapitalInvestment);
 
   setBoxText('fap-cell-tc-slb-curr', tcSlb.currency);
 
@@ -98,9 +94,9 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-slb-tenor', tcSlb.tenor);
 
-  setBoxText('fap-cell-tc-slb-payment', tcSlb.paymentMethod);
+  setBoxText('fap-cell-tc-slb-payment', paymentName(tcSlb.paymentMethod));
 
-  setBoxText('fap-cell-tc-if-purpose', normalizeTermsPurpose(tcIf.workingCapitalInvestment));
+  setBoxText('fap-cell-tc-if-purpose', tcIf.workingCapitalInvestment);
 
   setBoxText('fap-cell-tc-if-curr', tcIf.currency);
 
@@ -110,5 +106,5 @@ export function applyProposalAndTerms({
 
   setBoxText('fap-cell-tc-if-tenor', tcIf.tenor);
 
-  setBoxText('fap-cell-tc-if-payment', tcIf.paymentMethod);
+  setBoxText('fap-cell-tc-if-payment', paymentName(tcIf.paymentMethod));
 }

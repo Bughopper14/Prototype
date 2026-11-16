@@ -83,20 +83,6 @@ export function applyFixedAssets({
     setText('fap-cell-asset-tot-pct', '');
   }
 
-  const locStatus = String(d.locationStatus || '')
-    .toUpperCase()
-    .trim();
-
-  const displayLocationStatus =
-    locStatus === 'OWNED'
-      ? 'Owned'
-      : locStatus === 'RENTED'
-        ? 'Rented'
-        : locStatus === 'OTHERS' || locStatus === 'OTHER'
-          ? 'Others'
-          : isNoneVal(locStatus)
-            ? ''
-            : d.locationStatus || '';
-
-  setText('fap-cell-locationStatus', displayLocationStatus);
+  // The premise status name comes from Master Data (sheet values)
+  setText('fap-cell-locationStatus', isNoneVal(d.locationStatus) ? '' : d.locationStatus || '');
 }

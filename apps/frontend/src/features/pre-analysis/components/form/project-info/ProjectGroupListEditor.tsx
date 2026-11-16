@@ -8,15 +8,14 @@ export const ProjectGroupListEditor: React.FC<{
   title: string;
   subtitle?: string;
   dataField?: string;
-  defaultHeadName?: string;
   groups: PreAnalysisProjectGroup[];
   onChange: (groups: PreAnalysisProjectGroup[]) => void;
   onFocus?: () => void;
-}> = ({title, subtitle, dataField, defaultHeadName, groups, onChange, onFocus}) => {
+}> = ({title, subtitle, dataField, groups, onChange, onFocus}) => {
   const currentGroups =
     groups && groups.length > 0
       ? groups
-      : [{headName: defaultHeadName || '', projects: [{projectName: '', location: '', scope: ''}]}];
+      : [{headName: '', projects: [{projectName: '', location: '', scope: ''}]}];
 
   const handleUpdateHeadName = (gIdx: number, val: string) => {
     const updated = [...currentGroups];

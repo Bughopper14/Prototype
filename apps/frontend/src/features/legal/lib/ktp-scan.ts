@@ -20,6 +20,7 @@ export function mergeKtpScan(
     ktpRemoved: false,
     ktpMime: f.type,
     ktpOcrText: parsed.rawText || '',
+    ktpData: parsed,
   };
   if (parsed.nik && (!currentVal.idNumber || currentVal.idNumber === '')) {
     nextVal.idNumber = parsed.nik;
@@ -34,7 +35,7 @@ export function mergeKtpScan(
   if (parsed.dateOfBirth && !currentVal.dateOfBirth) {
     nextVal.dateOfBirth = parsed.dateOfBirth;
   }
-  if (parsed.gender && (!currentVal.gender || currentVal.gender === 'NONE')) {
+  if (parsed.gender && !currentVal.gender) {
     nextVal.gender = parsed.gender;
   }
   if (parsed.maritalStatus) {

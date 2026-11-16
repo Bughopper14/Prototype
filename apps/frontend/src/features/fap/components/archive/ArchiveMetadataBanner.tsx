@@ -26,7 +26,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
           Submitted At
         </span>
         <strong style={{fontSize: 13, color: '#0f172a'}}>
-          {new Date(current.submitted_at || current.created_at).toLocaleString('en-GB')}
+          {new Date(current.frozenAt).toLocaleString('en-GB')}
         </strong>
       </div>
       <div>
@@ -41,7 +41,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
         >
           Submitted By
         </span>
-        <strong style={{fontSize: 13, color: '#0f172a'}}>{current.submitted_by_user_name || 'System'}</strong>
+        <strong style={{fontSize: 13, color: '#0f172a'}}>{current.frozenByName}</strong>
       </div>
       <div>
         <span
@@ -56,7 +56,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
           Target Stage
         </span>
         <strong style={{fontSize: 13, color: '#047857'}}>
-          {current.stage_at_submission || 'PRE_ANALYSIS'}
+          {current.stageCode}
         </strong>
       </div>
       <div>

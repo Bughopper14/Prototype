@@ -1,14 +1,14 @@
 import {
+  ACTIVITY_EVENT,
+  fetchActivities,
   getReadActivityIds,
   getReadNotificationIds,
-  getStoredActivities,
-  getStoredNotifications,
   saveReadActivityIds,
   saveReadNotificationIds,
 } from '@/features/activity/lib/activity-store';
 import {type SystemActivity, type SystemNotificationItem} from '@/features/activity/lib/types';
 import {api} from '@/shared/lib/api';
-import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
+import {hasAuthority} from '@/shared/lib/auth';
 import {applicationHref, newApplicationHref, pageHref} from '@/shared/lib/routes';
 import {setMasterData} from '@/shared/master-data';
 import {createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode} from 'react';
@@ -56,8 +56,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   const [rows, setRows] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [serverNotifications, setServerNotifications] = useState<any[]>([]);
-  const [serverActivities, setServerActivities] = useState<SystemActivity[]>([]);
-  const [storedActivities, setStoredActivities] = useState<SystemActivity[]>(() => getStoredActivities());
+  const [activities, setActivities] = useState<SystemActivity[]>([]);
   const [readActivityIds, setReadActivityIds] = useState(() => getReadActivityIds());
   const [readNotificationIds, setReadNotificationIds] = useState(() => getReadNotificationIds());
   const [loading, setLoading] = useState(false);
@@ -74,19 +73,17 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
     try {
       // Only ask for what the user's role may read; the API refuses the rest.
       const can = (authority: string) => hasAuthority(user, authority);
-      const [applications, customerList, masterData, notifications, activityList] = await Promise.all([
+      const [applications, customerList, masterData, notifications] = await Promise.all([
         can('crm_view_applications') ? api('/applications') : [],
         can('crm_view_customers') || can('crm_create_application') ? api('/customers') : [],
         api('/master-data'),
         can('crm_view_notifications') ? api('/notifications') : [],
-        can('crm_view_activity') || can('crm_view_app_activity') ? api('/activity').catch(() => []) : [],
       ]);
       setServerNotifications(notifications);
-      setServerActivities(Array.isArray(activityList) ? activityList : []);
       setMasterData(masterData);
       setRows(applications);
       setCustomers(customerList);
-      setStoredActivities(getStoredActivities());
+      if (can('crm_view_activity')) fetchActivities().then(setActivities).catch(() => {});
       setError('');
     } catch (e: any) {
       if (!e?.message?.toLowerCase().includes('session') && !e?.message?.toLowerCase().includes('sesi')) {
@@ -99,8 +96,12 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
 
   useEffect(() => {
     reload();
-    api('/ocr/warmup', 'POST', {}).catch(() => {}); // load the OCR models in the background
   }, [reload]);
+
+  // Load the OCR models in the background once, so the first scan is fast
+  useEffect(() => {
+    api('/ocr/warmup', 'POST', {}).catch(() => {});
+  }, []);
 
   // Keep the notification badge fresh.
   useEffect(() => {
@@ -121,62 +122,38 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   // Activity and notification read-state is shared through browser events (see system-activity.ts).
   useEffect(() => {
     const sync = () => {
-      setStoredActivities(getStoredActivities());
+      if (hasAuthority(user, 'crm_view_activity')) fetchActivities().then(setActivities).catch(() => {});
       setReadActivityIds(getReadActivityIds());
       setReadNotificationIds(getReadNotificationIds());
     };
-    window.addEventListener('crm-activity-state-change', sync);
+    window.addEventListener(ACTIVITY_EVENT, sync);
     window.addEventListener('crm-notification-state-change', sync);
     return () => {
-      window.removeEventListener('crm-activity-state-change', sync);
+      window.removeEventListener(ACTIVITY_EVENT, sync);
       window.removeEventListener('crm-notification-state-change', sync);
     };
-  }, []);
-
-  const activities = useMemo<SystemActivity[]>(() => {
-    const byId = new Map<string, SystemActivity>();
-    for (const item of serverActivities) {
-      byId.set(item.id, {
-        ...item,
-        companyName: item.companyName || 'Application',
-        section: item.section || 'Workspace',
-        tabIndex: Number(item.tabIndex ?? 0),
-        actionType: (item.actionType || 'UPDATE') as SystemActivity['actionType'],
-        title: item.title || 'Application updated',
-        details: item.details || '',
-        actionBy: item.actionBy || 'System',
-        userRole: item.userRole || '',
-        timestamp: item.timestamp || (item as any).actionTimestamp || new Date().toISOString(),
-      });
-    }
-    for (const item of storedActivities) {
-      byId.set(item.id, item);
-    }
-    return [...byId.values()].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-    );
-  }, [serverActivities, storedActivities]);
+  }, [user]);
 
   const notifications = useMemo<SystemNotificationItem[]>(() => {
-    const byId = new Map<string, SystemNotificationItem>();
-    for (const item of getStoredNotifications()) byId.set(item.id, item);
-    for (const n of serverNotifications) {
-      byId.set(n.id, {
+    // DEED_REVIEW opens the Legal tab; WORKFLOW_ACTION opens the application.
+    const list: SystemNotificationItem[] = serverNotifications.map((n: any) => {
+      const deed = n.type === 'DEED_REVIEW';
+      return {
         id: n.id,
         applicationId: n.applicationId,
         fapNumber: n.fapNumber,
         companyName: n.companyName || 'Application',
-        section: 'Legal',
-        tabIndex: 5,
+        section: deed ? 'Legal' : 'Workflow',
+        tabIndex: deed ? 5 : undefined,
         title: n.title,
         message: n.message,
         priority: 'normal',
-        taskType: n.taskType || 'Deed Review',
+        taskType: deed ? 'Deed Review' : 'Workflow',
         createdAt: n.createdAt,
         readAt: n.readAt,
-      });
-    }
-    return [...byId.values()].sort(
+      };
+    });
+    return list.sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [serverNotifications]);

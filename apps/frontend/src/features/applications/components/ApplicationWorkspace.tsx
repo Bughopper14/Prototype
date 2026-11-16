@@ -17,7 +17,6 @@ import {ChevronStepper} from '@/features/applications/components/workspace/heade
 import {DetailHeading} from '@/features/applications/components/workspace/header/DetailHeading';
 import {DetailSummary} from '@/features/applications/components/workspace/header/DetailSummary';
 import {DetailTabs} from '@/features/applications/components/workspace/header/DetailTabs';
-import {BusinessBanksTab} from '@/features/applications/components/workspace/tabs/BusinessBanksTab';
 import {CustomerTab} from '@/features/applications/components/workspace/tabs/CustomerTab';
 import {FinancialStatementsTab} from '@/features/applications/components/workspace/tabs/FinancialStatementsTab';
 import {LegalTab} from '@/features/applications/components/workspace/tabs/LegalTab';
@@ -90,26 +89,18 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
                 <h2>{tabs[tab]}</h2>
                 <p>
                   {
-                    [
-                      'Company profile, FAP physical form, and application details',
-                      'View ownership and stakeholder information. Edit these fields in Legal.',
-                      'Business details, bank facilities, financing terms, and equipment units',
-                      'Equipment, financing terms, and estimated monthly installment',
-                      'Three years of financial performance. All figures in IDR.',
-                      'Deeds, related parties, and ownership structure.',
-                    ][tab]
+                    (
+                      {
+                        0: 'Company profile, FAP physical form, and application details',
+                        1: 'View ownership and stakeholder information. Edit these fields in Legal.',
+                        4: 'Three years of financial performance. All figures in IDR.',
+                        5: 'Deeds, related parties, and ownership structure.',
+                      } as Record<number, string>
+                    )[tab]
                   }
                 </p>
               </div>
-              {!(tab === 1
-                ? false
-                : tab === 5
-                  ? canLegal
-                  : tab === 2
-                    ? canFinance
-                    : tab < 3
-                      ? canEdit
-                      : canFinance) && (
+              {!(tab === 1 ? false : tab === 5 ? canLegal : tab === 0 ? canEdit : canFinance) && (
                 <span className="subtle-chip">
                   <ShieldCheck size={14} />
                   Read only
@@ -119,7 +110,6 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             <div className="form-body">
               <CustomerTab />
               <StakeholdersTab />
-              <BusinessBanksTab />
               <FinancialStatementsTab />
               <LegalTab />
             </div>
@@ -165,8 +155,8 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
                   Signoff Records
                 </h4>
                 <div className="signoffs">
-                  {a.signoffs.map((s: any) => (
-                    <div key={s.role}>
+                  {a.signoffs.map((s: any, i: number) => (
+                    <div key={`${s.role}-${s.signed_at}-${i}`}>
                       <CheckCheck size={16} />
                       {s.role} signed off by {s.actor} · {date(s.signed_at)}
                     </div>

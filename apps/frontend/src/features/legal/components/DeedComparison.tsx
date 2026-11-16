@@ -30,8 +30,7 @@ export function DeedComparison({legal, deed}: {legal: any; deed: any}) {
     return ids
       .map(
         (id: string) =>
-          master.remarkCategoryId.find(x => x.value === id)?.name ||
-          (id === 'ESTABLISHMENT_DEED' || id === 'establishment-deed' ? 'Establishment deed' : id),
+          master.remarkCategoryId.find(x => x.value === id)?.name || id,
       )
       .join(', ');
   };

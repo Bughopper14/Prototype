@@ -1,4 +1,5 @@
 import {ApplicationTable} from '@/features/applications/components/ApplicationTable';
+import {initialStatusCode, isFirstStageStatus, isTerminalStatus, useMasterData, workflowStages, workflowStatuses} from '@/shared/master-data';
 import {money} from '@/shared/lib/format';
 import {checkIsAdmin} from '@/shared/lib/auth';
 import {DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY} from '@liugong/shared';
@@ -27,29 +28,30 @@ export function OverviewScreen({
 }) {
   // Which applications need this user: derived from the authorities of the user's DB role (administrators have none)
   const has = (authority: string) => !checkIsAdmin(user) && (user.authorities || []).includes(authority);
-  const hasRejectedDeed = (r: any) => Number(r.deeds_rejected) > 0;
+  const hasRejectedDeed = (r: any) => Number(r.deeds_sent_back) > 0;
+  const master = useMasterData();
+  // Returned: back in the first stage but no longer in its starting status.
+  const isReturned = (r: any) => isFirstStageStatus(r.status, master) && r.status !== initialStatusCode(master);
   const needs = rows.filter(
     r =>
       (has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)) ||
-      (has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending_check) + Number(r.deeds_pending_approval) > 0) ||
-      (has('crm_workflow_submit') && ['DRAFT', 'RETURNED'].includes(r.status)) ||
-      (has('crm_workflow_verify_documents') && r.status === 'SUBMITTED_TO_BS') ||
-      (has('crm_workflow_start_review') && r.status === 'BS_VERIFIED') ||
-      ((has('crm_workflow_recommend_credit') || has('crm_workflow_recommend_legal')) &&
-        r.status === 'IN_CA_LEGAL_REVIEW') ||
-      (has('crm_workflow_final_decision') && r.status === 'CREDIT_COMMITTEE_REVIEW'),
+      (has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending) > 0) ||
+      // Workflow actions the backend allows this user on the application (crm_master_workflow)
+      (!checkIsAdmin(user) && (r.available_actions || []).length > 0),
   );
   const total = rows.reduce((s, r) => s + Number(r.financing_value || 0), 0),
-    approved = rows.filter(r => r.status === 'APPROVED'),
-    review = rows.filter(r =>
-      ['SUBMITTED_TO_BS', 'BS_VERIFIED', 'IN_CA_LEGAL_REVIEW', 'CREDIT_COMMITTEE_REVIEW'].includes(r.status),
-    );
-  const stages = [
-    ['DRAFT', 'Draft'],
-    ['SUBMITTED_TO_BS', 'BS verification'],
-    ['IN_CA_LEGAL_REVIEW', 'CA & Legal'],
-    ['CREDIT_COMMITTEE_REVIEW', 'Committee'],
-    ['APPROVED', 'Approved'],
+    // Workflow stages and statuses come from Master Data; the first final status is the approval.
+    finalStatus = workflowStatuses(master).find(s => s.terminal),
+    approved = rows.filter(r => finalStatus && r.status === finalStatus.value),
+    review = rows.filter(r => !isFirstStageStatus(r.status, master) && !isTerminalStatus(r.status, master));
+  const stages: [string, string, (r: any) => boolean][] = [
+    ...workflowStages(master).map(
+      st => [st.value, st.name, (r: any) => r.workflow_stage === st.value && !isTerminalStatus(r.status, master)] as [string, string, (r: any) => boolean],
+    ),
+    // every final status (Approved, Rejected) has its own card
+    ...workflowStatuses(master)
+      .filter(st => st.terminal)
+      .map(st => [st.value, st.name, (r: any) => r.status === st.value] as [string, string, (r: any) => boolean]),
   ];
   return (
     <>
@@ -99,10 +101,8 @@ export function OverviewScreen({
             </span>
           </div>
           <div className="pipeline-chart">
-            {stages.map(([s, l], i) => {
-              const count = rows.filter(
-                r => r.status === s || (s === 'SUBMITTED_TO_BS' && r.status === 'BS_VERIFIED'),
-              ).length;
+            {stages.map(([s, l, match], i) => {
+              const count = rows.filter(match).length;
               return (
                 <button className="pipeline-stage" key={s} onClick={() => navigate('Applications')}>
                   <div className="bar-top">
@@ -116,7 +116,7 @@ export function OverviewScreen({
                           Math.max(
                             8,
                             (count /
-                              Math.max(1, ...stages.map(([s]) => rows.filter(r => r.status === s).length))) *
+                              Math.max(1, ...stages.map(([, , m]) => rows.filter(m).length))) *
                               100,
                           ) + '%',
                       }}
@@ -156,20 +156,18 @@ export function OverviewScreen({
                 )
               }
             >
-              <span className={'attention-icon ' + (r.status === 'RETURNED' ? 'orange' : '')}>
+              <span className={'attention-icon ' + (isReturned(r) ? 'orange' : '')}>
                 <AlertCircle size={18} />
               </span>
               <div>
                 <b>
-                  {has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending_check) + Number(r.deeds_pending_approval) > 0
-                    ? Number(r.deeds_pending_check) > 0
-                      ? 'Review deed document'
-                      : 'Approve deed document'
+                  {has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending) > 0
+                    ? 'Approve deed document'
                     : has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)
-                      ? 'Fix the rejected deed'
-                      : r.status === 'RETURNED'
+                      ? 'Revise the returned deed'
+                      : isReturned(r)
                         ? 'Application returned'
-                        : r.status === 'DRAFT'
+                        : r.status === initialStatusCode(master)
                           ? 'Complete your draft'
                           : 'Review application'}
                 </b>

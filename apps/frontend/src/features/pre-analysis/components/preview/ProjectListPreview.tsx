@@ -2,9 +2,10 @@
 import {ensureProjectGroups} from '@/features/pre-analysis/lib/projects';
 import type {PreAnalysisData} from '@/features/pre-analysis/lib/types';
 import {renderRichHtml} from '@/features/pre-analysis/components/RichHtml';
+import {currentMasterData} from '@/shared/master-data/catalog/store';
 
-export function renderProjectGroupListPreview(groupsOrItems?: any, fallbackHeadName: string = '') {
-  const groups = ensureProjectGroups(groupsOrItems, undefined, fallbackHeadName);
+export function renderProjectGroupListPreview(groupsOrItems?: any) {
+  const groups = ensureProjectGroups(groupsOrItems);
 
   const validGroups = groups.filter(g => {
     const hasHead = Boolean(g.headName?.trim());
@@ -66,6 +67,7 @@ export function renderProjectGroupListPreview(groupsOrItems?: any, fallbackHeadN
 export function renderInvestmentPlanPreview(d: PreAnalysisData) {
   const selected = d.investmentPlanSelected || [];
   const remarksMap = d.investmentPlanRemarks || {};
+  const options = currentMasterData().preanInvestmentPlanOptions || [];
   if (selected.length === 0) {
     if (d.investmentPlan && typeof d.investmentPlan === 'string' && d.investmentPlan.trim()) {
       return renderRichHtml(d.investmentPlan);
@@ -78,7 +80,7 @@ export function renderInvestmentPlanPreview(d: PreAnalysisData) {
         const rem = remarksMap[optCode] || '';
         return (
           <div key={optCode} style={{lineHeight: 1.4}}>
-            <span style={{fontWeight: 600}}>{optCode}</span>
+            <span style={{fontWeight: 600}}>{options.find(o => o.value === optCode)?.name || optCode}</span>
             {rem ? ' - ' + rem : ''}
           </div>
         );

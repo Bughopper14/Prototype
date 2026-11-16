@@ -43,6 +43,18 @@ export function ChecklistMetrics({
         </div>
         <div className="bento-val text-amber">{stats.pendingCount}</div>
         <small className="bento-sub text-amber">Perlu tindak lanjut / upload</small>
+        {stats.pendingCount > 0 && (
+          <ul className="bento-missing" style={{margin: '6px 0 0', paddingLeft: 16, fontSize: '0.72rem', lineHeight: 1.5}}>
+            {stats.missingMandatory.map((name: string) => (
+              <li key={'m' + name}>
+                {name} <strong>(wajib)</strong>
+              </li>
+            ))}
+            {stats.missingOptional.map((name: string) => (
+              <li key={'o' + name}>{name} (opsional)</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="doc-checklist-bento-card card-mandatory">
@@ -60,6 +72,13 @@ export function ChecklistMetrics({
             ? 'Semua dokumen wajib terpenuhi ✓'
             : `${stats.mandatoryCount - stats.mandatoryAvailableCount} wajib belum terpenuhi`}
         </small>
+        {stats.missingMandatory.length > 0 && (
+          <ul className="bento-missing" style={{margin: '6px 0 0', paddingLeft: 16, fontSize: '0.72rem', lineHeight: 1.5}}>
+            {stats.missingMandatory.map((name: string) => (
+              <li key={name}>{name}</li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="doc-checklist-bento-card card-system">

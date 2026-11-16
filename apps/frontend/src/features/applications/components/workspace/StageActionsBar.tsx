@@ -1,6 +1,6 @@
 /** Stage transition buttons on the Documents / Activity tabs. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {ArrowRight, Lock} from 'lucide-react';
+import {ArrowRight} from 'lucide-react';
 
 export function StageActionsBar() {
   const {
@@ -10,7 +10,6 @@ export function StageActionsBar() {
     setTransition,
     setComments,
     isFapStage,
-    isSubmitLocked,
     actions,
   } = useWorkspace();
   return (
@@ -22,19 +21,12 @@ export function StageActionsBar() {
             {actions.length > 0 && (
               <div className="workflow-buttons">
                 {actions.map(action => {
-                  const isSubmitFap = isFapStage && action === 'SUBMIT_TO_BS';
-                  const isActionLocked = (isSubmitFap || action === 'SUBMIT_TO_BS') && isSubmitLocked;
+                  const isSubmitFap = isFapStage && action === 'SUBMIT';
                   return (
                     <button
                       key={action}
                       className={
                         'button ' + (action === 'RETURN' || action === 'REJECT_COMMITTEE' ? '' : 'primary')
-                      }
-                      disabled={isActionLocked}
-                      title={
-                        isActionLocked
-                          ? 'Please upload the signed FAP Stage document in the Documents tab first to proceed.'
-                          : undefined
                       }
                       onClick={() => {
                         if (isSubmitFap) {
@@ -46,11 +38,10 @@ export function StageActionsBar() {
                         }
                       }}
                     >
-                      {isActionLocked && <Lock size={13} style={{marginRight: 4}} />}
                       {
                         (
                           {
-                            SUBMIT_TO_BS: 'Submit',
+                            SUBMIT: 'Submit',
                             VERIFY_BS: 'Complete BS verification',
                             START_REVIEW: 'Start CA & Legal review',
                             RECOMMEND_CA: 'Sign off · CA',

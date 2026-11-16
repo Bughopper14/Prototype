@@ -1,22 +1,28 @@
+import {Injectable} from '@nestjs/common';
 import type {MasterCatalog} from '@liugong/shared';
-import {readSimpleCatalog, saveSimpleCatalog, type SimpleTableSpec} from './simple-master.helper';
+import {CRM} from '../../../core/db/crm-tables';
+import {MasterTableRepository, type MasterTable} from './master-table';
 
-const SPECS: SimpleTableSpec[] = [
-  {key: 'branchCode', table: 'crm_master_branches'},
-  {key: 'companyType', table: 'crm_master_business_categories'},
-  {key: 'industrySegment', table: 'crm_master_industry_segments'},
-  {key: 'businessRole', table: 'crm_master_business_roles'},
-  {key: 'position', table: 'crm_master_pic_positions'},
+const tables: MasterTable[] = [
+  {key: 'branchCode', table: CRM.masterBranches},
+  {key: 'companyType', table: CRM.masterBusinessCategories},
+  {key: 'industrySegment', table: CRM.masterIndustrySegments},
+  {key: 'businessRole', table: CRM.masterBusinessRoles},
+  {key: 'position', table: CRM.masterPicPositions},
+  {key: 'locationStatus', table: CRM.masterPremiseStatuses},
 ];
 
-export async function initializeCustomerMasters(_seed: MasterCatalog) {
-  return;
-}
+/** Customer & PIC masters: branch, business category, industry, business role, PIC position, premise status. */
+@Injectable()
+export class CustomerMastersRepository {
+  static readonly groups = tables.map(t => t.key);
+  constructor(private readonly masterTables: MasterTableRepository) {}
 
-export async function customerMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
-  return readSimpleCatalog(SPECS);
-}
+  catalog(catalog: MasterCatalog) {
+    return this.masterTables.read(tables, catalog);
+  }
 
-export async function saveCustomerMasters(catalog: MasterCatalog) {
-  await saveSimpleCatalog(SPECS, catalog);
+  save(catalog: MasterCatalog, by: string | null) {
+    return this.masterTables.save(tables, catalog, by);
+  }
 }

@@ -4,6 +4,7 @@ export * from './age';
 export * from './authorities';
 export * from './deed-workflow';
 export * from './experience';
+export * from './fap-template';
 export * from './fields';
 export * from './input-validation';
 export * from './master-catalog';

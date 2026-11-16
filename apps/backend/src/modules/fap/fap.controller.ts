@@ -1,17 +1,10 @@
 import {Controller, Delete, Get, Patch, Post, Put, Res} from '@nestjs/common';
-import {exec} from '../../core/db/query';
-import {Problem} from '../../core/domain';
+import {Problem, ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {intakeDetail} from '../applications/intake.repository';
+import {ApplicationsService} from '../applications/applications.service';
 import {requireAuthority} from '../auth/session';
-import {getSubmitLock, saveFapComparison, saveFapRemarks} from '../documents/documents.repository';
-import {
-  getFapSubmissionArchiveDetail,
-  getFapSubmissionArchives,
-  recordFapSubmissionArchive,
-} from './fap-archive.repository';
-import {computeFapDiffs} from './fap-diff';
-import {clearFapDifferences, compareFapDocumentOcr, latestFapFile} from './fap-comparison';
+import {FapComparisonService} from './fap-comparison.service';
+import {FapFreezeRepository} from './fap-freeze.repository';
 
 const ARCHIVE_PATHS = ['applications/:id/fap-archive', 'fap-archive/:archiveId'];
 
@@ -24,103 +17,64 @@ const immutable = () => {
 
 @Controller(API_PREFIX)
 export class FapController {
+  constructor(
+    private readonly comparisons: FapComparisonService,
+    private readonly applications: ApplicationsService,
+    private readonly freezes: FapFreezeRepository,
+  ) {}
+
   @Get('applications/:id/fap-comparison')
   async comparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
-    const id = req.params.id;
-    const {fap, file} = await latestFapFile(id);
-    if (!fap || !file) return {status: 'success', comparison: null};
-
-    const lock = await getSubmitLock(id);
-    const currentApp = await intakeDetail(id);
-    let comp = lock.ocrComparison;
-    if (!comp || !(comp as any).extractedData || Object.keys((comp as any).extractedData).length === 0) {
-      if (currentApp) comp = await compareFapDocumentOcr(id, file.fileKey || file.fileName, currentApp);
-    } else if (currentApp) {
-      comp.diffs = computeFapDiffs(currentApp, (comp as any).extractedData);
-      comp.hasDifferences = comp.diffs.length > 0;
-      await saveFapComparison(id, comp);
-    }
-    const resolvedComp: any = comp || {isFap: true, hasDifferences: false, diffs: []};
-    resolvedComp.remarks = lock.fapFormRemarks || resolvedComp.remarks || fap.notes || '';
-    return {status: 'success', comparison: resolvedComp};
+    return {status: 'success', comparison: await this.comparisons.get(req.params.id, req.actor)};
   }
 
   @Post('applications/:id/fap-comparison/remarks')
   async saveRemarks(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
     const remarks = String(req.body.remarks || '');
-    await saveFapRemarks(req.params.id, remarks);
-    return {success: true, remarks, comparison: (await getSubmitLock(req.params.id)).ocrComparison};
+    await this.comparisons.saveRemarks(req.params.id, remarks, req.actor);
+    return {success: true, remarks, comparison: await this.comparisons.get(req.params.id, req.actor)};
   }
 
   @Post('applications/:id/fap-comparison/run')
   async runComparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
-    const id = req.params.id;
-    const currentApp = await intakeDetail(id);
-    if (!currentApp) {
-      res.status(404);
-      return {error: 'Application not found'};
-    }
-    const {file} = await latestFapFile(id);
-    if (!file) {
-      res.status(400);
-      return {error: 'Belum ada dokumen FAP yang diunggah'};
-    }
-    return {success: true, comparison: await compareFapDocumentOcr(id, file.fileKey || file.fileName, currentApp)};
+    await this.applications.detailOr404(req.params.id, req.actor);
+    const comparison = await this.comparisons.run(req.params.id, req.actor);
+    ensure(comparison, 'Belum ada dokumen FAP yang diunggah', 400);
+    return {success: true, comparison};
   }
 
+  /** The FAP document is accepted: the comparison closes and the FAP stage is submitted. */
   @Post('applications/:id/fap-changes/approve')
   async approveChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
-    const id = req.params.id;
-    const current = await intakeDetail(id);
-    if (!current) {
-      res.status(404);
-      return {error: 'Application not found'};
-    }
-    await clearFapDifferences(id, req.body?.remarks);
-    await exec(
-      'UPDATE crm_applications SET is_fap_form_locked=0, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?',
-      [id],
-    );
-    try {
-      await recordFapSubmissionArchive(id, current, req.actor, req.body?.remarks);
-    } catch (e) {
-      console.error('recordFapSubmissionArchive error on fap approve:', e);
-    }
-    return {success: true, application: await intakeDetail(id), customerDetailLocked: false};
+    await this.applications.detailOr404(req.params.id, req.actor);
+    await this.comparisons.approve(req.params.id, req.actor, req.body?.remarks);
+    return {
+      success: true,
+      application: await this.applications.detail(req.params.id, req.actor),
+      customerDetailLocked: false,
+    };
   }
 
   @Post('applications/:id/fap-changes/dismiss')
   async dismissChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
-    await clearFapDifferences(req.params.id, req.body?.remarks);
+    await this.comparisons.dismiss(req.params.id, req.actor, req.body?.remarks);
     return {success: true};
   }
 
+  /** Every FAP freeze of the application (crm_frozen_fap_*), newest first. */
   @Get('applications/:id/fap-archive')
   async archives(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
-    return {
-      success: true,
-      archives: await getFapSubmissionArchives(req.params.id),
-    };
+    await this.applications.detailOr404(req.params.id, req.actor);
+    return {success: true, archives: await this.freezes.list(req.params.id)};
   }
 
-  @Get('fap-archive/:archiveId')
-  async archive(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_app_documents', 'crm_view_document_desk');
-    const archive = await getFapSubmissionArchiveDetail(req.params.archiveId);
-    if (!archive) {
-      res.status(404);
-      return {error: 'FAP archive not found'};
-    }
-    return {success: true, archive};
-  }
-
-  /* The submission archive is immutable: every write to it is refused. */
+  /* A freeze is immutable: every write to it is refused. */
   @Put(ARCHIVE_PATHS)
   replaceArchive() {
     return immutable();

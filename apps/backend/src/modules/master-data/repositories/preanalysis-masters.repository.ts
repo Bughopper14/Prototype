@@ -1,19 +1,21 @@
+import {Injectable} from '@nestjs/common';
 import type {MasterCatalog} from '@liugong/shared';
-import {readSimpleCatalog, saveSimpleCatalog, type SimpleTableSpec} from './simple-master.helper';
+import {CRM} from '../../../core/db/crm-tables';
+import {MasterTableRepository, type MasterTable} from './master-table';
 
-const SPECS: SimpleTableSpec[] = [
-  {key: 'preanInvestmentPlanOptions', table: 'crm_master_preanalysis_investment_options'},
-];
+const tables: MasterTable[] = [{key: 'preanInvestmentPlanOptions', table: CRM.masterPreanalysisInvestmentOptions}];
 
-export async function initializePreanalysisMasters(_seed: MasterCatalog) {
-  return;
-}
+/** Pre-analysis masters: the investment plan options (crm_master_preanalysis_investment_options). */
+@Injectable()
+export class PreanalysisMastersRepository {
+  static readonly groups = tables.map(t => t.key);
+  constructor(private readonly masterTables: MasterTableRepository) {}
 
-export async function preanalysisMasterCatalog(_base: MasterCatalog): Promise<MasterCatalog> {
-  return readSimpleCatalog(SPECS);
-}
+  catalog(catalog: MasterCatalog) {
+    return this.masterTables.read(tables, catalog);
+  }
 
-export async function savePreanalysisMasters(catalog: MasterCatalog, targetGroup?: string) {
-  if (targetGroup && targetGroup !== 'preanInvestmentPlanOptions') return;
-  await saveSimpleCatalog(SPECS, catalog);
+  save(catalog: MasterCatalog, by: string | null) {
+    return this.masterTables.save(tables, catalog, by);
+  }
 }

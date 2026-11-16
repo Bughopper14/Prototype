@@ -2,6 +2,7 @@
 import {Columns, Download, ExternalLink, Maximize2, Minimize2, RotateCw, ZoomIn, ZoomOut} from 'lucide-react';
 
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
+import {downloadFile} from '@/features/documents/lib/download-file';
 
 export function ViewerToolbar() {
   const {
@@ -17,6 +18,7 @@ export function ViewerToolbar() {
     setSidebarCollapsed,
     isMaximized,
     setIsMaximized,
+    setError,
   } = useDocumentsStudioContext();
   return (
     <div className="studio-glass-toolbar">
@@ -124,14 +126,14 @@ export function ViewerToolbar() {
             >
               <ExternalLink size={14} />
             </a>
-            <a
-              href={`/api/v1/files/${activeFile?.id}/download`}
-              download={activeFile?.fileName || 'document'}
+            <button
+              type="button"
+              onClick={() => activeFile && downloadFile(activeFile.id).catch(e => setError(e.message))}
               className="studio-tool-btn"
               title="Download document"
             >
               <Download size={14} />
-            </a>
+            </button>
           </>
         )}
         <button

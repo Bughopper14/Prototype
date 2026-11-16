@@ -76,9 +76,9 @@ export function useStakeholderModal({
   const rawIdType = String(curVal.idType || '')
     .toUpperCase()
     .trim();
-  const activeIdGroup: 'KTP_NPWP' | 'PASSPORT_KITAS' | 'NONE' =
-    rawIdType === 'NONE'
-      ? 'NONE'
+  const activeIdGroup: 'KTP_NPWP' | 'PASSPORT_KITAS' | '' =
+    rawIdType === ''
+      ? ''
       : rawIdType === 'PASSPORT_KITAS' || ['PASSPORT', 'KITAS'].includes(rawIdType)
         ? 'PASSPORT_KITAS'
         : rawIdType === 'KTP_NPWP' || ['KTP', 'NPWP'].includes(rawIdType)
@@ -90,10 +90,10 @@ export function useStakeholderModal({
             ? 'PASSPORT_KITAS'
             : curVal.ktpUrl || curVal.npwpUrl
               ? 'KTP_NPWP'
-              : 'NONE';
+              : '';
 
   const formValue = useMemo(() => {
-    if (activeIdGroup !== 'NONE' && curVal.idType !== activeIdGroup) {
+    if (activeIdGroup && curVal.idType !== activeIdGroup) {
       return {...curVal, idType: activeIdGroup};
     }
     return curVal;

@@ -25,6 +25,8 @@ export interface ResolverContext {
 export type ChecklistRow = MasterDocDef &
   RowState & {
     chkId?: string;
+    /** The application's checklist row (status, department checks, dates, summary, notes). */
+    check?: any;
     status: string;
     files: any[];
   };

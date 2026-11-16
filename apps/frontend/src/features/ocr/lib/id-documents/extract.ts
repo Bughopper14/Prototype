@@ -1,12 +1,11 @@
 /** Sends an ID image to the OCR service and parses the result per document type. */
 import {api} from '@/shared/lib/api';
-import {normalizeBirthDate, toDmyDate} from '@/shared/lib/dates';
-import {extractStreetAddress} from '@liugong/shared';
+import {normalizeBirthDate} from '@/shared/lib/dates';
 import {parseKitasText} from './parse-kitas';
 import {parseKtpText} from './parse-ktp';
 import {parseNpwpText} from './parse-npwp';
 import {parsePassportText, resolveGender} from './parse-passport';
-import {ParsedKitasData, ParsedKtpData, ParsedNpwpData, ParsedPassportData} from './types';
+import {IdScan, ParsedKitasData, ParsedKtpData, ParsedNpwpData, ParsedPassportData} from './types';
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const parts = dataUrl.split(',');
@@ -20,11 +19,6 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([u8arr], {type: mime});
 }
 
-export type IdDocScanContext = {
-  applicationId?: string;
-  stakeholderId?: string;
-};
-
 // -------------------------------------------------------------
 // Unified Scanner Caller
 // -------------------------------------------------------------
@@ -32,15 +26,11 @@ export async function extractIdDocumentFromImage(
   fileOrInput: File | Blob | string,
   docType: 'ktp' | 'passport' | 'npwp' | 'kitas' = 'ktp',
   fileName?: string,
-  context?: IdDocScanContext,
 ): Promise<{
   docType: string;
   data: any;
   rawText: string;
-  fileUrl?: string;
-  documentPath?: string;
-  fileName?: string;
-  ocrRecordId?: string;
+  scan?: IdScan;
 }> {
   try {
     const uploadPayload = new FormData();
@@ -57,8 +47,6 @@ export async function extractIdDocumentFromImage(
       uploadPayload.append('file', fileOrInput, fileName || `${docType}_scan.jpg`);
     }
     uploadPayload.append('doc_type', docType);
-    if (context?.applicationId) uploadPayload.append('application_id', context.applicationId);
-    if (context?.stakeholderId) uploadPayload.append('stakeholder_id', context.stakeholderId);
 
     const res = await api('/ocr/scan', 'POST', uploadPayload);
     if (res && res.data) {
@@ -67,10 +55,12 @@ export async function extractIdDocumentFromImage(
         docType: res.doc_type || docType,
         data: d,
         rawText: typeof d === 'string' ? d : JSON.stringify(d, null, 2),
-        fileUrl: res.fileUrl || undefined,
-        documentPath: res.document_path || res.storedPath || undefined,
-        fileName: res.fileName || undefined,
-        ocrRecordId: res.ocrId || res.id || undefined,
+        scan: {
+          docType: String(res.doc_type || docType).toLowerCase(),
+          data: d,
+          fileName: res.file_name || null,
+          documentPath: res.document_path || null,
+        },
       };
     }
   } catch (err: any) {
@@ -98,9 +88,8 @@ export async function extractIdDocumentFromImage(
 export async function extractKtpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  context?: IdDocScanContext,
-): Promise<ParsedKtpData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, context);
+): Promise<ParsedKtpData> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName);
   const d = res.data || {};
   const sLower = String(d.status_perkawinan || d.maritalStatus || d.status || '').toLowerCase();
   const isSingle = sLower.includes('belum') || sLower.includes('tidak') || sLower.includes('single');
@@ -109,41 +98,21 @@ export async function extractKtpTextFromImage(
   const isDivorced = sLower.includes('cerai') || sLower.includes('divorced') || sLower.includes('widowed');
   const resolvedMarital = isSingle ? 'SINGLE' : isMarried ? 'MARRIED' : isDivorced ? 'DIVORCED' : 'SINGLE';
 
-  const rawTl = d.tempat_lahir || d.tempatLahir || '';
-  const cleanTl =
-    rawTl.toUpperCase().startsWith('JAK') ||
-    rawTl.toUpperCase().includes('JAKARTA') ||
-    rawTl.toUpperCase().includes('JAKALA')
-      ? 'JAKARTA'
-      : rawTl;
-  const rawDob = d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth || '';
-  const dobDmy = toDmyDate(rawDob) || rawDob;
-
-  const rawAlamat = d.fullAddress || d.alamat_lengkap || d.alamat || d.address;
-  const regionHints = {
-    kelDesa: d.kel_desa || d.village,
-    village: d.kel_desa || d.village,
-    kecamatan: d.kecamatan || d.district,
-    district: d.kecamatan || d.district,
-    province: d.provinsi || d.province,
-    cityRegency: d.kabupaten_kota || d.cityRegency || d.city,
-    city: d.kabupaten_kota || d.cityRegency || d.city,
-    kodePos: d.kode_pos || d.postalCode,
-    postalCode: d.kode_pos || d.postalCode,
-  };
-  const streetAddress = d.streetAddress || extractStreetAddress(rawAlamat, regionHints);
-
   return {
+    scan: res.scan,
     nik: d.nik || d.idNumber,
     nama: d.nama || d.name,
     firstName: d.firstName,
     middleName: d.middleName,
     lastName: d.lastName,
-    tempatLahir: cleanTl,
-    tanggalLahir: dobDmy,
-    dateOfBirth: dobDmy,
-    tempatTglLahir:
-      d.tempatTglLahir || (cleanTl ? `${cleanTl}, ${dobDmy}` : dobDmy),
+    tempatLahir: d.tempat_lahir || d.tempatLahir,
+    tanggalLahir:
+      normalizeBirthDate(d.tanggal_lahir || d.tanggalLahir || d.dateOfBirth) ||
+      d.tanggal_lahir ||
+      d.tanggalLahir ||
+      d.dateOfBirth,
+    dateOfBirth: normalizeBirthDate(d.tanggal_lahir || d.dateOfBirth) || d.tanggal_lahir || d.dateOfBirth,
+    tempatTglLahir: d.tempatTglLahir || (d.tempat_lahir ? `${d.tempat_lahir}, ${d.tanggal_lahir || ''}` : ''),
     gender:
       d.gender === 'FEMALE' || String(d.jenis_kelamin).toUpperCase().includes('PEREMPUAN')
         ? 'FEMALE'
@@ -158,7 +127,6 @@ export async function extractKtpTextFromImage(
       ? 'WNA'
       : 'WNI',
     alamat: d.alamat || d.address || d.fullAddress,
-    streetAddress,
     rtRw: d.rt_rw || d.rtRw,
     rt: d.rt,
     rw: d.rw,
@@ -175,23 +143,19 @@ export async function extractKtpTextFromImage(
     pekerjaan: d.pekerjaan || d.occupation,
     berlaku_hingga: d.berlaku_hingga || 'SEUMUR HIDUP',
     rawText: res.rawText || '',
-    fileUrl: res.fileUrl,
-    documentPath: res.documentPath,
-    fileName: res.fileName,
-    ocrRecordId: res.ocrRecordId,
   };
 }
 
 export async function extractPassportTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  context?: IdDocScanContext,
-): Promise<ParsedPassportData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName, context);
+): Promise<ParsedPassportData> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName);
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
   return {
+    scan: res.scan,
     passportNumber: d.passport_number || d.passportNumber,
     countryCode: d.country_code || d.countryCode,
     countryName: d.country_name || d.countryName || d.nationality,
@@ -210,21 +174,17 @@ export async function extractPassportTextFromImage(
     mrzLine1: d.mrz_line1 || d.mrzLine1,
     mrzLine2: d.mrz_line2 || d.mrzLine2,
     rawText: res.rawText || '',
-    fileUrl: res.fileUrl,
-    documentPath: res.documentPath,
-    fileName: res.fileName,
-    ocrRecordId: res.ocrRecordId,
   };
 }
 
 export async function extractNpwpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  context?: IdDocScanContext,
-): Promise<ParsedNpwpData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName, context);
+): Promise<ParsedNpwpData> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName);
   const d = res.data || {};
   return {
+    scan: res.scan,
     npwpNumber: d.npwp_number || d.npwpNumber,
     rawNpwp: d.raw_npwp || d.rawNpwp,
     nama: d.nama,
@@ -235,23 +195,19 @@ export async function extractNpwpTextFromImage(
     kpp: d.kpp,
     tanggalTerdaftar: d.tanggal_terdaftar || d.tanggalTerdaftar,
     rawText: res.rawText || '',
-    fileUrl: res.fileUrl,
-    documentPath: res.documentPath,
-    fileName: res.fileName,
-    ocrRecordId: res.ocrRecordId,
   };
 }
 
 export async function extractKitasTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  context?: IdDocScanContext,
-): Promise<ParsedKitasData & {fileUrl?: string; documentPath?: string; fileName?: string; ocrRecordId?: string}> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName, context);
+): Promise<ParsedKitasData> {
+  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName);
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
   return {
+    scan: res.scan,
     permitNumber: d.permit_number || d.permitNumber,
     niora: d.niora,
     nama: d.nama,
@@ -263,9 +219,5 @@ export async function extractKitasTextFromImage(
       normalizeBirthDate(d.berlaku_hingga || d.berlakuHingga) || d.berlaku_hingga || d.berlakuHingga,
     instansiPenerbit: d.instansi_penerbit || d.instansiPenerbit || 'Direktorat Jenderal Imigrasi',
     rawText: res.rawText || '',
-    fileUrl: res.fileUrl,
-    documentPath: res.documentPath,
-    fileName: res.fileName,
-    ocrRecordId: res.ocrRecordId,
   };
 }

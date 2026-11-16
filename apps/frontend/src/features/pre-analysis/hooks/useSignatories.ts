@@ -85,30 +85,30 @@ export function useSignatories(
     if (data.signatories && Array.isArray(data.signatories) && data.signatories.length > 0) {
       return data.signatories;
     }
-    const splitProp = (data.proposedBy || 'Amanda Cynthia\nSenior Account Manager').split('\n');
-    const splitRev = (data.reviewedBy || 'Maria Regina\nDept. Head Marketing').split('\n');
-    const splitApp = (data.approvedBy || 'Jembar Ganda E\nDirector').split('\n');
+    const splitProp = (data.proposedBy || '').split('\n');
+    const splitRev = (data.reviewedBy || '').split('\n');
+    const splitApp = (data.approvedBy || '').split('\n');
 
     return [
       {
         id: 'sig-1',
         role: 'Propose by :',
-        name: splitProp[0] || 'Amanda Cynthia',
-        position: splitProp.slice(1).join('\n') || 'Senior Account Manager',
+        name: splitProp[0] || '',
+        position: splitProp.slice(1).join('\n'),
         date: '',
       },
       {
         id: 'sig-2',
         role: 'Reviewed by :',
-        name: splitRev[0] || 'Maria Regina',
-        position: splitRev.slice(1).join('\n') || 'Dept. Head Marketing',
+        name: splitRev[0] || '',
+        position: splitRev.slice(1).join('\n'),
         date: '',
       },
       {
         id: 'sig-3',
         role: 'Approved by :',
-        name: splitApp[0] || 'Jembar Ganda E',
-        position: splitApp.slice(1).join('\n') || 'Director',
+        name: splitApp[0] || '',
+        position: splitApp.slice(1).join('\n'),
         date: '',
       },
     ];

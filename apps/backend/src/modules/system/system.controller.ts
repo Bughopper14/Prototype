@@ -15,6 +15,6 @@ export class SystemController {
   @Get('mysql/health')
   async mysqlHealth(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     await checkMysql();
-    return {status: 'ok', database: process.env.DB_NAME};
+    return {status: 'ok'};
   }
 }

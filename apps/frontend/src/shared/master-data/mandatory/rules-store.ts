@@ -1,53 +1,18 @@
 /** Mandatory-rule cache (memory + localStorage), server sync, React hook and the isFieldMandatory check. */
 import {api} from '@/shared/lib/api';
 import {useEffect, useState} from 'react';
-import {DEFAULT_MANDATORY_RULES} from './default-rules';
 import {getSectionAliases, normalizeRule, normalizeStage, resolveRuleSection} from './sections';
 
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules_cache_v28';
-
-// Automatically clear obsolete cache versions
-try {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    for (let i = 1; i <= 27; i++) {
-      localStorage.removeItem('liugong_mandatory_rules_cache_v' + i);
-    }
-    localStorage.removeItem('liugong_mandatory_rules_cache');
-    try {
-      const demoRaw = localStorage.getItem('liugong_demo_state');
-      if (demoRaw) {
-        const demoObj = JSON.parse(demoRaw);
-        if (
-          demoObj &&
-          demoObj.mandatoryRules &&
-          (!demoObj.mandatoryRules.some((r: any) => r.stage === 'PRE-AN') ||
-            !demoObj.mandatoryRules.some((r: any) => r.field_key === 'nibDate'))
-        ) {
-          delete demoObj.mandatoryRules;
-          localStorage.setItem('liugong_demo_state', JSON.stringify(demoObj));
-        }
-      }
-    } catch {}
-  }
-} catch {}
+/** Rules come only from the server (crm_master_field_mandatory_rules); the last copy is kept for the next page load. */
+const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules';
 
 function getInitialMandatoryRules(): any[] {
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const raw = localStorage.getItem(MANDATORY_STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (
-          Array.isArray(parsed) &&
-          parsed.length === DEFAULT_MANDATORY_RULES.length &&
-          parsed.some((x: any) => x.field_key === 'nibDate')
-        ) {
-          return parsed.map(normalizeRule);
-        }
-      }
-    }
-  } catch {}
-  return DEFAULT_MANDATORY_RULES.map(normalizeRule);
+    const parsed = JSON.parse(localStorage.getItem(MANDATORY_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.map(normalizeRule) : [];
+  } catch {
+    return [];
+  }
 }
 
 let mandatoryCatalogCache: any[] = getInitialMandatoryRules();

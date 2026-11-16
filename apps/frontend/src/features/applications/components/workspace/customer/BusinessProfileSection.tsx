@@ -87,7 +87,6 @@ export function BusinessProfileSection() {
                     disabled={!canEditCustomerPic}
                     section="business"
                     onFieldFocus={k => handleTriggerFieldSync(k, 'business')}
-                    onFieldSync={k => handleTriggerFieldSync(k, 'business')}
                     activeFieldKey={activeFieldKey}
                     onChange={v => {
                       const exp = liveEstablishmentDate
@@ -119,7 +118,6 @@ export function BusinessProfileSection() {
               disabled={!canEditCustomerPic}
               section="business"
               onFieldFocus={k => handleTriggerFieldSync(k, 'business')}
-              onFieldSync={k => handleTriggerFieldSync(k, 'business')}
               activeFieldKey={activeFieldKey}
               onChange={v => {
                 const exp = calculateAgeYearsMonths(liveEstablishmentDate);

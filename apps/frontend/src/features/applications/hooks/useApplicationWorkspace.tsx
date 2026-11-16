@@ -1,8 +1,7 @@
 /** All state, derived values and handlers of ApplicationWorkspace; shared with its sections through WorkspaceContext. */
-import {getReadActivityIds, getStoredActivities} from '@/features/activity/lib/activity-store';
+import {getReadActivityIds} from '@/features/activity/lib/activity-store';
 import {type SystemActivity} from '@/features/activity/lib/types';
 import {useApplicationActivity} from '@/features/applications/hooks/useApplicationActivity';
-import {useCustomerDetailSubmit} from '@/features/applications/hooks/useCustomerDetailSubmit';
 import {useDeedReview} from '@/features/applications/hooks/useDeedReview';
 import {useFapApproval} from '@/features/applications/hooks/useFapApproval';
 import {useFapArchive} from '@/features/applications/hooks/useFapArchive';
@@ -187,7 +186,6 @@ export function useApplicationWorkspace({
   };
 
   const [fapComparisonModal, setFapComparisonModal] = useState<any>(null);
-  const [customerDetailLocked, setCustomerDetailLocked] = useState<boolean>(false);
   const archive = useFapArchive({a, notify});
 
   const {
@@ -215,7 +213,7 @@ export function useApplicationWorkspace({
 
   const access = useWorkspaceAccess({a, user, draft, activeStage, tab, setTab});
 
-  const [localActivities, setLocalActivities] = useState<SystemActivity[]>(() => getStoredActivities());
+  const [localActivities, setLocalActivities] = useState<SystemActivity[]>([]);
   const [localReadIds, setLocalReadIds] = useState<Set<string>>(() => getReadActivityIds());
   const {
     applicationActivities,
@@ -226,9 +224,7 @@ export function useApplicationWorkspace({
     activeStage,
     setActiveStage,
     setTab,
-    draft,
     setError,
-    liveCompanyName,
     isPreAnalysisReached: access.isPreAnalysisReached,
     localActivities,
     setLocalActivities,
@@ -263,7 +259,6 @@ export function useApplicationWorkspace({
   const {handlePrintFap} = usePrintFap({a, draft, tab, notify, setBusy, save});
 
   const newApplication = useNewApplication({
-    user,
     customers,
     customerId,
     setCustomerId,
@@ -287,7 +282,6 @@ export function useApplicationWorkspace({
   const approval = useFapApproval({
     a,
     draft,
-    user,
     onChange,
     notify,
     setBusy,
@@ -296,27 +290,7 @@ export function useApplicationWorkspace({
     setActiveStage,
     setTab,
     setSubmitFapConfirm,
-    setCustomerDetailLocked,
     setFapComparisonModal,
-  });
-
-  const {submitCustomerDetail} = useCustomerDetailSubmit({
-    a,
-    draft,
-    customerDraft,
-    customerCategory,
-    selectedCustomer,
-    liveCompanyName,
-    liveNib,
-    liveNpwp,
-    liveEstablishmentActNo,
-    onChange,
-    notify,
-    setBusy,
-    setError,
-    setDraft,
-    setTab,
-    setCustomerDetailLocked,
   });
 
   const p = draft.proposal || {...blank(proposalFields), units: []};
@@ -420,13 +394,10 @@ export function useApplicationWorkspace({
     fapComparisonModal,
     setFapComparisonModal,
     handlePrintFap,
-    customerDetailLocked,
-    setCustomerDetailLocked,
     ...archive,
     handleApproveDocument: approval.handleApproveDocument,
     handleApproveFapChangesInDetail: approval.handleApproveFapChangesInDetail,
     handleCorrectFapDataInDetail: approval.handleCorrectFapDataInDetail,
-    submitCustomerDetail,
     liveCompanyName,
     liveCompanyType,
     liveNib,

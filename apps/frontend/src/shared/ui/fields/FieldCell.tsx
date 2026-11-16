@@ -1,5 +1,5 @@
 /** One field of a Fields grid: label with required star, and the right input for its type. */
-import {isFieldMandatory, MasterSelect, useMandatoryRules, useMasterData} from '@/shared/master-data';
+import {compareLabels, isFieldMandatory, MasterSelect, useMandatoryRules, useMasterData} from '@/shared/master-data';
 import {
   fieldInputError,
   formatCompanyName,
@@ -206,7 +206,7 @@ export function FieldCell({
         <select
           required={isRequired}
           disabled={disabled || !!f.locked}
-          value={String(value?.[f.key] ?? '').toUpperCase() === 'NONE' ? '' : (value?.[f.key] ?? '')}
+          value={value?.[f.key] ?? ''}
           onFocus={() => {
             if (onFieldFocus) onFieldFocus(f.key, section);
           }}
@@ -215,11 +215,8 @@ export function FieldCell({
             if (onSelectOption) onSelectOption(f.key, e.target.value);
           }}
         >
-          {/* No "None" choice: an empty field shows blank, and a stored NONE reads as empty */}
           <option value="" hidden></option>
-          {f.options
-            .filter(o => o.toUpperCase() !== 'NONE')
-            .map(o => (
+          {[...f.options].sort(compareLabels).map(o => (
               <option key={o} value={o}>
                 {f.optionLabels?.[o] ?? toTitleCase(label(o))}
               </option>

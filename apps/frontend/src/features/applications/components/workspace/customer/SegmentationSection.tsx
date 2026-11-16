@@ -19,7 +19,6 @@ export function SegmentationSection() {
     targetProjectRow,
     setTargetProjectRow,
   } = useWorkspace();
-
   return (
     <div
       className={`fap-accordion-card ${openSections['fap-preview-sec-projects'] ? 'is-open' : 'is-closed'}`}
@@ -31,10 +30,12 @@ export function SegmentationSection() {
           <span className="fap-acc-step-badge">06</span>
           <div className="fap-acc-titles">
             <div className="fap-acc-title-row">
-              <h4 className="fap-acc-title">Segmentation &amp; Active Projects</h4>
-              <span className="fap-acc-badge">{draft.projects?.length || 0} Projects</span>
+              <h4 className="fap-acc-title">Industry Segmentation & Active Projects</h4>
+              <span className={`fap-acc-badge ${(draft.projects?.length || 0) > 0 ? 'success' : ''}`}>
+                {draft.projects?.length || 0} Projects
+              </span>
             </div>
-            <p className="fap-acc-subtitle">Industry segmentation, business category, and active projects</p>
+            <p className="fap-acc-subtitle">Debtor's active project contracts and business activities</p>
           </div>
         </div>
         <div className="fap-acc-header-right">
@@ -61,18 +62,17 @@ export function SegmentationSection() {
           <div style={{marginTop: 14}} />
           <Repeater
             title="Project Contracts"
-            description="Active contracts and work projects currently undertaken by the applicant."
+            description="Active project contracts and business activities (filled by Marketing)."
             fields={projectFields}
             rows={draft.projects || []}
             disabled={!canEditCustomerPic}
             carousel
-            onChange={r => setDraft({...draft, projects: r})}
             section="projects"
-            onFieldFocus={handleTriggerFieldSync}
-            onFieldSync={handleTriggerFieldSync}
-            activeFieldKey={activeFieldKey}
             targetRowIndex={targetProjectRow}
             onRowChange={setTargetProjectRow}
+            onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `projects-${targetProjectRow || 0}`)}
+            activeFieldKey={activeFieldKey}
+            onChange={projects => setDraft({...draft, projects})}
           />
         </div>
       )}
