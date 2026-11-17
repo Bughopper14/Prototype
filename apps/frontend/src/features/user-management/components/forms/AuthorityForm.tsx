@@ -24,23 +24,23 @@ export function AuthorityForm({
 
   if (authority) {
     return (
-      <Dialog title="Edit authority" onClose={onClose} onSubmit={f => onSave(Object.fromEntries(f))}>
+      <Dialog title="Edit Authority" onClose={onClose} onSubmit={f => onSave(Object.fromEntries(f))}>
         <div className="pt-field">
           <span className="pt-form-label">Authority</span>
           <code>{authority.authority_name}</code>
         </div>
-        <Field label="Deskripsi" name="description" defaultValue={authority.description || ''} />
+        <Field label="Description" name="description" defaultValue={authority.description || ''} />
       </Dialog>
     );
   }
   return (
     <Dialog
-      title="Tambah authority"
+      title="Add Authority"
       onClose={onClose}
       onSubmit={f => onSave({app_id: appId, authority_name: name, description: f.get('description')})}
     >
       <label className="pt-field">
-        <span className="pt-form-label">Aplikasi</span>
+        <span className="pt-form-label">Application</span>
         <select
           className="pt-select"
           value={appId}
@@ -58,7 +58,7 @@ export function AuthorityForm({
         </select>
       </label>
       <label className="pt-field">
-        <span className="pt-form-label">Authority (hanya yang dikenali aplikasi)</span>
+        <span className="pt-form-label">Authority (catalog recognized by application)</span>
         <select className="pt-select" value={name} onChange={e => setName(e.target.value)} required>
           <option value="" hidden></option>
           {available.map(a => (
@@ -67,9 +67,9 @@ export function AuthorityForm({
             </option>
           ))}
         </select>
-        {available.length === 0 && <small>Semua authority yang dikenali sudah ditambahkan.</small>}
+        {available.length === 0 && <small>All recognized authorities have already been added.</small>}
       </label>
-      <Field key={name} label="Deskripsi" name="description" defaultValue={picked?.description || ''} />
+      <Field key={name} label="Description" name="description" defaultValue={picked?.description || ''} />
     </Dialog>
   );
 }

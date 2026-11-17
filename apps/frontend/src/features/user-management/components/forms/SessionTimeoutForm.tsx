@@ -4,11 +4,11 @@ import {Row} from '@/features/user-management/lib/types';
 import {useState} from 'react';
 
 const PRESETS: [number, string][] = [
-  [15, '15 Menit (Default)'],
-  [30, '30 Menit'],
-  [60, '1 Jam (60m)'],
-  [120, '2 Jam (120m)'],
-  [0, 'Unlimited (Tanpa Batas)'],
+  [15, '15 Minutes (Default)'],
+  [30, '30 Minutes'],
+  [60, '1 Hour (60m)'],
+  [120, '2 Hours (120m)'],
+  [0, 'Unlimited (No Expiry)'],
 ];
 
 export function SessionTimeoutForm({
@@ -30,10 +30,9 @@ export function SessionTimeoutForm({
       onSubmit={() => valid && onSave(value)}
     >
       <p className="um-muted" style={{marginTop: 0}}>
-        Atur batas waktu idle/inactivity sebelum sistem secara otomatis mengeluarkan (logout) sesi pengguna
-        ini.
+        Set idle/inactivity timeout before the system automatically logs out this user session.
       </p>
-      <span className="pt-form-label">Preset Pilihan Cepat</span>
+      <span className="pt-form-label">Quick Presets</span>
       <div className="um-actions" style={{margin: '6px 0 14px'}}>
         {PRESETS.map(([m, label]) => (
           <button
@@ -53,7 +52,7 @@ export function SessionTimeoutForm({
         ))}
       </div>
       <label className="pt-field">
-        <span className="pt-form-label">Batas Waktu Inactivity (Menit)</span>
+        <span className="pt-form-label">Inactivity Timeout (Minutes)</span>
         <input
           className="pt-input"
           name="timeout_minutes"
@@ -66,16 +65,15 @@ export function SessionTimeoutForm({
         />
       </label>
       <small className="um-muted" style={{display: 'block', marginTop: 4}}>
-        Isi <code>0</code> untuk <strong>Unlimited / Tanpa Expiration</strong> (sesi tidak akan pernah logout
-        otomatis karena idle).
+        Enter <code>0</code> for <strong>Unlimited / No Expiration</strong> (session will never automatically logout due to idle time).
       </small>
       <div className="um-notice ok" style={{marginTop: 12, cursor: 'default'}}>
         <i className="fas fa-info-circle" />{' '}
         {!valid
-          ? 'Isi angka 0 sampai 1440 menit.'
+          ? 'Enter a number between 0 and 1440 minutes.'
           : value === 0
-            ? 'Sesi user ini tidak akan berakhir karena idle.'
-            : `User akan dikeluarkan otomatis setelah ${value} menit tidak aktif.`}
+            ? 'This user session will never expire due to inactivity.'
+            : `User will be automatically logged out after ${value} minutes of inactivity.`}
       </div>
     </Dialog>
   );

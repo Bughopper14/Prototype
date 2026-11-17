@@ -8,7 +8,6 @@ import {hashPassword} from '../auth/password';
 export async function ensureUsersSchemaColumns() {
   if (!pool) return;
   const cols: Array<[string, string]> = [
-    ['department', 'VARCHAR(100) NULL AFTER position'],
     ['phone', 'VARCHAR(50) NULL AFTER email'],
     ['is_admin', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER is_active'],
     ['is_placeholder', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER is_admin'],
@@ -37,7 +36,9 @@ export const publicUser = (u: any) => ({
   username: u.username,
   full_name: u.full_name,
   position: u.position,
-  department: u.department ?? null,
+  dept_id: u.dept_id ?? null,
+  department_code: u.department_code ?? null,
+  department_name: u.department_name ?? null,
   email: u.email,
   phone: u.phone ?? null,
   is_active: Boolean(u.is_active),
@@ -84,14 +85,14 @@ export async function findUser(login: string, byId = false) {
 export async function createUser(body: any, bootstrap = false) {
   const result = await exec(
     `INSERT INTO ${USER_TABLES.users}
-      (username, password_hash, full_name, position, department, email, phone, is_active, is_admin, session_timeout_minutes)
+      (username, password_hash, full_name, position, dept_id, email, phone, is_active, is_admin, session_timeout_minutes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       body.username,
       hashPassword(body.password),
       body.full_name || body.username,
       body.position || null,
-      body.department || null,
+      body.dept_id ? Number(body.dept_id) : null,
       body.email || null,
       body.phone || null,
       body.is_active === undefined ? 1 : body.is_active ? 1 : 0,

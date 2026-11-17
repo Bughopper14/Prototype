@@ -22,10 +22,10 @@ export function ApplicationsTab({
       <SectionHead
         icon="fa-layer-group"
         color="#0dcaf0"
-        title="Master Aplikasi"
+        title="Manage Applications"
         action={
           <AddButton
-            label="Tambah Aplikasi"
+            label="Add Application"
             onClick={() =>
               setDialog(
                 <ApplicationForm
@@ -69,9 +69,9 @@ export function ApplicationsTab({
                     <button
                       type="button"
                       className="um-btn danger"
-                      aria-label={`Hapus ${a.app_name}`}
+                      aria-label={`Delete ${a.app_name}`}
                       onClick={() =>
-                        confirm(`Hapus aplikasi ${a.app_name}?`) &&
+                        confirm(`Delete application "${a.app_name}"?`) &&
                         act(() => call(`/applications/${a.id}`, 'DELETE'))
                       }
                     >

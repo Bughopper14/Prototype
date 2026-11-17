@@ -2,6 +2,7 @@
 import {PermissionsDialog} from '@/features/user-management/components/forms/PermissionsDialog';
 import {SessionTimeoutForm} from '@/features/user-management/components/forms/SessionTimeoutForm';
 import {UserForm} from '@/features/user-management/components/forms/UserForm';
+import {AssignDepartmentDialog} from '@/features/user-management/components/forms/AssignDepartmentDialog';
 import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
@@ -30,7 +31,7 @@ export function UsersTab({
         title="Manage Users"
         action={
           <AddButton
-            label="Tambah User"
+            label="Add User"
             onClick={() =>
               setDialog(
                 <UserForm
@@ -65,13 +66,14 @@ export function UsersTab({
               <th>Full Name</th>
               <th>Email</th>
               <th>Position</th>
+              <th>Department</th>
               <th>Role (Portal)</th>
               <th>Session Expiry</th>
               <th style={{minWidth: 250}}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {data.users.length === 0 && empty(7)}
+            {data.users.length === 0 && empty(8)}
             {data.users.map(u => (
               <tr key={u.id}>
                 <td>
@@ -92,6 +94,80 @@ export function UsersTab({
                   <span className="badge-position">{u.position || 'Staff'}</span>
                 </td>
                 <td>
+                  <div style={{display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap'}}>
+                    {u.department_name ? (
+                      <span
+                        className="badge-position"
+                        style={{
+                          backgroundColor: '#eff6ff',
+                          color: '#1d4ed8',
+                          borderColor: '#bfdbfe',
+                          fontWeight: 600,
+                        }}
+                      >
+                        {u.department_code || u.department_name}
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          backgroundColor: '#fff1f2',
+                          color: '#be123c',
+                          border: '1px solid #fecdd3',
+                          padding: '2px 8px',
+                          borderRadius: 4,
+                          fontSize: '11px',
+                          fontWeight: 600,
+                        }}
+                      >
+                        <i className="fas fa-exclamation-circle" /> Unassigned
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      title={
+                        u.department_name
+                          ? `Transfer ${u.full_name || u.username} from ${u.department_name} to another department`
+                          : `Assign ${u.full_name || u.username} to department`
+                      }
+                      style={{
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#002c5f',
+                        borderRadius: '4px',
+                        padding: '2px 6px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        fontWeight: 600,
+                        transition: 'all 0.15s',
+                      }}
+                      onClick={() =>
+                        setDialog(
+                          <AssignDepartmentDialog
+                            title={`Transfer ${u.full_name || u.username} to Another Department`}
+                            users={data.users}
+                            departments={data.departments}
+                            initialUserId={u.id}
+                            onSave={payload =>
+                              act(() => call('/departments/assign-user', 'PUT', payload))
+                            }
+                            onClose={() => setDialog(null)}
+                          />,
+                        )
+                      }
+                    >
+                      <i className="fas fa-exchange-alt" style={{fontSize: '0.7rem', color: '#ff9900'}} />
+                      <span>Transfer</span>
+                    </button>
+                  </div>
+                </td>
+                <td>
                   {u.role_name ? (
                     <span className="badge-app">{u.role_name}</span>
                   ) : (
@@ -110,6 +186,7 @@ export function UsersTab({
                         setDialog(
                           <UserForm
                             user={u}
+                            departments={data.departments}
                             onSave={v => act(() => call(`/users/${u.id}`, 'PUT', v))}
                             onClose={() => setDialog(null)}
                           />,
@@ -122,7 +199,7 @@ export function UsersTab({
                     <button
                       type="button"
                       className="um-btn ghost"
-                      title="Set Batas Waktu Sesi (Session Expired)"
+                      title="Set Session Timeout"
                       onClick={() =>
                         setDialog(
                           <SessionTimeoutForm
@@ -162,9 +239,9 @@ export function UsersTab({
                     <button
                       type="button"
                       className="um-btn danger-outline"
-                      title="Keluarkan Paksa Sesi User"
+                      title="Force Logout User Session"
                       onClick={() =>
-                        confirm(`Keluarkan paksa sesi ${u.username}?`) &&
+                        confirm(`Force logout session for ${u.username}?`) &&
                         act(() => call(`/users/${u.id}/force-logout`, 'POST', {}))
                       }
                     >
@@ -175,9 +252,9 @@ export function UsersTab({
                       <button
                         type="button"
                         className="um-btn danger"
-                        aria-label={`Hapus ${u.username}`}
+                        aria-label={`Delete ${u.username}`}
                         onClick={() =>
-                          confirm(`Hapus user ${u.username}?`) && act(() => call(`/users/${u.id}`, 'DELETE'))
+                          confirm(`Delete user ${u.username}?`) && act(() => call(`/users/${u.id}`, 'DELETE'))
                         }
                       >
                         <i className="fas fa-trash" />

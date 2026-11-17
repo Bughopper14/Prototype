@@ -22,16 +22,16 @@ export function AuthoritiesTab({
       <SectionHead
         icon="fa-key"
         color="#ff9900"
-        title="Otoritas (Rights)"
+        title="Authorities (Permissions)"
         extra={
           <span className="um-pill primary">
             <i className="fas fa-shield-alt" />
-            Total: {data.authorities.length} Otoritas
+            Total: {data.authorities.length} Authorities
           </span>
         }
         action={
           <AddButton
-            label="Tambah Otoritas"
+            label="Add Authority"
             onClick={() =>
               setDialog(
                 <AuthorityForm
@@ -49,9 +49,9 @@ export function AuthoritiesTab({
           <thead>
             <tr>
               <th style={{width: 50, textAlign: 'center'}}>#</th>
-              <th>Kode Otoritas</th>
-              <th>Aplikasi</th>
-              <th>Deskripsi</th>
+              <th>Authority Code</th>
+              <th>Application</th>
+              <th>Description</th>
               <th style={{width: 100}}>Actions</th>
             </tr>
           </thead>
@@ -91,9 +91,9 @@ export function AuthoritiesTab({
                     <button
                       type="button"
                       className="um-btn danger"
-                      aria-label={`Hapus ${a.authority_name}`}
+                      aria-label={`Delete ${a.authority_name}`}
                       onClick={() =>
-                        confirm(`Hapus authority ${a.authority_name}?`) &&
+                        confirm(`Delete authority "${a.authority_name}"?`) &&
                         act(() => call(`/authorities/${a.id}`, 'DELETE'))
                       }
                     >

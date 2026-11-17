@@ -10,6 +10,7 @@ export const USER_MANAGEMENT = (process.env.USER_MANAGEMENT ?? 'users_').trim();
 
 export const USER_TABLES = {
   users: `${USER_MANAGEMENT}users`,
+  departments: `${USER_MANAGEMENT}departments`,
   roles: `${USER_MANAGEMENT}roles`,
   authorities: `${USER_MANAGEMENT}authorities`,
   role_authorities: `${USER_MANAGEMENT}role_authorities`,

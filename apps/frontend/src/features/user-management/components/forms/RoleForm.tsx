@@ -20,7 +20,7 @@ export function RoleForm({
   const [appId, setAppId] = useState<number>(role?.app_id ?? data.applications[0]?.id);
   return (
     <Dialog
-      title={role ? 'Edit role' : 'Tambah role'}
+      title={role ? 'Edit Role' : 'Add Role'}
       onClose={onClose}
       onSubmit={f =>
         onSave({
@@ -33,7 +33,7 @@ export function RoleForm({
     >
       {!role && (
         <label className="pt-field">
-          <span className="pt-form-label">Aplikasi</span>
+          <span className="pt-form-label">Application</span>
           <select className="pt-select" value={appId} onChange={e => setAppId(Number(e.target.value))}>
             {data.applications.map(a => (
               <option key={a.id} value={a.id}>
@@ -43,8 +43,8 @@ export function RoleForm({
           </select>
         </label>
       )}
-      <Field label="Nama role" name="role_name" defaultValue={role?.role_name} required />
-      <Field label="Deskripsi" name="description" defaultValue={role?.description || ''} />
+      <Field label="Role Name" name="role_name" defaultValue={role?.role_name} required />
+      <Field label="Description" name="description" defaultValue={role?.description || ''} />
       <div className="pt-field">
         <span className="pt-form-label">Authorities</span>
         <div className="pt-checks">

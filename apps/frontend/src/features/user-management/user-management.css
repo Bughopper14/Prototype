@@ -57,6 +57,11 @@
   color: #166534;
   border: 1px solid #bbf7d0;
 }
+.um-notice.warning {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
 
 /* Tabs */
 .um-tabs {

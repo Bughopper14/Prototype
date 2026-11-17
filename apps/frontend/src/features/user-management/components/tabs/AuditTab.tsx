@@ -12,11 +12,11 @@ export function AuditTab({data, empty}: {data: Overview; empty: (cols: number) =
         <table className="um-table">
           <thead>
             <tr>
-              <th>Waktu</th>
+              <th>Timestamp</th>
               <th>User</th>
-              <th>Aplikasi</th>
-              <th>Aksi</th>
-              <th>IP</th>
+              <th>Application</th>
+              <th>Action</th>
+              <th>IP Address</th>
             </tr>
           </thead>
           <tbody>

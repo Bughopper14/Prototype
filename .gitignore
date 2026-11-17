@@ -48,3 +48,16 @@ compare-notes.md
 
 # Working notes live in md/ (README.md and TECHNICAL.md stay in the root)
 md/
+
+# Temporary Analysis, Scratch Diagnostic Scripts & Intermediate Design Documents
+scratch/
+test_*.py
+check_*.py
+list_*.py
+find_*.js
+storage/*inventory*.json
+storage/CRM_Modular_Database_Design*.xlsx
+storage/CRM_Modular_Database_Design*.md
+storage/CRM_User_Management_Prefix_Specification_v2.xlsx
+storage/CRM_User_Management_Prefix_Specification_v3.xlsx
+

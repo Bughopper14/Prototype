@@ -28,7 +28,7 @@ export function RolesTab({
         extra={<span className="um-pill success">{data.roles.length} Roles</span>}
         action={
           <AddButton
-            label="Tambah Role"
+            label="Add Role"
             onClick={() =>
               setDialog(
                 <RoleForm
@@ -60,8 +60,8 @@ export function RolesTab({
                   <td>
                     <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
                       <strong>{r.role_name}</strong>
-                      <span className="um-pill primary" title="Jumlah otoritas yang diset untuk role ini">
-                        {ids.length} otoritas
+                      <span className="um-pill primary" title="Number of authorities granted to this role">
+                        {ids.length} authorities
                       </span>
                     </div>
                     {r.description && <div className="um-muted">{r.description}</div>}
@@ -72,7 +72,7 @@ export function RolesTab({
                   <td>
                     <div className="um-muted" style={{fontWeight: 600, marginBottom: 4}}>
                       <i className="fas fa-check-circle" style={{color: '#198754', marginRight: 4}} />
-                      {ids.length} otoritas aktif:
+                      {ids.length} active authorities:
                     </div>
                     {ids.map(id => {
                       const auth = data.authorities.find(x => x.id === id);
@@ -106,9 +106,9 @@ export function RolesTab({
                       <button
                         type="button"
                         className="um-btn danger"
-                        aria-label={`Hapus ${r.role_name}`}
+                        aria-label={`Delete ${r.role_name}`}
                         onClick={() =>
-                          confirm(`Hapus role ${r.role_name}?`) && act(() => call(`/roles/${r.id}`, 'DELETE'))
+                          confirm(`Delete role "${r.role_name}"?`) && act(() => call(`/roles/${r.id}`, 'DELETE'))
                         }
                       >
                         <i className="fas fa-trash" />

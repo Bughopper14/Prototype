@@ -4,6 +4,7 @@ import {AuditTab} from '@/features/user-management/components/tabs/AuditTab';
 import {AuthoritiesTab} from '@/features/user-management/components/tabs/AuthoritiesTab';
 import {RolesTab} from '@/features/user-management/components/tabs/RolesTab';
 import {ApplicationsTab} from '@/features/user-management/components/tabs/ApplicationsTab';
+import {DepartmentsTab} from '@/features/user-management/components/tabs/DepartmentsTab';
 import {UsersTab} from '@/features/user-management/components/tabs/UsersTab';
 import {Overview, TABS, Tab} from '@/features/user-management/lib/types';
 import {call} from '@/features/user-management/lib/um-api';
@@ -33,7 +34,7 @@ export function UserManagement({currentUserId, fullName}: {currentUserId: number
   async function act(work: () => Promise<{message?: string} | void>) {
     try {
       const result = await work();
-      setInfo((result && result.message) || 'Berhasil disimpan.');
+      setInfo((result && result.message) || 'Saved successfully.');
       setError(null);
       setDialog(null);
       await load();
@@ -42,13 +43,14 @@ export function UserManagement({currentUserId, fullName}: {currentUserId: number
     }
   }
 
-  if (!data) return <div className="um-empty">{error || 'Memuat data…'}</div>;
+  if (!data) return <div className="um-empty">{error || 'Loading data…'}</div>;
   const authoritiesByRole = new Map<number, number[]>();
   data.roleAuthorities.forEach(ra =>
     authoritiesByRole.set(ra.role_id, [...(authoritiesByRole.get(ra.role_id) || []), ra.authority_id]),
   );
   const counts: Partial<Record<Tab, number>> = {
     users: data.users.length,
+    departments: data.departments?.length || 0,
     applications: data.applications.length,
     roles: data.roles.length,
     authorities: data.authorities.length,
@@ -56,7 +58,7 @@ export function UserManagement({currentUserId, fullName}: {currentUserId: number
   const empty = (cols: number) => (
     <tr>
       <td colSpan={cols} className="um-empty">
-        Belum ada data.
+        No data available.
       </td>
     </tr>
   );
@@ -112,6 +114,10 @@ export function UserManagement({currentUserId, fullName}: {currentUserId: number
 
         {tab === 'users' && (
           <UsersTab data={data} act={act} setDialog={setDialog} currentUserId={currentUserId} empty={empty} />
+        )}
+
+        {tab === 'departments' && (
+          <DepartmentsTab data={data} act={act} setDialog={setDialog} empty={empty} />
         )}
 
         {tab === 'applications' && (

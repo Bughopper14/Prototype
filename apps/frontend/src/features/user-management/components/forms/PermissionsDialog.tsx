@@ -25,12 +25,12 @@ export function PermissionsDialog({
   }, [userId]);
   return (
     <Dialog
-      title={`Akses · ${name}`}
+      title={`Access Permissions · ${name}`}
       onClose={onClose}
       onSubmit={f => onSave(Object.fromEntries([...f.entries()].map(([k, v]) => [k, v || null])))}
     >
       {!state ? (
-        <p>Memuat…</p>
+        <p>Loading…</p>
       ) : (
         state.applications.map(a => (
           <label key={a.id} className="pt-field">
@@ -40,7 +40,7 @@ export function PermissionsDialog({
               name={String(a.id)}
               defaultValue={state.currentPermissions[a.id] ?? ''}
             >
-              <option value="">— tanpa akses —</option>
+              <option value="">— No Access —</option>
               {state.roles
                 .filter(r => r.app_id === a.id)
                 .map(r => (

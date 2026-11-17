@@ -5,11 +5,11 @@ import {Row} from '@/features/user-management/lib/types';
 
 export function ApplicationForm({onSave, onClose}: {onSave: (v: Row) => void; onClose: () => void}) {
   return (
-    <Dialog title="Tambah aplikasi" onClose={onClose} onSubmit={f => onSave(Object.fromEntries(f))}>
-      <Field label="Nama aplikasi" name="app_name" required />
-      <Field label="URL path" name="url_path" required />
-      <Field label="Deskripsi" name="description" />
-      <Field label="Icon class" name="icon_class" defaultValue="fas fa-layer-group" />
+    <Dialog title="Add Application" onClose={onClose} onSubmit={f => onSave(Object.fromEntries(f))}>
+      <Field label="Application Name" name="app_name" required />
+      <Field label="URL Path" name="url_path" required />
+      <Field label="Description" name="description" />
+      <Field label="Icon Class" name="icon_class" defaultValue="fas fa-layer-group" />
     </Dialog>
   );
 }

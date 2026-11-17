@@ -3,6 +3,8 @@ import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/
 import {requireAuthority} from '../auth/session';
 import {MasterDataService} from './master-data.service';
 import {MandatoryRulesRepository} from './repositories/mandatory-rules.repository';
+import {many, tx} from '../../core/db/query';
+import {USER_TABLES} from '../../core/db/user-tables';
 
 @Controller(API_PREFIX)
 export class MasterDataController {
@@ -50,5 +52,46 @@ export class MasterDataController {
       req.actor?.username || null,
     );
     return this.mandatoryRules.list();
+  }
+
+  @Get('workflow-approvers')
+  async approversLookup(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'access_crm_dashboard');
+    const [departments, users] = await Promise.all([
+      many(`SELECT dept_id, department_code, department_name FROM ${USER_TABLES.departments} WHERE is_active = 1 ORDER BY dept_id`),
+      many(`SELECT id, username, full_name, dept_id, position FROM ${USER_TABLES.users} WHERE is_active = 1 ORDER BY full_name, username`),
+    ]);
+    return {departments, users};
+  }
+
+  @Get('workflow-stage-submodules')
+  async getStageSubmodules(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'access_crm_dashboard');
+    return many(
+      `SELECT stage_code, submodule_code, submodule_name, order_in_stage, is_mandatory, allow_concurrent_edit 
+       FROM crm_master_workflow_stage_submodules 
+       WHERE is_active = 1 
+       ORDER BY stage_code, order_in_stage ASC`
+    );
+  }
+
+  @Put('workflow-stage-submodules/reorder')
+  async reorderStageSubmodules(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'crm_manage_master_data');
+    const {stageCode, submoduleCodes} = req.body as {stageCode: string; submoduleCodes: string[]};
+    if (!stageCode || !Array.isArray(submoduleCodes)) {
+      return {success: false, message: 'Invalid payload'};
+    }
+    await tx(async conn => {
+      for (let i = 0; i < submoduleCodes.length; i++) {
+        await conn.query(
+          `UPDATE crm_master_workflow_stage_submodules 
+           SET order_in_stage = ? 
+           WHERE stage_code = ? AND submodule_code = ?`,
+          [i + 1, stageCode, submoduleCodes[i]]
+        );
+      }
+    });
+    return {success: true, stageCode, submoduleCodes};
   }
 }

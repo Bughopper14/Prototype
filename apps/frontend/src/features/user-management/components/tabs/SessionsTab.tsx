@@ -23,9 +23,9 @@ export function SessionsTab({
             <tr>
               <th>Session ID</th>
               <th>User</th>
-              <th>Aplikasi</th>
+              <th>Application</th>
               <th>Login Time</th>
-              <th>Aktivitas Terakhir</th>
+              <th>Last Activity</th>
               <th>Status / Logout Time</th>
               <th style={{width: 110}}>Actions</th>
             </tr>
@@ -66,7 +66,7 @@ export function SessionsTab({
                         <button
                           type="button"
                           className="um-btn danger-outline"
-                          title="Hentikan Sesi Ini"
+                          title="Terminate this session"
                           onClick={() => act(() => call(`/sessions/${s.session_id}/terminate`, 'POST', {}))}
                         >
                           <i className="fas fa-power-off" />

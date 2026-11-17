@@ -31,9 +31,9 @@ export function Dialog({
         <div className="pt-modal-body">{children}</div>
         <div className="pt-modal-foot">
           <button type="button" className="pt-btn-light" onClick={onClose}>
-            Batal
+            Cancel
           </button>
-          <button className="pt-btn-primary">Simpan</button>
+          <button className="pt-btn-primary">Save Changes</button>
         </div>
       </form>
     </div>

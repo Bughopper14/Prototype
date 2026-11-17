@@ -4,6 +4,7 @@ export type Row = Record<string, any>;
 
 export type Overview = {
   users: Row[];
+  departments: Row[];
   applications: Row[];
   roles: Row[];
   authorities: Row[];
@@ -12,11 +13,12 @@ export type Overview = {
   sessions: Row[];
 };
 
-export type Tab = 'users' | 'roles' | 'authorities' | 'applications' | 'audit' | 'sessions';
+export type Tab = 'users' | 'departments' | 'roles' | 'authorities' | 'applications' | 'audit' | 'sessions';
 
 /** Tab order and icons of the System Administration console. */
 export const TABS: {key: Tab; label: string; icon: string}[] = [
   {key: 'users', label: 'Users', icon: 'fa-users'},
+  {key: 'departments', label: 'Department', icon: 'fa-building'},
   {key: 'applications', label: 'Apps', icon: 'fa-layer-group'},
   {key: 'roles', label: 'Roles', icon: 'fa-user-tag'},
   {key: 'authorities', label: 'Authorities', icon: 'fa-key'},

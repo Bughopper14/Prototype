@@ -19,6 +19,7 @@ const userBody = z.object({
   username: z.string().trim().min(1).max(50),
   full_name: z.string().trim().min(1).max(100),
   position: z.string().trim().max(100).default('Staff'),
+  dept_id: z.coerce.number().int().nullable().optional(),
   email: z
     .string()
     .trim()
@@ -26,6 +27,12 @@ const userBody = z.object({
     .optional()
     .transform(v => v || null),
   password: z.string().optional(),
+});
+
+const deptBody = z.object({
+  department_code: z.string().trim().min(1).max(50),
+  department_name: z.string().trim().min(1).max(150),
+  description: z.string().trim().default(''),
 });
 
 const roleBody = z.object({
@@ -56,11 +63,18 @@ const setRoleAuthorities = async (
 export class UsersController {
   @Get('overview')
   async overview(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    const [users, applications, roles, authorities, roleAuthorities, audits, sessions] = await Promise.all([
-      many(`SELECT u.id, u.username, u.full_name, u.position, u.email, u.is_active, u.session_timeout_minutes, r.role_name
+    const [users, departments, applications, roles, authorities, roleAuthorities, audits, sessions] = await Promise.all([
+      many(`SELECT u.id, u.username, u.full_name, u.position, u.email, u.is_active, u.session_timeout_minutes, u.dept_id, d.department_code, d.department_name, r.role_name
           FROM ${USER_TABLES.users} u
+          LEFT JOIN ${USER_TABLES.departments} d ON u.dept_id = d.dept_id
           LEFT JOIN ${USER_TABLES.user_app_roles} uar ON u.id = uar.user_id AND uar.app_id = 1
           LEFT JOIN ${USER_TABLES.roles} r ON uar.role_id = r.id AND r.app_id = 1 ORDER BY u.id`),
+      many(`SELECT d.*, 
+          (SELECT COUNT(*) FROM ${USER_TABLES.users} u WHERE u.dept_id = d.dept_id AND u.is_active = 1) AS user_count,
+          (SELECT GROUP_CONCAT(u.full_name SEPARATOR ', ') FROM ${USER_TABLES.users} u WHERE u.dept_id = d.dept_id AND u.is_active = 1) AS user_names
+          FROM ${USER_TABLES.departments} d
+          WHERE d.is_active = 1
+          ORDER BY d.dept_id`),
       many(`SELECT * FROM ${USER_TABLES.applications} ORDER BY id`),
       many(
         `SELECT r.*, a.app_name FROM ${USER_TABLES.roles} r LEFT JOIN ${USER_TABLES.applications} a ON r.app_id = a.id ORDER BY r.app_id, r.id`,
@@ -76,7 +90,7 @@ export class UsersController {
         `SELECT s.*, u.username FROM ${USER_TABLES.session_logs} s LEFT JOIN ${USER_TABLES.users} u ON s.user_id = u.id ORDER BY s.login_time DESC LIMIT 500`,
       ),
     ]);
-    return {users, applications, roles, authorities, roleAuthorities, audits, sessions};
+    return {users, departments, applications, roles, authorities, roleAuthorities, audits, sessions};
   }
 
   @Post('users')
@@ -89,8 +103,8 @@ export class UsersController {
       400,
     );
     const result = await exec(
-      `INSERT INTO ${USER_TABLES.users} (username, password_hash, full_name, position, email, is_active) VALUES (?, ?, ?, ?, ?, 1)`,
-      [b.username, hashPassword(b.password!), b.full_name, b.position, b.email],
+      `INSERT INTO ${USER_TABLES.users} (username, password_hash, full_name, position, dept_id, email, is_active) VALUES (?, ?, ?, ?, ?, ?, 1)`,
+      [b.username, hashPassword(b.password!), b.full_name, b.position, b.dept_id ?? null, b.email],
     );
     await audit(req.actor, `Added User: ${b.username}`);
     res.status(201);
@@ -108,16 +122,17 @@ export class UsersController {
     );
     if (b.password?.trim()) {
       await exec(
-        `UPDATE ${USER_TABLES.users} SET username=?, password_hash=?, full_name=?, position=?, email=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
-        [b.username, hashPassword(b.password), b.full_name, b.position, b.email, id],
+        `UPDATE ${USER_TABLES.users} SET username=?, password_hash=?, full_name=?, position=?, dept_id=?, email=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
+        [b.username, hashPassword(b.password), b.full_name, b.position, b.dept_id ?? null, b.email, id],
       );
     } else {
       await exec(
-        `UPDATE ${USER_TABLES.users} SET username=?, full_name=?, position=?, email=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
+        `UPDATE ${USER_TABLES.users} SET username=?, full_name=?, position=?, dept_id=?, email=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,
         [
         b.username,
         b.full_name,
         b.position,
+        b.dept_id ?? null,
         b.email,
         id,
       ]);
@@ -132,6 +147,96 @@ export class UsersController {
     ensure(id !== req.actor.portalUserId, 'Cannot delete yourself');
     await exec(`DELETE FROM ${USER_TABLES.users} WHERE id = ?`, [id]);
     await audit(req.actor, `Deleted User ID: ${id}`);
+    return {success: true};
+  }
+
+  /* ---------- departments ---------- */
+
+  @Post('departments')
+  async createDepartment(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    const b = deptBody.parse(req.body);
+    ensure(
+      !(await one(`SELECT 1 AS x FROM ${USER_TABLES.departments} WHERE department_code = ? AND is_active = 1`, [b.department_code])),
+      `Kode departemen '${b.department_code}' sudah terdaftar.`,
+      400,
+    );
+    const actorName = req.actor?.username || 'System Admin';
+    const result = await exec(
+      `INSERT INTO ${USER_TABLES.departments} (department_code, department_name, description, is_active, created_by) VALUES (?, ?, ?, 1, ?)`,
+      [b.department_code.toUpperCase(), b.department_name, b.description, actorName],
+    );
+    await audit(req.actor, `Added Department: ${b.department_name} (${b.department_code})`);
+    res.status(201);
+    return {success: true, id: result.insertId};
+  }
+
+  @Put('departments/assign-user')
+  async assignUserDepartment(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    const {userId, userIds, dept_id} = z.object({
+      userId: z.coerce.number().int().optional(),
+      userIds: z.array(z.coerce.number().int()).optional(),
+      dept_id: z.coerce.number().int().nullable().optional(),
+    }).parse(req.body);
+
+    const targetUserIds: number[] = [];
+    if (userIds && userIds.length > 0) {
+      targetUserIds.push(...userIds);
+    } else if (userId !== undefined) {
+      targetUserIds.push(userId);
+    }
+
+    ensure(targetUserIds.length > 0, 'Pilih minimal satu pengguna.');
+
+    await tx(async conn => {
+      for (const uid of targetUserIds) {
+        await exec(
+          `UPDATE ${USER_TABLES.users} SET dept_id = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`,
+          [dept_id ?? null, uid],
+          conn,
+        );
+      }
+    });
+
+    await audit(
+      req.actor,
+      `Assigned ${targetUserIds.length} User(s) [${targetUserIds.join(', ')}] to Department ID ${dept_id ?? 'None'}`,
+    );
+    return {success: true, count: targetUserIds.length};
+  }
+
+  @Put('departments/:id')
+  async updateDepartment(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    const id = Number(req.params.id);
+    const b = deptBody.parse(req.body);
+    ensure(
+      !(await one(`SELECT 1 AS x FROM ${USER_TABLES.departments} WHERE department_code = ? AND dept_id != ? AND is_active = 1`, [b.department_code, id])),
+      `Kode departemen '${b.department_code}' sudah terdaftar.`,
+      400,
+    );
+    const actorName = req.actor?.username || 'System Admin';
+    await exec(
+      `UPDATE ${USER_TABLES.departments} SET department_code=?, department_name=?, description=?, updated_by=?, updated_at=CURRENT_TIMESTAMP WHERE dept_id=?`,
+      [b.department_code.toUpperCase(), b.department_name, b.description, actorName, id],
+    );
+    await audit(req.actor, `Edited Department: ${b.department_name} (ID: ${id})`);
+    return {success: true};
+  }
+
+  @Delete('departments/:id')
+  async deleteDepartment(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    const id = Number(req.params.id);
+    const actorName = req.actor?.username || 'System Admin';
+    await tx(async conn => {
+      // Unlink users from this department (SET NULL)
+      await exec(`UPDATE ${USER_TABLES.users} SET dept_id = NULL WHERE dept_id = ?`, [id], conn);
+      // Soft delete
+      await exec(
+        `UPDATE ${USER_TABLES.departments} SET is_active = 0, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE dept_id = ?`,
+        [actorName, id],
+        conn,
+      );
+    });
+    await audit(req.actor, `Deleted Department ID: ${id}`);
     return {success: true};
   }
 
