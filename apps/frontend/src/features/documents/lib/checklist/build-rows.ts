@@ -26,6 +26,8 @@ export function buildChecklistRows(
             department: (c.assignedRole || 'BS') as MasterDocDef['department'],
             isMandatory: !!c.isMandatory,
             defaultSection: c.stageCode || '',
+            stage: c.stageCode || '',
+            stageName: c.stageName || '',
             description: 'Added for this application',
           },
       )

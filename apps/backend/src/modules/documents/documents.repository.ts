@@ -331,6 +331,28 @@ export class DocumentsRepository {
     return rows[0] ? fileModel(rows[0]) : null;
   }
 
+  /** Every file of the application's checklist (the ones the checklist lists), with its document and stage, for the ZIP. */
+  async filesForZip(applicationId: string) {
+    const [rows] = await this.db.pool.execute<any[]>(
+      `SELECT f.id,f.file_name,f.storage_key,f.version_number,t.code,t.sort_order,s.name AS stage_name
+       FROM ${CRM.applicationDocumentFiles} f
+       JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
+       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.masterWorkflowStages} s ON s.id=t.stage_id
+       WHERE f.application_id=? AND f.deleted_at IS NULL
+       ORDER BY t.sort_order,f.version_number,f.uploaded_at`,
+      [applicationId],
+    );
+    return rows.map(r => ({
+      id: r.id as string,
+      fileName: r.file_name as string,
+      fileKey: r.storage_key as string,
+      version: Number(r.version_number),
+      code: r.code as string,
+      stageName: (r.stage_name as string | null) ?? '',
+    }));
+  }
+
   /** The checklist row by its id or by its document type code. */
   async checklistRow(conn: Conn, applicationId: string, idOrCode: string) {
     const [rows] = await conn.execute<any[]>(

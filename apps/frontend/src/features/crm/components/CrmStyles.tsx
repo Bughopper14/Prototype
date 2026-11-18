@@ -13,6 +13,7 @@ import shell from '../styles/11-shell.css?raw';
 import keithSync from '../styles/12-keith-sync.css?raw';
 import workflow from '../styles/13-workflow.css?raw';
 import newApplication from '../styles/14-new-application.css?raw';
+import documentChecklist from '../styles/13-document-checklist.css?raw';
 
 const CRM_CSS = [
   base,
@@ -29,6 +30,7 @@ const CRM_CSS = [
   keithSync,
   workflow,
   newApplication,
+  documentChecklist,
 ].join('');
 
 export function CrmStyles() {

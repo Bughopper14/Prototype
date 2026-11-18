@@ -1,4 +1,4 @@
-/** Applies the search text, department and status filters of the checklist. */
+/** Applies the search text, department, stage and status filters of the checklist. */
 import type {ChecklistRow, StatusFilter} from '@/features/documents/lib/checklist/types';
 
 export function filterRows(
@@ -6,6 +6,7 @@ export function filterRows(
   searchTerm: string,
   selectedDept: string,
   selectedStatus: StatusFilter,
+  selectedStage: string = 'ALL',
 ) {
   return rows.filter(r => {
     const matchSearch =
@@ -17,11 +18,13 @@ export function filterRows(
 
     const matchDept = selectedDept === 'ALL' || r.department === selectedDept;
 
+    const matchStage = selectedStage === 'ALL' || r.stage === selectedStage;
+
     const matchStatus =
       selectedStatus === 'ALL' ||
       (selectedStatus === 'AVAILABLE' && r.isAvailable) ||
       (selectedStatus === 'PENDING' && !r.isAvailable);
 
-    return matchSearch && matchDept && matchStatus;
+    return matchSearch && matchDept && matchStage && matchStatus;
   });
 }

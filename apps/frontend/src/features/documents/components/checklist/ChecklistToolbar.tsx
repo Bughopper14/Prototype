@@ -9,6 +9,12 @@ export function ChecklistToolbar({
   setSelectedDept,
   selectedStatus,
   setSelectedStatus,
+  stages,
+  selectedStage,
+  setSelectedStage,
+  grouped,
+  setGrouped,
+  toolbarRef,
 }: {
   searchTerm: string;
   setSearchTerm: (v: string) => void;
@@ -16,9 +22,15 @@ export function ChecklistToolbar({
   setSelectedDept: (v: string) => void;
   selectedStatus: StatusFilter;
   setSelectedStatus: (v: StatusFilter) => void;
+  stages: {code: string; name: string}[];
+  selectedStage: string;
+  setSelectedStage: (v: string) => void;
+  grouped: boolean;
+  setGrouped: (v: boolean) => void;
+  toolbarRef: React.Ref<HTMLDivElement>;
 }) {
   return (
-    <div className="doc-checklist-toolbar">
+    <div className="doc-checklist-toolbar" ref={toolbarRef}>
       <div className="search doc-search-input">
         <Search size={16} />
         <input
@@ -34,6 +46,15 @@ export function ChecklistToolbar({
       </div>
 
       <div className="doc-filters-group">
+        <div className="doc-view-switch" role="group" aria-label="Tampilan daftar">
+          <button type="button" className={grouped ? 'active' : ''} onClick={() => setGrouped(true)}>
+            Per Tahap
+          </button>
+          <button type="button" className={!grouped ? 'active' : ''} onClick={() => setGrouped(false)}>
+            Daftar
+          </button>
+        </div>
+
         <div className="filter-select-wrap">
           <Filter size={14} className="filter-icon" />
           <select
@@ -47,6 +68,21 @@ export function ChecklistToolbar({
             <option value="CA">CA (Credit Analyst)</option>
             <option value="LEGAL">LEGAL (Legal Officer)</option>
             <option value="COMMITTEE">COMMITTEE (Komite)</option>
+          </select>
+        </div>
+
+        <div className="filter-select-wrap">
+          <select
+            value={selectedStage}
+            onChange={e => setSelectedStage(e.target.value)}
+            className="doc-filter-select"
+          >
+            <option value="ALL">Semua Tahap</option>
+            {stages.map(s => (
+              <option key={s.code} value={s.code}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </div>
 

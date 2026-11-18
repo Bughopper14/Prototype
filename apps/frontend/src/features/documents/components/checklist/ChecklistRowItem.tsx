@@ -2,6 +2,7 @@
 import {CheckCircle2, Clock, ShieldCheck, XCircle} from 'lucide-react';
 import {DocumentRowActions} from '@/features/documents/components/checklist/DocumentRowActions';
 import {DocumentSourceCell} from '@/features/documents/components/checklist/DocumentSourceCell';
+import {StageBadge} from '@/features/documents/components/checklist/StageBadge';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function ChecklistRowItem({
@@ -13,9 +14,12 @@ export function ChecklistRowItem({
   onUpload,
   onDelete,
   onVerify,
+  showStage,
 }: {
   row: ChecklistRow;
   index: number;
+  /** The stage column is hidden when the table is already grouped by stage. */
+  showStage: boolean;
   isUploading: boolean;
   deletingFileId: string | null;
   onPreview: (row: ChecklistRow) => void;
@@ -43,6 +47,13 @@ export function ChecklistRowItem({
           </div>
         </div>
       </td>
+
+      {/* Tahap workflow */}
+      {showStage && (
+        <td>
+          <StageBadge code={row.stage} name={row.stageName} />
+        </td>
+      )}
 
       {/* Departemen */}
       <td>
