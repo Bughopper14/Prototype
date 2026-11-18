@@ -52,7 +52,7 @@ export type Catalog = {
   documents: {code: string; name: string}[];
   departments: {code: string; name: string}[];
   /** The authorities that may be chosen for each place (a group, a stage or one document of a stage). */
-  authorityOptions: {scope: 'GROUP' | 'STAGE' | 'DOCUMENT'; formCode: string | null; documentCode: string | null; departmentCode: string; authorityName: string; description: string}[];
+  authorityOptions: {scope: 'GROUP' | 'STAGE' | 'DOCUMENT'; formCode: string | null; documentCode: string | null; departmentCode: string; authorityName: string}[];
 };
 export type Issue = {level: 'error' | 'warning'; message: string};
 
