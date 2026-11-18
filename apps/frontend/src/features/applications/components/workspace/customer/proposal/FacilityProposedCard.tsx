@@ -40,8 +40,7 @@ export function FacilityProposedCard() {
       >
         <div className="field-group" data-field="financingMethod">
           <label className="field-label">Cara Pembiayaan / Financing Method</label>
-          <input
-            type="text"
+          <select
             id="fap-form-financingMethod"
             data-field="financingMethod"
             className="field-input"
@@ -61,7 +60,16 @@ export function FacilityProposedCard() {
                 },
               }));
             }}
-          />
+          >
+            <option value="">Select financing method</option>
+            {(master.financingMethod || [])
+              .filter(x => x.active || x.value === draft.financingProposal?.facilityProposed?.financingMethod)
+              .map(x => (
+                <option key={x.value} value={x.value}>
+                  {x.name || x.value}
+                </option>
+              ))}
+          </select>
         </div>
 
         <div className="field-group" data-field="financingValueProp">
