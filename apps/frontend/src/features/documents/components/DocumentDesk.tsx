@@ -82,7 +82,7 @@ export function DocumentDesk({
               onChange={e => setDepartment(e.target.value)}
             >
               <option value="ALL">All departments</option>
-              {['BS', 'CA', 'LEGAL'].map(r => (
+              {[...new Set(items.map(d => d.assigned_role).filter(Boolean))].sort().map((r: any) => (
                 <option value={r} key={r}>
                   {label(r)}
                 </option>

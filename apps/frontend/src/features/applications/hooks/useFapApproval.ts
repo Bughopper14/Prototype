@@ -66,12 +66,13 @@ export function useFapApproval({
     try {
       const updated = {...draft, stage: STAGE.PRE_ANALYSIS};
       await api(`/applications/${a.id}/stage`, 'PUT', {});
+      const fresh = await api(`/applications/${a.id}`);
       setDraft(updated);
       setActiveStage(STAGE.PRE_ANALYSIS);
       setTab(8);
       setSubmitFapConfirm(false);
       notify('FAP Stage submitted. Pre-analysis stage is now active.');
-      if (onChange) onChange(updated);
+      if (onChange) onChange(fresh);
     } catch (e: any) {
       setError(e.message || 'Failed to submit FAP stage.');
     } finally {

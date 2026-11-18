@@ -12,7 +12,8 @@ export function ChecklistTable({
   onPreview,
   onUpload,
   onDelete,
-  onVerify,
+  onRequestApproval,
+  approvalBusy,
   grouped,
   collapsedStages,
   onToggleStage,
@@ -26,9 +27,10 @@ export function ChecklistTable({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
-  onVerify?: (row: ChecklistRow) => void;
+  onRequestApproval?: (row: ChecklistRow) => void;
+  approvalBusy?: string | null;
 }) {
-  const columns = grouped ? 7 : 8;
+  const columns = grouped ? 8 : 9;
   const groups = grouped ? groupRowsByStage(rows) : [];
   const renderRow = (row: ChecklistRow, idx: number) => (
     <ChecklistRowItem
@@ -41,7 +43,8 @@ export function ChecklistTable({
       onPreview={onPreview}
       onUpload={onUpload}
       onDelete={onDelete}
-      onVerify={onVerify}
+      onRequestApproval={onRequestApproval}
+      approvalBusy={approvalBusy}
     />
   );
   let counter = 0;
@@ -57,6 +60,7 @@ export function ChecklistTable({
             <th style={{width: '130px'}}>DEPARTEMEN</th>
             <th style={{width: '120px'}}>SIFAT</th>
             <th style={{width: '150px'}}>STATUS KELENGKAPAN</th>
+            <th style={{minWidth: '190px'}}>APPROVAL</th>
             <th style={{minWidth: '260px'}}>SUMBER / KETERANGAN INTEGRASI</th>
             <th style={{width: '180px', textAlign: 'right'}}>AKSI</th>
           </tr>

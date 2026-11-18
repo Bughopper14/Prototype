@@ -18,6 +18,7 @@ import {
   Power,
   PowerOff,
   Save,
+  ShieldCheck,
   Trash2,
   Unlink,
   XCircle,
@@ -27,24 +28,12 @@ import {Modal} from '@/shared/ui/Modal';
 import {workflowApi, type Catalog, type Definition, type Group, type Issue, type Stage, type WorkflowHeader} from '../api';
 import {joinPreviousStep, moveGroup, removePart, sortGroups, sortStages, splitFromStep, stepsOf, tempKey} from '../definition-ops';
 import {GROUP_COLORS} from '../palette';
-import {StagePanel} from './StagePanel';
+import {ApprovalList} from './ApprovalList';
+import {StagePanel, type StageTab} from './StagePanel';
 import {useConfirm} from '../ConfirmDialog';
+import {WorkflowDiagramView} from '../WorkflowDiagram';
 
 const STATUS_LABEL = {DRAFT: 'Draft', ACTIVE: 'Active', INACTIVE: 'Deactivated'} as const;
-
-function Stepper({value, onChange, disabled, label}: {value: number; onChange: (v: number) => void; disabled: boolean; label: string}) {
-  return (
-    <span className="wf-stepper" title={label}>
-      <button type="button" disabled={disabled || value <= 1} onClick={() => onChange(value - 1)} aria-label="Earlier">
-        <Minus size={16} />
-      </button>
-      <b>{value}</b>
-      <button type="button" disabled={disabled} onClick={() => onChange(value + 1)} aria-label="Later">
-        <Plus size={16} />
-      </button>
-    </span>
-  );
-}
 
 export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catalog: Catalog; onBack: () => void; notify: (m: string) => void}) {
   const [workflow, setWorkflow] = useState<WorkflowHeader | null>(null);
@@ -53,9 +42,10 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [panel, setPanel] = useState<{key: string; tab: 'fields' | 'documents'} | null>(null);
+  const [panel, setPanel] = useState<{key: string; tab: StageTab} | null>(null);
   const [history, setHistory] = useState<Awaited<ReturnType<typeof workflowApi.history>> | null>(null);
   const [name, setName] = useState('');
+  const [view, setView] = useState<'steps' | 'diagram'>('steps');
 
   const load = useCallback(async () => {
     const r = await workflowApi.get(id);
@@ -182,6 +172,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
     });
   };
   const requiredCount = (key: string) => def.fields.filter(f => f.stageKey === key && f.mandatory).length;
+  const approvalCount = (key: string) => def.approvalSteps.filter(a => a.scope === 'STAGE' && a.stageKey === key).length;
   const docCount = (key: string) => def.documents.filter(d => d.stageKey === key).length;
   const panelStage = panel ? def.stages.find(s => s.key === panel.key) : undefined;
   const errors = issues.filter(i => i.level === 'error');
@@ -247,10 +238,19 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
         </div>
       )}
 
-      <p className="wf-how">
-        <b>How to read this:</b> the steps run from left to right. Groups in the <b>same step run together</b>. Inside a group, stages with the same
-        order run together too. Click a stage to choose its required fields and documents.
-      </p>
+      <div className="wf-tabs" role="tablist" aria-label="Workflow view">
+        <button type="button" role="tab" aria-selected={view === 'steps'} onClick={() => setView('steps')}>
+          Steps &amp; stages
+        </button>
+        <button type="button" role="tab" aria-selected={view === 'diagram'} onClick={() => setView('diagram')}>
+          Diagram
+        </button>
+      </div>
+
+      {view === 'diagram' ? (
+        <WorkflowDiagramView def={def} catalog={catalog} />
+      ) : (
+        <>
 
       <div className="wf-board-scroll">
         <div className="wf-board">
@@ -319,7 +319,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                         {stages.map(stage => {
                           const together = stages.filter(s => s.order === stage.order).length > 1;
                           return (
-                            <div className="wf-stage" key={stage.key}>
+                            <div className={`wf-stage ${stage.departmentCode ? '' : 'incomplete'}`} key={stage.key}>
                               <div className="wf-stage-top">
                                 <input className="wf-stage-name" disabled={locked} value={stage.name} onChange={e => patchStage(stage.key, {name: e.target.value})} aria-label="Stage name" />
                                 {!locked && (
@@ -332,43 +332,26 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                                   </button>
                                 )}
                               </div>
-                              <div className="wf-stage-row">
-                                <span className="wf-label">Order</span>
-                                <Stepper value={stage.order} disabled={locked} onChange={v => patchStage(stage.key, {order: v})} label="Stages with the same order run together" />
-                                {together && <span className="wf-together">runs together</span>}
-                              </div>
-                              <div className="wf-stage-row">
-                                <span className="wf-label">Dept</span>
-                                <select disabled={locked} value={stage.departmentCode || ''} onChange={e => patchStage(stage.key, {departmentCode: e.target.value || null})}>
-                                  <option value="">None</option>
-                                  {catalog.departments.map(d => (
-                                    <option key={d.code} value={d.code}>
-                                      {d.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="wf-stage-row">
-                                <span className="wf-label">Form</span>
-                                <select disabled={locked} value={stage.formCode || ''} onChange={e => patchStage(stage.key, {formCode: e.target.value || null})}>
-                                  <option value="">No form</option>
-                                  {catalog.forms.map(f => (
-                                    <option key={f.code} value={f.code}>
-                                      {f.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="wf-stage-actions">
+                              <button type="button" className="wf-stage-meta" onClick={() => setPanel({key: stage.key, tab: 'details'})} title="Open the details of this stage">
+                                <span className={stage.departmentCode ? '' : 'wf-missing-text'}>{stage.departmentCode ? (catalog.departments.find(d => d.code === stage.departmentCode)?.name ?? stage.departmentCode) : 'Department needed'}</span>
+                                <span>{catalog.forms.find(f => f.code === stage.formCode)?.name ?? 'No form'}</span>
+                                {together && <em className="wf-together">runs together</em>}
+                              </button>
+                              <div className="wf-stage-actions three">
                                 <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'fields'})}>
-                                  <ListChecks size={20} />
+                                  <ListChecks size={18} />
                                   <b>{requiredCount(stage.key)}</b>
-                                  <span>required fields</span>
+                                  <span>fields</span>
                                 </button>
                                 <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'documents'})}>
-                                  <FileText size={20} />
+                                  <FileText size={18} />
                                   <b>{docCount(stage.key)}</b>
                                   <span>documents</span>
+                                </button>
+                                <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'approval'})}>
+                                  <ShieldCheck size={18} />
+                                  <b>{approvalCount(stage.key)}</b>
+                                  <span>approvals</span>
                                 </button>
                               </div>
                             </div>
@@ -376,6 +359,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                         })}
                         {!stages.length && <div className="wf-note">No stage yet.</div>}
                       </div>
+                      <ApprovalList def={def} setDef={setDef} catalog={catalog} locked={locked} target={{scope: 'GROUP', groupKey: group.key}} title="Approval of the whole group" />
                       {!locked && (
                         <button className="wf-add" onClick={() => addStage(group)}>
                           <Plus size={18} /> Add stage
@@ -406,6 +390,8 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
           )}
         </div>
       </div>
+        </>
+      )}
 
       {confirmDialog}
       {panel && panelStage && <StagePanel def={def} setDef={setDef} catalog={catalog} stage={panelStage} locked={locked} initialTab={panel.tab} onClose={() => setPanel(null)} />}

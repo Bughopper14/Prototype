@@ -2,6 +2,7 @@ import {AccessGate} from '@/features/crm/components/AccessGate';
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {PageHeading} from '@/features/crm/components/PageHeading';
 import {Modal} from '@/shared/ui/Modal';
+import {toCode} from '@liugong/shared';
 import {ChevronRight, Layers, Lock, Pencil, Plus, Power, PowerOff, Zap, History} from 'lucide-react';
 import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import {workflowApi, type Catalog, type WorkflowHeader} from './api';
@@ -63,13 +64,8 @@ function Pipeline({flow}: {flow: Flow}) {
   );
 }
 
-/** The code the backend will give the workflow (name trimmed, upper-case, other characters become one underscore). */
-const previewCode = (name: string) =>
-  name
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+/** The code the backend will give the workflow: the standard code (@liugong/shared), hyphens, never underscores. */
+const previewCode = toCode;
 
 function NewWorkflowDialog({rows, onClose, onCreated, notify}: {rows: WorkflowHeader[]; onClose: () => void; onCreated: (id: string) => void; notify: (m: string) => void}) {
   const [name, setName] = useState('');
@@ -95,7 +91,7 @@ function NewWorkflowDialog({rows, onClose, onCreated, notify}: {rows: WorkflowHe
 
         <label className="wf-new-field">
           <span>
-            Name <em>required</em>
+            Name <em className="req" title="Required" aria-label="required">*</em>
           </span>
           <input value={name} autoFocus placeholder="e.g. Fast-track repeat order" maxLength={150} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && name.trim() && !busy && void create()} />
           <small className={taken ? 'warn' : ''}>
@@ -265,7 +261,7 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
               </dl>
               <Pipeline flow={w.flow || []} />
               <button className="wf-open" onClick={() => onOpen(w.id)}>
-                <Pencil size={16} /> {w.editable ? 'Manage steps & stages' : 'View steps & stages'} ({stageCount})
+                <Pencil size={16} /> {w.editable ? 'Manage steps & stages' : 'See details'} ({stageCount})
               </button>
               <footer>
                 <button className="wf-btn small" onClick={() => setHistory(w)}>

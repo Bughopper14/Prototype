@@ -23,7 +23,7 @@ export function buildChecklistRows(
             code: c.documentCode,
             name: c.documentName,
             title: c.documentName,
-            department: (c.assignedRole || 'BS') as MasterDocDef['department'],
+            department: (c.assignedRole || '') as MasterDocDef['department'],
             isMandatory: !!c.isMandatory,
             defaultSection: c.stageCode || '',
             stage: c.stageCode || '',

@@ -13,7 +13,8 @@ export function ChecklistRowItem({
   onPreview,
   onUpload,
   onDelete,
-  onVerify,
+  onRequestApproval,
+  approvalBusy,
   showStage,
 }: {
   row: ChecklistRow;
@@ -25,22 +26,16 @@ export function ChecklistRowItem({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
-  onVerify?: (row: ChecklistRow) => void;
+  onRequestApproval?: (row: ChecklistRow) => void;
+  approvalBusy?: string | null;
 }) {
-  const checkedBy = [
-    ['BS', row.check?.checkedByBs],
-    ['CA', row.check?.checkedByCa],
-    ['LEGAL', row.check?.checkedByLegal],
-  ]
-    .filter(([, done]) => done)
-    .map(([dept]) => dept);
   return (
     <tr className={`doc-checklist-row ${row.isAvailable ? 'row-available' : 'row-pending'}`}>
       <td style={{textAlign: 'center', fontWeight: 600, color: '#64748b'}}>{index + 1}</td>
       {/* Dokumen Info */}
       <td>
         <div className="doc-meta-cell">
-          <div className={`doc-code-badge badge-${row.department.toLowerCase()}`}>{row.code}</div>
+          <div className={`doc-code-badge badge-${(row.department || '').toLowerCase()}`}>{row.code}</div>
           <div>
             <strong className="doc-primary-name">{row.name}</strong>
             <span className="doc-sub-desc">{row.description}</span>
@@ -57,7 +52,7 @@ export function ChecklistRowItem({
 
       {/* Departemen */}
       <td>
-        <span className={`dept-pill dept-${row.department.toLowerCase()}`}>{row.department}</span>
+        {row.department ? <span className={`dept-pill dept-${row.department.toLowerCase()}`}>{row.department}</span> : <span className="muted">-</span>}
       </td>
 
       {/* Sifat Dokumen */}
@@ -91,8 +86,46 @@ export function ChecklistRowItem({
               <XCircle size={13} style={{marginRight: 4}} /> Ditolak
             </span>
           )}
-          {checkedBy.length > 0 && <small className="muted">Dicek: {checkedBy.join(', ')}</small>}
         </div>
+      </td>
+
+      {/* Approval dokumen */}
+      <td>
+        {row.check?.approval ? (
+          <div className={'doc-approval ' + String(row.check.approval.state).toLowerCase()}>
+            {row.check.approval.state === 'NOT_REQUESTED' ? (
+              <button
+                type="button"
+                className="button small doc-needs"
+                disabled={!onRequestApproval || !row.check.approval.canRequest || approvalBusy === row.chkId}
+                title={row.check.approval.canRequest ? 'Send this document for approval' : 'Upload the document first'}
+                onClick={() => onRequestApproval?.(row)}
+              >
+                <ShieldCheck size={13} /> Needs approval
+              </button>
+            ) : (
+              <>
+                <span className="doc-approval-chip">
+                  <ShieldCheck size={13} />
+                  {row.check.approval.state === 'APPROVED' ? 'Approved' : row.check.approval.state === 'REJECTED' ? 'Rejected' : 'Waiting'}
+                </span>
+                {row.check.approval.state === 'REJECTED' && row.check.approval.canRequest && onRequestApproval && (
+                  <button type="button" className="button small doc-needs" disabled={approvalBusy === row.chkId} onClick={() => onRequestApproval(row)}>
+                    Submit again
+                  </button>
+                )}
+              </>
+            )}
+            {(row.check.approval.steps || []).length > 1 &&
+              (row.check.approval.steps || []).map((st: any) => (
+                <small key={st.name} className="doc-approval-step" title={`Authority: ${st.authority}`}>
+                  {st.name}: {st.status === 'APPROVED' ? 'approved' : st.status === 'PENDING' ? 'waiting' : st.status === 'REJECTED' ? 'rejected' : st.status === 'WAITING' ? 'queued' : st.status === 'CANCELLED' ? 'closed' : '—'}
+                </small>
+              ))}
+          </div>
+        ) : (
+          <small className="muted">No approval needed</small>
+        )}
       </td>
 
       {/* Sumber Integrasi & Bukti */}
@@ -109,7 +142,6 @@ export function ChecklistRowItem({
           onPreview={onPreview}
           onUpload={onUpload}
           onDelete={onDelete}
-          onVerify={onVerify}
         />
       </td>
     </tr>

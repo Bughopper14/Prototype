@@ -3,7 +3,6 @@ import {ChecklistMetrics} from '@/features/documents/components/checklist/Checkl
 import {ChecklistTable} from '@/features/documents/components/checklist/ChecklistTable';
 import {ChecklistToolbar} from '@/features/documents/components/checklist/ChecklistToolbar';
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
-import {VerifyDocumentDialog} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {useDocumentChecklist} from '@/features/documents/hooks/useDocumentChecklist';
 import {ChecklistCustomizeDialog} from '@/features/documents/components/checklist/ChecklistCustomizeDialog';
 import {hasAuthority} from '@/shared/lib/auth';
@@ -79,6 +78,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           setSearchTerm={c.setSearchTerm}
           selectedDept={c.selectedDept}
           setSelectedDept={c.setSelectedDept}
+          departments={c.departments}
           selectedStatus={c.selectedStatus}
           setSelectedStatus={c.setSelectedStatus}
           stages={c.stages}
@@ -99,7 +99,8 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           onPreview={c.handleOpenPreview}
           onUpload={c.handleTriggerUpload}
           onDelete={c.handleDeleteManualFile}
-          onVerify={c.canVerify ? c.openVerify : undefined}
+          onRequestApproval={c.canRequestApproval ? c.requestApproval : undefined}
+          approvalBusy={c.approvalBusy}
         />
       </section>
 
@@ -107,15 +108,6 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
         <ChecklistCustomizeDialog application={application} onChange={onChange} notify={notify} onClose={() => setCustomizing(false)} />
       )}
 
-      {c.verifying && (
-        <VerifyDocumentDialog
-          row={c.verifying}
-          busy={c.verifyBusy}
-          error={c.verifyError}
-          onSubmit={c.handleVerify}
-          onClose={() => c.setVerifying(null)}
-        />
-      )}
 
       {c.previewModal && (
         <DocumentPreviewModal preview={c.previewModal} onClose={() => c.setPreviewModal(null)} />

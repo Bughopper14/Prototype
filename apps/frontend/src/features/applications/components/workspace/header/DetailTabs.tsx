@@ -5,7 +5,10 @@ import {useWorkspace} from '@/features/applications/components/workspace/Workspa
 const OPEN_BEFORE_SAVE = [0, 4, 8];
 
 export function DetailTabs() {
-  const {notify, tab, setTab, draft, setError, tabs, tabOrder} = useWorkspace();
+  const {a, notify, tab, setTab, draft, setError, tabs, tabOrder} = useWorkspace();
+  // the Approvals tab says how many steps wait for the signed-in person
+  const readyToSubmit = ((a?.stageProgress || []) as any[]).filter(s => s.canSubmit && !s.submitted && !s.completed).length;
+  const waitingForMe = ((a?.approval?.current || []) as any[]).flatMap(c => c.steps).filter((s: any) => s.canAct).length;
   return (
     <div className="detail-tabs">
       {tabOrder.map(id => (
@@ -26,6 +29,8 @@ export function DetailTabs() {
           }
         >
           {tabs[id]}
+          {id === 10 && waitingForMe > 0 && <span className="tab-count">{waitingForMe}</span>}
+          {id === 11 && readyToSubmit > 0 && <span className="tab-count ready">{readyToSubmit}</span>}
         </button>
       ))}
     </div>

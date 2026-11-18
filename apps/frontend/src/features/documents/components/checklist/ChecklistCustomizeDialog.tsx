@@ -3,6 +3,7 @@
  * offers, another master document, or a free-name one). Other applications keep the workflow's checklist.
  */
 import {api} from '@/shared/lib/api';
+import {departmentLabel} from '@/shared/lib/departments';
 import {Modal} from '@/shared/ui/Modal';
 import {Plus, Trash2, Undo2} from 'lucide-react';
 import {useCallback, useEffect, useState} from 'react';
@@ -73,7 +74,7 @@ export function ChecklistCustomizeDialog({
     <label className="wf-dept-pick">
       Responsible department
       <select className="wf-input" value={department} onChange={e => setDept(e.target.value)}>
-        {options.departments.map(d => <option key={d.code} value={d.code}>{d.name}</option>)}
+        {options.departments.map(d => <option key={d.code} value={d.code}>{departmentLabel(d)}</option>)}
       </select>
     </label>
   );

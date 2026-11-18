@@ -1,7 +1,11 @@
-/** The side panel of one stage: which form it shows, which fields are required, and which documents it has. */
+/** The side panel of one stage, in tabs: its details (name, order, department, form), the required fields, the documents and the approval. */
+export type StageTab = 'details' | 'fields' | 'documents' | 'approval';
 import {Plus, Search, Trash2, X} from 'lucide-react';
+import {departmentLabel} from '@/shared/lib/departments';
+import {Stepper} from './Stepper';
 import {useMemo, useState} from 'react';
 import type {Catalog, Definition, Stage} from '../api';
+import {addApprovalStep, ApprovalList} from './ApprovalList';
 
 type Props = {
   def: Definition;
@@ -9,12 +13,12 @@ type Props = {
   catalog: Catalog;
   stage: Stage;
   locked: boolean;
-  initialTab?: 'fields' | 'documents';
+  initialTab?: StageTab;
   onClose: () => void;
 };
 
-export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'fields', onClose}: Props) {
-  const [tab, setTab] = useState<'fields' | 'documents'>(initialTab);
+export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'details', onClose}: Props) {
+  const [tab, setTab] = useState<StageTab>(initialTab);
   const [search, setSearch] = useState('');
   const [pick, setPick] = useState('');
   const form = stage.formCode || '';
@@ -42,6 +46,9 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'f
   const patchDoc = (code: string, patch: Partial<Definition['documents'][number]>) =>
     setDef({...def, documents: def.documents.map(d => (d.stageKey === stage.key && d.documentCode === code ? {...d, ...patch} : d))});
   const q = search.trim().toLowerCase();
+  const patchStage = (p: Partial<Stage>) => setDef({...def, stages: def.stages.map(x => (x.key === stage.key ? {...x, ...p} : x))});
+  const approvalCount = def.approvalSteps.filter(a => a.scope === 'STAGE' && a.stageKey === stage.key).length;
+  const together = def.stages.filter(x => x.groupKey === stage.groupKey && x.order === stage.order).length > 1;
 
   return (
     <div className="wf-scrim" onMouseDown={e => e.target === e.currentTarget && onClose()}>
@@ -57,15 +64,59 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'f
         </header>
 
         <div className="wf-seg" role="tablist">
+          <button role="tab" aria-selected={tab === 'details'} className={tab === 'details' ? 'on' : ''} onClick={() => setTab('details')}>
+            Details
+          </button>
           <button role="tab" aria-selected={tab === 'fields'} className={tab === 'fields' ? 'on' : ''} onClick={() => setTab('fields')}>
-            Required fields <span>{requiredCount}</span>
+            Fields <span>{requiredCount}</span>
           </button>
           <button role="tab" aria-selected={tab === 'documents'} className={tab === 'documents' ? 'on' : ''} onClick={() => setTab('documents')}>
             Documents <span>{docs.length}</span>
           </button>
+          <button role="tab" aria-selected={tab === 'approval'} className={tab === 'approval' ? 'on' : ''} onClick={() => setTab('approval')}>
+            Approval <span>{approvalCount}</span>
+          </button>
         </div>
 
         <div className="wf-panel-body">
+          {tab === 'details' && (
+            <div className="wf-details">
+              <label>
+                <span>Stage name</span>
+                <input disabled={locked} value={stage.name} onChange={e => patchStage({name: e.target.value})} />
+              </label>
+              <label>
+                <span>Department who works on this stage *</span>
+                <select disabled={locked} className={stage.departmentCode ? '' : 'wf-missing'} value={stage.departmentCode || ''} onChange={e => patchStage({departmentCode: e.target.value || null})}>
+                  {!stage.departmentCode && <option value="">Choose a department…</option>}
+                  {catalog.departments.map(d => (
+                    <option key={d.code} value={d.code}>
+                      {departmentLabel(d)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Form shown in this stage</span>
+                <select disabled={locked} value={stage.formCode || ''} onChange={e => patchStage({formCode: e.target.value || null})}>
+                  <option value="">No form</option>
+                  {catalog.forms.map(f => (
+                    <option key={f.code} value={f.code}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="wf-details-order">
+                <span>Order in the group</span>
+                <Stepper value={stage.order} disabled={locked} onChange={v => patchStage({order: v})} label="Stages with the same order run together" />
+                {together && <em className="wf-together">runs together with another stage</em>}
+              </div>
+            </div>
+          )}
+
+          {tab === 'approval' && <ApprovalList def={def} setDef={setDef} catalog={catalog} locked={locked} target={{scope: 'STAGE', stageKey: stage.key}} title="Approval of this stage" />}
+
           {tab === 'fields' && (
             <>
               {!form && (
@@ -76,8 +127,7 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'f
               {form && (
                 <>
                   <p className="wf-lead">
-                    Tick the fields of the <b>{formName || form}</b> that must be filled in before this stage can be submitted. In a list (deeds,
-                    shareholders, units) a tick applies to every item.
+                    Tick what must be filled in on the <b>{formName || form}</b> before this stage can be submitted.
                   </p>
                   <label className="wf-search">
                     <Search size={18} />
@@ -138,13 +188,10 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'f
 
           {tab === 'documents' && (
             <>
-              <p className="wf-lead">
-                <b>Default</b> documents are on the checklist of every application. Others are only offered: a user can add one to a single application.{' '}
-                <b>Mandatory</b> documents need a file before the stage can be submitted.
-              </p>
               <div className="wf-doc-list">
                 {docs.map(d => (
-                  <div className="wf-doc" key={d.documentCode}>
+                  <div className="wf-doc-block" key={d.documentCode}>
+                  <div className="wf-doc">
                     <div className="wf-doc-name">
                       <b>{docName(d.documentCode)}</b>
                     </div>
@@ -161,6 +208,31 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'f
                         <Trash2 size={18} />
                       </button>
                     )}
+                  </div>
+                  {(() => {
+                    const target = {scope: 'DOCUMENT' as const, stageKey: stage.key, documentCode: d.documentCode};
+                    const needs = def.approvalSteps.some(a => a.scope === 'DOCUMENT' && a.stageKey === stage.key && a.documentCode === d.documentCode);
+                    return (
+                      <>
+                        <label className="wf-switch wf-needs">
+                          <input
+                            type="checkbox"
+                            disabled={locked}
+                            checked={needs}
+                            onChange={e =>
+                              setDef(
+                                e.target.checked
+                                  ? addApprovalStep(def, target)
+                                  : {...def, approvalSteps: def.approvalSteps.filter(a => !(a.scope === 'DOCUMENT' && a.stageKey === stage.key && a.documentCode === d.documentCode))},
+                              )
+                            }
+                          />
+                          <i /> Needs approval
+                        </label>
+                        {needs && <ApprovalList def={def} setDef={setDef} catalog={catalog} locked={locked} target={target} title="Who approves this document" />}
+                      </>
+                    );
+                  })()}
                   </div>
                 ))}
                 {!docs.length && <div className="wf-note">No document in this stage yet.</div>}

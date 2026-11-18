@@ -66,6 +66,5 @@ export function useWorkspaceAccess({
     canEditCustomerPic,
     canEdit,
     canFinance,
-    actions: (a.availableActions || []) as string[],
   };
 }

@@ -1,5 +1,5 @@
 import {ApplicationTable} from '@/features/applications/components/ApplicationTable';
-import {initialStatusCode, isFirstStageStatus, isTerminalStatus, useMasterData, workflowStages, workflowStatuses} from '@/shared/master-data';
+import {isTerminalStatus, useMasterData, workflowStages, workflowStatuses} from '@/shared/master-data';
 import {money} from '@/shared/lib/format';
 import {checkIsAdmin} from '@/shared/lib/auth';
 import {DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY} from '@liugong/shared';
@@ -30,20 +30,20 @@ export function OverviewScreen({
   const has = (authority: string) => !checkIsAdmin(user) && (user.authorities || []).includes(authority);
   const hasRejectedDeed = (r: any) => Number(r.deeds_sent_back) > 0;
   const master = useMasterData();
-  // Returned: back in the first stage but no longer in its starting status.
-  const isReturned = (r: any) => isFirstStageStatus(r.status, master) && r.status !== initialStatusCode(master);
+  // Rejected: a step was rejected and the application waits for the fix and a new submit.
+  const isReturned = (r: any) => r.status === 'REJECTED';
   const needs = rows.filter(
     r =>
       (has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)) ||
       (has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending) > 0) ||
-      // Workflow actions the backend allows this user on the application (crm_master_workflow)
-      (!checkIsAdmin(user) && (r.available_actions || []).length > 0),
+      // An approval step that waits for an authority this user holds
+      (!checkIsAdmin(user) && r.pending_for_me),
   );
   const total = rows.reduce((s, r) => s + Number(r.financing_value || 0), 0),
     // Workflow stages and statuses come from Master Data; the first final status is the approval.
     finalStatus = workflowStatuses(master).find(s => s.terminal),
     approved = rows.filter(r => finalStatus && r.status === finalStatus.value),
-    review = rows.filter(r => !isFirstStageStatus(r.status, master) && !isTerminalStatus(r.status, master));
+    review = rows.filter(r => r.status === 'IN_APPROVAL');
   const stages: [string, string, (r: any) => boolean][] = [
     ...workflowStages(master).map(
       st => [st.value, st.name, (r: any) => r.workflow_stage === st.value && !isTerminalStatus(r.status, master)] as [string, string, (r: any) => boolean],
@@ -166,10 +166,12 @@ export function OverviewScreen({
                     : has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)
                       ? 'Revise the returned deed'
                       : isReturned(r)
-                        ? 'Application returned'
-                        : r.status === initialStatusCode(master)
-                          ? 'Complete your draft'
-                          : 'Review application'}
+                        ? 'Fix what was rejected'
+                        : r.pending_for_me
+                          ? 'Approval waits for you'
+                          : r.status === 'IN_PROGRESS'
+                            ? 'Complete your draft'
+                            : 'Review application'}
                 </b>
                 <span>{r.company_name}</span>
                 <small>{r.id}</small>

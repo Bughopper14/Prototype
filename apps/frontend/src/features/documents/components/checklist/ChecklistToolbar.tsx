@@ -7,6 +7,7 @@ export function ChecklistToolbar({
   setSearchTerm,
   selectedDept,
   setSelectedDept,
+  departments,
   selectedStatus,
   setSelectedStatus,
   stages,
@@ -20,6 +21,8 @@ export function ChecklistToolbar({
   setSearchTerm: (v: string) => void;
   selectedDept: string;
   setSelectedDept: (v: string) => void;
+  /** The department codes the documents of this application have (only these are offered). */
+  departments: string[];
   selectedStatus: StatusFilter;
   setSelectedStatus: (v: StatusFilter) => void;
   stages: {code: string; name: string}[];
@@ -63,11 +66,11 @@ export function ChecklistToolbar({
             className="doc-filter-select"
           >
             <option value="ALL">Semua Departemen</option>
-            <option value="MKT">MKT (Marketing)</option>
-            <option value="BS">BS (Branch Support)</option>
-            <option value="CA">CA (Credit Analyst)</option>
-            <option value="LEGAL">LEGAL (Legal Officer)</option>
-            <option value="COMMITTEE">COMMITTEE (Komite)</option>
+            {departments.map(d => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
           </select>
         </div>
 

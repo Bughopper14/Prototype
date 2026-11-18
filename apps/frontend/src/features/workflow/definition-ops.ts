@@ -20,7 +20,7 @@ export function stepsOf(def: Definition): {order: number; groups: Group[]}[] {
 /** Removing a part also removes what hangs on it (a group takes its stages, a stage its fields and documents). */
 export function removePart(def: Definition, kind: 'group' | 'stage', key: string): Definition {
   if (kind === 'group') {
-    let next: Definition = {...def, groups: def.groups.filter(g => g.key !== key)};
+    let next: Definition = {...def, groups: def.groups.filter(g => g.key !== key), approvalSteps: def.approvalSteps.filter(a => !(a.scope === 'GROUP' && a.groupKey === key))};
     for (const s of def.stages.filter(x => x.groupKey === key)) next = removePart(next, 'stage', s.key);
     return next;
   }
@@ -29,6 +29,7 @@ export function removePart(def: Definition, kind: 'group' | 'stage', key: string
     stages: def.stages.filter(s => s.key !== key),
     fields: def.fields.filter(f => f.stageKey !== key),
     documents: def.documents.filter(d => d.stageKey !== key),
+    approvalSteps: def.approvalSteps.filter(a => a.stageKey !== key),
   };
 }
 

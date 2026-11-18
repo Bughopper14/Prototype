@@ -47,9 +47,7 @@ async function request(path: string, method: string, body?: unknown) {
     if (['SESSION_TIMEOUT', 'NO_SESSION', 'SESSION_EXPIRED'].includes(data?.code)) {
       return redirectToLogin(data.error || 'Sesi Anda telah berakhir. Silakan login kembali.');
     }
-    const fieldErrors = data.errors?.length
-      ? data.errors.map((e: any) => `${e.field}: ${e.detail}`).join('\n')
-      : '';
+    const fieldErrors = data.errors?.length ? readableErrors(data.errors) : '';
     throw Object.assign(new Error(fieldErrors || data.message || data.error || 'Request failed'), {
       code: data?.code,
       missing: data?.missing,
@@ -63,6 +61,21 @@ async function request(path: string, method: string, body?: unknown) {
  * Identical GET requests made within a short window share one network call; any write clears the sharing.
  */
 const recentReads = new Map<string, {startedAt: number; result: Promise<any>}>();
+
+/** "0.currentAssets: Invalid" becomes "Row 1 · Current assets: not a valid value". The same problem is shown once. */
+function readableErrors(errors: {field?: string; detail?: string}[]) {
+  const words = (key: string) => {
+    const text = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  };
+  const lines = errors.map(e => {
+    const parts = String(e.field || '').split('.').filter(Boolean);
+    const label = parts.map(part => (/^\d+$/.test(part) ? `Row ${Number(part) + 1}` : words(part))).join(' / ');
+    const detail = !e.detail || e.detail === 'Invalid' ? 'not a valid value' : e.detail;
+    return label ? `${label}: ${detail}` : detail;
+  });
+  return [...new Set(lines)].join('\n');
+}
 
 export function api(path: string, method = 'GET', body?: unknown): Promise<any> {
   validateWrite(path, method, body);

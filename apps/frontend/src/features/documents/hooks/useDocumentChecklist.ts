@@ -7,7 +7,6 @@ import {buildChecklistRows} from '@/features/documents/lib/checklist/build-rows'
 import {documentDefinitions} from '@/features/documents/lib/checklist/definitions';
 import {useMasterData} from '@/shared/master-data';
 import {hasAuthority} from '@/shared/lib/auth';
-import type {VerifyBody} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {collectStakeholders} from '@/features/documents/lib/checklist/collect-stakeholders';
 import {filterRows} from '@/features/documents/lib/checklist/filter-rows';
 import {summarizeRows} from '@/features/documents/lib/checklist/summarize';
@@ -38,10 +37,21 @@ export function useDocumentChecklist({
   const [previewModal, setPreviewModal] = useState<PreviewState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [targetUploadCode, setTargetUploadCode] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState<ChecklistRow | null>(null);
-  const [verifyBusy, setVerifyBusy] = useState(false);
-  const [verifyError, setVerifyError] = useState('');
-  const canVerify = hasAuthority(user, 'crm_verify_app_documents');
+  // Asking for the approval of one document (a document the workflow wants approved): the same people who may submit a stage
+  const canRequestApproval = hasAuthority(user, 'crm_workflow_submit');
+  const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
+  const requestApproval = async (row: ChecklistRow) => {
+    if (!row.chkId) return;
+    setApprovalBusy(row.chkId);
+    try {
+      onChange(await api(`/applications/${a.id}/documents/${row.chkId}/submit-approval`, 'POST', {}));
+      notify(`${row.name} sent for approval`);
+    } catch (e: any) {
+      notify(e.message || 'Could not ask for approval');
+    } finally {
+      setApprovalBusy(null);
+    }
+  };
 
   const master = useMasterData();
   const definitions = useMemo(() => documentDefinitions(master), [master]);
@@ -51,6 +61,8 @@ export function useDocumentChecklist({
     [definitions, a, draft, allStakeholders],
   );
   const stats = summarizeRows(checklistRows);
+  // the departments the documents of this application have: the only ones the filter offers
+  const departments = useMemo(() => [...new Set(checklistRows.map(r => r.department).filter(Boolean))].sort(), [checklistRows]);
   const filteredRows = useMemo(
     () => filterRows(checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage),
     [checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage],
@@ -170,40 +182,15 @@ export function useDocumentChecklist({
     });
   };
 
-  const openVerify = (row: ChecklistRow) => {
-    setVerifyError('');
-    setVerifying(row);
-  };
-
-  /** Saves the department's verification; the server checks the workflow status and returns the application. */
-  const handleVerify = async (body: VerifyBody) => {
-    if (!verifying?.chkId) return;
-    setVerifyBusy(true);
-    setVerifyError('');
-    try {
-      const updated = await api(`/applications/${a.id}/checklist/${verifying.chkId}/verify`, 'PATCH', body);
-      onChange(updated);
-      notify(`Dokumen ${verifying.code} ${body.isVerified ? 'terverifikasi' : 'ditolak'} oleh ${body.department}.`);
-      setVerifying(null);
-    } catch (err: any) {
-      setVerifyError(err.message || 'Verifikasi gagal disimpan.');
-    } finally {
-      setVerifyBusy(false);
-    }
-  };
-
   return {
-    canVerify,
-    verifying,
-    setVerifying,
-    verifyBusy,
-    verifyError,
-    openVerify,
-    handleVerify,
+    canRequestApproval,
+    approvalBusy,
+    requestApproval,
     searchTerm,
     setSearchTerm,
     selectedDept,
     setSelectedDept,
+    departments,
     selectedStatus,
     setSelectedStatus,
     stages,
