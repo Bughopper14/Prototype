@@ -1,5 +1,6 @@
 /** Searchable dropdown for picking an Existing Customer from Master Customer. */
 import {Building2, Check, ChevronDown, Search, X} from 'lucide-react';
+import {useMasterData} from '@/shared/master-data';
 import {useEffect, useMemo, useRef, useState} from 'react';
 
 type CustomerSearchSelectProps = {
@@ -19,6 +20,12 @@ export function CustomerSearchSelect({
   onSelect,
   onFocus,
 }: CustomerSearchSelectProps) {
+  const master = useMasterData();
+  const resolveCityName = (val?: string | null) => {
+    if (!val) return '';
+    return master.city?.find(c => c.value === val || c.name === val)?.name || val;
+  };
+
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
@@ -58,14 +65,22 @@ export function CustomerSearchSelect({
       const name = String(c.companyName || '').toLowerCase();
       const nib = String(c.nib || '').toLowerCase();
       const npwp = String(c.npwp || '').toLowerCase();
-      const city = String(c.city || '').toLowerCase();
-      if (name.includes(q) || nib.includes(q) || npwp.includes(q) || city.includes(q)) return true;
+      const rawCity = String(c.city || '').toLowerCase();
+      const resolvedCity = resolveCityName(c.city).toLowerCase();
+      if (
+        name.includes(q) ||
+        nib.includes(q) ||
+        npwp.includes(q) ||
+        rawCity.includes(q) ||
+        resolvedCity.includes(q)
+      )
+        return true;
       if (digits && (nib.replace(/\D/g, '').includes(digits) || npwp.replace(/\D/g, '').includes(digits))) {
         return true;
       }
       return false;
     });
-  }, [customers, query]);
+  }, [customers, query, master.city]);
 
   return (
     <div ref={containerRef} style={{position: 'relative', width: '100%'}}>
@@ -132,7 +147,7 @@ export function CustomerSearchSelect({
                   selectedCustomer.npwp && !/^0+$/.test(String(selectedCustomer.npwp))
                     ? `NPWP: ${selectedCustomer.npwp}`
                     : null,
-                  selectedCustomer.city || null,
+                  resolveCityName(selectedCustomer.city) || null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
@@ -252,7 +267,7 @@ export function CustomerSearchSelect({
                 const meta = [
                   c.nib ? `NIB: ${c.nib}` : null,
                   c.npwp && !/^0+$/.test(String(c.npwp)) ? `NPWP: ${c.npwp}` : null,
-                  c.city || null,
+                  resolveCityName(c.city) || null,
                 ]
                   .filter(Boolean)
                   .join(' · ');

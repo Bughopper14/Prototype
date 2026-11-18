@@ -1,5 +1,5 @@
 /** Application title, customer name and status badge. */
-import {STAGE, initialStatusCode, stageName} from '@/shared/master-data';
+import {STAGE, initialStatusCode, stageName, useMasterData} from '@/shared/master-data';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {date} from '@/shared/lib/format';
 import {Badge} from '@/shared/ui/Badge';
@@ -9,6 +9,15 @@ import {Building2} from 'lucide-react';
 
 export function DetailHeading() {
   const {a, draft, liveCompanyName, currentAppStage} = useWorkspace();
+  const master = useMasterData();
+
+  const rawCity = draft.city || a.city;
+  const resolvedCity = master.city?.find(c => c.value === rawCity || c.name === rawCity)?.name || rawCity;
+  const rawSegment = draft.industrySegment || a.industrySegment;
+  const resolvedSegment =
+    master.industrySegment?.find(s => s.value === rawSegment || s.name === rawSegment)?.name ||
+    label(rawSegment);
+
   return (
     <div className="detail-heading">
       <IconBox>
@@ -38,12 +47,12 @@ export function DetailHeading() {
         <p>
           {draft.isNew ? (
             <>
-              FAP Intake Stage <span>·</span> {draft.city || draft.branchCode || 'Draft'} <span>·</span>{' '}
+              FAP Intake Stage <span>·</span> {resolvedCity || draft.branchCode || 'Draft'} <span>·</span>{' '}
               {new Date().toLocaleDateString('en-GB')}
             </>
           ) : (
             <>
-              {label(draft.industrySegment || a.industrySegment)} <span>·</span> {draft.city || a.city || '—'}{' '}
+              {resolvedSegment} <span>·</span> {resolvedCity || '—'}{' '}
               <span>·</span> Created {date(draft.applicationDate || a.applicationDate)}
             </>
           )}

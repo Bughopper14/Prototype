@@ -1,7 +1,7 @@
 /** Slide-in catalog menu: pick Field Mandatory, Indonesian Region or one of the master groups. */
 import {useMandatoryRules} from '@/shared/master-data';
 import {masterGroups, type MasterItem} from '@liugong/shared';
-import {GitBranch, MapPin, Menu, Search, Settings2, X} from 'lucide-react';
+import {MapPin, Menu, Search, Settings2, X} from 'lucide-react';
 import {useState, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 
@@ -58,22 +58,6 @@ export function CatalogMenuDrawer({
         </div>
 
         <div className="master-burger-drawer-content" role="navigation">
-          {/* WORKFLOW PIPELINE ENGINE */}
-          {(!search || 'workflow pipeline stage submodules mkt iclf approval'.includes(q)) && (
-            <div className="master-burger-group">
-              <h4>WORKFLOW & PIPELINE</h4>
-              <MenuItem active={selected === 'workflow_config'} onClick={() => onSelect('workflow_config')}>
-                <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                  <GitBranch size={15} color="#002060" />
-                  <span>Workflow Pipeline Engine</span>
-                </div>
-                <span className="master-burger-badge" style={{background: '#002060', color: '#fff', fontSize: 10, padding: '2px 6px', borderRadius: 4, fontWeight: 700}}>
-                  Modular
-                </span>
-              </MenuItem>
-            </div>
-          )}
-
           {/* FORM RULES */}
           {(!search || 'field mandatory form rules fap pre'.includes(q)) && (
             <div className="master-burger-group">

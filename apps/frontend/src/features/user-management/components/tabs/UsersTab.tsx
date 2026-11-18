@@ -2,7 +2,6 @@
 import {PermissionsDialog} from '@/features/user-management/components/forms/PermissionsDialog';
 import {SessionTimeoutForm} from '@/features/user-management/components/forms/SessionTimeoutForm';
 import {UserForm} from '@/features/user-management/components/forms/UserForm';
-import {AssignDepartmentDialog} from '@/features/user-management/components/forms/AssignDepartmentDialog';
 import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
@@ -125,46 +124,6 @@ export function UsersTab({
                         <i className="fas fa-exclamation-circle" /> Unassigned
                       </span>
                     )}
-
-                    <button
-                      type="button"
-                      title={
-                        u.department_name
-                          ? `Transfer ${u.full_name || u.username} from ${u.department_name} to another department`
-                          : `Assign ${u.full_name || u.username} to department`
-                      }
-                      style={{
-                        border: '1px solid #cbd5e1',
-                        background: '#ffffff',
-                        color: '#002c5f',
-                        borderRadius: '4px',
-                        padding: '2px 6px',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 3,
-                        fontWeight: 600,
-                        transition: 'all 0.15s',
-                      }}
-                      onClick={() =>
-                        setDialog(
-                          <AssignDepartmentDialog
-                            title={`Transfer ${u.full_name || u.username} to Another Department`}
-                            users={data.users}
-                            departments={data.departments}
-                            initialUserId={u.id}
-                            onSave={payload =>
-                              act(() => call('/departments/assign-user', 'PUT', payload))
-                            }
-                            onClose={() => setDialog(null)}
-                          />,
-                        )
-                      }
-                    >
-                      <i className="fas fa-exchange-alt" style={{fontSize: '0.7rem', color: '#ff9900'}} />
-                      <span>Transfer</span>
-                    </button>
                   </div>
                 </td>
                 <td>

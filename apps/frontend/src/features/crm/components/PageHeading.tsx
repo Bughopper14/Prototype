@@ -2,7 +2,11 @@ import {hasAuthority} from '@/shared/lib/auth';
 import {Plus} from 'lucide-react';
 import {useCrm} from './CrmProvider';
 
-const TITLES: Record<string, string> = {Overview: 'Portfolio overview', Notifications: 'Notifikasi'};
+const TITLES: Record<string, string> = {
+  Overview: 'Portfolio overview',
+  Notifications: 'Notifikasi',
+  'Workflow pipeline': 'Workflow Engine & Pipeline Configuration',
+};
 
 const DESCRIPTIONS: Record<string, (firstName: string) => string> = {
   Overview: firstName => `Welcome back, ${firstName}. Here’s where your financing stands.`,
@@ -10,6 +14,7 @@ const DESCRIPTIONS: Record<string, (firstName: string) => string> = {
   'Document desk': () => 'Keep every document complete, verified, and ready for review.',
   Customers: () => 'Your customer relationships, connected to every application.',
   'Customize master data': () => 'Application master data configuration.',
+  'Workflow pipeline': () => 'Visual pipeline stages, gates, sub-modules, and transition rules.',
   Notifications: () => 'Deed review and approval results that need follow-up.',
   Activity: () => 'A transparent record of application decisions and updates.',
 };

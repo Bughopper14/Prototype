@@ -8,6 +8,7 @@ export type CrmPageName =
   | 'Document desk'
   | 'Customers'
   | 'Customize master data'
+  | 'Workflow pipeline'
   | 'Notifications'
   | 'Activity';
 
@@ -17,6 +18,7 @@ export const CRM_PAGES: {name: CrmPageName; href: string; authority: string}[] =
   {name: 'Document desk', href: `${CRM_BASE}/document-desk`, authority: 'crm_view_document_desk'},
   {name: 'Customers', href: `${CRM_BASE}/customers`, authority: 'crm_view_customers'},
   {name: 'Customize master data', href: `${CRM_BASE}/master-data`, authority: 'crm_view_master_data'},
+  {name: 'Workflow pipeline', href: `${CRM_BASE}/workflow-pipeline`, authority: 'crm_view_master_data'},
   {name: 'Notifications', href: `${CRM_BASE}/notifications`, authority: 'crm_view_notifications'},
   {name: 'Activity', href: `${CRM_BASE}/activity`, authority: 'crm_view_activity'},
 ];

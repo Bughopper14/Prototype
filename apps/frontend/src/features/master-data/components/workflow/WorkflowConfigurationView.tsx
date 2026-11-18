@@ -21,6 +21,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  Search,
   Settings,
   ShieldAlert,
   Sparkles,
@@ -31,6 +32,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import {useMandatoryRules} from '@/shared/master-data';
 import {useEffect, useState} from 'react';
 
 // =============================================================================
@@ -59,6 +61,8 @@ export interface StageDocumentRequirement {
 export interface StageMandatoryColumnItem {
   id: string;
   submoduleId: string;
+  submoduleCode?: string;
+  submoduleName?: string;
   sectionName: string;
   columnKey: string;
   columnLabel: string;
@@ -200,10 +204,159 @@ const DEFAULT_MANDATORY_COLS_MKT: StageMandatoryColumnItem[] = [
 ];
 
 const DEFAULT_MANDATORY_COLS_ICLF: StageMandatoryColumnItem[] = [
-  {id: 'mand-7', submoduleId: 'comp-iclf', sectionName: 'Credit Committee', columnKey: 'dscr_ratio', columnLabel: 'DSCR (Debt Service Coverage Ratio)', isMandatory: true},
-  {id: 'mand-8', submoduleId: 'comp-iclf', sectionName: 'Credit Committee', columnKey: 'interest_rate_effective', columnLabel: 'Effective Interest Rate (% p.a.)', isMandatory: true},
-  {id: 'mand-9', submoduleId: 'comp-iclf', sectionName: 'Credit Committee', columnKey: 'approval_decision', columnLabel: 'Credit Committee Resolution Verdict', isMandatory: true},
+  {id: 'mand-7', submoduleId: 'comp-iclf', submoduleCode: 'ICLF', submoduleName: 'ICLF (Credit Committee & Risk Review)', sectionName: 'Credit Committee', columnKey: 'dscr_ratio', columnLabel: 'DSCR (Debt Service Coverage Ratio)', isMandatory: true},
+  {id: 'mand-8', submoduleId: 'comp-iclf', submoduleCode: 'ICLF', submoduleName: 'ICLF (Credit Committee & Risk Review)', sectionName: 'Credit Committee', columnKey: 'interest_rate_effective', columnLabel: 'Effective Interest Rate (% p.a.)', isMandatory: true},
+  {id: 'mand-9', submoduleId: 'comp-iclf', submoduleCode: 'ICLF', submoduleName: 'ICLF (Credit Committee & Risk Review)', sectionName: 'Credit Committee', columnKey: 'approval_decision', columnLabel: 'Credit Committee Resolution Verdict', isMandatory: true},
 ];
+
+export function buildDefaultMandatoryColumnsForSingleComponent(
+  comp: WorkflowComponentItem | undefined,
+  masterRules: any[],
+): StageMandatoryColumnItem[] {
+  if (!comp) return [];
+  const compCode = (comp.code || '').toUpperCase();
+  const compId = comp.id;
+  const compName = comp.name;
+
+  // 1. FAP Stage (161 fields in master rules)
+  if (compCode === 'FAP_STAGE' || compId === 'comp-fap' || compCode.includes('FAP')) {
+    const fapRules = (masterRules || []).filter(r => (r.stage || 'FAP').toUpperCase() === 'FAP');
+    if (fapRules.length > 0) {
+      return fapRules.map((r, idx) => ({
+        id: `mand-fap-${r.id || idx}`,
+        submoduleId: compId,
+        submoduleCode: 'FAP_STAGE',
+        submoduleName: compName || 'FAP Stage (Customer & Unit Profiling)',
+        sectionName: r.section || 'General',
+        columnKey: r.field_key,
+        columnLabel: r.field_label || r.field_key,
+        isMandatory: Boolean(r.mandatory),
+      }));
+    }
+    return DEFAULT_MANDATORY_COLS_MKT.filter(c => c.submoduleId === 'comp-fap').map(c => ({
+      ...c,
+      submoduleId: compId,
+      submoduleCode: 'FAP_STAGE',
+      submoduleName: compName || 'FAP Stage (Customer & Unit Profiling)',
+    }));
+  }
+
+  // 2. Pre-Analysis (42 fields in master rules)
+  if (compCode === 'PRE_ANALYSIS' || compId === 'comp-prean' || compCode.includes('PRE')) {
+    const preRules = (masterRules || []).filter(r => {
+      const stg = String(r.stage || '').toUpperCase();
+      return stg === 'PRE-AN' || stg === 'PRE' || stg === 'PRE_ANALYSIS';
+    });
+    if (preRules.length > 0) {
+      return preRules.map((r, idx) => ({
+        id: `mand-pre-${r.id || idx}`,
+        submoduleId: compId,
+        submoduleCode: 'PRE_ANALYSIS',
+        submoduleName: compName || 'Pre-Analysis (Bowheer & SLIK OJK)',
+        sectionName: r.section || 'General Information',
+        columnKey: r.field_key,
+        columnLabel: r.field_label || r.field_key,
+        isMandatory: Boolean(r.mandatory),
+      }));
+    }
+    return DEFAULT_MANDATORY_COLS_MKT.filter(c => c.submoduleId === 'comp-prean').map(c => ({
+      ...c,
+      submoduleId: compId,
+      submoduleCode: 'PRE_ANALYSIS',
+      submoduleName: compName || 'Pre-Analysis (Bowheer & SLIK OJK)',
+    }));
+  }
+
+  // 3. ICLF Fallback
+  if (compCode === 'ICLF' || compId === 'comp-iclf') {
+    return DEFAULT_MANDATORY_COLS_ICLF.map(col => ({
+      ...col,
+      submoduleId: compId,
+      submoduleCode: 'ICLF',
+      submoduleName: compName || 'ICLF (Credit Committee & Risk Review)',
+    }));
+  }
+
+  // 4. CA_REVIEW Fallback
+  if (compCode === 'CA_REVIEW' || compId === 'comp-ca') {
+    return [
+      {
+        id: `mand-ca-1`,
+        submoduleId: compId,
+        submoduleCode: 'CA_REVIEW',
+        submoduleName: compName || 'Credit Analyst Risk Memo (DSCR)',
+        sectionName: 'Credit Analysis',
+        columnKey: 'dscr_calculation',
+        columnLabel: 'DSCR Calculation Sheet',
+        isMandatory: true,
+      },
+      {
+        id: `mand-ca-2`,
+        submoduleId: compId,
+        submoduleCode: 'CA_REVIEW',
+        submoduleName: compName || 'Credit Analyst Risk Memo (DSCR)',
+        sectionName: 'Credit Analysis',
+        columnKey: 'risk_mitigation_note',
+        columnLabel: 'Risk Mitigation Memo',
+        isMandatory: true,
+      },
+    ];
+  }
+
+  // 5. LEGAL_REVIEW Fallback
+  if (compCode === 'LEGAL_REVIEW' || compId === 'comp-legal') {
+    return [
+      {
+        id: `mand-leg-1`,
+        submoduleId: compId,
+        submoduleCode: 'LEGAL_REVIEW',
+        submoduleName: compName || 'Legal Deed & Fiduciary Opinion',
+        sectionName: 'Legal Verification',
+        columnKey: 'notary_deed_verified',
+        columnLabel: 'Notary Deed Verification Note',
+        isMandatory: true,
+      },
+      {
+        id: `mand-leg-2`,
+        submoduleId: compId,
+        submoduleCode: 'LEGAL_REVIEW',
+        submoduleName: compName || 'Legal Deed & Fiduciary Opinion',
+        sectionName: 'Legal Verification',
+        columnKey: 'fiduciary_registration',
+        columnLabel: 'Fiduciary Deed Registration Status',
+        isMandatory: true,
+      },
+    ];
+  }
+
+  // 6. FIELD_SURVEY Fallback
+  if (compCode === 'FIELD_SURVEY' || compId === 'comp-survey') {
+    return [
+      {
+        id: `mand-surv-1`,
+        submoduleId: compId,
+        submoduleCode: 'FIELD_SURVEY',
+        submoduleName: compName || 'Field Survey & GPS Investigation',
+        sectionName: 'Survey Investigation',
+        columnKey: 'gps_coordinate_verified',
+        columnLabel: 'GPS Coordinates & Site Geofence',
+        isMandatory: true,
+      },
+      {
+        id: `mand-surv-2`,
+        submoduleId: compId,
+        submoduleCode: 'FIELD_SURVEY',
+        submoduleName: compName || 'Field Survey & GPS Investigation',
+        sectionName: 'Survey Investigation',
+        columnKey: 'unit_chassis_sn_match',
+        columnLabel: 'Equipment Serial Number Match',
+        isMandatory: true,
+      },
+    ];
+  }
+
+  return [];
+}
 
 const DEFAULT_WORKFLOW_REGISTRY: WorkflowTypeItem[] = [
   {
@@ -355,7 +508,7 @@ const DEFAULT_WORKFLOW_REGISTRY: WorkflowTypeItem[] = [
   },
 ];
 
-const STORAGE_KEY_REGISTRY = 'liugong_crm_modular_workflow_registry_v3';
+const STORAGE_KEY_REGISTRY = 'liugong_crm_modular_workflow_registry_v4';
 const STORAGE_KEY_POOL = 'liugong_crm_modular_components_pool_v3';
 
 // =============================================================================
@@ -366,6 +519,9 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
   // Navigation State: 'GALLERY' (Tampilan Luar Box-Box) | 'EDITOR' (Tampilan Edit Stage & Sub-Modul)
   const [currentView, setCurrentView] = useState<'GALLERY' | 'EDITOR'>('GALLERY');
   const [activeWorkflowId, setActiveWorkflowId] = useState<string>('wf-001');
+
+  // Master Mandatory Rules fetched from crm_master_field_mandatory_rules
+  const masterRules = useMandatoryRules();
 
   // Toggle to show/hide soft-deleted workflows
   const [showInactiveWorkflows, setShowInactiveWorkflows] = useState(true);
@@ -405,6 +561,18 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
   const [showAddStageModal, setShowAddStageModal] = useState(false);
   const [showAddComponentModal, setShowAddComponentModal] = useState(false);
   const [inspectingStageDetails, setInspectingStageDetails] = useState<WorkflowStageBox | null>(null);
+
+  // Stage Gate Rules Modal Filter & Search States
+  const [modalSubmoduleFilter, setModalSubmoduleFilter] = useState<string>('ALL');
+  const [modalStatusFilter, setModalStatusFilter] = useState<'ALL' | 'MANDATORY' | 'OPTIONAL'>('ALL');
+  const [modalSearchQuery, setModalSearchQuery] = useState<string>('');
+
+  // Reset modal filters on opening another stage
+  useEffect(() => {
+    setModalSubmoduleFilter('ALL');
+    setModalStatusFilter('ALL');
+    setModalSearchQuery('');
+  }, [inspectingStageDetails?.id]);
 
   // Form states for New Workflow
   const [newWfName, setNewWfName] = useState('');
@@ -475,6 +643,48 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
       console.error('Failed to save workflow state to localStorage', e);
     }
   }, [workflows, componentPool]);
+
+  // Synchronize master rules with stage mandatory columns if stages have legacy or unpopulated rules
+  useEffect(() => {
+    if (!masterRules || masterRules.length === 0) return;
+    setWorkflows(prevWfs => {
+      let anyChanged = false;
+      const updatedWfs = prevWfs.map(wf => {
+        let wfChanged = false;
+        const updatedStages = wf.stages.map(stg => {
+          const isLegacyOrEmpty = !stg.mandatoryColumns || stg.mandatoryColumns.length <= 6;
+          if (stg.componentIds.length > 0 && isLegacyOrEmpty) {
+            wfChanged = true;
+            anyChanged = true;
+            const fullCols: StageMandatoryColumnItem[] = [];
+            for (const compId of stg.componentIds) {
+              const comp = componentPool.find(c => c.id === compId);
+              fullCols.push(...buildDefaultMandatoryColumnsForSingleComponent(comp, masterRules));
+            }
+            return {...stg, mandatoryColumns: fullCols};
+          }
+          return stg;
+        });
+        if (wfChanged) return {...wf, stages: updatedStages};
+        return wf;
+      });
+      return anyChanged ? updatedWfs : prevWfs;
+    });
+  }, [masterRules, componentPool]);
+
+  // Keep inspectingStageDetails synchronized with stages in currentWorkflow
+  useEffect(() => {
+    if (inspectingStageDetails) {
+      const liveStage = stages.find(s => s.id === inspectingStageDetails.id);
+      if (
+        liveStage &&
+        (liveStage.mandatoryColumns?.length !== inspectingStageDetails.mandatoryColumns?.length ||
+          liveStage.componentIds.length !== inspectingStageDetails.componentIds.length)
+      ) {
+        setInspectingStageDetails(liveStage);
+      }
+    }
+  }, [stages, inspectingStageDetails]);
 
   function showToastMessage(msg: string) {
     setToast(msg);
@@ -830,25 +1040,57 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
     updateStagesForCurrentWorkflow(prev =>
       prev.map(s =>
         s.id === stageId
-          ? {...s, componentIds: s.componentIds.filter(id => id !== compId)}
+          ? {
+              ...s,
+              componentIds: s.componentIds.filter(id => id !== compId),
+              mandatoryColumns: (s.mandatoryColumns || []).filter(c => c.submoduleId !== compId),
+            }
           : s,
       ),
     );
+    setInspectingStageDetails(prev => {
+      if (!prev || prev.id !== stageId) return prev;
+      return {
+        ...prev,
+        componentIds: prev.componentIds.filter(id => id !== compId),
+        mandatoryColumns: (prev.mandatoryColumns || []).filter(c => c.submoduleId !== compId),
+      };
+    });
     showToastMessage(`Component "${comp?.name || compId}" removed from stage.`);
   }
 
   function addComponentToStage(stageId: string, compId: string) {
     if (!canManage) return;
+    const comp = componentPool.find(c => c.id === compId);
+    const newFields = buildDefaultMandatoryColumnsForSingleComponent(comp, masterRules);
     updateStagesForCurrentWorkflow(prev =>
       prev.map(s => {
         if (s.id === stageId) {
           if (s.componentIds.includes(compId)) return s;
-          return {...s, componentIds: [...s.componentIds, compId]};
+          const existingCols = s.mandatoryColumns || [];
+          const existingKeys = new Set(existingCols.map(c => `${c.submoduleId}:${c.columnKey}`));
+          const colsToAdd = newFields.filter(f => !existingKeys.has(`${f.submoduleId}:${f.columnKey}`));
+          return {
+            ...s,
+            componentIds: [...s.componentIds, compId],
+            mandatoryColumns: [...existingCols, ...colsToAdd],
+          };
         }
         return s;
       }),
     );
-    const comp = componentPool.find(c => c.id === compId);
+    setInspectingStageDetails(prev => {
+      if (!prev || prev.id !== stageId) return prev;
+      if (prev.componentIds.includes(compId)) return prev;
+      const existingCols = prev.mandatoryColumns || [];
+      const existingKeys = new Set(existingCols.map(c => `${c.submoduleId}:${c.columnKey}`));
+      const colsToAdd = newFields.filter(f => !existingKeys.has(`${f.submoduleId}:${f.columnKey}`));
+      return {
+        ...prev,
+        componentIds: [...prev.componentIds, compId],
+        mandatoryColumns: [...existingCols, ...colsToAdd],
+      };
+    });
     showToastMessage(`Component "${comp?.name || compId}" added to stage.`);
   }
 
@@ -917,7 +1159,7 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
       componentIds: [],
       color: colorPalette[stages.length % colorPalette.length],
       documents: DEFAULT_STAGE_DOCS_MKT,
-      mandatoryColumns: DEFAULT_MANDATORY_COLS_MKT.slice(0, 3),
+      mandatoryColumns: [],
     };
     updateStagesForCurrentWorkflow(prev => [...prev, newStage]);
     setShowAddStageModal(false);
@@ -2026,7 +2268,10 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
                           title="Configure required documents and mandatory fields"
                         >
                           <FileCheck2 size={14} color="#FF9900" />
-                          <span>Configure Documents & Mandatory Rules ({stg.documents?.length || 0} Docs, {stg.mandatoryColumns?.length || 0} Fields)</span>
+                          <span>
+                            Configure Documents & Mandatory Rules ({stg.documents?.length || 0} Docs,{' '}
+                            {(stg.mandatoryColumns || []).filter(c => c.isMandatory).length} Mandatory Fields)
+                          </span>
                         </button>
                       </div>
                     </div>
@@ -2769,7 +3014,7 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
               background: '#FFFFFF',
               borderRadius: 12,
               width: '100%',
-              maxWidth: 720,
+              maxWidth: 780,
               maxHeight: '90vh',
               overflowY: 'auto',
               padding: '24px 28px',
@@ -2868,72 +3113,354 @@ export function WorkflowConfigurationView({canManage = true}: {canManage?: boole
             </div>
 
             {/* TAB SECTION B: STAGE MANDATORY COLUMNS */}
-            <div>
-              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8}}>
-                <h5 style={{margin: 0, fontSize: 14, fontWeight: 800, color: '#1E293B'}}>
-                  2. Mandatory Form Fields (crm_master_stage_mandatory_columns)
-                </h5>
-                <span style={{fontSize: 11, color: '#64748B'}}>
-                  Field validations enforced before the "Submit Stage" action is unlocked
-                </span>
-              </div>
+            {(() => {
+              const inspectingStageComponents = inspectingStageDetails.componentIds
+                .map(id => componentPool.find(c => c.id === id))
+                .filter((c): c is WorkflowComponentItem => Boolean(c));
+              const allMandatoryCols = inspectingStageDetails.mandatoryColumns || [];
+              const totalMandatoryCount = allMandatoryCols.filter(c => c.isMandatory).length;
 
-              {(!inspectingStageDetails.mandatoryColumns || inspectingStageDetails.mandatoryColumns.length === 0) ? (
-                <div style={{padding: 12, background: '#F8FAFC', borderRadius: 6, fontSize: 12, color: '#64748B', textAlign: 'center'}}>
-                  No form fields configured as mandatory for this stage.
-                </div>
-              ) : (
-                <div style={{display: 'flex', flexDirection: 'column', gap: 6}}>
-                  {inspectingStageDetails.mandatoryColumns.map(col => (
-                    <div
-                      key={col.id}
-                      style={{
-                        padding: '10px 14px',
-                        borderRadius: 6,
-                        border: '1px solid #E2E8F0',
-                        background: '#FFFFFF',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 12,
-                      }}
-                    >
-                      <div>
-                        <div style={{fontSize: 12, fontWeight: 700, color: '#1E293B'}}>
-                          {col.columnLabel}
-                        </div>
-                        <div style={{fontSize: 10, color: '#64748B', display: 'flex', gap: 6, marginTop: 2}}>
-                          <code>{col.columnKey}</code>
-                          <span>•</span>
-                          <span>Section: <strong>{col.sectionName}</strong></span>
-                        </div>
-                      </div>
+              const filteredMandatoryCols = allMandatoryCols.filter(col => {
+                if (modalSubmoduleFilter !== 'ALL' && col.submoduleId !== modalSubmoduleFilter) {
+                  return false;
+                }
+                if (modalStatusFilter === 'MANDATORY' && !col.isMandatory) return false;
+                if (modalStatusFilter === 'OPTIONAL' && col.isMandatory) return false;
+                if (modalSearchQuery.trim()) {
+                  const q = modalSearchQuery.toLowerCase().trim();
+                  const matchLabel = (col.columnLabel || '').toLowerCase().includes(q);
+                  const matchKey = (col.columnKey || '').toLowerCase().includes(q);
+                  const matchSection = (col.sectionName || '').toLowerCase().includes(q);
+                  const matchSub = (col.submoduleName || '').toLowerCase().includes(q);
+                  if (!matchLabel && !matchKey && !matchSection && !matchSub) return false;
+                }
+                return true;
+              });
 
-                      <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                        <button
-                          type="button"
-                          onClick={() => toggleStageMandatoryColumn(inspectingStageDetails.id, col.id)}
-                          disabled={!canManage}
+              return (
+                <div>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8}}>
+                    <div>
+                      <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
+                        <h5 style={{margin: 0, fontSize: 14, fontWeight: 800, color: '#1E293B'}}>
+                          2. Mandatory Form Fields (crm_master_stage_mandatory_columns)
+                        </h5>
+                        <span
                           style={{
-                            padding: '4px 10px',
-                            borderRadius: 6,
                             fontSize: 11,
                             fontWeight: 700,
-                            border: 'none',
-                            cursor: canManage ? 'pointer' : 'default',
-                            background: col.isMandatory ? '#FEF3C7' : '#F1F5F9',
-                            color: col.isMandatory ? '#B45309' : '#64748B',
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            background: '#FEF3C7',
+                            color: '#B45309',
+                            border: '1px solid #FDE68A',
                           }}
-                          title="Click to toggle whether this field is mandatory to complete"
                         >
-                          {col.isMandatory ? 'MANDATORY' : 'OPTIONAL'}
-                        </button>
+                          {totalMandatoryCount} Mandatory / {allMandatoryCols.length} Total
+                        </span>
                       </div>
+                      <span style={{fontSize: 11, color: '#64748B', marginTop: 4, display: 'block'}}>
+                        Field validations enforced before the "Submit Stage" action is unlocked. Combined across all active sub-modules in this stage.
+                      </span>
                     </div>
-                  ))}
+                  </div>
+
+                  {allMandatoryCols.length === 0 ? (
+                    <div style={{padding: 24, background: '#F8FAFC', borderRadius: 8, fontSize: 12, color: '#64748B', textAlign: 'center', border: '1px dashed #CBD5E1'}}>
+                      No form fields mapped to this stage yet. Assign sub-modules (e.g. FAP Stage or Pre-Analysis) to load their fields.
+                    </div>
+                  ) : (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: 10}}>
+                      {/* FILTER TOOLBAR */}
+                      <div
+                        style={{
+                          background: '#F8FAFC',
+                          padding: '12px 14px',
+                          borderRadius: 8,
+                          border: '1px solid #E2E8F0',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 10,
+                        }}
+                      >
+                        {/* Row 1: Submodule and Status pills */}
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10}}>
+                          {/* Submodule filter pills */}
+                          <div style={{display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap'}}>
+                            <span style={{fontSize: 11, fontWeight: 700, color: '#475569', marginRight: 2}}>
+                              Sub-Module:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setModalSubmoduleFilter('ALL')}
+                              style={{
+                                padding: '3px 10px',
+                                borderRadius: 14,
+                                fontSize: 11,
+                                fontWeight: modalSubmoduleFilter === 'ALL' ? 700 : 500,
+                                background: modalSubmoduleFilter === 'ALL' ? '#002C5F' : '#FFFFFF',
+                                color: modalSubmoduleFilter === 'ALL' ? '#FFFFFF' : '#475569',
+                                border: modalSubmoduleFilter === 'ALL' ? '1px solid #002C5F' : '1px solid #CBD5E1',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              All ({allMandatoryCols.length})
+                            </button>
+                            {inspectingStageComponents.map(comp => {
+                              const count = allMandatoryCols.filter(c => c.submoduleId === comp.id).length;
+                              const isSel = modalSubmoduleFilter === comp.id;
+                              const badgeColor =
+                                comp.id === 'comp-fap'
+                                  ? '#2563EB'
+                                  : comp.id === 'comp-prean'
+                                  ? '#0D9488'
+                                  : '#7C3AED';
+                              return (
+                                <button
+                                  key={comp.id}
+                                  type="button"
+                                  onClick={() => setModalSubmoduleFilter(comp.id)}
+                                  style={{
+                                    padding: '3px 10px',
+                                    borderRadius: 14,
+                                    fontSize: 11,
+                                    fontWeight: isSel ? 700 : 500,
+                                    background: isSel ? badgeColor : '#FFFFFF',
+                                    color: isSel ? '#FFFFFF' : '#475569',
+                                    border: isSel ? `1px solid ${badgeColor}` : '1px solid #CBD5E1',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  {comp.name.split('(')[0].trim()} ({count})
+                                </button>
+                              );
+                            })}
+                          </div>
+
+                          {/* Status filter pills */}
+                          <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+                            <span style={{fontSize: 11, fontWeight: 700, color: '#475569', marginRight: 2}}>
+                              Status:
+                            </span>
+                            {(['ALL', 'MANDATORY', 'OPTIONAL'] as const).map(st => {
+                              const isSel = modalStatusFilter === st;
+                              const count =
+                                st === 'ALL'
+                                  ? allMandatoryCols.length
+                                  : st === 'MANDATORY'
+                                  ? totalMandatoryCount
+                                  : allMandatoryCols.length - totalMandatoryCount;
+                              return (
+                                <button
+                                  key={st}
+                                  type="button"
+                                  onClick={() => setModalStatusFilter(st)}
+                                  style={{
+                                    padding: '3px 9px',
+                                    borderRadius: 14,
+                                    fontSize: 11,
+                                    fontWeight: isSel ? 700 : 500,
+                                    background: isSel
+                                      ? st === 'MANDATORY'
+                                        ? '#D97706'
+                                        : st === 'OPTIONAL'
+                                        ? '#64748B'
+                                        : '#1E293B'
+                                      : '#FFFFFF',
+                                    color: isSel ? '#FFFFFF' : '#475569',
+                                    border: isSel ? 'none' : '1px solid #CBD5E1',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                  }}
+                                >
+                                  {st === 'ALL' ? 'All' : st === 'MANDATORY' ? 'Mandatory' : 'Optional'} ({count})
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Row 2: Search Input */}
+                        <div style={{position: 'relative', width: '100%'}}>
+                          <Search
+                            size={14}
+                            color="#94A3B8"
+                            style={{position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)'}}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Search form fields by label, key (e.g. npwp, debtor), or section..."
+                            value={modalSearchQuery}
+                            onChange={e => setModalSearchQuery(e.target.value)}
+                            style={{
+                              width: '100%',
+                              padding: '7px 30px 7px 32px',
+                              borderRadius: 6,
+                              border: '1px solid #CBD5E1',
+                              fontSize: 12,
+                              outline: 'none',
+                              background: '#FFFFFF',
+                              boxSizing: 'border-box',
+                            }}
+                          />
+                          {modalSearchQuery && (
+                            <button
+                              type="button"
+                              onClick={() => setModalSearchQuery('')}
+                              style={{
+                                position: 'absolute',
+                                right: 8,
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#94A3B8',
+                                fontSize: 13,
+                                padding: 2,
+                              }}
+                              title="Clear search"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* FIELD LIST OR EMPTY SEARCH RESULT */}
+                      {filteredMandatoryCols.length === 0 ? (
+                        <div
+                          style={{
+                            padding: '24px 16px',
+                            background: '#F8FAFC',
+                            borderRadius: 8,
+                            fontSize: 12,
+                            color: '#64748B',
+                            textAlign: 'center',
+                            border: '1px dashed #CBD5E1',
+                          }}
+                        >
+                          No form fields match the selected filter or search query.
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 6,
+                            maxHeight: '380px',
+                            overflowY: 'auto',
+                            paddingRight: 4,
+                          }}
+                        >
+                          {filteredMandatoryCols.map(col => {
+                            const isFap = col.submoduleId === 'comp-fap' || col.submoduleCode === 'FAP_STAGE';
+                            const isPre = col.submoduleId === 'comp-prean' || col.submoduleCode === 'PRE_ANALYSIS';
+                            return (
+                              <div
+                                key={col.id}
+                                style={{
+                                  padding: '10px 14px',
+                                  borderRadius: 8,
+                                  border: col.isMandatory ? '1px solid #FDE68A' : '1px solid #E2E8F0',
+                                  background: col.isMandatory ? '#FFFDF5' : '#FFFFFF',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  gap: 12,
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <div style={{display: 'flex', flexDirection: 'column', gap: 3, flex: 1, minWidth: 0}}>
+                                  <div style={{display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap'}}>
+                                    {/* Submodule Badge */}
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        fontWeight: 700,
+                                        padding: '1px 7px',
+                                        borderRadius: 4,
+                                        background: isFap ? '#EFF6FF' : isPre ? '#F0FDFA' : '#F5F3FF',
+                                        color: isFap ? '#1D4ED8' : isPre ? '#0F766E' : '#6D28D9',
+                                        border: isFap ? '1px solid #BFDBFE' : isPre ? '1px solid #99F6E4' : '1px solid #DDD6FE',
+                                      }}
+                                    >
+                                      {col.submoduleName || (isFap ? 'FAP Stage' : isPre ? 'Pre-Analysis' : 'Sub-Module')}
+                                    </span>
+
+                                    {/* Section Badge */}
+                                    <span
+                                      style={{
+                                        fontSize: 10,
+                                        fontWeight: 600,
+                                        padding: '1px 6px',
+                                        borderRadius: 4,
+                                        background: '#F1F5F9',
+                                        color: '#475569',
+                                        border: '1px solid #E2E8F0',
+                                      }}
+                                    >
+                                      {col.sectionName}
+                                    </span>
+                                  </div>
+
+                                  {/* Label & Key */}
+                                  <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 1}}>
+                                    <span style={{fontSize: 12, fontWeight: 700, color: '#0F172A'}}>
+                                      {col.columnLabel}
+                                    </span>
+                                    <code
+                                      style={{
+                                        fontSize: 11,
+                                        fontFamily: 'monospace',
+                                        color: '#64748B',
+                                        background: '#F8FAFC',
+                                        padding: '1px 5px',
+                                        borderRadius: 4,
+                                        border: '1px solid #E2E8F0',
+                                      }}
+                                    >
+                                      {col.columnKey}
+                                    </code>
+                                  </div>
+                                </div>
+
+                                <div style={{display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0}}>
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleStageMandatoryColumn(inspectingStageDetails.id, col.id)}
+                                    disabled={!canManage}
+                                    style={{
+                                      padding: '5px 12px',
+                                      borderRadius: 6,
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      border: col.isMandatory ? '1px solid #FCD34D' : '1px solid #CBD5E1',
+                                      cursor: canManage ? 'pointer' : 'default',
+                                      background: col.isMandatory ? '#FEF3C7' : '#F1F5F9',
+                                      color: col.isMandatory ? '#B45309' : '#64748B',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      transition: 'all 0.15s ease',
+                                    }}
+                                    title="Click to toggle whether this field is mandatory to complete this stage"
+                                  >
+                                    {col.isMandatory ? '★ MANDATORY' : 'OPTIONAL'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             <div style={{display: 'flex', justifyContent: 'flex-end', marginTop: 24}}>
               <button

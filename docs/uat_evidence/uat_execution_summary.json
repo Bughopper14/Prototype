@@ -1,0 +1,114 @@
+[
+  {
+    "id": "TC-AUTH-01",
+    "category": "Login / Authentication",
+    "name": "UI Render & Form Elements",
+    "status": "PASS",
+    "details": "Halaman login berhasil dimuat dengan form username, password, dan submit button.",
+    "screenshot": "TC-AUTH-01_login_page.png"
+  },
+  {
+    "id": "TC-AUTH-02",
+    "category": "Login / Authentication",
+    "name": "Validasi Kredensial Salah (Negative)",
+    "status": "PASS",
+    "details": "Sistem menolak password invalid. Halaman tetap di http://localhost:3000/login.",
+    "screenshot": "TC-AUTH-02_login_invalid.png"
+  },
+  {
+    "id": "TC-AUTH-03",
+    "category": "Login / Authentication",
+    "name": "Login Sukses Akun Admin",
+    "status": "PASS",
+    "details": "Login berhasil, token session cookie tersimpan, redirect ke Apps Hub Gallery (http://localhost:3000/gallery).",
+    "screenshot": "TC-AUTH-03_login_success.png"
+  },
+  {
+    "id": "TC-GAL-01",
+    "category": "Gallery (Apps Hub)",
+    "name": "Render Aplikasi & Aksesibilitas Kartu",
+    "status": "PASS",
+    "details": "Apps Hub menampilkan aplikasi terotorisasi (2 kartu terdeteksi).",
+    "screenshot": "TC-GAL-01_apps_hub.png"
+  },
+  {
+    "id": "TC-GAL-02",
+    "category": "Gallery (Apps Hub)",
+    "name": "Navigasi Menu ke User Management",
+    "status": "PASS",
+    "details": "Navigasi dari Gallery ke halaman User Management berjalan lancar tanpa error.",
+    "screenshot": "TC-GAL-02_nav_user_management.png"
+  },
+  {
+    "id": "TC-UM-01",
+    "category": "User Management",
+    "name": "Render Tab Master (Users, Dept, Roles, Auth)",
+    "status": "PASS",
+    "details": "Sub-modul navigasi aktif: Users\n24, Department\n14, Roles\n10",
+    "screenshot": "TC-GAL-02_nav_user_management.png"
+  },
+  {
+    "id": "TC-UM-02",
+    "category": "User Management",
+    "name": "Buka Modal Input 'Add User'",
+    "status": "PASS",
+    "details": "Modal Add User terbuka dengan seluruh input field (Username, Full Name, Posisi, Dept, Email, Password, Peran).",
+    "screenshot": "TC-UM-02_add_user_modal.png"
+  },
+  {
+    "id": "TC-UM-03",
+    "category": "User Management",
+    "name": "Create New User Data Persistence",
+    "status": "PASS",
+    "details": "User 'uat_tester_tmp' berhasil dibuat dan tertera pada tabel aktif pengguna.",
+    "screenshot": "TC-UM-04_user_created.png"
+  },
+  {
+    "id": "TC-UM-04",
+    "category": "User Management",
+    "name": "Cleanup & Rollback Data Pengujian (Delete User)",
+    "status": "PASS",
+    "details": "Data uji 'uat_tester_tmp' berhasil dihapus tuntas dari database (Cleanup verified 100%).",
+    "screenshot": "TC-UM-05_user_cleaned.png"
+  },
+  {
+    "id": "TC-CRM-01",
+    "category": "CRM Dashboard",
+    "name": "Overview & Portofolio Metrics Rendering",
+    "status": "PASS",
+    "details": "CRM Dashboard Overview tampil lengkap dengan panel: Application pipeline, Needs attention, Recent applications\n1",
+    "screenshot": "TC-CRM-01_overview.png"
+  },
+  {
+    "id": "TC-CRM-02",
+    "category": "CRM Dashboard",
+    "name": "Daftar Aplikasi Pembiayaan (Applications Queue)",
+    "status": "PASS",
+    "details": "Daftar pengajuan pembiayaan (pipeline status, debitur, tanggal pengajuan) berhasil dimuat.",
+    "screenshot": "TC-CRM-02_applications.png"
+  },
+  {
+    "id": "TC-CRM-03",
+    "category": "CRM Dashboard",
+    "name": "Document Desk & Gallery Checklist Queue",
+    "status": "PASS",
+    "details": "Document Desk terhubung aktif, menampilkan checklist verifikasi berkas permohonan.",
+    "screenshot": "TC-CRM-03_document_desk.png"
+  },
+  {
+    "id": "TC-CRM-04",
+    "category": "CRM Dashboard",
+    "name": "Master Pelanggan (Customers Screen)",
+    "status": "PASS",
+    "details": "Data master pelanggan debitur tampil lengkap dengan rincian entitas bisnis/individu.",
+    "screenshot": "TC-CRM-04_customers.png"
+  },
+  {
+    "id": "TC-AUTH-04",
+    "category": "Login / Authentication",
+    "name": "Logout & Invalidation Sesi Pengguna",
+    "status": "PASS",
+    "details": "User berhasil logout dan kembali diarahkan ke halaman login (http://localhost:3000/login).",
+    "screenshot": "TC-AUTH-04_logout_success.png"
+  }
+]

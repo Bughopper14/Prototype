@@ -8,10 +8,8 @@ import {CatalogGroupView} from './catalog/CatalogGroupView';
 import {CatalogMenuDrawer} from './catalog/CatalogMenuDrawer';
 import {LocationConfiguration} from './location/LocationConfiguration';
 import {MasterMandatoryView} from './mandatory/MandatoryRulesView';
-import {WorkflowConfigurationView} from './workflow/WorkflowConfigurationView';
 
 function categoryTitle(selected: string) {
-  if (selected === 'workflow_config') return 'Workflow Engine & Pipeline Configuration';
   if (selected === 'master_mandatory') return 'Field Mandatory (FAP & PRE-AN)';
   if (selected === 'location') return 'Indonesian Region';
   return (masterGroups.find(g => g.key === selected) || masterGroups[0]).name;
@@ -71,10 +69,6 @@ export function MasterDataWorkspace() {
       ) : selected === 'master_mandatory' ? (
         <div className="master-page-layout">
           <MasterMandatoryView canManage={canManage} />
-        </div>
-      ) : selected === 'workflow_config' ? (
-        <div className="master-page-layout">
-          <WorkflowConfigurationView canManage={canManage} />
         </div>
       ) : (
         // keyed so search and the open dialog reset when switching groups
