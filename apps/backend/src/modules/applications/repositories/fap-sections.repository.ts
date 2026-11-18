@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import type {PoolConnection} from 'mysql2/promise';
-import {FAP_TERMS_COLUMNS, type FapTermsColumn} from '@liugong/shared';
+import {FAP_TERMS_COLUMNS} from '@liugong/shared';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
 import {installment} from '../../../core/domain';
@@ -150,23 +150,19 @@ export class FapSectionsRepository {
       };
       financingProposal.realizationPlan = Object.fromEntries(REALIZATION.map(([k, c]) => [k, Number(p[c] ?? 0)]));
       financingProposal.notes = p.proposal_notes ?? '';
-      const [terms] = await this.db.pool.execute<any[]>(
-        `SELECT t.*,m.code AS method_code FROM ${CRM.fapProposalTerms} t
-         JOIN ${CRM.masterFinancingMethods} m ON m.id=t.financing_method_id WHERE t.proposal_id=?`,
-        [p.id],
-      );
-      for (const [column, method] of Object.entries(FAP_TERMS_COLUMNS)) {
-        const t = terms.find(r => r.method_code === method);
-        if (!t) continue;
-        const purpose = (await this.ids.codeOf('facilityPurpose', t.facility_purpose_id)) ?? t.purpose_text ?? '';
+      // The Terms & Conditions of the financing method the customer asked for come from the proposal itself
+      // (one column of the printed FAP; the other two do not exist for this application).
+      const column = Object.entries(FAP_TERMS_COLUMNS).find(([, code]) => code === proposal!.financingMethod)?.[0];
+      if (column) {
+        const text = (v: unknown) => (v === null || v === undefined || Number(v) === 0 ? '' : String(Number(v)));
         financingProposal[column] = {
-          workingCapitalInvestment: purpose,
-          currency: (await this.ids.codeOf('currency', t.currency_id)) ?? t.currency_text ?? '',
-          securityDeposit: t.security_deposit_text ?? '',
-          downPayment: t.down_payment_text ?? '',
-          interestRate: t.interest_rate_text ?? '',
-          tenor: t.tenor_text ?? '',
-          paymentMethod: (await this.ids.codeOf('paymentTiming', t.payment_timing_id)) ?? t.payment_method_text ?? '',
+          workingCapitalInvestment: proposal!.facilityPurpose ?? '',
+          currency: proposal!.currency ?? '',
+          securityDeposit: text(p.security_deposit),
+          downPayment: text(p.down_payment_value),
+          interestRate: text(p.interest_rate),
+          tenor: text(p.tenor_months),
+          paymentMethod: proposal!.paymentMethod ?? '',
         };
       }
     }
@@ -311,7 +307,6 @@ export class FapSectionsRepository {
         if (fp.realizationPlan)
           for (const [k, c] of REALIZATION) values[c] = Math.max(0, Math.trunc(Number(fp.realizationPlan[k]) || 0));
         if (fp.notes !== undefined) values.proposal_notes = clean(fp.notes);
-        await this.saveTerms(conn, applicationId, proposalId, fp, by);
         if (fp.documentRequirements) await this.saveDocRequirements(conn, applicationId, fp.documentRequirements, by);
       }
       const cols = Object.keys(values);
@@ -323,49 +318,6 @@ export class FapSectionsRepository {
     }
     if (input.financingPurposeDetail !== undefined && input.financingPurposeDetail !== null)
       await this.savePurposes(conn, applicationId, input.financingPurposeDetail, by);
-  }
-
-  /** One crm_fap_proposal_terms row per printed terms column; text is kept as typed, amounts are parsed from it. */
-  private async saveTerms(conn: Conn, applicationId: string, proposalId: string, fp: any, by: string | null) {
-    for (const [column, method] of Object.entries(FAP_TERMS_COLUMNS) as [FapTermsColumn, string][]) {
-      const t = fp[column];
-      if (!t) continue;
-      const methodId = await this.ids.idOf('financingMethod', method, conn);
-      const purpose = t.workingCapitalInvestment ?? t.investment;
-      const values = {
-        financing_method_id: methodId,
-        facility_purpose_id: await this.ids.tryIdOf('facilityPurpose', purpose, conn),
-        purpose_text: clean(purpose),
-        currency_id: await this.ids.tryIdOf('currency', t.currency, conn),
-        currency_text: clean(t.currency),
-        security_deposit_amount: parseAmount(t.securityDeposit),
-        security_deposit_text: clean(t.securityDeposit),
-        down_payment_amount: parseAmount(t.downPayment),
-        down_payment_text: clean(t.downPayment),
-        interest_rate_pct: parseAmount(t.interestRate),
-        interest_rate_text: clean(t.interestRate),
-        tenor_months: parseAmount(t.tenor),
-        tenor_text: clean(t.tenor),
-        payment_timing_id: await this.ids.tryIdOf('paymentTiming', t.paymentMethod, conn),
-        payment_method_text: clean(t.paymentMethod),
-      };
-      const [old] = await conn.execute<any[]>(
-        `SELECT id FROM ${CRM.fapProposalTerms} WHERE proposal_id=? AND financing_method_id=? FOR UPDATE`,
-        [proposalId, methodId],
-      );
-      const cols = Object.keys(values);
-      if (old.length)
-        await conn.execute(
-          `UPDATE ${CRM.fapProposalTerms} SET ${cols.map(c => `${c}=?`).join(',')},updated_by=? WHERE id=?`,
-          [...Object.values(values), by, old[0].id],
-        );
-      else
-        await conn.execute(
-          `INSERT INTO ${CRM.fapProposalTerms} (id,proposal_id,application_id,${cols.join(',')},created_by)
-           VALUES (?,?,?,${cols.map(() => '?').join(',')},?)`,
-          [crypto.randomUUID(), proposalId, applicationId, ...Object.values(values), by],
-        );
-    }
   }
 
   /** One row per document requirement of Master Data; keys of `checked` are requirement codes. */

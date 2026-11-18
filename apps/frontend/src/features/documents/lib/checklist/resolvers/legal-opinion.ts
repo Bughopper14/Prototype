@@ -1,4 +1,4 @@
-/** Where the LEGAL_OPINION document comes from and whether it is available. */
+/** Where the LEGAL-OPINION document comes from and whether it is available. */
 import type {ResolverContext} from '@/features/documents/lib/checklist/types';
 
 export function resolveLegalOpinion({files, row}: ResolverContext) {

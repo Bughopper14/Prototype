@@ -218,8 +218,8 @@ Butuh Node.js 22+, pnpm 9, MySQL 8, dan Python 3.12 (untuk OCR).
 ```sh
 pnpm install
 cp apps/backend/.env.example apps/backend/.env   # isi DB_HOST, DB_USER, DB_PASSWORD, DB_NAME (MySQL)
-mysql -u root -p < apps/backend/db/plan-schema.sql   # membuat database crm_liugong dan semua tabel
-mysql -u root -p < apps/backend/db/plan-seed.sql     # semua data referensi / master
+mysql -u root -p < apps/backend/db/current-schema.sql   # membuat database crm_liugong dan semua tabel
+mysql -u root -p < apps/backend/db/current-seed.sql     # data referensi / master dan workflow default
 pnpm user:create admin "<password>" "System Admin" --admin   # hanya untuk database baru
 pnpm dev                                         # aplikasi: http://localhost:3000 · API: http://localhost:3001
 ```

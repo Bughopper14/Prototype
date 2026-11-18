@@ -28,7 +28,7 @@ export function PreviewDocHeader() {
           marginTop: '4px',
         }}
       >
-        No. : {data.preAnalysisNo || 'Auto (Generated on save)'}
+        No. : {data.preAnalysisNo || 'Not generated yet'}
       </div>
     </div>
   );

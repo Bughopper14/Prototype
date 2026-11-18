@@ -36,22 +36,12 @@ export class MasterDataController {
     return this.masterData.saveCatalog(req.body.catalog, req.body.revision, by);
   }
 
+  /** Mandatory rules of a workflow (?workflowId=), default the active one. They are edited in Workflow setup. */
   @Get('mandatory')
   mandatoryList(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'access_crm_dashboard');
-    return this.mandatoryRules.list();
-  }
-
-  @Put('mandatory')
-  async updateMandatoryRule(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_manage_master_data');
-    const {id, section, fieldKey, field_key, mandatory} = req.body;
-    await this.mandatoryRules.set(
-      {id, section, fieldKey: fieldKey || field_key},
-      mandatory === 1 || mandatory === true || mandatory === '1',
-      req.actor?.username || null,
-    );
-    return this.mandatoryRules.list();
+    const workflowId = req.query?.workflowId ? String(req.query.workflowId) : undefined;
+    return this.mandatoryRules.list(workflowId);
   }
 
   @Get('workflow-approvers')

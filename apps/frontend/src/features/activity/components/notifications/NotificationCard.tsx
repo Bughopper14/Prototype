@@ -139,10 +139,10 @@ export function NotificationCard({
             <Clock size={13} />
             <span>{formatTime(item.createdAt)}</span>
           </span>
-          {item.fapNumber && (
+          {item.applicationId && (
             <>
               <span>•</span>
-              <span style={{fontWeight: 600, color: '#334155'}}>{item.fapNumber}</span>
+              <span style={{fontWeight: 600, color: '#334155'}}>{item.applicationId}</span>
             </>
           )}
         </div>

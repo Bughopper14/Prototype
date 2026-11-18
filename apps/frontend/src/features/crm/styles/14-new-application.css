@@ -1,0 +1,48 @@
+/* New application: the heading holds the only field; everything under it is the locked application page. */
+.new-app-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+.new-app-kind { display: inline-flex; padding: 3px; border-radius: 8px; background: #e2e8f0; flex: none; }
+.new-app-kind button { border: 0; background: transparent; border-radius: 6px; padding: 7px 12px; font: inherit; font-size: 12.5px; font-weight: 600; color: #475569; cursor: pointer; }
+.new-app-kind button.on { background: #fff; color: #002060; box-shadow: 0 1px 3px #0f172a22; }
+.new-app-input { flex: 1 1 320px; min-width: 240px; box-sizing: border-box; min-height: 38px; padding: 8px 12px; border: 1px solid #cbd5e1 !important; border-radius: 7px; background: #fff !important; font: inherit; font-size: 13px; font-weight: 500; color: #0f172a; box-shadow: none; }
+.new-app-input:focus { outline: none; border-color: #2563eb !important; box-shadow: 0 0 0 3px #2563eb26 !important; }
+.new-app-locked { position: relative; opacity: .5; pointer-events: none; user-select: none; filter: grayscale(.35); }
+.new-app-locked .detail-tabs button { cursor: not-allowed; }
+.new-app-lock-note { position: absolute; z-index: 2; top: -34px; right: 0; display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; background: #0f172a; color: #fff; font-size: 12px; font-weight: 700; }
+
+.new-app-branch { flex: 0 1 220px; min-width: 180px; }
+.cust-pick { position: relative; flex: 1 1 320px; min-width: 240px; }
+.cust-pick-btn { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
+.cust-pick-btn .ph { color: #64748b; font-weight: 500; }
+.cust-pick-pop { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 12px 32px #0f172a26; overflow: hidden; }
+.cust-pick-search { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid #e2e8f0; color: #64748b; }
+.cust-pick-search input { flex: 1; border: 0 !important; outline: none; box-shadow: none !important; background: transparent !important; font: inherit; font-size: 13px; min-height: 0; padding: 0; }
+.cust-pick-pop ul { list-style: none; margin: 0; padding: 6px; max-height: 320px; overflow: auto; }
+.cust-pick-pop li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 7px 10px; border-radius: 6px; cursor: pointer; }
+.cust-pick-pop li:hover { background: #f1f5f9; }
+.cust-pick-pop li.on { background: #eff6ff; color: #1d4ed8; }
+.cust-pick-pop li b { display: block; font-size: 13px; font-weight: 600; color: #0f172a; }
+.cust-pick-pop li small { display: block; margin-top: 2px; font-size: 11.5px; color: #64748b; }
+.cust-pick-pop li.empty { color: #64748b; cursor: default; justify-content: center; }
+.cust-pick .new-app-input { width: 100%; padding-right: 34px; }
+.cust-pick-icon { position: absolute; right: 12px; top: 12px; color: #64748b; pointer-events: none; }
+
+/* Group names above the stages of the stepper */
+.stage-groups { display: flex; gap: 14px; align-items: flex-end; }
+.stage-group { min-width: 0; }
+.stage-group .chevron-stepper { margin-top: 0; }
+.stage-group-label { display: flex; align-items: center; gap: 8px; margin: 0 2px 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #475569; }
+.stage-group-label span:empty { display: none; }
+.stage-group-label::before { content: ''; flex: none; width: 3px; height: 12px; border-radius: 2px; background: #2563eb; }
+.stage-group-label::after { content: ''; flex: 1; height: 1px; background: #cbd5e1; }
+
+/* Application heading: the details sit close under the name */
+.detail-heading h1 { margin: 0; line-height: 1.2; }
+.detail-heading p.detail-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 3px 0 0; font-size: 12px; line-height: 1.4; }
+.detail-heading p.detail-meta span { margin: 0; }
+.detail-heading p.detail-meta .detail-meta-id { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; }
+
+/* FAP registration number cell: label, value, then the generate button underneath */
+.intake-system-fields > .intake-fap-number { display: flex !important; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.intake-fap-number > span, .intake-fap-number > b { text-align: left; }
+.intake-fap-number .intake-fap-number-action { display: block; margin-top: 6px; }
+.intake-fap-number .intake-fap-number-action .button { white-space: nowrap; }

@@ -28,7 +28,11 @@ export class PreAnalysisService {
   async get(id: string, actor: Actor): Promise<PreAnalysisForm> {
     const app: any = await this.applications.detailOr404(id, actor);
     const stored = await this.repo.load(id);
-    if (!stored) return this.store(id, createBlankPreAnalysisData(await this.withNames(app)), actor);
+    if (!stored) {
+      // The form starts without a Pre-Analysis number; it is made on request (generateNumber).
+      const blank = createBlankPreAnalysisData(await this.withNames(app));
+      return {data: blank, version: await this.repo.save(id, blank, by(actor))};
+    }
     // Key FAP information that was still empty when the form was created follows the application.
     const data = stored.data;
     let changed = false;
@@ -75,15 +79,16 @@ export class PreAnalysisService {
     if (missing(data.fapNumber)) data.fapNumber = app.fapNumber || '';
     if (missing(data.customerProjectName) || data.customerProjectName === 'New Applicant')
       data.customerProjectName = app.customer?.companyName || app.companyName || data.customerProjectName;
-    return this.store(id, data, actor, expectedVersion);
+    return {data, version: await this.repo.save(id, data, by(actor), expectedVersion)};
   }
 
   /**
-   * Stores the form. One without a Pre-Analysis number gets the next one of the year, under a named lock so two
-   * applications saved at the same moment never share a number.
+   * Makes the Pre-Analysis number on request: the next one of the year, under a named lock so two applications never
+   * share a number. A form that already has a number keeps it (409).
    */
-  private async store(id: string, data: any, actor: Actor, expectedVersion?: string | null): Promise<PreAnalysisForm> {
-    if (!missing(data.preAnalysisNo)) return {data, version: await this.repo.save(id, data, by(actor), expectedVersion)};
+  async generateNumber(id: string, actor: Actor): Promise<PreAnalysisForm> {
+    const form = await this.get(id, actor);
+    ensure(missing(form.data.preAnalysisNo), 'The Pre-Analysis number was already generated.', 409);
     const today = businessToday();
     const lockName = `crm_preanalysis_number_${today.slice(0, 4)}`;
     const conn = await this.db.pool.getConnection();
@@ -91,8 +96,8 @@ export class PreAnalysisService {
       const [lock] = await conn.query<any[]>('SELECT GET_LOCK(?, 10) AS ok', [lockName]);
       ensure(Number(lock[0]?.ok) === 1, 'Nomor pra-analisis sedang dibuat pengguna lain. Coba lagi.', 409);
       try {
-        data.preAnalysisNo = generatePreAnalysisNo(await this.repo.numbers(), today);
-        return {data, version: await this.repo.save(id, data, by(actor), expectedVersion)};
+        const data = {...form.data, preAnalysisNo: generatePreAnalysisNo(await this.repo.numbers(), today)};
+        return {data, version: await this.repo.save(id, data, by(actor))};
       } finally {
         await conn.query('SELECT RELEASE_LOCK(?)', [lockName]);
       }

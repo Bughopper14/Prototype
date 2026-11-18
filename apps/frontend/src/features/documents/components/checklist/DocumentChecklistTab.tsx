@@ -5,6 +5,11 @@ import {ChecklistToolbar} from '@/features/documents/components/checklist/Checkl
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
 import {VerifyDocumentDialog} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {useDocumentChecklist} from '@/features/documents/hooks/useDocumentChecklist';
+import {ChecklistCustomizeDialog} from '@/features/documents/components/checklist/ChecklistCustomizeDialog';
+import {hasAuthority} from '@/shared/lib/auth';
+import {Settings2} from 'lucide-react';
+import {useState} from 'react';
+import {FileArchive, Loader2} from 'lucide-react';
 
 export interface DocumentChecklistTabProps {
   application: any;
@@ -16,6 +21,8 @@ export interface DocumentChecklistTabProps {
 
 export function DocumentChecklistTab({application, draft, user, onChange, notify}: DocumentChecklistTabProps) {
   const c = useDocumentChecklist({application, draft, user, onChange, notify});
+  const [customizing, setCustomizing] = useState(false);
+  const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'crm_upload_app_documents');
 
   return (
     <div className="doc-checklist-container">
@@ -45,6 +52,26 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
               dapat dihapus dan diganti kapan saja.
             </p>
           </div>
+          {canCustomize && (
+            <button type="button" className="button small" onClick={() => setCustomizing(true)}>
+              <Settings2 size={14} /> Customize checklist
+            </button>
+          )}
+          <button
+            type="button"
+            className="button primary doc-zip-btn"
+            disabled={c.zipping || c.fileCount === 0}
+            title={
+              c.fileCount === 0
+                ? 'Belum ada berkas yang diunggah'
+                : `Unduh ${c.fileCount} berkas dalam satu ZIP, dikelompokkan per tahap`
+            }
+            onClick={c.handleDownloadAll}
+          >
+            {c.zipping ? <Loader2 size={15} className="spin" /> : <FileArchive size={15} />}
+            <span>{c.zipping ? 'Menyiapkan ZIP...' : 'Unduh Semua (ZIP)'}</span>
+            {!c.zipping && c.fileCount > 0 && <span className="doc-zip-count">{c.fileCount}</span>}
+          </button>
         </div>
 
         <ChecklistToolbar
@@ -54,10 +81,19 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           setSelectedDept={c.setSelectedDept}
           selectedStatus={c.selectedStatus}
           setSelectedStatus={c.setSelectedStatus}
+          stages={c.stages}
+          selectedStage={c.selectedStage}
+          setSelectedStage={c.setSelectedStage}
+          grouped={c.grouped}
+          setGrouped={c.changeView}
+          toolbarRef={c.toolbarRef}
         />
 
         <ChecklistTable
           rows={c.filteredRows}
+          grouped={c.grouped}
+          collapsedStages={c.collapsedStages}
+          onToggleStage={c.toggleStage}
           uploadingCode={c.uploadingCode}
           deletingFileId={c.deletingFileId}
           onPreview={c.handleOpenPreview}
@@ -66,6 +102,10 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           onVerify={c.canVerify ? c.openVerify : undefined}
         />
       </section>
+
+      {customizing && (
+        <ChecklistCustomizeDialog application={application} onChange={onChange} notify={notify} onClose={() => setCustomizing(false)} />
+      )}
 
       {c.verifying && (
         <VerifyDocumentDialog

@@ -92,6 +92,14 @@ export class ApplicationsController {
     return this.applications.recordClientActivity(req.params.id, body, req.actor);
   }
 
+  /** Generates the FAP number on demand (the application is created without one). */
+  @Post('applications/:id/fap-number')
+  async generateFapNumber(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_create_application', 'crm_workflow_submit', 'crm_edit_application');
+    res.status(201);
+    return this.applications.generateFapNumber(req.params.id, req.actor);
+  }
+
   /** "Submit FAP stage": locks the first stage; the status is changed only by workflow actions. */
   @Put('applications/:id/stage')
   async submitStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {

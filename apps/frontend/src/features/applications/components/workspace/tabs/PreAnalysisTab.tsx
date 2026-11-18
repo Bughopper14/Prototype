@@ -16,6 +16,7 @@ export function PreAnalysisTab() {
     saveNewApplication,
     setPreAnalysisDraft,
     assignedPreAnalysisNo,
+    onChange,
   } = useWorkspace();
   return (
     <>
@@ -29,6 +30,7 @@ export function PreAnalysisTab() {
           assignedPreAnalysisNo={assignedPreAnalysisNo}
           onSaveNewApplication={saveNewApplication}
           onChange={setPreAnalysisDraft}
+          onApplicationChange={onChange}
           customer={draft.customer}
           pic={draft.pic}
           profile={draft}

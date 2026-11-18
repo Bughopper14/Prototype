@@ -190,37 +190,17 @@ export function MasterItemDialog({
                 </select>
               </label>
             )}
-            <label>
-              Status
-              <select
-                value={draft.active ? 'active' : 'inactive'}
-                onChange={e => setDraft({...draft, active: e.target.value === 'active'})}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </label>
-            {groupKey === 'documents' && (
-              <>
-                <label>
-                  Review department
-                  <select value={draft.role} onChange={e => setDraft({...draft, role: e.target.value})}>
-                    {['BS', 'CA', 'LEGAL'].map(x => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Mandatory document
-                  <select
-                    value={draft.required ? 'yes' : 'no'}
-                    onChange={e => setDraft({...draft, required: e.target.value === 'yes'})}
-                  >
-                    <option value="yes">Mandatory</option>
-                    <option value="no">Optional</option>
-                  </select>
-                </label>
-              </>
+            {groupKey !== 'documents' && (
+              <label>
+                Status
+                <select
+                  value={draft.active ? 'active' : 'inactive'}
+                  onChange={e => setDraft({...draft, active: e.target.value === 'active'})}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
             )}
             {groupKey === 'paymentMethod' && (
               <label>

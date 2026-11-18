@@ -49,7 +49,7 @@ export function ActivityCardTopRow({
         Section: {item.section}
       </span>
 
-      {item.fapNumber && (
+      {item.applicationId && (
         <span
           style={{
             background: '#f8fafc',
@@ -61,7 +61,7 @@ export function ActivityCardTopRow({
             borderRadius: 4,
           }}
         >
-          {item.fapNumber}
+          {item.applicationId}
         </span>
       )}
 

@@ -1,32 +1,15 @@
-/** Sub-section 2 of the financing proposal: active Terms & Conditions column matching the selected Financing Method. */
+/** Sub-section 2 of the financing proposal: the terms of the financing method chosen above (only that one is shown). */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {TermsColumn} from '@/features/applications/components/workspace/customer/proposal/TermsColumn';
-import {
-  resolveFinancingMethod,
-  TERMS_GROUPS,
-} from '@/features/applications/components/workspace/customer/proposal/terms-config';
+import {TERMS_GROUPS} from '@/features/applications/components/workspace/customer/proposal/terms-config';
+import {FAP_TERMS_COLUMNS} from '@liugong/shared';
 import {FileText} from 'lucide-react';
-
-function hasAnyValue(obj: Record<string, any> | undefined): boolean {
-  if (!obj) return false;
-  return Object.values(obj).some(v => v !== undefined && v !== null && String(v).trim() !== '');
-}
 
 export function TermsAndConditionsCard() {
   const {draft} = useWorkspace();
-  const fp = draft.financingProposal || {};
-  const resolved = resolveFinancingMethod(fp.facilityProposed?.financingMethod);
-
-  const activeGroupKey =
-    resolved?.group ||
-    (hasAnyValue(fp.termsSaleAndLeaseBack)
-      ? 'termsSaleAndLeaseBack'
-      : hasAnyValue(fp.termsInstallmentFinancing)
-        ? 'termsInstallmentFinancing'
-        : 'termsFinancialLease');
-
-  const activeConfig = TERMS_GROUPS.find(g => g.group === activeGroupKey) || TERMS_GROUPS[0];
-
+  const method = draft.financingProposal?.facilityProposed?.financingMethod || draft.proposal?.financingMethod || '';
+  const column = Object.entries(FAP_TERMS_COLUMNS).find(([, code]) => code === method)?.[0];
+  const config = TERMS_GROUPS.find(g => g.group === column);
   return (
     <div>
       <h5
@@ -46,10 +29,13 @@ export function TermsAndConditionsCard() {
         Terms &amp; Conditions
       </h5>
       <p style={{fontSize: '12px', color: '#64748b', marginBottom: '14px'}}>
-        Detail terms for the selected financing method (automatically synced to the FAP form on the right)
+        {config ? 'Terms of the financing method chosen above.' : 'Choose a financing method above to fill in its terms.'}
       </p>
-
-      <TermsColumn key={activeConfig.group} config={activeConfig} />
+      {config && (
+        <div style={{display: 'grid', gridTemplateColumns: 'minmax(280px, 520px)', gap: '16px'}}>
+          <TermsColumn config={config} />
+        </div>
+      )}
     </div>
   );
 }

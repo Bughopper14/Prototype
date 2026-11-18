@@ -14,7 +14,7 @@ const ApplicationPage = lazy(() => import('@/features/applications/ApplicationPa
 const DocumentDeskPage = lazy(() => import('@/features/documents/DocumentDeskPage'));
 const CustomersPage = lazy(() => import('@/features/customers/CustomersPage'));
 const MasterDataPage = lazy(() => import('@/features/master-data/MasterDataPage'));
-const WorkflowPipelinePage = lazy(() => import('@/features/workflow/WorkflowPipelinePage'));
+const WorkflowPage = lazy(() => import('@/features/workflow/WorkflowPage'));
 const NotificationsPage = lazy(() => import('@/features/activity/NotificationsPage'));
 const ActivityPage = lazy(() => import('@/features/activity/ActivityPage'));
 
@@ -55,7 +55,8 @@ export function App() {
           <Route path="document-desk" element={<DocumentDeskPage />} />
           <Route path="customers" element={<CustomersPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
-          <Route path="workflow-pipeline" element={<WorkflowPipelinePage />} />
+          <Route path="workflows" element={<WorkflowPage />} />
+          <Route path="workflow-pipeline" element={<Navigate to="/crm-dashboard/workflows" replace />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="activity" element={<ActivityPage />} />
         </Route>

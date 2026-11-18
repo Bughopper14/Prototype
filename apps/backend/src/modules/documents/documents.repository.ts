@@ -26,51 +26,270 @@ const fileModel = (f: any) => ({
 });
 
 /**
- * Document checklist of an application (crm_application_document_checklists, one row per document type of Master Data)
- * and its uploaded files (crm_application_document_files, versioned, soft-deleted).
+ * Document checklist of an application (crm_application_document_checklists): the default documents of its workflow
+ * stages plus what was added for it (crm_application_document_overrides), and the uploaded files
+ * (crm_application_document_files, versioned, soft-deleted).
  */
+/**
+ * Whether a checklist document is mandatory is not stored on the checklist: it follows the workflow. The override of the
+ * application wins, then the document of the workflow stage. Needs the aliases o (override) and sd (workflow stage
+ * document).
+ */
+const MANDATORY = 'COALESCE(o.is_mandatory,sd.is_mandatory,0)';
+
 @Injectable()
 export class DocumentsRepository {
   constructor(private readonly db: CrmDatabase) {}
 
-  /** Adds a checklist row for every active document type the application does not have yet. */
-  async seedChecklist(conn: Conn, applicationId: string, by: string | null) {
-    const [types] = await conn.query<any[]>(
-      `SELECT id,department_code,is_mandatory FROM ${CRM.masterDocumentTypes} WHERE is_active=1 ORDER BY sort_order`,
+  /**
+   * Adds the checklist rows the application does not have yet: the default documents of every stage of its workflow
+   * (is_default=1) minus the ones removed for this application, plus the documents added for it (pool documents,
+   * other master documents, free-name documents). Safe to run again: existing rows are kept.
+   */
+  async seedChecklist(conn: Conn, applicationId: string, workflowCode: string, by: string | null) {
+    await conn.execute(
+      `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
+         (id,application_id,stage_id,document_type_id,source_type,workflow_stage_document_id,override_id,assigned_role,
+          created_by)
+       SELECT UUID(),?,sd.stage_id,sd.document_type_id,IF(sd.is_default=1,'DEFAULT','ADDED'),sd.id,o.id,
+              COALESCE(o.department_code,st.department_code,'MKT'),?
+       FROM ${CRM.workflowStageDocuments} sd
+       JOIN ${CRM.workflowStages} st ON st.id=sd.stage_id
+       JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
+       LEFT JOIN ${CRM.applicationDocumentOverrides} o
+              ON o.application_id=? AND o.workflow_stage_document_id=sd.id AND o.is_active=1
+       WHERE sd.workflow_code=?
+         AND ((sd.is_default=1 AND (o.id IS NULL OR o.action<>'REMOVE')) OR (sd.is_default=0 AND o.action='ADD'))`,
+      [applicationId, by, applicationId, workflowCode],
     );
-    for (const t of types)
-      await conn.execute(
-        `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
-           (id,application_id,document_type_id,assigned_role,is_mandatory,created_by) VALUES (?,?,?,?,?,?)`,
-        [crypto.randomUUID(), applicationId, t.id, t.department_code, t.is_mandatory, by],
-      );
+    await conn.execute(
+      `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
+         (id,application_id,stage_id,document_type_id,source_type,override_id,assigned_role,created_by)
+       SELECT UUID(),o.application_id,o.stage_id,o.document_type_id,'ADDED',o.id,
+              COALESCE(o.department_code,st.department_code,'MKT'),?
+       FROM ${CRM.applicationDocumentOverrides} o
+       JOIN ${CRM.workflowStages} st ON st.id=o.stage_id
+       WHERE o.application_id=? AND o.action='ADD' AND o.is_active=1 AND o.workflow_stage_document_id IS NULL`,
+      [by, applicationId],
+    );
   }
 
   /**
-   * After the document types change: every application gets the new types, and untouched rows of types that are no
-   * longer active (no file, no check, still pending) are removed.
+   * The departments a stage or a document can be given to: MKT and CA, plus any department a stage or an override already
+   * uses (the users module has no departments table the CRM can rely on; a code is its own name until such a table exists).
    */
-  async syncAllApplications(by: string | null) {
-    await this.db.transaction(async conn => {
-      const [apps] = await conn.query<any[]>(`SELECT id FROM ${CRM.applications} WHERE deleted_at IS NULL FOR UPDATE`);
-      for (const app of apps) await this.seedChecklist(conn, app.id, by);
-      await conn.query(
-        `DELETE c FROM ${CRM.applicationDocumentChecklists} c
-         JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-         LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.checklist_id=c.id AND f.deleted_at IS NULL
-         WHERE t.is_active=0 AND f.id IS NULL AND c.status='PENDING'
-           AND c.checked_by_mkt=0 AND c.checked_by_bs=0 AND c.checked_by_ca=0 AND c.checked_by_legal=0`,
+  async departments(): Promise<{code: string; name: string}[]> {
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT department_code FROM (
+         SELECT 'MKT' AS department_code UNION SELECT 'CA'
+         UNION SELECT department_code FROM ${CRM.workflowStages}
+         UNION SELECT department_code FROM ${CRM.applicationDocumentOverrides}
+       ) d WHERE department_code IS NOT NULL AND department_code<>'' ORDER BY department_code`,
+    );
+    return rows.map(r => ({code: String(r.department_code), name: String(r.department_code)}));
+  }
+
+  async departmentExists(code: string): Promise<boolean> {
+    return (await this.departments()).some(d => d.code === code);
+  }
+
+  /** A checklist row with no file and no check can be removed without losing work. */
+  private async untouched(conn: Conn, checklistId: string) {
+    const [rows] = await conn.execute<any[]>(
+      `SELECT c.status,c.checked_by_mkt,c.checked_by_bs,c.checked_by_ca,c.checked_by_legal,
+              (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files
+       FROM ${CRM.applicationDocumentChecklists} c WHERE c.id=? FOR UPDATE`,
+      [checklistId],
+    );
+    const r = rows[0];
+    return !r || (Number(r.files) === 0 && r.status === 'PENDING' && !r.checked_by_bs && !r.checked_by_ca && !r.checked_by_legal);
+  }
+
+  /** What a user can add to one application's checklist, and what has been customised already. */
+  async overrideOptions(applicationId: string, workflowCode: string) {
+    const [pool] = await this.db.pool.execute<any[]>(
+      `SELECT sd.id AS workflow_stage_document_id,sd.stage_id,st.code AS stage_code,t.code,t.name,sd.is_mandatory
+       FROM ${CRM.workflowStageDocuments} sd
+       JOIN ${CRM.workflowStages} st ON st.id=sd.stage_id
+       JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
+       WHERE sd.workflow_code=? AND sd.is_default=0
+         AND NOT EXISTS (SELECT 1 FROM ${CRM.applicationDocumentOverrides} o
+                         WHERE o.application_id=? AND o.workflow_stage_document_id=sd.id AND o.is_active=1)
+       ORDER BY st.code,sd.sort_order`,
+      [workflowCode, applicationId],
+    );
+    const [masters] = await this.db.pool.execute<any[]>(
+      `SELECT t.code,t.name FROM ${CRM.masterDocumentTypes} t
+       WHERE NOT EXISTS (SELECT 1 FROM ${CRM.workflowStageDocuments} sd
+                         WHERE sd.workflow_code=? AND sd.document_type_id=t.id)
+         AND NOT EXISTS (SELECT 1 FROM ${CRM.applicationDocumentOverrides} o
+                         WHERE o.application_id=? AND o.document_type_id=t.id AND o.is_active=1)
+       ORDER BY t.sort_order`,
+      [workflowCode, applicationId],
+    );
+    const [overrides] = await this.db.pool.execute<any[]>(
+      `SELECT o.id,o.action,o.stage_id,st.code AS stage_code,o.workflow_stage_document_id,o.reason,o.custom_name,
+              o.department_code,o.is_mandatory,o.created_by,o.created_at,
+              COALESCE(t.code,t2.code) AS code,COALESCE(t.name,t2.name,o.custom_name) AS name
+       FROM ${CRM.applicationDocumentOverrides} o
+       JOIN ${CRM.workflowStages} st ON st.id=o.stage_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=o.document_type_id
+       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=o.workflow_stage_document_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t2 ON t2.id=sd.document_type_id
+       WHERE o.application_id=? AND o.is_active=1 ORDER BY o.created_at`,
+      [applicationId],
+    );
+    return {
+      pool: pool.map(r => ({
+        workflowStageDocumentId: r.workflow_stage_document_id,
+        stageCode: r.stage_code,
+        code: r.code,
+        name: r.name,
+        isMandatory: !!r.is_mandatory,
+      })),
+      masters: masters.map(r => ({code: r.code, name: r.name})),
+      overrides: overrides.map(r => ({
+        id: r.id,
+        action: r.action,
+        stageCode: r.stage_code,
+        code: r.code,
+        name: r.name,
+        customName: r.custom_name,
+        departmentCode: r.department_code,
+        isMandatory: r.is_mandatory === null ? null : !!r.is_mandatory,
+        reason: r.reason,
+        by: r.created_by,
+        at: r.created_at,
+      })),
+    };
+  }
+
+  /**
+   * ADD or REMOVE one document for one application. REMOVE only works on a default document of the application's
+   * workflow, and only while it holds no file and no check.
+   */
+  async addOverride(
+    conn: Conn,
+    o: {
+      applicationId: string;
+      workflowCode: string;
+      stageId: string;
+      action: 'ADD' | 'REMOVE';
+      workflowStageDocumentId?: string | null;
+      documentCode?: string | null;
+      customName?: string | null;
+      description?: string | null;
+      departmentCode?: string | null;
+      isMandatory?: boolean | null;
+      reason?: string | null;
+      userId?: number | null;
+      userName: string;
+    },
+  ) {
+    const [stage] = await conn.execute<any[]>(`SELECT id FROM ${CRM.workflowStages} WHERE id=? AND workflow_code=?`, [o.stageId, o.workflowCode]);
+    ensure(stage.length, 'Stage does not belong to the workflow of this application', 422);
+    const wsdId = o.workflowStageDocumentId || null;
+    let typeId: string | null = null;
+    let sd: any = null;
+    if (wsdId) {
+      const [rows] = await conn.execute<any[]>(
+        `SELECT * FROM ${CRM.workflowStageDocuments} WHERE id=? AND workflow_code=? AND stage_id=?`,
+        [wsdId, o.workflowCode, o.stageId],
       );
-    });
+      sd = rows[0];
+      ensure(sd, 'Document is not part of this stage', 422);
+    }
+    if (o.action === 'REMOVE') {
+      ensure(sd && sd.is_default, 'Only a default document of the stage can be removed', 422);
+      const [row] = await conn.execute<any[]>(
+        `SELECT id FROM ${CRM.applicationDocumentChecklists} WHERE application_id=? AND workflow_stage_document_id=?`,
+        [o.applicationId, wsdId],
+      );
+      if (row[0]) {
+        ensure(await this.untouched(conn, row[0].id), 'This document already has a file or a check and cannot be removed', 409);
+        await conn.execute(`DELETE FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [row[0].id]);
+      }
+    } else if (wsdId) {
+      ensure(!sd.is_default, 'This document is already on the checklist', 409);
+      ensure(o.departmentCode, 'Choose the department responsible for the document', 422);
+    } else if (o.documentCode) {
+      ensure(o.departmentCode, 'Choose the department responsible for the document', 422);
+      const [rows] = await conn.execute<any[]>(`SELECT id FROM ${CRM.masterDocumentTypes} WHERE code=?`, [o.documentCode as string]);
+      ensure(rows[0], 'Document type not found', 404);
+      typeId = rows[0].id;
+      const [dup] = await conn.execute<any[]>(
+        `SELECT id FROM ${CRM.applicationDocumentChecklists} WHERE application_id=? AND stage_id=? AND document_type_id=?`,
+        [o.applicationId, o.stageId, typeId],
+      );
+      ensure(!dup.length, 'This document is already on the checklist of the stage', 409);
+    } else {
+      ensure(String(o.customName || '').trim(), 'Give the document a name', 422);
+      ensure(o.departmentCode, 'Choose the department responsible for the document', 422);
+    }
+    if (wsdId)
+      await conn.execute(`DELETE FROM ${CRM.applicationDocumentOverrides} WHERE application_id=? AND workflow_stage_document_id=? AND is_active=0`, [
+        o.applicationId,
+        wsdId,
+      ]);
+    const id = crypto.randomUUID();
+    await conn.execute(
+      `INSERT INTO ${CRM.applicationDocumentOverrides}
+         (id,application_id,stage_id,action,workflow_stage_document_id,document_type_id,custom_name,description,
+          department_code,is_mandatory,reason,added_by_user_id,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        id,
+        o.applicationId,
+        o.stageId,
+        o.action,
+        wsdId,
+        typeId,
+        wsdId || typeId ? null : String(o.customName).trim(),
+        o.description || null,
+        o.action === 'ADD' ? (o.departmentCode ?? null) : null,
+        o.isMandatory === undefined || o.isMandatory === null ? null : o.isMandatory ? 1 : 0,
+        o.reason || null,
+        o.userId ?? null,
+        o.userName,
+      ],
+    );
+    await this.seedChecklist(conn, o.applicationId, o.workflowCode, o.userName);
+    return id;
+  }
+
+  /** Cancels a customisation: the document goes back to what the workflow says. */
+  async cancelOverride(conn: Conn, applicationId: string, workflowCode: string, overrideId: string, by: string) {
+    const [rows] = await conn.execute<any[]>(
+      `SELECT * FROM ${CRM.applicationDocumentOverrides} WHERE id=? AND application_id=? AND is_active=1 FOR UPDATE`,
+      [overrideId, applicationId],
+    );
+    const o = rows[0];
+    ensure(o, 'Customisation not found', 404);
+    if (o.action === 'ADD') {
+      const [row] = await conn.execute<any[]>(`SELECT id FROM ${CRM.applicationDocumentChecklists} WHERE application_id=? AND override_id=?`, [
+        applicationId,
+        overrideId,
+      ]);
+      if (row[0]) {
+        ensure(await this.untouched(conn, row[0].id), 'This document already has a file or a check and cannot be taken off', 409);
+        await conn.execute(`DELETE FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [row[0].id]);
+      }
+    }
+    await conn.execute(`UPDATE ${CRM.applicationDocumentOverrides} SET is_active=0,updated_by=? WHERE id=?`, [by, overrideId]);
+    await this.seedChecklist(conn, applicationId, workflowCode, by);
   }
 
   /** Checklist rows with their files, in the shape the Documents tab uses. */
   async read(applicationId: string, conn: Conn = this.db.pool) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT c.*,t.code,t.name,s.code AS stage_code FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       LEFT JOIN ${CRM.masterWorkflowStages} s ON s.id=t.stage_id
-       WHERE c.application_id=? ORDER BY t.sort_order,c.created_at`,
+      `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,
+              s.code AS stage_code,${MANDATORY} AS is_mandatory
+       FROM ${CRM.applicationDocumentChecklists} c
+       JOIN ${CRM.workflowStages} s ON s.id=c.stage_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
+       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=c.workflow_stage_document_id
+       WHERE c.application_id=? ORDER BY COALESCE(t.sort_order,100000),c.created_at`,
       [applicationId],
     );
     const [files] = await conn.execute<any[]>(
@@ -83,8 +302,12 @@ export class DocumentsRepository {
       applicationId: d.application_id,
       documentCode: d.code,
       documentName: d.name,
-      /** Workflow stage the document belongs to (crm_master_document_types.stage_id). */
+      /** Workflow stage the document belongs to (crm_application_document_checklists.stage_id). */
       stageCode: d.stage_code,
+      /** DEFAULT = from the workflow; ADDED = added for this application only. */
+      source: d.source_type,
+      overrideId: d.override_id,
+      workflowStageDocumentId: d.workflow_stage_document_id,
       assignedRole: d.assigned_role,
       isMandatory: !!d.is_mandatory,
       status: d.status,
@@ -108,11 +331,33 @@ export class DocumentsRepository {
     return rows[0] ? fileModel(rows[0]) : null;
   }
 
+  /** Every file of the application's checklist (the ones the checklist lists), with its document and stage, for the ZIP. */
+  async filesForZip(applicationId: string) {
+    const [rows] = await this.db.pool.execute<any[]>(
+      `SELECT f.id,f.file_name,f.storage_key,f.version_number,t.code,t.sort_order,s.name AS stage_name
+       FROM ${CRM.applicationDocumentFiles} f
+       JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
+       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.masterWorkflowStages} s ON s.id=t.stage_id
+       WHERE f.application_id=? AND f.deleted_at IS NULL
+       ORDER BY t.sort_order,f.version_number,f.uploaded_at`,
+      [applicationId],
+    );
+    return rows.map(r => ({
+      id: r.id as string,
+      fileName: r.file_name as string,
+      fileKey: r.storage_key as string,
+      version: Number(r.version_number),
+      code: r.code as string,
+      stageName: (r.stage_name as string | null) ?? '',
+    }));
+  }
+
   /** The checklist row by its id or by its document type code. */
   async checklistRow(conn: Conn, applicationId: string, idOrCode: string) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT c.*,t.code FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+      `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code FROM ${CRM.applicationDocumentChecklists} c
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        WHERE c.application_id=? AND (c.id=? OR t.code=?) FOR UPDATE`,
       [applicationId, idOrCode, String(idOrCode).toUpperCase()],
     );
@@ -214,7 +459,7 @@ export class DocumentsRepository {
     );
   }
 
-  /** crm_applications.is_fap_doc_uploaded follows whether the signed FAP form has a file. */
+  /** The FAP profile's is_fap_doc_uploaded follows whether the signed FAP form has a file. */
   async syncFapUploaded(conn: Conn, applicationId: string, by: string | null) {
     const [rows] = await conn.execute<any[]>(
       `SELECT COUNT(f.id) AS n FROM ${CRM.applicationDocumentFiles} f
@@ -223,7 +468,7 @@ export class DocumentsRepository {
        WHERE f.application_id=? AND f.deleted_at IS NULL AND t.code=?`,
       [applicationId, FAP_DOCUMENT_CODE],
     );
-    await conn.execute(`UPDATE ${CRM.applications} SET is_fap_doc_uploaded=?,updated_by=? WHERE id=?`, [
+    await conn.execute(`UPDATE ${CRM.fapApplicationProfiles} SET is_fap_doc_uploaded=?,updated_by=? WHERE application_id=?`, [
       Number(rows[0].n) > 0 ? 1 : 0,
       by,
       applicationId,
@@ -241,15 +486,18 @@ export class DocumentsRepository {
   /** Every checklist row of every application, for the Document Desk. */
   async desk() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT c.id AS checklist_id,c.application_id,t.code AS document_code,t.name AS document_name,c.assigned_role,
-              c.is_mandatory,c.status,a.fap_registration_number AS fap_number,p.company_name,
+      `SELECT c.id AS checklist_id,c.application_id,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
+              COALESCE(t.name,o.custom_name) AS document_name,c.assigned_role,
+              ${MANDATORY} AS is_mandatory,c.status,p.fap_registration_number AS fap_number,p.company_name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS file_count
        FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
+       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=c.workflow_stage_document_id
        JOIN ${CRM.applications} a ON a.id=c.application_id AND a.deleted_at IS NULL
        LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
        ORDER BY CASE c.status WHEN 'REJECTED' THEN 0 WHEN 'PENDING' THEN 1 WHEN 'UPLOADED' THEN 2 ELSE 3 END,
-                a.created_at DESC,t.sort_order`,
+                a.created_at DESC,COALESCE(t.sort_order,100000)`,
     );
     return rows;
   }

@@ -1,9 +1,10 @@
 /** Sticky header of the form: title and save. */
 import {FileText, CheckCircle2, Loader2, Save} from 'lucide-react';
+import {GenerateFapNumberButton} from '@/features/applications/components/GenerateFapNumberButton';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function FormActionHeader() {
-  const {data, saveStatus, handleSave, saving, props} = usePreAnalysisContext();
+  const {data, saveStatus, handleSave, saving, props, generateNumber} = usePreAnalysisContext();
   return (
     <div
       style={{
@@ -48,22 +49,34 @@ export function FormActionHeader() {
           <span
             style={{
               fontWeight: 600,
-              color: data.preAnalysisNo?.includes('Auto') ? '#2563eb' : '#334155',
-              fontStyle: data.preAnalysisNo?.includes('Auto') ? 'italic' : 'normal',
+              color: data.preAnalysisNo ? '#334155' : '#94a3b8',
+              fontStyle: data.preAnalysisNo ? 'normal' : 'italic',
             }}
           >
-            {data.preAnalysisNo || 'Auto (Generated on save)'}
-          </span>{' '}
+            {data.preAnalysisNo || 'Not generated yet'}
+          </span>
+          {!data.preAnalysisNo && !props.isNew && (
+            <span style={{marginLeft: 8}}>
+              <button type="button" className="button small" onClick={generateNumber}>
+                Generate Pre-Analysis number
+              </button>
+            </span>
+          )}{' '}
           • FAP No:{' '}
           <span
             style={{
               fontWeight: 600,
-              color: data.fapNumber?.includes('Auto') ? '#2563eb' : '#334155',
-              fontStyle: data.fapNumber?.includes('Auto') ? 'italic' : 'normal',
+              color: data.fapNumber ? '#334155' : '#94a3b8',
+              fontStyle: data.fapNumber ? 'normal' : 'italic',
             }}
           >
-            {data.fapNumber || 'Auto (Generated on save)'}
+            {data.fapNumber || 'Not generated yet'}
           </span>
+          {!data.fapNumber && !props.isNew && props.onApplicationChange && (
+            <span style={{marginLeft: 8}}>
+              <GenerateFapNumberButton applicationId={props.applicationId} onGenerated={props.onApplicationChange} notify={props.notify ?? (() => undefined)} />
+            </span>
+          )}
         </p>
       </div>
 

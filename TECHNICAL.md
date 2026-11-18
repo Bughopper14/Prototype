@@ -19,8 +19,8 @@ changing the code.
 ```bash
 pnpm install
 cp apps/backend/.env.example apps/backend/.env   # DB_*, JWT_SECRET (production), optional S3_*, CORS_ORIGINS
-mysql -u root -p < apps/backend/db/plan-schema.sql   # creates crm_liugong with every table
-mysql -u root -p < apps/backend/db/plan-seed.sql     # all reference / master data
+mysql -u root -p < apps/backend/db/current-schema.sql   # creates crm_liugong with every table
+mysql -u root -p < apps/backend/db/current-seed.sql     # reference / master data and the default workflow
 pnpm user:create admin "<password>" "System Admin" --admin       # fresh database only
 pnpm dev                                         # frontend http://localhost:3000, API http://localhost:3001
 ```
@@ -167,8 +167,9 @@ authority for; the API enforces roles independently (for example every `/um/*` r
 
 ## Database
 
-The CRM is moving, module by module, to the `crm_liugong` design: `apps/backend/db/plan-schema.sql` (tables) and
-`apps/backend/db/plan-seed.sql` (all seed data), documented in `apps/backend/db/CRM_Liugong_Database_Design.xlsx`.
+The CRM is moving, module by module, to the `crm_liugong` design: `apps/backend/db/current-schema.sql` (tables) and
+`apps/backend/db/current-seed.sql` (seed data and the default workflow). `old-schema.sql` / `old-seed.sql` are the database before the modular
+workflow and `alter-schema.sql` is the ALTER from old to current. The workflow design is in `apps/backend/db/workflow-added.xlsx`.
 The backend does not create or alter `crm_` tables; the schema and seed files own them.
 
 CRM table names come from one place, `apps/backend/src/core/db/crm-tables.ts`: `CRM.masterBranches` gives

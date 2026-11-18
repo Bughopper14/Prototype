@@ -172,7 +172,7 @@ export function OverviewScreen({
                           : 'Review application'}
                 </b>
                 <span>{r.company_name}</span>
-                <small>{r.fap_number}</small>
+                <small>{r.id}</small>
               </div>
               <ChevronRight size={16} />
             </button>

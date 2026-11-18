@@ -139,13 +139,6 @@ export function validateMasterGroupItems(
     }
     seenNames.add(nameKey);
 
-    if (
-      groupKey === 'documents' &&
-      (!['MKT', 'BS', 'CA', 'LEGAL', 'COMMITTEE'].includes(row.role || '') ||
-        typeof row.required !== 'boolean')
-    ) {
-      throw Error('Please select the document department and required status.');
-    }
     if (groupKey === 'paymentMethod' && !['advance', 'arrear'].includes(row.timing || '')) {
       throw Error('Please select the payment timing rule.');
     }
@@ -170,7 +163,6 @@ export function validateMasterGroupItems(
       ...(row.region ? {region: row.region.trim()} : {}),
       ...(row.zipCode ? {zipCode: row.zipCode.trim()} : {}),
       ...(row.parentValue ? {parentValue: String(row.parentValue)} : {}),
-      ...(groupKey === 'documents' ? {role: row.role, required: row.required} : {}),
       ...(groupKey === 'paymentMethod' ? {timing: row.timing} : {}),
       ...(groupKey === 'currency' && typeof row.symbol === 'string' ? {symbol: row.symbol.trim().slice(0, 10)} : {}),
       ...(groupKey === 'bankOrFinInstitution' && ['BANK', 'MULTIFINANCE', 'OTHER'].includes(row.institutionType)
@@ -183,10 +175,7 @@ export function validateMasterGroupItems(
   });
 
   if (groupKey === 'documents') {
-    if (
-      !result.some(x => x.value === 'EKITAS' && x.active) ||
-      !result.some(x => x.value === 'LEGAL_OPINION' && x.active && x.required)
-    ) {
+    if (!result.some(x => x.value === 'EKITAS') || !result.some(x => x.value === 'LEGAL-OPINION')) {
       throw Error('E-KITAS and Legal opinion documents must be retained for the review workflow.');
     }
   }

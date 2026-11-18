@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../core/db/crm-database';
+import {uniqueCode} from '../../core/domain/code';
 import {CRM} from '../../core/db/crm-tables';
 import {clean, CompanyRecordMapper, upsertRow} from '../applications/repositories/company-record';
 import {MasterIdLookup} from '../applications/repositories/master-ids';
@@ -23,7 +24,7 @@ export class BusinessPartnersRepository {
       `SELECT b.id,b.company_name,b.business_category_id,b.nib,b.nib_date,b.npwp,b.establishment_act_no,
               b.establishment_date,b.created_at,b.updated_at,MIN(a.application_date) AS first_application_date
        FROM ${CRM.masterBusinessPartners} b
-       LEFT JOIN ${CRM.applications} a ON a.customer_id=b.id AND a.deleted_at IS NULL
+       LEFT JOIN ${CRM.applications} a ON a.business_partner_id=b.id AND a.deleted_at IS NULL
        WHERE b.deleted_at IS NULL
        GROUP BY b.id ORDER BY b.company_name`,
     );
@@ -55,7 +56,6 @@ export class BusinessPartnersRepository {
       id: rows[0].id,
       customer: {...customer, id: rows[0].id},
       profile: {...profile, branchCode: await this.ids.codeOf('branch', rows[0].branch_id)},
-      relationship: rows[0].customer_relationship as 'NEW' | 'EXISTING',
     };
   }
 
@@ -103,15 +103,17 @@ export class BusinessPartnersRepository {
     id: string,
     customer: Record<string, any>,
     profile: Record<string, any>,
-    relationship: 'NEW' | 'EXISTING',
     by: string | null,
   ) {
     const values: Record<string, any> = {
       ...(await this.companies.columns(customer, profile, conn, 'email')),
       branch_id: await this.ids.idOf('branch', profile.branchCode, conn),
-      customer_relationship: relationship,
     };
     if (!values.company_name) throw Object.assign(new Error('Company name is required'), {status: 422});
+    // The backend builds the code from the company name (kept once it exists)
+    const [stored] = await conn.query<any[]>(`SELECT code FROM ${CRM.masterBusinessPartners} WHERE id=?`, [id]);
+    if (!stored[0]?.code)
+      values.code = await uniqueCode(values.company_name, async c => (await conn.query<any[]>(`SELECT 1 FROM ${CRM.masterBusinessPartners} WHERE code=? AND id<>?`, [c, id]))[0].length > 0);
     return upsertRow(conn, CRM.masterBusinessPartners, id, values, by);
   }
 }

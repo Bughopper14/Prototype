@@ -23,7 +23,7 @@ import {
 import {draftFromApplication} from '@/features/applications/lib/workspace/draft-from-application';
 import {calculateInstallment} from '@/features/applications/lib/workspace/loan-calc';
 import {initialStage, isPreAnalysisApplication} from '@/features/applications/lib/workspace/stage';
-import {useMasterData} from '@/shared/master-data';
+import {selectMandatoryWorkflow, useMasterData} from '@/shared/master-data';
 import {blank, customerFields, proposalFields} from '@liugong/shared';
 import {useEffect, useRef, useState} from 'react';
 
@@ -59,6 +59,12 @@ export function useApplicationWorkspace({
   onCustomerCreated,
   notify,
 }: ApplicationWorkspaceProps) {
+  // The mandatory rules of the workflow this application runs in (not necessarily the active one).
+  const workflowId: string | undefined = a?.workflow?.id;
+  useEffect(() => {
+    selectMandatoryWorkflow(workflowId);
+    return () => selectMandatoryWorkflow(undefined);
+  }, [workflowId]);
   const master = useMasterData();
   const preAnalysisSaveRef = useRef<(() => Promise<void>) | null>(null);
   const [preAnalysisSaving, setPreAnalysisSaving] = useState(false);
@@ -68,7 +74,7 @@ export function useApplicationWorkspace({
     () => a.customerCategory || a.customerStatus || (a.isNew ? 'NEW' : a.customerId ? 'EXISTING' : 'NEW'),
   );
   const [customerId, setCustomerId] = useState<string>(() =>
-    a.isNew ? a.customerId || '' : a.customerId || a.customer_id || a.customer?.id || '',
+    a.isNew ? a.customerId || '' : a.customerId || a.business_partner_id || a.customer?.id || '',
   );
   const [customerDraft, setCustomerDraft] = useState<any>(() =>
     a.customer ? sanitizeCustomerForDraft(structuredClone(a.customer)) : emptyCustomerRecord(),

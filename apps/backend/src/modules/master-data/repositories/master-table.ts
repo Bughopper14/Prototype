@@ -1,3 +1,4 @@
+import {toCode} from '../../../core/domain/code';
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import type {MasterCatalog, MasterItem} from '@liugong/shared';
@@ -74,7 +75,7 @@ export class MasterTableRepository {
             await c.execute(
               `INSERT INTO ${def.table} (id,code,name,is_active${extras.map(x => `,${x.column}`).join('')},sort_order,created_by)
                SELECT ?,?,?,?${extras.map(() => ',?').join('')},COALESCE(MAX(sort_order),0)+1,? FROM ${def.table}`,
-              [crypto.randomUUID(), item.value, item.name, item.active ? 1 : 0, ...extraValues, by],
+              [crypto.randomUUID(), toCode(item.value), item.name, item.active ? 1 : 0, ...extraValues, by],
             );
         }
       }

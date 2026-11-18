@@ -1,5 +1,5 @@
 /** Customer section 01: Debtor Identity & Classification. */
-import {CustomerSearchSelect} from '@/features/applications/components/workspace/customer/CustomerSearchSelect';
+import {GenerateFapNumberButton} from '@/features/applications/components/GenerateFapNumberButton';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
@@ -10,14 +10,11 @@ import {useState} from 'react';
 export function DebtorIdentitySection() {
   const {
     a,
-    customers,
     customerCategory,
-    customerId,
     customerDraft,
     setCustomerDraft,
     setNibOcrOpen,
     selectedCustomer,
-    selectExistingCustomer,
     fapCustomerFields,
     changeCategory,
     draft,
@@ -30,8 +27,12 @@ export function DebtorIdentitySection() {
     toggleSection,
     liveCompanyName,
     canEditCustomerPic,
+    customers,
+    customerId,
     setCustomerId,
     sanitizeCustomer,
+    onChange,
+    notify,
   } = useWorkspace();
   // An existing customer is chosen from the customer directory; its identity then comes from that record.
   const [query, setQuery] = useState('');
@@ -151,6 +152,7 @@ export function DebtorIdentitySection() {
               </b>
             </div>
             <div
+              className="intake-fap-number"
               style={{cursor: 'pointer'}}
               onClick={() => handleTriggerFieldSync('fapNumber', 'header')}
               title="Click to sync view No. Register FAP di formulir aplikasi"
@@ -164,8 +166,13 @@ export function DebtorIdentitySection() {
                   color: activeFieldKey === 'fapNumber' ? '#2563eb' : '#0f172a',
                 }}
               >
-                {draft.isNew ? 'Generated automatically upon saving' : draft.fapNumber || a.fapNumber || '—'}
+                {draft.fapNumber || a.fapNumber || 'Not generated yet'}
               </b>
+              {!draft.isNew && !(draft.fapNumber || a.fapNumber) && (
+                <span className="intake-fap-number-action" onClick={e => e.stopPropagation()}>
+                  <GenerateFapNumberButton applicationId={a.id} onGenerated={onChange} notify={notify} />
+                </span>
+              )}
             </div>
           </div>
           <div className="customer-category-selector-box" style={{marginBottom: 16, width: '100%'}}>
@@ -306,37 +313,6 @@ export function DebtorIdentitySection() {
               </div>
             )}
           </div>
-          {customerCategory === 'EXISTING' && (
-            <div style={{marginBottom: 16, width: '100%'}}>
-              <label
-                style={{
-                  display: 'block',
-                  fontWeight: 600,
-                  fontSize: '0.82rem',
-                  color: '#334155',
-                  marginBottom: 6,
-                }}
-              >
-                Select Customer <span style={{color: '#ef4444'}}>*</span>
-              </label>
-              <CustomerSearchSelect
-                customers={customers}
-                value={customerId}
-                selectedCustomer={selectedCustomer}
-                disabled={!canEditCustomerPic || (!draft.isNew && Boolean(a.customerId || a.customer_id))}
-                onFocus={() => handleTriggerFieldSync('companyName', 'customer')}
-                onSelect={customer => {
-                  selectExistingCustomer(customer);
-                  if (customer) {
-                    handleTriggerFieldSync('companyName', 'customer');
-                  }
-                }}
-              />
-              <small style={{color: '#64748b', fontSize: '0.73rem', display: 'block', marginTop: 5}}>
-                Pilih customer untuk mengisi otomatis identitas perusahaan, alamat, profil usaha, dan PIC.
-              </small>
-            </div>
-          )}
           <div className="new-customer-fields-block" style={{marginTop: 12}}>
             <Fields
               fields={fapCustomerFields}

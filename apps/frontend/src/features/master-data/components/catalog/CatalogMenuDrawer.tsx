@@ -1,7 +1,6 @@
-/** Slide-in catalog menu: pick Field Mandatory, Indonesian Region or one of the master groups. */
-import {useMandatoryRules} from '@/shared/master-data';
+/** Slide-in catalog menu: pick Indonesian Region or one of the master groups. */
 import {masterGroups, type MasterItem} from '@liugong/shared';
-import {MapPin, Menu, Search, Settings2, X} from 'lucide-react';
+import {MapPin, Menu, Search, X} from 'lucide-react';
 import {useState, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 
@@ -25,7 +24,6 @@ export function CatalogMenuDrawer({
   onClose: () => void;
 }) {
   const [search, setSearch] = useState('');
-  const mandatoryRules = useMandatoryRules();
   const q = search.toLowerCase();
 
   return createPortal(
@@ -58,22 +56,6 @@ export function CatalogMenuDrawer({
         </div>
 
         <div className="master-burger-drawer-content" role="navigation">
-          {/* FORM RULES */}
-          {(!search || 'field mandatory form rules fap pre'.includes(q)) && (
-            <div className="master-burger-group">
-              <h4>FORM RULES</h4>
-              <MenuItem active={selected === 'master_mandatory'} onClick={() => onSelect('master_mandatory')}>
-                <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                  <Settings2 size={15} color="#002060" />
-                  <span>Field Mandatory</span>
-                </div>
-                <span className="master-burger-badge mandatory">
-                  {mandatoryRules.filter(x => x.mandatory).length} / {mandatoryRules.length}
-                </span>
-              </MenuItem>
-            </div>
-          )}
-
           {/* LOKASI */}
           {(!search || 'indonesian region lokasi location country province city wilayah'.includes(q)) && (
             <div className="master-burger-group">

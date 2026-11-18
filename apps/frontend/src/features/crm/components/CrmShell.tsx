@@ -33,7 +33,7 @@ const PAGE_ICONS: Record<CrmPageName, {icon: LucideIcon; color: string}> = {
   'Document desk': {icon: FolderCheck, color: '#34d399'},
   Customers: {icon: Users, color: '#60a5fa'},
   'Customize master data': {icon: Settings2, color: '#c084fc'},
-  'Workflow pipeline': {icon: Workflow, color: '#818cf8'},
+  Workflow: {icon: Workflow, color: '#f59e0b'},
   Notifications: {icon: Bell, color: '#fb7185'},
   Activity: {icon: Activity, color: '#a3e635'},
 };

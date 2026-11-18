@@ -43,8 +43,8 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
         </div>
         {group.key === 'documents' && (
           <p className="master-help">
-            Document types, review departments, and mandatory flags apply to new applications. Newly added
-            document types also appear in existing application checklists without altering existing files.
+            This is the catalog of document types. A document shows on an application's checklist only when a
+            workflow stage lists it (Workflow setup), as a default document or as one users can add.
           </p>
         )}
         <div className="search" style={{margin: '14px 0', maxWidth: 400}}>
@@ -63,13 +63,7 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
                 <th>NAME</th>
                 {!isLocation && <th>CODE / VALUE</th>}
                 {group.parent && <th>PARENT</th>}
-                {groupKey === 'documents' && (
-                  <>
-                    <th>DEPARTMENT</th>
-                    <th>MANDATORY</th>
-                  </>
-                )}
-                <th>STATUS</th>
+                {groupKey !== 'documents' && <th>STATUS</th>}
                 {canManage && <th style={{textAlign: 'center'}}>ACTION</th>}
               </tr>
             </thead>
@@ -85,17 +79,13 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
                   {group.parent && (
                     <td>{data[group.parent].find(p => p.value === x.parentValue)?.name || 'All'}</td>
                   )}
-                  {groupKey === 'documents' && (
-                    <>
-                      <td>{x.role}</td>
-                      <td>{x.required ? 'Mandatory' : 'Optional'}</td>
-                    </>
+                  {groupKey !== 'documents' && (
+                    <td>
+                      <span className={'deed-validity ' + (x.active ? 'active' : 'inactive')}>
+                        {x.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
                   )}
-                  <td>
-                    <span className={'deed-validity ' + (x.active ? 'active' : 'inactive')}>
-                      {x.active ? 'Active' : 'Inactive'}
-                    </span>
-                  </td>
                   {canManage && (
                     <td style={{textAlign: 'center'}}>
                       <div

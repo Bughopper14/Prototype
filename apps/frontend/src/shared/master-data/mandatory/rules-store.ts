@@ -3,7 +3,7 @@ import {api} from '@/shared/lib/api';
 import {useEffect, useState} from 'react';
 import {getSectionAliases, normalizeRule, normalizeStage, resolveRuleSection} from './sections';
 
-/** Rules come only from the server (crm_master_field_mandatory_rules); the last copy is kept for the next page load. */
+/** Rules come only from the server (crm_workflow_stage_fields of a workflow); the last copy is kept for the next page load. */
 const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules';
 
 function getInitialMandatoryRules(): any[] {
@@ -21,6 +21,8 @@ let mandatoryMapCache = new Map<string, boolean>();
 
 function buildMandatoryMap(rules: any[]) {
   const map = new Map<string, boolean>();
+  // A field is mandatory when any stage of the workflow asks for it (rules of several stages share one stage key here).
+  const put = (key: string, value: boolean) => map.set(key, (map.get(key) ?? false) || value);
   for (const r of rules) {
     if (!r) continue;
     const isMandatory = Boolean(r.mandatory);
@@ -29,19 +31,19 @@ function buildMandatoryMap(rules: any[]) {
     const stg = normalizeStage(r.stage);
     if (fKey) {
       // Stage-scoped entries:
-      map.set(`${stg}:*:${fKey}`, isMandatory);
+      put(`${stg}:*:${fKey}`, isMandatory);
       if (sec) {
         const aliases = getSectionAliases(sec, stg);
         for (const al of aliases) {
-          map.set(`${stg}:${al}:${fKey}`, isMandatory);
+          put(`${stg}:${al}:${fKey}`, isMandatory);
         }
       }
       // Global fallback (only if stage is not specified)
-      map.set(`*:${fKey}`, isMandatory);
+      put(`*:${fKey}`, isMandatory);
       if (sec) {
         const aliases = getSectionAliases(sec, stg);
         for (const al of aliases) {
-          map.set(`${al}:${fKey}`, isMandatory);
+          put(`${al}:${fKey}`, isMandatory);
         }
       }
     }
@@ -65,9 +67,25 @@ export function setMandatoryRules(data: any[]) {
 
 let inFlightMandatoryPromise: Promise<any[]> | null = null;
 
+/** The workflow whose rules the screens use: the one of the open application, else the active workflow. */
+let rulesWorkflowId: string | undefined;
+
+/** An application opened in a workflow other than the active one needs that workflow's rules. */
+export function selectMandatoryWorkflow(workflowId?: string) {
+  if (workflowId === rulesWorkflowId) return;
+  rulesWorkflowId = workflowId;
+  inFlightMandatoryPromise = null;
+  mandatoryCatalogCache = [];
+  mandatoryMapCache = new Map();
+  try {
+    localStorage.removeItem(MANDATORY_STORAGE_KEY);
+  } catch {}
+  void fetchMandatoryRules();
+}
+
 export function fetchMandatoryRules(): Promise<any[]> {
   if (inFlightMandatoryPromise) return inFlightMandatoryPromise;
-  inFlightMandatoryPromise = api('/mandatory')
+  inFlightMandatoryPromise = api(rulesWorkflowId ? `/mandatory?workflowId=${encodeURIComponent(rulesWorkflowId)}` : '/mandatory')
     .then((data: any) => {
       inFlightMandatoryPromise = null;
       if (Array.isArray(data)) {
