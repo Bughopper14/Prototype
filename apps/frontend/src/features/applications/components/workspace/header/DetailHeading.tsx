@@ -17,6 +17,7 @@ export function DetailHeading() {
   const resolvedSegment =
     master.industrySegment?.find(s => s.value === rawSegment || s.name === rawSegment)?.name ||
     label(rawSegment);
+  const mktPic = draft.mktPicName || a.mktPicName;
 
   return (
     <div className="detail-heading">
@@ -30,6 +31,7 @@ export function DetailHeading() {
         <p className="detail-meta">
           {!draft.isNew && (a.fapNumber || a.code) && <span className="detail-meta-id">{a.fapNumber || a.code}</span>}
           {!draft.isNew && a.branchCode && <span>{a.branchCode}</span>}
+          {mktPic && <span>MKT_PIC: {mktPic}</span>}
           {resolvedCity && <span>{resolvedCity}</span>}
           {(draft.companyType || a.companyType) && <span>{label(draft.companyType || a.companyType)}</span>}
           {resolvedSegment && <span>{resolvedSegment}</span>}

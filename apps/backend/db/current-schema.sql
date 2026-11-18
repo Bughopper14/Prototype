@@ -222,8 +222,7 @@ CREATE TABLE IF NOT EXISTS `crm_applications` (
   `branch_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `workflow_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `current_status_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `maker_user_id` int DEFAULT NULL,
-  `maker_name` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mkt_pic_id` int DEFAULT NULL,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `deleted_at` timestamp(3) NULL DEFAULT NULL,
@@ -232,13 +231,13 @@ CREATE TABLE IF NOT EXISTS `crm_applications` (
   PRIMARY KEY (`id`),
   KEY `idx_app_business_partner` (`business_partner_id`),
   KEY `idx_app_status` (`current_status_id`),
-  KEY `idx_app_maker` (`maker_user_id`),
+  KEY `idx_app_mkt_pic` (`mkt_pic_id`),
   KEY `fk_app_branch` (`branch_id`),
   KEY `idx_app_workflow` (`workflow_code`),
   CONSTRAINT `fk_app_branch` FOREIGN KEY (`branch_id`) REFERENCES `crm_master_branches` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_business_partner` FOREIGN KEY (`business_partner_id`) REFERENCES `crm_master_business_partners` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_cur_status` FOREIGN KEY (`current_status_id`) REFERENCES `crm_master_workflow_statuses` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_maker` FOREIGN KEY (`maker_user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_app_mkt_pic` FOREIGN KEY (`mkt_pic_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_app_workflow` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `crm_fap_application_profiles` (

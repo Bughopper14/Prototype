@@ -17,9 +17,10 @@ export async function ensureUsersSchemaColumns() {
     ['updated_by', 'VARCHAR(150) NULL AFTER created_by'],
   ];
   for (const [col, def] of cols) {
+    const rawTableName = USER_TABLES.users.replace(/`/g, '');
     const [existing] = await pool.query<any[]>(
-      `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '${USER_TABLES.users}' AND column_name = ?`,
-      [col],
+      `SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?`,
+      [rawTableName, col],
     );
     if (!existing.length) {
       await pool.query(`ALTER TABLE ${USER_TABLES.users} ADD COLUMN \`${col}\` ${def}`);

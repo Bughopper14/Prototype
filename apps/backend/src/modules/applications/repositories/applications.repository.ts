@@ -3,6 +3,7 @@ import {Injectable} from '@nestjs/common';
 import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
+import {USER_TABLES} from '../../../core/db/user-tables';
 
 type Conn = Pick<PoolConnection, 'query' | 'execute'>;
 export type Actor = {id?: string; portalUserId?: number; name?: string; username?: string; role?: string};
@@ -53,14 +54,15 @@ export class ApplicationsRepository {
       branchId: string | null;
       statusId: string;
       workflowCode: string;
+      mktPicId?: number | null;
     },
     actor: Actor,
   ) {
     await conn.execute(
       `INSERT INTO ${CRM.applications}
          (id,application_date,business_partner_id,customer_category,branch_id,current_status_id,
-          workflow_code,maker_user_id,maker_name,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+          workflow_code,mkt_pic_id,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
       [
         app.id,
         app.applicationDate,
@@ -69,8 +71,7 @@ export class ApplicationsRepository {
         app.branchId,
         app.statusId,
         app.workflowCode,
-        actorId(actor),
-        actorName(actor),
+        app.mktPicId ?? null,
         actor.username || null,
       ],
     );
@@ -78,8 +79,11 @@ export class ApplicationsRepository {
 
   async get(id: string, conn: Conn = this.db.pool, forUpdate = false) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT a.*,p.fap_registration_number,p.is_fap_doc_uploaded,p.is_fap_form_locked,p.latest_freeze_version FROM ${CRM.applications} a
+      `SELECT a.*,
+              u_pic.full_name AS mkt_pic_name, u_pic.username AS mkt_pic_username,
+              p.fap_registration_number,p.is_fap_doc_uploaded,p.is_fap_form_locked,p.latest_freeze_version FROM ${CRM.applications} a
        LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
+       LEFT JOIN ${USER_TABLES.users} u_pic ON u_pic.id = a.mkt_pic_id
        WHERE a.id=? AND a.deleted_at IS NULL${forUpdate ? ' FOR UPDATE' : ''}`,
       [id],
     );
@@ -88,12 +92,16 @@ export class ApplicationsRepository {
 
   async list() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT a.*,p.fap_registration_number,p.is_fap_doc_uploaded,p.is_fap_form_locked,p.latest_freeze_version,p.company_name,p.business_category_id,p.nib,p.nib_date,p.npwp,p.establishment_act_no,
+      `SELECT a.*,
+              u_pic.full_name AS mkt_pic_name, u_pic.username AS mkt_pic_username,
+              p.fap_registration_number,p.is_fap_doc_uploaded,p.is_fap_form_locked,p.latest_freeze_version,p.company_name,p.business_category_id,p.nib,p.nib_date,p.npwp,p.establishment_act_no,
               p.establishment_date,p.company_address,p.city_id,p.province_id,p.postal_code_id,p.experience_years,
               p.experience_months,p.phone_fax,p.company_email,p.website,p.main_business,p.premise_status_id,
               p.repayment_source,p.latest_deed_no,p.latest_deed_date,p.industry_segment_id,p.business_role_id,
               p.asset_he_liugong,p.asset_truck_liugong,p.asset_he_non_liugong,p.asset_truck_non_liugong
-       FROM ${CRM.applications} a LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
+       FROM ${CRM.applications} a
+       LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
+       LEFT JOIN ${USER_TABLES.users} u_pic ON u_pic.id = a.mkt_pic_id
        WHERE a.deleted_at IS NULL ORDER BY a.created_at DESC`,
     );
     return rows;

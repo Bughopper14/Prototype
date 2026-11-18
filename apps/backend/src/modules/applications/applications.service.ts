@@ -3,6 +3,7 @@ import {Injectable} from '@nestjs/common';
 import {businessToday} from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
+import {USER_TABLES} from '../../core/db/user-tables';
 import {Problem, ensure} from '../../core/domain';
 import {activityFeed, deedHistory, logActivity, recordActivity} from '../activity/activity-log';
 import {notifyHolders} from '../activity/notifications';
@@ -123,6 +124,10 @@ export class ApplicationsService {
         establishment_act_no: r.establishment_act_no,
         establishment_date: r.establishment_date,
         branch_code: branches.get(r.branch_id) ?? null,
+        mkt_pic_id: r.mkt_pic_id ?? null,
+        mkt_pic_name: r.mkt_pic_name || r.mkt_pic_username || null,
+        mktPicId: r.mkt_pic_id ?? null,
+        mktPicName: r.mkt_pic_name || r.mkt_pic_username || null,
         company_address: r.company_address,
         city: r.city_id,
         province: r.province_id,
@@ -200,6 +205,8 @@ export class ApplicationsService {
       establishmentDate: customer.establishmentDate ?? null,
       nibDate: customer.nibDate ?? null,
       fapNumber: app.fap_registration_number ?? null,
+      mktPicId: app.mkt_pic_id ?? null,
+      mktPicName: app.mkt_pic_name || app.mkt_pic_username || null,
       applicationDate: app.application_date,
       createdAt: app.created_at,
       updatedAt: app.updated_at,
@@ -215,7 +222,6 @@ export class ApplicationsService {
         lastStage: !!current && current.id === wf.stages[wf.stages.length - 1]?.id,
       },
       availableActions: actor ? availableActions(wf, app.current_status_id, actor) : [],
-      makerName: app.maker_name,
       legal,
       pic,
       stakeholders:
@@ -255,6 +261,23 @@ export class ApplicationsService {
     return application;
   }
 
+  async marketingPics() {
+    const [rows] = await this.apps.pool.query<any[]>(
+      `SELECT u.id, u.username, u.full_name, d.department_name, d.department_code
+       FROM ${USER_TABLES.users} u
+       LEFT JOIN ${USER_TABLES.departments} d ON d.dept_id = u.dept_id
+       WHERE u.is_active = 1
+       ORDER BY u.full_name, u.username`,
+    );
+    return rows.map((u: any) => ({
+      id: Number(u.id),
+      username: u.username,
+      fullName: u.full_name || null,
+      departmentName: u.department_name || null,
+      departmentCode: u.department_code || null,
+    }));
+  }
+
   /* ---------- writes ---------- */
 
   async create(body: Record<string, any>, actor: Actor) {
@@ -264,6 +287,7 @@ export class ApplicationsService {
     const customer = {...(existing?.customer || {}), ...(body.customer || {})};
     if (body.companyName && !customer.companyName) customer.companyName = body.companyName;
     ensure(String(customer.companyName || '').trim(), 'Company name is required');
+    ensure(body.mktPicId, 'Marketing PIC is required');
     const profile = {...(existing?.profile || {}), ...body};
     const category: 'NEW' | 'EXISTING' =
       (body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW')) ===
@@ -289,6 +313,7 @@ export class ApplicationsService {
           branchId: await this.ids.idOf('branch', profile.branchCode, conn),
           statusId: status.id,
           workflowCode,
+          mktPicId: body.mktPicId ? Number(body.mktPicId) : null,
         },
         actor,
       );

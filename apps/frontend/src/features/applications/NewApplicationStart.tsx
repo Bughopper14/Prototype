@@ -13,6 +13,107 @@ import {screenOf, type WorkflowStage} from '@/features/applications/lib/workspac
 
 type Kind = 'NEW' | 'EXISTING';
 
+type MarketingPicUser = {
+  id: number;
+  username: string;
+  fullName?: string | null;
+  departmentName?: string | null;
+  departmentCode?: string | null;
+};
+
+/** Searchable Marketing PIC list: full name, username, and department. */
+function MarketingPicPicker({
+  users,
+  value,
+  onChange,
+}: {
+  users: MarketingPicUser[];
+  value: number | '';
+  onChange: (id: number | '') => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const box = useRef<HTMLDivElement>(null);
+  const chosen = users.find(u => u.id === value);
+  const shown = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    return users.filter(
+      u =>
+        !t ||
+        (u.fullName || '').toLowerCase().includes(t) ||
+        (u.username || '').toLowerCase().includes(t) ||
+        (u.departmentName || '').toLowerCase().includes(t) ||
+        (u.departmentCode || '').toLowerCase().includes(t),
+    );
+  }, [users, q]);
+
+  useEffect(() => {
+    const close = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+
+  const displayName = (u: MarketingPicUser) => u.fullName || u.username;
+  const detail = (u: MarketingPicUser) => u.departmentName || '';
+
+  return (
+    <div className="cust-pick" ref={box} style={{flex: '1 1 320px'}}>
+      <input
+        className="new-app-input"
+        aria-label="Marketing PIC"
+        role="combobox"
+        aria-expanded={open}
+        autoComplete="off"
+        placeholder="Assign Marketing PIC (required)"
+        value={open || !chosen ? q : displayName(chosen)}
+        onFocus={() => {
+          setQ('');
+          setOpen(true);
+        }}
+        onChange={e => {
+          setQ(e.target.value);
+          setOpen(true);
+          if (value) onChange('');
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Escape') setOpen(false);
+          if (e.key === 'Enter' && open && shown.length) {
+            onChange(shown[0].id);
+            setOpen(false);
+          }
+        }}
+      />
+      <Search size={15} className="cust-pick-icon" />
+      {open && (
+        <div className="cust-pick-pop">
+          <ul role="listbox">
+            {shown.map(u => (
+              <li
+                key={u.id}
+                role="option"
+                aria-selected={u.id === value}
+                className={u.id === value ? 'on' : ''}
+                onMouseDown={e => {
+                  e.preventDefault();
+                  onChange(u.id);
+                  setOpen(false);
+                }}
+              >
+                <span>
+                  <b>{displayName(u)}</b>
+                  {detail(u) && <small>{detail(u)}</small>}
+                </span>
+                {u.id === value && <Check size={15} />}
+              </li>
+            ))}
+            {!shown.length && <li className="empty">No marketing PIC found</li>}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Searchable customer list: the name, plus NPWP / NIB and business category so customers with the same name can be told apart. */
 function CustomerPicker({customers, value, onChange}: {customers: any[]; value: string; onChange: (id: string) => void}) {
   const [open, setOpen] = useState(false);
@@ -106,6 +207,17 @@ export function NewApplicationStart({
   const [customerId, setCustomerId] = useState(preselectedCustomerId || '');
   const [branchCode, setBranchCode] = useState('');
   const branches = useMemo(() => (masterEntries(master, 'branchCode', {}) || []).filter((b: any) => b.active), [master]);
+  const [marketingPics, setMarketingPics] = useState<MarketingPicUser[]>([]);
+  const [mktPicId, setMktPicId] = useState<number | ''>('');
+
+  useEffect(() => {
+    api('/marketing-pics')
+      .then((data: any) => {
+        if (Array.isArray(data)) setMarketingPics(data);
+      })
+      .catch(() => undefined);
+  }, []);
+
   // The groups and stages of the active workflow (the same ones the saved application will show).
   const [layout, setLayout] = useState<{groups: StageGroup[]; stages: WorkflowStage[]}>({groups: [], stages: []});
   useEffect(() => {
@@ -115,14 +227,28 @@ export function NewApplicationStart({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const sorted = useMemo(() => [...customers].sort((a, b) => String(a.companyName || '').localeCompare(String(b.companyName || ''))), [customers]);
-  const ready = kind === 'NEW' ? !!companyName.trim() : !!customerId;
+  const ready = (kind === 'NEW' ? !!companyName.trim() : !!customerId) && !!mktPicId;
 
   async function save() {
     setBusy(true);
     setError('');
     try {
       const name = companyName.trim();
-      const body = kind === 'NEW' ? {companyName: name, customer: {companyName: name}, customerCategory: 'NEW', ...(branchCode ? {branchCode} : {})} : {customerId, customerCategory: 'EXISTING', ...(branchCode ? {branchCode} : {})};
+      const body =
+        kind === 'NEW'
+          ? {
+              companyName: name,
+              customer: {companyName: name},
+              customerCategory: 'NEW',
+              mktPicId: Number(mktPicId),
+              ...(branchCode ? {branchCode} : {}),
+            }
+          : {
+              customerId,
+              customerCategory: 'EXISTING',
+              mktPicId: Number(mktPicId),
+              ...(branchCode ? {branchCode} : {}),
+            };
       const application = await api('/applications', 'POST', body);
       notify('Application saved.');
       onCreated(application.id);
@@ -178,7 +304,26 @@ export function NewApplicationStart({
                 </option>
               ))}
             </select>
-            <button className="button primary" disabled={busy || !ready} onClick={save}>
+          </div>
+          <div className="new-app-bar" style={{marginTop: '10px'}}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 14px',
+                borderRadius: '8px',
+                background: '#e2e8f0',
+                color: '#475569',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                flex: 'none',
+              }}
+            >
+              Marketing PIC
+            </div>
+            <MarketingPicPicker users={marketingPics} value={mktPicId} onChange={setMktPicId} />
+            <button className="button primary" disabled={busy || !ready} onClick={save} style={{flex: '0 0 auto'}}>
               <Save size={16} /> {busy ? 'Saving…' : 'Save application'}
             </button>
           </div>
