@@ -3,8 +3,8 @@
  * (crm_master_financing_methods.code); the terms are stored in crm_fap_proposal_terms per method.
  */
 export const FAP_TERMS_COLUMNS = {
-  termsFinancialLease: 'FINANCIAL_LEASE',
-  termsSaleAndLeaseBack: 'SALE_AND_LEASE_BACK',
-  termsInstallmentFinancing: 'INSTALLMENT_FINANCING',
+  termsFinancialLease: 'FINANCIAL-LEASE',
+  termsSaleAndLeaseBack: 'SALE-AND-LEASE-BACK',
+  termsInstallmentFinancing: 'INSTALLMENT-FINANCING',
 } as const;
 export type FapTermsColumn = keyof typeof FAP_TERMS_COLUMNS;

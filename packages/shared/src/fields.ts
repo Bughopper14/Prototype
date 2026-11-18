@@ -329,7 +329,9 @@ export const blank = (fields: Field[]) =>
       f.defaultValue ?? f.options?.[0] ?? (f.type === 'number' ? 0 : f.type === 'date' ? null : ''),
     ]),
   );
-export const label = (s: string) => (s ? toTitleCase(s.replaceAll('_', ' ')) : '—');
+/** Shows a code or key as words: underscores, and hyphens in a code written in capitals (SUBMITTED-TO-BS), become spaces. */
+export const label = (s: string) =>
+  s ? toTitleCase((/^[A-Z0-9]+(-[A-Z0-9]+)+$/.test(s) ? s.replaceAll('-', ' ') : s).replaceAll('_', ' ')) : '—';
 export const legalDeedFields = [
   {...f('deedNumber', 'Deed Number'), required: true},
   {...f('deedDate', 'Deed Date', 'date'), required: true},
