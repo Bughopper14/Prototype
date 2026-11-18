@@ -49,7 +49,7 @@ export function GeneralInfoPreview() {
               fontStyle: data.fapNumber?.includes('Auto') ? 'italic' : 'normal',
             }}
           >
-            {data.fapNumber || 'Auto (Generated on save)'}
+            {data.fapNumber || ''}
           </td>
         </tr>
         <tr style={{borderBottom: '1px solid #e2e8f0'}}>

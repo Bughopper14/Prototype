@@ -192,4 +192,6 @@ export interface PreAnalysisFormProps {
   notify?: (msg: string) => void;
   registerSave?: (saveFn: () => Promise<void>) => void;
   onSavingChange?: (saving: boolean) => void;
+  /** Receives the updated application (used when the FAP number is generated from the form). */
+  onApplicationChange?: (application: any) => void;
 }

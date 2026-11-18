@@ -7,7 +7,7 @@ import {
 } from '@/features/applications/lib/financing-proposal';
 import {api} from '@/shared/lib/api';
 import {validateInput} from '@liugong/shared';
-import {firstStageCode} from '@/shared/master-data';
+import {firstStageCode, STAGE} from '@/shared/master-data';
 
 export function useNewApplication({
   customers,
@@ -57,7 +57,7 @@ export function useNewApplication({
     try {
       let id = customerId;
       const nibClean = String(customerDraft?.nib || draft?.nib || '').replace(/\D/g, '');
-      const npwpClean = String(customerDraft?.npwp || draft?.npwp || '').replace(/\D/g, '');
+      const npwpClean = String(customerDraft?.npwp || draft?.npwp || preAnalysisDraft?.taxId || '').replace(/\D/g, '');
       const matchedExisting = customers.find((c: any) => {
         const cNib = String(c.nib || '').replace(/\D/g, '');
         const cNpwp = String(c.npwp || '').replace(/\D/g, '');
@@ -72,6 +72,7 @@ export function useNewApplication({
             customerDraft?.companyName ||
             draft?.customer?.companyName ||
             draft?.companyName ||
+            preAnalysisDraft?.customerProjectName ||
             '';
           if (!resolvedName.trim()) throw new Error('Company name of the debtor is required.');
           const customerToSave = {
@@ -96,6 +97,7 @@ export function useNewApplication({
             customerDraft?.companyName ||
             draft?.customer?.companyName ||
             draft?.companyName ||
+            preAnalysisDraft?.customerProjectName ||
             '';
           if (!resolvedName.trim()) throw new Error('Company name of the new debtor is required.');
           const customerToSave = {
@@ -117,6 +119,7 @@ export function useNewApplication({
         customerDraft?.companyName ||
         draft?.customer?.companyName ||
         draft?.companyName ||
+        preAnalysisDraft?.customerProjectName ||
         '';
       const safePayload = {
         branchCode: profileData.branchCode || '',
@@ -153,7 +156,7 @@ export function useNewApplication({
         );
         await api(`/applications/${application.id}/page-1`, 'PUT', {
           profile: {...safePayload, ...proposalProfileValues(draft)},
-          customer: customerDraft,
+          customer: {...customerDraft, companyName: customerDraft?.companyName || finalCompanyName},
           customerCategory,
           ...(hasPicData ? {pic: draft.pic} : {}),
           projects: cleanProjects,
@@ -171,7 +174,7 @@ export function useNewApplication({
         const savedPre = preAnalysisDraft
           ? await api(`/applications/${application.id}/pre-analysis`, 'PUT', {
               ...preAnalysisDraft,
-              fapNumber: application.fapNumber,
+              fapNumber: application.fapNumber || '',
               customerProjectName: preAnalysisDraft.customerProjectName || finalCompanyName,
             })
           : await api(`/applications/${application.id}/pre-analysis`);
@@ -182,7 +185,7 @@ export function useNewApplication({
       }
 
       notify(
-        `Aplikasi ${application.fapNumber}${assignedPreNo ? ` · Pre-Analysis ${assignedPreNo}` : ''} berhasil dibuat. Anda dapat melanjutkan pengisian Stakeholders, Proposal, dan Pre-Analysis.`,
+        `Aplikasi ${application.id}${assignedPreNo ? ` · Pre-Analysis ${assignedPreNo}` : ''} berhasil dibuat. Anda dapat melanjutkan pengisian Stakeholders, Proposal, dan Pre-Analysis.`,
       );
       // The server logs the creation in the activity feed.
       let fullApp: any;
@@ -192,9 +195,11 @@ export function useNewApplication({
         fullApp = application;
       }
       setDraft(structuredClone(fullApp));
-      onChange(fullApp);
+      // An application started from the Pre-analysis step stays on Pre-analysis once it is created.
+      const openTab = activeStage === STAGE.PRE_ANALYSIS ? 8 : 0;
+      onChange({...fullApp, openTab});
       // Stay on the new application with every tab unlocked instead of returning to the list.
-      setTab(0);
+      setTab(openTab);
     } catch (e: any) {
       const msg = e.message || 'Failed to create new application. Please try again.';
       setError(msg);

@@ -5,6 +5,10 @@ import {ChecklistToolbar} from '@/features/documents/components/checklist/Checkl
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
 import {VerifyDocumentDialog} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {useDocumentChecklist} from '@/features/documents/hooks/useDocumentChecklist';
+import {ChecklistCustomizeDialog} from '@/features/documents/components/checklist/ChecklistCustomizeDialog';
+import {hasAuthority} from '@/shared/lib/auth';
+import {Settings2} from 'lucide-react';
+import {useState} from 'react';
 
 export interface DocumentChecklistTabProps {
   application: any;
@@ -16,6 +20,8 @@ export interface DocumentChecklistTabProps {
 
 export function DocumentChecklistTab({application, draft, user, onChange, notify}: DocumentChecklistTabProps) {
   const c = useDocumentChecklist({application, draft, user, onChange, notify});
+  const [customizing, setCustomizing] = useState(false);
+  const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'crm_upload_app_documents');
 
   return (
     <div className="doc-checklist-container">
@@ -45,6 +51,11 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
               dapat dihapus dan diganti kapan saja.
             </p>
           </div>
+          {canCustomize && (
+            <button type="button" className="button small" onClick={() => setCustomizing(true)}>
+              <Settings2 size={14} /> Customize checklist
+            </button>
+          )}
         </div>
 
         <ChecklistToolbar
@@ -66,6 +77,10 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           onVerify={c.canVerify ? c.openVerify : undefined}
         />
       </section>
+
+      {customizing && (
+        <ChecklistCustomizeDialog application={application} onChange={onChange} notify={notify} onClose={() => setCustomizing(false)} />
+      )}
 
       {c.verifying && (
         <VerifyDocumentDialog

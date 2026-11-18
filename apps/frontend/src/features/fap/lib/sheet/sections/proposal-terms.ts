@@ -14,7 +14,7 @@ export function applyProposalAndTerms({
   setText: CellWriters['setText'];
   master: MasterCatalog;
 }) {
-  // Payment timing is stored as its master code (IN_ARREAR / IN_ADVANCE); the sheet prints its name.
+  // Payment timing is stored as its master code (IN-ARREAR / IN-ADVANCE); the sheet prints its name.
   const paymentName = (code: any) => (master.paymentMethod || []).find(x => x.value === code)?.name || code;
   // Financing Proposal & Terms and Conditions
   const prop = d.financingProposal || {};

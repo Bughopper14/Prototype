@@ -25,7 +25,7 @@ export function DocumentDesk({
     d =>
       (status === 'ALL' || (status === 'OPEN' ? d.status !== 'VERIFIED' : d.status === 'VERIFIED')) &&
       (department === 'ALL' || d.assigned_role === department) &&
-      (d.company_name + ' ' + d.fap_number + ' ' + d.document_name)
+      (d.company_name + ' ' + d.application_id + ' ' + (d.fap_number || '') + ' ' + d.document_name)
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
@@ -122,7 +122,7 @@ export function DocumentDesk({
                     <div className="company-cell">
                       <div>
                         <b>{d.company_name}</b>
-                        <small>{d.fap_number}</small>
+                        <small>{d.application_id}</small>
                       </div>
                     </div>
                   </td>

@@ -1,5 +1,4 @@
-/** Master Data page body: header with the catalog menu, then the selected tab (mandatory rules, regions or a group). */
-import {useCanManageMasterData} from '@/features/master-data/hooks/useCanManageMasterData';
+/** Master Data page body: header with the catalog menu, then the selected tab (regions or a master group). */
 import {useMasterData} from '@/shared/master-data';
 import {masterGroups} from '@liugong/shared';
 import {Menu} from 'lucide-react';
@@ -7,20 +6,15 @@ import {useState} from 'react';
 import {CatalogGroupView} from './catalog/CatalogGroupView';
 import {CatalogMenuDrawer} from './catalog/CatalogMenuDrawer';
 import {LocationConfiguration} from './location/LocationConfiguration';
-import {MasterMandatoryView} from './mandatory/MandatoryRulesView';
-import {WorkflowConfigurationView} from './workflow/WorkflowConfigurationView';
 
 function categoryTitle(selected: string) {
-  if (selected === 'workflow_config') return 'Workflow Engine & Pipeline Configuration';
-  if (selected === 'master_mandatory') return 'Field Mandatory (FAP & PRE-AN)';
   if (selected === 'location') return 'Indonesian Region';
   return (masterGroups.find(g => g.key === selected) || masterGroups[0]).name;
 }
 
 export function MasterDataWorkspace() {
   const data = useMasterData();
-  const canManage = useCanManageMasterData();
-  const [selected, setSelected] = useState('master_mandatory');
+  const [selected, setSelected] = useState(masterGroups[0].key);
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -68,14 +62,6 @@ export function MasterDataWorkspace() {
 
       {selected === 'location' ? (
         <LocationConfiguration />
-      ) : selected === 'master_mandatory' ? (
-        <div className="master-page-layout">
-          <MasterMandatoryView canManage={canManage} />
-        </div>
-      ) : selected === 'workflow_config' ? (
-        <div className="master-page-layout">
-          <WorkflowConfigurationView canManage={canManage} />
-        </div>
       ) : (
         // keyed so search and the open dialog reset when switching groups
         <CatalogGroupView key={selected} groupKey={selected} data={data} />

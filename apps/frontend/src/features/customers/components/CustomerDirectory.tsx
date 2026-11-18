@@ -33,7 +33,7 @@ export function CustomerDirectory({
 
   const enriched = useMemo(() => {
     return customers.map(c => {
-      const custApps = rows.filter(r => r.customer_id === c.id);
+      const custApps = rows.filter(r => r.business_partner_id === c.id);
       const appDates = custApps
         .map(a => new Date(a.application_date || a.created_at || a.createdAt).getTime())
         .filter(t => !isNaN(t) && t > 0);
@@ -183,7 +183,7 @@ export function CustomerDirectory({
             className="customer-card"
             key={c.id}
             onClick={() => {
-              const a = rows.find(r => r.customer_id === c.id);
+              const a = rows.find(r => r.business_partner_id === c.id);
               if (a) open(a.id);
               else if (hasAuthority(user, 'crm_create_application')) startNewApplication?.(c.id);
               else notify('This customer has no applications yet. Use New application to create one.');

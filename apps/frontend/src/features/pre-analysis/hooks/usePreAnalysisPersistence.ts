@@ -99,6 +99,21 @@ export function usePreAnalysisPersistence(
     }
   });
 
-  return {saveStatus, handleSave, saving};
+  /** Makes the Pre-Analysis number (only when asked; opening or saving the form does not make one). */
+  const generateNumber = async () => {
+    try {
+      const json = await api(`/applications/${props.applicationId}/pre-analysis-number`, 'POST', {});
+      if (json?.success) {
+        versionRef.current = json.version ?? versionRef.current;
+        setData(prev => ({...prev, preAnalysisNo: json.data.preAnalysisNo}));
+        initialDataRef.current = {...(initialDataRef.current || {}), preAnalysisNo: json.data.preAnalysisNo};
+        props.notify?.(`Pre-Analysis number ${json.data.preAnalysisNo} generated`);
+      }
+    } catch (e: any) {
+      props.notify?.(e?.message || 'Could not generate the Pre-Analysis number');
+    }
+  };
+
+  return {saveStatus, handleSave, saving, generateNumber};
 }
 

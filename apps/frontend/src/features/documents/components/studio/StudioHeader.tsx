@@ -14,7 +14,7 @@ export function StudioHeader() {
         <h2>Evidence Files & Live Document Studio</h2>
         <p>
           Digital document management for financing application of debtor{' '}
-          <strong>{a.customer?.companyName || 'Debtor'}</strong> ({a.fapNumber || 'FAP'}) ·{' '}
+          <strong>{a.customer?.companyName || 'Debtor'}</strong> ({a.id}) ·{' '}
           <strong>{totalFilesCount} Files Uploaded</strong>
         </p>
       </div>

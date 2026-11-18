@@ -26,6 +26,6 @@ export const RESOLVERS: Record<string, (ctx: ResolverContext) => void> = {
   BANK: resolveBank,
   QUOTATION: resolveQuotation,
   CONTRACT: resolveContract,
-  LEGAL_OPINION: resolveLegalOpinion,
+  'LEGAL-OPINION': resolveLegalOpinion,
   ICLF: resolveIclf,
 };

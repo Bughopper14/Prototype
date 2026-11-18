@@ -32,9 +32,7 @@ export function syncCustomerAndPicIntoPreAnalysis(
       : prevData.preAnalysisNo || 'Auto (Generated on save)',
     customerProjectName: companyName || (isAppNew ? '' : prevData.customerProjectName),
     taxId: npwp || (isAppNew ? '' : prevData.taxId),
-    fapNumber: isAppNew
-      ? 'Auto (Generated on save)'
-      : fapNumber || prevData.fapNumber || 'Auto (Generated on save)',
+    fapNumber: isAppNew ? '' : fapNumber || prevData.fapNumber || '',
     customerPic: customerPic || (isAppNew ? '' : prevData.customerPic),
     customerArea: customerArea || (isAppNew ? '' : prevData.customerArea),
   };

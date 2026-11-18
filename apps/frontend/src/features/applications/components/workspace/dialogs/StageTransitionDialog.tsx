@@ -63,7 +63,7 @@ export function StageTransitionDialog() {
         <Modal title={label(transition)} onClose={close}>
           <div className="modal-body">
             <p className="muted">
-              {a.customer.companyName} · {a.fapNumber}
+              {a.customer.companyName} · {a.id}
             </p>
             <p>Required information and documents will be checked before this action is recorded.</p>
             <label>

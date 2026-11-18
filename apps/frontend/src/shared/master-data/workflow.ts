@@ -35,7 +35,7 @@ export const isTerminalStatus = (code?: string | null, catalog?: MasterCatalog) 
  * Stage codes the workspace has screens for (crm_master_workflow_stages.code). Codes identify a stage in code; the
  * names shown on screen always come from Master Data, so renaming a stage never breaks a screen.
  */
-export const STAGE = {FAP: 'FAP_STAGE', PRE_ANALYSIS: 'PRE_ANALYSIS', ICLF: 'ICLF'} as const;
+export const STAGE = {FAP: 'FAP-STAGE', PRE_ANALYSIS: 'PRE-ANALYSIS', ICLF: 'ICLF'} as const;
 
 /** Display name of a stage code (falls back to the code). */
 export const stageName = (code?: string | null, catalog?: MasterCatalog) =>

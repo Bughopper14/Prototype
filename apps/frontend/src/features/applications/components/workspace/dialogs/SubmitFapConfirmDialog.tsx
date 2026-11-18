@@ -12,7 +12,7 @@ export function SubmitFapConfirmDialog() {
         <Modal title="Submit FAP Stage" onClose={() => setSubmitFapConfirm(false)}>
           <div className="modal-body">
             <p className="muted">
-              {a.customer?.companyName || draft.customer?.companyName} · {a.fapNumber}
+              {a.customer?.companyName || draft.customer?.companyName} · {a.id}
             </p>
             <p>
               Submit FAP Stage data and proceed to <strong>Pre-analysis</strong>?

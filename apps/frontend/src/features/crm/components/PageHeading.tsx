@@ -10,6 +10,7 @@ const DESCRIPTIONS: Record<string, (firstName: string) => string> = {
   'Document desk': () => 'Keep every document complete, verified, and ready for review.',
   Customers: () => 'Your customer relationships, connected to every application.',
   'Customize master data': () => 'Application master data configuration.',
+  Workflow: () => 'Set up the stages an application goes through, and the fields and documents each stage requires.',
   Notifications: () => 'Deed review and approval results that need follow-up.',
   Activity: () => 'A transparent record of application decisions and updates.',
 };

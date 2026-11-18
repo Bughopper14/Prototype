@@ -100,7 +100,7 @@ export function useLiveFapData({
     draftValue !== undefined && draftValue !== null ? draftValue : fallback;
 
   const liveDetailFapData: FapSheetData = {
-    fapNumber: draft.isNew ? 'Auto (Generated on save)' : draft.fapNumber || a.fapNumber || '—',
+    fapNumber: draft.isNew ? '' : draft.fapNumber || a.fapNumber || '',
     applicationDate: draft.applicationDate || a.applicationDate || new Date().toISOString(),
     branchCode: draft.branchCode || a.branchCode || '',
     customerStatus:

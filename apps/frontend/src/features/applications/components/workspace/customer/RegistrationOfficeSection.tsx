@@ -28,7 +28,7 @@ export function RegistrationOfficeSection() {
             <div className="fap-acc-title-row">
               <h4 className="fap-acc-title">Registration Office & Company Domicile</h4>
               <span className={`fap-acc-badge ${draft.city && draft.companyAddress ? 'success' : ''}`}>
-                {draft.city ? `${draft.city} (${draft.branchCode || 'Branch'})` : 'Not filled'}
+                {/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(draft.city || '')) ? draft.branchCode || 'Not filled' : draft.city ? `${draft.city} (${draft.branchCode || 'Branch'})` : 'Not filled'}
               </span>
             </div>
             <p className="fap-acc-subtitle">

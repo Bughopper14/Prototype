@@ -17,7 +17,7 @@ export function buildNewApplicationDraft(customers: any[], preselectedCustomerId
     ...blank(profileFields),
     id: 'new',
     isNew: true,
-    fapNumber: 'Auto (Generated on save)',
+    fapNumber: '',
     applicationDate: new Date().toISOString().slice(0, 10),
     status: initialStatusCode(),
     stage: STAGE.FAP,
