@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
-import {FORM_FIELDS} from '../workflows/form-fields';
 import type {FapDiff} from './fap-diff';
 
 /** Statuses of crm_fap_document_ocr_comparisons that end the review: differences are no longer recomputed. */
@@ -147,10 +146,11 @@ export class FapOcrRepository {
     return new Map(rows.map(r => [r.id, r.name]));
   }
 
-  /** Label and section of each FAP form field, by field key (the form definition, workflows/form-fields.ts). */
+  /** Label and section of each FAP form field, by field key (the master fields of the FAP form). */
   async fieldRules(): Promise<Map<string, {label: string; section: string}[]>> {
+    const [rows] = await this.db.pool.query<any[]>(`SELECT field_key,label,section_name FROM ${CRM.masterFormFields} WHERE form_code='FAP-FORM' ORDER BY sort_order`);
     const byKey = new Map<string, {label: string; section: string}[]>();
-    for (const f of FORM_FIELDS.filter(x => x.form === 'FAP-FORM')) byKey.set(f.key, [...(byKey.get(f.key) || []), {label: f.label, section: f.section}]);
+    for (const f of rows) byKey.set(f.field_key, [...(byKey.get(f.field_key) || []), {label: f.label, section: f.section_name}]);
     return byKey;
   }
 }

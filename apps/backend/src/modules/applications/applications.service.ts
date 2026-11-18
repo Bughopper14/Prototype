@@ -17,7 +17,6 @@ import {FinancialStatementsRepository} from './repositories/financial-statements
 import {ApplicationProfileRepository} from './repositories/application-profile.repository';
 import {ApplicationsRepository} from './repositories/applications.repository';
 import {MasterIdLookup} from './repositories/master-ids';
-import {formField} from '../workflows/form-fields';
 import {mandatoryGaps} from './workflow/mandatory-check';
 import {groupsOf, stagesOf, WorkflowConfigRepository, type WorkflowConfig} from './workflow/workflow-config.repository';
 import {ApprovalsService, scopeApproved, STATE_NAME} from '../approvals/approvals.service';
@@ -679,9 +678,9 @@ export class ApplicationsService {
     const detail: any = await this.detailOr404(id);
     const cfg = await this.config.load(app.workflow_code);
     const [rules] = await this.apps.pool.query<any[]>(
-      `SELECT st.code AS stage_code,ff.form_code,ff.section_name,ff.code
+      `SELECT st.code AS stage_code,ff.form_code,ff.section_name,ff.code,ff.field_key,ff.label
        FROM ${CRM.workflowStageFields} sf
-       JOIN ${CRM.masterFormFields} ff ON ff.id=sf.form_field_id
+       JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
        JOIN ${CRM.workflowStages} st ON st.id=sf.stage_id
        WHERE sf.workflow_code=? AND sf.is_mandatory=1`,
       [cfg.code],
@@ -689,11 +688,8 @@ export class ApplicationsService {
     const stageName = (code: string) => cfg.stageByCode.get(code)?.name;
     const gaps: {target: string; label: string; detail?: string}[] = mandatoryGaps(
       detail,
-      rules.flatMap(r => {
-        // the key the form data uses and the label come from the form definition, the database holds only the code
-        const def = formField(r.form_code, r.section_name, r.code);
-        return def ? [{stageCode: r.stage_code, section: r.section_name, fieldKey: def.key, fieldLabel: def.label}] : [];
-      }),
+      // the key the form data uses and the label come from the master field
+      rules.map(r => ({stageCode: r.stage_code, section: r.section_name, fieldKey: r.field_key, fieldLabel: r.label})),
       stageName,
     );
     const checks: any[] = detail.documentChecks || [];

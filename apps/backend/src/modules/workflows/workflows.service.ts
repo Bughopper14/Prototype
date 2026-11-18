@@ -4,12 +4,10 @@ import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
-import {isEnforceable} from '../applications/workflow/mandatory-check';
 import {WorkflowConfigRepository} from '../applications/workflow/workflow-config.repository';
 import {DocumentsRepository} from '../documents/documents.repository';
 import {UsersNamesLookup} from '../approvals/users-names.lookup';
 import {UsersApproversLookup} from './users-approvers.lookup';
-import {FORM_FIELDS, formField} from './form-fields';
 import {
   activationIssues,
   definitionSchema,
@@ -102,15 +100,12 @@ export class WorkflowsService {
     const [docs] = await this.db.pool.query<any[]>(
       `SELECT code,name FROM ${CRM.masterDocumentTypes} ORDER BY sort_order`,
     );
+    // the fields of every form come from the master (crm_master_form_fields); enforceable = the system can check it
+    const [fields] = await this.db.pool.query<any[]>(
+      `SELECT form_code,section_name,code,label,is_enforceable FROM ${CRM.masterFormFields} ORDER BY form_code,section_name,sort_order`,
+    );
     return {
-      formFields: FORM_FIELDS.map(f => ({
-        formCode: f.form,
-        section: f.section,
-        code: f.code,
-        label: f.label,
-        // the FAP form is checked by the backend; the Pre-analysis form checks its own required fields on screen
-        enforceable: f.form === 'PRE-ANALYSIS-FORM' || isEnforceable(f.section, f.key),
-      })),
+      formFields: fields.map(f => ({formCode: f.form_code, section: f.section_name, code: f.code, label: f.label, enforceable: !!f.is_enforceable})),
       forms: await this.forms(),
       documents: docs.map(d => ({code: d.code, name: d.name})),
       departments: await this.departments(),
@@ -127,9 +122,9 @@ export class WorkflowsService {
   /** The authorities that may be chosen for each place: crm_workflow_authority_options (a stage -> its form, a document -> its master document, a group -> generic). */
   async authorityOptions() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT scope_type,form_code,document_code,department_code,authority_name,description FROM ${CRM.workflowAuthorityOptions} ORDER BY department_code,authority_name`,
+      `SELECT scope_type,form_code,document_code,department_code,authority_name FROM ${CRM.workflowAuthorityOptions} ORDER BY department_code,authority_name`,
     );
-    return rows.map(r => ({scope: r.scope_type, formCode: r.form_code, documentCode: r.document_code, departmentCode: r.department_code, authorityName: r.authority_name, description: r.description ?? ''}));
+    return rows.map(r => ({scope: r.scope_type, formCode: r.form_code, documentCode: r.document_code, departmentCode: r.department_code, authorityName: r.authority_name}));
   }
 
   /**
@@ -157,7 +152,7 @@ export class WorkflowsService {
     );
     const fields = await q(
       `SELECT s.code AS stage_code,ff.form_code,ff.section_name,ff.code,sf.is_mandatory FROM ${CRM.workflowStageFields} sf
-       JOIN ${CRM.workflowStages} s ON s.id=sf.stage_id JOIN ${CRM.masterFormFields} ff ON ff.id=sf.form_field_id
+       JOIN ${CRM.workflowStages} s ON s.id=sf.stage_id JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
        WHERE sf.workflow_code=?`,
     );
     const documents = await q(
@@ -336,17 +331,16 @@ export class WorkflowsService {
         [sid, workflowCode, groupId.get(s.groupKey)!, groupCodes.get(s.groupKey)!, scode, s.name, s.departmentCode || null, s.order, s.formCode || null, by],
       );
     }
-    for (const [i, f] of def.fields.entries()) {
-      const known = formField(f.formCode, f.section, f.code);
-      ensure(known, `Field ${f.section} / ${f.code} does not exist in the ${f.formCode} form`, 422);
-      const fieldId = uuid();
+    // a required field is a row that points at the master field (the master is the only list of fields)
+    const [masterFields] = await conn.query<any[]>(`SELECT form_code,section_name,code FROM ${CRM.masterFormFields}`);
+    const master = new Map(masterFields.map(m => [m.code as string, m]));
+    for (const f of def.fields) {
+      // the code of a field is unique (section + field); the form and section sent with it have to be the ones of that field
+      const known = master.get(f.code);
+      ensure(known && known.form_code === f.formCode && known.section_name === f.section, `Field ${f.section} / ${f.code} does not exist in the ${f.formCode} form`, 422);
       await conn.execute(
-        `INSERT INTO ${CRM.masterFormFields} (id,stage_id,form_code,section_name,code,sort_order,created_by) VALUES (?,?,?,?,?,?,?)`,
-        [fieldId, stageId.get(f.stageKey)!, f.formCode, f.section, f.code, i + 1, by],
-      );
-      await conn.execute(
-        `INSERT INTO ${CRM.workflowStageFields} (id,workflow_code,stage_id,stage_code,form_field_id,is_mandatory,created_by) VALUES (?,?,?,?,?,?,?)`,
-        [uuid(), workflowCode, stageId.get(f.stageKey)!, stageCodes.get(f.stageKey)!, fieldId, +f.mandatory, by],
+        `INSERT INTO ${CRM.workflowStageFields} (id,workflow_code,stage_id,stage_code,form_field_code,is_mandatory,created_by) VALUES (?,?,?,?,?,?,?)`,
+        [uuid(), workflowCode, stageId.get(f.stageKey)!, stageCodes.get(f.stageKey)!, f.code, +f.mandatory, by],
       );
     }
     const stageGroup = new Map(def.stages.map(s => [s.key, s.groupKey]));
