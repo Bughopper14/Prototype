@@ -6,7 +6,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pool} from '../src/core/db/pool';
-import {getPreAnalysisData, savePreAnalysisData} from '../src/modules/pre-analysis/pre-analysis.repository';
+import {CRM} from '../src/core/db/crm-tables';
 
 async function main() {
   const folder = process.argv.slice(2).find(arg => !arg.startsWith('--'));
@@ -27,7 +27,7 @@ async function main() {
 
     const incoming = await fs.readFile(full, 'utf8');
     const [rows] = await pool.query<any[]>(
-      'SELECT id, updated_at FROM crm_pre_analysis_forms WHERE application_id = ? AND deleted_at IS NULL LIMIT 1',
+      `SELECT id, updated_at FROM ${CRM.prototypePreanalysis} WHERE application_id = ? LIMIT 1`,
       [id],
     );
     const current = rows[0];
@@ -42,13 +42,19 @@ async function main() {
     );
     if (!apply) continue;
     if (current) {
-      const existingData = await getPreAnalysisData(id);
+      const [pRows] = await pool.query<any[]>(`SELECT form_data FROM ${CRM.prototypePreanalysis} WHERE application_id = ?`, [id]);
+      const existingData = pRows[0]?.form_data ? JSON.parse(pRows[0].form_data) : null;
       await fs.writeFile(
         path.join(backups, `pre-analysis-${id}-${Date.now()}.json`),
         JSON.stringify(existingData, null, 2),
       );
     }
-    await savePreAnalysisData(id, JSON.parse(incoming), 'import-pre-analysis');
+    await pool.query(
+      `INSERT INTO ${CRM.prototypePreanalysis} (application_id, form_data, created_by, updated_by)
+       VALUES (?, ?, 'import-pre-analysis', 'import-pre-analysis')
+       ON DUPLICATE KEY UPDATE form_data = VALUES(form_data), updated_by = VALUES(updated_by), updated_at = NOW()`,
+      [id, incoming],
+    );
   }
   await pool.end();
 }
