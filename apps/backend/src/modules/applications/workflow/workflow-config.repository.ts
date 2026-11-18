@@ -3,7 +3,7 @@ import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
 import {Problem} from '../../../core/domain';
 
-export type ConfigStage = {id: string; code: string; name: string; groupName: string; groupCode: string; groupOrder: number; departmentCode: string | null; order: number; formCode: string | null};
+export type ConfigStage = {id: string; code: string; name: string; groupId: string; groupName: string; groupCode: string; groupOrder: number; departmentCode: string | null; order: number; formCode: string | null};
 export type WorkflowConfig = {id: string; code: string; name: string; versionNo: number; isDraft: boolean; isActive: boolean; stages: ConfigStage[]; stageByCode: Map<string, ConfigStage>};
 
 /** The stages of a workflow in order (group, then stage order), for the screens. */
@@ -23,7 +23,7 @@ export const groupsOf = (c: WorkflowConfig) => {
 
 /**
  * The workflow an application runs in (crm_workflows): which stages it has, in which order, and per stage the required
- * fields and documents. It does NOT hold statuses or actions: approval keeps running on crm_master_workflow_*.
+ * fields and documents. It does NOT hold approval: the approval steps of a workflow are read by modules/approvals.
  * Every application points at one workflow (crm_applications.workflow_code); new applications use the active one.
  * A workflow that is not a draft never changes, so it is cached; a draft is always read fresh.
  */
@@ -51,7 +51,7 @@ export class WorkflowConfigRepository {
     const h = headers[0];
     if (!h) throw new Problem(404, 'Workflow not found');
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT s.id,s.code,s.name,s.department_code,s.sort_order,s.form_code,g.name AS group_name,g.code AS group_code,g.sort_order AS group_order
+      `SELECT s.id,s.code,s.name,s.department_code,s.sort_order,s.form_code,g.id AS group_id,g.name AS group_name,g.code AS group_code,g.sort_order AS group_order
        FROM ${CRM.workflowStages} s JOIN ${CRM.workflowStageGroups} g ON g.id=s.stage_group_id
        WHERE s.workflow_code=?
        ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
@@ -61,6 +61,7 @@ export class WorkflowConfigRepository {
       id: r.id,
       code: r.code,
       name: r.name,
+      groupId: r.group_id,
       groupName: r.group_name,
       groupCode: r.group_code,
       groupOrder: Number(r.group_order),

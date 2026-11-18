@@ -49,10 +49,10 @@ export class DocumentsRepository {
   async seedChecklist(conn: Conn, applicationId: string, workflowCode: string, by: string | null) {
     await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
-         (id,application_id,stage_id,document_type_id,source_type,workflow_stage_document_id,override_id,assigned_role,
+         (id,application_id,workflow_code,stage_id,stage_code,document_type_id,document_code,source_type,workflow_stage_document_id,override_id,assigned_role,
           created_by)
-       SELECT UUID(),?,sd.stage_id,sd.document_type_id,IF(sd.is_default=1,'DEFAULT','ADDED'),sd.id,o.id,
-              COALESCE(o.department_code,st.department_code,'MKT'),?
+       SELECT UUID(),?,sd.workflow_code,sd.stage_id,st.code,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),sd.id,o.id,
+              COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.workflowStageDocuments} sd
        JOIN ${CRM.workflowStages} st ON st.id=sd.stage_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
@@ -64,9 +64,9 @@ export class DocumentsRepository {
     );
     await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
-         (id,application_id,stage_id,document_type_id,source_type,override_id,assigned_role,created_by)
-       SELECT UUID(),o.application_id,o.stage_id,o.document_type_id,'ADDED',o.id,
-              COALESCE(o.department_code,st.department_code,'MKT'),?
+         (id,application_id,workflow_code,stage_id,stage_code,document_type_id,document_code,source_type,override_id,assigned_role,created_by)
+       SELECT UUID(),o.application_id,o.workflow_code,o.stage_id,o.stage_code,o.document_type_id,o.document_code,'ADDED',o.id,
+              COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.applicationDocumentOverrides} o
        JOIN ${CRM.workflowStages} st ON st.id=o.stage_id
        WHERE o.application_id=? AND o.action='ADD' AND o.is_active=1 AND o.workflow_stage_document_id IS NULL`,
@@ -75,34 +75,29 @@ export class DocumentsRepository {
   }
 
   /**
-   * The departments a stage or a document can be given to: MKT and CA, plus any department a stage or an override already
-   * uses (the users module has no departments table the CRM can rely on; a code is its own name until such a table exists).
+   * The department codes the CRM already uses on a stage or on a document override. The list a person chooses from is made by the
+   * workflow service (the departments of User Management plus these), because this file may only name CRM tables.
    */
   async departments(): Promise<{code: string; name: string}[]> {
     const [rows] = await this.db.pool.query<any[]>(
       `SELECT department_code FROM (
-         SELECT 'MKT' AS department_code UNION SELECT 'CA'
-         UNION SELECT department_code FROM ${CRM.workflowStages}
+         SELECT department_code FROM ${CRM.workflowStages}
          UNION SELECT department_code FROM ${CRM.applicationDocumentOverrides}
        ) d WHERE department_code IS NOT NULL AND department_code<>'' ORDER BY department_code`,
     );
     return rows.map(r => ({code: String(r.department_code), name: String(r.department_code)}));
   }
 
-  async departmentExists(code: string): Promise<boolean> {
-    return (await this.departments()).some(d => d.code === code);
-  }
-
-  /** A checklist row with no file and no check can be removed without losing work. */
+  /** A checklist row with no file and no approval can be removed without losing work. */
   private async untouched(conn: Conn, checklistId: string) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT c.status,c.checked_by_mkt,c.checked_by_bs,c.checked_by_ca,c.checked_by_legal,
+      `SELECT c.status,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files
        FROM ${CRM.applicationDocumentChecklists} c WHERE c.id=? FOR UPDATE`,
       [checklistId],
     );
     const r = rows[0];
-    return !r || (Number(r.files) === 0 && r.status === 'PENDING' && !r.checked_by_bs && !r.checked_by_ca && !r.checked_by_legal);
+    return !r || (Number(r.files) === 0 && r.status === 'PENDING');
   }
 
   /** What a user can add to one application's checklist, and what has been customised already. */
@@ -234,16 +229,21 @@ export class DocumentsRepository {
     const id = crypto.randomUUID();
     await conn.execute(
       `INSERT INTO ${CRM.applicationDocumentOverrides}
-         (id,application_id,stage_id,action,workflow_stage_document_id,document_type_id,custom_name,description,
+         (id,application_id,workflow_code,stage_id,stage_code,action,workflow_stage_document_id,document_type_id,document_code,custom_name,description,
           department_code,is_mandatory,reason,added_by_user_id,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,(SELECT code FROM ${CRM.workflowStages} WHERE id=?),?,?,?,
+               COALESCE((SELECT code FROM ${CRM.masterDocumentTypes} WHERE id=?),(SELECT document_code FROM ${CRM.workflowStageDocuments} WHERE id=?)),?,?,?,?,?,?,?)`,
       [
         id,
         o.applicationId,
+        o.workflowCode,
+        o.stageId,
         o.stageId,
         o.action,
         wsdId,
         typeId,
+        typeId,
+        wsdId,
         wsdId || typeId ? null : String(o.customName).trim(),
         o.description || null,
         o.action === 'ADD' ? (o.departmentCode ?? null) : null,
@@ -311,14 +311,6 @@ export class DocumentsRepository {
       assignedRole: d.assigned_role,
       isMandatory: !!d.is_mandatory,
       status: d.status,
-      checkedByMkt: !!d.checked_by_mkt,
-      checkedByBs: !!d.checked_by_bs,
-      checkedByCa: !!d.checked_by_ca,
-      checkedByLegal: !!d.checked_by_legal,
-      registrationDate: d.registration_date,
-      expiredDate: d.expired_date,
-      dataSummary: d.data_summary,
-      notes: d.notes,
       files: files.filter(f => f.checklist_id === d.id).map(fileModel),
     }));
   }
@@ -331,6 +323,16 @@ export class DocumentsRepository {
     return rows[0] ? fileModel(rows[0]) : null;
   }
 
+  /** The checklist row of a document with the number of files it has and the workflow document it comes from (for its approval). */
+  async approvalRow(applicationId: string, checklistId: string) {
+    const [rows] = await this.db.pool.execute<any[]>(
+      `SELECT c.workflow_stage_document_id,(SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS n
+       FROM ${CRM.applicationDocumentChecklists} c WHERE c.id=? AND c.application_id=?`,
+      [checklistId, applicationId],
+    );
+    return rows[0] ? {workflowStageDocumentId: rows[0].workflow_stage_document_id as string | null, fileCount: Number(rows[0].n)} : null;
+  }
+
   /** Every file of the application's checklist (the ones the checklist lists), with its document and stage, for the ZIP. */
   async filesForZip(applicationId: string) {
     const [rows] = await this.db.pool.execute<any[]>(
@@ -338,7 +340,7 @@ export class DocumentsRepository {
        FROM ${CRM.applicationDocumentFiles} f
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       LEFT JOIN ${CRM.masterWorkflowStages} s ON s.id=t.stage_id
+       LEFT JOIN ${CRM.workflowStages} s ON s.id=c.stage_id
        WHERE f.application_id=? AND f.deleted_at IS NULL
        ORDER BY t.sort_order,f.version_number,f.uploaded_at`,
       [applicationId],
@@ -388,8 +390,7 @@ export class DocumentsRepository {
       [id, row.id, applicationId, Number(last.v) + 1, file.fileName, file.storageKey, file.storagePath, file.size, file.mimeType, by, by],
     );
     await conn.execute(
-      `UPDATE ${CRM.applicationDocumentChecklists} SET status='UPLOADED',checked_by_mkt=1,checked_by_bs=0,checked_by_ca=0,
-         checked_by_legal=0,updated_by=? WHERE id=?`,
+      `UPDATE ${CRM.applicationDocumentChecklists} SET status='UPLOADED',updated_by=? WHERE id=?`,
       [by, row.id],
     );
     await this.syncFapUploaded(conn, applicationId, by);
@@ -415,48 +416,18 @@ export class DocumentsRepository {
     if (remaining.length)
       await conn.execute(`UPDATE ${CRM.applicationDocumentFiles} SET is_current_active=1 WHERE id=?`, [remaining[0].id]);
     await conn.execute(
-      `UPDATE ${CRM.applicationDocumentChecklists} SET status=?,checked_by_mkt=?,checked_by_bs=0,checked_by_ca=0,
-         checked_by_legal=0,registration_date=NULL,expired_date=NULL,data_summary=NULL,notes=NULL,updated_by=? WHERE id=?`,
-      [remaining.length ? 'UPLOADED' : 'PENDING', remaining.length ? 1 : 0, by, checklistId],
+      `UPDATE ${CRM.applicationDocumentChecklists} SET status=?,updated_by=? WHERE id=?`,
+      [remaining.length ? 'UPLOADED' : 'PENDING', by, checklistId],
     );
     await this.syncFapUploaded(conn, applicationId, by);
   }
 
-  /** One department's check of a document; the owning department's check decides VERIFIED / REJECTED. */
-  async verify(
-    conn: Conn,
-    applicationId: string,
-    checklistId: string,
-    body: {department: 'BS' | 'CA' | 'LEGAL'; isVerified: boolean; registrationDate?: string | null; expiredDate?: string | null; dataSummary?: string; notes?: string},
-    by: string | null,
-  ) {
-    const row = await this.checklistRow(conn, applicationId, checklistId);
-    ensure(row, 'Checklist item not found', 404);
-    const [files] = await conn.execute<any[]>(
-      `SELECT id FROM ${CRM.applicationDocumentFiles} WHERE checklist_id=? AND deleted_at IS NULL LIMIT 1`,
-      [row.id],
-    );
-    ensure(files.length, 'Upload a document before verification');
-    if (body.isVerified && body.expiredDate)
-      ensure(body.expiredDate >= new Date().toISOString().slice(0, 10), 'An expired document cannot be verified');
-    if (body.expiredDate && body.registrationDate)
-      ensure(body.expiredDate >= body.registrationDate, 'Expiry must follow registration');
-    const column = {BS: 'checked_by_bs', CA: 'checked_by_ca', LEGAL: 'checked_by_legal'}[body.department];
-    ensure(column, 'Invalid department');
-    await conn.execute(
-      `UPDATE ${CRM.applicationDocumentChecklists} SET ${column}=?,status=?,registration_date=?,expired_date=?,
-         data_summary=?,notes=?,updated_by=? WHERE id=?`,
-      [
-        body.isVerified ? 1 : 0,
-        body.department === row.assigned_role ? (body.isVerified ? 'VERIFIED' : 'REJECTED') : row.status,
-        body.registrationDate ?? null,
-        body.expiredDate ?? null,
-        body.dataSummary ?? null,
-        body.notes ?? null,
-        by,
-        row.id,
-      ],
-    );
+  /**
+   * The status of a document follows its approval (the approval layer): VERIFIED when the approval of the document is approved, REJECTED
+   * when it is rejected, UPLOADED when it is asked for again. A document without an approval step stays UPLOADED.
+   */
+  async setStatus(conn: Conn, checklistId: string, status: 'UPLOADED' | 'VERIFIED' | 'REJECTED', by: string | null) {
+    await conn.execute(`UPDATE ${CRM.applicationDocumentChecklists} SET status=?,updated_by=? WHERE id=?`, [status, by, checklistId]);
   }
 
   /** The FAP profile's is_fap_doc_uploaded follows whether the signed FAP form has a file. */

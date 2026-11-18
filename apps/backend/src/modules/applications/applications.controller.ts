@@ -1,4 +1,4 @@
-import {Controller, Get, Patch, Post, Put, Res} from '@nestjs/common';
+import {Controller, Get, Post, Put, Res} from '@nestjs/common';
 import {z} from 'zod';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {requireAuthority} from '../auth/session';
@@ -100,46 +100,55 @@ export class ApplicationsController {
     return this.applications.generateFapNumber(req.params.id, req.actor);
   }
 
-  /** "Submit FAP stage": locks the first stage; the status is changed only by workflow actions. */
+  /** "Submit FAP stage" (kept for the FAP screen): submits the first stage of the application's workflow. */
   @Put('applications/:id/stage')
   async submitStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_workflow_submit', 'crm_verify_app_documents');
+    requireAuthority(req.actor, 'crm_workflow_submit');
     return this.applications.submitFirstStage(req.params.id, req.actor, req.body?.remarks);
   }
 
-  /** The list of what is still missing for the final approval, shown when the Approve dialog opens. */
+  /** Submits a stage: locks it and starts the approval of the stage (and of its group when all its stages are submitted). Also the resubmit after a reject. */
+  @Post('applications/:id/stages/:stageCode/submit')
+  async submitOneStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_workflow_submit');
+    const {remarks} = z.object({remarks: z.string().trim().max(10000).optional()}).parse(req.body || {});
+    return this.applications.submitStage(req.params.id, req.params.stageCode, req.actor, remarks);
+  }
+
+  /** Asks for the approval of one document (a document with an approval step of its own); also its resubmit after a reject. */
+  @Post('applications/:id/documents/:checklistId/submit-approval')
+  async submitDocumentApproval(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_workflow_submit');
+    return this.applications.submitDocumentApproval(req.params.id, req.params.checklistId, req.actor);
+  }
+
+  /** The list of what is still missing for the final approval, shown when the last Approve is about to be given. */
   @Get('applications/:id/approval-check')
   approvalCheck(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'crm_view_applications');
     return this.applications.approvalCheck(req.params.id);
   }
 
-  /** One action of crm_master_workflow; the service checks that it exists for the current status and the actor. */
-  @Post('applications/:id/transition')
-  async transition(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    const {action, comments} = z
-      .object({
-        action: z.string().trim().min(1).max(30),
-        comments: z.string().trim().max(10000).default(''),
-      })
-      .parse(req.body);
-    return this.applications.transition(req.params.id, action, req.actor, comments);
-  }
-
-  @Patch('applications/:id/checklist/:checklistId/verify')
-  async verifyChecklistItem(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_verify_app_documents');
+  /**
+   * Approve or Reject one approval step. There is no fixed authority here: the service lets through anyone who holds the authority of
+   * that step (administrators always). A reject needs remarks.
+   */
+  @Post('applications/:id/approvals/:stepId/decision')
+  async decide(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_applications');
     const body = z
       .object({
-        department: z.enum(['BS', 'CA', 'LEGAL']),
-        isVerified: z.boolean(),
-        registrationDate: z.string().date().nullable().optional(),
-        expiredDate: z.string().date().nullable().optional(),
-        dataSummary: z.string().max(10000).optional(),
-        notes: z.string().max(10000).optional(),
+        decision: z.enum(['APPROVED', 'REJECTED']),
+        remarks: z.string().trim().max(10000).optional(),
       })
-      .parse(req.body);
-    await this.applications.verifyDocument(req.params.id, req.params.checklistId, body, req.actor);
-    return this.applications.detailOr404(req.params.id, req.actor);
+      .parse(req.body || {});
+    return this.applications.decide(req.params.id, z.string().uuid().parse(req.params.stepId), req.actor, {...body, via: 'WEB'});
+  }
+
+  /** What waits for the signed-in person: pending approval steps of the authorities they hold. */
+  @Get('approvals/inbox')
+  inbox(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'crm_view_applications');
+    return this.applications.inbox(req.actor);
   }
 }

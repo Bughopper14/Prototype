@@ -31,7 +31,7 @@ export class FapController {
 
   @Post('applications/:id/fap-comparison/remarks')
   async saveRemarks(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
+    requireAuthority(req.actor, 'crm_edit_app_legal');
     const remarks = String(req.body.remarks || '');
     await this.comparisons.saveRemarks(req.params.id, remarks, req.actor);
     return {success: true, remarks, comparison: await this.comparisons.get(req.params.id, req.actor)};
@@ -39,7 +39,7 @@ export class FapController {
 
   @Post('applications/:id/fap-comparison/run')
   async runComparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
+    requireAuthority(req.actor, 'crm_edit_app_legal');
     await this.applications.detailOr404(req.params.id, req.actor);
     const comparison = await this.comparisons.run(req.params.id, req.actor);
     ensure(comparison, 'Belum ada dokumen FAP yang diunggah', 400);
@@ -49,7 +49,7 @@ export class FapController {
   /** The FAP document is accepted: the comparison closes and the FAP stage is submitted. */
   @Post('applications/:id/fap-changes/approve')
   async approveChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
+    requireAuthority(req.actor, 'crm_edit_app_legal');
     await this.applications.detailOr404(req.params.id, req.actor);
     await this.comparisons.approve(req.params.id, req.actor, req.body?.remarks);
     return {
@@ -61,7 +61,7 @@ export class FapController {
 
   @Post('applications/:id/fap-changes/dismiss')
   async dismissChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_legal', 'crm_verify_app_documents');
+    requireAuthority(req.actor, 'crm_edit_app_legal');
     await this.comparisons.dismiss(req.params.id, req.actor, req.body?.remarks);
     return {success: true};
   }

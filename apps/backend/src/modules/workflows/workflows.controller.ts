@@ -8,6 +8,7 @@ import {ApplicationsRepository} from '../applications/repositories/applications.
 import {groupsOf, stagesOf, WorkflowConfigRepository} from '../applications/workflow/workflow-config.repository';
 import {requireAuthority, type Actor} from '../auth/session';
 import {DocumentsRepository} from '../documents/documents.repository';
+import {UsersApproversLookup} from './users-approvers.lookup';
 import {WorkflowsService} from './workflows.service';
 
 /** Workflow setup is for administrators (Super Admin); the authorities below are checked for the rest. */
@@ -25,6 +26,7 @@ export class WorkflowsController {
     private readonly apps: ApplicationsRepository,
     private readonly documents: DocumentsRepository,
     private readonly workflowRepo: WorkflowConfigRepository,
+    private readonly approvers: UsersApproversLookup,
   ) {}
 
   /* ---------- Workflow setup (administrators) ---------- */
@@ -41,6 +43,13 @@ export class WorkflowsController {
     requireAuthority(req.actor, 'crm_view_applications');
     const config = await this.workflowRepo.load(await this.workflowRepo.activeCode());
     return {groups: groupsOf(config), stages: stagesOf(config)};
+  }
+
+  /** Departments and active users, for choosing who approves an application. Declared before workflows/:id. */
+  @Get('workflows/approvers')
+  approverChoices(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'access_crm_dashboard');
+    return this.approvers.list();
   }
 
   @Get('workflows/catalog')
@@ -119,7 +128,7 @@ export class WorkflowsController {
     return {
       ...(await this.documents.overrideOptions(app.id, app.workflow_code)),
       stages: wf.stages.map(s => ({code: s.code, name: s.name, departmentCode: s.departmentCode})),
-      departments: await this.documents.departments(),
+      departments: await this.workflows.departments(),
     };
   }
 
@@ -141,7 +150,7 @@ export class WorkflowsController {
       .parse(req.body || {});
     ensure(body.action !== 'REMOVE' || body.reason, 'Give the reason for removing the document', 422);
     ensure(body.action !== 'ADD' || body.departmentCode, 'Choose the department responsible for the document', 422);
-    ensure(body.action !== 'ADD' || (await this.documents.departmentExists(body.departmentCode!)), 'Department not found', 422);
+    ensure(body.action !== 'ADD' || (await this.workflows.departments()).some(d => d.code === body.departmentCode), 'Department not found', 422);
     const app = await this.apps.get(uuidParam(req.params.id));
     ensure(app, 'Application not found', 404);
     const wf = await this.workflowRepo.load(app.workflow_code);

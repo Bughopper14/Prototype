@@ -7,6 +7,8 @@ import {Problem, ensure} from '../../core/domain';
 import {isEnforceable} from '../applications/workflow/mandatory-check';
 import {WorkflowConfigRepository} from '../applications/workflow/workflow-config.repository';
 import {DocumentsRepository} from '../documents/documents.repository';
+import {UsersNamesLookup} from '../approvals/users-names.lookup';
+import {UsersApproversLookup} from './users-approvers.lookup';
 import {FORM_FIELDS, formField} from './form-fields';
 import {
   activationIssues,
@@ -22,11 +24,6 @@ type Conn = Pick<PoolConnection, 'query' | 'execute'>;
 type Actor = {name?: string; username?: string; portalUserId?: number};
 const uuid = () => crypto.randomUUID();
 
-/** Forms a stage can show. The fields of each form are in form-fields.ts. */
-const FORMS = [
-  {code: 'FAP-FORM', name: 'FAP form'},
-  {code: 'PRE-ANALYSIS-FORM', name: 'Pre-analysis form'},
-];
 
 /**
  * Workflow setup: create, edit, activate, deactivate and soft-delete workflows. A workflow defines the stages of an
@@ -42,6 +39,8 @@ export class WorkflowsService {
     private readonly db: CrmDatabase,
     private readonly config: WorkflowConfigRepository,
     private readonly documents: DocumentsRepository,
+    private readonly users: UsersNamesLookup,
+    private readonly approvers: UsersApproversLookup,
   ) {}
 
   /* ---------- reads ---------- */
@@ -112,10 +111,40 @@ export class WorkflowsService {
         // the FAP form is checked by the backend; the Pre-analysis form checks its own required fields on screen
         enforceable: f.form === 'PRE-ANALYSIS-FORM' || isEnforceable(f.section, f.key),
       })),
-      forms: FORMS,
+      forms: await this.forms(),
       documents: docs.map(d => ({code: d.code, name: d.name})),
-      departments: await this.documents.departments(),
+      departments: await this.departments(),
+      authorityOptions: await this.authorityOptions(),
     };
+  }
+
+  /** The forms a stage can show: the master form list (crm_master_forms). The fields of each form are in form-fields.ts. */
+  async forms(): Promise<{code: string; name: string}[]> {
+    const [rows] = await this.db.pool.query<any[]>(`SELECT code,name FROM ${CRM.masterForms} ORDER BY sort_order,code`);
+    return rows.map(r => ({code: r.code, name: r.name}));
+  }
+
+  /** The authorities that may be chosen for each place: crm_workflow_authority_options (a stage -> its form, a document -> its master document, a group -> generic). */
+  async authorityOptions() {
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT scope_type,form_code,document_code,department_code,authority_name,description FROM ${CRM.workflowAuthorityOptions} ORDER BY department_code,authority_name`,
+    );
+    return rows.map(r => ({scope: r.scope_type, formCode: r.form_code, documentCode: r.document_code, departmentCode: r.department_code, authorityName: r.authority_name, description: r.description ?? ''}));
+  }
+
+  /**
+   * The departments a stage can be given to: the departments of User Management (code and name), plus any code the CRM already uses on a
+   * stage or a document override, so nothing a workflow already has disappears from the list.
+   */
+  async departments(): Promise<{code: string; name: string}[]> {
+    const out = new Map<string, string>();
+    try {
+      for (const d of (await this.approvers.list()).departments) out.set(toCode(d.department_code), String(d.department_name || d.department_code));
+    } catch {
+      // the list still works without User Management
+    }
+    for (const d of await this.documents.departments()) if (!out.has(d.code)) out.set(d.code, d.name);
+    return [...out].map(([code, name]) => ({code, name})).sort((a, b) => a.code.localeCompare(b.code));
   }
 
   /** The definition of a workflow in the shape the editor works with (an item's key is its code). */
@@ -136,7 +165,31 @@ export class WorkflowsService {
        JOIN ${CRM.workflowStages} s ON s.id=sd.stage_id JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
        WHERE sd.workflow_code=? ORDER BY sd.sort_order`,
     );
+    const approvals = await q(
+      `SELECT a.*,g.code AS group_code,s.code AS stage_code,ds.code AS doc_stage_code,t.code AS document_code
+       FROM ${CRM.workflowApprovalSteps} a
+       LEFT JOIN ${CRM.workflowStageGroups} g ON g.id=a.stage_group_id
+       LEFT JOIN ${CRM.workflowStages} s ON s.id=a.stage_id
+       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=a.workflow_stage_document_id
+       LEFT JOIN ${CRM.workflowStages} ds ON ds.id=sd.stage_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
+       WHERE a.workflow_code=? ORDER BY a.scope_type,a.sort_order,a.code`,
+    );
+    const existing = await this.users.existing(approvals.map(a => a.authority_name));
     return {
+      approvalSteps: approvals.map(a => ({
+        key: a.code,
+        code: a.code,
+        name: a.name,
+        scope: a.scope_type,
+        groupKey: a.group_code ?? null,
+        stageKey: a.scope_type === 'DOCUMENT' ? a.doc_stage_code : (a.stage_code ?? null),
+        documentCode: a.document_code ?? null,
+        order: Number(a.sort_order),
+        authorityName: a.authority_name,
+        /** False when the authority was removed from User Management after the workflow was saved. */
+        authorityExists: existing.has(a.authority_name),
+      })),
       groups: groups.map(g => ({key: g.code, code: g.code, name: g.name, order: Number(g.sort_order)})),
       stages: stages.map(s => ({key: s.code, code: s.code, groupKey: s.group_code, name: s.name, departmentCode: s.department_code, order: Number(s.sort_order), formCode: s.form_code})),
       fields: fields.map(f => ({stageKey: f.stage_code, formCode: f.form_code, section: f.section_name, code: f.code, mandatory: !!f.is_mandatory})),
@@ -204,8 +257,21 @@ export class WorkflowsService {
     const def = parsed.data;
     const issues = referenceIssues(def, await this.documentCodes()).filter(i => i.level === 'error');
     for (const s of def.stages)
-      if (s.departmentCode && !(await this.documents.departmentExists(s.departmentCode)))
+      if (s.departmentCode && !(await this.departments()).some(d => d.code === s.departmentCode))
         issues.push({level: 'error', message: `Stage "${s.name}" has a department that does not exist (${s.departmentCode}).`});
+    // a stage may only show a form of the master form list
+    const formCodes = new Set((await this.forms()).map(f => f.code));
+    for (const st of def.stages) if (st.formCode && !formCodes.has(st.formCode)) issues.push({level: 'error', message: `Stage "${st.name}" shows a form that does not exist (${st.formCode}).`});
+    // an approval step may only use an authority that is listed for its place: the form of its stage, its master document, or any group
+    const options = await this.authorityOptions();
+    for (const a of def.approvalSteps) {
+      const form = def.stages.find(x => x.key === a.stageKey)?.formCode ?? null;
+      const fits = options.some(o => o.authorityName === a.authorityName && o.scope === a.scope && (a.scope === 'GROUP' || (a.scope === 'STAGE' ? !!form && o.formCode === form : o.documentCode === a.documentCode)));
+      if (!fits) issues.push({level: 'error', message: `Approval step "${a.name}" cannot use the authority "${a.authorityName}": it is not one of the authorities made for this ${a.scope === 'STAGE' ? 'stage (its form)' : a.scope.toLowerCase()}.${a.scope === 'STAGE' && !form ? ' Choose a form for the stage first.' : ''}`});
+    }
+    const known = await this.users.existing(def.approvalSteps.map(a => a.authorityName));
+    for (const a of def.approvalSteps)
+      if (!known.has(a.authorityName)) issues.push({level: 'error', message: `Approval step "${a.name}" uses the authority "${a.authorityName}", which does not exist in User Management.`});
     if (issues.length) throw new Problem(422, issues.map(i => i.message).join(' '), issues.map(i => ({field: 'workflow', detail: i.message})));
     let code = '';
     await this.db.transaction(async conn => {
@@ -225,7 +291,7 @@ export class WorkflowsService {
 
   private async clear(conn: Conn, workflowCode: string) {
     // stage fields first: they point at the field catalog rows that go with the stages
-    for (const table of [CRM.workflowStageDocuments, CRM.workflowStageFields, CRM.workflowStages, CRM.workflowStageGroups])
+    for (const table of [CRM.workflowApprovalSteps, CRM.workflowStageDocuments, CRM.workflowStageFields, CRM.workflowStages, CRM.workflowStageGroups])
       await conn.query(`DELETE FROM ${table} WHERE workflow_code=?`, [workflowCode]);
   }
 
@@ -243,25 +309,31 @@ export class WorkflowsService {
   private async write(conn: Conn, workflowCode: string, def: WorkflowDefinition, by: string | null) {
     await this.clear(conn, workflowCode);
     const groupId = new Map<string, string>();
+    const groupCodes = new Map<string, string>();
     const groupTaken = new Set<string>();
     for (const g of def.groups) {
       const gid = uuid();
       groupId.set(g.key, gid);
+      const gcode = this.uniqueCode(groupTaken, g.code, g.name, 50, 'GROUP');
+      groupCodes.set(g.key, gcode);
       await conn.execute(
         `INSERT INTO ${CRM.workflowStageGroups} (id,workflow_code,code,name,sort_order,created_by)
          VALUES (?,?,?,?,?,?)`,
-        [gid, workflowCode, this.uniqueCode(groupTaken, g.code, g.name, 50, 'GROUP'), g.name, g.order, by],
+        [gid, workflowCode, gcode, g.name, g.order, by],
       );
     }
     const stageId = new Map<string, string>();
+    const stageCodes = new Map<string, string>();
     const stageTaken = new Set<string>();
     for (const s of def.stages) {
       const sid = uuid();
       stageId.set(s.key, sid);
+      const scode = this.uniqueCode(stageTaken, s.code, s.name, 50, 'STAGE');
+      stageCodes.set(s.key, scode);
       await conn.execute(
-        `INSERT INTO ${CRM.workflowStages} (id,workflow_code,stage_group_id,code,name,department_code,sort_order,form_code,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?)`,
-        [sid, workflowCode, groupId.get(s.groupKey)!, this.uniqueCode(stageTaken, s.code, s.name, 50, 'STAGE'), s.name, s.departmentCode || null, s.order, s.formCode || null, by],
+        `INSERT INTO ${CRM.workflowStages} (id,workflow_code,stage_group_id,group_code,code,name,department_code,sort_order,form_code,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [sid, workflowCode, groupId.get(s.groupKey)!, groupCodes.get(s.groupKey)!, scode, s.name, s.departmentCode || null, s.order, s.formCode || null, by],
       );
     }
     for (const [i, f] of def.fields.entries()) {
@@ -273,17 +345,45 @@ export class WorkflowsService {
         [fieldId, stageId.get(f.stageKey)!, f.formCode, f.section, f.code, i + 1, by],
       );
       await conn.execute(
-        `INSERT INTO ${CRM.workflowStageFields} (id,workflow_code,stage_id,form_field_id,is_mandatory,created_by) VALUES (?,?,?,?,?,?)`,
-        [uuid(), workflowCode, stageId.get(f.stageKey)!, fieldId, +f.mandatory, by],
+        `INSERT INTO ${CRM.workflowStageFields} (id,workflow_code,stage_id,stage_code,form_field_id,is_mandatory,created_by) VALUES (?,?,?,?,?,?,?)`,
+        [uuid(), workflowCode, stageId.get(f.stageKey)!, stageCodes.get(f.stageKey)!, fieldId, +f.mandatory, by],
       );
     }
     const stageGroup = new Map(def.stages.map(s => [s.key, s.groupKey]));
+    const docRowId = new Map<string, string>();
     for (const [i, d] of def.documents.entries()) {
       const [rows] = await conn.query<any[]>(`SELECT id FROM ${CRM.masterDocumentTypes} WHERE code=?`, [d.documentCode]);
+      const wid = uuid();
+      docRowId.set(`${d.stageKey}|${d.documentCode}`, wid);
       await conn.execute(
-        `INSERT INTO ${CRM.workflowStageDocuments} (id,workflow_code,group_id,stage_id,document_type_id,is_default,is_mandatory,sort_order,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?)`,
-        [uuid(), workflowCode, groupId.get(stageGroup.get(d.stageKey)!)!, stageId.get(d.stageKey)!, rows[0].id, +d.isDefault, +d.isMandatory, i, by],
+        `INSERT INTO ${CRM.workflowStageDocuments} (id,workflow_code,group_id,group_code,stage_id,stage_code,document_type_id,document_code,is_default,is_mandatory,sort_order,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [wid, workflowCode, groupId.get(stageGroup.get(d.stageKey)!)!, groupCodes.get(stageGroup.get(d.stageKey)!)!, stageId.get(d.stageKey)!, stageCodes.get(d.stageKey)!, rows[0].id, d.documentCode, +d.isDefault, +d.isMandatory, i, by],
+      );
+    }
+    // The approval steps. The authority is the one the administrator chose; the codes of the group, stage and document are only used to place the step.
+    const stepTaken = new Set<string>();
+    for (const a of def.approvalSteps) {
+      await conn.execute(
+        `INSERT INTO ${CRM.workflowApprovalSteps}
+           (id,workflow_code,code,name,scope_type,stage_group_id,stage_id,workflow_stage_document_id,group_code,stage_code,document_code,sort_order,authority_name,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [
+          uuid(),
+          workflowCode,
+          this.uniqueCode(stepTaken, a.code, a.name, 50, 'STEP'),
+          a.name,
+          a.scope,
+          a.scope === 'GROUP' ? groupId.get(a.groupKey!)! : null,
+          a.scope === 'STAGE' ? stageId.get(a.stageKey!)! : null,
+          a.scope === 'DOCUMENT' ? docRowId.get(`${a.stageKey}|${a.documentCode}`)! : null,
+          a.scope === 'GROUP' ? groupCodes.get(a.groupKey!)! : null,
+          a.scope === 'GROUP' ? null : stageCodes.get(a.stageKey!)!,
+          a.scope === 'DOCUMENT' ? a.documentCode! : null,
+          a.order,
+          a.authorityName,
+          by,
+        ],
       );
     }
   }

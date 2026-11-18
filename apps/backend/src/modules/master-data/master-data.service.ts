@@ -56,8 +56,7 @@ const REVISION_TABLES = [
   CRM.masterLegalDesignations,
   CRM.masterStakeholderPositions,
   CRM.masterDocumentTypes,
-  CRM.masterWorkflowStages,
-  CRM.masterWorkflowStatuses,
+  CRM.workflowStages,
   CRM.masterPreanalysisInvestmentOptions,
 ];
 
