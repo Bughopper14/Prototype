@@ -11,6 +11,8 @@ export const fieldCode = (key: string) => toCode(key);
 
 const f = (section: string, key: string, label: string): FormFieldDef => ({form: 'FAP-FORM', section, code: fieldCode(key), key, label});
 
+const p = (section: string, key: string, label: string): FormFieldDef => ({form: 'PRE-ANALYSIS-FORM', section, code: fieldCode(key), key, label});
+
 export const FORM_FIELDS: FormFieldDef[] = [
   f('Bank Facilities & References', 'bankOrFinInstitution', 'Bank or Financial Institution'),
   f('Bank Facilities & References', 'creditFacility', 'Credit Facility Limit'),
@@ -181,6 +183,49 @@ export const FORM_FIELDS: FormFieldDef[] = [
   f('Equipment Units', 'specifications', 'Specifications'),
   f('Legal Deeds & Amendments', 'remarkCategoryIds', 'Remark Categories'),
   f('Purpose of Financing & Fixed Assets', 'financingPurposeDetail', 'Financing Purpose Detail'),
+  // Pre-analysis form
+  p('Cross-Check with Dealer / LMI', 'applicantPefindoCheck', 'Applicant Pefindo Check'),
+  p('Cross-Check with Dealer / LMI', 'dealerCheck', 'Dealer Payment & Performance Check'),
+  p('Cross-Check with Dealer / LMI', 'lmiArCheck', 'LMI Internal AR Check'),
+  p('Cross-Check with Dealer / LMI', 'topDealerToCustomer', 'TOP Dealer to Customer'),
+  p('Cross-Check with Dealer / LMI', 'topLmiToDealer', 'TOP LMI to Dealer'),
+  p('Customer & Group Background', 'businessDevBackground', 'Business Development Background'),
+  p('Customer & Group Background', 'companyBackground', 'Company Background'),
+  p('Customer & Group Background', 'existingFincoBackup', 'Existing Finco Backup'),
+  p('Customer & Group Background', 'uboInfo', 'Ultimate Beneficial Owner (UBO)'),
+  p('Equipment Possibility of Success', 'equipmentJobFit', 'Equipment-to-Job Fit'),
+  p('Equipment Possibility of Success', 'priorLiugongExperience', 'Prior LiuGong Experience'),
+  p('Equipment Possibility of Success', 'serviceAgreementFmc', 'Have Service Agreement / FMC'),
+  p('Equipment Possibility of Success', 'utilizationDuration', 'Utilization vs Project Duration'),
+  p('Expert Judgement Conclusion', 'approvedBy', 'Approved By (Approver)'),
+  p('Expert Judgement Conclusion', 'proposedBy', 'Proposed By (Pengusul)'),
+  p('Expert Judgement Conclusion', 'recommendation', 'Credit Recommendation'),
+  p('Expert Judgement Conclusion', 'reviewedBy', 'Reviewed By (Reviewer)'),
+  p('General Information', 'customerArea', 'Customer Area'),
+  p('General Information', 'customerPic', 'Customer PIC'),
+  p('General Information', 'customerProjectName', 'Customer / Project Name'),
+  p('General Information', 'dealerPic', 'Dealer PIC'),
+  p('General Information', 'equity', 'Equity'),
+  p('General Information', 'fapNumber', 'FAP Number'),
+  p('General Information', 'leadSource', 'Lead Source'),
+  p('General Information', 'lfiPic', 'LFI PIC'),
+  p('General Information', 'lmiPic', 'LMI PIC'),
+  p('General Information', 'paidUpCapital', 'Paid up Capital'),
+  p('General Information', 'preAnalysisDate', 'Pre-Analysis Date'),
+  p('General Information', 'preAnalysisNo', 'Pre-Analysis No'),
+  p('General Information', 'sourceOfRepayment', 'Source of Repayment'),
+  p('General Information', 'taxId', 'Tax ID (NPWP)'),
+  p('Project Information', 'customerRole', 'Role of Customer'),
+  p('Project Information', 'financingSchemeRequested', 'Financing Scheme Requested'),
+  p('Project Information', 'holdingGroup', 'Holding Group / Parent Company'),
+  p('Project Information', 'otherContractors', 'Other Contractor work in same bowheer'),
+  p('Project Information', 'projectLocation', 'Project Location (Lokasi Proyek)'),
+  p('Project Information', 'projectName', 'Project Name (Nama Objek Proyek)'),
+  p('Project Information', 'projectStatus', 'Project Status'),
+  p('Unit Delivery Status & QA Check', 'deliveryDate', 'Delivery Date'),
+  p('Unit Delivery Status & QA Check', 'deliveryStatus', 'Delivery Status'),
+  p('Unit Delivery Status & QA Check', 'qaConclusion', 'QA Conclusion'),
+  p('Unit Delivery Status & QA Check', 'qaIlinkComment', 'QA Comment — iLink/GPS Check'),
 ];
 
 const bySectionCode = new Map(FORM_FIELDS.map(x => [`${x.form}|${x.section}|${x.code}`, x]));

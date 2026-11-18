@@ -23,7 +23,10 @@ type Actor = {name?: string; username?: string; portalUserId?: number};
 const uuid = () => crypto.randomUUID();
 
 /** Forms a stage can show. The fields of each form are in form-fields.ts. */
-const FORMS = [{code: 'FAP-FORM', name: 'FAP form'}];
+const FORMS = [
+  {code: 'FAP-FORM', name: 'FAP form'},
+  {code: 'PRE-ANALYSIS-FORM', name: 'Pre-analysis form'},
+];
 
 /**
  * Workflow setup: create, edit, activate, deactivate and soft-delete workflows. A workflow defines the stages of an
@@ -106,7 +109,8 @@ export class WorkflowsService {
         section: f.section,
         code: f.code,
         label: f.label,
-        enforceable: isEnforceable(f.section, f.key),
+        // the FAP form is checked by the backend; the Pre-analysis form checks its own required fields on screen
+        enforceable: f.form === 'PRE-ANALYSIS-FORM' || isEnforceable(f.section, f.key),
       })),
       forms: FORMS,
       documents: docs.map(d => ({code: d.code, name: d.name})),
