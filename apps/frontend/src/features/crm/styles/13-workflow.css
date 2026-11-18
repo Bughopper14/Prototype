@@ -33,6 +33,7 @@
 .wf-top-text p b { color: #0b1b3f; }
 .wf-page label.wf-toggle { display: inline-flex !important; flex-direction: row !important; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; font-size: 13px; font-weight: 600; color: #334155; cursor: pointer; white-space: nowrap; }
 .wf-page label.wf-toggle:hover { background: #f8fafc; }
+.wf-page select.wf-status-filter { width: 180px; flex: none; font-weight: 600; }
 .wf-page label.wf-toggle input { width: 15px; height: 15px; min-height: 0; padding: 0; margin: 0; accent-color: #2563eb; }
 .wf-btn.accent { background: #ecfdf5; border-color: #6ee7b7; color: #047857; }
 .wf-btn.accent:hover:not(:disabled) { background: #d1fae5; border-color: #34d399; }

@@ -175,7 +175,7 @@ function HistoryDialog({workflow, onClose}: {workflow: WorkflowHeader; onClose: 
 }
 
 function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowHeader[]; onOpen: (id: string) => void; onNew: () => void; onChanged: () => void; notify: (m: string) => void}) {
-  const [showInactive, setShowInactive] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'ALL' | keyof typeof STATUS_LABEL>('ALL');
   const [confirmAsk, confirmDialog] = useConfirm();
   const [history, setHistory] = useState<WorkflowHeader | null>(null);
   async function run(fn: () => Promise<unknown>, done: string) {
@@ -203,7 +203,7 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
       icon: 'off',
     })) && run(() => workflowApi.deactivate(w.id), `${w.name} deactivated`);
 
-  const shown = rows.filter(w => showInactive || w.status !== 'INACTIVE');
+  const shown = rows.filter(w => statusFilter === 'ALL' || w.status === statusFilter);
 
   return (
     <>
@@ -217,10 +217,17 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
             Pick a workflow to <b>manage its steps, stages and documents</b>, or create a new one. New applications always start in the <b>active</b> workflow.
           </p>
         </div>
-        <label className="wf-toggle">
-          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-          Show deactivated workflows
-        </label>
+        <select
+          className="wf-status-filter"
+          aria-label="Filter workflows by status"
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as 'ALL' | keyof typeof STATUS_LABEL)}
+        >
+          <option value="ALL">All statuses</option>
+          <option value="ACTIVE">{STATUS_LABEL.ACTIVE}</option>
+          <option value="INACTIVE">{STATUS_LABEL.INACTIVE}</option>
+          <option value="DRAFT">{STATUS_LABEL.DRAFT}</option>
+        </select>
         <button className="wf-btn primary" onClick={onNew}>
           <Plus size={17} /> Create new workflow
         </button>
