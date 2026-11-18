@@ -3,6 +3,7 @@ import type {PoolConnection} from 'mysql2/promise';
 import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../../core/db/crm-database';
+import {uniqueCode} from '../../../core/domain/code';
 import {CRM} from '../../../core/db/crm-tables';
 
 /**
@@ -170,6 +171,10 @@ export class LocationRepository {
           return old[0].id;
         }
         if (!UUID.test(row.value)) throw fail('ID wilayah tidak valid.');
+        if (index > 0 || level.table === CRM.masterProvinces) {
+          const code = await uniqueCode(row.name, async x => (await c.query<any[]>(`SELECT 1 FROM ${level.table} WHERE code=?`, [x]))[0].length > 0);
+          columns.push('code'), values.push(code);
+        }
         await c.execute(
           `INSERT INTO ${level.table} (id,${columns.join(',')},created_by) VALUES (?,${columns.map(() => '?').join(',')},?)`,
           [row.value, ...values, by],

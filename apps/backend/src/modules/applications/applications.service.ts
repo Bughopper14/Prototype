@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
-import {businessToday, customerFields, picFields, profileFields} from '@liugong/shared';
+import {businessToday} from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
@@ -17,6 +17,9 @@ import {FinancialStatementsRepository} from './repositories/financial-statements
 import {ApplicationProfileRepository} from './repositories/application-profile.repository';
 import {ApplicationsRepository} from './repositories/applications.repository';
 import {MasterIdLookup} from './repositories/master-ids';
+import {formField} from '../workflows/form-fields';
+import {mandatoryGaps} from './workflow/mandatory-check';
+import {groupsOf, stagesOf, WorkflowConfigRepository} from './workflow/workflow-config.repository';
 import {availableActions, WorkflowRepository, type Workflow} from './workflow/workflow.repository';
 
 type Actor = SessionActor;
@@ -24,7 +27,8 @@ const by = (actor: Actor) => actor.username || null;
 
 /**
  * Applications on the crm_liugong design: header (crm_applications), FAP profile and primary contact, the customer
- * golden record, and the workflow driven by crm_master_workflow.
+ * golden record, and the approval flow driven by crm_master_workflow. Each application also points at a workflow
+ * (crm_applications.workflow_code) that says which stages it has and which fields and documents each stage requires.
  */
 @Injectable()
 export class ApplicationsService {
@@ -34,6 +38,7 @@ export class ApplicationsService {
     private readonly profiles: ApplicationProfileRepository,
     private readonly partners: BusinessPartnersRepository,
     private readonly workflow: WorkflowRepository,
+    private readonly config: WorkflowConfigRepository,
     private readonly ids: MasterIdLookup,
     private readonly fap: FapSectionsRepository,
     private readonly statements: FinancialStatementsRepository,
@@ -67,10 +72,11 @@ export class ApplicationsService {
     return {view: second || current, current};
   }
 
-  /** FAP number and company name, for activity and notification texts. */
+  /** Application id and company name, for activity and notification texts. */
   private async label(id: string) {
     const [app, saved] = await Promise.all([this.apps.get(id), this.profiles.getProfile(id)]);
-    return {fapNumber: app?.fap_registration_number ?? '', company: saved?.customer?.companyName ?? ''};
+    const company = saved?.customer?.companyName ?? '';
+    return {applicationId: id, company};
   }
 
   /* ---------- reads ---------- */
@@ -104,10 +110,11 @@ export class ApplicationsService {
       );
       return {
         id: r.id,
-        customer_id: r.customer_id,
+        business_partner_id: r.business_partner_id,
         customer_category: r.customer_category,
         application_date: r.application_date,
-        fap_number: r.fap_registration_number,
+        fap_number: r.fap_registration_number ?? null,
+        has_fap_number: !!r.fap_registration_number,
         company_name: r.company_name,
         company_type: categories.get(r.business_category_id) ?? null,
         nib: r.nib,
@@ -169,7 +176,7 @@ export class ApplicationsService {
     ]);
     const status = wf.statusById.get(app.current_status_id);
     const {view, current} = this.viewStage(wf, app.current_status_id, progress);
-    const customer: Record<string, any> = {...(saved?.customer || {}), id: app.customer_id};
+    const customer: Record<string, any> = {...(saved?.customer || {}), id: app.business_partner_id};
     const profile = {
       ...(saved?.profile || {}),
       branchCode: await this.ids.codeOf('branch', app.branch_id),
@@ -187,12 +194,12 @@ export class ApplicationsService {
       ...profile,
       id: app.id,
       companyName: customer.companyName ?? null,
-      customerId: app.customer_id,
+      customerId: app.business_partner_id,
       customer,
       establishmentActNo: customer.establishmentActNo ?? null,
       establishmentDate: customer.establishmentDate ?? null,
       nibDate: customer.nibDate ?? null,
-      fapNumber: app.fap_registration_number,
+      fapNumber: app.fap_registration_number ?? null,
       applicationDate: app.application_date,
       createdAt: app.created_at,
       updatedAt: app.updated_at,
@@ -200,6 +207,8 @@ export class ApplicationsService {
       statusName: status?.name ?? null,
       stage: view?.code ?? null,
       stageName: view?.name ?? null,
+      // The workflow (stages, required fields, documents) this application runs in; fixed when it was created.
+      workflow: await this.config.load(app.workflow_code).then(c => ({id: c.id, name: c.name, versionNo: c.versionNo, isActive: c.isActive, groups: groupsOf(c), stages: stagesOf(c)})),
       workflowStage: current ? {code: current.code, name: current.name} : null,
       // Where the current status sits in the workflow (crm_master_workflow_stages), for edit locks.
       workflowFlags: {
@@ -257,50 +266,36 @@ export class ApplicationsService {
     ensure(String(customer.companyName || '').trim(), 'Company name is required');
     const profile = {...(existing?.profile || {}), ...body};
     const category: 'NEW' | 'EXISTING' =
-      (body.customerCategory || body.customerStatus || (existing?.relationship ?? (customerId ? 'EXISTING' : 'NEW'))) ===
+      (body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW')) ===
       'EXISTING'
         ? 'EXISTING'
         : 'NEW';
     const wf = await this.workflow.load();
     const {stage, status} = this.initialStatus(wf);
+    const workflowCode = await this.config.activeCode();
     const id = crypto.randomUUID();
     const partnerId = customerId || crypto.randomUUID();
     const today = businessToday();
-    const lockName = `crm_fap_number_${today.slice(0, 4)}`;
-    let fapNumber = '';
-
-    // The FAP number is the next free one of the year: a named lock, on its own connection, is held until the new
-    // application is committed, so two users creating at the same moment never get the same number.
-    const lockConn = await this.db.pool.getConnection();
-    try {
-      const [lock] = await lockConn.query<any[]>('SELECT GET_LOCK(?, 10) AS ok', [lockName]);
-      ensure(Number(lock[0]?.ok) === 1, 'Another application is being created. Try again.', 409);
-      try {
-        await this.db.transaction(async conn => {
-          await this.partners.saveFromApplication(conn, partnerId, customer, profile, category, by(actor));
-          await this.apps.insert(
-            conn,
-            {
-              id,
-              fapNumber: (fapNumber = await this.apps.nextFapNumber(conn, today)),
-              applicationDate: today,
-              customerId: partnerId,
-              customerCategory: category,
-              branchId: await this.ids.idOf('branch', profile.branchCode, conn),
-              statusId: status.id,
-            },
-            actor,
-          );
-          await this.profiles.saveProfile(conn, id, customer, profile, by(actor));
-          await this.apps.saveStageProgress(conn, id, stage.id, {statusId: status.id}, actor);
-          await this.documents.seedChecklist(conn, id, by(actor));
-        });
-      } finally {
-        await lockConn.query('SELECT RELEASE_LOCK(?)', [lockName]);
-      }
-    } finally {
-      lockConn.release();
-    }
+    // No FAP number is made here: Pre-analysis can run first, and the number is generated on demand (generateFapNumber).
+    await this.db.transaction(async conn => {
+      await this.partners.saveFromApplication(conn, partnerId, customer, profile, by(actor));
+      await this.apps.insert(
+        conn,
+        {
+          id,
+          applicationDate: today,
+          customerId: partnerId,
+          customerCategory: category,
+          branchId: await this.ids.idOf('branch', profile.branchCode, conn),
+          statusId: status.id,
+          workflowCode,
+        },
+        actor,
+      );
+      await this.profiles.saveProfile(conn, id, customer, profile, by(actor));
+      await this.apps.saveStageProgress(conn, id, stage.id, {statusId: status.id}, actor);
+      await this.documents.seedChecklist(conn, id, workflowCode, by(actor));
+    });
     const company = String(customer.companyName).trim();
     const categoryName = category === 'EXISTING' ? 'Existing Customer' : 'New Customer';
     await recordActivity(
@@ -311,10 +306,9 @@ export class ApplicationsService {
         tabIndex: 0,
         actionType: 'CREATE',
         title: `Created new application for ${company}`,
-        details: `Initiated ${stage.name} (${fapNumber}), Category: ${categoryName}. Ready for data entry.`,
+        details: `Initiated ${stage.name}, Category: ${categoryName}. The FAP number is not generated yet. Ready for data entry.`,
         newStatus: status.code,
         changes: [
-          {label: 'Application Number', newValue: fapNumber},
           {label: 'Customer Category', newValue: categoryName},
           {label: 'Company Name', newValue: company},
           {label: 'Initial Stage', newValue: stage.name},
@@ -355,7 +349,7 @@ export class ApplicationsService {
       ensure(app, 'Application not found', 404);
       this.assertFresh(app, expectedUpdatedAt, actor);
       let changed = await this.profiles.saveProfile(conn, id, customer, profile, by(actor));
-      changed = (await this.partners.saveFromApplication(conn, app.customer_id, customer, profile, category, by(actor))) || changed;
+      changed = (await this.partners.saveFromApplication(conn, app.business_partner_id, customer, profile, by(actor))) || changed;
       if (body.pic) changed = (await this.profiles.saveContact(conn, id, body.pic, by(actor))) || changed;
       const branchId = await this.ids.idOf('branch', profile.branchCode, conn);
       if (branchId !== app.branch_id || category !== app.customer_category) {
@@ -459,6 +453,49 @@ export class ApplicationsService {
   }
 
   /**
+   * Generates the FAP number of an application that has none (the next free one of the year). A named lock, on its own
+   * connection, is held until the number is stored, so two users never get the same number.
+   */
+  async generateFapNumber(id: string, actor: Actor) {
+    const wf = await this.workflow.load();
+    const app = await this.apps.get(id);
+    ensure(app, 'Application not found', 404);
+    ensure(!app.fap_registration_number, 'This application already has a FAP number.', 409);
+    const today = businessToday();
+    const lockName = `crm_fap_number_${today.slice(0, 4)}`;
+    let fapNumber = '';
+    const lockConn = await this.db.pool.getConnection();
+    try {
+      const [lock] = await lockConn.query<any[]>('SELECT GET_LOCK(?, 10) AS ok', [lockName]);
+      ensure(Number(lock[0]?.ok) === 1, 'Another FAP number is being generated. Try again.', 409);
+      try {
+        await this.db.transaction(async conn => {
+          fapNumber = await this.apps.nextFapNumber(conn, today);
+          ensure(await this.apps.setFapNumber(conn, id, fapNumber, actor), 'This application already has a FAP number.', 409);
+        });
+      } finally {
+        await lockConn.query('SELECT RELEASE_LOCK(?)', [lockName]);
+      }
+    } finally {
+      lockConn.release();
+    }
+    await recordActivity(
+      {
+        applicationId: id,
+        stageCode: wf.stages[0]?.code,
+        section: 'FAP',
+        tabIndex: 0,
+        actionType: 'UPDATE',
+        title: `FAP number generated: ${fapNumber}`,
+        details: 'The FAP number was generated on request.',
+        changes: [{label: 'FAP Number', newValue: fapNumber}],
+      },
+      actor,
+    );
+    return this.detailOr404(id, actor);
+  }
+
+  /**
    * "Submit FAP stage": locks the first stage and the FAP form (the signed FAP document is not required). The status
    * does not change; the next stage can be worked on in parallel and is submitted with its own workflow action.
    */
@@ -468,6 +505,7 @@ export class ApplicationsService {
     await this.db.transaction(async conn => {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
+      ensure(app.fap_registration_number, 'Generate the FAP number before submitting the FAP stage.', 422);
       await this.apps.saveStageProgress(
         conn,
         id,
@@ -475,7 +513,7 @@ export class ApplicationsService {
         {statusId: app.current_status_id, isLocked: true, submitted: true},
         actor,
       );
-      await this.apps.update(conn, id, {is_fap_form_locked: 1}, by(actor));
+      await this.apps.updateFap(conn, id, {is_fap_form_locked: 1}, by(actor));
       // The submitted FAP is frozen in the same transaction: a submitted stage always has its snapshot.
       await this.freezes.freeze(conn, id, first.code, actor, remarks);
     });
@@ -556,7 +594,7 @@ export class ApplicationsService {
         {statusId: to.id, isLocked: returningToEarlierStage ? false : undefined, completed: to.isTerminal},
         actor,
       );
-      if (returningToEarlierStage) await this.apps.update(conn, id, {is_fap_form_locked: 0}, by(actor));
+      if (returningToEarlierStage) await this.apps.updateFap(conn, id, {is_fap_form_locked: 0}, by(actor));
       await this.apps.addTransition(
         conn,
         {applicationId: id, workflowId: rule.id, fromStatusId: app.current_status_id, toStatusId: to.id, action, comments},
@@ -576,7 +614,7 @@ export class ApplicationsService {
           actor,
         );
     });
-    const {fapNumber, company} = await this.label(id);
+    const {applicationId, company} = await this.label(id);
     await recordActivity(
       {
         applicationId: id,
@@ -598,7 +636,7 @@ export class ApplicationsService {
         applicationId: id,
         type: 'WORKFLOW_ACTION',
         title: `Aplikasi menunggu tindakan: ${to.name}`,
-        message: `${fapNumber} · ${company} dipindahkan ke ${to.name} oleh ${actor.name}.${comments ? ' ' + comments : ''}`,
+        message: `${applicationId} · ${company} dipindahkan ke ${to.name} oleh ${actor.name}.${comments ? ' ' + comments : ''}`,
       },
     );
     return this.detailOr404(id, actor);
@@ -639,39 +677,39 @@ export class ApplicationsService {
   }
 
   /**
-   * What stops the final approval, for every stage: unfilled mandatory rules (crm_master_field_mandatory_rules), mandatory
-   * documents without a file (crm_master_document_types), the signed FAP form, a missing deed and deeds that do not hold
-   * exactly 100% of the shares. `target` tells the screen which part to open.
+   * What stops the final approval, for every stage: the workflow's required fields and minimum item counts
+   * (crm_workflow_stage_fields), mandatory documents of the checklist without a file, the signed FAP form,
+   * and deeds whose shares do not add up to exactly 100%. `target` tells the screen which part to open.
    */
   private async approvalGaps(id: string, wf: Workflow, app: any) {
     const detail: any = await this.detailOr404(id);
-    const gaps: {target: string; label: string; detail?: string}[] = [];
+    const cfg = await this.config.load(app.workflow_code);
     const [rules] = await this.apps.pool.query<any[]>(
-      `SELECT s.code AS stage_code,r.section_name,r.field_key,r.field_label FROM ${CRM.masterFieldMandatoryRules} r
-       JOIN ${CRM.masterWorkflowStages} s ON s.id=r.stage_id
-       WHERE r.is_mandatory=1 AND r.is_active=1`,
+      `SELECT st.code AS stage_code,ff.form_code,ff.section_name,ff.code
+       FROM ${CRM.workflowStageFields} sf
+       JOIN ${CRM.masterFormFields} ff ON ff.id=sf.form_field_id
+       JOIN ${CRM.workflowStages} st ON st.id=sf.stage_id
+       WHERE sf.workflow_code=? AND sf.is_mandatory=1`,
+      [cfg.code],
     );
-    // Only rules on the application's own fields (customer, profile, contact) are checked here; rows of other sections
-    // (banks, statements, proposal, deeds, stakeholders) are checked by their modules.
-    const ownKeys = new Set([...customerFields, ...profileFields, ...picFields].map(f => f.key).concat('customerCategory'));
-    // The contact section is the one whose rules include the contact name; its fields are read from the contact.
-    const contactSection = rules.find(r => r.field_key === 'picName')?.section_name;
-    const sources = (section: string) =>
-      section === contactSection ? [detail.pic || {}] : [detail.customer || {}, detail];
-    for (const r of rules.filter(x => ownKeys.has(x.field_key))) {
-      const values = sources(r.section_name).map((src: any) => src[r.field_key]);
-      if (!values.some((v: any) => v !== undefined && v !== null && String(v).trim() !== ''))
-        gaps.push({target: 'FAP_FORM', label: r.field_label, detail: r.section_name});
-    }
-    const stageName = (code: string) => wf.stages.find(s => s.code === code)?.name;
-    const missingDocs = (detail.documentChecks || []).filter((d: any) => d.isMandatory && !(d.files || []).length);
+    const stageName = (code: string) => cfg.stageByCode.get(code)?.name;
+    const gaps: {target: string; label: string; detail?: string}[] = mandatoryGaps(
+      detail,
+      rules.flatMap(r => {
+        // the key the form data uses and the label come from the form definition, the database holds only the code
+        const def = formField(r.form_code, r.section_name, r.code);
+        return def ? [{stageCode: r.stage_code, section: r.section_name, fieldKey: def.key, fieldLabel: def.label}] : [];
+      }),
+      stageName,
+    );
+    const checks: any[] = detail.documentChecks || [];
+    const missingDocs = checks.filter((d: any) => d.isMandatory && !(d.files || []).length);
+    if (!app.fap_registration_number) gaps.push({target: 'FAP_FORM', label: 'Nomor FAP belum dibuat', detail: cfg.stages[0]?.name ?? stageName(wf.stages[0]?.code)});
     for (const d of missingDocs)
       gaps.push({target: 'DOCUMENTS', label: `Dokumen ${d.documentName}`, detail: stageName(d.stageCode)});
-    if (!app.is_fap_doc_uploaded && !missingDocs.some((d: any) => d.documentCode === 'FAP'))
-      gaps.push({target: 'DOCUMENTS', label: 'Dokumen FAP bertanda tangan', detail: stageName(wf.stages[0]?.code)});
-    const deeds = detail.legal?.deeds || [];
-    if (!deeds.length) gaps.push({target: 'LEGAL', label: 'Akta pendirian (minimal 1 akta)'});
-    for (const d of deeds) {
+    if (checks.some(d => d.documentCode === 'FAP') && !app.is_fap_doc_uploaded && !missingDocs.some((d: any) => d.documentCode === 'FAP'))
+      gaps.push({target: 'DOCUMENTS', label: 'Dokumen FAP bertanda tangan', detail: cfg.stages[0]?.name ?? stageName(wf.stages[0]?.code)});
+    for (const d of detail.legal?.deeds || []) {
       const total = (d.stakeholders || []).reduce((sum: number, x: any) => sum + Number(x.sharePercentage || 0), 0);
       if (Math.abs(total - 100) > 0.01)
         gaps.push({

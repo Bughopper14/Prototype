@@ -19,6 +19,7 @@ import {PortalModule} from './modules/portal/portal.module';
 import {PreAnalysisModule} from './modules/pre-analysis/pre-analysis.module';
 import {SystemModule} from './modules/system/system.module';
 import {UsersModule} from './modules/users/users.module';
+import {WorkflowsModule} from './modules/workflows/workflows.module';
 
 /**
  * One Nest module per domain (see src/modules). Cross-cutting HTTP behaviour lives in src/core/http and applies to
@@ -41,6 +42,7 @@ import {UsersModule} from './modules/users/users.module';
     OcrModule,
     FapModule,
     MasterDataModule,
+    WorkflowsModule,
     ActivityModule,
   ],
   providers: [

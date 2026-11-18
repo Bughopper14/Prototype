@@ -22,7 +22,7 @@ export function crmTable(base: string): string {
   return `\`${CRM_PREFIX}${base}\``;
 }
 
-/** Every CRM table of the crm_liugong design (apps/backend/db/plan-schema.sql), keyed without the prefix. */
+/** Every CRM table of the crm_liugong design (apps/backend/db/current-schema.sql), keyed without the prefix. */
 export const CRM = {
   masterBranches: crmTable('master_branches'),
   masterBusinessCategories: crmTable('master_business_categories'),
@@ -59,10 +59,17 @@ export const CRM = {
   masterWorkflow: crmTable('master_workflow'),
   masterRejectReasonCodes: crmTable('master_reject_reason_codes'),
   masterDocumentTypes: crmTable('master_document_types'),
-  masterFieldMandatoryRules: crmTable('master_field_mandatory_rules'),
+  masterFormFields: crmTable('master_form_fields'),
   masterPreanalysisInvestmentOptions: crmTable('master_preanalysis_investment_options'),
   masterBusinessPartners: crmTable('master_business_partners'),
+  workflows: crmTable('workflows'),
+  workflowStageGroups: crmTable('workflow_stage_groups'),
+  workflowStages: crmTable('workflow_stages'),
+  workflowStageFields: crmTable('workflow_stage_fields'),
+  workflowStageDocuments: crmTable('workflow_stage_documents'),
+  workflowActivationLogs: crmTable('workflow_activation_logs'),
   applications: crmTable('applications'),
+  applicationDocumentOverrides: crmTable('application_document_overrides'),
   applicationStageProgress: crmTable('application_stage_progress'),
   applicationStageTransitions: crmTable('application_stage_transitions'),
   applicationSignoffs: crmTable('application_signoffs'),
@@ -73,7 +80,6 @@ export const CRM = {
   fapProjectContracts: crmTable('fap_project_contracts'),
   fapBankFacilities: crmTable('fap_bank_facilities'),
   fapFinancingProposals: crmTable('fap_financing_proposals'),
-  fapProposalTerms: crmTable('fap_proposal_terms'),
   fapEquipmentUnits: crmTable('fap_equipment_units'),
   fapDocRequirements: crmTable('fap_doc_requirements'),
   fapFinancialStatements: crmTable('fap_financial_statements'),
@@ -97,7 +103,6 @@ export const CRM = {
   frozenFapProjectContracts: crmTable('frozen_fap_project_contracts'),
   frozenFapBankFacilities: crmTable('frozen_fap_bank_facilities'),
   frozenFapFinancingProposals: crmTable('frozen_fap_financing_proposals'),
-  frozenFapProposalTerms: crmTable('frozen_fap_proposal_terms'),
   frozenFapEquipmentUnits: crmTable('frozen_fap_equipment_units'),
   frozenFapDocRequirements: crmTable('frozen_fap_doc_requirements'),
   frozenFapFinancialStatements: crmTable('frozen_fap_financial_statements'),

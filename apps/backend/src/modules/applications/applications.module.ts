@@ -12,6 +12,7 @@ import {ApplicationsRepository} from './repositories/applications.repository';
 import {FapSectionsRepository} from './repositories/fap-sections.repository';
 import {FinancialStatementsRepository} from './repositories/financial-statements.repository';
 import {UsersAuthorityLookup} from './workflow/users-authority.lookup';
+import {WorkflowConfigRepository} from './workflow/workflow-config.repository';
 import {WorkflowRepository} from './workflow/workflow.repository';
 
 /** Applications on crm_liugong: header, FAP profile, primary contact and workflow. */
@@ -25,12 +26,13 @@ import {WorkflowRepository} from './workflow/workflow.repository';
     FapSectionsRepository,
     FinancialStatementsRepository,
     WorkflowRepository,
+    WorkflowConfigRepository,
     UsersAuthorityLookup,
     LegalRepository,
     DocumentsRepository,
     FapOcrRepository,
     FapFreezeRepository,
   ],
-  exports: [ApplicationsService, WorkflowRepository, LegalRepository, DocumentsRepository, FapOcrRepository, FapFreezeRepository, ActivityModule],
+  exports: [ApplicationsService, WorkflowRepository, WorkflowConfigRepository, ApplicationsRepository, LegalRepository, DocumentsRepository, FapOcrRepository, FapFreezeRepository, ActivityModule],
 })
 export class ApplicationsModule {}

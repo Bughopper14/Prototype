@@ -61,7 +61,7 @@ function differs(key: string, system: string, document: string, isNumber: boolea
     const purpose = (s: string) => {
       const u = s.toUpperCase();
       if (u.includes('INVEST')) return 'INVESTMENT';
-      if (u.includes('MODAL') || u.includes('WORKING')) return 'WORKING_CAPITAL';
+      if (u.includes('MODAL') || u.includes('WORKING')) return 'WORKING-CAPITAL';
       return u;
     };
     if (same(purpose)) return false;

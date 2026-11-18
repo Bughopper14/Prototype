@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
+import {FORM_FIELDS} from '../workflows/form-fields';
 import type {FapDiff} from './fap-diff';
 
 /** Statuses of crm_fap_document_ocr_comparisons that end the review: differences are no longer recomputed. */
@@ -146,15 +147,10 @@ export class FapOcrRepository {
     return new Map(rows.map(r => [r.id, r.name]));
   }
 
-  /** The master rules (label and section of each FAP field) of the first workflow stage, by field key (crm_master_*). */
+  /** Label and section of each FAP form field, by field key (the form definition, workflows/form-fields.ts). */
   async fieldRules(): Promise<Map<string, {label: string; section: string}[]>> {
-    const [rows] = await this.db.pool.query<any[]>(
-      `SELECT r.field_key,r.field_label,r.section_name FROM ${CRM.masterFieldMandatoryRules} r
-       JOIN ${CRM.masterWorkflowStages} s ON s.id=r.stage_id
-       WHERE s.sequence_order=(SELECT MIN(sequence_order) FROM ${CRM.masterWorkflowStages}) AND r.is_active=1`,
-    );
     const byKey = new Map<string, {label: string; section: string}[]>();
-    for (const r of rows) byKey.set(r.field_key, [...(byKey.get(r.field_key) || []), {label: r.field_label, section: r.section_name}]);
+    for (const f of FORM_FIELDS.filter(x => x.form === 'FAP-FORM')) byKey.set(f.key, [...(byKey.get(f.key) || []), {label: f.label, section: f.section}]);
     return byKey;
   }
 }

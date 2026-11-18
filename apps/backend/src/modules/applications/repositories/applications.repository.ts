@@ -28,38 +28,47 @@ export class ApplicationsRepository {
     const year = today.slice(0, 4);
     const [rows] = await conn.execute<any[]>(
       `SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(fap_registration_number,'/',1) AS UNSIGNED)),0) AS n
-       FROM ${CRM.applications} WHERE fap_registration_number LIKE ?`,
+       FROM ${CRM.fapApplicationProfiles} WHERE fap_registration_number LIKE ?`,
       [`%/AF/%/${year}`],
     );
     return `${String(Number(rows[0].n) + 1).padStart(3, '0')}/AF/${ROMAN_MONTHS[Number(today.slice(5, 7)) - 1]}/${year}`;
+  }
+
+  /** Sets the FAP number (stored on the FAP profile of the application); returns false when it already has one. */
+  async setFapNumber(conn: Conn, id: string, fapNumber: string, actor: Actor) {
+    const [res] = await conn.execute<any>(
+      `UPDATE ${CRM.fapApplicationProfiles} SET fap_registration_number=?,updated_by=? WHERE application_id=? AND fap_registration_number IS NULL`,
+      [fapNumber, actorName(actor), id],
+    );
+    return Number(res.affectedRows) === 1;
   }
 
   async insert(
     conn: Conn,
     app: {
       id: string;
-      fapNumber: string;
       applicationDate: string;
       customerId: string;
       customerCategory: 'NEW' | 'EXISTING';
       branchId: string | null;
       statusId: string;
+      workflowCode: string;
     },
     actor: Actor,
   ) {
     await conn.execute(
       `INSERT INTO ${CRM.applications}
-         (id,fap_registration_number,application_date,customer_id,customer_category,branch_id,current_status_id,
-          maker_user_id,maker_name,created_by)
+         (id,application_date,business_partner_id,customer_category,branch_id,current_status_id,
+          workflow_code,maker_user_id,maker_name,created_by)
        VALUES (?,?,?,?,?,?,?,?,?,?)`,
       [
         app.id,
-        app.fapNumber,
         app.applicationDate,
         app.customerId,
         app.customerCategory,
         app.branchId,
         app.statusId,
+        app.workflowCode,
         actorId(actor),
         actorName(actor),
         actor.username || null,
@@ -69,7 +78,9 @@ export class ApplicationsRepository {
 
   async get(id: string, conn: Conn = this.db.pool, forUpdate = false) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT * FROM ${CRM.applications} WHERE id=? AND deleted_at IS NULL${forUpdate ? ' FOR UPDATE' : ''}`,
+      `SELECT a.*,p.fap_registration_number,p.is_fap_doc_uploaded,p.is_fap_form_locked,p.latest_freeze_version FROM ${CRM.applications} a
+       LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
+       WHERE a.id=? AND a.deleted_at IS NULL${forUpdate ? ' FOR UPDATE' : ''}`,
       [id],
     );
     return rows[0] || null;
@@ -77,7 +88,7 @@ export class ApplicationsRepository {
 
   async list() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT a.*,p.company_name,p.business_category_id,p.nib,p.nib_date,p.npwp,p.establishment_act_no,
+      `SELECT a.*,p.fap_registration_number,p.is_fap_doc_uploaded,p.is_fap_form_locked,p.latest_freeze_version,p.company_name,p.business_category_id,p.nib,p.nib_date,p.npwp,p.establishment_act_no,
               p.establishment_date,p.company_address,p.city_id,p.province_id,p.postal_code_id,p.experience_years,
               p.experience_months,p.phone_fax,p.company_email,p.website,p.main_business,p.premise_status_id,
               p.repayment_source,p.latest_deed_no,p.latest_deed_date,p.industry_segment_id,p.business_role_id,
@@ -94,6 +105,16 @@ export class ApplicationsRepository {
     await conn.execute(
       `UPDATE ${CRM.applications} SET ${keys.map(k => `\`${k}\`=?`).join(',')},updated_by=? WHERE id=?`,
       [...Object.values(values), by, id],
+    );
+  }
+
+  /** Updates FAP-only values (is_fap_form_locked, ...) that live on the FAP profile of the application. */
+  async updateFap(conn: Conn, applicationId: string, values: Record<string, any>, by: string | null) {
+    const keys = Object.keys(values);
+    if (!keys.length) return;
+    await conn.execute(
+      `UPDATE ${CRM.fapApplicationProfiles} SET ${keys.map(k => `\`${k}\`=?`).join(',')},updated_by=? WHERE application_id=?`,
+      [...Object.values(values), by, applicationId],
     );
   }
 
