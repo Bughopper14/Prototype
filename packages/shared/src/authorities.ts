@@ -33,14 +33,8 @@ export const AUTHORITY_CATALOG: AuthorityDef[] = [
   {name: 'crm_edit_app_financial', description: 'Mengedit dan menyimpan spreading laporan keuangan 3 tahun (Balance check)'},
   {name: 'crm_upload_app_documents', description: 'Mengunggah (upload) file dokumen pendukung aplikasi'},
   {name: 'crm_delete_app_documents', description: 'Menghapus (delete) file dokumen yang telah diunggah'},
-  {name: 'crm_verify_app_documents', description: 'Melakukan verifikasi (Lolos/Tolak) dokumen checklist per departemen'},
   {name: 'crm_workflow_submit', description: 'Mengajukan draf aplikasi pembiayaan ke tahap verifikasi berkas (Submit)'},
-  {name: 'crm_workflow_verify_documents', description: 'Menyelesaikan pemeriksaan kelengkapan berkas aplikasi (Complete Verification)'},
   {name: 'crm_workflow_start_review', description: 'Memulai peninjauan analisis kredit dan legal (Start Review)'},
-  {name: 'crm_workflow_recommend_credit', description: 'Memberikan rekomendasi persetujuan dari sisi analisis kredit (Recommend Credit)'},
-  {name: 'crm_workflow_recommend_legal', description: 'Memberikan rekomendasi persetujuan dari sisi legal (Recommend Legal)'},
-  {name: 'crm_workflow_final_decision', description: 'Memberikan keputusan akhir aplikasi (Approve / Reject)'},
-  {name: 'crm_workflow_return', description: 'Mengembalikan aplikasi ke tahap sebelumnya untuk perbaikan (Return)'},
   {name: 'crm_deed_approve', description: 'Memeriksa, menyetujui, atau menolak akta yang diajukan (Deed Review)'},
 ];
 

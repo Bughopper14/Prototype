@@ -2,6 +2,7 @@
 export * from './address';
 export * from './age';
 export * from './authorities';
+export * from './codes';
 export * from './deed-workflow';
 export * from './experience';
 export * from './fap-template';
