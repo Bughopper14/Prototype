@@ -13,13 +13,14 @@
 -- Part 4  users_* tables and rows from the users developer's branch (axel-mapping-new-db), including users_departments and users_users.dept_id; no crm_ table is touched there. Departments stay plain codes on the CRM side
 -- Part 5  Business partners: partner_code to code, customer_relationship dropped, crm_applications.customer_id to business_partner_id
 -- Part 6  Codes: empty codes filled (provinces, cities, districts, villages, business partners); hyphens instead of underscores in the workflow layer
+-- Part 13 Pre-analysis mandatory rules move into crm_master_form_fields / crm_workflow_stage_fields (form PRE-ANALYSIS-FORM); crm_master_field_mandatory_rules is dropped
 -- Part 12 crm_fap_proposal_terms and crm_frozen_fap_proposal_terms dropped (terms come from the financing proposal)
 -- Part 11 crm_workflows.deleted_at/deleted_by and crm_application_stage_progress.started_at dropped (unused)
 -- Part 10 is_active dropped from the workflow groups, stages, fields, documents and form fields (the workflow status decides)
 -- Part 9  crm_master_document_types: department_code, is_mandatory and is_active dropped (they follow the workflow)
 -- Part 8  crm_application_document_checklists.is_mandatory dropped (mandatory follows the workflow)
 -- Part 7  Master codes with hyphens instead of underscores (frozen and activity copies follow); frozen source_customer_id becomes source_business_partner_id
--- crm_master_field_mandatory_rules is KEPT (Pre-analysis rules live only there).
+-- crm_master_field_mandatory_rules held the Pre-analysis rules until Part 13 moved them into the form field catalog and the workflow, and dropped it.
 -- Pre-analysis form fields are intentionally NOT in the field catalog yet.
 --
 -- Conventions of the workflow tables
@@ -240,8 +241,8 @@ SELECT s.`id`, @wf_code, IF(s.`code` = 'ICLF', @g_ca, @g_mkt), s.`code`, s.`name
 FROM `crm_master_workflow_stages` s;
 
 -- Field catalog of the FAP stage: the fields of the legacy mandatory rules (includes Legal Deeds & Amendments and
--- Shareholders & Management). `code` is the legacy field_key, trimmed and upper-case. Pre-analysis rules are not copied (they stay
--- in crm_master_field_mandatory_rules).
+-- Shareholders & Management). `code` is the legacy field_key, trimmed and upper-case. Pre-analysis rules are not copied here (Part 13 moves
+-- them).
 INSERT INTO `crm_master_form_fields` (`id`, `stage_id`, `form_code`, `section_name`, `code`, `sort_order`, `is_active`, `created_by`)
 SELECT UUID(), r.`stage_id`, 'FAP_FORM', r.`section_name`, UPPER(TRIM(r.`field_key`)),
        ROW_NUMBER() OVER (ORDER BY r.`created_at`, r.`section_name`, r.`field_key`), r.`is_active`, 'migration'
@@ -829,5 +830,27 @@ ALTER TABLE `crm_application_stage_progress` DROP COLUMN `started_at`;
 -- ---------------------------------------------------------------------
 DROP TABLE IF EXISTS `crm_frozen_fap_proposal_terms`;
 DROP TABLE IF EXISTS `crm_fap_proposal_terms`;
+
+-- ---------------------------------------------------------------------
+-- Part 13. Pre-analysis mandatory rules move into the form field catalog and the workflow, like the FAP ones: the stage
+-- shows the PRE-ANALYSIS-FORM, its fields are catalog rows and the mandatory flag is on the workflow stage field.
+-- crm_master_field_mandatory_rules (nothing reads it any more) is dropped. Field label and key live in form-fields.ts.
+-- ---------------------------------------------------------------------
+UPDATE `crm_workflow_stages` SET `form_code` = 'PRE-ANALYSIS-FORM' WHERE `code` = 'PRE-ANALYSIS';
+
+INSERT INTO `crm_master_form_fields` (`id`, `stage_id`, `form_code`, `section_name`, `code`, `sort_order`, `created_by`)
+SELECT UUID(), r.`stage_id`, 'PRE-ANALYSIS-FORM', r.`section_name`, UPPER(TRIM(r.`field_key`)),
+       ROW_NUMBER() OVER (PARTITION BY r.`stage_id` ORDER BY r.`section_name`, r.`field_key`), 'migration'
+FROM `crm_master_field_mandatory_rules` r
+JOIN `crm_workflow_stages` s ON s.`id` = r.`stage_id` AND s.`code` = 'PRE-ANALYSIS';
+
+INSERT INTO `crm_workflow_stage_fields` (`id`, `workflow_code`, `stage_id`, `form_field_id`, `is_mandatory`, `created_by`)
+SELECT UUID(), s.`workflow_code`, r.`stage_id`, ff.`id`, r.`is_mandatory`, 'migration'
+FROM `crm_master_field_mandatory_rules` r
+JOIN `crm_workflow_stages` s ON s.`id` = r.`stage_id` AND s.`code` = 'PRE-ANALYSIS'
+JOIN `crm_master_form_fields` ff ON ff.`stage_id` = r.`stage_id` AND ff.`form_code` = 'PRE-ANALYSIS-FORM'
+ AND ff.`section_name` = r.`section_name` AND ff.`code` = UPPER(TRIM(r.`field_key`));
+
+DROP TABLE IF EXISTS `crm_master_field_mandatory_rules`;
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -1471,22 +1471,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_fap_document_requirements` (
   UNIQUE KEY `uk_master_fap_docreq_code` (`code`),
   UNIQUE KEY `uk_master_fap_docreq_param` (`param_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-CREATE TABLE IF NOT EXISTS `crm_master_field_mandatory_rules` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `section_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `field_key` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `field_label` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
-  `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
-  `created_by` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `updated_by` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_master_mand_rule` (`stage_id`,`section_name`,`field_key`),
-  CONSTRAINT `fk_master_mand_stage` FOREIGN KEY (`stage_id`) REFERENCES `crm_master_workflow_stages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `crm_master_financial_institutions` (
   `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(80) COLLATE utf8mb4_unicode_ci NOT NULL,
