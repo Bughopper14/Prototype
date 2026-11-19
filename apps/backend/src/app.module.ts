@@ -19,6 +19,7 @@ import {PortalModule} from './modules/portal/portal.module';
 import {PreAnalysisModule} from './modules/pre-analysis/pre-analysis.module';
 import {SystemModule} from './modules/system/system.module';
 import {UsersModule} from './modules/users/users.module';
+import {MasterApprovalsModule} from './modules/master-approvals/master-approvals.module';
 import {WorkflowsModule} from './modules/workflows/workflows.module';
 
 /**
@@ -43,6 +44,7 @@ import {WorkflowsModule} from './modules/workflows/workflows.module';
     FapModule,
     MasterDataModule,
     WorkflowsModule,
+    MasterApprovalsModule,
     ActivityModule,
   ],
   providers: [

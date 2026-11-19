@@ -25,16 +25,16 @@ export type Hooks = {
   /** Inside the transaction, when every step of a scope is approved. */
   onScopeApproved?: (conn: Conn, scope: ScopeRef) => Promise<void>;
   /** Inside the transaction, after an approval: may throw to refuse it (the final approval checks the data and documents here). */
-  afterApproved?: (conn: Conn) => Promise<void>;
+  afterApproved?: (conn: Conn, step: AppStep) => Promise<void>;
 };
 
 const isAdmin = (actor: Actor) => !!actor.isAdmin || actor.role === 'ADMIN';
 const holds = (actor: Actor, authority: string) => isAdmin(actor) || (actor.authorities || []).includes(authority);
 const by = (actor: Actor) => actor.username || null;
 
-const scopeOf = (s: AppStep): ScopeRef => ({type: s.scope, groupId: s.groupId, stageId: s.stageId, checklistId: s.checklistId});
-const scopeKey = (s: {scope?: string; type?: string; groupId?: string | null; stageId?: string | null; checklistId?: string | null}) =>
-  `${s.scope ?? s.type}:${s.groupId ?? ''}:${s.stageId ?? ''}:${s.checklistId ?? ''}`;
+const scopeOf = (s: AppStep): ScopeRef => ({type: s.scope, groupId: s.groupId, stageId: s.stageId, checklistId: s.checklistId, sectionCode: s.sectionCode, subjectId: s.subjectId});
+const scopeKey = (s: {scope?: string; type?: string; groupId?: string | null; stageId?: string | null; checklistId?: string | null; sectionCode?: string | null; subjectId?: string | null}) =>
+  `${s.scope ?? s.type}:${s.groupId ?? ''}:${s.stageId ?? ''}:${s.checklistId ?? ''}:${s.sectionCode ?? ''}:${s.subjectId ?? ''}`;
 const OPEN: StepStatus[] = ['WAITING', 'PENDING'];
 
 /** The steps of the newest round of every scope (a resubmit starts a new round; the older ones are history). */
@@ -186,7 +186,7 @@ export class ApprovalsService {
           await hooks.onScopeApproved?.(conn, scope);
         }
       }
-      await hooks.afterApproved?.(conn);
+      await hooks.afterApproved?.(conn, step);
     });
     return {step, nextPending, scopeApproved, rejected: input.decision === 'REJECTED'};
   }
@@ -288,10 +288,15 @@ export class ApprovalsService {
     };
     const scopeView = (list: AppStep[]) => ({
       scope: list[0].scope,
-      scopeName: labelOf ? labelOf({type: list[0].scope, groupId: list[0].groupId, stageId: list[0].stageId, checklistId: list[0].checklistId}) : '',
+      scopeName: labelOf ? labelOf({type: list[0].scope, groupId: list[0].groupId, stageId: list[0].stageId, checklistId: list[0].checklistId, sectionCode: list[0].sectionCode, subjectId: list[0].subjectId}) : '',
       groupId: list[0].groupId,
       stageId: list[0].stageId,
       checklistId: list[0].checklistId,
+      sectionCode: list[0].sectionCode,
+      subjectId: list[0].subjectId,
+      stageCode: list[0].stageCode,
+      groupCode: list[0].groupCode,
+      documentCode: list[0].documentCode,
       roundNo: list[0].roundNo,
       steps: list.map(stepView),
     });

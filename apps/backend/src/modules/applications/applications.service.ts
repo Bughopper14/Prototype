@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
-import {businessToday} from '@liugong/shared';
+import {businessToday, deedData} from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
@@ -24,6 +24,9 @@ import type {AppStep, ScopeRef} from '../approvals/approvals.repository';
 
 type Actor = SessionActor;
 const by = (actor: Actor) => actor.username || null;
+
+/** The table that holds the rows of each repeating section (is_repeating in crm_master_form_sections): one approval round per row. */
+const REPEATING_ROWS: Record<string, string> = {'LEGAL-DEEDS-AMENDMENTS': CRM.fapLegalDeeds};
 
 /**
  * Applications on the crm_liugong design: header (crm_applications), FAP profile and primary contact, the customer
@@ -187,13 +190,19 @@ export class ApplicationsService {
       this.documents.read(id),
       this.approvals.raw(id, app.workflow_code),
     ]);
-    // names of what an approval is about (a group, a stage, a document), for the approval panel
+    // names of what an approval is about (a group, a stage, a section and its row, a document), for the approval panel
+    const [sectionRows] = await this.db.pool.query<any[]>(`SELECT code,name FROM ${CRM.masterFormSections}`);
+    const sectionNames = new Map<string, string>(sectionRows.map(r => [r.code, r.name]));
+    const [deedRows] = await this.db.pool.query<any[]>(`SELECT id,deed_number FROM ${CRM.fapLegalDeeds} WHERE application_id=?`, [id]);
+    const rowNames = new Map<string, string>(deedRows.map(r => [r.id, `Deed ${r.deed_number}`]));
     const scopeName = (sc: ScopeRef) =>
       sc.type === 'GROUP'
         ? `Group ${cfg.stages.find(x => x.groupId === sc.groupId)?.groupName ?? ''}`.trim()
         : sc.type === 'STAGE'
           ? `Stage ${cfg.stages.find(x => x.id === sc.stageId)?.name ?? ''}`.trim()
-          : `Document ${(documentChecks as any[]).find(d => d.id === sc.checklistId)?.documentName ?? ''}`.trim();
+          : sc.type === 'SECTION'
+            ? `Section ${sectionNames.get(sc.sectionCode ?? '') ?? sc.sectionCode ?? ''}${sc.subjectId ? ` · ${rowNames.get(sc.subjectId) ?? 'row'}` : ''}`.trim()
+            : `Document ${(documentChecks as any[]).find(d => d.id === sc.checklistId)?.documentName ?? ''}`.trim();
     const approval = await this.approvals.view(id, app.workflow_code, actor, scopeName);
     // A document the workflow wants approved: how far its approval is, and whether it can be asked for now (it needs a file).
     const documentsWithApproval = (documentChecks as any[]).map(d => {
@@ -244,6 +253,14 @@ export class ApplicationsService {
       },
       // The approval layer: the state, the newest round of every group / stage / document with who can act, and the older rounds.
       approval,
+      // The places of this application that have an approval in the workflow (a section, a document...): a screen that shows one of them
+      // (an ApprovalSlot) looks itself up here by its code.
+      approvalPlaces: (
+        await this.db.pool.query<any[]>(
+          `SELECT scope_type,stage_code,section_code,document_code,approval_code FROM ${CRM.workflowApprovalAssignments} WHERE workflow_code=?`,
+          [app.workflow_code],
+        )
+      )[0].map(r => ({scope: r.scope_type, stageCode: r.stage_code, sectionCode: r.section_code, documentCode: r.document_code, approvalCode: r.approval_code})),
       // PIC marketing (one user, set when the application is entered) and who created the application
       mktPicId: app.mkt_pic_id ?? null,
       createdBy: app.created_by ?? null,
@@ -433,7 +450,7 @@ export class ApplicationsService {
   /** Financial statements can be edited until the application is approved (administrators always can). */
   private async canEditStatements(app: any, actor: Actor) {
     if (actor.isAdmin || actor.role === 'ADMIN') return true;
-    if (!(actor.authorities || []).includes('crm_edit_app_financial')) return false;
+    if (!(actor.authorities || []).includes('CRM_FINANCIAL_EDIT')) return false;
     return (await this.approvals.stateFor(app.id, app.workflow_code)) !== 'APPROVED';
   }
 
@@ -546,6 +563,40 @@ export class ApplicationsService {
     return this.submitStage(id, first.code, actor, remarks);
   }
 
+  /**
+   * A stage cannot be approved before its mandatory documents are done: every document the workflow marks mandatory in that stage must be
+   * approved (when the workflow has an approval for that document) or at least uploaded (when it has none). Refuses with the list.
+   */
+  private async assertMandatoryDocumentsDone(conn: any, id: string, step: AppStep) {
+    // A group is approved only after every stage in it is approved (a stage without approval is done once it is submitted).
+    if (step.scope === 'GROUP' && step.groupCode) {
+      const [open] = await conn.query(
+        `SELECT s.name FROM ${CRM.workflowStages} s
+         LEFT JOIN ${CRM.applicationStageProgress} p ON p.stage_id=s.id AND p.application_id=?
+         WHERE s.workflow_code=? AND s.group_code=? AND p.completed_at IS NULL`,
+        [id, step.workflowCode, step.groupCode],
+      );
+      if ((open as any[]).length)
+        throw new Problem(422, `Group belum bisa disetujui: stage berikut belum disetujui (${(open as any[]).map(r => r.name).join(', ')}).`);
+    }
+    if (step.scope !== 'STAGE' || !step.stageCode) return;
+    const [rows] = await conn.query(
+      `SELECT c.id,c.status,t.name,
+              (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files,
+              (SELECT COUNT(*) FROM ${CRM.workflowApprovalAssignments} a WHERE a.workflow_stage_document_id=sd.id) AS approvals
+       FROM ${CRM.applicationDocumentChecklists} c
+       JOIN ${CRM.workflowStageDocuments} sd ON sd.id=c.workflow_stage_document_id
+       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       WHERE c.application_id=? AND c.stage_code=? AND sd.is_mandatory=1`,
+      [id, step.stageCode],
+    );
+    const pending = (rows as any[]).filter(r => (Number(r.approvals) > 0 ? r.status !== 'VERIFIED' : Number(r.files) === 0));
+    if (pending.length) {
+      const gaps = pending.map(r => ({target: 'DOCUMENTS', label: r.name, detail: Number(r.approvals) > 0 ? 'Belum disetujui' : 'Belum diunggah'}));
+      throw new Problem(422, `Dokumen wajib belum selesai (${gaps.length}): ${gaps.map(g => `${g.label} (${g.detail})`).join('; ')}`, [], gaps);
+    }
+  }
+
   /** When what just happened finishes the whole application, the data, documents and deeds must be complete: otherwise it is refused. */
   private async assertReadyIfFinished(conn: any, id: string, app: any) {
     if ((await this.approvals.stateFor(id, app.workflow_code, conn)) !== 'APPROVED') return;
@@ -584,6 +635,59 @@ export class ApplicationsService {
     return this.detailOr404(id, actor);
   }
 
+  /**
+   * The deed has ONE approval: the master approval round of its section. The review state the Legal tab and the rest of the CRM read
+   * (crm_fap_legal_deed_reviews) follows that round: PENDING when it is asked, APPROVED when every level approved it (with the snapshot of the
+   * deed, as the old review kept), NEEDS_REVISION when a level rejected it.
+   */
+  private async syncDeedReview(conn: any, applicationId: string, deedId: string, status: 'PENDING' | 'APPROVED' | 'NEEDS_REVISION', actor: Actor, notes?: string | null) {
+    let snapshot: string | null = null;
+    if (status === 'APPROVED') {
+      const detail: any = await this.detailOr404(applicationId);
+      const deed = (detail.legal?.deeds || []).find((d: any) => d.id === deedId);
+      snapshot = JSON.stringify(deedData(deed ?? {}));
+    }
+    const approved = status === 'APPROVED';
+    await conn.execute(
+      `INSERT INTO ${CRM.fapLegalDeedReviews} (id,application_id,deed_id,review_status,review_notes,approved_snapshot_text,approved_by,approved_at,created_by,updated_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?)
+       ON DUPLICATE KEY UPDATE review_status=VALUES(review_status),review_notes=VALUES(review_notes),
+         approved_snapshot_text=COALESCE(VALUES(approved_snapshot_text),approved_snapshot_text),
+         approved_by=COALESCE(VALUES(approved_by),approved_by),approved_at=COALESCE(VALUES(approved_at),approved_at),updated_by=VALUES(updated_by)`,
+      [crypto.randomUUID(), applicationId, deedId, status, notes ?? null, snapshot, approved ? actor.username || null : null, approved ? new Date() : null, by(actor), by(actor)],
+    );
+  }
+
+  /**
+   * Asks for the approval of ONE ROW of a repeating section (a deed of the Legal Deeds & Amendments section): the round belongs to that
+   * row, so two deeds have two rounds. The section must have an approval in the workflow, and it also is the resubmit after a reject.
+   */
+  async submitSectionApproval(id: string, sectionCode: string, subjectId: string, actor: Actor) {
+    const app = await this.apps.get(id);
+    ensure(app, 'Application not found', 404);
+    const [sections] = await this.db.pool.query<any[]>(`SELECT is_repeating FROM ${CRM.masterFormSections} WHERE code=?`, [sectionCode]);
+    ensure(sections[0], 'Section not found', 404);
+    ensure(sections[0].is_repeating, 'This section is approved as a whole, not row by row.', 422);
+    const rows = REPEATING_ROWS[sectionCode];
+    ensure(rows, 'This section has no rows to approve.', 422);
+    const [subject] = await this.db.pool.query<any[]>(`SELECT id FROM ${rows} WHERE id=? AND application_id=?`, [subjectId, id]);
+    ensure(subject[0], 'Row not found in this application', 404);
+    const [places] = await this.db.pool.query<any[]>(
+      `SELECT stage_id FROM ${CRM.workflowApprovalAssignments} WHERE workflow_code=? AND scope_type='SECTION' AND section_code=?`,
+      [app.workflow_code, sectionCode],
+    );
+    ensure(places[0], 'This section has no approval in the workflow.', 422);
+    let pending: AppStep[] = [];
+    await this.db.transaction(async conn => {
+      pending = (await this.approvals.startScope(conn, {id, workflowCode: app.workflow_code}, {type: 'SECTION', stageId: places[0].stage_id, sectionCode, subjectId}, actor)).pending;
+      if (pending.length && sectionCode === 'LEGAL-DEEDS-AMENDMENTS') await this.syncDeedReview(conn, id, subjectId, 'PENDING', actor);
+    });
+    ensure(pending.length, 'This section has no approval level in the workflow.', 422);
+    const label = await this.label(id);
+    await this.approvals.notifyPending(pending, actor, {applicationId: id, company: label.company});
+    return this.detailOr404(id, actor);
+  }
+
   /** What would stop the final approval right now: the same list the last Approve refuses with. */
   async approvalCheck(id: string) {
     const app = await this.apps.get(id);
@@ -602,6 +706,8 @@ export class ApplicationsService {
     const cfg = await this.config.load(app.workflow_code);
     const result = await this.approvals.decide(id, stepId, actor, input, {
       onRejected: async (conn, step) => {
+        if (step.scope === 'SECTION' && step.sectionCode === 'LEGAL-DEEDS-AMENDMENTS' && step.subjectId)
+          await this.syncDeedReview(conn, id, step.subjectId, 'NEEDS_REVISION', actor, String(input.remarks ?? '').trim() || null);
         if (step.scope === 'DOCUMENT' && step.checklistId) await this.documents.setStatus(conn, step.checklistId, 'REJECTED', by(actor));
         const stageIds = step.scope === 'STAGE' ? [step.stageId!] : step.scope === 'GROUP' ? cfg.stages.filter(s => s.groupId === step.groupId).map(s => s.id) : [];
         for (const stageId of stageIds) {
@@ -610,11 +716,15 @@ export class ApplicationsService {
         }
       },
       onScopeApproved: async (conn, scope) => {
+        if (scope.type === 'SECTION' && scope.sectionCode === 'LEGAL-DEEDS-AMENDMENTS' && scope.subjectId) await this.syncDeedReview(conn, id, scope.subjectId, 'APPROVED', actor);
         if (scope.type === 'DOCUMENT' && scope.checklistId) await this.documents.setStatus(conn, scope.checklistId, 'VERIFIED', by(actor));
         const stageIds = scope.type === 'STAGE' ? [scope.stageId!] : scope.type === 'GROUP' ? cfg.stages.filter(s => s.groupId === scope.groupId).map(s => s.id) : [];
         for (const stageId of stageIds) await this.apps.saveStageProgress(conn, id, stageId, {completed: true}, actor);
       },
-      afterApproved: conn => this.assertReadyIfFinished(conn, id, app),
+      afterApproved: async (conn, step) => {
+        await this.assertMandatoryDocumentsDone(conn, id, step);
+        await this.assertReadyIfFinished(conn, id, app);
+      },
     });
     const label = await this.label(id);
     await this.approvals.notifyPending(result.nextPending, actor, {applicationId: id, company: label.company});
@@ -678,9 +788,10 @@ export class ApplicationsService {
     const detail: any = await this.detailOr404(id);
     const cfg = await this.config.load(app.workflow_code);
     const [rules] = await this.apps.pool.query<any[]>(
-      `SELECT st.code AS stage_code,ff.form_code,ff.section_name,ff.code,ff.field_key,ff.label
+      `SELECT st.code AS stage_code,ff.form_code,fs.name AS section_name,ff.code,ff.field_key,ff.label
        FROM ${CRM.workflowStageFields} sf
        JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
+       JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
        JOIN ${CRM.workflowStages} st ON st.id=sf.stage_id
        WHERE sf.workflow_code=? AND sf.is_mandatory=1`,
       [cfg.code],

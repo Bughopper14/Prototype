@@ -9,21 +9,21 @@ export class PreAnalysisController {
 
   @Get('applications/:id/pre-analysis')
   async get(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_applications');
+    requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
     return {success: true, ...(await this.preAnalysis.get(req.params.id, req.actor))};
   }
 
   /** `?version=` is the version the screen loaded; a form someone else changed since is refused (409). */
   @Put('applications/:id/pre-analysis')
   async save(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_financing_units', 'crm_edit_app_financial', 'crm_workflow_start_review');
+    requireAuthority(req.actor, 'CRM_FINANCING-UNIT_EDIT', 'CRM_FINANCIAL_EDIT', 'CRM_WORKFLOW_START-REVIEW');
     return {success: true, ...(await this.preAnalysis.save(req.params.id, req.body, req.actor, req.query.version))};
   }
 
   /** Makes the Pre-Analysis number (it is not made when the form is opened or saved). */
   @Post('applications/:id/pre-analysis-number')
   async generateNumber(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_financing_units', 'crm_edit_app_financial', 'crm_workflow_start_review');
+    requireAuthority(req.actor, 'CRM_FINANCING-UNIT_EDIT', 'CRM_FINANCIAL_EDIT', 'CRM_WORKFLOW_START-REVIEW');
     return {success: true, ...(await this.preAnalysis.generateNumber(req.params.id, req.actor))};
   }
 }

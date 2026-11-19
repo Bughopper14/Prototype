@@ -95,36 +95,48 @@ export class WorkflowsService {
     return {workflow: this.header(rows[0]), definition: await this.definition(rows[0].code)};
   }
 
-  /** Everything Workflow setup can choose from. */
+  /**
+   * Everything Workflow setup can choose from. A form, section or document can carry an approval only when it is flagged is_approval in
+   * the masters (that flag is the registry); `approvals` are the master approvals a place can point at.
+   */
   async catalog() {
     const [docs] = await this.db.pool.query<any[]>(
-      `SELECT code,name FROM ${CRM.masterDocumentTypes} ORDER BY sort_order`,
+      `SELECT code,name,is_approval FROM ${CRM.masterDocumentTypes} ORDER BY sort_order`,
     );
     // the fields of every form come from the master (crm_master_form_fields); enforceable = the system can check it
     const [fields] = await this.db.pool.query<any[]>(
-      `SELECT form_code,section_name,code,label,is_enforceable FROM ${CRM.masterFormFields} ORDER BY form_code,section_name,sort_order`,
+      `SELECT f.form_code,s.name AS section_name,f.section_code,f.code,f.label,f.is_enforceable FROM ${CRM.masterFormFields} f JOIN ${CRM.masterFormSections} s ON s.code=f.section_code ORDER BY f.form_code,s.sort_order,s.name,f.sort_order`,
+    );
+    const [sections] = await this.db.pool.query<any[]>(
+      `SELECT form_code,code,name,is_approval,is_repeating FROM ${CRM.masterFormSections} ORDER BY form_code,sort_order,name`,
     );
     return {
-      formFields: fields.map(f => ({formCode: f.form_code, section: f.section_name, code: f.code, label: f.label, enforceable: !!f.is_enforceable})),
+      formFields: fields.map(f => ({formCode: f.form_code, section: f.section_name, sectionCode: f.section_code, code: f.code, label: f.label, enforceable: !!f.is_enforceable})),
       forms: await this.forms(),
-      documents: docs.map(d => ({code: d.code, name: d.name})),
+      sections: sections.map(x => ({formCode: x.form_code, code: x.code, name: x.name, isApproval: !!x.is_approval, isRepeating: !!x.is_repeating})),
+      documents: docs.map(d => ({code: d.code, name: d.name, isApproval: !!d.is_approval})),
       departments: await this.departments(),
-      authorityOptions: await this.authorityOptions(),
+      approvals: await this.masterApprovals(),
     };
   }
 
-  /** The forms a stage can show: the master form list (crm_master_forms). The fields of each form are in form-fields.ts. */
-  async forms(): Promise<{code: string; name: string}[]> {
-    const [rows] = await this.db.pool.query<any[]>(`SELECT code,name FROM ${CRM.masterForms} ORDER BY sort_order,code`);
-    return rows.map(r => ({code: r.code, name: r.name}));
+  /** The forms a stage can show: the master form list (crm_master_forms). */
+  async forms(): Promise<{code: string; name: string; isApproval: boolean}[]> {
+    const [rows] = await this.db.pool.query<any[]>(`SELECT code,name,is_approval FROM ${CRM.masterForms} ORDER BY sort_order,code`);
+    return rows.map(r => ({code: r.code, name: r.name, isApproval: !!r.is_approval}));
   }
 
-  /** The authorities that may be chosen for each place: crm_workflow_authority_options (a stage -> its form, a document -> its master document, a group -> generic). */
-  async authorityOptions() {
-    const [rows] = await this.db.pool.query<any[]>(
-      `SELECT scope_type,form_code,document_code,department_code,authority_name FROM ${CRM.workflowAuthorityOptions} ORDER BY department_code,authority_name`,
-    );
-    return rows.map(r => ({scope: r.scope_type, formCode: r.form_code, documentCode: r.document_code, departmentCode: r.department_code, authorityName: r.authority_name}));
+  /** The master approvals with their levels (read-only here; they are made in Master approval). */
+  async masterApprovals() {
+    const [approvals] = await this.db.pool.query<any[]>(`SELECT code,name,status FROM ${CRM.masterApprovals} ORDER BY name,code`);
+    const [levels] = await this.db.pool.query<any[]>(`SELECT approval_code,level_no,authority_name FROM ${CRM.masterApprovalLevels} ORDER BY approval_code,level_no,authority_name`);
+    return approvals.map(a => ({
+      code: a.code,
+      name: a.name,
+      /** Only an ACTIVE approval can be chosen for a place (one already chosen in the workflow stays). */
+      status: a.status as 'DRAFT' | 'ACTIVE' | 'INACTIVE',
+      levels: levels.filter(l => l.approval_code === a.code).map(l => ({levelNo: Number(l.level_no), authorityName: l.authority_name})),
+    }));
   }
 
   /**
@@ -151,8 +163,9 @@ export class WorkflowsService {
        WHERE s.workflow_code=? ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
     );
     const fields = await q(
-      `SELECT s.code AS stage_code,ff.form_code,ff.section_name,ff.code,sf.is_mandatory FROM ${CRM.workflowStageFields} sf
+      `SELECT s.code AS stage_code,ff.form_code,fs.name AS section_name,ff.code,sf.is_mandatory FROM ${CRM.workflowStageFields} sf
        JOIN ${CRM.workflowStages} s ON s.id=sf.stage_id JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
+       JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
        WHERE sf.workflow_code=?`,
     );
     const documents = await q(
@@ -160,30 +173,15 @@ export class WorkflowsService {
        JOIN ${CRM.workflowStages} s ON s.id=sd.stage_id JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
        WHERE sd.workflow_code=? ORDER BY sd.sort_order`,
     );
-    const approvals = await q(
-      `SELECT a.*,g.code AS group_code,s.code AS stage_code,ds.code AS doc_stage_code,t.code AS document_code
-       FROM ${CRM.workflowApprovalSteps} a
-       LEFT JOIN ${CRM.workflowStageGroups} g ON g.id=a.stage_group_id
-       LEFT JOIN ${CRM.workflowStages} s ON s.id=a.stage_id
-       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=a.workflow_stage_document_id
-       LEFT JOIN ${CRM.workflowStages} ds ON ds.id=sd.stage_id
-       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
-       WHERE a.workflow_code=? ORDER BY a.scope_type,a.sort_order,a.code`,
-    );
-    const existing = await this.users.existing(approvals.map(a => a.authority_name));
+    const approvals = await q(`SELECT * FROM ${CRM.workflowApprovalAssignments} WHERE workflow_code=? ORDER BY scope_type,code`);
     return {
-      approvalSteps: approvals.map(a => ({
-        key: a.code,
-        code: a.code,
-        name: a.name,
+      approvals: approvals.map(a => ({
         scope: a.scope_type,
         groupKey: a.group_code ?? null,
-        stageKey: a.scope_type === 'DOCUMENT' ? a.doc_stage_code : (a.stage_code ?? null),
+        stageKey: a.stage_code ?? null,
+        sectionCode: a.section_code ?? null,
         documentCode: a.document_code ?? null,
-        order: Number(a.sort_order),
-        authorityName: a.authority_name,
-        /** False when the authority was removed from User Management after the workflow was saved. */
-        authorityExists: existing.has(a.authority_name),
+        approvalCode: a.approval_code,
       })),
       groups: groups.map(g => ({key: g.code, code: g.code, name: g.name, order: Number(g.sort_order)})),
       stages: stages.map(s => ({key: s.code, code: s.code, groupKey: s.group_code, name: s.name, departmentCode: s.department_code, order: Number(s.sort_order), formCode: s.form_code})),
@@ -231,6 +229,19 @@ export class WorkflowsService {
     return this.get(id);
   }
 
+  /**
+   * A new draft with the same groups, stages, required fields, documents and approvals, as a starting point for a change: a workflow that applications
+   * run on is never edited, it is cloned, changed and activated (the running applications keep the one they started in).
+   */
+  async clone(id: string, by: string | null) {
+    const {workflow, definition} = await this.get(id);
+    const created = await this.create({name: `${workflow.name} (copy)`.slice(0, 150), description: workflow.description}, by);
+    await this.db.transaction(async conn => {
+      await this.write(conn, created.workflow.code, definition, by);
+    });
+    return this.get(created.workflow.id);
+  }
+
   async rename(id: string, input: {name?: string; description?: string | null}, by: string | null) {
     await this.db.transaction(async conn => {
       await this.lockDraft(conn, id);
@@ -257,16 +268,27 @@ export class WorkflowsService {
     // a stage may only show a form of the master form list
     const formCodes = new Set((await this.forms()).map(f => f.code));
     for (const st of def.stages) if (st.formCode && !formCodes.has(st.formCode)) issues.push({level: 'error', message: `Stage "${st.name}" shows a form that does not exist (${st.formCode}).`});
-    // an approval step may only use an authority that is listed for its place: the form of its stage, its master document, or any group
-    const options = await this.authorityOptions();
-    for (const a of def.approvalSteps) {
-      const form = def.stages.find(x => x.key === a.stageKey)?.formCode ?? null;
-      const fits = options.some(o => o.authorityName === a.authorityName && o.scope === a.scope && (a.scope === 'GROUP' || (a.scope === 'STAGE' ? !!form && o.formCode === form : o.documentCode === a.documentCode)));
-      if (!fits) issues.push({level: 'error', message: `Approval step "${a.name}" cannot use the authority "${a.authorityName}": it is not one of the authorities made for this ${a.scope === 'STAGE' ? 'stage (its form)' : a.scope.toLowerCase()}.${a.scope === 'STAGE' && !form ? ' Choose a form for the stage first.' : ''}`});
+    // an approval points at an existing master approval, on a place that is flagged is_approval in the masters (the registry)
+    const registry = await this.registry();
+    // an approval can be chosen only while it is ACTIVE; one this workflow already uses may stay (it was chosen when it was active)
+    const [already] = await this.db.pool.query<any[]>(`SELECT approval_code FROM ${CRM.workflowApprovalAssignments} WHERE workflow_code=(SELECT code FROM ${CRM.workflows} WHERE id=?)`, [id]);
+    const kept = new Set(already.map(r => r.approval_code as string));
+    for (const a of def.approvals) {
+      const status = registry.approvals.get(a.approvalCode);
+      if (!status) issues.push({level: 'error', message: `The approval ${a.approvalCode} does not exist in Master approval.`});
+      else if (status !== 'ACTIVE' && !kept.has(a.approvalCode)) issues.push({level: 'error', message: `The approval ${a.approvalCode} is ${status.toLowerCase()}; only an active approval can be chosen.`});
+      const stage = def.stages.find(x => x.key === a.stageKey);
+      if (a.scope === 'STAGE' && stage?.formCode && !registry.forms.get(stage.formCode))
+        issues.push({level: 'error', message: `Stage "${stage.name}" shows a form that cannot have an approval (${stage.formCode}).`});
+      if (a.scope === 'SECTION') {
+        const section = registry.sections.get(a.sectionCode || '');
+        if (!section) issues.push({level: 'error', message: `The section ${a.sectionCode} does not exist.`});
+        else if (!section.isApproval) issues.push({level: 'error', message: `The section "${section.name}" cannot have an approval (it is not flagged is_approval).`});
+        else if (stage && section.formCode !== stage.formCode) issues.push({level: 'error', message: `The section "${section.name}" is not in the form of stage "${stage.name}".`});
+      }
+      if (a.scope === 'DOCUMENT' && !registry.documents.get(a.documentCode || ''))
+        issues.push({level: 'error', message: `The document ${a.documentCode} cannot have an approval (it is not flagged is_approval).`});
     }
-    const known = await this.users.existing(def.approvalSteps.map(a => a.authorityName));
-    for (const a of def.approvalSteps)
-      if (!known.has(a.authorityName)) issues.push({level: 'error', message: `Approval step "${a.name}" uses the authority "${a.authorityName}", which does not exist in User Management.`});
     if (issues.length) throw new Problem(422, issues.map(i => i.message).join(' '), issues.map(i => ({field: 'workflow', detail: i.message})));
     let code = '';
     await this.db.transaction(async conn => {
@@ -284,9 +306,23 @@ export class WorkflowsService {
     return new Set(docs.map(d => d.code));
   }
 
+  /** The registry: which forms, sections and documents may have an approval (the is_approval flag of the masters). */
+  private async registry() {
+    const [forms] = await this.db.pool.query<any[]>(`SELECT code,is_approval FROM ${CRM.masterForms}`);
+    const [sections] = await this.db.pool.query<any[]>(`SELECT code,name,form_code,is_approval FROM ${CRM.masterFormSections}`);
+    const [docs] = await this.db.pool.query<any[]>(`SELECT code,is_approval FROM ${CRM.masterDocumentTypes}`);
+    const [approvals] = await this.db.pool.query<any[]>(`SELECT code,status FROM ${CRM.masterApprovals}`);
+    return {
+      forms: new Map<string, boolean>(forms.map(f => [f.code, !!f.is_approval])),
+      sections: new Map(sections.map(x => [x.code as string, {name: x.name as string, formCode: x.form_code as string, isApproval: !!x.is_approval}])),
+      documents: new Map<string, boolean>(docs.map(d => [d.code, !!d.is_approval])),
+      approvals: new Map<string, string>(approvals.map(a => [a.code as string, a.status as string])),
+    };
+  }
+
   private async clear(conn: Conn, workflowCode: string) {
     // stage fields first: they point at the field catalog rows that go with the stages
-    for (const table of [CRM.workflowApprovalSteps, CRM.workflowStageDocuments, CRM.workflowStageFields, CRM.workflowStages, CRM.workflowStageGroups])
+    for (const table of [CRM.workflowApprovalAssignments, CRM.workflowStageDocuments, CRM.workflowStageFields, CRM.workflowStages, CRM.workflowStageGroups])
       await conn.query(`DELETE FROM ${table} WHERE workflow_code=?`, [workflowCode]);
   }
 
@@ -332,7 +368,7 @@ export class WorkflowsService {
       );
     }
     // a required field is a row that points at the master field (the master is the only list of fields)
-    const [masterFields] = await conn.query<any[]>(`SELECT form_code,section_name,code FROM ${CRM.masterFormFields}`);
+    const [masterFields] = await conn.query<any[]>(`SELECT f.form_code,s.name AS section_name,f.code FROM ${CRM.masterFormFields} f JOIN ${CRM.masterFormSections} s ON s.code=f.section_code`);
     const master = new Map(masterFields.map(m => [m.code as string, m]));
     for (const f of def.fields) {
       // the code of a field is unique (section + field); the form and section sent with it have to be the ones of that field
@@ -355,27 +391,28 @@ export class WorkflowsService {
         [wid, workflowCode, groupId.get(stageGroup.get(d.stageKey)!)!, groupCodes.get(stageGroup.get(d.stageKey)!)!, stageId.get(d.stageKey)!, stageCodes.get(d.stageKey)!, rows[0].id, d.documentCode, +d.isDefault, +d.isMandatory, i, by],
       );
     }
-    // The approval steps. The authority is the one the administrator chose; the codes of the group, stage and document are only used to place the step.
-    const stepTaken = new Set<string>();
-    for (const a of def.approvalSteps) {
+    // The approvals: one row per place, pointing at a master approval. The code names the place (group, stage, section or document).
+    for (const a of def.approvals) {
+      const gcode = a.scope === 'GROUP' ? groupCodes.get(a.groupKey!)! : null;
+      const scode = a.scope === 'GROUP' ? null : stageCodes.get(a.stageKey!)!;
+      const place = a.scope === 'GROUP' ? gcode : a.scope === 'STAGE' ? scode : a.scope === 'SECTION' ? `${scode}-${a.sectionCode}` : `${scode}-${a.documentCode}`;
       await conn.execute(
-        `INSERT INTO ${CRM.workflowApprovalSteps}
-           (id,workflow_code,code,name,scope_type,stage_group_id,stage_id,workflow_stage_document_id,group_code,stage_code,document_code,sort_order,authority_name,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        `INSERT INTO ${CRM.workflowApprovalAssignments}
+           (id,workflow_code,code,scope_type,section_code,stage_group_id,stage_id,workflow_stage_document_id,group_code,stage_code,document_code,approval_code,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [
           uuid(),
           workflowCode,
-          this.uniqueCode(stepTaken, a.code, a.name, 50, 'STEP'),
-          a.name,
+          `${a.scope}-${place}`.slice(0, 110),
           a.scope,
+          a.scope === 'SECTION' ? a.sectionCode! : null,
           a.scope === 'GROUP' ? groupId.get(a.groupKey!)! : null,
-          a.scope === 'STAGE' ? stageId.get(a.stageKey!)! : null,
+          a.scope === 'STAGE' || a.scope === 'SECTION' ? stageId.get(a.stageKey!)! : null,
           a.scope === 'DOCUMENT' ? docRowId.get(`${a.stageKey}|${a.documentCode}`)! : null,
-          a.scope === 'GROUP' ? groupCodes.get(a.groupKey!)! : null,
-          a.scope === 'GROUP' ? null : stageCodes.get(a.stageKey!)!,
+          gcode,
+          scode,
           a.scope === 'DOCUMENT' ? a.documentCode! : null,
-          a.order,
-          a.authorityName,
+          a.approvalCode,
           by,
         ],
       );

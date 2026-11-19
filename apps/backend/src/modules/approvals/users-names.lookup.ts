@@ -34,6 +34,19 @@ export class UsersNamesLookup {
     return rows.map(r => ({name: String(r.authority_name), description: String(r.description ?? '')}));
   }
 
+  /**
+   * The authorities a master approval level can use: the CRM authorities (the name starts with CRM_, because User Management holds the authorities of many applications) whose name ends with APPROVE, APPROVAL or APPROVER, with the application
+   * they belong to (a level keeps both). Free text is made in User Management; the Master approval tab only picks from these.
+   */
+  async approvalAuthorities(): Promise<{appId: number; name: string; description: string}[]> {
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT a.app_id, a.authority_name, a.description FROM ${USER_TABLES.authorities} a
+       JOIN ${USER_TABLES.applications} ap ON ap.id = a.app_id
+       WHERE ap.app_name LIKE 'CRM%' AND a.authority_name LIKE 'CRM\\_%' AND a.authority_name REGEXP '(APPROVE|APPROVAL|APPROVER)$' ORDER BY a.authority_name`,
+    );
+    return rows.map(r => ({appId: Number(r.app_id), name: String(r.authority_name), description: String(r.description ?? '')}));
+  }
+
   /** Which of these authority names exist in users_authorities (case as stored). */
   async existing(authorityNames: string[]): Promise<Set<string>> {
     const unique = [...new Set(authorityNames.filter(Boolean))];

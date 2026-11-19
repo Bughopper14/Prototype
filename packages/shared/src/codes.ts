@@ -16,19 +16,23 @@ export const toCode = (value: unknown): string =>
 export const isCode = (value: unknown): value is string => typeof value === 'string' && value !== '' && toCode(value) === value;
 
 /**
- * Reads the name of an approval authority. By convention (created in User Management) it is
- *   APPCODE_DEPTCODE_STAGECODE_APPROVE                    a stage (or a group)
- *   APPCODE_DEPTCODE_STAGECODE_DOCUMENTCODE_APPROVE       one document of a stage
- * e.g. CRM_BS_FAP-STAGE_APPROVE. The suffix APPROVE means "can approve and reject". Codes use hyphens only, so the underscore separates the
- * parts. Returns null when the name does not follow the pattern. The comparison ignores the case.
+ * The standard form of every CRM authority: CRM_<AREA>_<ACTION>, upper case, an underscore between the parts and hyphens inside a part.
+ *   CRM_APPLICATION_VIEW          CRM_LEGAL_EDIT          CRM_DOCUMENT-DESK_MANAGE          CRM_WORKFLOW_START-REVIEW
+ * An approval authority names the thing and the department that approves it, the action last:
+ *   CRM_FAP-FORM_BS_APPROVE       CRM_GROUP_MANAGEMENT_APPROVE      CRM_DEED-REVIEW_LEGAL_APPROVE
+ * Returns the parts, or null when the name does not follow the form. The comparison ignores the case.
  */
-export function parseApprovalAuthority(name: string): {appCode: string; departmentCode: string; codes: string[]; action: string} | null {
+export function parseAuthorityName(name: string): {appCode: string; area: string[]; action: string} | null {
   const parts = String(name ?? '').trim().toUpperCase().split('_');
-  if (parts.length < 4 || parts.length > 5) return null;
-  if (!parts.every(p => p !== '' && p === toCode(p))) return null;
-  // the last part must be the action: an older name such as crm_workflow_recommend_credit is not in this format
-  if (!['APPROVE', 'REJECT'].includes(parts[parts.length - 1])) return null;
-  return {appCode: parts[0], departmentCode: parts[1], codes: parts.slice(2, -1), action: parts[parts.length - 1]};
+  if (parts.length < 3 || !parts.every(p => p !== '' && p === toCode(p))) return null;
+  return {appCode: parts[0], area: parts.slice(1, -1), action: parts[parts.length - 1]};
+}
+
+/** An approval authority: the form above with APPROVE as the action; the department is the last part of the area. */
+export function parseApprovalAuthority(name: string): {appCode: string; departmentCode: string; codes: string[]; action: string} | null {
+  const p = parseAuthorityName(name);
+  if (!p || !['APPROVE', 'REJECT'].includes(p.action) || p.area.length < 2) return null;
+  return {appCode: p.appCode, departmentCode: p.area[p.area.length - 1], codes: p.area.slice(0, -1), action: p.action};
 }
 
 /** Does the name end with APPROVE or REJECT: an authority made for approving. */

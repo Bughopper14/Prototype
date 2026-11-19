@@ -24,12 +24,12 @@ export class StoredDocumentsController {
   async file(@Req() req: HttpRequest, @Res() res: Response) {
     requireAuthority(
       req.actor!,
-      'crm_view_app_stakeholders',
-      'crm_view_app_legal',
-      'crm_view_app_documents',
-      'crm_view_document_desk',
-      'crm_edit_app_stakeholders',
-      'crm_edit_app_legal',
+      'CRM_STAKEHOLDER_VIEW',
+      'CRM_LEGAL_VIEW',
+      'CRM_DOCUMENT_VIEW',
+      'CRM_DOCUMENT-DESK_VIEW',
+      'CRM_STAKEHOLDER_EDIT',
+      'CRM_LEGAL_EDIT',
     );
     const file = this.storage.documentPath(([] as string[]).concat((req.params as any).path ?? []));
     if (!file) return res.status(404).send('Not found');

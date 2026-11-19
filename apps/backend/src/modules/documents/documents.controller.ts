@@ -58,13 +58,13 @@ export class DocumentsController {
 
   @Get('document-desk')
   documentDesk(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_document_desk');
+    requireAuthority(req.actor, 'CRM_DOCUMENT-DESK_VIEW');
     return this.documents.desk();
   }
 
   @Post('applications/:id/documents/upload')
   async upload(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_upload_app_documents');
+    requireAuthority(req.actor, 'CRM_DOCUMENT_UPLOAD');
     const id = req.params.id;
     const file = req.file;
     ensure(file, 'Choose a file');
@@ -123,7 +123,7 @@ export class DocumentsController {
 
   @Delete('applications/:id/documents/files/:fileId')
   async deleteFile(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_delete_app_documents');
+    requireAuthority(req.actor, 'CRM_DOCUMENT_DELETE');
     const {id, fileId} = req.params;
     const current = await this.unlocked(id, req.actor);
     const removed = await this.documents.readFile(fileId);
@@ -154,7 +154,7 @@ export class DocumentsController {
    */
   @Get('applications/:id/documents/zip')
   async zip(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_app_documents');
+    requireAuthority(req.actor, 'CRM_DOCUMENT_VIEW');
     const id = req.params.id;
     const application = await this.applications.detailOr404(id, req.actor);
     const entries = await this.documents.filesForZip(id);
@@ -200,10 +200,9 @@ export class DocumentsController {
   async fileUrl(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(
       req.actor,
-      'crm_view_app_documents',
-      'crm_view_document_desk',
-      'crm_edit_app_legal',
-      'crm_deed_approve',
+      'CRM_DOCUMENT_VIEW',
+      'CRM_DOCUMENT-DESK_VIEW',
+      'CRM_LEGAL_EDIT',
     );
     const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);

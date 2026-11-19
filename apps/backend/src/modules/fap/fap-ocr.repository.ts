@@ -148,7 +148,7 @@ export class FapOcrRepository {
 
   /** Label and section of each FAP form field, by field key (the master fields of the FAP form). */
   async fieldRules(): Promise<Map<string, {label: string; section: string}[]>> {
-    const [rows] = await this.db.pool.query<any[]>(`SELECT field_key,label,section_name FROM ${CRM.masterFormFields} WHERE form_code='FAP-FORM' ORDER BY sort_order`);
+    const [rows] = await this.db.pool.query<any[]>(`SELECT f.field_key,f.label,s.name AS section_name FROM ${CRM.masterFormFields} f JOIN ${CRM.masterFormSections} s ON s.code=f.section_code WHERE f.form_code='FAP-FORM' ORDER BY f.sort_order`);
     const byKey = new Map<string, {label: string; section: string}[]>();
     for (const f of rows) byKey.set(f.field_key, [...(byKey.get(f.field_key) || []), {label: f.label, section: f.section_name}]);
     return byKey;

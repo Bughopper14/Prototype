@@ -283,7 +283,7 @@ export class DocumentsRepository {
   async read(applicationId: string, conn: Conn = this.db.pool) {
     const [rows] = await conn.execute<any[]>(
       `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,
-              s.code AS stage_code,${MANDATORY} AS is_mandatory
+              s.code AS stage_code,s.name AS stage_name,${MANDATORY} AS is_mandatory
        FROM ${CRM.applicationDocumentChecklists} c
        JOIN ${CRM.workflowStages} s ON s.id=c.stage_id
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
@@ -304,6 +304,7 @@ export class DocumentsRepository {
       documentName: d.name,
       /** Workflow stage the document belongs to (crm_application_document_checklists.stage_id). */
       stageCode: d.stage_code,
+      stageName: d.stage_name,
       /** DEFAULT = from the workflow; ADDED = added for this application only. */
       source: d.source_type,
       overrideId: d.override_id,

@@ -22,7 +22,7 @@ export function crmTable(base: string): string {
   return `\`${CRM_PREFIX}${base}\``;
 }
 
-/** Every CRM table of the crm_liugong design (apps/backend/db/current-schema.sql), keyed without the prefix. */
+/** Every CRM table of the crm_liugong design (apps/backend/db/1-schema.sql), keyed without the prefix. */
 export const CRM = {
   masterBranches: crmTable('master_branches'),
   masterBusinessCategories: crmTable('master_business_categories'),
@@ -63,8 +63,10 @@ export const CRM = {
   workflowStageGroups: crmTable('workflow_stage_groups'),
   workflowStages: crmTable('workflow_stages'),
   workflowStageFields: crmTable('workflow_stage_fields'),
-  workflowApprovalSteps: crmTable('workflow_approval_steps'),
-  workflowAuthorityOptions: crmTable('workflow_authority_options'),
+  masterFormSections: crmTable('master_form_sections'),
+  masterApprovals: crmTable('master_approvals'),
+  masterApprovalLevels: crmTable('master_approval_levels'),
+  workflowApprovalAssignments: crmTable('workflow_approval_assignments'),
   applicationApprovalSteps: crmTable('application_approval_steps'),
   applicationApprovalDecisions: crmTable('application_approval_decisions'),
   workflowStageDocuments: crmTable('workflow_stage_documents'),

@@ -10,19 +10,19 @@ export class ActivityController {
   /** Activity page: newest entries of every application. */
   @Get('activity')
   activityFeed(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_activity');
+    requireAuthority(req.actor, 'CRM_ACTIVITY_VIEW');
     return activityFeed({limit: 200});
   }
 
   @Get('notifications')
   notifications(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_notifications');
+    requireAuthority(req.actor, 'CRM_NOTIFICATION_VIEW');
     return notificationsOf(req.actor.portalUserId);
   }
 
   @Patch('notifications/:id/read')
   async markNotificationRead(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_notifications');
+    requireAuthority(req.actor, 'CRM_NOTIFICATION_VIEW');
     ensure(await markNotificationRead(req.params.id, req.actor.portalUserId), 'Notifikasi tidak ditemukan.', 404);
     return {ok: true};
   }

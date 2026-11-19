@@ -10,9 +10,13 @@ export const deedReviewLabels: Record<string, string> = {
   APPROVED: 'Approved',
   NEEDS_REVISION: 'Needs revision',
 };
-/** Authorities (managed in user management, stored in the DB) that gate the deed review. */
-export const DEED_APPROVE_AUTHORITY = 'crm_deed_approve';
-export const DEED_EDIT_AUTHORITY = 'crm_edit_app_legal';
+/** The authority that edits deeds (managed in user management, stored in the DB). */
+/**
+ * RETIRED: the authority CRM_DEED_APPROVE no longer exists (a deed is approved by the approval of its section in the workflow). The name is kept only
+ * because modules/users/users.repository.ts (another developer's) still imports it; nothing in the CRM uses it.
+ */
+export const DEED_APPROVE_AUTHORITY = 'CRM_DEED_APPROVE';
+export const DEED_EDIT_AUTHORITY = 'CRM_LEGAL_EDIT';
 type DeedActor = {
   id?: string;
   name?: string;
@@ -166,14 +170,14 @@ export function deedTransition(
     }
     Object.assign(review, {status: 'PENDING', notes: null, submittedBy: actor.username || actor.name, submittedAt: date});
   } else if (action === 'APPROVE') {
-    assert(actorCan(actor, DEED_APPROVE_AUTHORITY), 'Akun ini tidak memiliki hak untuk menyetujui akta.', 403);
+    assert(isAdminActor(actor), 'Akta disetujui lewat approval section akta pada workflow.', 403);
     assert(status === 'PENDING', 'Akta belum diajukan untuk approval.', 409);
     if (!isAdminActor(actor))
       assert(review.submittedBy !== (actor.username || actor.name), 'Pengaju dan approver harus berbeda.', 403);
     Object.assign(review, {status: 'APPROVED', notes: comments || null, approvedBy: actor.name, approvedAt: date});
   } else if (action === 'REJECT' || action === 'REMARKS') {
     assert(
-      actorCan(actor, DEED_APPROVE_AUTHORITY) && status === 'PENDING',
+      isAdminActor(actor) && status === 'PENDING',
       'Pengembalian akta tidak tersedia untuk akun/status ini.',
       403,
     );

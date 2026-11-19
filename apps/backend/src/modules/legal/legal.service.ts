@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {
-  DEED_APPROVE_AUTHORITY,
   canEditLegal,
   deedTransition,
   mergeLegal,
@@ -83,6 +82,12 @@ export class LegalService {
   /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. */
   async review(id: string, deedId: string, body: {action: string; revision: number; comments: string}, actor: Actor) {
     const a = await this.applications.detailOr404(id, actor);
+    // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old review.
+    ensure(
+      !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === 'LEGAL-DEEDS-AMENDMENTS'),
+      'Akta ini disetujui lewat approval section akta pada workflow, bukan lewat review ini.',
+      409,
+    );
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
     ensure(deed, 'Simpan akta terlebih dahulu sebelum mengajukan.', 404);
     const isAdmin = actor.isAdmin || actor.role === 'ADMIN';
@@ -108,16 +113,8 @@ export class LegalService {
       actor,
     );
     const where = `${a.fapNumber} · ${a.companyName || ''} · Akta ${deed.deedNumber}`;
-    if (body.action === 'SUBMIT')
-      await notifyHolders([DEED_APPROVE_AUTHORITY], actor, {
-        applicationId: id,
-        deedId,
-        type: 'DEED_REVIEW',
-        title: 'Akta menunggu approval',
-        message: `${where} diajukan oleh ${actor.name}.`,
-      });
     // The deed was reviewed: the user who submitted it acts next.
-    else if (deed.review?.submittedBy)
+    if (body.action !== 'SUBMIT' && deed.review?.submittedBy)
       await notifyUsers([deed.review.submittedBy], actor, {
         applicationId: id,
         deedId,

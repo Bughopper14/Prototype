@@ -40,7 +40,7 @@ export class WorkflowsController {
   /** The groups and stages of the active workflow (for the start of a new application). */
   @Get('workflows/layout')
   async layout(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_applications');
+    requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
     const config = await this.workflowRepo.load(await this.workflowRepo.activeCode());
     return {groups: groupsOf(config), stages: stagesOf(config)};
   }
@@ -48,7 +48,7 @@ export class WorkflowsController {
   /** Departments and active users, for choosing who approves an application. Declared before workflows/:id. */
   @Get('workflows/approvers')
   approverChoices(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'access_crm_dashboard');
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
     return this.approvers.list();
   }
 
@@ -75,6 +75,13 @@ export class WorkflowsController {
   get(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAdmin(req.actor);
     return this.workflows.get(uuidParam(req.params.id));
+  }
+
+  @Post('workflows/:id/clone')
+  clone(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAdmin(req.actor);
+    res.status(201);
+    return this.workflows.clone(uuidParam(req.params.id), req.actor.username || null);
   }
 
   @Put('workflows/:id')
@@ -121,7 +128,7 @@ export class WorkflowsController {
 
   @Get('applications/:id/document-options')
   async documentOptions(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_applications');
+    requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
     const app = await this.apps.get(uuidParam(req.params.id));
     ensure(app, 'Application not found', 404);
     const wf = await this.workflowRepo.load(app.workflow_code);
@@ -134,7 +141,7 @@ export class WorkflowsController {
 
   @Post('applications/:id/document-overrides')
   async addOverride(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_upload_app_documents');
+    requireAuthority(req.actor, 'CRM_DOCUMENT_UPLOAD');
     const body = z
       .object({
         action: z.enum(['ADD', 'REMOVE']),
@@ -192,7 +199,7 @@ export class WorkflowsController {
 
   @Delete('applications/:id/document-overrides/:overrideId')
   async cancelOverride(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_upload_app_documents');
+    requireAuthority(req.actor, 'CRM_DOCUMENT_UPLOAD');
     const app = await this.apps.get(uuidParam(req.params.id));
     ensure(app, 'Application not found', 404);
     await this.db.transaction(conn =>

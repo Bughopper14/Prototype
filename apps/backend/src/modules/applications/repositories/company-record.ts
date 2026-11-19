@@ -46,6 +46,18 @@ const PROFILE_COLUMNS = [
   ['assetSummaryTruckNonLiuGong', 'asset_truck_non_liugong', 'int'],
 ] as const;
 
+/** Columns that only crm_fap_application_profiles has (the directory of customers lost them). */
+const PROFILE_ONLY = [
+  'establishment_act_no',
+  'establishment_date',
+  'latest_deed_no',
+  'latest_deed_date',
+  'asset_he_liugong',
+  'asset_truck_liugong',
+  'asset_he_non_liugong',
+  'asset_truck_non_liugong',
+];
+
 /** Maps a company (customer + profile fields) to and from crm_fap_application_profiles / crm_master_business_partners. */
 @Injectable()
 export class CompanyRecordMapper {
@@ -82,6 +94,8 @@ export class CompanyRecordMapper {
   const experience = experienceFromEstablishmentDate(out.establishment_date);
   out.experience_years = clean(experience.experienceYears ?? profile.experienceYears, 'int');
   out.experience_months = clean(experience.experienceMonths ?? profile.experienceMonths, 'int');
+  // The customer directory (crm_master_business_partners) does not keep the data of one application: these columns exist only on the profile.
+  if (emailColumn === 'email') for (const column of PROFILE_ONLY) delete out[column];
   return out;
   }
 

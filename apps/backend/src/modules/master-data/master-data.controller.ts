@@ -13,7 +13,7 @@ export class MasterDataController {
 
   @Get('master-data')
   async catalog(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'access_crm_dashboard');
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
     const data = await this.masterData.load();
     const etag = `W/"master-${data.revision}-${this.masterData.gzip(data).length}"`;
     res.setHeader('ETag', etag).setHeader('Cache-Control', 'private, no-cache');
@@ -27,7 +27,7 @@ export class MasterDataController {
 
   @Put('master-data')
   saveCatalog(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_manage_master_data', 'crm_quick_add_master_option');
+    requireAuthority(req.actor, 'CRM_MASTER-DATA_MANAGE', 'CRM_MASTER-DATA_QUICK-ADD');
     const by = req.actor?.username || null;
     if (req.body.group && Array.isArray(req.body.items))
       return this.masterData.saveGroup(String(req.body.group), req.body.items, req.body.revision, by);
@@ -37,7 +37,7 @@ export class MasterDataController {
   /** Mandatory rules of a workflow (?workflowId=), default the active one. They are edited in Workflow setup. */
   @Get('mandatory')
   mandatoryList(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'access_crm_dashboard');
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
     const workflowId = req.query?.workflowId ? String(req.query.workflowId) : undefined;
     return this.mandatoryRules.list(workflowId);
   }
