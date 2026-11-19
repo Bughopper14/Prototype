@@ -1,11 +1,6 @@
--- =====================================================================
--- plan-schema-full.sql : the COMPLETE database from zero (users_* and crm_*), with the approval layer included.
--- Use it to start an empty database:   CREATE DATABASE crm_liugong CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
---                                      then run this file, then plan-seed-full.sql, in that database.
--- It is the state of the working database crm_liugong_approval, so it already contains everything in plan-schema.sql (the changes on top of
--- the older design). Safe to run again: every table is CREATE TABLE IF NOT EXISTS.
--- The users_* tables belong to the users developer; they are here only so that an empty database starts complete.
--- =====================================================================
+-- 1. Schema of the CRM database as it is now (dev database crm_liugong_approval, 2026-11-19): the CRM tables (crm_*) and the users tables (users_*) they point at.
+-- Tables are created only if missing.
+
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -17,7 +12,6 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-DROP TABLE IF EXISTS `crm_application_activity_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_activity_logs` (
@@ -43,7 +37,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_activity_logs` (
   CONSTRAINT `fk_app_act_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_approval_decisions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_approval_decisions` (
@@ -68,7 +61,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_decisions` (
   CONSTRAINT `chk_app_decision_reject_remarks` CHECK (((`decision` <> _utf8mb4'REJECTED') or ((`remarks` is not null) and (char_length(trim(`remarks`)) > 0))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_approval_steps`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
@@ -76,12 +68,15 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `round_no` int NOT NULL DEFAULT '1',
-  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `scope_type` enum('GROUP','STAGE','DOCUMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `scope_type` enum('GROUP','STAGE','DOCUMENT','SECTION') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_group_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_checklist_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subject_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subject_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (coalesce(`subject_id`,_utf8mb4'')) VIRTUAL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -95,27 +90,26 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_app_apstep_round` (`application_id`,`round_no`,`code`),
+  UNIQUE KEY `uk_app_apstep_round` (`application_id`,`round_no`,`code`,`subject_key`),
   KEY `idx_app_apstep_status` (`application_id`,`status`),
   KEY `idx_app_apstep_authority` (`authority_name`,`status`),
   KEY `fk_app_apstep_group` (`stage_group_id`),
   KEY `fk_app_apstep_stage` (`stage_id`),
   KEY `fk_app_apstep_checklist` (`document_checklist_id`),
-  KEY `fk_app_apstep_wfstep` (`workflow_code`,`code`),
   KEY `fk_app_apstep_group_code` (`workflow_code`,`group_code`),
   KEY `fk_app_apstep_doc_code` (`workflow_code`,`stage_code`,`document_code`),
+  KEY `idx_app_apstep_subject` (`subject_id`),
+  KEY `fk_app_apstep_section` (`section_code`),
   CONSTRAINT `fk_app_apstep_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_authority` FOREIGN KEY (`authority_name`) REFERENCES `crm_workflow_authority_options` (`authority_name`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_checklist` FOREIGN KEY (`document_checklist_id`) REFERENCES `crm_application_document_checklists` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_doc_code` FOREIGN KEY (`workflow_code`, `stage_code`, `document_code`) REFERENCES `crm_workflow_stage_documents` (`workflow_code`, `stage_code`, `document_code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_group` FOREIGN KEY (`stage_group_id`) REFERENCES `crm_workflow_stage_groups` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_app_apstep_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_stage` FOREIGN KEY (`stage_id`) REFERENCES `crm_workflow_stages` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_wfstep` FOREIGN KEY (`workflow_code`, `code`) REFERENCES `crm_workflow_approval_steps` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_app_apstep_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_document_checklists`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_document_checklists` (
@@ -153,7 +147,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_document_checklists` (
   CONSTRAINT `fk_app_doc_chk_wsd` FOREIGN KEY (`workflow_stage_document_id`) REFERENCES `crm_workflow_stage_documents` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_document_files`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_document_files` (
@@ -181,7 +174,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_document_files` (
   CONSTRAINT `fk_app_doc_file_chk` FOREIGN KEY (`checklist_id`) REFERENCES `crm_application_document_checklists` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_document_overrides`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_document_overrides` (
@@ -226,7 +218,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_document_overrides` (
   CONSTRAINT `chk_app_doc_ovr_source` CHECK ((((`action` = _utf8mb4'REMOVE') and (`workflow_stage_document_id` is not null) and (`document_type_id` is null) and (`custom_name` is null)) or ((`action` = _utf8mb4'ADD') and ((((`workflow_stage_document_id` is not null) + (`document_type_id` is not null)) + (`custom_name` is not null)) = 1))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_notifications`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_notifications` (
@@ -250,7 +241,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_notifications` (
   CONSTRAINT `fk_app_notif_recip` FOREIGN KEY (`recipient_user_id`) REFERENCES `users_users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_application_stage_progress`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_stage_progress` (
@@ -279,7 +269,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_stage_progress` (
   CONSTRAINT `fk_app_stg_prog_stg` FOREIGN KEY (`stage_id`) REFERENCES `crm_workflow_stages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_applications`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_applications` (
@@ -306,7 +295,6 @@ CREATE TABLE IF NOT EXISTS `crm_applications` (
   CONSTRAINT `fk_app_workflow` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_application_profiles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_application_profiles` (
@@ -380,7 +368,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_application_profiles` (
   CONSTRAINT `fk_fap_prof_village` FOREIGN KEY (`village_id`) REFERENCES `crm_master_villages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_bank_facilities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_bank_facilities` (
@@ -410,7 +397,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_bank_facilities` (
   CONSTRAINT `fk_fap_bank_inst` FOREIGN KEY (`financial_institution_id`) REFERENCES `crm_master_financial_institutions` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_doc_requirements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_doc_requirements` (
@@ -429,7 +415,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_doc_requirements` (
   CONSTRAINT `fk_fap_doc_req_mast` FOREIGN KEY (`doc_requirement_id`) REFERENCES `crm_master_fap_document_requirements` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_document_ocr_comparisons`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_document_ocr_comparisons` (
@@ -452,7 +437,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_document_ocr_comparisons` (
   CONSTRAINT `fk_fap_ocr_cmp_file` FOREIGN KEY (`document_file_id`) REFERENCES `crm_application_document_files` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_document_ocr_discrepancies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_document_ocr_discrepancies` (
@@ -470,7 +454,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_document_ocr_discrepancies` (
   CONSTRAINT `fk_fap_ocr_diff_cmp` FOREIGN KEY (`comparison_id`) REFERENCES `crm_fap_document_ocr_comparisons` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_equipment_units`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_equipment_units` (
@@ -509,7 +492,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_equipment_units` (
   CONSTRAINT `fk_fap_eq_type` FOREIGN KEY (`unit_type_id`) REFERENCES `crm_master_equipment_types` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_financial_statements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_financial_statements` (
@@ -545,7 +527,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_financial_statements` (
   CONSTRAINT `fk_fap_fin_stmt_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_financing_proposals`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_financing_proposals` (
@@ -590,7 +571,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_financing_proposals` (
   CONSTRAINT `fk_fap_prop_src` FOREIGN KEY (`application_source_id`) REFERENCES `crm_master_application_sources` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_financing_purposes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_financing_purposes` (
@@ -609,7 +589,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_financing_purposes` (
   CONSTRAINT `fk_fap_fin_purp_opt` FOREIGN KEY (`purpose_option_id`) REFERENCES `crm_master_financing_purpose_options` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_legal_deed_remark_categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_legal_deed_remark_categories` (
@@ -625,7 +604,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_legal_deed_remark_categories` (
   CONSTRAINT `fk_fap_drc_deed` FOREIGN KEY (`deed_id`) REFERENCES `crm_fap_legal_deeds` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_legal_deed_reviews`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_legal_deed_reviews` (
@@ -648,7 +626,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_legal_deed_reviews` (
   CONSTRAINT `fk_fap_drev_deed` FOREIGN KEY (`deed_id`) REFERENCES `crm_fap_legal_deeds` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_legal_deeds`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_legal_deeds` (
@@ -677,7 +654,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_legal_deeds` (
   CONSTRAINT `fk_fap_deeds_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_legal_stakeholders`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_legal_stakeholders` (
@@ -753,7 +729,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_legal_stakeholders` (
   CONSTRAINT `fk_fap_stk_village` FOREIGN KEY (`village_id`) REFERENCES `crm_master_villages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_ocr_kitas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_ocr_kitas` (
@@ -784,7 +759,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_ocr_kitas` (
   CONSTRAINT `fk_ocr_kitas_stk` FOREIGN KEY (`stakeholder_id`) REFERENCES `crm_fap_legal_stakeholders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_ocr_ktp`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_ocr_ktp` (
@@ -821,7 +795,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_ocr_ktp` (
   CONSTRAINT `fk_ocr_ktp_stk` FOREIGN KEY (`stakeholder_id`) REFERENCES `crm_fap_legal_stakeholders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_ocr_npwp`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_ocr_npwp` (
@@ -852,7 +825,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_ocr_npwp` (
   CONSTRAINT `fk_ocr_npwp_stk` FOREIGN KEY (`stakeholder_id`) REFERENCES `crm_fap_legal_stakeholders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_ocr_passport`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_ocr_passport` (
@@ -888,7 +860,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_ocr_passport` (
   CONSTRAINT `fk_ocr_pass_stk` FOREIGN KEY (`stakeholder_id`) REFERENCES `crm_fap_legal_stakeholders` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_primary_contacts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_primary_contacts` (
@@ -930,7 +901,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_primary_contacts` (
   CONSTRAINT `fk_fap_pic_village` FOREIGN KEY (`village_id`) REFERENCES `crm_master_villages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_fap_project_contracts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_fap_project_contracts` (
@@ -953,7 +923,6 @@ CREATE TABLE IF NOT EXISTS `crm_fap_project_contracts` (
   CONSTRAINT `fk_fap_proj_role` FOREIGN KEY (`project_role_id`) REFERENCES `crm_master_project_roles` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_applications`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_applications` (
@@ -1028,7 +997,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_applications` (
   KEY `idx_frz_app_frozen_at` (`frozen_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_bank_facilities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_bank_facilities` (
@@ -1051,7 +1019,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_bank_facilities` (
   CONSTRAINT `fk_frz_bank_facilities_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_doc_requirements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_doc_requirements` (
@@ -1067,7 +1034,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_doc_requirements` (
   CONSTRAINT `fk_frz_doc_requirements_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_document_checklists`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_document_checklists` (
@@ -1089,7 +1055,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_document_checklists` (
   CONSTRAINT `fk_frz_document_checklists_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_equipment_units`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_equipment_units` (
@@ -1116,7 +1081,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_equipment_units` (
   CONSTRAINT `fk_frz_equipment_units_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_financial_statements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financial_statements` (
@@ -1147,7 +1111,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financial_statements` (
   CONSTRAINT `fk_frz_financial_statements_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_financing_proposals`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_proposals` (
@@ -1182,7 +1145,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_proposals` (
   CONSTRAINT `fk_frz_financing_proposals_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_financing_purposes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_purposes` (
@@ -1199,7 +1161,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_purposes` (
   CONSTRAINT `fk_frz_financing_purposes_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_legal_deed_remark_categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deed_remark_categories` (
@@ -1215,7 +1176,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deed_remark_categories` (
   CONSTRAINT `fk_frz_legal_deed_remark_categories_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_legal_deeds`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deeds` (
@@ -1248,7 +1208,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deeds` (
   CONSTRAINT `fk_frz_legal_deeds_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_legal_stakeholders`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_stakeholders` (
@@ -1302,7 +1261,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_stakeholders` (
   CONSTRAINT `fk_frz_legal_stakeholders_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_ocr_discrepancies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_ocr_discrepancies` (
@@ -1320,7 +1278,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_ocr_discrepancies` (
   CONSTRAINT `fk_frz_ocr_discrepancies_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_primary_contacts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_primary_contacts` (
@@ -1346,7 +1303,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_primary_contacts` (
   CONSTRAINT `fk_frz_primary_contacts_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_frozen_fap_project_contracts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_project_contracts` (
@@ -1364,7 +1320,6 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_project_contracts` (
   CONSTRAINT `fk_frz_project_contracts_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_application_sources`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_application_sources` (
@@ -1381,7 +1336,44 @@ CREATE TABLE IF NOT EXISTS `crm_master_application_sources` (
   UNIQUE KEY `uk_master_app_src_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_branches`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_master_approval_levels` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `level_no` int NOT NULL DEFAULT '1',
+  `app_id` int NOT NULL,
+  `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
+  `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_wf_approval_level` (`approval_code`,`level_no`,`authority_name`),
+  KEY `fk_wf_approval_level_auth` (`app_id`,`authority_name`),
+  CONSTRAINT `fk_wf_approval_level_approval` FOREIGN KEY (`approval_code`) REFERENCES `crm_master_approvals` (`code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_approval_level_auth` FOREIGN KEY (`app_id`, `authority_name`) REFERENCES `users_authorities` (`app_id`, `authority_name`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_master_approvals` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_type` enum('SEQUENTIAL','PARALLEL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SEQUENTIAL',
+  `status` enum('DRAFT','ACTIVE','INACTIVE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT',
+  `activated_at` timestamp(3) NULL DEFAULT NULL,
+  `activated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
+  `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_wf_approval_code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_branches` (
@@ -1398,7 +1390,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_branches` (
   UNIQUE KEY `uk_master_branches_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_business_categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_business_categories` (
@@ -1415,7 +1406,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_categories` (
   UNIQUE KEY `uk_master_biz_cat_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_business_partners`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_business_partners` (
@@ -1427,10 +1417,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_partners` (
   `nib` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `nib_date` date DEFAULT NULL,
   `npwp` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `establishment_act_no` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `establishment_date` date DEFAULT NULL,
-  `latest_deed_no` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `latest_deed_date` date DEFAULT NULL,
   `branch_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `premise_status_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `company_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
@@ -1451,10 +1437,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_partners` (
   `repayment_source` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `industry_segment_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `business_role_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `asset_he_liugong` int NOT NULL DEFAULT '0',
-  `asset_truck_liugong` int NOT NULL DEFAULT '0',
-  `asset_he_non_liugong` int NOT NULL DEFAULT '0',
-  `asset_truck_non_liugong` int NOT NULL DEFAULT '0',
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `deleted_at` timestamp(3) NULL DEFAULT NULL,
@@ -1488,7 +1470,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_partners` (
   CONSTRAINT `fk_mbp_village` FOREIGN KEY (`village_id`) REFERENCES `crm_master_villages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_business_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_business_roles` (
@@ -1505,7 +1486,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_roles` (
   UNIQUE KEY `uk_master_biz_role_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_cities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_cities` (
@@ -1523,7 +1503,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_cities` (
   CONSTRAINT `fk_master_cities_prov` FOREIGN KEY (`province_id`) REFERENCES `crm_master_provinces` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_countries`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_countries` (
@@ -1540,7 +1519,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_countries` (
   UNIQUE KEY `uk_master_countries_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_currencies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_currencies` (
@@ -1558,7 +1536,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_currencies` (
   UNIQUE KEY `uk_master_curr_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_districts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_districts` (
@@ -1576,7 +1553,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_districts` (
   CONSTRAINT `fk_master_dist_city` FOREIGN KEY (`city_id`) REFERENCES `crm_master_cities` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_document_types`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_document_types` (
@@ -1591,11 +1567,11 @@ CREATE TABLE IF NOT EXISTS `crm_master_document_types` (
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_approval` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_master_doc_type_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_equipment_assets`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_equipment_assets` (
@@ -1614,7 +1590,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_equipment_assets` (
   CONSTRAINT `fk_master_eq_asset_model` FOREIGN KEY (`model_id`) REFERENCES `crm_master_equipment_models` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_equipment_brands`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_equipment_brands` (
@@ -1633,7 +1608,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_equipment_brands` (
   CONSTRAINT `fk_master_eq_brand_cat` FOREIGN KEY (`category_id`) REFERENCES `crm_master_equipment_categories` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_equipment_categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_equipment_categories` (
@@ -1650,7 +1624,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_equipment_categories` (
   UNIQUE KEY `uk_master_eq_cat_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_equipment_models`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_equipment_models` (
@@ -1669,7 +1642,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_equipment_models` (
   CONSTRAINT `fk_master_eq_model_type` FOREIGN KEY (`type_id`) REFERENCES `crm_master_equipment_types` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_equipment_types`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_equipment_types` (
@@ -1688,7 +1660,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_equipment_types` (
   CONSTRAINT `fk_master_eq_type_brand` FOREIGN KEY (`brand_id`) REFERENCES `crm_master_equipment_brands` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_facility_purposes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_facility_purposes` (
@@ -1705,7 +1676,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_facility_purposes` (
   UNIQUE KEY `uk_master_fac_purp_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_fap_document_requirements`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_fap_document_requirements` (
@@ -1725,7 +1695,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_fap_document_requirements` (
   UNIQUE KEY `uk_master_fap_docreq_param` (`param_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_financial_institutions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_financial_institutions` (
@@ -1743,7 +1712,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_financial_institutions` (
   UNIQUE KEY `uk_master_fin_inst_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_financing_methods`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_financing_methods` (
@@ -1760,7 +1728,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_financing_methods` (
   UNIQUE KEY `uk_master_fin_meth_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_financing_purpose_options`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_financing_purpose_options` (
@@ -1784,17 +1751,17 @@ CREATE TABLE IF NOT EXISTS `crm_master_financing_purpose_options` (
   CONSTRAINT `fk_master_purp_opt_parent` FOREIGN KEY (`facility_purpose_id`) REFERENCES `crm_master_facility_purposes` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_form_fields`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_form_fields` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `form_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `section_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `field_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `label` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_enforceable` tinyint(1) NOT NULL DEFAULT '0',
+  `is_approval` tinyint(1) NOT NULL DEFAULT '0',
   `sort_order` int NOT NULL DEFAULT '0',
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
@@ -1802,11 +1769,32 @@ CREATE TABLE IF NOT EXISTS `crm_master_form_fields` (
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_master_form_field_code` (`code`),
-  KEY `idx_master_form_field_form` (`form_code`,`section_name`),
-  CONSTRAINT `fk_master_form_field_form` FOREIGN KEY (`form_code`) REFERENCES `crm_master_forms` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
+  KEY `idx_master_form_field_section` (`section_code`),
+  KEY `idx_master_form_field_form` (`form_code`,`section_code`),
+  CONSTRAINT `fk_master_form_field_form` FOREIGN KEY (`form_code`) REFERENCES `crm_master_forms` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_master_form_field_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_forms`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_master_form_sections` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `form_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `is_approval` tinyint(1) NOT NULL DEFAULT '0',
+  `is_repeating` tinyint(1) NOT NULL DEFAULT '0',
+  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
+  `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_master_form_section_code` (`code`),
+  UNIQUE KEY `uk_master_form_section_name` (`form_code`,`name`),
+  CONSTRAINT `fk_master_form_section_form` FOREIGN KEY (`form_code`) REFERENCES `crm_master_forms` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_forms` (
@@ -1814,6 +1802,7 @@ CREATE TABLE IF NOT EXISTS `crm_master_forms` (
   `code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
+  `is_approval` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1822,7 +1811,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_forms` (
   UNIQUE KEY `uk_master_form_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_industry_segments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_industry_segments` (
@@ -1839,7 +1827,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_industry_segments` (
   UNIQUE KEY `uk_master_ind_seg_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_legal_designations`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_legal_designations` (
@@ -1856,7 +1843,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_legal_designations` (
   UNIQUE KEY `uk_master_leg_desig_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_legal_remark_categories`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_legal_remark_categories` (
@@ -1874,7 +1860,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_legal_remark_categories` (
   UNIQUE KEY `uk_master_leg_rem_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_legal_representative_types`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_legal_representative_types` (
@@ -1891,7 +1876,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_legal_representative_types` (
   UNIQUE KEY `uk_master_leg_rep_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_payment_timings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_payment_timings` (
@@ -1909,7 +1893,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_payment_timings` (
   UNIQUE KEY `uk_master_pay_tim_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_pic_positions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_pic_positions` (
@@ -1926,7 +1909,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_pic_positions` (
   UNIQUE KEY `uk_master_pic_pos_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_postal_codes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_postal_codes` (
@@ -1944,7 +1926,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_postal_codes` (
   CONSTRAINT `fk_master_postal_city` FOREIGN KEY (`city_id`) REFERENCES `crm_master_cities` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_preanalysis_investment_options`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_preanalysis_investment_options` (
@@ -1961,7 +1942,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_preanalysis_investment_options` (
   UNIQUE KEY `uk_master_prean_inv_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_premise_statuses`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_premise_statuses` (
@@ -1978,7 +1958,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_premise_statuses` (
   UNIQUE KEY `uk_master_premise_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_project_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_project_roles` (
@@ -1995,7 +1974,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_project_roles` (
   UNIQUE KEY `uk_master_proj_role_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_provinces`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_provinces` (
@@ -2014,7 +1992,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_provinces` (
   CONSTRAINT `fk_master_prov_country` FOREIGN KEY (`country_id`) REFERENCES `crm_master_countries` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_stakeholder_positions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_stakeholder_positions` (
@@ -2031,7 +2008,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_stakeholder_positions` (
   UNIQUE KEY `uk_master_stk_pos_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_master_villages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_villages` (
@@ -2052,7 +2028,6 @@ CREATE TABLE IF NOT EXISTS `crm_master_villages` (
   CONSTRAINT `fk_master_vill_postal` FOREIGN KEY (`postal_code_id`) REFERENCES `crm_master_postal_codes` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_prototype_preanalysis`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_prototype_preanalysis` (
@@ -2066,7 +2041,6 @@ CREATE TABLE IF NOT EXISTS `crm_prototype_preanalysis` (
   CONSTRAINT `fk_prototype_prean_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_activation_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflow_activation_logs` (
@@ -2084,72 +2058,63 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_activation_logs` (
   CONSTRAINT `fk_wf_act_user` FOREIGN KEY (`actor_user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_approval_steps`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `crm_workflow_approval_steps` (
+CREATE TABLE IF NOT EXISTS `crm_workflow_approval_assignments` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `scope_type` enum('GROUP','STAGE','DOCUMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(110) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `scope_type` enum('GROUP','STAGE','DOCUMENT','SECTION') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_group_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `workflow_stage_document_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `sort_order` int NOT NULL DEFAULT '1',
-  `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_wf_apstep_code` (`workflow_code`,`code`),
-  KEY `idx_wf_apstep_order` (`workflow_code`,`scope_type`,`sort_order`),
-  KEY `idx_wf_apstep_authority_name` (`authority_name`),
-  KEY `fk_wf_apstep_group` (`stage_group_id`,`workflow_code`),
-  KEY `fk_wf_apstep_stage` (`stage_id`,`workflow_code`),
-  KEY `fk_wf_apstep_doc` (`workflow_stage_document_id`),
-  KEY `fk_wf_apstep_group_code` (`workflow_code`,`group_code`),
-  KEY `fk_wf_apstep_doc_code` (`workflow_code`,`stage_code`,`document_code`),
-  CONSTRAINT `fk_wf_apstep_authority` FOREIGN KEY (`authority_name`) REFERENCES `crm_workflow_authority_options` (`authority_name`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_doc` FOREIGN KEY (`workflow_stage_document_id`) REFERENCES `crm_workflow_stage_documents` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_doc_code` FOREIGN KEY (`workflow_code`, `stage_code`, `document_code`) REFERENCES `crm_workflow_stage_documents` (`workflow_code`, `stage_code`, `document_code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_group` FOREIGN KEY (`stage_group_id`, `workflow_code`) REFERENCES `crm_workflow_stage_groups` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_stage` FOREIGN KEY (`stage_id`, `workflow_code`) REFERENCES `crm_workflow_stages` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_apstep_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
+  UNIQUE KEY `uk_wf_ap_assign_code` (`workflow_code`,`code`),
+  KEY `idx_wf_ap_assign_approval` (`approval_code`),
+  KEY `fk_wf_ap_assign_group` (`stage_group_id`,`workflow_code`),
+  KEY `fk_wf_ap_assign_stage` (`stage_id`,`workflow_code`),
+  KEY `fk_wf_ap_assign_doc` (`workflow_stage_document_id`),
+  KEY `fk_wf_ap_assign_group_code` (`workflow_code`,`group_code`),
+  KEY `fk_wf_ap_assign_doc_code` (`workflow_code`,`stage_code`,`document_code`),
+  KEY `fk_wf_ap_assign_section` (`section_code`),
+  CONSTRAINT `fk_wf_ap_assign_approval` FOREIGN KEY (`approval_code`) REFERENCES `crm_master_approvals` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_doc` FOREIGN KEY (`workflow_stage_document_id`) REFERENCES `crm_workflow_stage_documents` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_doc_code` FOREIGN KEY (`workflow_code`, `stage_code`, `document_code`) REFERENCES `crm_workflow_stage_documents` (`workflow_code`, `stage_code`, `document_code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_group` FOREIGN KEY (`stage_group_id`, `workflow_code`) REFERENCES `crm_workflow_stage_groups` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_stage` FOREIGN KEY (`stage_id`, `workflow_code`) REFERENCES `crm_workflow_stages` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_wf_ap_assign_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_authority_options`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `crm_workflow_authority_options` (
+CREATE TABLE IF NOT EXISTS `crm_workflow_approval_history` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `app_id` int NOT NULL,
-  `scope_type` enum('GROUP','STAGE','DOCUMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `form_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `document_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `department_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_type` enum('APPROVAL','ASSIGNMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_code` varchar(110) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `action` enum('ADDED','CHANGED','REMOVED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `before_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `after_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_wf_auth_opt_authority` (`authority_name`),
-  KEY `idx_wf_auth_opt_form` (`form_code`),
-  KEY `idx_wf_auth_opt_doc` (`document_code`),
-  KEY `fk_wf_auth_opt_authority` (`app_id`,`authority_name`),
-  CONSTRAINT `fk_wf_auth_opt_authority` FOREIGN KEY (`app_id`, `authority_name`) REFERENCES `users_authorities` (`app_id`, `authority_name`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_auth_opt_doc` FOREIGN KEY (`document_code`) REFERENCES `crm_master_document_types` (`code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_auth_opt_form` FOREIGN KEY (`form_code`) REFERENCES `crm_master_forms` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY `idx_wf_ap_history_subject` (`subject_type`,`subject_code`,`created_at`),
+  KEY `idx_wf_ap_history_wf` (`workflow_code`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_stage_documents`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflow_stage_documents` (
@@ -2186,7 +2151,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_documents` (
   CONSTRAINT `fk_wf_sdoc_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_stage_fields`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflow_stage_fields` (
@@ -2212,7 +2176,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_fields` (
   CONSTRAINT `fk_wf_sfield_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_stage_groups`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflow_stage_groups` (
@@ -2233,7 +2196,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_groups` (
   CONSTRAINT `fk_wf_group_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflow_stages`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflow_stages` (
@@ -2264,7 +2226,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stages` (
   CONSTRAINT `fk_wf_stage_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `crm_workflows`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflows` (
@@ -2284,7 +2245,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflows` (
   UNIQUE KEY `uk_wf_code` (`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_applications`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_applications` (
@@ -2297,7 +2257,6 @@ CREATE TABLE IF NOT EXISTS `users_applications` (
   UNIQUE KEY `uk_users_app_name` (`app_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_audit_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_audit_logs` (
@@ -2312,7 +2271,6 @@ CREATE TABLE IF NOT EXISTS `users_audit_logs` (
   CONSTRAINT `fk_users_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_authorities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_authorities` (
@@ -2325,7 +2283,6 @@ CREATE TABLE IF NOT EXISTS `users_authorities` (
   CONSTRAINT `fk_users_auth_app` FOREIGN KEY (`app_id`) REFERENCES `users_applications` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_departments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_departments` (
@@ -2342,7 +2299,6 @@ CREATE TABLE IF NOT EXISTS `users_departments` (
   UNIQUE KEY `uk_users_dept_code` (`department_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_role_authorities`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_role_authorities` (
@@ -2354,7 +2310,6 @@ CREATE TABLE IF NOT EXISTS `users_role_authorities` (
   CONSTRAINT `fk_users_ra_role` FOREIGN KEY (`role_id`) REFERENCES `users_roles` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_roles` (
@@ -2367,7 +2322,6 @@ CREATE TABLE IF NOT EXISTS `users_roles` (
   CONSTRAINT `fk_users_roles_app` FOREIGN KEY (`app_id`) REFERENCES `users_applications` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_session_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_session_logs` (
@@ -2390,7 +2344,6 @@ CREATE TABLE IF NOT EXISTS `users_session_logs` (
   CONSTRAINT `fk_users_sess_user` FOREIGN KEY (`user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_user_app_roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_user_app_roles` (
@@ -2405,7 +2358,6 @@ CREATE TABLE IF NOT EXISTS `users_user_app_roles` (
   CONSTRAINT `fk_users_uar_user` FOREIGN KEY (`user_id`) REFERENCES `users_users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_users`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_users` (
@@ -2433,7 +2385,6 @@ CREATE TABLE IF NOT EXISTS `users_users` (
   CONSTRAINT `fk_users_dept` FOREIGN KEY (`dept_id`) REFERENCES `users_departments` (`dept_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_vapid_keys`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_vapid_keys` (
@@ -2444,7 +2395,6 @@ CREATE TABLE IF NOT EXISTS `users_vapid_keys` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `users_web_push_subscriptions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `users_web_push_subscriptions` (
