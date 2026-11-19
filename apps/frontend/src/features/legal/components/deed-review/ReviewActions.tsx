@@ -4,6 +4,7 @@ import {AlertCircle, Check, FileText, Pencil, Send} from 'lucide-react';
 export function ReviewActions({
   canSubmit,
   canApprove,
+  legacyReview = true,
   busy,
   comments,
   documentId,
@@ -14,6 +15,8 @@ export function ReviewActions({
 }: {
   canSubmit: boolean;
   canApprove: boolean;
+  /** False when the approval of the deed section in the workflow decides: the old submit / approve / reject / remarks are not drawn. */
+  legacyReview?: boolean;
   busy: boolean;
   comments: string;
   documentId: string;
@@ -28,7 +31,7 @@ export function ReviewActions({
         <button className="button" disabled={busy} onClick={onClose}>
           Close
         </button>
-        {canApprove && (
+        {legacyReview && canApprove && (
           <button
             className="button"
             disabled={busy || !comments.trim()}
@@ -39,7 +42,7 @@ export function ReviewActions({
             Remarks
           </button>
         )}
-        {canApprove && (
+        {legacyReview && canApprove && (
           <button
             className="button danger"
             disabled={busy || !comments.trim()}
@@ -62,13 +65,13 @@ export function ReviewActions({
             </button>
           </>
         )}
-        {canSubmit && (
+        {legacyReview && canSubmit && (
           <button className="button primary" disabled={busy} onClick={() => action('SUBMIT')}>
             <Send size={14} />
             {status === 'NEEDS_REVISION' ? 'Resubmit for Legal Approval' : 'Submit for Legal Approval'}
           </button>
         )}
-        {canApprove && (
+        {legacyReview && canApprove && (
           <button
             className="button primary"
             disabled={busy || Boolean(documentId && !url)}

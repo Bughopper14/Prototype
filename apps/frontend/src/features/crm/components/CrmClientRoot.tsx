@@ -11,7 +11,7 @@ export function CrmClientRoot({user, children}: {user: any; children: ReactNode}
       <CrmStyles />
       <CrmProvider user={user}>
         <CrmShell>
-          <AccessGate authority="access_crm_dashboard" page="CRM Dashboard">
+          <AccessGate authority="CRM_DASHBOARD_ACCESS" page="CRM Dashboard">
             {children}
           </AccessGate>
         </CrmShell>

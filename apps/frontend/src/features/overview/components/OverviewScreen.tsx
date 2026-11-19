@@ -2,7 +2,7 @@ import {ApplicationTable} from '@/features/applications/components/ApplicationTa
 import {isTerminalStatus, useMasterData, workflowStages, workflowStatuses} from '@/shared/master-data';
 import {money} from '@/shared/lib/format';
 import {checkIsAdmin} from '@/shared/lib/auth';
-import {DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY} from '@liugong/shared';
+import {DEED_EDIT_AUTHORITY} from '@liugong/shared';
 import {
   AlertCircle,
   ArrowRight,
@@ -35,7 +35,6 @@ export function OverviewScreen({
   const needs = rows.filter(
     r =>
       (has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)) ||
-      (has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending) > 0) ||
       // An approval step that waits for an authority this user holds
       (!checkIsAdmin(user) && r.pending_for_me),
   );
@@ -149,8 +148,7 @@ export function OverviewScreen({
               onClick={() =>
                 open(
                   r.id,
-                  has(DEED_APPROVE_AUTHORITY) ||
-                    hasRejectedDeed(r)
+                  hasRejectedDeed(r)
                     ? 5
                     : 0,
                 )
@@ -161,9 +159,7 @@ export function OverviewScreen({
               </span>
               <div>
                 <b>
-                  {has(DEED_APPROVE_AUTHORITY) && Number(r.deeds_pending) > 0
-                    ? 'Approve deed document'
-                    : has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)
+                  {has(DEED_EDIT_AUTHORITY) && hasRejectedDeed(r)
                       ? 'Revise the returned deed'
                       : isReturned(r)
                         ? 'Fix what was rejected'

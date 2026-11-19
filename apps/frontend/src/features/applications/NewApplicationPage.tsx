@@ -11,7 +11,7 @@ export default function NewApplicationPage() {
   const {customers, reload, notify} = useCrm();
 
   return (
-    <AccessGate authority="crm_create_application" page="New application">
+    <AccessGate authority="CRM_APPLICATION_CREATE" page="New application">
       <NewApplicationStart
         customers={customers}
         preselectedCustomerId={customerId}

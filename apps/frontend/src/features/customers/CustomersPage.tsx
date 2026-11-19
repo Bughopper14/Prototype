@@ -9,13 +9,13 @@ export default function CustomersPage() {
   return (
     <>
       <PageHeading page="Customers" />
-      <AccessGate authority="crm_view_customers" page="Customers">
+      <AccessGate authority="CRM_CUSTOMER_VIEW" page="Customers">
         <CustomerDirectory
           customers={customers}
           rows={rows}
           user={user}
           open={openApplication}
-          startNewApplication={hasAuthority(user, 'crm_create_application') ? startNewApplication : undefined}
+          startNewApplication={hasAuthority(user, 'CRM_APPLICATION_CREATE') ? startNewApplication : undefined}
           notify={notify}
         />
       </AccessGate>

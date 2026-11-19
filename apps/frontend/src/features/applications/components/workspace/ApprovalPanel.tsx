@@ -21,7 +21,7 @@ export function ApprovalPanel() {
   if (draft.isNew || !a.approval) return null;
   const ap = a.approval as Approval;
   const stages: {stage: string; name: string; group: string; submitted: boolean; completed: boolean; canSubmit: boolean; blockedReason: string | null}[] = a.stageProgress || [];
-  const canSubmitRole = isAdminUser || (user?.authorities || []).includes('crm_workflow_submit');
+  const canSubmitRole = isAdminUser || (user?.authorities || []).includes('CRM_WORKFLOW_SUBMIT');
   const rejected = ap.current.flatMap(c => c.steps.filter(s => s.status === 'REJECTED').map(s => ({scope: c.scopeName, step: s, decision: s.decisions.find(d => d.decision === 'REJECTED')})));
   const submit = (code: string) => {
     setError('');

@@ -76,7 +76,7 @@ export function WorkflowDiagramView({def, catalog}: {def: Definition; catalog: C
                   )}
                 </div>
                 {step.groups.map(g => (
-                  <GroupBox key={g.key} group={g} color={colorOf.get(g.key) || GROUP_COLORS[0]} def={def} deptName={deptName} picked={picked} onPick={setPicked} />
+                  <GroupBox key={g.key} group={g} color={colorOf.get(g.key) || GROUP_COLORS[0]} def={def} catalog={catalog} deptName={deptName} picked={picked} onPick={setPicked} />
                 ))}
               </div>
             </Fragment>
@@ -98,7 +98,7 @@ export function WorkflowDiagramView({def, catalog}: {def: Definition; catalog: C
   );
 }
 
-function GroupBox({group, color, def, deptName, picked, onPick}: {group: Group; color: string; def: Definition; deptName: (c?: string | null) => string | null; picked: string | null; onPick: (key: string | null) => void}) {
+function GroupBox({group, color, def, catalog, deptName, picked, onPick}: {group: Group; color: string; def: Definition; catalog: Catalog | null; deptName: (c?: string | null) => string | null; picked: string | null; onPick: (key: string | null) => void}) {
   const tiers = tiersOf(def.stages.filter(s => s.groupKey === group.key));
   return (
     <section className="wf-dg-group" style={{['--gc' as any]: color}}>
@@ -108,9 +108,13 @@ function GroupBox({group, color, def, deptName, picked, onPick}: {group: Group; 
           {tiers.reduce((n, t) => n + t.length, 0)} stage{tiers.reduce((n, t) => n + t.length, 0) === 1 ? '' : 's'}
         </small>
       </header>
-      {def.approvalSteps.some(a => a.scope === 'GROUP' && a.groupKey === group.key) && (
+      {def.approvals.some(a => a.scope === 'GROUP' && a.groupKey === group.key) && (
         <p className="wf-dg-groupap">
-          <ShieldCheck size={15} /> Approval of the whole group: {[...def.approvalSteps].filter(a => a.scope === 'GROUP' && a.groupKey === group.key).sort((a, b) => a.order - b.order).map(a => a.name).join(' → ')}
+          <ShieldCheck size={15} /> Approval of the whole group:{' '}
+          {def.approvals
+            .filter(a => a.scope === 'GROUP' && a.groupKey === group.key)
+            .map(a => catalog?.approvals.find(x => x.code === a.approvalCode)?.name || a.approvalCode || 'not chosen yet')
+            .join(', ')}
         </p>
       )}
       {tiers.length === 0 && <p className="wf-dg-nostage">No stage in this group yet.</p>}
@@ -127,7 +131,7 @@ function GroupBox({group, color, def, deptName, picked, onPick}: {group: Group; 
               {tier.map(s => {
                 const mandatory = def.fields.filter(f => f.stageKey === s.key && f.mandatory).length;
                 const docs = def.documents.filter(d => d.stageKey === s.key).length;
-                const approvals = def.approvalSteps.filter(a => a.scope !== 'GROUP' && a.stageKey === s.key).length;
+                const approvals = def.approvals.filter(a => a.scope !== 'GROUP' && a.stageKey === s.key).length;
                 const dept = deptName(s.departmentCode);
                 return (
                   <button key={s.key} type="button" className={`wf-dg-stage ${picked === s.key ? 'on' : ''}`} aria-pressed={picked === s.key} onClick={() => onPick(picked === s.key ? null : s.key)}>
@@ -146,7 +150,7 @@ function GroupBox({group, color, def, deptName, picked, onPick}: {group: Group; 
                       </i>
                       {approvals > 0 && (
                         <i className="wf-dg-ap">
-                          <ShieldCheck size={14} /> {approvals} approval step{approvals === 1 ? '' : 's'}
+                          <ShieldCheck size={14} /> {approvals} approval{approvals === 1 ? '' : 's'}
                         </i>
                       )}
                     </span>
@@ -167,13 +171,23 @@ function StageDetail({stage, def, catalog, color, deptName}: {stage: Stage; def:
   const form = catalog?.forms.find(f => f.code === stage.formCode)?.name;
   const labelOf = (f: Definition['fields'][number]) => catalog?.formFields.find(x => x.formCode === f.formCode && x.section === f.section && x.code === f.code)?.label || f.code;
   const docName = (code: string) => catalog?.documents.find(d => d.code === code)?.name || code;
-  const steps = [...def.approvalSteps]
-    .filter(a => (a.scope === 'GROUP' && a.groupKey === stage.groupKey) || a.stageKey === stage.key)
-    .sort((x, y) => x.order - y.order || x.name.localeCompare(y.name));
-  const target = (a: Definition['approvalSteps'][number]) => (a.scope === 'GROUP' ? 'The whole group' : a.scope === 'STAGE' ? 'This stage' : `Document · ${docName(a.documentCode || '')}`);
-  const wholeSteps = steps.filter(a => a.scope !== 'DOCUMENT');
-  const docSteps = steps.filter(a => a.scope === 'DOCUMENT');
-  const runsText = (a: Definition['approvalSteps'][number]) => (steps.filter(x => x.scope !== 'DOCUMENT' && x.order === a.order).length > 1 ? 'together with the other steps of the same number' : 'anyone who holds the authority can approve or reject');
+  const places = def.approvals.filter(a => (a.scope === 'GROUP' && a.groupKey === stage.groupKey) || a.stageKey === stage.key);
+  const approvalOf = (code: string) => catalog?.approvals.find(x => x.code === code);
+  const placeName = (a: Definition['approvals'][number]) =>
+    a.scope === 'GROUP'
+      ? 'The whole group'
+      : a.scope === 'STAGE'
+        ? 'This stage'
+        : a.scope === 'SECTION'
+          ? `Section · ${catalog?.sections.find(x => x.code === a.sectionCode)?.name || a.sectionCode}`
+          : `Document · ${docName(a.documentCode || '')}`;
+  const levelText = (code: string) => {
+    const ap = approvalOf(code);
+    if (!ap) return code ? 'this approval no longer exists' : 'no approval chosen yet';
+    const by = new Map<number, string[]>();
+    for (const l of ap.levels) by.set(l.levelNo, [...(by.get(l.levelNo) || []), l.authorityName]);
+    return [...by].sort((x, y) => x[0] - y[0]).map(([n, a]) => `${n}: ${a.join(' + ')}`).join('  →  ');
+  };
   const bySection = new Map<string, string[]>();
   for (const f of fields) bySection.set(f.section, [...(bySection.get(f.section) || []), labelOf(f)]);
 
@@ -225,54 +239,33 @@ function StageDetail({stage, def, catalog, color, deptName}: {stage: Stage; def:
       </div>
       <div className="wf-dg-approval">
         <h6>
-          <ShieldCheck size={16} /> Approval ({steps.length})
+          <ShieldCheck size={16} /> Approval ({places.length})
         </h6>
-        {steps.length === 0 ? (
+        {places.length === 0 ? (
           <p className="wf-dg-none">Nobody has to approve this stage: it is done as soon as it is submitted.</p>
         ) : (
           <>
-            {wholeSteps.length > 0 && (
-              <ol>
-                {wholeSteps.map(a => (
-                  <li key={a.key}>
-                    <span className="wf-dg-ap-order">{a.order}</span>
-                    <div>
-                      <b>{a.name}</b>
-                      <small>{a.scope === 'GROUP' ? 'The whole group' : 'This stage'} · {runsText(a)}</small>
-                      <code>{a.authorityName || 'no authority chosen yet'}</code>
-                      {a.authorityExists === false && <em className="warn">no longer exists in User Management</em>}
-                    </div>
-                  </li>
+            <table className="wf-dg-table">
+              <thead>
+                <tr>
+                  <th>Place</th>
+                  <th>Approval</th>
+                  <th>Levels (who approves)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {places.map((a, i) => (
+                  <tr key={i}>
+                    <td>{placeName(a)}</td>
+                    <td>{approvalOf(a.approvalCode)?.name || a.approvalCode || 'not chosen yet'}</td>
+                    <td>
+                      <code>{levelText(a.approvalCode)}</code>
+                    </td>
+                  </tr>
                 ))}
-              </ol>
-            )}
-            {docSteps.length > 0 && (
-              <>
-                <p className="wf-dg-none">
-                  <b>{docSteps.length} document{docSteps.length === 1 ? '' : 's'} need approval.</b> One approval covers every file of a document: five ID cards of five stakeholders are still one approval of "KTP".
-                </p>
-                <table className="wf-dg-table">
-                  <thead>
-                    <tr>
-                      <th>Document</th>
-                      <th>Who can approve</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {docSteps.map(a => (
-                      <tr key={a.key}>
-                        <td>{docName(a.documentCode || '')}</td>
-                        <td>
-                          <code>{a.authorityName || 'no authority chosen yet'}</code>
-                          {a.authorityExists === false && <em className="warn"> no longer exists</em>}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-            {steps.length > 1 && <p className="wf-dg-none">Steps with the same number are approved at the same time; the next number starts when they are all approved.</p>}
+              </tbody>
+            </table>
+            <p className="wf-dg-none">Levels with the same number are approved at the same time; the next number starts when they are all approved. Anyone who holds the authority can approve or reject.</p>
           </>
         )}
       </div>

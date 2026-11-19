@@ -2,4 +2,4 @@
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {hasAuthority} from '@/shared/lib/auth';
 
-export const useCanManageMasterData = () => hasAuthority(useCrm().user, 'crm_manage_master_data');
+export const useCanManageMasterData = () => hasAuthority(useCrm().user, 'CRM_MASTER-DATA_MANAGE');

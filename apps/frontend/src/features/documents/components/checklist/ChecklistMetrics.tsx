@@ -1,5 +1,5 @@
-/** The five metric cards above the checklist. */
-import {CheckCircle2, Clock, ShieldCheck, Layers, Sparkles} from 'lucide-react';
+/** The four metric cards above the checklist. */
+import {CheckCircle2, Clock, ShieldCheck, Layers} from 'lucide-react';
 
 const SHOWN = 3;
 
@@ -87,15 +87,6 @@ export function ChecklistMetrics({
           {mandatoryLeft === 0 ? 'Semua dokumen wajib terpenuhi' : `${mandatoryLeft} wajib belum terpenuhi`}
         </small>
         <MissingList items={stats.missingMandatory.map((name: string) => ({name, mandatory: true}))} mandatory />
-      </div>
-
-      <div className="doc-checklist-bento-card card-system">
-        <div className="bento-top">
-          <span className="bento-lbl">Terhubung Sistem</span>
-          <Sparkles size={16} className="bento-icon" />
-        </div>
-        <div className="bento-val">{stats.systemLinkedCount}</div>
-        <small className="bento-sub">Otomatis dari FAP, Customer &amp; Legal</small>
       </div>
     </div>
   );

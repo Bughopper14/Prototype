@@ -60,7 +60,7 @@ export function ApprovalDecisionDialog() {
   }, [decision?.stepId, decision?.kind]);
   if (!decision) return null;
   const reject = kind === 'REJECTED';
-  const canRequestDocuments = hasAuthority(user, 'crm_upload_app_documents');
+  const canRequestDocuments = hasAuthority(user, 'CRM_DOCUMENT_UPLOAD');
   const close = () => {
     setGaps([]);
     setDecision(null);

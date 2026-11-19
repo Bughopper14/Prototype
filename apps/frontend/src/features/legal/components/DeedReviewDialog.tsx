@@ -9,13 +9,12 @@ import {ReviewNotices} from '@/features/legal/components/deed-review/ReviewNotic
 import {ReviewHeader} from '@/features/legal/components/deed-review/ReviewHeader';
 import {useMasterData} from '@/shared/master-data';
 import {
-  DEED_APPROVE_AUTHORITY,
   DEED_EDIT_AUTHORITY,
   label,
   reviewStatus,
   stakeholderFields,
 } from '@liugong/shared';
-import {hasAuthority} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {DeedComparison} from './DeedComparison';
@@ -61,9 +60,11 @@ export function DeedReviewDialog({
         return [f.label, money ? Number(raw).toLocaleString('id-ID') : shown] as const;
       })
       .filter(Boolean) as (readonly [string, string])[];
+  // One deed, one approval: when the workflow has an approval for the deed section, the approval of that section decides (the ApprovalSlot on the Legal tab), so this old Submit / Approve / Reject / Remarks is not offered.
+  const masterApproves = ((application.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === 'LEGAL-DEEDS-AMENDMENTS');
   const canSubmit =
       hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'NEEDS_REVISION'].includes(status),
-    canApprove = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING';
+    canApprove = checkIsAdmin(user) && status === 'PENDING';
   useEffect(() => {
     let live = true;
     setUrl('');
@@ -149,6 +150,7 @@ export function DeedReviewDialog({
         <ReviewActions
           canSubmit={canSubmit}
           canApprove={canApprove}
+          legacyReview={!masterApproves}
           busy={busy}
           comments={comments}
           documentId={documentId}

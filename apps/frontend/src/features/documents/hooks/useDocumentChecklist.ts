@@ -38,7 +38,7 @@ export function useDocumentChecklist({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [targetUploadCode, setTargetUploadCode] = useState<string | null>(null);
   // Asking for the approval of one document (a document the workflow wants approved): the same people who may submit a stage
-  const canRequestApproval = hasAuthority(user, 'crm_workflow_submit');
+  const canRequestApproval = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT');
   const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
   const requestApproval = async (row: ChecklistRow) => {
     if (!row.chkId) return;

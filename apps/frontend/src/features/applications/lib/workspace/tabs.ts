@@ -28,14 +28,14 @@ export function stageTabOrder(activeStage: string): number[] {
 
 /** A tab is only offered when the user's role may view that section. */
 export const TAB_VIEW_AUTHORITY: Record<number, string> = {
-  0: 'crm_view_app_customer_pic',
-  1: 'crm_view_app_stakeholders',
-  4: 'crm_view_app_financial',
-  5: 'crm_view_app_legal',
-  6: 'crm_view_app_documents',
-  7: 'crm_view_app_activity',
-  8: 'crm_view_applications',
-  9: 'crm_view_app_documents',
-  10: 'crm_view_applications',
-  11: 'crm_workflow_submit',
+  0: 'CRM_CUSTOMER-PIC_VIEW',
+  1: 'CRM_STAKEHOLDER_VIEW',
+  4: 'CRM_FINANCIAL_VIEW',
+  5: 'CRM_LEGAL_VIEW',
+  6: 'CRM_DOCUMENT_VIEW',
+  7: 'CRM_APPLICATION-ACTIVITY_VIEW',
+  8: 'CRM_APPLICATION_VIEW',
+  9: 'CRM_DOCUMENT_VIEW',
+  10: 'CRM_APPLICATION_VIEW',
+  11: 'CRM_WORKFLOW_SUBMIT',
 };

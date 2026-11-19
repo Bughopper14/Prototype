@@ -13,15 +13,15 @@ export type CrmPageName =
   | 'Activity';
 
 export const CRM_PAGES: {name: CrmPageName; href: string; authority: string}[] = [
-  {name: 'Overview', href: CRM_BASE, authority: 'crm_view_overview'},
-  {name: 'Applications', href: `${CRM_BASE}/applications`, authority: 'crm_view_applications'},
-  {name: 'Document desk', href: `${CRM_BASE}/document-desk`, authority: 'crm_view_document_desk'},
-  {name: 'Customers', href: `${CRM_BASE}/customers`, authority: 'crm_view_customers'},
-  {name: 'Customize master data', href: `${CRM_BASE}/master-data`, authority: 'crm_view_master_data'},
+  {name: 'Overview', href: CRM_BASE, authority: 'CRM_OVERVIEW_VIEW'},
+  {name: 'Applications', href: `${CRM_BASE}/applications`, authority: 'CRM_APPLICATION_VIEW'},
+  {name: 'Document desk', href: `${CRM_BASE}/document-desk`, authority: 'CRM_DOCUMENT-DESK_VIEW'},
+  {name: 'Customers', href: `${CRM_BASE}/customers`, authority: 'CRM_CUSTOMER_VIEW'},
+  {name: 'Customize master data', href: `${CRM_BASE}/master-data`, authority: 'CRM_MASTER-DATA_VIEW'},
   // Only administrators: no role holds this authority, so the page is for the Super Admin.
-  {name: 'Workflow', href: `${CRM_BASE}/workflows`, authority: 'crm_manage_workflow'},
-  {name: 'Notifications', href: `${CRM_BASE}/notifications`, authority: 'crm_view_notifications'},
-  {name: 'Activity', href: `${CRM_BASE}/activity`, authority: 'crm_view_activity'},
+  {name: 'Workflow', href: `${CRM_BASE}/workflows`, authority: 'CRM_WORKFLOW_MANAGE'},
+  {name: 'Notifications', href: `${CRM_BASE}/notifications`, authority: 'CRM_NOTIFICATION_VIEW'},
+  {name: 'Activity', href: `${CRM_BASE}/activity`, authority: 'CRM_ACTIVITY_VIEW'},
 ];
 
 export const pageHref = (name: string) => CRM_PAGES.find(page => page.name === name)?.href ?? CRM_BASE;

@@ -7,11 +7,13 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   FileText,
+  Copy,
   History,
-  Link2,
   ListChecks,
   Minus,
   Plus,
@@ -20,13 +22,12 @@ import {
   Save,
   ShieldCheck,
   Trash2,
-  Unlink,
   XCircle,
 } from 'lucide-react';
 import {Fragment, useCallback, useEffect, useState} from 'react';
 import {Modal} from '@/shared/ui/Modal';
 import {workflowApi, type Catalog, type Definition, type Group, type Issue, type Stage, type WorkflowHeader} from '../api';
-import {joinPreviousStep, moveGroup, removePart, sortGroups, sortStages, splitFromStep, stepsOf, tempKey} from '../definition-ops';
+import {canMove, moveGroup, moveStage, removePart, runsTogether, setGroupTogether, setStageTogether, sortGroups, sortStages, stepsOf, tempKey} from '../definition-ops';
 import {GROUP_COLORS} from '../palette';
 import {ApprovalList} from './ApprovalList';
 import {StagePanel, type StageTab} from './StagePanel';
@@ -35,7 +36,7 @@ import {WorkflowDiagramView} from '../WorkflowDiagram';
 
 const STATUS_LABEL = {DRAFT: 'Draft', ACTIVE: 'Active', INACTIVE: 'Deactivated'} as const;
 
-export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catalog: Catalog; onBack: () => void; notify: (m: string) => void}) {
+export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: string; catalog: Catalog; onBack: () => void; /** Opens another workflow (the clone). */ onOpen?: (id: string) => void; notify: (m: string) => void}) {
   const [workflow, setWorkflow] = useState<WorkflowHeader | null>(null);
   const [def, setDefState] = useState<Definition | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -137,6 +138,20 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
     }
   }
 
+  async function clone() {
+    if (dirty && !(await confirmAsk({title: 'Clone without saving?', message: 'Your unsaved changes are not copied. The clone is made from the saved workflow.', confirmLabel: 'Clone'}))) return;
+    setBusy(true);
+    try {
+      const made = await workflowApi.clone(id);
+      notify(`Cloned as ${made.workflow.name}`);
+      onOpen?.(made.workflow.id);
+    } catch (e: any) {
+      notify(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openHistory() {
     try {
       setHistory(await workflowApi.history(id));
@@ -172,7 +187,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
     });
   };
   const requiredCount = (key: string) => def.fields.filter(f => f.stageKey === key && f.mandatory).length;
-  const approvalCount = (key: string) => def.approvalSteps.filter(a => a.scope === 'STAGE' && a.stageKey === key).length;
+  const approvalCount = (key: string) => def.approvals.filter(a => a.stageKey === key).length;
   const docCount = (key: string) => def.documents.filter(d => d.stageKey === key).length;
   const panelStage = panel ? def.stages.find(s => s.key === panel.key) : undefined;
   const errors = issues.filter(i => i.level === 'error');
@@ -201,6 +216,9 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
         <button className="wf-btn" onClick={openHistory}>
           <History size={18} /> History
         </button>
+        <button className="wf-btn" disabled={busy || saving} onClick={clone} title="Make a new draft with the same steps, stages, fields, documents and approvals">
+          <Copy size={18} /> Clone
+        </button>
         {workflow.status === 'ACTIVE' && (
           <button className="wf-btn" disabled={busy} onClick={deactivate}>
             <PowerOff size={18} /> Deactivate
@@ -221,7 +239,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
       {locked && (
         <div className="wf-banner info">
           {workflow.status === 'DRAFT' ? 'Applications already run on this workflow, so it is read-only.' : workflow.applications ? 'Applications run on this workflow, so it is read-only.' : 'Only a draft can be edited.'}{' '}
-          To change the process, build a new workflow and activate it. Running applications keep the workflow they started in.
+          To change the process, <b>clone</b> it, change the clone and activate that. Running applications keep the workflow they started in.
         </div>
       )}
       {errors.length > 0 && (
@@ -295,22 +313,22 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                       </div>
                       {!locked && (
                         <div className="wf-group-tools">
-                          <button className="wf-chip" disabled={si === 0 && step.groups.length === 1} onClick={() => setDef(moveGroup(def, group.key, -1))} title="Move to an earlier step">
+                          <button className="wf-chip" disabled={!canMove(def.groups, group.key, -1)} onClick={() => setDef(moveGroup(def, group.key, -1))} title="Swap places with the group before">
                             <ChevronLeft size={16} /> Earlier
                           </button>
-                          <button className="wf-chip" disabled={si === steps.length - 1 && step.groups.length === 1} onClick={() => setDef(moveGroup(def, group.key, 1))} title="Move to a later step">
+                          <button className="wf-chip" disabled={!canMove(def.groups, group.key, 1)} onClick={() => setDef(moveGroup(def, group.key, 1))} title="Swap places with the group after">
                             Later <ChevronRight size={16} />
                           </button>
-                          {step.groups.length > 1 ? (
-                            <button className="wf-chip" onClick={() => setDef(splitFromStep(def, group.key))} title="Run after the others instead of together">
-                              <Unlink size={16} /> Run on its own
-                            </button>
-                          ) : (
-                            si > 0 && (
-                              <button className="wf-chip" onClick={() => setDef(joinPreviousStep(def, group.key))} title="Run together with the previous step">
-                                <Link2 size={16} /> Run with previous
-                              </button>
-                            )
+                          {groupIndex.get(group.key) !== 0 && (
+                            <select
+                              className="wf-chip"
+                              value={runsTogether(def.groups, group.key) ? 'with' : 'after'}
+                              onChange={e => setDef(setGroupTogether(def, group.key, e.target.value === 'with'))}
+                              aria-label="When this group runs"
+                            >
+                              <option value="after">Runs after the group before</option>
+                              <option value="with">Runs together with the group before</option>
+                            </select>
                           )}
                         </div>
                       )}
@@ -337,6 +355,27 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                                 <span>{catalog.forms.find(f => f.code === stage.formCode)?.name ?? 'No form'}</span>
                                 {together && <em className="wf-together">runs together</em>}
                               </button>
+                              {!locked && stages.length > 1 && (
+                                <div className="wf-group-tools">
+                                  <button className="wf-chip" disabled={!canMove(stages, stage.key, -1)} onClick={() => setDef(moveStage(def, stage.key, -1))} title="Swap places with the stage before">
+                                    <ChevronUp size={16} />
+                                  </button>
+                                  <button className="wf-chip" disabled={!canMove(stages, stage.key, 1)} onClick={() => setDef(moveStage(def, stage.key, 1))} title="Swap places with the stage after">
+                                    <ChevronDown size={16} />
+                                  </button>
+                                  {stages[0].key !== stage.key && (
+                                    <select
+                                      className="wf-chip"
+                                      value={runsTogether(stages, stage.key) ? 'with' : 'after'}
+                                      onChange={e => setDef(setStageTogether(def, stage.key, e.target.value === 'with'))}
+                                      aria-label="When this stage runs"
+                                    >
+                                      <option value="after">After the stage before</option>
+                                      <option value="with">Together with the stage before</option>
+                                    </select>
+                                  )}
+                                </div>
+                              )}
                               <div className="wf-stage-actions three">
                                 <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'fields'})}>
                                   <ListChecks size={18} />

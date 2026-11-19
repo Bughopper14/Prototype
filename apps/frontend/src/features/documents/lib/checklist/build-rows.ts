@@ -51,6 +51,9 @@ export function buildChecklistRows(
 
     return {
       ...def,
+      // the stage comes from the application's own checklist row (the workflow), not from the master definition
+      stage: chk?.stageCode || def.stage,
+      stageName: chk?.stageName || def.stageName,
       ...row,
       chkId: chk?.id,
       check: chk,

@@ -1,6 +1,8 @@
 /** Slide-in catalog menu: pick Indonesian Region or one of the master groups. */
 import {masterGroups, type MasterItem} from '@liugong/shared';
-import {MapPin, Menu, Search, X} from 'lucide-react';
+import {useCrm} from '@/features/crm/components/CrmProvider';
+import {hasAuthority} from '@/shared/lib/auth';
+import {MapPin, Menu, Search, ShieldCheck, X} from 'lucide-react';
 import {useState, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 
@@ -24,6 +26,9 @@ export function CatalogMenuDrawer({
   onClose: () => void;
 }) {
   const [search, setSearch] = useState('');
+  const {user} = useCrm();
+  // Master Approval is set up by administrators (the same people who set up workflows)
+  const canApprovals = hasAuthority(user, 'CRM_WORKFLOW_MANAGE');
   const q = search.toLowerCase();
 
   return createPortal(
@@ -64,6 +69,19 @@ export function CatalogMenuDrawer({
                 <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
                   <MapPin size={15} color="#002060" />
                   <span>Indonesian Region</span>
+                </div>
+              </MenuItem>
+            </div>
+          )}
+
+          {/* APPROVAL: the approvals a workflow points at (administrators only) */}
+          {canApprovals && (!search || 'master approval approval authority level persetujuan workflow'.includes(q)) && (
+            <div className="master-burger-group">
+              <h4>APPROVAL</h4>
+              <MenuItem active={selected === 'master-approval'} onClick={() => onSelect('master-approval')}>
+                <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                  <ShieldCheck size={15} color="#002060" />
+                  <span>Master Approval</span>
                 </div>
               </MenuItem>
             </div>

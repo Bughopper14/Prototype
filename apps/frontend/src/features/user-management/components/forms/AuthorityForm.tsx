@@ -1,4 +1,4 @@
-/** Create authority (pick from the names the application checks) or edit its description. */
+/** Create authority (a free text name; the names the application checks are only suggestions) or edit its description. */
 import {AUTHORITY_CATALOG} from '@liugong/shared';
 import {Dialog} from '@/features/user-management/components/ui/Dialog';
 import {Field} from '@/features/user-management/components/ui/Field';
@@ -39,10 +39,13 @@ export function AuthorityForm({
       onClose={onClose}
       onSubmit={f => onSave({app_id: appId, authority_name: name, description: f.get('description')})}
     >
-      <label className="pt-field">
+      {/* One column: each field on its own line at full width (side by side it squeezed the name and cut the placeholder). */}
+      <div style={{display: 'grid', gap: 16, width: '100%'}}>
+      <label className="pt-field" style={{width: '100%'}}>
         <span className="pt-form-label">Application</span>
         <select
           className="pt-select"
+          style={{width: '100%'}}
           value={appId}
           onChange={e => {
             setAppId(Number(e.target.value));
@@ -57,19 +60,26 @@ export function AuthorityForm({
           ))}
         </select>
       </label>
-      <label className="pt-field">
-        <span className="pt-form-label">Authority (catalog recognized by application)</span>
-        <select className="pt-select" value={name} onChange={e => setName(e.target.value)} required>
-          <option value="" hidden></option>
+      <label className="pt-field" style={{width: '100%'}}>
+        <span className="pt-form-label">Authority name</span>
+        <input
+          className="pt-input"
+          style={{width: '100%'}}
+          list="authority-suggestions"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          maxLength={100}
+          required
+          placeholder="Type any name, or pick one the application already checks"
+        />
+        <datalist id="authority-suggestions">
           {available.map(a => (
-            <option key={a.name} value={a.name}>
-              {a.name}
-            </option>
+            <option key={a.name} value={a.name} />
           ))}
-        </select>
-        {available.length === 0 && <small>All recognized authorities have already been added.</small>}
+        </datalist>
       </label>
       <Field key={name} label="Description" name="description" defaultValue={picked?.description || ''} />
+      </div>
     </Dialog>
   );
 }

@@ -3,8 +3,9 @@ import {useCrm} from '@/features/crm/components/CrmProvider';
 import {PageHeading} from '@/features/crm/components/PageHeading';
 import {Modal} from '@/shared/ui/Modal';
 import {toCode} from '@liugong/shared';
-import {ChevronRight, Layers, Lock, Pencil, Plus, Power, PowerOff, Zap, History} from 'lucide-react';
+import {ChevronRight, Copy, Layers, Lock, Pencil, Plus, Power, PowerOff, Zap, History} from 'lucide-react';
 import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
+import {useSearchParams} from 'react-router';
 import {workflowApi, type Catalog, type WorkflowHeader} from './api';
 import {WorkflowEditor} from './editor/WorkflowEditor';
 import {GROUP_COLORS} from './palette';
@@ -199,6 +200,18 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
       icon: 'off',
     })) && run(() => workflowApi.deactivate(w.id), `${w.name} deactivated`);
 
+  /** A copy of the workflow as a new draft, opened right away (the way to change a workflow that applications run on). */
+  const clone = async (w: WorkflowHeader) => {
+    try {
+      const made = await workflowApi.clone(w.id);
+      notify(`Cloned as ${made.workflow.name}`);
+      onChanged();
+      onOpen(made.workflow.id);
+    } catch (e: any) {
+      notify(e.message);
+    }
+  };
+
   const shown = rows.filter(w => statusFilter === 'ALL' || w.status === statusFilter);
 
   return (
@@ -267,6 +280,9 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
                 <button className="wf-btn small" onClick={() => setHistory(w)}>
                   <History size={15} /> History
                 </button>
+                <button className="wf-btn small" onClick={() => clone(w)} title="Make a new draft with the same steps, stages, fields, documents and approvals">
+                  <Copy size={15} /> Clone
+                </button>
                 {w.status !== 'ACTIVE' ? (
                   <button className="wf-btn small accent" onClick={() => activate(w)}>
                     <Power size={15} /> Activate
@@ -296,7 +312,12 @@ function WorkflowSetup() {
   const {notify} = useCrm();
   const [rows, setRows] = useState<WorkflowHeader[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // a link from another page (Master Approval) opens a workflow right away: /workflows?open=<id>
+  const [params, setParams] = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(params.get('open'));
+  useEffect(() => {
+    if (params.get('open')) setParams({}, {replace: true});
+  }, [params, setParams]);
   const [creating, setCreating] = useState(false);
 
   const reload = useCallback(() => workflowApi.list().then(setRows).catch(e => notify(e.message)), [notify]);
@@ -312,6 +333,7 @@ function WorkflowSetup() {
           id={openId}
           catalog={catalog}
           notify={notify}
+          onOpen={setOpenId}
           onBack={() => {
             setOpenId(null);
             void reload();
@@ -343,7 +365,7 @@ export default function WorkflowRoute() {
   return (
     <>
       <PageHeading page="Workflow" />
-      <AccessGate authority="crm_manage_workflow" page="Workflow">
+      <AccessGate authority="CRM_WORKFLOW_MANAGE" page="Workflow">
         <WorkflowSetup />
       </AccessGate>
     </>

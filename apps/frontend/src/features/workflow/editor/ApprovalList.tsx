@@ -1,250 +1,189 @@
 /**
- * The approval of ONE thing, shown where that thing is edited: a whole group, one stage, or one document of a stage. A step has an order
- * (the same order is approved at the same time, the next order starts when they are all approved) and ONE authority, chosen from the
- * authorities made for the place being edited (one per department, from crm_workflow_authority_options). Whoever holds it can approve or reject. A small table under the choice says what
- * the authority is for, so nobody has to decode its name.
+ * The approval of ONE place, shown where that place is edited: a whole group, one stage, a section of the stage's form, or one document of
+ * a stage. The workflow does not build approvals: it points at ONE master approval (made in Master approval, with its levels and the
+ * authority of each level). The same approval can be used in many places. Only a place flagged is_approval in the masters can have one.
  */
-import {parseApprovalAuthority, toCode} from '@liugong/shared';
-import {AlertTriangle, ArrowDown, Plus, ShieldCheck, Trash2, Users} from 'lucide-react';
+import {Check, ChevronDown, Plus, ShieldCheck, Trash2} from 'lucide-react';
 import {useState} from 'react';
 import {Modal} from '@/shared/ui/Modal';
-import type {ApprovalStep, Catalog, Definition} from '../api';
-import {tempKey} from '../definition-ops';
+import type {ApprovalAssignment, Catalog, Definition, MasterApproval} from '../api';
 
 export type ApprovalTarget =
   | {scope: 'GROUP'; groupKey: string}
   | {scope: 'STAGE'; stageKey: string}
+  | {scope: 'SECTION'; stageKey: string; sectionCode: string}
   | {scope: 'DOCUMENT'; stageKey: string; documentCode: string};
 
-const matches = (a: ApprovalStep, t: ApprovalTarget) =>
-  a.scope === t.scope && (t.scope === 'GROUP' ? a.groupKey === t.groupKey : t.scope === 'STAGE' ? a.stageKey === t.stageKey : a.stageKey === t.stageKey && a.documentCode === t.documentCode);
+export const matches = (a: ApprovalAssignment, t: ApprovalTarget) =>
+  a.scope === t.scope &&
+  (t.scope === 'GROUP'
+    ? a.groupKey === t.groupKey
+    : t.scope === 'STAGE'
+      ? a.stageKey === t.stageKey
+      : t.scope === 'SECTION'
+        ? a.stageKey === t.stageKey && a.sectionCode === t.sectionCode
+        : a.stageKey === t.stageKey && a.documentCode === t.documentCode);
 
-const codeOf = (item?: {code?: string | null; name: string}) => (item ? String(item.code || '').trim() || toCode(item.name) : '');
+const WORD = {GROUP: 'the whole group', STAGE: 'this stage', SECTION: 'this section', DOCUMENT: 'this document'} as const;
 
-const WORD = {GROUP: 'the whole group', STAGE: 'this stage', DOCUMENT: 'this document'} as const;
+/** The approval a place points at (an empty code = chosen to need one, but not picked yet). */
+export const approvalOf = (def: Definition, t: ApprovalTarget) => def.approvals.find(a => matches(a, t));
 
-/** The definition with one more approval step for this target (no authority chosen yet), in the given layer (order). */
-export function addApprovalStep(def: Definition, target: ApprovalTarget, order?: number): Definition {
-  const mine = def.approvalSteps.filter(a => matches(a, target));
-  const names = new Set(def.approvalSteps.map(a => toCode(a.name)));
-  let n = def.approvalSteps.length + 1;
-  while (names.has(toCode(`Approval ${n}`))) n++;
-  return {
-    ...def,
-    approvalSteps: [
-      ...def.approvalSteps,
-      {
-        key: tempKey('a'),
-        name: `Approval ${n}`,
-        scope: target.scope,
-        groupKey: target.scope === 'GROUP' ? target.groupKey : null,
-        stageKey: target.scope === 'GROUP' ? null : target.stageKey,
-        documentCode: target.scope === 'DOCUMENT' ? target.documentCode : null,
-        order: order ?? (mine.length ? Math.max(...mine.map(a => a.order)) + 1 : 1),
-        authorityName: '',
-      },
-    ],
+/** The definition with this place pointing at `approvalCode` (a place has one approval); null removes it. */
+export function setApproval(def: Definition, t: ApprovalTarget, approvalCode: string | null): Definition {
+  const others = def.approvals.filter(a => !matches(a, t));
+  if (approvalCode === null) return {...def, approvals: others};
+  const next: ApprovalAssignment = {
+    scope: t.scope,
+    groupKey: t.scope === 'GROUP' ? t.groupKey : null,
+    stageKey: t.scope === 'GROUP' ? null : t.stageKey,
+    sectionCode: t.scope === 'SECTION' ? t.sectionCode : null,
+    documentCode: t.scope === 'DOCUMENT' ? t.documentCode : null,
+    approvalCode,
   };
+  return {...def, approvals: [...others, next]};
 }
 
-/** The steps of one place grouped into layers: the same order is one layer (approved at the same time), the next order starts after it. */
-function layersOf(steps: ApprovalStep[]): ApprovalStep[][] {
-  const sorted = [...steps].sort((a, b) => a.order - b.order);
-  const layers: ApprovalStep[][] = [];
-  sorted.forEach((s, i) => {
-    if (i > 0 && s.order === sorted[i - 1].order) layers[layers.length - 1].push(s);
-    else layers.push([s]);
-  });
-  return layers;
+/** The levels of a master approval grouped: the same level number is approved at the same time, the next number starts after it. */
+export function levelsOf(approval: MasterApproval) {
+  const out: {levelNo: number; authorities: string[]}[] = [];
+  for (const l of [...approval.levels].sort((a, b) => a.levelNo - b.levelNo || a.authorityName.localeCompare(b.authorityName))) {
+    const last = out[out.length - 1];
+    if (last && last.levelNo === l.levelNo) last.authorities.push(l.authorityName);
+    else out.push({levelNo: l.levelNo, authorities: [l.authorityName]});
+  }
+  return out;
 }
 
+/** Can this place have an approval? Only the places flagged is_approval in the masters (a group always can). */
+export function canHaveApproval(def: Definition, catalog: Catalog, t: ApprovalTarget): boolean {
+  if (t.scope === 'GROUP') return true;
+  if (t.scope === 'STAGE') {
+    const form = def.stages.find(s => s.key === t.stageKey)?.formCode;
+    return !form || !!catalog.forms.find(f => f.code === form)?.isApproval;
+  }
+  if (t.scope === 'SECTION') return !!catalog.sections.find(s => s.code === t.sectionCode)?.isApproval;
+  return !!catalog.documents.find(d => d.code === t.documentCode)?.isApproval;
+}
+
+/** The steps of an approval: 1, 2, each with the authorities that must approve it. Shown only when asked for. */
+function StepsList({approval}: {approval: MasterApproval}) {
+  return (
+    <ol className="wf-steps">
+      {levelsOf(approval).map((layer, i) => (
+        <li key={layer.levelNo}>
+          <span className="wf-apl-order">{i + 1}</span>
+          <div className="wf-apl-chips">
+            {layer.authorities.map(a => (
+              <span key={a} className="wf-apl-chip">
+                {a}
+              </span>
+            ))}
+          </div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/**
+ * The approval of ONE place, in the box the workflow editor always had: a header, then a wide dashed "+ Add approval layer" button; once an approval is
+ * chosen the box shows its name and steps, with "Change approval" and a trash button that removes it. No switches.
+ */
 export function ApprovalList({def, setDef, catalog, locked, target, title}: {def: Definition; setDef: (d: Definition) => void; catalog: Catalog; locked: boolean; target: ApprovalTarget; title?: string}) {
   const [open, setOpen] = useState(false);
-  const mine = def.approvalSteps.filter(a => matches(a, target));
-  const layers = layersOf(mine);
-  const deptOf = (step: ApprovalStep) => {
-    const code = catalog.authorityOptions.find(o => o.authorityName === step.authorityName)?.departmentCode ?? parseApprovalAuthority(step.authorityName)?.departmentCode ?? '';
-    return code ? (catalog.departments.find(d => d.code === code)?.name ?? code) : '';
-  };
-  if (locked && !mine.length) return null;
+  const [steps, setSteps] = useState(false);
+  const mine = approvalOf(def, target);
+  const approval = mine?.approvalCode ? catalog.approvals.find(a => a.code === mine.approvalCode) : undefined;
+  const eligible = canHaveApproval(def, catalog, target);
+  if (locked && !mine) return null;
+  if (!eligible && !mine) return null;
 
   return (
-    <div className={`wf-apl ${mine.length ? 'has' : ''}`}>
+    <div className={`wf-apl ${mine ? 'has' : ''}`}>
       <div className="wf-apl-head">
         <ShieldCheck size={16} />
         <b>{title ?? 'Approval'}</b>
-        {!mine.length && <small>nobody has to approve {WORD[target.scope]}</small>}
+        {!mine && <small>nobody has to approve {WORD[target.scope]}</small>}
       </div>
-      {layers.length > 0 && (
-        <ol className="wf-apl-flow">
-          {layers.map((layer, i) => (
-            <li key={i}>
-              <span className="wf-apl-order">{i + 1}</span>
-              <div className="wf-apl-flow-body">
-                <small>
-                  {i === 0 ? 'First' : `Then, after step ${i} is approved`}
-                  {layer.length > 1 ? ` · all ${layer.length} at the same time` : ''}
-                </small>
-                <div className="wf-apl-chips">
-                  {layer.map(s => (
-                    <span key={s.key} className={`wf-apl-chip ${deptOf(s) ? '' : 'missing'}`}>
-                      {deptOf(s) || 'Not chosen yet'}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ol>
+      {mine && (
+        <div className="wf-apl-chosen">
+          <button type="button" className="wf-apl-chosen-head" aria-expanded={steps} disabled={!approval} onClick={() => setSteps(!steps)}>
+            <b>{approval ? approval.name : mine.approvalCode ? 'This approval no longer exists' : 'Not chosen yet'}</b>
+            {approval && (
+              <span>
+                {levelsOf(approval).length} step{levelsOf(approval).length === 1 ? '' : 's'} <ChevronDown size={14} className={steps ? 'up' : ''} />
+              </span>
+            )}
+          </button>
+          {approval && steps && <StepsList approval={approval} />}
+        </div>
       )}
-      <button type="button" className="wf-apl-add" onClick={() => setOpen(true)}>
-        {locked ? (
-          'View approval'
-        ) : mine.length ? (
-          'Edit approval'
-        ) : (
-          <>
-            <Plus size={15} /> Set up approval
-          </>
+      <div style={{display: 'flex', gap: 8, alignItems: 'stretch'}}>
+        <button type="button" className="wf-apl-add" style={{flex: 1}} onClick={() => setOpen(true)}>
+          {!mine ? (
+            <>
+              <Plus size={15} /> Add approval layer
+            </>
+          ) : locked ? (
+            'View approval'
+          ) : (
+            'Change approval'
+          )}
+        </button>
+        {mine && !locked && (
+          <button type="button" className="wf-icon-btn danger" aria-label="Remove the approval" title="Remove the approval" onClick={() => setDef(setApproval(def, target, null))}>
+            <Trash2 size={18} />
+          </button>
         )}
-      </button>
-      {open && <ApprovalModal def={def} setDef={setDef} catalog={catalog} locked={locked} target={target} title={title ?? 'Approval'} onClose={() => setOpen(false)} />}
+      </div>
+      {open && <ApprovalPicker def={def} setDef={setDef} catalog={catalog} locked={locked} target={target} onClose={() => setOpen(false)} />}
     </div>
   );
 }
 
-/** Setting up the approval of one place: choose Parallel or Sequential first, then choose who approves in each layer. */
-function ApprovalModal({def, setDef, catalog, locked, target, title, onClose}: {def: Definition; setDef: (d: Definition) => void; catalog: Catalog; locked: boolean; target: ApprovalTarget; title: string; onClose: () => void}) {
-  const mine = def.approvalSteps.filter(a => matches(a, target));
-  const layers = layersOf(mine);
-  const placeForm = target.scope === 'STAGE' ? (def.stages.find(x => x.key === target.stageKey)?.formCode ?? null) : null;
-  const authorities = (catalog.authorityOptions ?? []).filter(
-    o => o.scope === target.scope && (target.scope === 'GROUP' || (target.scope === 'STAGE' ? !!placeForm && o.formCode === placeForm : o.documentCode === target.documentCode)),
-  );
-  const deptName = (code: string) => {
-    const name = catalog.departments.find(d => d.code === code)?.name;
-    return name && name !== code ? `${name} (${code})` : code;
+/** Choosing the master approval of one place: a list of names; click one to choose it. The steps of an approval open with the small arrow. */
+function ApprovalPicker({def, setDef, catalog, locked, target, onClose}: {def: Definition; setDef: (d: Definition) => void; catalog: Catalog; locked: boolean; target: ApprovalTarget; onClose: () => void}) {
+  const [q, setQ] = useState('');
+  const [shown, setShown] = useState<string | null>(null);
+  const mine = approvalOf(def, target);
+  // only an active approval can be chosen; the one this place already has stays in the list
+  const list = catalog.approvals.filter(a => (a.status ?? 'ACTIVE') === 'ACTIVE' || a.code === mine?.approvalCode).filter(a => !q.trim() || `${a.name} ${a.levels.map(l => l.authorityName).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const pick = (code: string) => {
+    if (locked) return;
+    setDef(setApproval(def, target, code));
+    onClose();
   };
-  const placeName =
-    target.scope === 'GROUP'
-      ? (def.groups.find(g => g.key === target.groupKey)?.name ?? 'Group')
-      : target.scope === 'STAGE'
-        ? (def.stages.find(x => x.key === target.stageKey)?.name ?? 'Stage')
-        : (catalog.documents.find(d => d.code === target.documentCode)?.name ?? target.documentCode);
-
-  /** Put this place's steps back in layers: every layer is one order (1, 2, 3...), so the numbers never have to be edited by hand. */
-  const commit = (next: ApprovalStep[][]) =>
-    setDef({
-      ...def,
-      approvalSteps: [...def.approvalSteps.filter(a => !matches(a, target)), ...next.flatMap((layer, i) => layer.map(s => ({...s, order: i + 1})))],
-    });
-  const blank = (taken: ApprovalStep[]): ApprovalStep => {
-    const names = new Set([...def.approvalSteps, ...taken].map(a => toCode(a.name)));
-    let n = def.approvalSteps.length + taken.length + 1;
-    while (names.has(toCode(`Approval ${n}`))) n++;
-    return {
-      key: tempKey('a'),
-      name: `Approval ${n}`,
-      scope: target.scope,
-      groupKey: target.scope === 'GROUP' ? target.groupKey : null,
-      stageKey: target.scope === 'GROUP' ? null : target.stageKey,
-      documentCode: target.scope === 'DOCUMENT' ? target.documentCode : null,
-      order: 0,
-      authorityName: '',
-    };
-  };
-  const addLayer = (count: number) => {
-    const made: ApprovalStep[] = [];
-    for (let i = 0; i < count; i++) made.push(blank([...mine, ...made]));
-    commit([...layers, made]);
-  };
-  const addToLayer = (li: number) => commit(layers.map((l, i) => (i === li ? [...l, blank(mine)] : l)));
-  const removeStep = (key: string) => commit(layers.map(l => l.filter(s => s.key !== key)).filter(l => l.length));
-  const choose = (key: string, authorityName: string) => {
-    const dept = authorities.find(o => o.authorityName === authorityName)?.departmentCode;
-    const base = dept ? `${placeName} - ${catalog.departments.find(d => d.code === dept)?.name ?? dept}` : '';
-    const taken = new Set(def.approvalSteps.filter(a => a.key !== key).map(a => toCode(a.name)));
-    let name = base;
-    for (let n = 2; name && taken.has(toCode(name)); n++) name = `${base} ${n}`;
-    setDef({...def, approvalSteps: def.approvalSteps.map(a => (a.key === key ? {...a, authorityName, ...(name ? {name} : {})} : a))});
-  };
-  const cannot = !authorities.length;
-
   return (
-    <Modal title={`${title}: ${placeName}`} onClose={onClose} className="wf-apl-modal">
+    <Modal title="Choose an approval" onClose={onClose} className="wf-apl-modal">
       <div className="wf-apl-modal-body">
-        {!layers.length && (
-          <div className="wf-apl-empty">
-            <h3>Nobody has to approve yet</h3>
-            {!locked && (
-              <button type="button" className="wf-btn primary" disabled={cannot} onClick={() => addLayer(1)}>
-                <Plus size={16} /> Add the first approver
-              </button>
-            )}
-          </div>
-        )}
-
-        {cannot && !locked && (
-          <p className="wf-apl-warn block">
-            <AlertTriangle size={14} />
-            {target.scope === 'STAGE' && !placeForm ? ' Choose a Form for this stage first: the approvers depend on the form.' : ' No authority is made for this yet. Ask the User Management administrator to create one and list it for this place.'}
-          </p>
-        )}
-
-        {layers.map((layer, li) => (
-          <section className="wf-apl-layer" key={layer[0].key}>
-            <header>
-              <span className="wf-apl-order">{li + 1}</span>
-              <b>{li === 0 ? 'First' : 'Then'}</b>
-              <small>{layer.length > 1 ? `all ${layer.length} approve at the same time` : 'one approver'}</small>
-            </header>
-            {layer.map(a => {
-              const listed = authorities.some(x => x.authorityName === a.authorityName);
-              return (
-                <div className="wf-apl-row" key={a.key}>
-                  <select value={a.authorityName} disabled={locked} onChange={e => choose(a.key, e.target.value)} aria-label="Who approves">
-                    <option value="">Who approves? Choose a department…</option>
-                    {!listed && a.authorityName && <option value={a.authorityName}>{a.authorityName}</option>}
-                    {authorities.map(x => (
-                      <option key={x.authorityName} value={x.authorityName}>
-                        {deptName(x.departmentCode)}
-                      </option>
-                    ))}
-                  </select>
-                  {!locked && (
-                    <button type="button" className="wf-icon-btn danger" title="Remove this approver" onClick={() => removeStep(a.key)}>
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                  {a.authorityName && a.authorityExists === false && (
-                    <p className="wf-apl-warn block">
-                      <AlertTriangle size={14} /> This authority no longer exists in User Management.
-                    </p>
-                  )}
+        <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search an approval or an authority…" aria-label="Search approvals" autoFocus />
+        {!catalog.approvals.length && <p className="wf-apl-warn block">No approval exists yet. Make one in Master Approval first.</p>}
+        <ul className="wf-pick">
+          {list.map(a => {
+            const chosen = mine?.approvalCode === a.code;
+            return (
+              <li key={a.code} className={chosen ? 'on' : ''}>
+                <div className="wf-pick-row">
+                  <button type="button" className="wf-pick-main" disabled={locked} onClick={() => pick(a.code)}>
+                    <span className="wf-pick-radio" aria-hidden>
+                      {chosen && <Check size={12} />}
+                    </span>
+                    <b>{a.name}</b>
+                    <small>
+                      {levelsOf(a).length} step{levelsOf(a).length === 1 ? '' : 's'}
+                    </small>
+                  </button>
+                  <button type="button" className="wf-pick-toggle" aria-expanded={shown === a.code} aria-label="Show the steps" title="Show the steps" onClick={() => setShown(shown === a.code ? null : a.code)}>
+                    <ChevronDown size={16} className={shown === a.code ? 'up' : ''} />
+                  </button>
                 </div>
-              );
-            })}
-            {!locked && (
-              <button type="button" className="wf-apl-more" onClick={() => addToLayer(li)} disabled={cannot}>
-                <Users size={14} /> Add another approver at the same time
-              </button>
-            )}
-          </section>
-        ))}
-
-        {layers.length > 0 && !locked && (
-          <div className="wf-apl-next">
-            <button type="button" className="wf-apl-add" onClick={() => addLayer(1)} disabled={cannot}>
-              <ArrowDown size={14} /> Add an approver after the layer above
-            </button>
-          </div>
-        )}
-
-        <div className="wf-apl-foot">
-          <button type="button" className="wf-btn primary" onClick={onClose}>
-            Done
-          </button>
-        </div>
+                {shown === a.code && <StepsList approval={a} />}
+              </li>
+            );
+          })}
+          {!list.length && <li className="wf-muted">Nothing matches.</li>}
+        </ul>
       </div>
     </Modal>
   );

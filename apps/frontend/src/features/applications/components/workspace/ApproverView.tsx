@@ -3,6 +3,7 @@
  * application as layers. Submitting is done by somebody else, in the panel above the tabs (ApprovalPanel).
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
+import {ApprovalSummary} from '@/features/applications/components/workspace/ApprovalSummary';
 import {HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
 import {Check, ShieldCheck, X} from 'lucide-react';
 
@@ -10,7 +11,7 @@ export function ApproverView() {
   const {a, draft, setDecision, setComments, setError} = useWorkspace();
   if (draft.isNew || !a.approval) return <p className="muted">Nothing to approve yet.</p>;
   const ap = a.approval as Approval;
-  const mine = ap.current.flatMap(c => c.steps.filter(s => s.canAct).map(s => ({scope: c.scopeName, step: s})));
+  const mine = ap.current.flatMap(c => c.steps.filter(s => s.canAct).map(s => ({scope: c.scopeName, round: c, step: s})));
   const decide = (step: Step, kind: 'APPROVED' | 'REJECTED') => {
     setComments('');
     setError('');
@@ -30,19 +31,22 @@ export function ApproverView() {
       {mine.length > 0 && (
         <ul className="ap-todo">
           {mine.map(m => (
-            <li key={m.step.id}>
-              <div>
-                <b>{m.scope}</b>
-                <small>{m.step.name}</small>
+            <li key={m.step.id} style={{display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, width: '100%'}}>
+              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12}}>
+                <div>
+                  <b>{m.scope}</b>
+                  <small>{m.step.name}</small>
+                </div>
+                <div className="ap-actions">
+                  <button type="button" className="button primary small" onClick={() => decide(m.step, 'APPROVED')}>
+                    <Check size={14} /> Approve
+                  </button>
+                  <button type="button" className="button small ap-reject" onClick={() => decide(m.step, 'REJECTED')}>
+                    <X size={14} /> Reject
+                  </button>
+                </div>
               </div>
-              <div className="ap-actions">
-                <button type="button" className="button primary small" onClick={() => decide(m.step, 'APPROVED')}>
-                  <Check size={14} /> Approve
-                </button>
-                <button type="button" className="button small ap-reject" onClick={() => decide(m.step, 'REJECTED')}>
-                  <X size={14} /> Reject
-                </button>
-              </div>
+              <ApprovalSummary scope={m.round} />
             </li>
           ))}
         </ul>

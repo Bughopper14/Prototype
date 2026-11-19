@@ -8,7 +8,7 @@ export default function ApplicationsPage() {
   return (
     <>
       <PageHeading page="Applications" newApplicationButton />
-      <AccessGate authority="crm_view_applications" page="Applications">
+      <AccessGate authority="CRM_APPLICATION_VIEW" page="Applications">
         <ApplicationTable rows={rows} open={openApplication} />
       </AccessGate>
     </>

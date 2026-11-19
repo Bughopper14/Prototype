@@ -74,16 +74,16 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
       // Only ask for what the user's role may read; the API refuses the rest.
       const can = (authority: string) => hasAuthority(user, authority);
       const [applications, customerList, masterData, notifications] = await Promise.all([
-        can('crm_view_applications') ? api('/applications') : [],
-        can('crm_view_customers') || can('crm_create_application') ? api('/customers') : [],
+        can('CRM_APPLICATION_VIEW') ? api('/applications') : [],
+        can('CRM_CUSTOMER_VIEW') || can('CRM_APPLICATION_CREATE') ? api('/customers') : [],
         api('/master-data'),
-        can('crm_view_notifications') ? api('/notifications') : [],
+        can('CRM_NOTIFICATION_VIEW') ? api('/notifications') : [],
       ]);
       setServerNotifications(notifications);
       setMasterData(masterData);
       setRows(applications);
       setCustomers(customerList);
-      if (can('crm_view_activity')) fetchActivities().then(setActivities).catch(() => {});
+      if (can('CRM_ACTIVITY_VIEW')) fetchActivities().then(setActivities).catch(() => {});
       setError('');
     } catch (e: any) {
       if (!e?.message?.toLowerCase().includes('session') && !e?.message?.toLowerCase().includes('sesi')) {
@@ -107,7 +107,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   useEffect(() => {
     let live = true;
     const refresh = () =>
-      (hasAuthority(user, 'crm_view_notifications') ? api('/notifications') : Promise.resolve([]))
+      (hasAuthority(user, 'CRM_NOTIFICATION_VIEW') ? api('/notifications') : Promise.resolve([]))
         .then(list => live && setServerNotifications(list))
         .catch(() => {});
     const timer = setInterval(refresh, NOTIFICATION_POLL_MS);
@@ -122,7 +122,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   // Activity and notification read-state is shared through browser events (see system-activity.ts).
   useEffect(() => {
     const sync = () => {
-      if (hasAuthority(user, 'crm_view_activity')) fetchActivities().then(setActivities).catch(() => {});
+      if (hasAuthority(user, 'CRM_ACTIVITY_VIEW')) fetchActivities().then(setActivities).catch(() => {});
       setReadActivityIds(getReadActivityIds());
       setReadNotificationIds(getReadNotificationIds());
     };
@@ -187,7 +187,7 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   };
 
   const startNewApplication = (customerId?: string) => {
-    if (!hasAuthority(user, 'crm_create_application')) {
+    if (!hasAuthority(user, 'CRM_APPLICATION_CREATE')) {
       notify('Your role is not allowed to create applications.');
       return;
     }

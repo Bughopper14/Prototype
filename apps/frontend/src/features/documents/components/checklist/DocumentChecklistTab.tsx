@@ -21,7 +21,7 @@ export interface DocumentChecklistTabProps {
 export function DocumentChecklistTab({application, draft, user, onChange, notify}: DocumentChecklistTabProps) {
   const c = useDocumentChecklist({application, draft, user, onChange, notify});
   const [customizing, setCustomizing] = useState(false);
-  const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'crm_upload_app_documents');
+  const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'CRM_DOCUMENT_UPLOAD');
 
   return (
     <div className="doc-checklist-container">
