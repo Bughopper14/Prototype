@@ -1,6 +1,6 @@
 /** Applying what the NIB scan found to the customer draft and to the FAP draft. */
 import {resolveWilayahUpwards, type useMasterData} from '@/shared/master-data';
-import {formatCompanyName, toTitleCase} from '@liugong/shared';
+import {formatCompanyName} from '@liugong/shared';
 
 export interface NibOcrExtract {
   nib?: string;

@@ -27,8 +27,8 @@ export function CatalogMenuDrawer({
 }) {
   const [search, setSearch] = useState('');
   const {user} = useCrm();
-  // Master Approval is set up by administrators (the same people who set up workflows)
-  const canApprovals = hasAuthority(user, 'CRM_WORKFLOW_MANAGE');
+  // Master Approval is a category of its own: whoever holds its view authority sees it
+  const canApprovals = hasAuthority(user, 'CRM_MASTER-APPROVAL_VIEW');
   const q = search.toLowerCase();
 
   return createPortal(

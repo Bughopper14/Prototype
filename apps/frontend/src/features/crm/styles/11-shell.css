@@ -451,3 +451,8 @@ aside.crm-sidebar-drawer.drawer-open {
   font-weight: 700 !important;
   vertical-align: baseline !important;
 }
+
+/* Narrow screens: the signed-in label stays on one line and does not push the Apps Hub button */
+@media (max-width: 480px) {
+  .crm-brand-subtitle { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}

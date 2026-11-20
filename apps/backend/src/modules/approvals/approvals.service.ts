@@ -4,7 +4,7 @@ import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {ensure} from '../../core/domain';
 import {toCode} from '../../core/domain/code';
-import {notifyHolders} from '../activity/notifications';
+import {newNotification, notifyHolders} from '../activity/notifications';
 import type {Actor} from '../auth/session';
 import {ApprovalsRepository, type AppStep, type Decision, type ScopeRef, type StepStatus, type TemplateStep} from './approvals.repository';
 import {UsersNamesLookup} from './users-names.lookup';
@@ -25,16 +25,26 @@ export type Hooks = {
   /** Inside the transaction, when every step of a scope is approved. */
   onScopeApproved?: (conn: Conn, scope: ScopeRef) => Promise<void>;
   /** Inside the transaction, after an approval: may throw to refuse it (the final approval checks the data and documents here). */
+  /** Runs before anything is written for an Approve: a rule that must hold BEFORE the approval changes the state of stages (it can refuse). */
+  beforeApproved?: (conn: Conn, step: AppStep) => Promise<void>;
   afterApproved?: (conn: Conn, step: AppStep) => Promise<void>;
 };
 
 const isAdmin = (actor: Actor) => !!actor.isAdmin || actor.role === 'ADMIN';
-const holds = (actor: Actor, authority: string) => isAdmin(actor) || (actor.authorities || []).includes(authority);
+/** May this person act on the step: the PIC Marketing step belongs to one user; any other step to whoever holds its authority. Administrators always. */
+const canActOn = (actor: Actor, s: {isPicMarketing: boolean; approverUserId: number | null; authorityName: string}) =>
+  isAdmin(actor) || (s.isPicMarketing ? Number.isInteger(actor.portalUserId) && actor.portalUserId === s.approverUserId : (actor.authorities || []).includes(s.authorityName));
 const by = (actor: Actor) => actor.username || null;
 
-const scopeOf = (s: AppStep): ScopeRef => ({type: s.scope, groupId: s.groupId, stageId: s.stageId, checklistId: s.checklistId, sectionCode: s.sectionCode, subjectId: s.subjectId});
-const scopeKey = (s: {scope?: string; type?: string; groupId?: string | null; stageId?: string | null; checklistId?: string | null; sectionCode?: string | null; subjectId?: string | null}) =>
-  `${s.scope ?? s.type}:${s.groupId ?? ''}:${s.stageId ?? ''}:${s.checklistId ?? ''}:${s.sectionCode ?? ''}:${s.subjectId ?? ''}`;
+const scopeOf = (s: AppStep): ScopeRef => ({type: s.scope, groupCode: s.groupCode, stageCode: s.stageCode, documentCode: s.documentCode, checklistId: s.checklistId, sectionCode: s.sectionCode, subjectId: s.subjectId});
+/** One key per place: only the columns that name that kind of place count (a row keeps the codes of its whole path, a scope ref only its own). */
+const scopeKey = (s: {scope?: string; type?: string; groupCode?: string | null; stageCode?: string | null; checklistId?: string | null; sectionCode?: string | null; subjectId?: string | null}) => {
+  const type = s.scope ?? s.type;
+  if (type === 'GROUP') return `GROUP:${s.groupCode ?? ''}`;
+  if (type === 'STAGE') return `STAGE:${s.stageCode ?? ''}`;
+  if (type === 'SECTION') return `SECTION:${s.stageCode ?? ''}:${s.sectionCode ?? ''}:${s.subjectId ?? ''}`;
+  return `DOCUMENT:${s.checklistId ?? ''}`;
+};
 const OPEN: StepStatus[] = ['WAITING', 'PENDING'];
 
 /** The steps of the newest round of every scope (a resubmit starts a new round; the older ones are history). */
@@ -54,9 +64,9 @@ export function latestRounds(steps: AppStep[]): Map<string, AppStep[]> {
 export function stateOf(input: {
   templates: TemplateStep[];
   steps: AppStep[];
-  stageIds: string[];
-  submittedStageIds: Set<string>;
-  documents: {checklistId: string; workflowStageDocumentId: string | null; fileCount: number}[];
+  stageCodes: string[];
+  submittedStageCodes: Set<string>;
+  documents: {checklistId: string; stageCode: string; documentCode: string | null; fileCount: number}[];
 }): ApprovalState {
   const latest = latestRounds(input.steps);
   const all = [...latest.values()].flat();
@@ -64,10 +74,10 @@ export function stateOf(input: {
   if (all.some(s => OPEN.includes(s.status))) return 'IN_APPROVAL';
   const required = new Set<string>();
   for (const t of input.templates) {
-    if (t.scope === 'GROUP') required.add(scopeKey({scope: 'GROUP', groupId: t.groupId}));
-    else if (t.scope === 'STAGE') required.add(scopeKey({scope: 'STAGE', stageId: t.stageId}));
+    if (t.scope === 'GROUP') required.add(scopeKey({scope: 'GROUP', groupCode: t.groupCode}));
+    else if (t.scope === 'STAGE') required.add(scopeKey({scope: 'STAGE', stageCode: t.stageCode}));
     else {
-      const doc = input.documents.find(d => d.workflowStageDocumentId === t.workflowStageDocumentId);
+      const doc = input.documents.find(d => d.stageCode === t.stageCode && d.documentCode === t.documentCode);
       if (doc && doc.fileCount > 0) required.add(scopeKey({scope: 'DOCUMENT', checklistId: doc.checklistId}));
     }
   }
@@ -75,14 +85,14 @@ export function stateOf(input: {
     const round = latest.get(key);
     if (!round || !round.length || round.some(s => s.status !== 'APPROVED')) return 'IN_PROGRESS';
   }
-  const allSubmitted = input.stageIds.length > 0 && input.stageIds.every(id => input.submittedStageIds.has(id));
+  const allSubmitted = input.stageCodes.length > 0 && input.stageCodes.every(code => input.submittedStageCodes.has(code));
   return allSubmitted ? 'APPROVED' : 'IN_PROGRESS';
 }
 
 /** Is the scope approved in its newest round? A scope without approval steps has nothing to approve, so it counts as approved. */
 export function scopeApproved(templates: TemplateStep[], steps: AppStep[], scope: ScopeRef): boolean {
   const has = templates.some(t =>
-    scope.type === 'GROUP' ? t.scope === 'GROUP' && t.groupId === scope.groupId : t.scope === 'STAGE' && t.stageId === scope.stageId,
+    scope.type === 'GROUP' ? t.scope === 'GROUP' && t.groupCode === scope.groupCode : t.scope === 'STAGE' && t.stageCode === scope.stageCode,
   );
   if (!has) return true;
   const round = latestRounds(steps).get(scopeKey(scope));
@@ -105,14 +115,21 @@ export class ApprovalsService {
    * (everyone holding their authority can act), the others WAIT. A scope without steps starts nothing. Refuses when a round is
    * already running or already approved. Returns the steps that became PENDING, for the notification the caller sends after commit.
    */
-  async startScope(conn: Conn, app: {id: string; workflowCode: string}, scope: ScopeRef, actor: Actor, workflowStageDocumentId?: string | null) {
-    const templates = await this.repo.templatesForScope(conn, app.workflowCode, scope, workflowStageDocumentId);
+  async startScope(conn: Conn, app: {id: string; workflowFreezeId: string}, scope: ScopeRef, actor: Actor) {
+    const templates = await this.repo.templatesForScope(conn, app.workflowFreezeId, scope);
     if (!templates.length) return {steps: [] as AppStep[], pending: [] as AppStep[]};
     const last = await this.repo.lastRoundNo(conn, app.id, scope);
     if (last > 0) {
       const round = await this.repo.roundOf(conn, app.id, scope, last);
       ensure(!round.some(s => OPEN.includes(s.status)), 'The approval of this part is already running.', 409);
       ensure(!round.length || !round.every(s => s.status === 'APPROVED'), 'This part is already approved.', 409);
+    }
+    // A PIC Marketing level is approved by the PIC set on the application: it must exist when the round starts.
+    let picUserId: number | null = null;
+    if (templates.some(t => t.isPicMarketing)) {
+      const [[row]] = await conn.query<any[]>(`SELECT mkt_pic_id FROM ${CRM.applications} WHERE id=?`, [app.id]);
+      picUserId = row?.mkt_pic_id ? Number(row.mkt_pic_id) : null;
+      ensure(picUserId, 'This approval has a PIC Marketing level, but the application has no PIC Marketing yet. Choose the PIC Marketing first.', 422);
     }
     const first = Math.min(...templates.map(t => t.sortOrder));
     const steps = await this.repo.insertRound(
@@ -122,13 +139,14 @@ export class ApprovalsService {
       scope,
       templates.map(t => ({template: t, status: (t.sortOrder === first ? 'PENDING' : 'WAITING') as StepStatus})),
       by(actor),
+      picUserId,
     );
     return {steps, pending: steps.filter(s => s.status === 'PENDING')};
   }
 
   /** The template steps and the rounds of an application (for the rules about what may be submitted next). */
-  async raw(applicationId: string, workflowCode: string, conn: Conn = this.db.pool) {
-    return {templates: await this.repo.templatesOf(workflowCode, conn), steps: await this.repo.stepsOf(applicationId, conn)};
+  async raw(applicationId: string, workflowFreezeId: string, conn: Conn = this.db.pool) {
+    return {templates: await this.repo.templatesOf(workflowFreezeId, conn), steps: await this.repo.stepsOf(applicationId, conn)};
   }
 
   /** Has this scope had a round of approval (open, approved or rejected)? */
@@ -156,13 +174,17 @@ export class ApprovalsService {
     let nextPending: AppStep[] = [];
     let scopeApproved = false;
     await this.db.transaction(async conn => {
+      // One decision at a time per application: steps of the same level are decided by different people at the same moment, and each of them
+      // must see the other's decision (otherwise nobody sees "every step is approved" and the stage is never completed).
+      await conn.execute(`SELECT id FROM ${CRM.applications} WHERE id=? FOR UPDATE`, [applicationId]);
       const found = await this.repo.stepOf(conn, applicationId, stepId, true);
       ensure(found, 'Approval step not found', 404);
       step = found;
       ensure(step.status === 'PENDING', 'This step is not waiting for a decision.', 409);
-      ensure(holds(actor, step.authorityName), 'Akun ini tidak memiliki wewenang untuk aksi ini.', 403);
+      ensure(canActOn(actor, step), 'Akun ini tidak memiliki wewenang untuk aksi ini.', 403);
       ensure(Number.isInteger(actor.portalUserId), 'The decision needs a signed-in user.', 401);
       ensure(!(await this.repo.hasDecided(conn, step.id, actor.portalUserId)), 'You already decided on this step.', 409);
+      if (input.decision === 'APPROVED') await hooks.beforeApproved?.(conn, step);
       await this.repo.insertDecision(conn, {code: `${step.code}-R${step.roundNo}-${toCode(actor.username || actor.portalUserId)}`.slice(0, 150), stepId: step.id, userId: actor.portalUserId, decision: input.decision, remarks: remarks || null, via: input.via ?? 'WEB'}, by(actor));
       const scope = scopeOf(step);
       const round = await this.repo.roundOf(conn, applicationId, scope, step.roundNo);
@@ -194,6 +216,10 @@ export class ApprovalsService {
   /** Tells everyone holding the authority of each step that it waits for them (never fails the action). */
   async notifyPending(steps: AppStep[], actor: Actor, text: {applicationId: string; company: string}) {
     for (const s of steps)
+      if (s.isPicMarketing) {
+        if (s.approverUserId && s.approverUserId !== Number(actor.portalUserId))
+          await newNotification([s.approverUserId], {applicationId: text.applicationId, type: 'WORKFLOW_ACTION', title: `Waiting for your approval: ${s.name}`, message: `${text.company ? text.company + ' · ' : ''}${s.name} needs your approval as PIC Marketing.`}).catch(() => {});
+      } else
       await notifyHolders([s.authorityName], {portalUserId: actor.portalUserId, username: actor.username, name: actor.name} as any, {
         applicationId: text.applicationId,
         type: 'WORKFLOW_ACTION',
@@ -205,43 +231,43 @@ export class ApprovalsService {
   /* ---------- read ---------- */
 
   /** The state of an application, from its rounds. `conn` is optional so a hook can read inside its transaction. */
-  async stateFor(applicationId: string, workflowCode: string, conn: Conn = this.db.pool): Promise<ApprovalState> {
+  async stateFor(applicationId: string, workflowFreezeId: string, conn: Conn = this.db.pool): Promise<ApprovalState> {
     const [templates, steps, [stages], [progress], [docs]] = await Promise.all([
-      this.repo.templatesOf(workflowCode, conn),
+      this.repo.templatesOf(workflowFreezeId, conn),
       this.repo.stepsOf(applicationId, conn),
-      conn.query<any[]>(`SELECT id FROM ${CRM.workflowStages} WHERE workflow_code=?`, [workflowCode]),
-      conn.query<any[]>(`SELECT stage_id FROM ${CRM.applicationStageProgress} WHERE application_id=? AND submitted_at IS NOT NULL`, [applicationId]),
+      conn.query<any[]>(`SELECT code FROM ${CRM.frozenWorkflowStages} WHERE freeze_id=?`, [workflowFreezeId]),
+      conn.query<any[]>(`SELECT stage_code FROM ${CRM.applicationStageProgress} WHERE application_id=? AND submitted_at IS NOT NULL`, [applicationId]),
       conn.query<any[]>(
-        `SELECT c.id,c.workflow_stage_document_id,
+        `SELECT c.id,c.stage_code,c.document_code,
                 (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS n
-         FROM ${CRM.applicationDocumentChecklists} c WHERE c.application_id=? AND c.workflow_stage_document_id IS NOT NULL`,
+         FROM ${CRM.applicationDocumentChecklists} c WHERE c.application_id=? AND c.document_code IS NOT NULL`,
         [applicationId],
       ),
     ]);
     return stateOf({
       templates,
       steps,
-      stageIds: stages.map((r: any) => r.id),
-      submittedStageIds: new Set(progress.map((r: any) => r.stage_id)),
-      documents: docs.map((r: any) => ({checklistId: r.id, workflowStageDocumentId: r.workflow_stage_document_id, fileCount: Number(r.n)})),
+      stageCodes: stages.map((r: any) => r.code),
+      submittedStageCodes: new Set(progress.map((r: any) => r.stage_code)),
+      documents: docs.map((r: any) => ({checklistId: r.id, stageCode: r.stage_code, documentCode: r.document_code, fileCount: Number(r.n)})),
     });
   }
 
   /** The state of many applications at once (the list): a handful of queries, not a handful per application. */
-  async statesFor(apps: {id: string; workflow_code: string}[]): Promise<Map<string, ApprovalState>> {
+  async statesFor(apps: {id: string; workflow_freeze_id: string}[]): Promise<Map<string, ApprovalState>> {
     const out = new Map<string, ApprovalState>();
     if (!apps.length) return out;
     const ids = apps.map(a => a.id);
-    const codes = [...new Set(apps.map(a => a.workflow_code))];
+    const codes = [...new Set(apps.map(a => a.workflow_freeze_id))];
     const marks = (n: number) => Array(n).fill('?').join(',');
     const [steps, [stages], [progress], [docs]] = await Promise.all([
       this.repo.stepsOfMany(ids),
-      this.db.pool.query<any[]>(`SELECT id,workflow_code FROM ${CRM.workflowStages} WHERE workflow_code IN (${marks(codes.length)})`, codes),
-      this.db.pool.query<any[]>(`SELECT application_id,stage_id FROM ${CRM.applicationStageProgress} WHERE submitted_at IS NOT NULL AND application_id IN (${marks(ids.length)})`, ids),
+      this.db.pool.query<any[]>(`SELECT code,freeze_id FROM ${CRM.frozenWorkflowStages} WHERE freeze_id IN (${marks(codes.length)})`, codes),
+      this.db.pool.query<any[]>(`SELECT application_id,stage_code FROM ${CRM.applicationStageProgress} WHERE submitted_at IS NOT NULL AND application_id IN (${marks(ids.length)})`, ids),
       this.db.pool.query<any[]>(
-        `SELECT c.application_id,c.id,c.workflow_stage_document_id,
+        `SELECT c.application_id,c.id,c.stage_code,c.document_code,
                 (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS n
-         FROM ${CRM.applicationDocumentChecklists} c WHERE c.workflow_stage_document_id IS NOT NULL AND c.application_id IN (${marks(ids.length)})`,
+         FROM ${CRM.applicationDocumentChecklists} c WHERE c.document_code IS NOT NULL AND c.application_id IN (${marks(ids.length)})`,
         ids,
       ),
     ]);
@@ -251,22 +277,22 @@ export class ApprovalsService {
       out.set(
         a.id,
         stateOf({
-          templates: templates.get(a.workflow_code) || [],
+          templates: templates.get(a.workflow_freeze_id) || [],
           steps: steps.filter(s => s.applicationId === a.id),
-          stageIds: stages.filter((r: any) => r.workflow_code === a.workflow_code).map((r: any) => r.id),
-          submittedStageIds: new Set(progress.filter((r: any) => r.application_id === a.id).map((r: any) => r.stage_id)),
-          documents: docs.filter((r: any) => r.application_id === a.id).map((r: any) => ({checklistId: r.id, workflowStageDocumentId: r.workflow_stage_document_id, fileCount: Number(r.n)})),
+          stageCodes: stages.filter((r: any) => r.freeze_id === a.workflow_freeze_id).map((r: any) => r.code),
+          submittedStageCodes: new Set(progress.filter((r: any) => r.application_id === a.id).map((r: any) => r.stage_code)),
+          documents: docs.filter((r: any) => r.application_id === a.id).map((r: any) => ({checklistId: r.id, stageCode: r.stage_code, documentCode: r.document_code, fileCount: Number(r.n)})),
         }),
       );
     return out;
   }
 
   /** What the application screen shows: the state, the newest round of every scope with who can act, and the older rounds as history. */
-  async view(applicationId: string, workflowCode: string, actor?: Actor, labelOf?: (s: ScopeRef) => string) {
+  async view(applicationId: string, workflowFreezeId: string, actor?: Actor, labelOf?: (s: ScopeRef) => string) {
     const steps = await this.repo.stepsOf(applicationId);
     const decisions = await this.repo.decisionsOf(steps.map(s => s.id));
     const names = await this.users.names(decisions.map(d => d.userId));
-    const state = await this.stateFor(applicationId, workflowCode);
+    const state = await this.stateFor(applicationId, workflowFreezeId);
     const byStep = new Map<string, Decision[]>();
     for (const d of decisions) byStep.set(d.stepId, [...(byStep.get(d.stepId) || []), d]);
     const latest = latestRounds(steps);
@@ -282,15 +308,13 @@ export class ApprovalsService {
         sortOrder: s.sortOrder,
         startedAt: s.startedAt,
         completedAt: s.completedAt,
-        canAct: !!actor && s.status === 'PENDING' && holds(actor, s.authorityName) && !ds.some(d => d.userId === actor.portalUserId),
+        canAct: !!actor && s.status === 'PENDING' && canActOn(actor, s) && !ds.some(d => d.userId === actor.portalUserId),
         decisions: ds.map(d => ({by: names.get(d.userId) ?? `User ${d.userId}`, decision: d.decision, remarks: d.remarks, decidedAt: d.decidedAt, via: d.via})),
       };
     };
     const scopeView = (list: AppStep[]) => ({
       scope: list[0].scope,
-      scopeName: labelOf ? labelOf({type: list[0].scope, groupId: list[0].groupId, stageId: list[0].stageId, checklistId: list[0].checklistId, sectionCode: list[0].sectionCode, subjectId: list[0].subjectId}) : '',
-      groupId: list[0].groupId,
-      stageId: list[0].stageId,
+      scopeName: labelOf ? labelOf({type: list[0].scope, groupCode: list[0].groupCode, stageCode: list[0].stageCode, documentCode: list[0].documentCode, checklistId: list[0].checklistId, sectionCode: list[0].sectionCode, subjectId: list[0].subjectId}) : '',
       checklistId: list[0].checklistId,
       sectionCode: list[0].sectionCode,
       subjectId: list[0].subjectId,
@@ -310,6 +334,8 @@ export class ApprovalsService {
       history: [...old.values()].map(scopeView),
       /** True when the signed-in person has something to approve or reject on this application. */
       actionable: current.some(c => c.steps.some(s => s.canAct)),
+      /** True for the administrator and for whoever holds the authority of a step of this application (any round): they get the Approvals tab. The screen never compares authority names itself. */
+      involved: !!actor && (isAdmin(actor) || steps.some(s => canActOn(actor, s))),
     };
   }
 
@@ -319,7 +345,7 @@ export class ApprovalsService {
       const [rows] = await this.db.pool.query<any[]>(`SELECT application_id,id,name,authority_name FROM ${CRM.applicationApprovalSteps} WHERE status='PENDING' ORDER BY started_at`);
       return rows.map(r => ({applicationId: r.application_id, stepId: r.id, name: r.name, authorityName: r.authority_name}));
     }
-    return this.repo.pendingFor(actor.authorities || []);
+    return this.repo.pendingFor(actor.authorities || [], Number.isInteger(actor.portalUserId) ? Number(actor.portalUserId) : null);
   }
 }
 

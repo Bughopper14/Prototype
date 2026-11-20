@@ -4,9 +4,8 @@ import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
-import {WorkflowConfigRepository} from '../applications/workflow/workflow-config.repository';
+import {WorkflowFreezeRepository} from './workflow-freeze.repository';
 import {DocumentsRepository} from '../documents/documents.repository';
-import {UsersNamesLookup} from '../approvals/users-names.lookup';
 import {UsersApproversLookup} from './users-approvers.lookup';
 import {
   activationIssues,
@@ -19,25 +18,23 @@ import {
 } from './workflow-definition';
 
 type Conn = Pick<PoolConnection, 'query' | 'execute'>;
-type Actor = {name?: string; username?: string; portalUserId?: number};
 const uuid = () => crypto.randomUUID();
 
 
 /**
- * Workflow setup: create, edit, activate, deactivate and soft-delete workflows. A workflow defines the stages of an
- * application and what each stage requires (fields, documents).
+ * Workflow setup: create, edit, set active and delete workflows. A workflow defines the stages of an application and what each stage
+ * requires (fields, documents, approvals).
  *
- * A workflow is DRAFT (being built), ACTIVE (new applications start in it; only one) or INACTIVE (deactivated).
- * Applications that started in a workflow keep running on it, so only a draft that no application uses is edited; to change
- * a running workflow, build a new one and activate it. Nothing is hard-deleted.
+ * A workflow can be edited at any time. Every create or save makes a new freeze (see WorkflowFreezeRepository): an application connects to
+ * the freeze that was newest when it started and keeps it. One workflow is "active": new applications start in its newest freeze.
+ * Deleting a workflow does not touch its freezes.
  */
 @Injectable()
 export class WorkflowsService {
   constructor(
     private readonly db: CrmDatabase,
-    private readonly config: WorkflowConfigRepository,
+    private readonly freezes: WorkflowFreezeRepository,
     private readonly documents: DocumentsRepository,
-    private readonly users: UsersNamesLookup,
     private readonly approvers: UsersApproversLookup,
   ) {}
 
@@ -45,49 +42,49 @@ export class WorkflowsService {
 
   async list() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT w.*,(SELECT COUNT(*) FROM ${CRM.applications} a WHERE a.workflow_code=w.code AND a.deleted_at IS NULL) AS applications
+      `SELECT w.*,${this.freezeColumns},${this.applicationsColumn}
        FROM ${CRM.workflows} w
-       ORDER BY FIELD(w.status,'ACTIVE','DRAFT','INACTIVE'),w.version_no DESC`,
+       ORDER BY w.is_active DESC,w.name`,
     );
     // The groups of every workflow in running order, with their stages, for the flow shown on each card.
     const [stageRows] = await this.db.pool.query<any[]>(
-      `SELECT g.workflow_code,g.id AS group_id,g.name AS group_name,g.sort_order AS group_order,s.name AS stage_name,s.sort_order AS stage_order
-       FROM ${CRM.workflowStageGroups} g LEFT JOIN ${CRM.workflowStages} s ON s.stage_group_id=g.id
+      `SELECT g.workflow_code,g.code AS group_code,g.name AS group_name,g.sort_order AS group_order,s.name AS stage_name,s.sort_order AS stage_order
+       FROM ${CRM.workflowStageGroups} g LEFT JOIN ${CRM.workflowStages} s ON s.workflow_code=g.workflow_code AND s.group_code=g.code
        ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
     );
-    const flow = new Map<string, {id: string; name: string; order: number; stages: {name: string; order: number}[]}[]>();
+    const flow = new Map<string, {code: string; name: string; order: number; stages: {name: string; order: number}[]}[]>();
     for (const r of stageRows) {
       const groups = flow.get(r.workflow_code) || [];
-      let g = groups.find(x => x.id === r.group_id);
-      if (!g) groups.push((g = {id: r.group_id, name: r.group_name, order: Number(r.group_order), stages: []}));
+      let g = groups.find(x => x.code === r.group_code);
+      if (!g) groups.push((g = {code: r.group_code, name: r.group_name, order: Number(r.group_order), stages: []}));
       if (r.stage_name) g.stages.push({name: r.stage_name, order: Number(r.stage_order)});
       flow.set(r.workflow_code, groups);
     }
     return rows.map(r => ({...this.header(r), flow: (flow.get(r.code) || []).map(({name, order, stages}) => ({name, order, stages}))}));
   }
 
+  /** The newest freeze of a workflow (its number and time) and the applications that run on any freeze of it. */
+  private readonly freezeColumns = `(SELECT f.freeze_version FROM ${CRM.frozenWorkflows} f WHERE f.source_workflow_code=w.code AND f.is_latest_freeze=1) AS freeze_version,
+       (SELECT f.frozen_at FROM ${CRM.frozenWorkflows} f WHERE f.source_workflow_code=w.code AND f.is_latest_freeze=1) AS frozen_at`;
+  private readonly applicationsColumn = `(SELECT COUNT(*) FROM ${CRM.applications} a JOIN ${CRM.frozenWorkflows} f ON f.id=a.workflow_freeze_id WHERE f.source_workflow_code=w.code AND a.deleted_at IS NULL) AS applications`;
+
   private header(r: any) {
-    const applications = r.applications === undefined ? undefined : Number(r.applications);
     return {
       id: r.id,
       code: r.code,
       name: r.name,
       description: r.description,
-      versionNo: Number(r.version_no),
-      status: r.status as 'DRAFT' | 'ACTIVE' | 'INACTIVE',
-      isActive: r.status === 'ACTIVE',
-      /** Only a draft that no application uses can be edited. */
-      editable: r.status === 'DRAFT' && !applications,
-      activatedAt: r.activated_at,
-      activatedBy: r.activated_by,
-      applications,
+      isActive: !!r.is_active,
+      freezeVersion: r.freeze_version === null || r.freeze_version === undefined ? null : Number(r.freeze_version),
+      frozenAt: r.frozen_at ?? null,
+      applications: r.applications === undefined ? undefined : Number(r.applications),
       updatedAt: r.updated_at ?? r.created_at,
     };
   }
 
   async get(id: string) {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT w.*,(SELECT COUNT(*) FROM ${CRM.applications} a WHERE a.workflow_code=w.code AND a.deleted_at IS NULL) AS applications
+      `SELECT w.*,${this.freezeColumns},${this.applicationsColumn}
        FROM ${CRM.workflows} w WHERE w.id=?`,
       [id],
     );
@@ -128,14 +125,12 @@ export class WorkflowsService {
 
   /** The master approvals with their levels (read-only here; they are made in Master approval). */
   async masterApprovals() {
-    const [approvals] = await this.db.pool.query<any[]>(`SELECT code,name,status FROM ${CRM.masterApprovals} ORDER BY name,code`);
-    const [levels] = await this.db.pool.query<any[]>(`SELECT approval_code,level_no,authority_name FROM ${CRM.masterApprovalLevels} ORDER BY approval_code,level_no,authority_name`);
+    const [approvals] = await this.db.pool.query<any[]>(`SELECT code,name FROM ${CRM.masterApprovals} ORDER BY name,code`);
+    const [levels] = await this.db.pool.query<any[]>(`SELECT approval_code,level_no,authority_name,is_pic_marketing FROM ${CRM.masterApprovalLevels} ORDER BY approval_code,level_no,is_pic_marketing,authority_name`);
     return approvals.map(a => ({
       code: a.code,
       name: a.name,
-      /** Only an ACTIVE approval can be chosen for a place (one already chosen in the workflow stays). */
-      status: a.status as 'DRAFT' | 'ACTIVE' | 'INACTIVE',
-      levels: levels.filter(l => l.approval_code === a.code).map(l => ({levelNo: Number(l.level_no), authorityName: l.authority_name})),
+      levels: levels.filter(l => l.approval_code === a.code).map(l => ({levelNo: Number(l.level_no), authorityName: l.authority_name ?? '', isPicMarketing: !!l.is_pic_marketing})),
     }));
   }
 
@@ -159,18 +154,18 @@ export class WorkflowsService {
     const q = async (sql: string) => (await conn.query<any[]>(sql, [workflowCode]))[0];
     const groups = await q(`SELECT * FROM ${CRM.workflowStageGroups} WHERE workflow_code=? ORDER BY sort_order,name`);
     const stages = await q(
-      `SELECT s.*,g.code AS group_code FROM ${CRM.workflowStages} s JOIN ${CRM.workflowStageGroups} g ON g.id=s.stage_group_id
+      `SELECT s.*,g.code AS group_code FROM ${CRM.workflowStages} s JOIN ${CRM.workflowStageGroups} g ON g.workflow_code=s.workflow_code AND g.code=s.group_code
        WHERE s.workflow_code=? ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
     );
     const fields = await q(
       `SELECT s.code AS stage_code,ff.form_code,fs.name AS section_name,ff.code,sf.is_mandatory FROM ${CRM.workflowStageFields} sf
-       JOIN ${CRM.workflowStages} s ON s.id=sf.stage_id JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
+       JOIN ${CRM.workflowStages} s ON s.workflow_code=sf.workflow_code AND s.code=sf.stage_code JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
        JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
        WHERE sf.workflow_code=?`,
     );
     const documents = await q(
       `SELECT s.code AS stage_code,t.code AS document_code,sd.is_default,sd.is_mandatory FROM ${CRM.workflowStageDocuments} sd
-       JOIN ${CRM.workflowStages} s ON s.id=sd.stage_id JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
+       JOIN ${CRM.workflowStages} s ON s.workflow_code=sd.workflow_code AND s.code=sd.stage_code JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
        WHERE sd.workflow_code=? ORDER BY sd.sort_order`,
     );
     const approvals = await q(`SELECT * FROM ${CRM.workflowApprovalAssignments} WHERE workflow_code=? ORDER BY scope_type,code`);
@@ -190,16 +185,11 @@ export class WorkflowsService {
     };
   }
 
-  /* ---------- drafts ---------- */
+  /* ---------- edit ---------- */
 
-  private async lockDraft(conn: Conn, id: string, forEdit = false) {
+  private async lockWorkflow(conn: Conn, id: string) {
     const [rows] = await conn.query<any[]>(`SELECT * FROM ${CRM.workflows} WHERE id=? FOR UPDATE`, [id]);
     ensure(rows[0], 'Workflow not found', 404);
-    ensure(rows[0].status === 'DRAFT', 'Only a draft can be edited. Build a new workflow and activate it instead.', 409);
-    if (forEdit) {
-      const [[used]] = await conn.query<any[]>(`SELECT COUNT(*) AS n FROM ${CRM.applications} WHERE workflow_code=?`, [rows[0].code]);
-      ensure(Number(used.n) === 0, 'Applications already run on this workflow, so it cannot be edited. Build a new workflow instead.', 409);
-    }
     return rows[0];
   }
 
@@ -213,38 +203,22 @@ export class WorkflowsService {
     }
   }
 
-  /** A new empty draft. */
+  /** A new empty workflow (frozen right away). */
   async create(input: {name: string; description?: string | null}, by: string | null) {
     ensure(String(input.name || '').trim(), 'Give the workflow a name', 422);
     const id = uuid();
     await this.db.transaction(async conn => {
-      const [[max]] = await conn.query<any[]>(`SELECT COALESCE(MAX(version_no),0)+1 AS v FROM ${CRM.workflows}`);
       const code = await this.freshWorkflowCode(conn, input.name);
-      await conn.execute(
-        `INSERT INTO ${CRM.workflows} (id,code,name,description,version_no,status,created_by) VALUES (?,?,?,?,?,'DRAFT',?)`,
-        [id, code, String(input.name).trim(), input.description || null, Number(max.v), by],
-      );
+      await conn.execute(`INSERT INTO ${CRM.workflows} (id,code,name,description,is_active,created_by) VALUES (?,?,?,?,0,?)`, [id, code, String(input.name).trim(), input.description || null, by]);
       await this.write(conn, code, emptyDefinition(), by);
+      await this.freezes.freezeWorkflow(conn, code, by);
     });
     return this.get(id);
   }
 
-  /**
-   * A new draft with the same groups, stages, required fields, documents and approvals, as a starting point for a change: a workflow that applications
-   * run on is never edited, it is cloned, changed and activated (the running applications keep the one they started in).
-   */
-  async clone(id: string, by: string | null) {
-    const {workflow, definition} = await this.get(id);
-    const created = await this.create({name: `${workflow.name} (copy)`.slice(0, 150), description: workflow.description}, by);
-    await this.db.transaction(async conn => {
-      await this.write(conn, created.workflow.code, definition, by);
-    });
-    return this.get(created.workflow.id);
-  }
-
   async rename(id: string, input: {name?: string; description?: string | null}, by: string | null) {
     await this.db.transaction(async conn => {
-      await this.lockDraft(conn, id);
+      const row = await this.lockWorkflow(conn, id);
       if (input.name !== undefined) ensure(String(input.name).trim(), 'Give the workflow a name', 422);
       await conn.execute(`UPDATE ${CRM.workflows} SET name=COALESCE(?,name),description=?,updated_by=? WHERE id=?`, [
         input.name === undefined ? null : String(input.name).trim(),
@@ -252,11 +226,12 @@ export class WorkflowsService {
         by,
         id,
       ]);
+      await this.freezes.freezeWorkflow(conn, row.code, by);
     });
     return this.get(id);
   }
 
-  /** Replaces the whole definition of a draft. */
+  /** Replaces the whole definition of a workflow, then freezes it. */
   async saveDefinition(id: string, raw: unknown, by: string | null) {
     const parsed = definitionSchema.safeParse(raw);
     if (!parsed.success) throw new Problem(422, parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; '));
@@ -270,13 +245,8 @@ export class WorkflowsService {
     for (const st of def.stages) if (st.formCode && !formCodes.has(st.formCode)) issues.push({level: 'error', message: `Stage "${st.name}" shows a form that does not exist (${st.formCode}).`});
     // an approval points at an existing master approval, on a place that is flagged is_approval in the masters (the registry)
     const registry = await this.registry();
-    // an approval can be chosen only while it is ACTIVE; one this workflow already uses may stay (it was chosen when it was active)
-    const [already] = await this.db.pool.query<any[]>(`SELECT approval_code FROM ${CRM.workflowApprovalAssignments} WHERE workflow_code=(SELECT code FROM ${CRM.workflows} WHERE id=?)`, [id]);
-    const kept = new Set(already.map(r => r.approval_code as string));
     for (const a of def.approvals) {
-      const status = registry.approvals.get(a.approvalCode);
-      if (!status) issues.push({level: 'error', message: `The approval ${a.approvalCode} does not exist in Master approval.`});
-      else if (status !== 'ACTIVE' && !kept.has(a.approvalCode)) issues.push({level: 'error', message: `The approval ${a.approvalCode} is ${status.toLowerCase()}; only an active approval can be chosen.`});
+      if (!registry.approvals.has(a.approvalCode)) issues.push({level: 'error', message: `The approval ${a.approvalCode} does not exist in Master approval.`});
       const stage = def.stages.find(x => x.key === a.stageKey);
       if (a.scope === 'STAGE' && stage?.formCode && !registry.forms.get(stage.formCode))
         issues.push({level: 'error', message: `Stage "${stage.name}" shows a form that cannot have an approval (${stage.formCode}).`});
@@ -292,12 +262,12 @@ export class WorkflowsService {
     if (issues.length) throw new Problem(422, issues.map(i => i.message).join(' '), issues.map(i => ({field: 'workflow', detail: i.message})));
     let code = '';
     await this.db.transaction(async conn => {
-      const row = await this.lockDraft(conn, id, true);
+      const row = await this.lockWorkflow(conn, id);
       code = row.code;
       await this.write(conn, code, def, by);
       await conn.execute(`UPDATE ${CRM.workflows} SET updated_by=?,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`, [by, id]);
+      await this.freezes.freezeWorkflow(conn, code, by);
     });
-    this.config.forget(code);
     return this.get(id);
   }
 
@@ -311,12 +281,12 @@ export class WorkflowsService {
     const [forms] = await this.db.pool.query<any[]>(`SELECT code,is_approval FROM ${CRM.masterForms}`);
     const [sections] = await this.db.pool.query<any[]>(`SELECT code,name,form_code,is_approval FROM ${CRM.masterFormSections}`);
     const [docs] = await this.db.pool.query<any[]>(`SELECT code,is_approval FROM ${CRM.masterDocumentTypes}`);
-    const [approvals] = await this.db.pool.query<any[]>(`SELECT code,status FROM ${CRM.masterApprovals}`);
+    const [approvals] = await this.db.pool.query<any[]>(`SELECT code FROM ${CRM.masterApprovals}`);
     return {
       forms: new Map<string, boolean>(forms.map(f => [f.code, !!f.is_approval])),
       sections: new Map(sections.map(x => [x.code as string, {name: x.name as string, formCode: x.form_code as string, isApproval: !!x.is_approval}])),
       documents: new Map<string, boolean>(docs.map(d => [d.code, !!d.is_approval])),
-      approvals: new Map<string, string>(approvals.map(a => [a.code as string, a.status as string])),
+      approvals: new Set<string>(approvals.map(a => a.code as string)),
     };
   }
 
@@ -339,32 +309,26 @@ export class WorkflowsService {
   /** Writes a definition for a draft (deleting what was there). */
   private async write(conn: Conn, workflowCode: string, def: WorkflowDefinition, by: string | null) {
     await this.clear(conn, workflowCode);
-    const groupId = new Map<string, string>();
     const groupCodes = new Map<string, string>();
     const groupTaken = new Set<string>();
     for (const g of def.groups) {
-      const gid = uuid();
-      groupId.set(g.key, gid);
       const gcode = this.uniqueCode(groupTaken, g.code, g.name, 50, 'GROUP');
       groupCodes.set(g.key, gcode);
       await conn.execute(
         `INSERT INTO ${CRM.workflowStageGroups} (id,workflow_code,code,name,sort_order,created_by)
          VALUES (?,?,?,?,?,?)`,
-        [gid, workflowCode, gcode, g.name, g.order, by],
+        [uuid(), workflowCode, gcode, g.name, g.order, by],
       );
     }
-    const stageId = new Map<string, string>();
     const stageCodes = new Map<string, string>();
     const stageTaken = new Set<string>();
     for (const s of def.stages) {
-      const sid = uuid();
-      stageId.set(s.key, sid);
       const scode = this.uniqueCode(stageTaken, s.code, s.name, 50, 'STAGE');
       stageCodes.set(s.key, scode);
       await conn.execute(
-        `INSERT INTO ${CRM.workflowStages} (id,workflow_code,stage_group_id,group_code,code,name,department_code,sort_order,form_code,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?)`,
-        [sid, workflowCode, groupId.get(s.groupKey)!, groupCodes.get(s.groupKey)!, scode, s.name, s.departmentCode || null, s.order, s.formCode || null, by],
+        `INSERT INTO ${CRM.workflowStages} (id,workflow_code,group_code,code,name,department_code,sort_order,form_code,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [uuid(), workflowCode, groupCodes.get(s.groupKey)!, scode, s.name, s.departmentCode || null, s.order, s.formCode || null, by],
       );
     }
     // a required field is a row that points at the master field (the master is the only list of fields)
@@ -375,20 +339,17 @@ export class WorkflowsService {
       const known = master.get(f.code);
       ensure(known && known.form_code === f.formCode && known.section_name === f.section, `Field ${f.section} / ${f.code} does not exist in the ${f.formCode} form`, 422);
       await conn.execute(
-        `INSERT INTO ${CRM.workflowStageFields} (id,workflow_code,stage_id,stage_code,form_field_code,is_mandatory,created_by) VALUES (?,?,?,?,?,?,?)`,
-        [uuid(), workflowCode, stageId.get(f.stageKey)!, stageCodes.get(f.stageKey)!, f.code, +f.mandatory, by],
+        `INSERT INTO ${CRM.workflowStageFields} (id,workflow_code,stage_code,form_field_code,is_mandatory,created_by) VALUES (?,?,?,?,?,?)`,
+        [uuid(), workflowCode, stageCodes.get(f.stageKey)!, f.code, +f.mandatory, by],
       );
     }
     const stageGroup = new Map(def.stages.map(s => [s.key, s.groupKey]));
-    const docRowId = new Map<string, string>();
     for (const [i, d] of def.documents.entries()) {
       const [rows] = await conn.query<any[]>(`SELECT id FROM ${CRM.masterDocumentTypes} WHERE code=?`, [d.documentCode]);
-      const wid = uuid();
-      docRowId.set(`${d.stageKey}|${d.documentCode}`, wid);
       await conn.execute(
-        `INSERT INTO ${CRM.workflowStageDocuments} (id,workflow_code,group_id,group_code,stage_id,stage_code,document_type_id,document_code,is_default,is_mandatory,sort_order,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [wid, workflowCode, groupId.get(stageGroup.get(d.stageKey)!)!, groupCodes.get(stageGroup.get(d.stageKey)!)!, stageId.get(d.stageKey)!, stageCodes.get(d.stageKey)!, rows[0].id, d.documentCode, +d.isDefault, +d.isMandatory, i, by],
+        `INSERT INTO ${CRM.workflowStageDocuments} (id,workflow_code,group_code,stage_code,document_type_id,document_code,is_default,is_mandatory,sort_order,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
+        [uuid(), workflowCode, groupCodes.get(stageGroup.get(d.stageKey)!)!, stageCodes.get(d.stageKey)!, rows[0].id, d.documentCode, +d.isDefault, +d.isMandatory, i, by],
       );
     }
     // The approvals: one row per place, pointing at a master approval. The code names the place (group, stage, section or document).
@@ -398,17 +359,14 @@ export class WorkflowsService {
       const place = a.scope === 'GROUP' ? gcode : a.scope === 'STAGE' ? scode : a.scope === 'SECTION' ? `${scode}-${a.sectionCode}` : `${scode}-${a.documentCode}`;
       await conn.execute(
         `INSERT INTO ${CRM.workflowApprovalAssignments}
-           (id,workflow_code,code,scope_type,section_code,stage_group_id,stage_id,workflow_stage_document_id,group_code,stage_code,document_code,approval_code,created_by)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+           (id,workflow_code,code,scope_type,section_code,group_code,stage_code,document_code,approval_code,created_by)
+         VALUES (?,?,?,?,?,?,?,?,?,?)`,
         [
           uuid(),
           workflowCode,
           `${a.scope}-${place}`.slice(0, 110),
           a.scope,
           a.scope === 'SECTION' ? a.sectionCode! : null,
-          a.scope === 'GROUP' ? groupId.get(a.groupKey!)! : null,
-          a.scope === 'STAGE' || a.scope === 'SECTION' ? stageId.get(a.stageKey!)! : null,
-          a.scope === 'DOCUMENT' ? docRowId.get(`${a.stageKey}|${a.documentCode}`)! : null,
           gcode,
           scode,
           a.scope === 'DOCUMENT' ? a.documentCode! : null,
@@ -419,17 +377,17 @@ export class WorkflowsService {
     }
   }
 
-  /* ---------- activate / deactivate ---------- */
+  /* ---------- active / delete ---------- */
 
-  /** Problems that stop an activation (errors) and things worth a look (warnings). */
+  /** Problems that stop setting a workflow active (errors) and things worth a look (warnings). */
   async validate(id: string): Promise<{ok: boolean; issues: Issue[]}> {
     const {definition} = await this.get(id);
     const issues = [...referenceIssues(definition, await this.documentCodes()), ...activationIssues(definition)];
     return {ok: !issues.some(i => i.level === 'error'), issues};
   }
 
-  /** The workflow becomes the one new applications start in; the one that was active is deactivated. */
-  async activate(id: string, actor: Actor, note?: string | null) {
+  /** The workflow becomes the one new applications start in (the newest freeze of it); the one that was active is switched off. */
+  async activate(id: string, by: string | null) {
     const result = await this.validate(id);
     if (!result.ok)
       throw new Problem(
@@ -437,76 +395,46 @@ export class WorkflowsService {
         'The workflow is not ready: ' + result.issues.filter(i => i.level === 'error').map(i => i.message).join(' '),
         result.issues.filter(i => i.level === 'error').map(i => ({field: 'workflow', detail: i.message})),
       );
-    let previous: string | null = null;
-    let code = '';
     await this.db.transaction(async conn => {
-      const [rows] = await conn.query<any[]>(`SELECT * FROM ${CRM.workflows} WHERE id=? FOR UPDATE`, [id]);
-      ensure(rows[0], 'Workflow not found', 404);
-      code = rows[0].code;
-      ensure(rows[0].status !== 'ACTIVE', 'This workflow is already active', 409);
-      const [active] = await conn.query<any[]>(`SELECT * FROM ${CRM.workflows} WHERE status='ACTIVE' FOR UPDATE`);
-      const prev = active[0] ?? null;
-      previous = prev?.code ?? null;
-      if (prev) {
-        await conn.execute(`UPDATE ${CRM.workflows} SET status='INACTIVE',updated_by=? WHERE id=?`, [actor.username || null, prev.id]);
-        await this.log(conn, prev, null, 'DEACTIVATE', actor, note || null);
-      }
-      await conn.execute(
-        `UPDATE ${CRM.workflows} SET status='ACTIVE',activated_at=CURRENT_TIMESTAMP(3),activated_by=?,updated_by=? WHERE id=?`,
-        [actor.name || actor.username || null, actor.username || null, id],
-      );
-      await this.log(conn, rows[0], prev, 'ACTIVATE', actor, note || null);
+      const row = await this.lockWorkflow(conn, id);
+      ensure(!row.is_active, 'This workflow is already active', 409);
+      ensure(await this.freezes.latestWorkflowFreezeId(row.code, conn), 'This workflow has no freeze yet. Save it first.', 409);
+      await conn.execute(`UPDATE ${CRM.workflows} SET is_active=0 WHERE is_active=1`);
+      await conn.execute(`UPDATE ${CRM.workflows} SET is_active=1,updated_by=? WHERE id=?`, [by, id]);
     });
-    this.config.forget(code);
-    if (previous) this.config.forget(previous);
     return this.get(id);
   }
 
-  /** Switches the active workflow off. New applications cannot start until another one is activated. */
-  async deactivate(id: string, actor: Actor, note?: string | null) {
-    let code = '';
+  /** Switches the active workflow off. New applications cannot start until another one is set active. */
+  async deactivate(id: string, by: string | null) {
     await this.db.transaction(async conn => {
-      const [rows] = await conn.query<any[]>(`SELECT * FROM ${CRM.workflows} WHERE id=? FOR UPDATE`, [id]);
-      ensure(rows[0], 'Workflow not found', 404);
-      code = rows[0].code;
-      ensure(rows[0].status === 'ACTIVE', 'Only the active workflow can be deactivated', 409);
-      await conn.execute(`UPDATE ${CRM.workflows} SET status='INACTIVE',updated_by=? WHERE id=?`, [actor.username || null, id]);
-      await this.log(conn, rows[0], null, 'DEACTIVATE', actor, note || null);
+      const row = await this.lockWorkflow(conn, id);
+      ensure(row.is_active, 'Only the active workflow can be switched off', 409);
+      await conn.execute(`UPDATE ${CRM.workflows} SET is_active=0,updated_by=? WHERE id=?`, [by, id]);
     });
-    this.config.forget(code);
     return this.get(id);
   }
 
-  /** The log keeps a snapshot of the workflow, so it stays complete when the workflow changes later. */
-  private snapshot(w: any) {
-    return JSON.stringify({id: w.id, code: w.code, name: w.name, versionNo: Number(w.version_no), status: w.status});
+  /** Deletes the master workflow. Its freezes stay (frozen tables have no foreign keys), so applications on them keep running. */
+  async remove(id: string) {
+    await this.db.transaction(async conn => {
+      const row = await this.lockWorkflow(conn, id);
+      ensure(!row.is_active, 'The active workflow cannot be deleted. Set another workflow active first.', 409);
+      await this.clear(conn, row.code);
+      await conn.execute(`DELETE FROM ${CRM.workflows} WHERE id=?`, [id]);
+    });
+    return {removed: id};
   }
 
-  private async log(conn: Conn, workflow: any, previous: any | null, action: 'ACTIVATE' | 'DEACTIVATE' | 'DELETE', actor: Actor, note: string | null) {
-    await conn.execute(
-      `INSERT INTO ${CRM.workflowActivationLogs} (id,workflow_json,previous_workflow_json,action,actor_user_id,actor_name,note)
-       VALUES (?,?,?,?,?,?,?)`,
-      [
-        uuid(),
-        this.snapshot(workflow),
-        previous ? this.snapshot(previous) : null,
-        action,
-        Number.isInteger(actor.portalUserId) ? (actor.portalUserId ?? null) : null,
-        actor.name || actor.username || 'System',
-        note,
-      ],
-    );
-  }
-
+  /** The freezes of a workflow, newest first (every create or edit made one). */
   async history(id: string) {
+    const {workflow} = await this.get(id);
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT action,actor_name,note,acted_at,previous_workflow_json FROM ${CRM.workflowActivationLogs}
-       WHERE JSON_UNQUOTE(JSON_EXTRACT(workflow_json,'$.id'))=? ORDER BY acted_at DESC`,
-      [id],
+      `SELECT f.id,f.freeze_version,f.frozen_at,f.frozen_by_name,f.name,f.is_latest_freeze,
+              (SELECT COUNT(*) FROM ${CRM.applications} a WHERE a.workflow_freeze_id=f.id AND a.deleted_at IS NULL) AS applications
+       FROM ${CRM.frozenWorkflows} f WHERE f.source_workflow_code=? ORDER BY f.freeze_version DESC`,
+      [workflow.code],
     );
-    return rows.map(r => {
-      const prev = typeof r.previous_workflow_json === 'string' ? JSON.parse(r.previous_workflow_json) : r.previous_workflow_json;
-      return {action: r.action, actor: r.actor_name, note: r.note, at: r.acted_at, previous: prev?.name ?? null};
-    });
+    return rows.map(r => ({id: r.id, freezeVersion: Number(r.freeze_version), at: r.frozen_at, by: r.frozen_by_name, name: r.name, isLatest: !!r.is_latest_freeze, applications: Number(r.applications)}));
   }
 }

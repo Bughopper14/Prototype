@@ -1,6 +1,6 @@
 import {createContext, useContext, useEffect, useState, type ReactNode} from 'react';
 import {useLocation} from 'react-router';
-import {api, setCurrentUser} from './api';
+import {api} from './api';
 
 /** The signed-in user as returned by GET /api/v1/auth/me (the session id is never sent to the browser). */
 export type SessionUser = {
@@ -36,10 +36,9 @@ export function RequireSession({children}: {children: ReactNode}) {
           if (!live) return;
           if (!me) {
             const next = location.pathname + location.search;
-            window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+            window.location.replace(`/login?reason=${encodeURIComponent('Sesi tidak ditemukan atau akun Anda belum memiliki akses ke aplikasi ini. Jika Anda baru saja login, hubungi IT Admin untuk meminta role.')}&next=${encodeURIComponent(next)}`);
             return;
           }
-          setCurrentUser(me);
           setUser(me);
         })
         .catch((err) => {

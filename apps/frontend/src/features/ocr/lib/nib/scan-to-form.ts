@@ -1,7 +1,7 @@
 /** The NIB form and how the OCR server's scan result is turned into it. */
 import {extractWilayahFromAddressAndText} from '@/features/ocr/lib/nib/address-wilayah';
 import {normalizeWilayahInput, type useMasterData} from '@/shared/master-data';
-import {formatCompanyName, toTitleCase} from '@liugong/shared';
+import {formatCompanyName} from '@liugong/shared';
 
 export interface NibFormData {
   nib: string;

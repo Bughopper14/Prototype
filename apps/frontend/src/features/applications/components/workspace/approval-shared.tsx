@@ -20,11 +20,31 @@ export function layersOf(steps: Step[]): Step[][] {
   return layers;
 }
 
+const when = (v?: string | null) => (v ? new Date(v).toLocaleString('en-GB', {dateStyle: 'medium', timeStyle: 'short'}) : '');
+
+/** Where an approval is: one dot per layer (done, now, waiting or rejected), so anyone sees at a glance who is next. */
+function Progress({layers}: {layers: Step[][]}) {
+  if (layers.length < 2) return null;
+  const stateOf = (l: Step[]) => (l.some(s => s.status === 'REJECTED') ? 'rejected' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next');
+  const label: Record<string, string> = {done: 'Approved', now: 'Needs approval', next: 'Waiting', rejected: 'Rejected', closed: 'Closed'};
+  return (
+    <ol className="ap-progress" aria-label="Approval progress">
+      {layers.map((l, i) => (
+        <li key={i} className={stateOf(l)} title={`Layer ${i + 1}: ${label[stateOf(l)]}`}>
+          <span>{stateOf(l) === 'done' ? <Check size={12} /> : i + 1}</span>
+          <small>{label[stateOf(l)]}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 const Decisions = ({step}: {step: Step}) => (
   <>
     {step.decisions.map((d, i) => (
       <p key={i} className="ap-decision">
         {d.decision === 'APPROVED' ? <Check size={14} /> : <X size={14} />} {d.by}: {d.decision === 'APPROVED' ? 'approved' : 'rejected'}
+        {d.decidedAt ? ` · ${when(d.decidedAt)}` : ''}
         {d.remarks ? ` — ${d.remarks}` : ''}
         {d.via === 'LARK' ? ' (from Lark)' : ''}
       </p>
@@ -71,13 +91,14 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
               )}
             </div>
             {approvalName && <small className="ap-scope-sub">{approvalName}</small>}
+            <Progress layers={layersOf(c.steps)} />
             {layersOf(c.steps).map((layer, li) => (
               <ul className="ap-layer-steps compact" key={li}>
                 {layer.map(s => (
                   <li key={s.id} className={'ap-step compact ' + s.status.toLowerCase()}>
                     <div className="ap-step-top">
                       <span className="ap-layer-no">{li + 1}</span>
-                      <span className="ap-step-who">{s.authorityName}</span>
+                      <span className="ap-step-who">Approver</span>
                       <span className={'ap-pill ' + s.status.toLowerCase()}>{s.status === 'PENDING' && !onDecide ? 'Waiting' : (STEP_LABEL[s.status] ?? s.status)}</span>
                       {onDecide && s.canAct && (
                         <span className="ap-actions">

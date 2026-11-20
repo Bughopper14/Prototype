@@ -1,4 +1,5 @@
 /** Which stage an application is in, worked out from its stage field and workflow status. */
+import {screenOfForm} from '@liugong/shared';
 import {STAGE, firstStageCode} from '@/shared/master-data';
 
 /** The application has been submitted past the FAP stage. */
@@ -17,9 +18,10 @@ export const initialStage = (a: any) =>
 export type WorkflowStage = {code: string; name: string; groupCode: string; formCode: string | null; order: number};
 
 /**
- * The screen a workflow stage opens: the FAP form stage shows the FAP tabs, the Pre-analysis stage the Pre-analysis tabs,
- * and any other stage the shared document tabs. (There is no Pre-analysis form in the field catalog yet, so that stage
- * is recognised by its code.)
+ * The screen a workflow stage opens, decided by the form of the stage (see screenOfForm in @liugong/shared): the FAP form shows the FAP tabs,
+ * the Pre-analysis form the Pre-analysis tabs, any other form the shared document tabs. The code or name of the stage never decides it.
  */
-export const screenOf = (stage: {code: string; formCode?: string | null}): string =>
-  stage.formCode === 'FAP-FORM' ? STAGE.FAP : stage.code === STAGE.PRE_ANALYSIS ? STAGE.PRE_ANALYSIS : STAGE.ICLF;
+export const screenOf = (stage: {code: string; formCode?: string | null}): string => {
+  const screen = screenOfForm(stage.formCode);
+  return screen === 'FAP' ? STAGE.FAP : screen === 'PRE_ANALYSIS' ? STAGE.PRE_ANALYSIS : STAGE.ICLF;
+};

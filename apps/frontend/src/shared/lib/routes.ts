@@ -19,7 +19,7 @@ export const CRM_PAGES: {name: CrmPageName; href: string; authority: string}[] =
   {name: 'Customers', href: `${CRM_BASE}/customers`, authority: 'CRM_CUSTOMER_VIEW'},
   {name: 'Customize master data', href: `${CRM_BASE}/master-data`, authority: 'CRM_MASTER-DATA_VIEW'},
   // Only administrators: no role holds this authority, so the page is for the Super Admin.
-  {name: 'Workflow', href: `${CRM_BASE}/workflows`, authority: 'CRM_WORKFLOW_MANAGE'},
+  {name: 'Workflow', href: `${CRM_BASE}/workflows`, authority: 'CRM_WORKFLOW_VIEW'},
   {name: 'Notifications', href: `${CRM_BASE}/notifications`, authority: 'CRM_NOTIFICATION_VIEW'},
   {name: 'Activity', href: `${CRM_BASE}/activity`, authority: 'CRM_ACTIVITY_VIEW'},
 ];

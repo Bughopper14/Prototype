@@ -8,7 +8,6 @@ type Conn = Pick<PoolConnection, 'query' | 'execute'>;
 export type Actor = {id?: string; portalUserId?: number; name?: string; username?: string; role?: string};
 
 const ROMAN_MONTHS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-const actorId = (actor: Actor) => (Number.isInteger(actor.portalUserId) ? actor.portalUserId! : null);
 const actorName = (actor: Actor) => actor.name || actor.username || 'System';
 
 /**
@@ -51,7 +50,7 @@ export class ApplicationsRepository {
       customerId: string;
       customerCategory: 'NEW' | 'EXISTING';
       branchId: string | null;
-      workflowCode: string;
+      workflowFreezeId: string;
       mktPicId?: number | null;
     },
     actor: Actor,
@@ -59,7 +58,7 @@ export class ApplicationsRepository {
     await conn.execute(
       `INSERT INTO ${CRM.applications}
          (id,application_date,business_partner_id,customer_category,branch_id,
-          workflow_code,mkt_pic_id,created_by)
+          workflow_freeze_id,mkt_pic_id,created_by)
        VALUES (?,?,?,?,?,?,?,?)`,
       [
         app.id,
@@ -67,7 +66,7 @@ export class ApplicationsRepository {
         app.customerId,
         app.customerCategory,
         app.branchId,
-        app.workflowCode,
+        app.workflowFreezeId,
         app.mktPicId ?? null,
         actor.username || null,
       ],
@@ -136,22 +135,22 @@ export class ApplicationsRepository {
   async saveStageProgress(
     conn: Conn,
     applicationId: string,
-    stageId: string,
+    stageCode: string,
     values: {isLocked?: boolean; submitted?: boolean; completed?: boolean; clearSubmitted?: boolean; clearCompleted?: boolean},
     actor: Actor,
   ) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT id FROM ${CRM.applicationStageProgress} WHERE application_id=? AND stage_id=? FOR UPDATE`,
-      [applicationId, stageId],
+      `SELECT id FROM ${CRM.applicationStageProgress} WHERE application_id=? AND stage_code=? FOR UPDATE`,
+      [applicationId, stageCode],
     );
     if (!rows.length) {
       await conn.execute(
         `INSERT INTO ${CRM.applicationStageProgress}
-           (id,application_id,workflow_code,stage_id,stage_code,is_locked,submitted_at,completed_at,created_by)
-         SELECT ?,?,s.workflow_code,s.id,s.code,?,${values.submitted ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},
+           (id,application_id,workflow_freeze_id,stage_code,is_locked,submitted_at,completed_at,created_by)
+         SELECT ?,?,a.workflow_freeze_id,s.code,?,${values.submitted ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},
                 ${values.completed ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},?
-         FROM ${CRM.workflowStages} s WHERE s.id=?`,
-        [crypto.randomUUID(), applicationId, values.isLocked ? 1 : 0, actor.username || null, stageId],
+         FROM ${CRM.frozenWorkflowStages} s JOIN ${CRM.applications} a ON a.workflow_freeze_id=s.freeze_id AND a.id=? WHERE s.code=?`,
+        [crypto.randomUUID(), applicationId, values.isLocked ? 1 : 0, actor.username || null, applicationId, stageCode],
       );
       return;
     }

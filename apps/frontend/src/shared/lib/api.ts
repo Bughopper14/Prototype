@@ -94,15 +94,4 @@ export function api(path: string, method = 'GET', body?: unknown): Promise<any> 
   return result;
 }
 
-let currentUser: any = null;
 
-export const setCurrentUser = (user: unknown) => {
-  currentUser = user;
-};
-export const getCurrentUser = () => currentUser;
-
-export function hasAuth(authority: string, user = currentUser): boolean {
-  if (!user) return false;
-  if (user.isAdmin || user.displayRole === 'Admin' || user.username === 'admin') return true;
-  return Array.isArray(user.authorities) && user.authorities.includes(authority);
-}

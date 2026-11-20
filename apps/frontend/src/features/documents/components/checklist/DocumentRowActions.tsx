@@ -1,5 +1,5 @@
 /** View, upload / replace and delete (or lock) buttons of a document row. */
-import {Upload, Trash2, Lock, Eye, Loader2, ShieldCheck} from 'lucide-react';
+import {Upload, Trash2, Lock, Eye, Loader2} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function DocumentRowActions({

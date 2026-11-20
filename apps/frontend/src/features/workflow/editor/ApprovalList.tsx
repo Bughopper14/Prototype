@@ -6,7 +6,7 @@
 import {Check, ChevronDown, Plus, ShieldCheck, Trash2} from 'lucide-react';
 import {useState} from 'react';
 import {Modal} from '@/shared/ui/Modal';
-import type {ApprovalAssignment, Catalog, Definition, MasterApproval} from '../api';
+import {approverLabel, type ApprovalAssignment, type Catalog, type Definition, type MasterApproval} from '../api';
 
 export type ApprovalTarget =
   | {scope: 'GROUP'; groupKey: string}
@@ -47,10 +47,10 @@ export function setApproval(def: Definition, t: ApprovalTarget, approvalCode: st
 /** The levels of a master approval grouped: the same level number is approved at the same time, the next number starts after it. */
 export function levelsOf(approval: MasterApproval) {
   const out: {levelNo: number; authorities: string[]}[] = [];
-  for (const l of [...approval.levels].sort((a, b) => a.levelNo - b.levelNo || a.authorityName.localeCompare(b.authorityName))) {
+  for (const l of [...approval.levels].sort((a, b) => a.levelNo - b.levelNo || approverLabel(a).localeCompare(approverLabel(b)))) {
     const last = out[out.length - 1];
-    if (last && last.levelNo === l.levelNo) last.authorities.push(l.authorityName);
-    else out.push({levelNo: l.levelNo, authorities: [l.authorityName]});
+    if (last && last.levelNo === l.levelNo) last.authorities.push(approverLabel(l));
+    else out.push({levelNo: l.levelNo, authorities: [approverLabel(l)]});
   }
   return out;
 }
@@ -147,8 +147,7 @@ function ApprovalPicker({def, setDef, catalog, locked, target, onClose}: {def: D
   const [q, setQ] = useState('');
   const [shown, setShown] = useState<string | null>(null);
   const mine = approvalOf(def, target);
-  // only an active approval can be chosen; the one this place already has stays in the list
-  const list = catalog.approvals.filter(a => (a.status ?? 'ACTIVE') === 'ACTIVE' || a.code === mine?.approvalCode).filter(a => !q.trim() || `${a.name} ${a.levels.map(l => l.authorityName).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = catalog.approvals.filter(a => !q.trim() || `${a.name} ${a.levels.map(approverLabel).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase()));
   const pick = (code: string) => {
     if (locked) return;
     setDef(setApproval(def, target, code));

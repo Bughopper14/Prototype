@@ -7,4 +7,4 @@ export const FAP_TERMS_COLUMNS = {
   termsSaleAndLeaseBack: 'SALE-AND-LEASE-BACK',
   termsInstallmentFinancing: 'INSTALLMENT-FINANCING',
 } as const;
-export type FapTermsColumn = keyof typeof FAP_TERMS_COLUMNS;
+

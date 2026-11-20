@@ -16,8 +16,8 @@ export class WorkflowMastersRepository {
   async catalog(catalog: MasterCatalog): Promise<MasterCatalog> {
     const [stages] = await this.db.pool.query<any[]>(
       `SELECT s.code,s.name FROM ${CRM.workflowStages} s
-       JOIN ${CRM.workflowStageGroups} g ON g.id=s.stage_group_id
-       JOIN ${CRM.workflows} w ON w.code=s.workflow_code AND w.status='ACTIVE'
+       JOIN ${CRM.workflowStageGroups} g ON g.workflow_code=s.workflow_code AND g.code=s.group_code
+       JOIN ${CRM.workflows} w ON w.code=s.workflow_code AND w.is_active=1
        ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
     );
     return {

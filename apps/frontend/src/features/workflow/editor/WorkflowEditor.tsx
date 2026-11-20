@@ -12,10 +12,8 @@ import {
   ChevronRight,
   ChevronUp,
   FileText,
-  Copy,
   History,
   ListChecks,
-  Minus,
   Plus,
   Power,
   PowerOff,
@@ -25,6 +23,8 @@ import {
   XCircle,
 } from 'lucide-react';
 import {Fragment, useCallback, useEffect, useState} from 'react';
+import {useCrm} from '@/features/crm/components/CrmProvider';
+import {hasAuthority} from '@/shared/lib/auth';
 import {Modal} from '@/shared/ui/Modal';
 import {workflowApi, type Catalog, type Definition, type Group, type Issue, type Stage, type WorkflowHeader} from '../api';
 import {canMove, moveGroup, moveStage, removePart, runsTogether, setGroupTogether, setStageTogether, sortGroups, sortStages, stepsOf, tempKey} from '../definition-ops';
@@ -34,9 +34,10 @@ import {StagePanel, type StageTab} from './StagePanel';
 import {useConfirm} from '../ConfirmDialog';
 import {WorkflowDiagramView} from '../WorkflowDiagram';
 
-const STATUS_LABEL = {DRAFT: 'Draft', ACTIVE: 'Active', INACTIVE: 'Deactivated'} as const;
-
-export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: string; catalog: Catalog; onBack: () => void; /** Opens another workflow (the clone). */ onOpen?: (id: string) => void; notify: (m: string) => void}) {
+export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catalog: Catalog; onBack: () => void; notify: (m: string) => void}) {
+  // Changing a workflow needs CRM_WORKFLOW_EDIT; without it the editor is a read-only view
+  const {user} = useCrm();
+  const canEdit = hasAuthority(user, 'CRM_WORKFLOW_EDIT');
   const [workflow, setWorkflow] = useState<WorkflowHeader | null>(null);
   const [def, setDefState] = useState<Definition | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -92,7 +93,7 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
   }, [def, id, notify]);
 
   async function saveName() {
-    if (!workflow || !workflow.editable || name.trim() === workflow.name || !name.trim()) return setName(workflow?.name ?? '');
+    if (!workflow || !canEdit || name.trim() === workflow.name || !name.trim()) return setName(workflow?.name ?? '');
     try {
       await workflowApi.rename(id, {name: name.trim()});
       setWorkflow({...workflow, name: name.trim()});
@@ -112,7 +113,7 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
       const check = await workflowApi.validate(id);
       setIssues(check.issues);
       if (!check.ok) return notify('Fix the problems shown first');
-      if (!(await confirmAsk({title: 'Activate workflow', message: `New applications will start in "${workflow.name}". Applications that are already running keep their workflow, and the current active workflow is deactivated.`, confirmLabel: 'Activate', icon: 'power'}))) return;
+      if (!(await confirmAsk({title: 'Set workflow active', message: `New applications will start in "${workflow.name}". Applications that are already running keep the frozen copy they started with, and the current active workflow is switched off.`, confirmLabel: 'Set active', icon: 'power'}))) return;
       await workflowApi.activate(id);
       notify(`${workflow.name} is now active`);
       await load();
@@ -125,26 +126,12 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
 
   async function deactivate() {
     if (!workflow) return;
-    if (!(await confirmAsk({title: 'Deactivate workflow', message: 'New applications cannot be created until another workflow is activated. Running applications are not affected.', confirmLabel: 'Deactivate', tone: 'danger', icon: 'off'}))) return;
+    if (!(await confirmAsk({title: 'Switch workflow off', message: 'New applications cannot be created until another workflow is set active. Running applications are not affected.', confirmLabel: 'Switch off', tone: 'danger', icon: 'off'}))) return;
     setBusy(true);
     try {
       await workflowApi.deactivate(id);
-      notify('Workflow deactivated');
+      notify('Workflow switched off');
       await load();
-    } catch (e: any) {
-      notify(e.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function clone() {
-    if (dirty && !(await confirmAsk({title: 'Clone without saving?', message: 'Your unsaved changes are not copied. The clone is made from the saved workflow.', confirmLabel: 'Clone'}))) return;
-    setBusy(true);
-    try {
-      const made = await workflowApi.clone(id);
-      notify(`Cloned as ${made.workflow.name}`);
-      onOpen?.(made.workflow.id);
     } catch (e: any) {
       notify(e.message);
     } finally {
@@ -161,7 +148,7 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
   }
 
   if (!workflow || !def) return <div className="loading-strip" />;
-  const locked = !workflow.editable;
+  const locked = !canEdit;
   const steps = stepsOf(def);
   const groupIndex = new Map(sortGroups(def.groups).map((g, i) => [g.key, i]));
   const groupColor = (key: string) => GROUP_COLORS[(groupIndex.get(key) ?? 0) % GROUP_COLORS.length];
@@ -200,33 +187,30 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
         </button>
         <div className="wf-title">
           <div className="wf-title-row">
-          {workflow.editable ? (
+          {canEdit ? (
             <input className="wf-title-input" value={name} onChange={e => setName(e.target.value)} onBlur={saveName} aria-label="Workflow name" />
           ) : (
             <h2 className="wf-title-text">{workflow.name}</h2>
           )}
-          <span className={`wf-badge ${workflow.status.toLowerCase()}`}>{STATUS_LABEL[workflow.status]}</span>
+          <span className={`wf-badge ${workflow.isActive ? 'active' : 'inactive'}`}>{workflow.isActive ? 'Active' : 'Not active'}</span>
           </div>
         </div>
         <span className="wf-spacer" />
-        <span className="wf-info" title="Workflow version and the number of applications that run on it">
-          <span>Version {workflow.versionNo}</span>
+        <span className="wf-info" title="The newest frozen copy and the number of applications that run on this workflow">
+          <span>Frozen #{workflow.freezeVersion ?? 0}</span>
           <span>{workflow.applications ?? 0} application{workflow.applications === 1 ? '' : 's'}</span>
         </span>
         <button className="wf-btn" onClick={openHistory}>
           <History size={18} /> History
         </button>
-        <button className="wf-btn" disabled={busy || saving} onClick={clone} title="Make a new draft with the same steps, stages, fields, documents and approvals">
-          <Copy size={18} /> Clone
-        </button>
-        {workflow.status === 'ACTIVE' && (
+        {canEdit && workflow.isActive && (
           <button className="wf-btn" disabled={busy} onClick={deactivate}>
-            <PowerOff size={18} /> Deactivate
+            <PowerOff size={18} /> Switch off
           </button>
         )}
-        {workflow.status !== 'ACTIVE' && (
+        {canEdit && !workflow.isActive && (
           <button className="wf-btn" disabled={busy || saving} onClick={activate}>
-            <Power size={18} /> Activate
+            <Power size={18} /> Set active
           </button>
         )}
         {!locked && (
@@ -236,16 +220,11 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
         )}
       </header>
 
-      {locked && (
-        <div className="wf-banner info">
-          {workflow.status === 'DRAFT' ? 'Applications already run on this workflow, so it is read-only.' : workflow.applications ? 'Applications run on this workflow, so it is read-only.' : 'Only a draft can be edited.'}{' '}
-          To change the process, <b>clone</b> it, change the clone and activate that. Running applications keep the workflow they started in.
-        </div>
-      )}
+      {locked && <div className="wf-banner info">You can only look at this workflow. Changing it needs the workflow edit authority.</div>}
       {errors.length > 0 && (
         <div className="wf-banner error">
           <b>
-            <XCircle size={18} /> Fix these before activating
+            <XCircle size={18} /> Fix these before setting it active
           </b>
           <ul>{errors.map((e, i) => <li key={i}>{e.message}</li>)}</ul>
         </div>
@@ -440,22 +419,19 @@ export function WorkflowEditor({id, catalog, onBack, onOpen, notify}: {id: strin
           <table className="wf-table">
             <thead>
               <tr>
+                <th>Frozen</th>
                 <th>When</th>
-                <th>Action</th>
                 <th>By</th>
-                <th>Note</th>
+                <th>Applications</th>
               </tr>
             </thead>
             <tbody>
-              {history.map((h, i) => (
-                <tr key={i}>
+              {history.map(h => (
+                <tr key={h.id}>
+                  <td>#{h.freezeVersion}{h.isLatest ? ' (newest)' : ''}</td>
                   <td>{new Date(h.at).toLocaleString('id-ID')}</td>
-                  <td>
-                    {h.action}
-                    {h.previous ? ` (was ${h.previous})` : ''}
-                  </td>
-                  <td>{h.actor}</td>
-                  <td>{h.note}</td>
+                  <td>{h.by}</td>
+                  <td>{h.applications}</td>
                 </tr>
               ))}
               {!history.length && (

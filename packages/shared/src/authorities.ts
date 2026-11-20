@@ -34,9 +34,11 @@ export const AUTHORITY_CATALOG: AuthorityDef[] = [
   {name: 'CRM_DOCUMENT_UPLOAD', description: 'Mengunggah (upload) file dokumen pendukung aplikasi'},
   {name: 'CRM_DOCUMENT_DELETE', description: 'Menghapus (delete) file dokumen yang telah diunggah'},
   {name: 'CRM_APPLICATION_EDIT', description: 'Mengedit data aplikasi pembiayaan yang sudah dibuat'},
-  {name: 'CRM_WORKFLOW_MANAGE', description: 'Menyusun workflow dan master approval (Workflow, Master Approval)'},
+  {name: 'CRM_WORKFLOW_VIEW', description: 'Melihat halaman Workflow (daftar, stage, group, dokumen, approval)'},
+  {name: 'CRM_WORKFLOW_EDIT', description: 'Membuat, mengubah, meng-clone, mengaktifkan dan menonaktifkan Workflow'},
+  {name: 'CRM_MASTER-APPROVAL_VIEW', description: 'Melihat Master Approval (daftar, langkah, riwayat)'},
+  {name: 'CRM_MASTER-APPROVAL_EDIT', description: 'Membuat, mengubah, meng-clone, mengaktifkan, menonaktifkan dan menghapus draf Master Approval'},
   {name: 'CRM_WORKFLOW_SUBMIT', description: 'Mengajukan draf aplikasi pembiayaan ke tahap verifikasi berkas (Submit)'},
   {name: 'CRM_WORKFLOW_START-REVIEW', description: 'Memulai peninjauan analisis kredit dan legal (Start Review)'},
 ];
 
-export const AUTHORITY_NAMES = new Set(AUTHORITY_CATALOG.map(a => a.name));

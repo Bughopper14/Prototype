@@ -182,43 +182,6 @@ export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
   AUTORIZED_REPRESENTATIVE: 'Autorized Representative',
 };
 
-export function formatStakeholderPosition(val?: string | null): string {
-  if (!val) return '';
-  const clean = String(val).trim();
-  const upper = clean.toUpperCase().replace(/[\s-]+/g, '_');
-  if (['NONE', '', '_', 'SHAREHOLDER'].includes(upper)) return '';
-  const aliases: Record<string, string> = {
-    ...STAKEHOLDER_POSITION_LABELS,
-    AUTHORIZED_REPRESENTATIVE: 'Autorized Representative',
-    PRESIDENT_DIRECTOR: 'Main Director',
-    PRESIDENT_COMMISSIONER: 'Main Commissioner',
-  };
-  if (aliases[upper] && upper !== 'NONE') return aliases[upper];
-  const match = Object.values(STAKEHOLDER_POSITION_LABELS).find(v => v.toLowerCase() === clean.toLowerCase());
-  if (match) return match;
-  if (clean.toLowerCase() === 'authorized representative') return 'Autorized Representative';
-  return clean;
-}
-
-/** Any stored position wording (English, Indonesian, legacy) → its STAKEHOLDER_POSITIONS key. */
-export function normalizeStakeholderPositionKey(pos?: string | null): string {
-  if (!pos) return '';
-  const clean = String(pos)
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_');
-  if (['NONE', '', '_', 'SHAREHOLDER'].includes(clean)) return '';
-  if (['MAIN_DIRECTOR', 'PRESIDENT_DIRECTOR', 'DIREKTUR_UTAMA'].includes(clean)) return 'MAIN_DIRECTOR';
-  if (['DIRECTOR', 'DIREKTUR'].includes(clean)) return 'DIRECTOR';
-  if (['MAIN_COMMISSIONER', 'PRESIDENT_COMMISSIONER', 'KOMISARIS_UTAMA'].includes(clean))
-    return 'MAIN_COMMISSIONER';
-  if (['COMMISSIONER', 'KOMISARIS'].includes(clean)) return 'COMMISSIONER';
-  if (['BOARD_OF_DIRECTORS', 'BOD', 'DIREKSI'].includes(clean)) return 'BOARD_OF_DIRECTORS';
-  if (['AUTORIZED_REPRESENTATIVE', 'AUTHORIZED_REPRESENTATIVE', 'KUASA_HUKUM'].includes(clean))
-    return 'AUTORIZED_REPRESENTATIVE';
-  return '';
-}
-
 /**
  * Stakeholder fields (crm_fap_legal_stakeholders). Representative type, position and designation are Master Data
  * selects; the other selects are the ENUM values of the table, and an empty choice is stored as NULL.

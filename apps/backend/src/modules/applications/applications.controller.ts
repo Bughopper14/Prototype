@@ -129,6 +129,13 @@ export class ApplicationsController {
     return this.applications.submitSectionApproval(req.params.id, req.params.sectionCode, req.params.rowId, req.actor);
   }
 
+  /** What a stage still lacks before it can be submitted (shown before the Submit button is pressed). */
+  @Get('applications/:id/stages/:stageCode/check')
+  stageCheck(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
+    return this.applications.stageCheck(req.params.id, req.params.stageCode);
+  }
+
   /** The list of what is still missing for the final approval, shown when the last Approve is about to be given. */
   @Get('applications/:id/approval-check')
   approvalCheck(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {

@@ -1,4 +1,4 @@
-import {customerFields, picFields, profileFields} from '@liugong/shared';
+import {customerFields, DEED_SECTION, picFields, profileFields, screenOfForm} from '@liugong/shared';
 
 /**
  * Mandatory-field check for every section of the FAP form, driven by the workflow's rules
@@ -8,19 +8,25 @@ import {customerFields, picFields, profileFields} from '@liugong/shared';
  * field key maps to a value. A key that no section can read is "not enforceable"; the Workflow setup page shows it
  * disabled instead of pretending to check it.
  */
-export type FieldRule = {stageCode: string; section: string; fieldKey: string; fieldLabel: string};
-export type Gap = {target: 'FAP_FORM' | 'LEGAL' | 'DOCUMENTS'; label: string; detail?: string};
+/**
+ * One required field of a workflow stage, as the master form tables describe it: the form, the section (by its code, never by its name), the field key and
+ * whether the master marks it enforceable (crm_master_form_fields.is_enforceable).
+ */
+export type FieldRule = {stageCode: string; formCode: string; sectionCode: string; section: string; fieldKey: string; fieldLabel: string; enforceable: boolean};
+export type Gap = {target: 'FAP_FORM' | 'PRE_ANALYSIS' | 'LEGAL' | 'DOCUMENTS'; label: string; detail?: string};
 
 type Entry = {item: string | null; value: unknown};
 type Section = {
   /** Where the screen should send the user. */
   target: Gap['target'];
-  /** Does this section know how to read the key? */
-  has: (key: string) => boolean;
+  /** Optional: the keys this reader knows how to read. Without it every enforceable key of the section is read by its key. */
+  has?: (key: string) => boolean;
   /** One entry per item (a single entry for single-object sections); no entries when the list is empty. */
   read: (detail: any, key: string) => Entry[];
   /** Keys whose "empty" means false rather than blank. */
   booleanKeys?: Set<string>;
+  /** For a section of repeating rows: true when there is no row at all (the section then needs at least one row). */
+  noRows?: (detail: any) => boolean;
 };
 
 const ownKeys = new Set([...customerFields, ...profileFields, ...picFields].map(f => f.key).concat('customerCategory'));
@@ -40,30 +46,16 @@ const own = (contact = false): Section => ({
 /** A list read from the detail: every item is checked. */
 const list = (
   items: (d: any) => any[],
-  keys: Set<string> | ((k: string) => boolean),
   name: (item: any, i: number) => string,
   rename: (k: string) => string = k => k,
   target: Gap['target'] = 'FAP_FORM',
 ): Section => ({
   target,
-  has: k => (typeof keys === 'function' ? keys(k) : keys.has(k)),
   read: (d, key) => items(d).map((it, i) => ({item: name(it, i), value: get(it, rename(key))})),
+  noRows: d => items(d).length === 0,
 });
 
-const BANK_KEYS = new Set([
-  'bankOrFinInstitution', 'currency', 'creditFacility', 'monthlyInstallment', 'yearStarted', 'interestRate',
-  'paymentRecord', 'facilityStatus', 'referenceComments',
-]);
-const STATEMENT_KEYS = new Set([
-  'financialAudited', 'fiscalYear', 'currentAssets', 'nonCurrentAssets', 'totalAssets', 'currentLiabilities',
-  'nonCurrentLiabilities', 'totalLiabilities', 'equity', 'totalLiabAndEquity', 'revenue', 'grossMargin',
-  'operatingMargin', 'tax', 'netIncome',
-]);
 const DEED_ALIAS: Record<string, string> = {decreeNumber: 'ministerialDecreeNumber', decreeDate: 'ministerialDecreeDate'};
-const DEED_KEYS = new Set([
-  'type', 'deedNumber', 'deedDate', 'notaryName', 'ministerialDecreeNumber', 'ministerialDecreeDate', 'remarks',
-  'remarkCategoryIds', ...Object.keys(DEED_ALIAS),
-]);
 const STAKEHOLDER_ALIAS: Record<string, string> = {
   shareholderName: 'name',
   shareholderPosition: 'positions',
@@ -71,15 +63,6 @@ const STAKEHOLDER_ALIAS: Record<string, string> = {
   taxNumber: 'idNumberSecondary',
   nationalityType: 'citizenship',
 };
-const STAKEHOLDER_KEYS = new Set([
-  'representativeType', 'positions', 'designation', 'stakeholderType', 'signatory', 'idType', 'idNumber',
-  'idNumberSecondary', 'title', 'firstName', 'middleName', 'lastName', 'dateOfBirth', 'ageYears', 'ageMonths',
-  'maritalStatus', 'occupation', 'email', 'mobilePhone', 'gender', 'sharePercentage', 'depositedCapital',
-  'primaryCapital', 'citizenship', 'country', 'province', 'cityRegency', 'district', 'village', 'rt', 'rw', 'address',
-  'postalCode', 'name', ...Object.keys(STAKEHOLDER_ALIAS),
-]);
-const UNIT_KEYS = new Set(['unitCategory', 'brand', 'unitType', 'modelName', 'assetName', 'classTon', 'quantity', 'years', 'specifications']);
-const PROJECT_KEYS = new Set(['projectOwner', 'projectLocation', 'projectRole', 'contractStatus']);
 
 const stakeholdersOf = (d: any): any[] =>
   (d.legal?.deeds || []).flatMap((deed: any) => (deed.stakeholders || []).map((s: any) => ({...s, __deed: deed.deedNumber})));
@@ -132,48 +115,53 @@ const PROPOSAL: Section = {
 };
 
 const SECTIONS: Record<string, Section> = {
-  'Debtor Identity & Classification': own(),
-  'Registration Office & Company Domicile': own(),
-  'Business Profile & Deed Legality': own(),
-  'Primary Contact / Person in Charge (PIC)': own(true),
-  'Purpose of Financing & Fixed Assets': {
+  'DEBTOR-IDENTITY-CLASSIFICATION': own(),
+  'REGISTRATION-OFFICE-COMPANY-DOMICILE': own(),
+  'BUSINESS-PROFILE-DEED-LEGALITY': own(),
+  'PRIMARY-CONTACT-PERSON-IN-CHARGE-PIC': own(true),
+  'PURPOSE-OF-FINANCING-FIXED-ASSETS': {
     ...own(),
     has: key => ownKeys.has(key) || key === 'financingPurposeDetail',
   },
-  'Industry Segmentation & Active Projects': list(d => d.projects || [], PROJECT_KEYS, (_, i) => `proyek ${i + 1}`),
-  'Bank Facilities & References': list(
+  'INDUSTRY-SEGMENTATION-ACTIVE-PROJECTS': list(d => d.projects || [], (_, i) => `proyek ${i + 1}`),
+  'BANK-FACILITIES-REFERENCES': list(
     d => d.bankReferences || [],
-    BANK_KEYS,
     (_, i) => `bank ${i + 1}`,
     alias({referenceComments: 'comments'}),
   ),
-  'Financing Proposal': PROPOSAL,
-  'Equipment Units': list(d => d.proposal?.units || [], UNIT_KEYS, (_, i) => `unit ${i + 1}`),
-  'Financial Statements': {
-    ...list(d => d.financialStatements || [], STATEMENT_KEYS, (it, i) => `laporan ${it.fiscalYear ?? i + 1}`, alias({financialAudited: 'isAudited'})),
+  'FINANCING-PROPOSAL': PROPOSAL,
+  'EQUIPMENT-UNITS': list(d => d.proposal?.units || [], (_, i) => `unit ${i + 1}`),
+  'FINANCIAL-STATEMENTS': {
+    ...list(d => d.financialStatements || [], (it, i) => `laporan ${it.fiscalYear ?? i + 1}`, alias({financialAudited: 'isAudited'})),
     booleanKeys: new Set(['financialAudited']),
   },
-  'Legal Deeds & Amendments': list(
+  [DEED_SECTION]: list(
     d => d.legal?.deeds || [],
-    DEED_KEYS,
     (it, i) => `akta ${it.deedNumber || i + 1}`,
     alias(DEED_ALIAS),
     'LEGAL',
   ),
-  'Shareholders & Management': {
-    ...list(stakeholdersOf, STAKEHOLDER_KEYS, (it, i) => `${it.name || `pemegang ${i + 1}`} (akta ${it.__deed || '-'})`, alias(STAKEHOLDER_ALIAS), 'LEGAL'),
+  'SHAREHOLDERS-MANAGEMENT': {
+    ...list(stakeholdersOf, (it, i) => `${it.name || `pemegang ${i + 1}`} (akta ${it.__deed || '-'})`, alias(STAKEHOLDER_ALIAS), 'LEGAL'),
     // "Minimum items" of this section is per deed: every deed needs that many stakeholders.
   },
 };
 // The section's own financingPurposeDetail field lives on the detail.
-SECTIONS['Purpose of Financing & Fixed Assets'].read = (d, key) => [
+SECTIONS['PURPOSE-OF-FINANCING-FIXED-ASSETS'].read = (d, key) => [
   {item: null, value: key === 'financingPurposeDetail' ? d.financingPurposeDetail : [d.customer || {}, d].map((s: any) => s[key]).find(v => v !== undefined && v !== null && String(v).trim() !== '')},
 ];
 
-/** Can the backend check this catalog field? (Workflow setup disables the checkbox when not.) */
-export function isEnforceable(section: string, fieldKey: string): boolean {
-  return !!SECTIONS[section]?.has(fieldKey);
-}
+/** The Pre-Analysis form is one JSON document of the application (detail.preAnalysis); its fields are read by their key. "Auto (generated on save)" is not a value. */
+const PRE_ANALYSIS: Section = {
+  target: 'PRE_ANALYSIS',
+  read: (d, key) => {
+    const v = d.preAnalysis?.[key];
+    return [{item: null, value: typeof v === 'string' && v.includes('Auto') ? '' : v}];
+  },
+};
+
+/** The reader of a section: by the section code, and for a form that has no reader of its own the reader of its screen (so a new Pre-Analysis section needs no code). */
+const sectionFor = (r: FieldRule): Section | undefined => SECTIONS[r.sectionCode] ?? (screenOfForm(r.formCode) === 'PRE_ANALYSIS' ? PRE_ANALYSIS : undefined);
 
 const isEmpty = (v: unknown, boolean: boolean) =>
   boolean ? !v : v === undefined || v === null || (Array.isArray(v) ? v.length === 0 : String(v).trim() === '');
@@ -184,9 +172,19 @@ const isEmpty = (v: unknown, boolean: boolean) =>
  */
 export function mandatoryGaps(detail: any, rules: FieldRule[], stageName: (code: string) => string | undefined): Gap[] {
   const gaps: Gap[] = [];
+  const noRows = new Set<string>();
   for (const r of rules) {
-    const section = SECTIONS[r.section];
-    if (!section || !section.has(r.fieldKey)) continue;
+    const section = sectionFor(r);
+    // The master decides what is enforceable (is_enforceable); a reader that lists its keys can still refuse one it cannot read.
+    if (!section || !r.enforceable || (section.has && !section.has(r.fieldKey))) continue;
+    // A required field on a section of repeating rows means the section needs at least one row (one gap per section, not per field).
+    if (section.noRows?.(detail)) {
+      if (!noRows.has(r.sectionCode)) {
+        noRows.add(r.sectionCode);
+        gaps.push({target: section.target, label: `Minimal satu data di ${r.section}`, detail: stageName(r.stageCode)});
+      }
+      continue;
+    }
     const entries = section.read(detail, r.fieldKey);
     const boolean = section.booleanKeys?.has(r.fieldKey) ?? false;
     const missing = entries.filter(e => isEmpty(e.value, boolean));

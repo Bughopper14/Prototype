@@ -9,4 +9,5 @@ export * from './fap-template';
 export * from './fields';
 export * from './input-validation';
 export * from './master-catalog';
+export * from './screens';
 export * from './stored-documents';

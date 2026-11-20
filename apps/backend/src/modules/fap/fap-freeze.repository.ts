@@ -495,7 +495,7 @@ export class FapFreezeRepository {
        FROM ${CRM.applicationDocumentChecklists} c
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
-       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=c.workflow_stage_document_id
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
        LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.checklist_id=c.id AND f.is_current_active=1 AND f.deleted_at IS NULL
        WHERE c.application_id=? ORDER BY t.sort_order`,
       [applicationId],

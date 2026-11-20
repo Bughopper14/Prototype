@@ -5,12 +5,12 @@
  * (it reads the application and refreshes it through the workspace).
  * The slot shows nothing unless the workflow of the application has an approval for that code (`application.approvalPlaces`), so a screen
  * can carry it without knowing any authority name. What it shows comes from the backend: the round of this place and, for each step,
- * `canAct` (the person holds the authority of the step). Approve and Reject are drawn only when `canAct` is true.
+ * `canAct` (the person holds the authority of the step). One review button (the dialog holds Approve and Reject) is drawn only when `canAct` is true.
  */
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
-import {Check, ShieldCheck, X} from 'lucide-react';
-import {useState} from 'react';
+import {ShieldCheck} from 'lucide-react';
+import {useState, type ReactNode} from 'react';
 import {STEP_LABEL, type Scope, type Step} from './approval-shared';
 import {useWorkspace} from './WorkspaceContext';
 
@@ -20,21 +20,28 @@ type Props = {
   code: string;
   /** The row of a repeating section (the id of the deed). */
   subjectId: string;
+  /** Something drawn at the end of the status line (the row menu of a deed). */
+  trailing?: ReactNode;
 };
 
-const stateOf = (steps: Step[]) => (steps.some(s => s.status === 'REJECTED') ? 'REJECTED' : steps.every(s => s.status === 'APPROVED') ? 'APPROVED' : 'OPEN');
+const stateOf = (steps: Step[]) =>
+  steps.some(s => s.status === 'REJECTED')
+    ? 'REJECTED'
+    : steps.every(s => s.status === 'APPROVED')
+      ? 'APPROVED'
+      : 'OPEN';
 
-export function ApprovalSlot({scope, code, subjectId}: Props) {
-  const {a: application, user, onChange, notify} = useWorkspace();
+export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
+  const {a: application, user, onChange, notify, setDecision, setComments, setError} = useWorkspace();
   const [busy, setBusy] = useState(false);
-  const [rejecting, setRejecting] = useState<Step | null>(null);
-  const [remarks, setRemarks] = useState('');
 
   const places: any[] = application?.approvalPlaces || [];
   const registered = places.some(p => p.scope === scope && p.sectionCode === code);
   if (!registered || !application?.id) return null;
 
-  const rounds: Scope[] = (application.approval?.current || []).filter((c: Scope) => c.scope === scope && c.sectionCode === code && c.subjectId === subjectId);
+  const rounds: Scope[] = (application.approval?.current || []).filter(
+    (c: Scope) => c.scope === scope && c.sectionCode === code && c.subjectId === subjectId,
+  );
   const round = rounds[0];
   const steps = round?.steps || [];
   const state = round ? stateOf(steps) : 'NONE';
@@ -51,50 +58,54 @@ export function ApprovalSlot({scope, code, subjectId}: Props) {
       setBusy(false);
     }
   };
-  const submit = () => run(`/applications/${application.id}/sections/${encodeURIComponent(code)}/rows/${encodeURIComponent(subjectId)}/submit-approval`, {}, 'Approval requested');
-  const decide = (step: Step, decision: 'APPROVED' | 'REJECTED') =>
-    run(`/applications/${application.id}/approvals/${step.id}/decision`, {decision, remarks: remarks.trim() || undefined}, decision === 'APPROVED' ? 'Approved' : 'Rejected').then(() => {
-      setRejecting(null);
-      setRemarks('');
-    });
+  const submit = () =>
+    run(
+      `/applications/${application.id}/sections/${encodeURIComponent(code)}/rows/${encodeURIComponent(subjectId)}/submit-approval`,
+      {},
+      'Approval requested',
+    );
+  // the review dialog is the same as the other approvals: the person picks Approve or Reject inside it (notes optional, reason required for a reject)
+  const decide = (step: Step, kind: 'APPROVED' | 'REJECTED') => {
+    setComments('');
+    setError('');
+    setDecision({stepId: step.id, step: step.name, kind});
+  };
   const actable = steps.filter(s => s.canAct);
-  const waiting = steps.filter(s => s.status === 'PENDING').map(s => s.authorityName);
 
   return (
     <div className="ap-slot" style={{display: 'grid', gap: 6, marginTop: 6}}>
-      <span className={`ap-pill ${state.toLowerCase()}`} style={{display: 'inline-flex', gap: 6, alignItems: 'center'}}>
-        <ShieldCheck size={13} />
-        {state === 'NONE' ? 'Approval not requested' : state === 'APPROVED' ? STEP_LABEL.APPROVED : state === 'REJECTED' ? STEP_LABEL.REJECTED : 'Waiting for approval'}
-      </span>
-      {state === 'OPEN' && waiting.length > 0 && <small className="muted">Waiting: {waiting.join(', ')}</small>}
+      <div className="ap-slot-head">
+        <span
+          className={`ap-pill ${state.toLowerCase()}`}
+          style={{display: 'inline-flex', gap: 6, alignItems: 'center', minWidth: 0}}
+        >
+          <ShieldCheck size={13} />
+          {state === 'NONE'
+            ? 'Approval not requested'
+            : state === 'APPROVED'
+              ? STEP_LABEL.APPROVED
+              : state === 'REJECTED'
+                ? STEP_LABEL.REJECTED
+                : 'Waiting for approval'}
+        </span>
+        {trailing}
+      </div>
       {canSubmit && (
         <button type="button" className="button small" disabled={busy} onClick={submit}>
           {state === 'REJECTED' ? 'Resubmit for approval' : 'Request approval'}
         </button>
       )}
       {actable.map(step => (
-        <div key={step.id} className="ap-actions">
-          <button type="button" className="button primary small" disabled={busy} onClick={() => decide(step, 'APPROVED')}>
-            <Check size={14} /> Approve
-          </button>
-          <button type="button" className="button small ap-reject" disabled={busy} onClick={() => setRejecting(step)}>
-            <X size={14} /> Reject
-          </button>
-        </div>
+        <button
+          key={step.id}
+          type="button"
+          className="button primary small"
+          disabled={busy}
+          onClick={() => decide(step, 'APPROVED')}
+        >
+          <ShieldCheck size={14} /> Review &amp; decide
+        </button>
       ))}
-      {rejecting && (
-        <div style={{display: 'grid', gap: 6}}>
-          <textarea value={remarks} onChange={e => setRemarks(e.target.value)} placeholder="Why is it rejected? (required)" rows={2} aria-label="Reason" />
-          <div className="ap-actions">
-            <button type="button" className="button small ap-reject" disabled={busy || !remarks.trim()} onClick={() => decide(rejecting, 'REJECTED')}>
-              Confirm reject
-            </button>
-            <button type="button" className="button small" onClick={() => setRejecting(null)}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

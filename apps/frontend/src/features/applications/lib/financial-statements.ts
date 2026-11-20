@@ -1,5 +1,4 @@
 /** Pure helpers of the financial statements section (FAP 09): new year, auto-sums and ratios. */
-import {blank, financialFields} from '@liugong/shared';
 
 export const MAX_FISCAL_YEARS = 3;
 

@@ -1,14 +1,9 @@
-export const getGalleryUrl = () => '/gallery';
+
 
 export function getLoginUrl(reason?: string): string {
   const params = new URLSearchParams({next: '/crm-dashboard'});
   if (reason) params.set('reason', reason);
   return `/login?${params}`;
-}
-
-export function redirectToGlobalLogin(reason?: string): void {
-  if (typeof window === 'undefined') return;
-  window.location.replace(getLoginUrl(reason));
 }
 
 export function checkIsAdmin(u: any): boolean {

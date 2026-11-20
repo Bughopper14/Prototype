@@ -1,7 +1,8 @@
 import {useCrm} from '@/features/crm/components/CrmProvider';
+import {hasAuthority} from '@/shared/lib/auth';
 import {levelsOf} from '@/features/workflow/editor/ApprovalList';
 import {Modal} from '@/shared/ui/Modal';
-import {AlertTriangle, Copy, ExternalLink, History, Pencil, Plus, Power, PowerOff, ShieldCheck, Trash2, Users} from 'lucide-react';
+import {AlertTriangle, ExternalLink, History, Pencil, Plus, ShieldCheck, Trash2, Users} from 'lucide-react';
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {pageHref} from '@/shared/lib/routes';
 import {useNavigate} from 'react-router';
@@ -46,9 +47,11 @@ function LevelsText({approval}: {approval: MasterApproval}) {
 }
 
 /** The steps of a draft: one list of approvers per step (the step number is its position, never typed). */
+/** In the editor a row that PIC Marketing approves holds this marker instead of an authority name. */
+const PIC = '@PIC_MARKETING';
 const stepsOfDraft = (levels: ApprovalLevelInput[]): string[][] => {
   const byNo = new Map<number, string[]>();
-  for (const l of [...levels].sort((a, b) => a.levelNo - b.levelNo)) byNo.set(l.levelNo, [...(byNo.get(l.levelNo) || []), l.authorityName]);
+  for (const l of [...levels].sort((a, b) => a.levelNo - b.levelNo)) byNo.set(l.levelNo, [...(byNo.get(l.levelNo) || []), l.isPicMarketing ? PIC : l.authorityName]);
   return byNo.size ? [...byNo.values()] : [['']];
 };
 
@@ -70,7 +73,7 @@ function ApprovalEditor({draft, authorities, onClose, onSaved, notify}: {draft: 
     setBusy(true);
     try {
       // the data stays as it was: the number of a step is its position
-      const levels = steps.flatMap((st, i) => st.map(authorityName => ({levelNo: i + 1, authorityName})));
+      const levels = steps.flatMap((st, i) => st.map(v => ({levelNo: i + 1, authorityName: v === PIC ? '' : v, isPicMarketing: v === PIC})));
       const body = {name, description: description || null, levels};
       if (draft.code) await masterApprovalApi.update(draft.code, body);
       else await masterApprovalApi.create(body);
@@ -116,11 +119,20 @@ function ApprovalEditor({draft, authorities, onClose, onSaved, notify}: {draft: 
             </header>
             {st.map((a, ai) => (
               <div className="ma-approver" key={ai}>
-                <AuthorityPicker value={a} options={authorities} taken={st} onChange={v => setApprover(si, ai, v)} />
+                {a === PIC ? (
+                  <div className="ma-pic-row">
+                    <Users size={16} /> <b>PIC Marketing of the application approves this</b>
+                  </div>
+                ) : (
+                  <AuthorityPicker value={a} options={authorities} taken={st} onChange={v => setApprover(si, ai, v)} />
+                )}
+                <label className="ma-pic-check">
+                  <input type="checkbox" checked={a === PIC} onChange={e => setApprover(si, ai, e.target.checked ? PIC : '')} /> PIC MKT
+                </label>
                 <button type="button" className="wf-icon-btn danger" title="Remove this approver" disabled={st.length < 2 && steps.length < 2} onClick={() => removeApprover(si, ai)}>
                   <Trash2 size={16} />
                 </button>
-                {a && !known.has(a) && (
+                {a && a !== PIC && !known.has(a) && (
                   <p className="wf-apl-warn block">
                     <AlertTriangle size={14} /> This authority is not in User Management (or does not start with CRM_ and end with APPROVE, APPROVAL or APPROVER).
                   </p>
@@ -150,10 +162,9 @@ function ApprovalEditor({draft, authorities, onClose, onSaved, notify}: {draft: 
   );
 }
 
-const STATUS_TEXT = {DRAFT: 'Draft', ACTIVE: 'Active', INACTIVE: 'Inactive'} as const;
 const when = (v?: string | null) => (v ? new Date(v).toLocaleString('en-GB', {dateStyle: 'medium', timeStyle: 'short'}) : '-');
 
-/** The log of one approval: who created, edited, copied, activated, deactivated or removed it, and when. */
+/** The log of one approval: who created, edited or removed it, and when (every create or edit also made a new frozen copy). */
 function HistoryDialog({code, onClose}: {code: string; onClose: () => void}) {
   const [rows, setRows] = useState<ApprovalLog[] | null>(null);
   useEffect(() => {
@@ -167,7 +178,7 @@ function HistoryDialog({code, onClose}: {code: string; onClose: () => void}) {
         {rows && rows.length > 0 && (
           <ol className="ma-versions">
             {rows.map((r, i) => (
-              <li key={i} className={`ma-version ${r.action === 'ADDED' ? 'active' : r.action === 'REMOVED' ? 'inactive' : 'draft'}`}>
+              <li key={i} className={`ma-version ${r.action === 'DELETE' ? 'inactive' : 'draft'}`}>
                 <header>
                   <b>{r.summary}</b>
                 </header>
@@ -197,13 +208,14 @@ function HistoryDialog({code, onClose}: {code: string; onClose: () => void}) {
 
 /** Master approval: the body of the "Master Approval" category of Customize master data. */
 export function MasterApprovals() {
-  const {notify} = useCrm();
+  const {notify, user} = useCrm();
+  // Reading needs CRM_MASTER-APPROVAL_VIEW; creating, changing and removing need CRM_MASTER-APPROVAL_EDIT
+  const canEdit = hasAuthority(user, 'CRM_MASTER-APPROVAL_EDIT');
   const navigate = useNavigate();
   const [rows, setRows] = useState<Awaited<ReturnType<typeof masterApprovalApi.list>>>([]);
   const [authorities, setAuthorities] = useState<AuthorityChoice[]>([]);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [q, setQ] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'DRAFT' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [historyOf, setHistoryOf] = useState<string | null>(null);
   // the card whose list of workflows is open (it closes when you click anywhere else)
   const [wfMenu, setWfMenu] = useState<string | null>(null);
@@ -221,52 +233,18 @@ export function MasterApprovals() {
     masterApprovalApi.authorities().then(setAuthorities).catch(e => notify(e.message));
   }, [reload, notify]);
 
-  const shown = rows.filter(a => statusFilter === 'ALL' || (a.status ?? 'ACTIVE') === statusFilter).filter(a => !q.trim() || `${a.code} ${a.name} ${a.levels.map(l => l.authorityName).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase()));
-
-  const run = async (fn: () => Promise<unknown>, done: string) => {
-    try {
-      await fn();
-      notify(done);
-      void reload();
-    } catch (e: any) {
-      notify(e.message || 'Could not complete this');
-    }
-  };
-  const clone = (a: MasterApproval) => run(() => masterApprovalApi.clone(a.code), 'Copied as a new draft');
-  const activate = (a: MasterApproval) => {
-    if (!window.confirm(`Activate "${a.name}"? From now on it is locked: it cannot be edited, only cloned.`)) return;
-    void run(() => masterApprovalApi.activate(a.code), 'Approval activated');
-  };
-  const deactivate = (a: MasterApproval) => {
-    if (!window.confirm(`Deactivate "${a.name}"? Workflows and applications that already use it keep working; it can no longer be chosen for a new place.`)) return;
-    void run(() => masterApprovalApi.deactivate(a.code), 'Approval deactivated');
-  };
-
-  const remove = async (a: MasterApproval) => {
-    if (!window.confirm(`Remove the approval ${a.name}?`)) return;
-    try {
-      await masterApprovalApi.remove(a.code);
-      notify('Approval removed');
-      void reload();
-    } catch (e: any) {
-      notify(e.message || 'Could not remove the approval');
-    }
-  };
+  const shown = rows.filter(a => !q.trim() || `${a.code} ${a.name} ${a.levels.map(l => l.authorityName).join(' ')}`.toLowerCase().includes(q.trim().toLowerCase()));
 
   return (
     <div className="wf-page" style={{padding: '0 32px 32px'}}>
       <div className="ma-toolbar">
         <input type="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search an approval or an authority…" aria-label="Search approvals" />
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value as typeof statusFilter)} aria-label="Status" className="ma-filter">
-          <option value="ALL">All statuses</option>
-          <option value="ACTIVE">Active</option>
-          <option value="DRAFT">Draft</option>
-          <option value="INACTIVE">Inactive</option>
-        </select>
         <small className="wf-muted">{shown.length} of {rows.length} approvals</small>
-        <button type="button" className="wf-btn primary" onClick={() => setDraft(blank())}>
-          <Plus size={16} /> New approval
-        </button>
+        {canEdit && (
+          <button type="button" className="wf-btn primary" onClick={() => setDraft(blank())}>
+            <Plus size={16} /> New approval
+          </button>
+        )}
       </div>
       {!shown.length && <p className="wf-muted">No approval found.</p>}
       <div className="ma-grid">
@@ -277,32 +255,14 @@ export function MasterApprovals() {
               <div className="ma-card-title" title={a.code}>
                 <b>{a.name}</b>
                 {a.description && <small>{a.description}</small>}
+                
               </div>
-              <span className={`ma-status ${(a.status ?? 'ACTIVE').toLowerCase()}`}>{STATUS_TEXT[a.status ?? 'ACTIVE']}</span>
             </div>
             <LevelsText approval={a} />
             <footer className="ma-actions">
-              {a.status === 'DRAFT' && (
-                <>
-                  <button type="button" className="wf-btn small" onClick={() => setDraft({code: a.code, name: a.name, description: a.description || '', levels: a.levels.map(l => ({levelNo: l.levelNo, authorityName: l.authorityName}))})}>
-                    <Pencil size={14} /> Edit
-                  </button>
-                  <button type="button" className="wf-btn small accent" onClick={() => activate(a)}>
-                    <Power size={14} /> Activate
-                  </button>
-                  <button type="button" className="wf-btn small danger" disabled={!!a.usedIn} title={a.usedIn ? 'Used by a workflow, it cannot be removed' : 'Remove this draft'} onClick={() => remove(a)}>
-                    <Trash2 size={14} /> Remove
-                  </button>
-                </>
-              )}
-              {a.status !== 'DRAFT' && (
-                <button type="button" className="wf-btn small" onClick={() => clone(a)} title="Make a new draft copy with the same steps and approvers, to change it">
-                  <Copy size={14} /> Clone
-                </button>
-              )}
-              {a.status === 'ACTIVE' && (
-                <button type="button" className="wf-btn small" onClick={() => deactivate(a)}>
-                  <PowerOff size={14} /> Deactivate
+              {canEdit && (
+                <button type="button" className="wf-btn small" onClick={() => setDraft({code: a.code, name: a.name, description: a.description || '', levels: a.levels.map(l => ({levelNo: l.levelNo, authorityName: l.authorityName}))})}>
+                  <Pencil size={14} /> Edit
                 </button>
               )}
               <button type="button" className="wf-btn small" onClick={() => setHistoryOf(a.code)}>
@@ -319,7 +279,6 @@ export function MasterApprovals() {
                         <li key={w.id}>
                           <button type="button" role="menuitem" onClick={() => navigate(`${pageHref('Workflow')}?open=${w.id}`)}>
                             <span>{w.name}</span>
-                            <em className={`ma-uses-status ${w.status.toLowerCase()}`}>{w.status}</em>
                           </button>
                         </li>
                       ))}

@@ -185,7 +185,7 @@ function StageDetail({stage, def, catalog, color, deptName}: {stage: Stage; def:
     const ap = approvalOf(code);
     if (!ap) return code ? 'this approval no longer exists' : 'no approval chosen yet';
     const by = new Map<number, string[]>();
-    for (const l of ap.levels) by.set(l.levelNo, [...(by.get(l.levelNo) || []), l.authorityName]);
+    for (const l of ap.levels) by.set(l.levelNo, [...(by.get(l.levelNo) || []), l.isPicMarketing ? 'PIC Marketing' : l.authorityName]);
     return [...by].sort((x, y) => x[0] - y[0]).map(([n, a]) => `${n}: ${a.join(' + ')}`).join('  →  ');
   };
   const bySection = new Map<string, string[]>();

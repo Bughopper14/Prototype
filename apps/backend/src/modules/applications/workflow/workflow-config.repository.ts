@@ -2,9 +2,11 @@ import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
 import {Problem} from '../../../core/domain';
+import {WorkflowFreezeRepository} from '../../workflows/workflow-freeze.repository';
 
-export type ConfigStage = {id: string; code: string; name: string; groupId: string; groupName: string; groupCode: string; groupOrder: number; departmentCode: string | null; order: number; formCode: string | null};
-export type WorkflowConfig = {id: string; code: string; name: string; versionNo: number; isDraft: boolean; isActive: boolean; stages: ConfigStage[]; stageByCode: Map<string, ConfigStage>};
+export type ConfigStage = {code: string; name: string; groupName: string; groupCode: string; groupOrder: number; departmentCode: string | null; order: number; formCode: string | null};
+/** `id` is the workflow freeze an application connects to; `code` is the master workflow it was frozen from. */
+export type WorkflowConfig = {id: string; code: string; name: string; freezeVersion: number; stages: ConfigStage[]; stageByCode: Map<string, ConfigStage>};
 
 /** The stages of a workflow in order (group, then stage order), for the screens. */
 export const stagesOf = (c: WorkflowConfig) =>
@@ -22,46 +24,43 @@ export const groupsOf = (c: WorkflowConfig) => {
 };
 
 /**
- * The workflow an application runs in (crm_workflows): which stages it has, in which order, and per stage the required
- * fields and documents. It does NOT hold approval: the approval steps of a workflow are read by modules/approvals.
- * Every application points at one workflow (crm_applications.workflow_code); new applications use the active one.
- * A workflow that is not a draft never changes, so it is cached; a draft is always read fresh.
+ * The workflow an application runs in: a workflow freeze (crm_frozen_workflows) with which stages it has, in which order, and per
+ * stage the required fields and documents. It does NOT hold approval: the approval steps of a workflow are read by modules/approvals.
+ * Every application points at one freeze (crm_applications.workflow_freeze_id); new applications use the newest freeze of the active
+ * workflow. A freeze never changes, so it is cached.
  */
 @Injectable()
 export class WorkflowConfigRepository {
-  private readonly published = new Map<string, WorkflowConfig>();
+  private readonly frozen = new Map<string, WorkflowConfig>();
 
-  constructor(private readonly db: CrmDatabase) {}
+  constructor(
+    private readonly db: CrmDatabase,
+    private readonly freezes: WorkflowFreezeRepository,
+  ) {}
 
-  /** The code of the workflow new applications start in. */
-  async activeCode(conn: Pick<CrmDatabase['pool'], 'query'> = this.db.pool): Promise<string> {
-    const [rows] = await conn.query<any[]>(`SELECT code FROM ${CRM.workflows} WHERE status='ACTIVE' LIMIT 1`);
-    if (!rows[0]) throw new Problem(500, 'No active workflow. An administrator must activate one in Workflow setup.');
-    return rows[0].code;
+  /** The freeze id of the workflow new applications start in. */
+  async activeFreezeId(conn: Pick<CrmDatabase['pool'], 'query'> = this.db.pool): Promise<string> {
+    const id = await this.freezes.activeWorkflowFreezeId(conn);
+    if (!id) throw new Problem(409, 'There is no active workflow yet. Ask an administrator to set one active in Workflow setup.');
+    return id;
   }
 
-  forget(workflowCode: string) {
-    this.published.delete(workflowCode);
-  }
-
-  async load(workflowCode: string): Promise<WorkflowConfig> {
-    const cached = this.published.get(workflowCode);
+  async load(freezeId: string): Promise<WorkflowConfig> {
+    const cached = this.frozen.get(freezeId);
     if (cached) return cached;
-    const [headers] = await this.db.pool.query<any[]>(`SELECT * FROM ${CRM.workflows} WHERE code=?`, [workflowCode]);
+    const [headers] = await this.db.pool.query<any[]>(`SELECT * FROM ${CRM.frozenWorkflows} WHERE id=?`, [freezeId]);
     const h = headers[0];
     if (!h) throw new Problem(404, 'Workflow not found');
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT s.id,s.code,s.name,s.department_code,s.sort_order,s.form_code,g.id AS group_id,g.name AS group_name,g.code AS group_code,g.sort_order AS group_order
-       FROM ${CRM.workflowStages} s JOIN ${CRM.workflowStageGroups} g ON g.id=s.stage_group_id
-       WHERE s.workflow_code=?
+      `SELECT s.code,s.name,s.department_code,s.sort_order,s.form_code,g.name AS group_name,g.code AS group_code,g.sort_order AS group_order
+       FROM ${CRM.frozenWorkflowStages} s JOIN ${CRM.frozenWorkflowStageGroups} g ON g.freeze_id=s.freeze_id AND g.code=s.group_code
+       WHERE s.freeze_id=?
        ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
-      [workflowCode],
+      [freezeId],
     );
     const stages: ConfigStage[] = rows.map(r => ({
-      id: r.id,
       code: r.code,
       name: r.name,
-      groupId: r.group_id,
       groupName: r.group_name,
       groupCode: r.group_code,
       groupOrder: Number(r.group_order),
@@ -71,15 +70,13 @@ export class WorkflowConfigRepository {
     }));
     const config: WorkflowConfig = {
       id: h.id,
-      code: h.code,
+      code: h.source_workflow_code,
       name: h.name,
-      versionNo: Number(h.version_no),
-      isDraft: h.status === 'DRAFT',
-      isActive: h.status === 'ACTIVE',
+      freezeVersion: Number(h.freeze_version),
       stages,
       stageByCode: new Map(stages.map(s => [s.code, s])),
     };
-    if (!config.isDraft) this.published.set(workflowCode, config);
+    this.frozen.set(freezeId, config);
     return config;
   }
 }

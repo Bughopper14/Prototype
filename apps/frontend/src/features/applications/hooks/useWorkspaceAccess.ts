@@ -1,4 +1,5 @@
 /** What the current user may see and do in the workspace: tabs, edit rights, workflow buttons and lock state. */
+import {screenOfForm} from '@liugong/shared';
 import {useEffect} from 'react';
 import {isPreAnalysisReached} from '@/features/applications/lib/workspace/stage';
 import {
@@ -36,11 +37,13 @@ export function useWorkspaceAccess({
   const currentAppStage =
     realStage && stageCodes.indexOf(realStage) > stageCodes.indexOf(viewStage) ? realStage : viewStage;
 
-  const stageOrder = stageTabOrder(activeStage);
+  // The FAP form tabs (FAP Form, Legal, Stakeholders) belong to the FAP-FORM stage: a workflow without that form does not show them.
+  const workflowStagesOfApp: {formCode?: string | null}[] = a?.workflow?.stages || [];
+  const usesFapForm = !workflowStagesOfApp.length || workflowStagesOfApp.some(s => screenOfForm(s.formCode) === 'FAP');
+  const stageOrder = stageTabOrder(activeStage).filter(id => usesFapForm || ![0, 1, 5].includes(id));
   // The Approvals tab (10) is for the people who approve: administrators, and whoever holds the authority of a step of this application's approval
-  // rounds (open or finished). Someone who may only view the application does not get it.
-  const roundSteps: any[] = [...(a.approval?.current || []), ...(a.approval?.history || [])].flatMap((c: any) => c.steps || []);
-  const takesPartInApproval = checkIsAdmin(user) || roundSteps.some(st => (user?.authorities || []).includes(st.authorityName));
+  // rounds (open or finished). The backend decides it (`approval.involved`); someone who may only view the application does not get the tab.
+  const takesPartInApproval = Boolean(a.approval?.involved);
   const tabOrder = stageOrder.filter(id => hasAuthority(user, TAB_VIEW_AUTHORITY[id]) && (id !== 10 || takesPartInApproval));
   useEffect(() => {
     if (tabOrder.length && !tabOrder.includes(tab)) setTab(tabOrder[0]);

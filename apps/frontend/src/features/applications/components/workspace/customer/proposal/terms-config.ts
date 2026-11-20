@@ -46,21 +46,6 @@ export const FINANCING_METHODS: ReadonlyArray<{label: string; group: TermsGroupK
   {label: 'Installment Financing', group: 'termsInstallmentFinancing'},
 ];
 
-export function resolveFinancingMethod(val?: string | null) {
-  const upper = String(val || '')
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_');
-  if (!upper) return undefined;
-  if (upper === 'FINANCIAL_LEASE' || upper.includes('FINANCIAL_LEASE') || upper.includes('SEWA_PEMBIAYAAN'))
-    return FINANCING_METHODS[0];
-  if (upper === 'SALE_AND_LEASE_BACK' || upper === 'SLB' || upper.includes('SALE'))
-    return FINANCING_METHODS[1];
-  if (upper === 'INSTALLMENT_FINANCING' || upper.includes('INSTALLMENT') || upper.includes('PEMBELIAN'))
-    return FINANCING_METHODS[2];
-  return undefined;
-}
-
 const COMMON_TAIL = (p: string): TermsFieldConfig[] => [
   {dataField: p + 'Rate', label: 'Bunga / Interest Rate', key: 'interestRate'},
   {dataField: p + 'Tenor', label: 'Jk. Waktu / Tenor', key: 'tenor'},

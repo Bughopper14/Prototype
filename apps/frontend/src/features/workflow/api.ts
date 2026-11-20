@@ -1,4 +1,4 @@
-/** Workflow setup API (administrators). The definition is edited as one object and saved whole (a draft no application uses). */
+/** Workflow setup API (administrators). The definition is edited as one object and saved whole (every save makes a new frozen copy). */
 import {api} from '@/shared/lib/api';
 
 /** Items refer to each other by `key`; for a saved item the key is its code, for a new one the page makes a temporary key. */
@@ -22,15 +22,12 @@ export type ApprovalAssignment = {
 export type MasterApproval = {
   code: string;
   name: string;
-  /** Only an ACTIVE approval can be chosen for a place. */
-  status?: 'DRAFT' | 'ACTIVE' | 'INACTIVE';
-  activatedAt?: string | null;
-  activatedBy?: string | null;
-  /** Applications still running on a workflow that uses this approval. */
+  /** Applications running on a workflow freeze that uses this approval. */
   applications?: number;
   description?: string | null;
   usedIn?: number;
-  levels: {levelNo: number; authorityName: string}[];
+  /** A level whose approver is the PIC Marketing of the application has isPicMarketing and no authority. */
+  levels: {levelNo: number; authorityName: string; isPicMarketing?: boolean}[];
 };
 export type Definition = {
   groups: Group[];
@@ -39,19 +36,16 @@ export type Definition = {
   documents: DocRule[];
   approvals: ApprovalAssignment[];
 };
-export type WorkflowStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE';
 export type WorkflowHeader = {
   id: string;
   code: string;
   name: string;
   description: string | null;
-  versionNo: number;
-  status: WorkflowStatus;
+  /** The one workflow new applications start in (its newest freeze). */
   isActive: boolean;
-  /** Only a draft that no application uses can be edited. */
-  editable: boolean;
-  activatedAt: string | null;
-  activatedBy: string | null;
+  /** The number and time of the newest freeze (every create or edit makes a new one). */
+  freezeVersion: number | null;
+  frozenAt: string | null;
   applications?: number;
   /** Groups in running order with their stages (list only). Same order = run together. */
   flow?: {name: string; order: number; stages: {name: string; order: number}[]}[];
@@ -68,6 +62,9 @@ export type Catalog = {
 };
 export type Issue = {level: 'error' | 'warning'; message: string};
 
+/** What a level row is called on screen. */
+export const approverLabel = (l: {authorityName: string; isPicMarketing?: boolean}) => (l.isPicMarketing ? 'PIC Marketing' : l.authorityName);
+
 export const emptyDefinition = (): Definition => ({groups: [], stages: [], fields: [], documents: [], approvals: []});
 
 export const workflowApi = {
@@ -75,13 +72,14 @@ export const workflowApi = {
   catalog: (): Promise<Catalog> => api('/workflows/catalog'),
   get: (id: string): Promise<{workflow: WorkflowHeader; definition: Definition}> => api(`/workflows/${id}`),
   create: (body: {name: string; description?: string}): Promise<{workflow: WorkflowHeader; definition: Definition}> => api('/workflows', 'POST', body),
-  /** A new draft with the same groups, stages, fields, documents and approvals (a workflow in use is changed by cloning it). */
-  clone: (id: string): Promise<{workflow: WorkflowHeader; definition: Definition}> => api(`/workflows/${id}/clone`, 'POST', {}),
   rename: (id: string, body: {name?: string; description?: string | null}) => api(`/workflows/${id}`, 'PUT', body),
   saveDefinition: (id: string, definition: Definition) => api(`/workflows/${id}/definition`, 'PUT', definition),
   validate: (id: string): Promise<{ok: boolean; issues: Issue[]}> => api(`/workflows/${id}/validate`, 'POST', {}),
-  activate: (id: string, note?: string) => api(`/workflows/${id}/activate`, 'POST', {note}),
-  deactivate: (id: string, note?: string) => api(`/workflows/${id}/deactivate`, 'POST', {note}),
-  history: (id: string): Promise<{action: string; actor: string; note: string | null; at: string; previous: string | null}[]> =>
+  activate: (id: string) => api(`/workflows/${id}/activate`, 'POST', {}),
+  deactivate: (id: string) => api(`/workflows/${id}/deactivate`, 'POST', {}),
+  /** Deletes the workflow; its frozen copies stay. */
+  remove: (id: string): Promise<{removed: string}> => api(`/workflows/${id}`, 'DELETE'),
+  /** The frozen copies of a workflow, newest first. */
+  history: (id: string): Promise<{id: string; freezeVersion: number; at: string; by: string | null; name: string; isLatest: boolean; applications: number}[]> =>
     api(`/workflows/${id}/history`),
 };

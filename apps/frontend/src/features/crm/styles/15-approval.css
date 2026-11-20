@@ -106,3 +106,17 @@
 .ap-step-who { flex: 1; min-width: 160px; font-size: 12.5px; font-weight: 700; color: #0b1b3f; overflow-wrap: anywhere; }
 .ap-step.compact .ap-layer-no { width: 18px; height: 18px; font-size: 11px; }
 .ap-step.compact .ap-actions { display: inline-flex; gap: 6px; }
+
+/* Approval progress: one dot per layer */
+.ap-progress { display: flex; align-items: flex-start; gap: 0; margin: 4px 0 8px; padding: 0; list-style: none; }
+.ap-progress li { flex: 1; display: grid; justify-items: center; gap: 4px; position: relative; text-align: center; }
+.ap-progress li + li::before { content: ''; position: absolute; top: 11px; right: 50%; width: 100%; height: 2px; background: #cbd5e1; z-index: 0; }
+.ap-progress li.done + li::before, .ap-progress li.done + li.now::before { background: #22c55e; }
+.ap-progress li span { z-index: 1; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; color: #475569; font-size: 12px; font-weight: 800; }
+.ap-progress li.done span { background: #22c55e; color: #fff; }
+.ap-progress li.now span { background: #f59e0b; color: #fff; box-shadow: 0 0 0 4px #fef3c7; }
+.ap-progress li.rejected span { background: #dc2626; color: #fff; }
+.ap-progress li small { font-size: 11px; font-weight: 700; color: #64748b; }
+.ap-progress li.now small { color: #92400e; }
+.ap-progress li.done small { color: #166534; }
+.ap-progress li.rejected small { color: #b91c1c; }

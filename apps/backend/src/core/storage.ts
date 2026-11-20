@@ -131,13 +131,16 @@ export class StorageService {
     }
     baseName += `_${timestamp()}`;
 
+    // The name is RESERVED by creating the file exclusively ('wx'), so two scans that arrive at the same moment can never pick the same name
+    // (checking first and writing later let simultaneous uploads overwrite each other). The caller writes the content over its own reserved file.
     let fileName = `${baseName}${extension}`;
     for (let counter = 1; ; counter++) {
       try {
-        await fs.access(path.join(typeDir, fileName));
-        fileName = `${baseName}_${counter}${extension}`;
-      } catch {
+        await (await fs.open(path.join(typeDir, fileName), 'wx')).close();
         break;
+      } catch (e: any) {
+        if (e?.code !== 'EEXIST') throw e;
+        fileName = `${baseName}_${counter}${extension}`;
       }
     }
 

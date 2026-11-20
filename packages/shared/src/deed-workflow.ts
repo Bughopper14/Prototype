@@ -235,3 +235,6 @@ export function deedBaseline(legal: any, deed: any) {
     );
   return prior.length ? structuredClone(prior[0].approvedSnapshot) : null;
 }
+
+/** The master form section that holds the deeds (crm_master_form_sections.code): a repeating section whose rows are the deeds, approved one by one. */
+export const DEED_SECTION = 'LEGAL-DEEDS-AMENDMENTS';

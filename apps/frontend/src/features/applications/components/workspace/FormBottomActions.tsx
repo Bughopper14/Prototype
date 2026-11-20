@@ -9,7 +9,6 @@ export function FormBottomActions() {
     tab,
     draft,
     busy,
-    setError,
     setSaveConfirm,
     save,
     canLegal,

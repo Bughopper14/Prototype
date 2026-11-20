@@ -514,7 +514,7 @@
 .ma-step { display: grid; gap: 10px; padding: 14px; border: 1px solid #c7d2fe; border-radius: 14px; background: #f5f7ff; }
 .ma-step header { display: flex; align-items: center; gap: 10px; color: #0b1b3f; }
 .ma-step header b { flex: 1; font-size: 14px; }
-.ma-approver { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.ma-approver { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: center; }
 .ma-approver .wf-apl-warn { grid-column: 1 / -1; }
 .ma-chip-wrap { display: inline-flex; align-items: center; gap: 6px; }
 .ma-chip-wrap small { color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; }
@@ -636,10 +636,62 @@ svg.up { transform: rotate(180deg); }
 /* Master approval cards: all the same size; the steps are one full-width row each and the chips wrap inside the card */
 .ma-grid { align-items: stretch; }
 .ma-card { align-self: stretch; display: flex; flex-direction: column; }
-.ma-card .ma-flow { flex: 0 0 auto; flex-direction: column; flex-wrap: nowrap; gap: 6px; height: 196px; overflow-y: auto; align-content: flex-start; padding-right: 2px; }
+.ma-card .ma-flow { flex: 0 0 auto; flex-direction: column; flex-wrap: nowrap; gap: 6px; height: 132px; overflow-y: auto; align-content: flex-start; padding-right: 2px; }
 .ma-card .ma-flow li { display: block; }
 .ma-card .ma-arrow { display: none; }
 .ma-card .ma-level { width: 100%; box-sizing: border-box; }
 .ma-card .ma-level-chips { flex: 1; min-width: 0; }
 .ma-card .ma-chip { max-width: 100%; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
 .wf-page footer.ma-actions { margin-top: auto; }
+
+.ma-card-title small.ma-by { color: #166534; font-weight: 600; }
+.ma-card-title small.ma-by.off { color: #991b1b; }
+
+
+/* Customize checklist dialog */
+.cc-modal { width: min(620px, 94vw); }
+.cc-body { display: grid; gap: 16px; padding: 4px 22px 22px; max-height: 78vh; overflow: auto; }
+.cc-intro { margin: 0; color: #64748b; font-size: 14px; }
+.cc-list h4 { margin: 0 0 8px; font-size: 13px; color: #334155; text-transform: uppercase; letter-spacing: .04em; }
+.cc-list ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cc-list li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.cc-doc { display: grid; gap: 1px; min-width: 0; flex: 1; }
+.cc-doc b { font-size: 14px; color: #0b1b3f; }
+.cc-doc small { color: #64748b; }
+.cc-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: #eef2f7; border-radius: 12px; }
+.cc-tabs button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #475569; cursor: pointer; }
+.cc-tabs button.on { background: #fff; color: #0b1b3f; box-shadow: 0 1px 3px rgba(15, 23, 42, .15); }
+.cc-form { display: grid; gap: 14px; }
+.cc-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: #334155; }
+.cc-form select, .cc-form input:not([type='checkbox']) { min-height: 44px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 400; color: #0f172a; background: #fff; width: 100%; box-sizing: border-box; }
+.cc-form select:focus, .cc-form input:focus { outline: 2px solid #2563eb33; border-color: #2563eb; }
+.cc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.cc-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.cc-seg button { padding: 7px 14px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; font: inherit; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; }
+.cc-seg button.on { background: #0b1b3f; border-color: #0b1b3f; color: #fff; }
+.cc-foot { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding-top: 4px; }
+.cc-form label.cc-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; margin-right: auto; }
+.cc-empty { margin: 0; padding: 14px; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b; font-size: 14px; }
+
+/* Approval slot of a row (deeds): status and row menu on one line, full-width action under it */
+.ap-slot { width: 100%; }
+.ap-slot-head { display: flex; align-items: center; gap: 8px; }
+.ap-slot-head .ap-pill { flex: 1; min-width: 0; }
+.ap-slot-head .legal-kebab { flex: none; }
+.ap-slot .ap-waiting { overflow-wrap: anywhere; line-height: 1.35; }
+.ap-slot > .button { width: 100%; justify-content: center; }
+
+/* Action cell of a deed that has an approval: View Review, the status line (pill + row menu) and Review & decide share one width and height */
+.legal-deed-table .legal-row-action:has(.ap-slot) { display: grid; gap: 8px; align-content: start; }
+.legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons { display: grid; }
+.legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons > .deed-review-action { width: 100%; min-height: 34px; font-size: 12px; justify-content: center; }
+.legal-deed-table .ap-slot { margin-top: 0 !important; gap: 8px !important; }
+.ap-slot-head .ap-pill { min-height: 34px; box-sizing: border-box; }
+.ap-slot-head .legal-kebab { width: 34px; height: 34px; min-width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.ap-slot > .button { min-height: 34px; font-size: 12px; }
+.ap-stage-name .ap-missing { color: #b91c1c; font-weight: 600; }
+
+/* Master approval editor: the PIC Marketing checkbox sits beside the picker, in the same row, label to its right */
+.ma-approver .ma-pic-check { display: inline-flex !important; flex-direction: row !important; align-items: center !important; justify-content: flex-start !important; gap: 6px !important; width: auto !important; margin: 0 !important; font-size: 12.5px; font-weight: 700; color: #334155; white-space: nowrap; cursor: pointer; }
+.ma-approver .ma-pic-check input { margin: 0 !important; width: 16px; height: 16px; flex: none; }
+.ma-pic-row { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid #c7d2fe; border-radius: 10px; background: #eef2ff; color: #1e3a8a; min-width: 0; }

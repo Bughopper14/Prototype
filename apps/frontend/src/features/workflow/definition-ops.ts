@@ -121,10 +121,3 @@ export function setStageTogether(def: Definition, key: string, together: boolean
   return orders ? {...def, stages: withOrders(def.stages, orders)} : def;
 }
 
-/** Renumbers group orders to 1, 2, 3... keeping the steps (same number stays together). */
-export function normalizeOrders(def: Definition): Definition {
-  const steps = stepsOf(def);
-  const orderOf = new Map<string, number>();
-  steps.forEach((s, i) => s.groups.forEach(g => orderOf.set(g.key, i + 1)));
-  return {...def, groups: def.groups.map(g => ({...g, order: orderOf.get(g.key) ?? g.order}))};
-}

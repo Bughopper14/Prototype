@@ -12,9 +12,6 @@ export const toCode = (value: unknown): string =>
     .replace(/[^A-Z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-/** A string that is already a standard code (so toCode would leave it as it is). */
-export const isCode = (value: unknown): value is string => typeof value === 'string' && value !== '' && toCode(value) === value;
-
 /**
  * The standard form of every CRM authority: CRM_<AREA>_<ACTION>, upper case, an underscore between the parts and hyphens inside a part.
  *   CRM_APPLICATION_VIEW          CRM_LEGAL_EDIT          CRM_DOCUMENT-DESK_MANAGE          CRM_WORKFLOW_START-REVIEW
@@ -28,12 +25,3 @@ export function parseAuthorityName(name: string): {appCode: string; area: string
   return {appCode: parts[0], area: parts.slice(1, -1), action: parts[parts.length - 1]};
 }
 
-/** An approval authority: the form above with APPROVE as the action; the department is the last part of the area. */
-export function parseApprovalAuthority(name: string): {appCode: string; departmentCode: string; codes: string[]; action: string} | null {
-  const p = parseAuthorityName(name);
-  if (!p || !['APPROVE', 'REJECT'].includes(p.action) || p.area.length < 2) return null;
-  return {appCode: p.appCode, departmentCode: p.area[p.area.length - 1], codes: p.area.slice(0, -1), action: p.action};
-}
-
-/** Does the name end with APPROVE or REJECT: an authority made for approving. */
-export const isApprovalAuthorityName = (name: string): boolean => /_(APPROVE|REJECT)$/i.test(String(name ?? '').trim());

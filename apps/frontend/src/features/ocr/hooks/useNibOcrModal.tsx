@@ -4,7 +4,7 @@ import {EMPTY_NIB_FORM, scanResultToForm, type NibFormData} from '@/features/ocr
 import {extractNibTextFromDocument} from '@/features/ocr/lib/nib/extract';
 import {api} from '@/shared/lib/api';
 import {useMasterData} from '@/shared/master-data';
-import {formatCompanyName, toTitleCase} from '@liugong/shared';
+import {formatCompanyName} from '@liugong/shared';
 import React, {useEffect, useRef, useState} from 'react';
 
 export {validateCompanyEmail};

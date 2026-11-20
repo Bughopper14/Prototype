@@ -114,7 +114,12 @@ export class MasterDataService {
 
   /** The whole catalog. Served from memory unless `forceRefresh` or a connection (inside a save) is given. */
   async load(conn?: Queryable, forceRefresh = false): Promise<CatalogData> {
-    if (this.cached && !forceRefresh && !conn) return this.cached;
+    // The revision is derived from tables that other screens write too (for example the stages of a workflow), so the cache checks it before it is
+    // used: a stale cache would answer an old revision and every save would be refused with "Master data telah berubah" until a restart.
+    if (this.cached && !forceRefresh && !conn) {
+      if ((await this.revision()) === this.cached.revision) return this.cached;
+      this.invalidate();
+    }
     let catalog = await this.location.catalog(emptyMasterCatalog());
     catalog = await this.customer.catalog(catalog);
     catalog = await this.business.catalog(catalog);
@@ -156,6 +161,19 @@ export class MasterDataService {
 
   /** Saves one group only (adding an option from a form, or one list in Master Data). */
   async saveGroup(group: string, rawItems: unknown[], revision: unknown, by: string | null): Promise<CatalogData> {
+    // Only a group with a repository behind it can be saved. Others are read only here (derived from the workflow or from the FAP form) or do not exist:
+    // answering 200 for them would look like a save that never happened.
+    const editable = [
+      ...LocationRepository.groups,
+      ...CustomerMastersRepository.groups,
+      ...BusinessMastersRepository.groups,
+      ...LegalMastersRepository.groups,
+      ...FinanceMastersRepository.groups,
+      ...EquipmentMastersRepository.groups,
+      ...DocumentMastersRepository.groups,
+      ...PreanalysisMastersRepository.groups,
+    ];
+    if (!editable.includes(group)) throw new Problem(422, `The list "${group}" cannot be edited here (it does not exist or is read only).`);
     let items;
     try {
       items = validateMasterGroupItems(group, rawItems);

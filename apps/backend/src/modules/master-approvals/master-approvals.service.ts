@@ -2,23 +2,26 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {z} from 'zod';
 import {CrmDatabase} from '../../core/db/crm-database';
-import {CRM, crmTable} from '../../core/db/crm-tables';
+import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
 import {toCode} from '../../core/domain/code';
 import {UsersNamesLookup} from '../approvals/users-names.lookup';
-
-const HISTORY = crmTable('workflow_approval_history');
+import {WorkflowFreezeRepository} from '../workflows/workflow-freeze.repository';
 
 export const approvalInput = z.object({
   name: z.string().trim().min(1, 'Give the approval a name').max(100),
   description: z.string().trim().max(500).nullish(),
-  /** The levels: levels run in ascending levelNo; rows with the same levelNo run in parallel. One authority per row. */
+  /** The levels: levels run in ascending levelNo; rows with the same levelNo run in parallel. One authority per row, or the PIC Marketing of the application. */
   levels: z
     .array(
-      z.object({
-        levelNo: z.number().int().min(1).max(100),
-        authorityName: z.string().trim().min(1, 'Choose who approves').max(100),
-      }),
+      z
+        .object({
+          levelNo: z.number().int().min(1).max(100),
+          /** Empty when the approver of this row is the PIC Marketing of the application. */
+          authorityName: z.string().trim().max(100).default(''),
+          isPicMarketing: z.boolean().default(false),
+        })
+        .refine(l => l.isPicMarketing || l.authorityName.length > 0, {message: 'Choose who approves', path: ['authorityName']}),
     )
     .min(1, 'An approval needs at least one level'),
 });
@@ -29,15 +32,15 @@ export type ApprovalInput = z.infer<typeof approvalInput>;
  * authority (free text made in User Management; this file only stores the name and never writes users tables). A workflow only points
  * at an approval code.
  *
- * An approval has a STATUS like a workflow: DRAFT (editable, not selectable in a workflow), ACTIVE (locked, selectable) or INACTIVE (locked,
- * not selectable for new places; what already uses it keeps running). An approval is never changed while it is live: to change an active one it
- * is CLONED into a new independent DRAFT which is edited and activated; the workflow that should use it is cloned too.
+ * An approval can be edited at any time. Every create or edit makes a new freeze (see WorkflowFreezeRepository), and the workflows that use the
+ * approval are frozen again so new applications get the change; applications already running keep the freeze they started with.
  */
 @Injectable()
 export class MasterApprovalsService {
   constructor(
     private readonly db: CrmDatabase,
     private readonly users: UsersNamesLookup,
+    private readonly freezes: WorkflowFreezeRepository,
   ) {}
 
   /** The authorities a level can use (from User Management). */
@@ -45,37 +48,38 @@ export class MasterApprovalsService {
     return this.users.approvalAuthorities();
   }
 
+  /** Places of the master workflows that point at the approval, and applications running on a workflow freeze that uses it. */
+  private readonly usageColumns = `(SELECT COUNT(*) FROM ${CRM.workflowApprovalAssignments} x WHERE x.approval_code=a.code) AS used_in,
+              (SELECT COUNT(*) FROM ${CRM.applications} ap WHERE ap.deleted_at IS NULL AND ap.workflow_freeze_id IN
+                (SELECT DISTINCT x.freeze_id FROM ${CRM.frozenWorkflowApprovalAssignments} x WHERE x.approval_code=a.code)) AS apps`;
+
   async list() {
     const [approvals] = await this.db.pool.query<any[]>(
-      `SELECT a.*,(SELECT COUNT(*) FROM ${CRM.workflowApprovalAssignments} x WHERE x.approval_code=a.code) AS used_in,
-              (SELECT COUNT(*) FROM ${CRM.applications} ap WHERE ap.deleted_at IS NULL AND ap.workflow_code IN
-                (SELECT DISTINCT x.workflow_code FROM ${CRM.workflowApprovalAssignments} x WHERE x.approval_code=a.code)) AS apps
+      `SELECT a.*,${this.usageColumns}
        FROM ${CRM.masterApprovals} a ORDER BY a.name,a.code`,
     );
     const [levels] = await this.db.pool.query<any[]>(
-      `SELECT approval_code,level_no,authority_name FROM ${CRM.masterApprovalLevels} ORDER BY approval_code,level_no,authority_name`,
+      `SELECT approval_code,level_no,authority_name,is_pic_marketing FROM ${CRM.masterApprovalLevels} ORDER BY approval_code,level_no,is_pic_marketing,authority_name`,
     );
     // the workflows that use each approval (to open them from the card)
     const [uses] = await this.db.pool.query<any[]>(
-      `SELECT DISTINCT a.approval_code,w.id,w.name,w.status FROM ${CRM.workflowApprovalAssignments} a JOIN ${CRM.workflows} w ON w.code=a.workflow_code ORDER BY w.name`,
+      `SELECT DISTINCT a.approval_code,w.id,w.name FROM ${CRM.workflowApprovalAssignments} a JOIN ${CRM.workflows} w ON w.code=a.workflow_code ORDER BY w.name`,
     );
     return approvals.map(a => ({
       ...this.shape(a, levels.filter(l => l.approval_code === a.code)),
-      workflows: uses.filter(u => u.approval_code === a.code).map(u => ({id: u.id as string, name: u.name as string, status: u.status as string})),
+      workflows: uses.filter(u => u.approval_code === a.code).map(u => ({id: u.id as string, name: u.name as string})),
     }));
   }
 
   async get(code: string) {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT a.*,(SELECT COUNT(*) FROM ${CRM.workflowApprovalAssignments} x WHERE x.approval_code=a.code) AS used_in,
-              (SELECT COUNT(*) FROM ${CRM.applications} ap WHERE ap.deleted_at IS NULL AND ap.workflow_code IN
-                (SELECT DISTINCT x.workflow_code FROM ${CRM.workflowApprovalAssignments} x WHERE x.approval_code=a.code)) AS apps
+      `SELECT a.*,${this.usageColumns}
        FROM ${CRM.masterApprovals} a WHERE a.code=?`,
       [code],
     );
     ensure(rows[0], 'Approval not found', 404);
     const [levels] = await this.db.pool.query<any[]>(
-      `SELECT approval_code,level_no,authority_name FROM ${CRM.masterApprovalLevels} WHERE approval_code=? ORDER BY level_no,authority_name`,
+      `SELECT approval_code,level_no,authority_name,is_pic_marketing FROM ${CRM.masterApprovalLevels} WHERE approval_code=? ORDER BY level_no,is_pic_marketing,authority_name`,
       [code],
     );
     const used = await this.usedBy(code);
@@ -88,19 +92,16 @@ export class MasterApprovalsService {
       name: a.name as string,
       description: (a.description ?? null) as string | null,
       usedIn: Number(a.used_in ?? 0),
-      status: a.status as 'DRAFT' | 'ACTIVE' | 'INACTIVE',
-      activatedAt: (a.activated_at ?? null) as Date | null,
-      activatedBy: (a.activated_by ?? null) as string | null,
-      /** Applications still running on a workflow that uses this approval. */
+      /** Applications running on a workflow freeze that uses this approval. */
       applications: Number(a.apps ?? 0),
-      levels: levels.map(l => ({levelNo: Number(l.level_no), authorityName: l.authority_name as string})),
+      levels: levels.map(l => ({levelNo: Number(l.level_no), authorityName: (l.authority_name ?? '') as string, isPicMarketing: !!l.is_pic_marketing})),
     };
   }
 
   /** The workflow places that point at this approval. */
   private async usedBy(code: string) {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT a.workflow_code,w.name AS workflow_name,w.status AS workflow_status,a.scope_type,a.group_code,g.name AS group_name,a.stage_code,s.name AS stage_name,
+      `SELECT a.workflow_code,w.name AS workflow_name,a.scope_type,a.group_code,g.name AS group_name,a.stage_code,s.name AS stage_name,
               a.section_code,ms.name AS section_name,a.document_code,dt.name AS document_name
        FROM ${CRM.workflowApprovalAssignments} a
        LEFT JOIN ${CRM.workflows} w ON w.code=a.workflow_code
@@ -114,7 +115,6 @@ export class MasterApprovalsService {
     return rows.map(r => ({
       workflowCode: r.workflow_code as string,
       workflowName: (r.workflow_name ?? r.workflow_code) as string,
-      workflowStatus: (r.workflow_status ?? null) as string | null,
       scope: r.scope_type as string,
       /** What the approval is on, in words: "Stage FAP Stage", "Section Legal Deeds & Amendments (in stage FAP Stage)"... */
       place:
@@ -131,7 +131,7 @@ export class MasterApprovalsService {
   /** The authority names of the input must all exist in User Management; returns name → app id (a level keeps both). */
   private async checkAuthorities(input: ApprovalInput) {
     const known = new Map((await this.users.approvalAuthorities()).map(a => [a.name, a.appId]));
-    const missing = [...new Set(input.levels.map(l => l.authorityName))].filter(n => !known.has(n));
+    const missing = [...new Set(input.levels.filter(l => !l.isPicMarketing).map(l => l.authorityName))].filter(n => !known.has(n));
     if (missing.length)
       throw new Problem(
         422,
@@ -139,8 +139,8 @@ export class MasterApprovalsService {
       );
     const seen = new Set<string>();
     for (const l of input.levels) {
-      const key = `${l.levelNo}|${l.authorityName}`;
-      if (seen.has(key)) throw new Problem(422, `Level ${l.levelNo} lists the authority ${l.authorityName} twice.`);
+      const key = `${l.levelNo}|${l.isPicMarketing ? 'PIC' : l.authorityName}`;
+      if (seen.has(key)) throw new Problem(422, `Level ${l.levelNo} lists the same approver twice.`);
       seen.add(key);
     }
     return known;
@@ -155,8 +155,8 @@ export class MasterApprovalsService {
     }
   }
 
-  private describe(levels: {levelNo: number; authorityName: string}[]) {
-    return [...levels].sort((a, b) => a.levelNo - b.levelNo).map(l => `${l.levelNo}: ${l.authorityName}`).join('; ');
+  private describe(levels: {levelNo: number; authorityName: string; isPicMarketing?: boolean}[]) {
+    return [...levels].sort((a, b) => a.levelNo - b.levelNo).map(l => `${l.levelNo}: ${l.isPicMarketing ? 'PIC Marketing' : l.authorityName}`).join('; ');
   }
 
   async create(raw: unknown, by: string | null) {
@@ -166,7 +166,7 @@ export class MasterApprovalsService {
     const apps = await this.checkAuthorities(input);
     const code = await this.nextCode(input.name);
     await this.db.transaction(async conn => {
-      await conn.execute(`INSERT INTO ${CRM.masterApprovals} (id,code,name,approval_type,status,description,created_by) VALUES (?,?,?,'SEQUENTIAL','DRAFT',?,?)`, [
+      await conn.execute(`INSERT INTO ${CRM.masterApprovals} (id,code,name,approval_type,description,created_by) VALUES (?,?,?,'SEQUENTIAL',?,?)`, [
         crypto.randomUUID(),
         code,
         input.name,
@@ -174,7 +174,8 @@ export class MasterApprovalsService {
         by,
       ]);
       await this.writeLevels(conn, code, input, apps, by);
-      await this.log(conn, code, 'ADDED', `Added ${input.name}`, null, this.describe(input.levels), by);
+      await this.log(conn, code, 'CREATE', `Created ${input.name}`, null, this.describe(input.levels), by);
+      await this.freezes.freezeApproval(conn, code, by);
     });
     return this.get(code);
   }
@@ -184,25 +185,25 @@ export class MasterApprovalsService {
     if (!parsed.success) throw new Problem(422, parsed.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; '));
     const input = parsed.data;
     const before = await this.get(code);
-    ensure(before.status === 'DRAFT', 'Only a draft can be edited. Clone this approval to change it.', 409);
     const apps = await this.checkAuthorities(input);
     await this.db.transaction(async conn => {
       await conn.execute(`UPDATE ${CRM.masterApprovals} SET name=?,description=?,updated_by=? WHERE code=?`, [input.name, input.description || null, by, code]);
       await conn.execute(`DELETE FROM ${CRM.masterApprovalLevels} WHERE approval_code=?`, [code]);
       await this.writeLevels(conn, code, input, apps, by);
-      await this.log(conn, code, 'CHANGED', `Changed ${input.name}`, this.describe(before.levels), this.describe(input.levels), by);
+      await this.log(conn, code, 'UPDATE', `Changed ${input.name}`, this.describe(before.levels), this.describe(input.levels), by);
+      await this.freezes.freezeApproval(conn, code, by);
+      await this.freezes.refreezeWorkflowsUsing(conn, code, by);
     });
     return this.get(code);
   }
 
-  /** An approval that a workflow still points at cannot be removed. */
+  /** An approval that a master workflow still points at cannot be removed. Its freezes stay. */
   async remove(code: string, by: string | null) {
     const before = await this.get(code);
-    ensure(before.status === 'DRAFT', 'Only a draft can be removed. Deactivate it instead.', 409);
     ensure(before.usedIn === 0, `This approval is used in ${before.usedIn} place(s) of workflows, so it cannot be removed. Point those places at another approval first.`, 409);
     await this.db.transaction(async conn => {
       await conn.execute(`DELETE FROM ${CRM.masterApprovals} WHERE code=?`, [code]);
-      await this.log(conn, code, 'REMOVED', `Removed ${before.name}`, this.describe(before.levels), null, by);
+      await this.log(conn, code, 'DELETE', `Removed ${before.name}`, this.describe(before.levels), null, by);
     });
     return {removed: code};
   }
@@ -210,61 +211,23 @@ export class MasterApprovalsService {
   private async writeLevels(conn: {execute: (sql: string, args: any[]) => Promise<unknown>}, code: string, input: ApprovalInput, apps: Map<string, number>, by: string | null) {
     for (const l of input.levels)
       await conn.execute(
-        `INSERT INTO ${CRM.masterApprovalLevels} (id,approval_code,level_no,app_id,authority_name,created_by) VALUES (?,?,?,?,?,?)`,
-        [crypto.randomUUID(), code, l.levelNo, apps.get(l.authorityName)!, l.authorityName, by],
+        `INSERT INTO ${CRM.masterApprovalLevels} (id,approval_code,level_no,app_id,authority_name,is_pic_marketing,created_by) VALUES (?,?,?,?,?,?,?)`,
+        [crypto.randomUUID(), code, l.levelNo, l.isPicMarketing ? null : apps.get(l.authorityName)!, l.isPicMarketing ? null : l.authorityName, +l.isPicMarketing, by],
       );
   }
 
-  private async log(conn: {execute: (sql: string, args: any[]) => Promise<unknown>}, code: string, action: 'ADDED' | 'CHANGED' | 'REMOVED', summary: string, before: string | null, after: string | null, by: string | null) {
+  private async log(conn: {execute: (sql: string, args: any[]) => Promise<unknown>}, code: string, action: 'CREATE' | 'UPDATE' | 'DELETE', summary: string, before: string | null, after: string | null, by: string | null) {
     await conn.execute(
-      `INSERT INTO ${HISTORY} (id,subject_type,subject_code,action,summary,before_text,after_text,created_by) VALUES (?,?,?,?,?,?,?,?)`,
-      [crypto.randomUUID(), 'APPROVAL', code, action, summary.slice(0, 500), before, after, by],
+      `INSERT INTO ${CRM.masterApprovalLogs} (id,approval_code,action,summary,before_text,after_text,actor_name) VALUES (?,?,?,?,?,?,?)`,
+      [crypto.randomUUID(), code, action, summary.slice(0, 500), before, after, by],
     );
-  }
-
-  /** An independent DRAFT copy (levels included) with its own name and code: the way to change a locked approval. */
-  async clone(code: string, by: string | null) {
-    const src = await this.get(code);
-    const name = `${src.name} (copy)`.slice(0, 100);
-    const newCode = await this.nextCode(name);
-    await this.db.transaction(async conn => {
-      await conn.execute(`INSERT INTO ${CRM.masterApprovals} (id,code,name,approval_type,status,description,created_by) VALUES (?,?,?,'SEQUENTIAL','DRAFT',?,?)`, [crypto.randomUUID(), newCode, name, src.description, by]);
-      const [levels] = await conn.query<any[]>(`SELECT level_no,app_id,authority_name FROM ${CRM.masterApprovalLevels} WHERE approval_code=?`, [src.code]);
-      for (const l of levels)
-        await conn.execute(`INSERT INTO ${CRM.masterApprovalLevels} (id,approval_code,level_no,app_id,authority_name,created_by) VALUES (?,?,?,?,?,?)`, [crypto.randomUUID(), newCode, l.level_no, l.app_id, l.authority_name, by]);
-      await this.log(conn, newCode, 'ADDED', `Copied from ${src.name}`, null, this.describe(src.levels), by);
-    });
-    return this.get(newCode);
-  }
-
-  /** DRAFT -> ACTIVE: locked from now on and selectable in a workflow. Every authority must still exist in User Management. */
-  async activate(code: string, by: string | null) {
-    const a = await this.get(code);
-    ensure(a.status === 'DRAFT', a.status === 'ACTIVE' ? 'This approval is already active.' : 'Clone an inactive approval to use it again.', 409);
-    await this.checkAuthorities({name: a.name, levels: a.levels.map(l => ({levelNo: l.levelNo, authorityName: l.authorityName}))});
-    await this.db.transaction(async conn => {
-      await conn.execute(`UPDATE ${CRM.masterApprovals} SET status='ACTIVE',activated_at=CURRENT_TIMESTAMP(3),activated_by=?,updated_by=? WHERE code=?`, [by, by, code]);
-      await this.log(conn, code, 'CHANGED', 'Activated', 'DRAFT', 'ACTIVE', by);
-    });
-    return this.get(code);
-  }
-
-  /** ACTIVE -> INACTIVE: not selectable for new places; the places and applications that already use it are not touched. */
-  async deactivate(code: string, by: string | null) {
-    const a = await this.get(code);
-    ensure(a.status === 'ACTIVE', 'Only an active approval can be deactivated.', 409);
-    await this.db.transaction(async conn => {
-      await conn.execute(`UPDATE ${CRM.masterApprovals} SET status='INACTIVE',updated_by=? WHERE code=?`, [by, code]);
-      await this.log(conn, code, 'CHANGED', 'Deactivated', 'ACTIVE', 'INACTIVE', by);
-    });
-    return this.get(code);
   }
 
   async history(code: string) {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT action,summary,before_text,after_text,created_at,created_by FROM ${HISTORY} WHERE subject_type='APPROVAL' AND subject_code=? ORDER BY created_at DESC`,
+      `SELECT action,summary,before_text,after_text,acted_at,actor_name FROM ${CRM.masterApprovalLogs} WHERE approval_code=? ORDER BY acted_at DESC`,
       [code],
     );
-    return rows.map(r => ({action: r.action, summary: r.summary, before: r.before_text, after: r.after_text, at: r.created_at, by: r.created_by}));
+    return rows.map(r => ({action: r.action, summary: r.summary, before: r.before_text, after: r.after_text, at: r.acted_at, by: r.actor_name}));
   }
 }

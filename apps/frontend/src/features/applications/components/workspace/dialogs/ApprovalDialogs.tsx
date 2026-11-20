@@ -13,6 +13,7 @@ type Gap = {target: string; label: string; detail?: string};
 /** Where each kind of missing item is filled in: the stage view and tab that hold it. */
 const GAP_PLACE: Record<string, {stage?: string; tab: number; name: string}> = {
   FAP_FORM: {stage: STAGE.FAP, tab: 0, name: 'FAP Form'},
+  PRE_ANALYSIS: {stage: STAGE.PRE_ANALYSIS, tab: 8, name: 'Pre-analysis form'},
   LEGAL: {stage: STAGE.FAP, tab: 5, name: 'Legal'},
   DOCUMENTS: {tab: 6, name: 'Documents'},
 };
@@ -109,7 +110,7 @@ export function ApprovalDecisionDialog() {
         )}
         <label>
           {reject ? 'Reason (required)' : 'Notes (optional)'}
-          <textarea rows={4} value={comments} onChange={e => setComments(e.target.value)} placeholder={reject ? 'What must be fixed?' : 'Add context for the next reviewer…'} />
+          <textarea rows={4} value={comments} onChange={e => setComments(e.target.value)} placeholder={reject ? 'What must be fixed?' : ''} />
         </label>
         {canRequestDocuments && (
           <div className="ap-request-docs">
@@ -139,13 +140,41 @@ export function ApprovalDecisionDialog() {
 }
 
 export function SubmitStageDialog() {
-  const {a, onChange, notify, busy, setBusy, error, setError, submitStageCode, setSubmitStageCode, comments, setComments} = useWorkspace();
+  const {a, onChange, notify, busy, setBusy, error, setError, submitStageCode, setSubmitStageCode, comments, setComments, setActiveStage, setTab} = useWorkspace();
+  const [gaps, setGaps] = useState<Gap[]>([]);
+  const [checking, setChecking] = useState(false);
+  // what the stage still lacks is shown as soon as the dialog opens, before Submit is pressed
+  useEffect(() => {
+    if (!submitStageCode) return;
+    let alive = true;
+    setChecking(true);
+    api(`/applications/${a.id}/stages/${encodeURIComponent(submitStageCode)}/check`)
+      .then((r: any) => alive && setGaps(Array.isArray(r?.missing) ? r.missing : []))
+      .catch(() => alive && setGaps([]))
+      .finally(() => alive && setChecking(false));
+    return () => {
+      alive = false;
+    };
+  }, [submitStageCode, a.id]);
   if (!submitStageCode) return null;
   const stage = (a.stageProgress || []).find((s: any) => s.stage === submitStageCode);
-  const close = () => setSubmitStageCode(null);
+  const close = () => {
+    setGaps([]);
+    setSubmitStageCode(null);
+  };
+  // the stage is submitted only when it is complete: the list of what is missing has a button to the place that fixes it
+  const open = (gap: Gap) => {
+    const place = GAP_PLACE[gap.target];
+    if (!place) return;
+    close();
+    setError('');
+    if (place.stage) setActiveStage(place.stage);
+    setTab(place.tab);
+  };
   const confirm = async () => {
     setBusy(true);
     setError('');
+    setGaps([]);
     try {
       await api(`/applications/${a.id}/stages/${submitStageCode}/submit`, 'POST', {remarks: comments.trim() || undefined});
       onChange(await api(`/applications/${a.id}`));
@@ -153,6 +182,7 @@ export function SubmitStageDialog() {
       notify(`${stage?.name ?? 'Stage'} submitted`);
     } catch (e: any) {
       setError(e.message);
+      setGaps(Array.isArray(e.missing) ? e.missing : []);
     } finally {
       setBusy(false);
     }
@@ -168,16 +198,16 @@ export function SubmitStageDialog() {
         </p>
         <label>
           Notes (optional)
-          <textarea rows={3} value={comments} onChange={e => setComments(e.target.value)} placeholder="Anything the approvers should know…" />
+          <textarea rows={3} value={comments} onChange={e => setComments(e.target.value)} />
         </label>
-        {error && <div className="error">{error}</div>}
+        {gaps.length > 0 ? <GapList gaps={gaps} onOpen={open} /> : error && <div className="error">{error}</div>}
       </div>
       <div className="modal-actions">
         <button className="button" onClick={close}>
           Cancel
         </button>
-        <button className="button primary" disabled={busy} onClick={confirm}>
-          {busy ? <Loader2 size={15} className="spin" /> : <ArrowRight size={15} />} Submit
+        <button className="button primary" disabled={busy || checking || gaps.length > 0} title={gaps.length ? 'Complete the list above first' : undefined} onClick={confirm}>
+          {busy || checking ? <Loader2 size={15} className="spin" /> : <ArrowRight size={15} />} Submit
         </button>
       </div>
     </Modal>

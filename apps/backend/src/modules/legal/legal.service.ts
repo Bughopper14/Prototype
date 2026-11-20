@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {
   canEditLegal,
+  DEED_SECTION,
   deedTransition,
   mergeLegal,
   reviewStatus,
@@ -10,7 +11,7 @@ import {
 import {CrmDatabase} from '../../core/db/crm-database';
 import {ensure} from '../../core/domain';
 import {recordActivity} from '../activity/activity-log';
-import {notifyHolders, notifyUsers} from '../activity/notifications';
+import {notifyUsers} from '../activity/notifications';
 import type {Actor} from '../auth/session';
 import {ApplicationsService} from '../applications/applications.service';
 import {LegalRepository} from './legal.repository';
@@ -84,7 +85,7 @@ export class LegalService {
     const a = await this.applications.detailOr404(id, actor);
     // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old review.
     ensure(
-      !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === 'LEGAL-DEEDS-AMENDMENTS'),
+      !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION),
       'Akta ini disetujui lewat approval section akta pada workflow, bukan lewat review ini.',
       409,
     );
