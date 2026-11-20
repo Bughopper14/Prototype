@@ -1,4 +1,4 @@
--- 1. Schema of the CRM database as it is now (dev database crm_liugong_approval, 2026-11-19): the CRM tables (crm_*) and the users tables (users_*) they point at.
+-- 1. Schema of the CRM database as it is now (dev database crm_liugong, 2026-11-19): the CRM tables (crm_*) and the users tables (users_*) they point at.
 -- Tables are created only if missing.
 
 
@@ -66,14 +66,12 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_decisions` (
 CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `round_no` int NOT NULL DEFAULT '1',
   `code` varchar(120) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `scope_type` enum('GROUP','STAGE','DOCUMENT','SECTION') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `stage_group_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_checklist_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `subject_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `subject_key` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (coalesce(`subject_id`,_utf8mb4'')) VIRTUAL,
@@ -82,6 +80,8 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `sort_order` int NOT NULL DEFAULT '1',
   `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_pic_marketing` tinyint(1) NOT NULL DEFAULT '0',
+  `approver_user_id` int DEFAULT NULL,
   `status` enum('WAITING','PENDING','APPROVED','REJECTED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'WAITING',
   `started_at` timestamp(3) NULL DEFAULT NULL,
   `completed_at` timestamp(3) NULL DEFAULT NULL,
@@ -93,21 +93,12 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   UNIQUE KEY `uk_app_apstep_round` (`application_id`,`round_no`,`code`,`subject_key`),
   KEY `idx_app_apstep_status` (`application_id`,`status`),
   KEY `idx_app_apstep_authority` (`authority_name`,`status`),
-  KEY `fk_app_apstep_group` (`stage_group_id`),
-  KEY `fk_app_apstep_stage` (`stage_id`),
   KEY `fk_app_apstep_checklist` (`document_checklist_id`),
-  KEY `fk_app_apstep_group_code` (`workflow_code`,`group_code`),
-  KEY `fk_app_apstep_doc_code` (`workflow_code`,`stage_code`,`document_code`),
   KEY `idx_app_apstep_subject` (`subject_id`),
   KEY `fk_app_apstep_section` (`section_code`),
   CONSTRAINT `fk_app_apstep_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_checklist` FOREIGN KEY (`document_checklist_id`) REFERENCES `crm_application_document_checklists` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_doc_code` FOREIGN KEY (`workflow_code`, `stage_code`, `document_code`) REFERENCES `crm_workflow_stage_documents` (`workflow_code`, `stage_code`, `document_code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_group` FOREIGN KEY (`stage_group_id`) REFERENCES `crm_workflow_stage_groups` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_stage` FOREIGN KEY (`stage_id`) REFERENCES `crm_workflow_stages` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_app_apstep_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -115,13 +106,11 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
 CREATE TABLE IF NOT EXISTS `crm_application_document_checklists` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_type_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `source_type` enum('DEFAULT','ADDED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DEFAULT',
-  `workflow_stage_document_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `override_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `assigned_role` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` enum('PENDING','UPLOADED','VERIFIED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING',
@@ -130,21 +119,16 @@ CREATE TABLE IF NOT EXISTS `crm_application_document_checklists` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_app_doc_chk_wf` (`application_id`,`workflow_stage_document_id`),
   UNIQUE KEY `uk_app_doc_chk_override` (`application_id`,`override_id`),
+  UNIQUE KEY `uk_app_doc_chk_code` (`application_id`,`stage_code`,`document_code`),
   KEY `fk_app_doc_chk_type` (`document_type_id`),
-  KEY `idx_app_doc_chk_stage` (`stage_id`),
-  KEY `fk_app_doc_chk_wsd` (`workflow_stage_document_id`),
   KEY `fk_app_doc_chk_override` (`override_id`),
-  KEY `fk_app_doc_chk_stage_code` (`workflow_code`,`stage_code`),
   KEY `fk_app_doc_chk_type_code` (`document_code`),
+  KEY `idx_app_doc_chk_stage` (`application_id`,`stage_code`),
   CONSTRAINT `fk_app_doc_chk_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_app_doc_chk_override` FOREIGN KEY (`override_id`) REFERENCES `crm_application_document_overrides` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_chk_stage` FOREIGN KEY (`stage_id`) REFERENCES `crm_workflow_stages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_chk_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_doc_chk_type` FOREIGN KEY (`document_type_id`) REFERENCES `crm_master_document_types` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_chk_type_code` FOREIGN KEY (`document_code`) REFERENCES `crm_master_document_types` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_chk_wsd` FOREIGN KEY (`workflow_stage_document_id`) REFERENCES `crm_workflow_stage_documents` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_app_doc_chk_type_code` FOREIGN KEY (`document_code`) REFERENCES `crm_master_document_types` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -179,11 +163,9 @@ CREATE TABLE IF NOT EXISTS `crm_application_document_files` (
 CREATE TABLE IF NOT EXISTS `crm_application_document_overrides` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `action` enum('ADD','REMOVE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_stage_document_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_type_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `custom_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -198,24 +180,17 @@ CREATE TABLE IF NOT EXISTS `crm_application_document_overrides` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_app_doc_ovr_wsd` (`application_id`,`workflow_stage_document_id`),
-  KEY `idx_app_doc_ovr_app` (`application_id`,`stage_id`),
   KEY `idx_app_doc_ovr_doc` (`document_type_id`),
   KEY `idx_app_doc_ovr_dept` (`department_code`),
-  KEY `fk_app_doc_ovr_stage` (`stage_id`),
-  KEY `fk_app_doc_ovr_wsd` (`workflow_stage_document_id`),
   KEY `fk_app_doc_ovr_user` (`added_by_user_id`),
-  KEY `fk_app_doc_ovr_stage_code` (`workflow_code`,`stage_code`),
   KEY `fk_app_doc_ovr_type_code` (`document_code`),
+  KEY `idx_app_doc_ovr_code` (`application_id`,`stage_code`,`document_code`),
   CONSTRAINT `fk_app_doc_ovr_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_ovr_stage` FOREIGN KEY (`stage_id`) REFERENCES `crm_workflow_stages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_ovr_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_doc_ovr_type` FOREIGN KEY (`document_type_id`) REFERENCES `crm_master_document_types` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `fk_app_doc_ovr_type_code` FOREIGN KEY (`document_code`) REFERENCES `crm_master_document_types` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_doc_ovr_user` FOREIGN KEY (`added_by_user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_doc_ovr_wsd` FOREIGN KEY (`workflow_stage_document_id`) REFERENCES `crm_workflow_stage_documents` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
   CONSTRAINT `chk_app_doc_ovr_dept` CHECK (((`action` <> _utf8mb4'ADD') or (`department_code` is not null))),
-  CONSTRAINT `chk_app_doc_ovr_source` CHECK ((((`action` = _utf8mb4'REMOVE') and (`workflow_stage_document_id` is not null) and (`document_type_id` is null) and (`custom_name` is null)) or ((`action` = _utf8mb4'ADD') and ((((`workflow_stage_document_id` is not null) + (`document_type_id` is not null)) + (`custom_name` is not null)) = 1))))
+  CONSTRAINT `chk_app_doc_ovr_source` CHECK ((((`action` = _utf8mb4'REMOVE') and (`document_type_id` is null) and (`custom_name` is null)) or ((`action` = _utf8mb4'ADD') and ((`document_type_id` is null) or (`custom_name` is null)))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -246,8 +221,7 @@ CREATE TABLE IF NOT EXISTS `crm_application_notifications` (
 CREATE TABLE IF NOT EXISTS `crm_application_stage_progress` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_locked` tinyint(1) NOT NULL DEFAULT '0',
   `submitted_at` timestamp(3) NULL DEFAULT NULL,
@@ -259,14 +233,10 @@ CREATE TABLE IF NOT EXISTS `crm_application_stage_progress` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_app_stage_prog` (`application_id`,`stage_id`),
+  UNIQUE KEY `uk_app_stage_prog` (`application_id`,`stage_code`),
   KEY `idx_app_stg_prog_assignee` (`assigned_user_id`),
-  KEY `fk_app_stg_prog_stg` (`stage_id`),
-  KEY `fk_app_stg_prog_stage_code` (`workflow_code`,`stage_code`),
   CONSTRAINT `fk_app_stg_prog_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_stg_prog_assignee` FOREIGN KEY (`assigned_user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_stg_prog_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_stg_prog_stg` FOREIGN KEY (`stage_id`) REFERENCES `crm_workflow_stages` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_app_stg_prog_assignee` FOREIGN KEY (`assigned_user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -277,7 +247,7 @@ CREATE TABLE IF NOT EXISTS `crm_applications` (
   `business_partner_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `customer_category` enum('NEW','EXISTING') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NEW',
   `branch_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `mkt_pic_id` int DEFAULT NULL,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
@@ -287,12 +257,11 @@ CREATE TABLE IF NOT EXISTS `crm_applications` (
   PRIMARY KEY (`id`),
   KEY `idx_app_business_partner` (`business_partner_id`),
   KEY `fk_app_branch` (`branch_id`),
-  KEY `idx_app_workflow` (`workflow_code`),
+  KEY `idx_app_workflow_freeze` (`workflow_freeze_id`),
   KEY `idx_app_mkt_pic` (`mkt_pic_id`),
   CONSTRAINT `fk_app_branch` FOREIGN KEY (`branch_id`) REFERENCES `crm_master_branches` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_app_business_partner` FOREIGN KEY (`business_partner_id`) REFERENCES `crm_master_business_partners` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_mkt_pic` FOREIGN KEY (`mkt_pic_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_workflow` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_app_mkt_pic` FOREIGN KEY (`mkt_pic_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -925,6 +894,128 @@ CREATE TABLE IF NOT EXISTS `crm_fap_project_contracts` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_workflows` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_version` int NOT NULL DEFAULT '1',
+  `is_latest_freeze` tinyint(1) NOT NULL DEFAULT '1',
+  `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `frozen_by_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `frozen_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_wf_ver` (`source_workflow_code`,`freeze_version`),
+  KEY `idx_frz_wf_latest` (`source_workflow_code`,`is_latest_freeze`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_groups` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_wf_group` (`freeze_id`,`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stages` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `department_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `form_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_wf_stage` (`freeze_id`,`code`),
+  KEY `idx_frz_wf_stage_group` (`freeze_id`,`group_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_fields` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `form_field_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_wf_field` (`freeze_id`,`stage_code`,`form_field_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_documents` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `document_type_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_default` tinyint(1) NOT NULL DEFAULT '1',
+  `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
+  `sort_order` int NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_wf_doc` (`freeze_id`,`stage_code`,`document_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_approval_assignments` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `code` varchar(110) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `scope_type` enum('GROUP','STAGE','DOCUMENT','SECTION') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_wf_assign` (`freeze_id`,`code`),
+  KEY `idx_frz_wf_assign_approval` (`approval_freeze_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_approvals` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `source_approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_version` int NOT NULL DEFAULT '1',
+  `is_latest_freeze` tinyint(1) NOT NULL DEFAULT '1',
+  `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_type` enum('SEQUENTIAL','PARALLEL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SEQUENTIAL',
+  `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `frozen_by_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `frozen_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_ap_ver` (`source_approval_code`,`freeze_version`),
+  KEY `idx_frz_ap_latest` (`source_approval_code`,`is_latest_freeze`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_frozen_approval_levels` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `level_no` int NOT NULL DEFAULT '1',
+  `app_id` int DEFAULT NULL,
+  `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_pic_marketing` tinyint(1) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_frz_ap_level` (`freeze_id`,`level_no`,`authority_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_applications` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1342,8 +1433,9 @@ CREATE TABLE IF NOT EXISTS `crm_master_approval_levels` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `level_no` int NOT NULL DEFAULT '1',
-  `app_id` int NOT NULL,
-  `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `app_id` int DEFAULT NULL,
+  `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_pic_marketing` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1357,14 +1449,26 @@ CREATE TABLE IF NOT EXISTS `crm_master_approval_levels` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_master_approval_logs` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `action` enum('CREATE','UPDATE','DELETE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `before_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `after_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `actor_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `acted_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_ma_logs_approval` (`approval_code`,`acted_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_master_approvals` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `approval_type` enum('SEQUENTIAL','PARALLEL') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'SEQUENTIAL',
-  `status` enum('DRAFT','ACTIVE','INACTIVE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT',
-  `activated_at` timestamp(3) NULL DEFAULT NULL,
-  `activated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
@@ -2043,32 +2147,12 @@ CREATE TABLE IF NOT EXISTS `crm_prototype_preanalysis` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `crm_workflow_activation_logs` (
-  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_json` json NOT NULL,
-  `previous_workflow_json` json DEFAULT NULL,
-  `action` enum('ACTIVATE','DEACTIVATE','DELETE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `actor_user_id` int DEFAULT NULL,
-  `actor_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `note` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `acted_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  PRIMARY KEY (`id`),
-  KEY `idx_wf_act_at` (`acted_at`),
-  KEY `fk_wf_act_user` (`actor_user_id`),
-  CONSTRAINT `fk_wf_act_user` FOREIGN KEY (`actor_user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_workflow_approval_assignments` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(110) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `scope_type` enum('GROUP','STAGE','DOCUMENT','SECTION') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `stage_group_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `workflow_stage_document_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -2080,39 +2164,15 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_approval_assignments` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_wf_ap_assign_code` (`workflow_code`,`code`),
   KEY `idx_wf_ap_assign_approval` (`approval_code`),
-  KEY `fk_wf_ap_assign_group` (`stage_group_id`,`workflow_code`),
-  KEY `fk_wf_ap_assign_stage` (`stage_id`,`workflow_code`),
-  KEY `fk_wf_ap_assign_doc` (`workflow_stage_document_id`),
   KEY `fk_wf_ap_assign_group_code` (`workflow_code`,`group_code`),
   KEY `fk_wf_ap_assign_doc_code` (`workflow_code`,`stage_code`,`document_code`),
   KEY `fk_wf_ap_assign_section` (`section_code`),
   CONSTRAINT `fk_wf_ap_assign_approval` FOREIGN KEY (`approval_code`) REFERENCES `crm_master_approvals` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_ap_assign_doc` FOREIGN KEY (`workflow_stage_document_id`) REFERENCES `crm_workflow_stage_documents` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_ap_assign_doc_code` FOREIGN KEY (`workflow_code`, `stage_code`, `document_code`) REFERENCES `crm_workflow_stage_documents` (`workflow_code`, `stage_code`, `document_code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_ap_assign_group` FOREIGN KEY (`stage_group_id`, `workflow_code`) REFERENCES `crm_workflow_stage_groups` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_ap_assign_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_ap_assign_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_ap_assign_stage` FOREIGN KEY (`stage_id`, `workflow_code`) REFERENCES `crm_workflow_stages` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_ap_assign_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_ap_assign_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `crm_workflow_approval_history` (
-  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject_type` enum('APPROVAL','ASSIGNMENT') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `subject_code` varchar(110) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `action` enum('ADDED','CHANGED','REMOVED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `before_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `after_text` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `idx_wf_ap_history_subject` (`subject_type`,`subject_code`,`created_at`),
-  KEY `idx_wf_ap_history_wf` (`workflow_code`,`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -2120,9 +2180,7 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_approval_history` (
 CREATE TABLE IF NOT EXISTS `crm_workflow_stage_documents` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `group_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_type_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -2134,17 +2192,13 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_documents` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_wf_stage_doc` (`stage_id`,`document_type_id`),
   UNIQUE KEY `uk_wf_stage_doc_code` (`workflow_code`,`stage_code`,`document_code`),
-  KEY `idx_wf_stage_doc_wf` (`workflow_code`,`stage_id`,`is_default`),
-  KEY `idx_wf_stage_doc_group` (`group_id`,`workflow_code`),
-  KEY `fk_wf_sdoc_stage` (`stage_id`,`workflow_code`),
   KEY `fk_wf_sdoc_type` (`document_type_id`),
   KEY `fk_wf_sdoc_group_code` (`workflow_code`,`group_code`),
   KEY `fk_wf_sdoc_type_code` (`document_code`),
-  CONSTRAINT `fk_wf_sdoc_group` FOREIGN KEY (`group_id`, `workflow_code`) REFERENCES `crm_workflow_stage_groups` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  KEY `idx_wf_stage_doc_group` (`workflow_code`,`group_code`),
+  KEY `idx_wf_stage_doc_wf` (`workflow_code`,`stage_code`,`is_default`),
   CONSTRAINT `fk_wf_sdoc_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_sdoc_stage` FOREIGN KEY (`stage_id`, `workflow_code`) REFERENCES `crm_workflow_stages` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_sdoc_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_sdoc_type` FOREIGN KEY (`document_type_id`) REFERENCES `crm_master_document_types` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_sdoc_type_code` FOREIGN KEY (`document_code`) REFERENCES `crm_master_document_types` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
@@ -2156,7 +2210,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_documents` (
 CREATE TABLE IF NOT EXISTS `crm_workflow_stage_fields` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `form_field_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
@@ -2165,13 +2218,11 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_fields` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_wf_stage_field` (`stage_id`,`form_field_code`),
+  UNIQUE KEY `uk_wf_stage_field` (`workflow_code`,`stage_code`,`form_field_code`),
   KEY `idx_wf_stage_field_wf` (`workflow_code`),
-  KEY `fk_wf_sfield_stage` (`stage_id`,`workflow_code`),
   KEY `fk_wf_sfield_stage_code` (`workflow_code`,`stage_code`),
   KEY `fk_wf_sfield_field` (`form_field_code`),
   CONSTRAINT `fk_wf_sfield_field` FOREIGN KEY (`form_field_code`) REFERENCES `crm_master_form_fields` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_sfield_stage` FOREIGN KEY (`stage_id`, `workflow_code`) REFERENCES `crm_workflow_stages` (`id`, `workflow_code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_sfield_stage_code` FOREIGN KEY (`workflow_code`, `stage_code`) REFERENCES `crm_workflow_stages` (`workflow_code`, `code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_sfield_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2191,7 +2242,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_groups` (
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_wf_group_code` (`workflow_code`,`code`),
-  UNIQUE KEY `uk_wf_group_id_wf` (`id`,`workflow_code`),
   KEY `idx_wf_group_order` (`workflow_code`,`sort_order`),
   CONSTRAINT `fk_wf_group_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2201,7 +2251,6 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stage_groups` (
 CREATE TABLE IF NOT EXISTS `crm_workflow_stages` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `stage_group_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -2215,13 +2264,10 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stages` (
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_wf_stage_code` (`workflow_code`,`code`),
-  UNIQUE KEY `uk_wf_stage_id_wf` (`id`,`workflow_code`),
-  KEY `idx_wf_stage_order` (`stage_group_id`,`sort_order`),
-  KEY `fk_wf_stage_group` (`stage_group_id`,`workflow_code`),
   KEY `fk_wf_stage_group_code` (`workflow_code`,`group_code`),
   KEY `fk_wf_stage_form` (`form_code`),
+  KEY `idx_wf_stage_order` (`workflow_code`,`group_code`,`sort_order`),
   CONSTRAINT `fk_wf_stage_form` FOREIGN KEY (`form_code`) REFERENCES `crm_master_forms` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `fk_wf_stage_group` FOREIGN KEY (`stage_group_id`, `workflow_code`) REFERENCES `crm_workflow_stage_groups` (`id`, `workflow_code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_stage_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_stage_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2233,10 +2279,7 @@ CREATE TABLE IF NOT EXISTS `crm_workflows` (
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `version_no` int NOT NULL DEFAULT '1',
-  `status` enum('DRAFT','ACTIVE','INACTIVE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT',
-  `activated_at` timestamp(3) NULL DEFAULT NULL,
-  `activated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -2255,7 +2298,7 @@ CREATE TABLE IF NOT EXISTS `users_applications` (
   `icon_class` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT 'fas fa-layer-group',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_users_app_name` (`app_name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2269,7 +2312,7 @@ CREATE TABLE IF NOT EXISTS `users_audit_logs` (
   PRIMARY KEY (`id`),
   KEY `idx_users_audit_user` (`user_id`),
   CONSTRAINT `fk_users_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=158 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2281,7 +2324,7 @@ CREATE TABLE IF NOT EXISTS `users_authorities` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_users_auth_app_name` (`app_id`,`authority_name`),
   CONSTRAINT `fk_users_auth_app` FOREIGN KEY (`app_id`) REFERENCES `users_applications` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=213 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2297,7 +2340,7 @@ CREATE TABLE IF NOT EXISTS `users_departments` (
   `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`dept_id`),
   UNIQUE KEY `uk_users_dept_code` (`department_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2320,7 +2363,7 @@ CREATE TABLE IF NOT EXISTS `users_roles` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_users_roles_app_name` (`app_id`,`role_name`),
   CONSTRAINT `fk_users_roles_app` FOREIGN KEY (`app_id`) REFERENCES `users_applications` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2342,7 +2385,7 @@ CREATE TABLE IF NOT EXISTS `users_session_logs` (
   KEY `idx_users_sess_last_act` (`last_activity`),
   KEY `idx_users_sess_expires` (`expires_at`),
   CONSTRAINT `fk_users_sess_user` FOREIGN KEY (`user_id`) REFERENCES `users_users` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=425 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2383,7 +2426,7 @@ CREATE TABLE IF NOT EXISTS `users_users` (
   UNIQUE KEY `uk_users_username` (`username`),
   KEY `idx_users_dept` (`dept_id`),
   CONSTRAINT `fk_users_dept` FOREIGN KEY (`dept_id`) REFERENCES `users_departments` (`dept_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
