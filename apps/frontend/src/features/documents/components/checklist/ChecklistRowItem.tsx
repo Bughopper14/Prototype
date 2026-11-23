@@ -107,9 +107,9 @@ export function ChecklistRowItem({
               <>
                 <span className="doc-approval-chip">
                   <ShieldCheck size={13} />
-                  {row.check.approval.state === 'APPROVED' ? 'Approved' : row.check.approval.state === 'REJECTED' ? 'Rejected' : 'Waiting'}
+                  {row.check.approval.state === 'APPROVED' ? 'Approved' : row.check.approval.state === 'REJECTED' ? 'Rejected' : row.check.approval.state === 'REOPENED' ? 'Opened again' : 'Waiting'}
                 </span>
-                {row.check.approval.state === 'REJECTED' && row.check.approval.canRequest && onRequestApproval && (
+                {(row.check.approval.state === 'REJECTED' || row.check.approval.state === 'REOPENED') && row.check.approval.canRequest && onRequestApproval && (
                   <button type="button" className="button small doc-needs" disabled={approvalBusy === row.chkId} onClick={() => onRequestApproval(row)}>
                     Submit again
                   </button>

@@ -213,9 +213,10 @@ export class ApplicationsService {
       const wanted = raw.templates.filter(t => t.scope === 'DOCUMENT' && !!d.documentCode && t.stageCode === d.stageCode && t.documentCode === d.documentCode);
       if (!wanted.length) return {...d, approval: null};
       const round = approval.current.find(c => c.scope === 'DOCUMENT' && c.checklistId === d.id);
-      const state = !round ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' || x.status === 'REOPENED') ? 'REJECTED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
-      const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: round?.steps.find(x => x.code === t.code)?.status ?? 'NOT_REQUESTED'}));
-      return {...d, approval: {steps, state, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED')}};
+      const shownStatus = (x?: {status: string; reopened: boolean}) => (!x ? 'NOT_REQUESTED' : x.reopened ? 'REOPENED' : x.status);
+      const state = !round ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' && !x.reopened) ? 'REJECTED' : round.steps.some(x => x.reopened) ? 'REOPENED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
+      const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: shownStatus(round?.steps.find(x => x.code === t.code))}));
+      return {...d, approval: {steps, state, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED' || state === 'REOPENED')}};
     });
     const view = this.viewStage(cfg, progress);
     const customer: Record<string, any> = {...(saved?.customer || {}), id: app.business_partner_id};

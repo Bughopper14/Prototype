@@ -38,19 +38,18 @@ export function ApprovalPanel() {
   const stages: {stage: string; name: string; group: string; submitted: boolean; completed: boolean; canSubmit: boolean; blockedReason: string | null}[] = a.stageProgress || [];
   const canSubmitRole = isAdminUser || (user?.authorities || []).includes('CRM_WORKFLOW_SUBMIT');
   // Only what was rejected on its own is listed. What a rejected group opened again is not repeated one by one: the group card says how many.
-  const rejected = ap.current.flatMap(c => c.steps.filter(s => s.status === 'REJECTED').map(s => ({scope: c.scopeName, kind: c.scope, step: s, decision: s.decisions.find(d => d.decision === 'REJECTED')})));
+  const rejected = ap.current.flatMap(c => c.steps.filter(s => s.status === 'REJECTED' && !s.reopened).map(s => ({scope: c.scopeName, kind: c.scope, step: s, decision: s.decisions.find(d => d.decision === 'REJECTED')})));
   const reopened = ap.current.filter(c => c.steps.some(reopenedStep));
-  const reopenedText = [
-    ['STAGE', 'stage', 'stages'],
-    ['DOCUMENT', 'document', 'documents'],
-    ['SECTION', 'deed', 'deeds'],
-  ]
-    .map(([kind, one, many]) => {
-      const n = reopened.filter(c => c.scope === kind).length;
-      return n ? `${n} ${n === 1 ? one : many}` : '';
-    })
-    .filter(Boolean)
-    .join(' · ');
+  // What a rejected group opened again, by stage: the stage first, then the documents and deeds that opened with it.
+  const stageName = (code: string) => stages.find(s => s.stage === code)?.name ?? code;
+  const itemName = (c: {scope: string; scopeName: string}) => (c.scope === 'DOCUMENT' ? c.scopeName.replace(/^Document\s+/, '') : c.scopeName.replace(/^.*·\s*/, ''));
+  const reopenedByStage = [...new Set(reopened.map(c => c.stageCode || ''))].filter(Boolean).map(code => ({
+    code,
+    name: stageName(code),
+    stageItself: reopened.some(c => c.scope === 'STAGE' && c.stageCode === code),
+    documents: [...new Set(reopened.filter(c => c.scope === 'DOCUMENT' && c.stageCode === code).map(itemName))],
+    deeds: [...new Set(reopened.filter(c => c.scope === 'SECTION' && c.stageCode === code).map(itemName))],
+  }));
   const submit = (code: string) => {
     setError('');
     setSubmitStageCode(code);
@@ -75,16 +74,29 @@ export function ApprovalPanel() {
               {r.scope}: “{r.step.name}” was rejected
             </b>
             <p>{r.decision?.remarks || 'No reason was written.'}</p>
-            {r.kind === 'GROUP' && reopenedText && (
-              <>
-                <p className="muted">Also opened again ({reopenedText}). Each one asks for approval again after you submit:</p>
-                <ul style={{margin: '4px 0 8px 18px', padding: 0}}>
-                  {[...new Set(reopened.map(c => c.scopeName))].map(name => (
-                    <li key={name}>{name}</li>
-                  ))}
-                </ul>
-              </>
-            )}
+            {r.kind === 'GROUP' &&
+              reopenedByStage.map(st => (
+                <div key={st.code} style={{margin: '6px 0 10px'}}>
+                  <p style={{margin: '0 0 2px'}}>
+                    <b>Stage opened again: {st.name}</b>
+                  </p>
+                  {(st.documents.length > 0 || st.deeds.length > 0) && (
+                    <>
+                      <p className="muted" style={{margin: '0 0 2px'}}>
+                        Opened with it. Each one asks for approval again after you submit:
+                      </p>
+                      <ul style={{margin: '2px 0 0 18px', padding: 0}}>
+                        {st.documents.map(name => (
+                          <li key={'d-' + name}>Document · {name}</li>
+                        ))}
+                        {st.deeds.map(name => (
+                          <li key={'e-' + name}>Legal deed · {name}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
+              ))}
             <small>
               {r.decision?.by} · {r.decision?.decidedAt ? date(r.decision.decidedAt) : ''}
               {r.decision?.via === 'LARK' ? ' · from Lark' : ''}

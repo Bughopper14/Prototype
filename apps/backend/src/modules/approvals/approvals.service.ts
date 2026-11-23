@@ -71,7 +71,7 @@ export function stateOf(input: {
 }): ApprovalState {
   const latest = latestRounds(input.steps);
   const all = [...latest.values()].flat();
-  if (all.some(s => s.status === 'REJECTED' || s.status === 'REOPENED')) return 'REJECTED';
+  if (all.some(s => s.status === 'REJECTED')) return 'REJECTED';
   if (all.some(s => OPEN.includes(s.status))) return 'IN_APPROVAL';
   const required = new Set<string>();
   for (const t of input.templates) {
@@ -217,7 +217,7 @@ export class ApprovalsService {
 
   /**
    * Reopens what hangs under stages that a group rejection opens again: the newest round of the stage and of each of its documents and rows (deeds)
-   * is no longer valid, so a step still open is cancelled and an approved one becomes REOPENED (not rejected: nobody rejected it, its group did; the
+   * is no longer valid, so a step still open is cancelled and an approved one becomes REJECTED (nobody rejected it, its group did: the view tells the two apart by the decisions, see `reopened`; the
    * resubmit then starts a new round from the first step, and the decisions already given stay as history). Returns the documents and the rows
    * (deeds) that were affected.
    */
@@ -230,7 +230,7 @@ export class ApprovalsService {
       const approved = round.filter(s => s.status === 'APPROVED');
       if (!open.length && !approved.length) continue;
       await this.repo.setStatus(conn, open.map(s => s.id), 'CANCELLED', by(actor));
-      await this.repo.setStatus(conn, approved.map(s => s.id), 'REOPENED', by(actor));
+      await this.repo.setStatus(conn, approved.map(s => s.id), 'REJECTED', by(actor));
       const head = round[0];
       if (head.scope === 'DOCUMENT' && head.checklistId) documents.push(head.checklistId);
       if (head.scope === 'SECTION' && head.sectionCode && head.subjectId) rows.push({sectionCode: head.sectionCode, subjectId: head.subjectId});
@@ -329,6 +329,8 @@ export class ApprovalsService {
         code: s.code,
         name: s.name,
         status: s.status,
+        /** A step the group's rejection opened again: it is REJECTED, but nobody rejected it (it only has the approval it got before). */
+        reopened: s.status === 'REJECTED' && ds.some(d => d.decision === 'APPROVED') && !ds.some(d => d.decision === 'REJECTED'),
         authorityName: s.authorityName,
         sortOrder: s.sortOrder,
         startedAt: s.startedAt,

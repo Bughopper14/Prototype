@@ -3,9 +3,11 @@ import {Check, Clock, ExternalLink, History, RotateCcw, X} from 'lucide-react';
 import {useOpenView} from './ApprovalSummary';
 import {useWorkspace} from './WorkspaceContext';
 
+/** What a step shows: a step the group's rejection opened again is REJECTED in the database, but nobody rejected it. */
+export const shownStatus = (s: Step) => (s.reopened ? 'REOPENED' : s.status);
 export const STEP_LABEL: Record<string, string> = {WAITING: 'Waiting its turn', PENDING: 'Needs approval', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Closed', REOPENED: 'Opened again'};
 
-export type Step = {id: string; name: string; status: string; sortOrder: number; authorityName: string; canAct: boolean; decisions: {by: string; decision: string; remarks: string | null; decidedAt: string; via: string}[]};
+export type Step = {id: string; name: string; status: string; reopened?: boolean; sortOrder: number; authorityName: string; canAct: boolean; decisions: {by: string; decision: string; remarks: string | null; decidedAt: string; via: string}[]};
 export type Scope = {scope: string; scopeName: string; roundNo: number; sectionCode?: string | null; subjectId?: string | null; checklistId?: string | null; stageCode?: string | null; groupCode?: string | null; documentCode?: string | null; steps: Step[]};
 export type Approval = {state: string; stateName: string; current: Scope[]; history: Scope[]};
 
@@ -25,13 +27,13 @@ const when = (v?: string | null) => (v ? new Date(v).toLocaleString('en-GB', {da
 type LayerState = 'done' | 'now' | 'next' | 'rejected' | 'reopened' | 'closed';
 
 const layerState = (l: Step[]): LayerState =>
-  l.some(s => s.status === 'REJECTED') ? 'rejected' : l.some(s => s.status === 'REOPENED') ? 'reopened' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next';
+  l.some(s => shownStatus(s) === 'REJECTED') ? 'rejected' : l.some(s => s.reopened) ? 'reopened' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next';
 
 /** Who approves a step, from the authority name ("CRM_FAP-FORM_BS_APPROVE" reads "FAP-FORM BS"); a step with no authority is the PIC Marketing level. */
 const whoOf = (s: Step) => (s.authorityName ? s.authorityName.replace(/^CRM_/i, '').replace(/_?(APPROVE|APPROVAL|APPROVER)$/i, '').replace(/_/g, ' ') : 'PIC Marketing');
 
 /** What a step says about itself, in plain words: the person who can decide sees "Your turn". */
-const stepLabel = (s: Step) => (s.status === 'PENDING' ? (s.canAct ? 'Your turn' : 'In review') : s.status === 'WAITING' ? 'Up next' : (STEP_LABEL[s.status] ?? s.status));
+const stepLabel = (s: Step) => (s.status === 'PENDING' ? (s.canAct ? 'Your turn' : 'In review') : s.status === 'WAITING' ? 'Up next' : (STEP_LABEL[shownStatus(s)] ?? s.status));
 
 const Decisions = ({step}: {step: Step}) => (
   <>
@@ -100,10 +102,10 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
                         {state === 'next' && <small>starts after level {li} is approved</small>}
                       </div>
                       {layer.map(s => (
-                        <div key={s.id} className={'ap-tl-step ' + s.status.toLowerCase()}>
+                        <div key={s.id} className={'ap-tl-step ' + shownStatus(s).toLowerCase()}>
                           <div className="ap-tl-row">
                             <span className="ap-tl-who">{whoOf(s)}</span>
-                            <span className={'ap-pill ' + s.status.toLowerCase() + (s.status === 'PENDING' && s.canAct ? ' mine' : '')}>{stepLabel(s)}</span>
+                            <span className={'ap-pill ' + shownStatus(s).toLowerCase() + (s.status === 'PENDING' && s.canAct ? ' mine' : '')}>{stepLabel(s)}</span>
                             {onDecide && s.canAct && (
                               <span className="ap-actions">
                                 <button type="button" className="button primary small" onClick={() => onDecide(s, 'APPROVED')}>
@@ -132,7 +134,7 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
 
 /** The earlier rounds (after a reject the stage starts again with a new round). */
 /** A step that was approved and then marked rejected because its group was rejected and opened it again (no reject decision of its own). */
-export const reopenedStep = (s: Step) => s.status === 'REOPENED';
+export const reopenedStep = (s: Step) => !!s.reopened;
 
 /** The reject decision of the newest group that was rejected: the reason behind every step it opened again. */
 export function groupRejectionOf(ap: Approval) {
@@ -149,7 +151,7 @@ export const fromGroupText = (d: {remarks: string | null} | null) => `Rejected d
 
 export function HistoryList({history, groupReject}: {history: Scope[]; groupReject?: {remarks: string | null} | null}) {
   if (!history.length) return null;
-  const rejected = history.reduce((n, c) => n + c.steps.filter(s => s.status === 'REJECTED').length, 0);
+  const rejected = history.reduce((n, c) => n + c.steps.filter(s => s.status === 'REJECTED' && !s.reopened).length, 0);
   return (
     <details className={'ap-history' + (rejected ? ' has-rejected' : '')} open={rejected > 0}>
       <summary>
@@ -164,10 +166,10 @@ export function HistoryList({history, groupReject}: {history: Scope[]; groupReje
           </div>
           <ol>
             {c.steps.map(s => (
-              <li key={s.id} className={'ap-step ' + s.status.toLowerCase()}>
+              <li key={s.id} className={'ap-step ' + shownStatus(s).toLowerCase()}>
                 <div className="ap-step-top">
                   <b>{s.name}</b>
-                  <span className={'ap-pill ' + s.status.toLowerCase()}>{STEP_LABEL[s.status] ?? s.status}</span>
+                  <span className={'ap-pill ' + shownStatus(s).toLowerCase()}>{STEP_LABEL[shownStatus(s)] ?? s.status}</span>
                 </div>
                 <Decisions step={s} />
                 {reopenedStep(s) && (

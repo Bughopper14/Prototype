@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_pic_marketing` tinyint(1) NOT NULL DEFAULT '0',
   `approver_user_id` int DEFAULT NULL,
-  `status` enum('WAITING','PENDING','APPROVED','REJECTED','CANCELLED','REOPENED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'WAITING',
+  `status` enum('WAITING','PENDING','APPROVED','REJECTED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'WAITING',
   `started_at` timestamp(3) NULL DEFAULT NULL,
   `completed_at` timestamp(3) NULL DEFAULT NULL,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),

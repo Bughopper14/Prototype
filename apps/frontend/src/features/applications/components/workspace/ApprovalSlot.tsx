@@ -25,11 +25,13 @@ type Props = {
 };
 
 const stateOf = (steps: Step[]) =>
-  steps.some(s => s.status === 'REJECTED' || s.status === 'REOPENED')
+  steps.some(s => s.status === 'REJECTED' && !s.reopened)
     ? 'REJECTED'
-    : steps.every(s => s.status === 'APPROVED')
-      ? 'APPROVED'
-      : 'OPEN';
+    : steps.some(s => s.reopened)
+      ? 'REOPENED'
+      : steps.every(s => s.status === 'APPROVED')
+        ? 'APPROVED'
+        : 'OPEN';
 
 export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
   const {a: application, user, onChange, notify, setDecision, setComments, setError} = useWorkspace();
@@ -45,7 +47,7 @@ export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
   const round = rounds[0];
   const steps = round?.steps || [];
   const state = round ? stateOf(steps) : 'NONE';
-  const canSubmit = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT') && (state === 'NONE' || state === 'REJECTED');
+  const canSubmit = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT') && (state === 'NONE' || state === 'REJECTED' || state === 'REOPENED');
 
   const run = async (path: string, body: any, done: string) => {
     setBusy(true);
@@ -86,13 +88,15 @@ export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
               ? STEP_LABEL.APPROVED
               : state === 'REJECTED'
                 ? STEP_LABEL.REJECTED
-                : 'Waiting for approval'}
+                : state === 'REOPENED'
+                  ? STEP_LABEL.REOPENED
+                  : 'Waiting for approval'}
         </span>
         {trailing}
       </div>
       {canSubmit && (
         <button type="button" className="button small" disabled={busy} onClick={submit}>
-          {state === 'REJECTED' ? 'Resubmit for approval' : 'Request approval'}
+          {state === 'REJECTED' || state === 'REOPENED' ? 'Resubmit for approval' : 'Request approval'}
         </button>
       )}
       {actable.map(step => (
