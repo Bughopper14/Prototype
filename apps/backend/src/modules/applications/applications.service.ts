@@ -959,7 +959,19 @@ export class ApplicationsService {
     }
     if (!onlyStage && checks.some(d => d.documentCode === 'FAP') && !app.is_fap_doc_uploaded && !missingDocs.some((d: any) => d.documentCode === 'FAP'))
       gaps.push({target: 'DOCUMENTS', label: 'Dokumen FAP bertanda tangan', detail: cfg.stages[0]?.name});
-    for (const d of onlyStage && onlyStage !== deedStage ? [] : detail.legal?.deeds || []) {
+    // Always on, whatever the workflow's rules say: an application needs at least one deed, and its establishment deed at least one stakeholder.
+    const deedsHere = onlyStage && onlyStage !== deedStage ? [] : detail.legal?.deeds || [];
+    if (!onlyStage || onlyStage === deedStage) {
+      if (!(detail.legal?.deeds || []).length && !gaps.some(g => g.target === 'LEGAL' && g.label.startsWith('Minimal satu data di')))
+        gaps.push({target: 'LEGAL', label: 'Minimal satu akta', detail: 'Tambahkan akta pendirian beserta pemegang saham / pengurusnya di tab Legal'});
+    }
+    for (const d of deedsHere) {
+      if (!(d.stakeholders || []).length) {
+        // Only the establishment deed must have stakeholders; an amendment deed may have none (its shares are then not checked).
+        if (d.type === 'establishment')
+          gaps.push({target: 'LEGAL', label: `Akta pendirian ${d.deedNumber || ''} belum punya stakeholder`, detail: 'Akta pendirian minimal punya satu pemegang saham / pengurus'});
+        continue;
+      }
       const total = (d.stakeholders || []).reduce((sum: number, x: any) => sum + Number(x.sharePercentage || 0), 0);
       if (Math.abs(total - 100) > 0.01)
         gaps.push({
