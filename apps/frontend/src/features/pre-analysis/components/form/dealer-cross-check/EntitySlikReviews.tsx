@@ -1,4 +1,5 @@
 /** SLIK / bureau review of every group entity, one card per entity. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {EntitySlikCard} from '@/features/pre-analysis/components/form/dealer-cross-check/EntitySlikCard';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
@@ -10,6 +11,7 @@ export function EntitySlikReviews() {
       <div style={{marginTop: '8px', borderTop: '1px solid #e2e8f0', paddingTop: '10px'}}>
         <div style={{fontSize: '0.8rem', fontWeight: 700, color: '#0f294a', marginBottom: '8px'}}>
           GROUP ENTITY LIST FOR SLIK / BUREAU REVIEW:
+          <RequiredStar field="applicantPefindoCheck" section="Cross-Check with Dealer / LMI" stage="PRE-AN" />
         </div>
 
         {slikEntities.map((entity, idx) => (

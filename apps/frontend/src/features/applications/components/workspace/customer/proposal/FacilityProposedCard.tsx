@@ -1,4 +1,5 @@
 /** Sub-section 1 of the financing proposal: the facility proposed (method, value, currency choice). */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {useMasterData} from '@/shared/master-data';
 import {FileText} from 'lucide-react';
@@ -39,7 +40,10 @@ export function FacilityProposedCard() {
         }}
       >
         <div className="field-group" data-field="financingMethod">
-          <label className="field-label">Cara Pembiayaan / Financing Method</label>
+          <label className="field-label">
+            Cara Pembiayaan / Financing Method
+            <RequiredStar field="financingMethod" section="Financing Proposal" />
+          </label>
           <select
             id="fap-form-financingMethod"
             data-field="financingMethod"
@@ -75,7 +79,10 @@ export function FacilityProposedCard() {
         </div>
 
         <div className="field-group" data-field="financingValueProp">
-          <label className="field-label">Nilai Pembiayaan / Financing Value</label>
+          <label className="field-label">
+            Nilai Pembiayaan / Financing Value
+            <RequiredStar field="financingValueProp" section="Financing Proposal" />
+          </label>
           <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
             <div
               style={{
@@ -125,6 +132,7 @@ export function FacilityProposedCard() {
                 );
               })}
             </div>
+            <RequiredStar field="currencyChoice" section="Financing Proposal" />
             <input
               type="text"
               id="fap-form-financingValueProp"
@@ -152,7 +160,10 @@ export function FacilityProposedCard() {
         </div>
 
         <div className="field-group" data-field="applicationSource">
-          <label className="field-label">Application Source</label>
+          <label className="field-label">
+            Application Source
+            <RequiredStar field="applicationSource" section="Financing Proposal" />
+          </label>
           <input
             type="text"
             id="fap-form-applicationSource"

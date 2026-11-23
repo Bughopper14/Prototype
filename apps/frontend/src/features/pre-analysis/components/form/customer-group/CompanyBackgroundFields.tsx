@@ -3,12 +3,12 @@ import {PreAnalysisRichEditor} from '@/features/pre-analysis/components/PreAnaly
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function CompanyBackgroundFields() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       <div>
         <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
-          UBO (Ultimate Beneficiary Owner)
+          UBO (Ultimate Beneficiary Owner){reqMark('uboInfo', 'Customer & Group Background')}
         </label>
         <PreAnalysisRichEditor
           value={data.uboInfo || data.ubo || ''}
@@ -23,7 +23,7 @@ export function CompanyBackgroundFields() {
       </div>
       <div>
         <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
-          Company Background (Entity, Group Profile & Key Milestones)
+          Company Background (Entity, Group Profile & Key Milestones){reqMark('companyBackground', 'Customer & Group Background')}
         </label>
         <PreAnalysisRichEditor
           value={data.companyBackground || ''}

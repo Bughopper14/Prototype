@@ -29,7 +29,8 @@ export function TextField({
     <div style={wrapperStyle}>
       <label style={labelStyle}>
         {label}
-        {required && reqMark(required[0], required[1])}
+        {/* the mark follows the workflow's mandatory rules for this field; `required` only names another key / section to look up */}
+        {reqMark(required?.[0] ?? name, required?.[1] ?? 'General Information')}
       </label>
       <input
         type="text"

@@ -399,6 +399,8 @@ export class DocumentsRepository {
        VALUES (?,?,?,?,?,?,?,?,?,1,?,?)`,
       [id, row.id, applicationId, Number(last.v) + 1, file.fileName, file.storageKey, file.storagePath, file.size, file.mimeType, by, by],
     );
+    // A new file makes the document UPLOADED again, also when it was verified: the checklist document is one bundle, so it needs its approval again
+    // (the approval of a document that changed after it was approved can be asked for once more: see ApprovalsService.startScope).
     await this.setStatus(conn, row.id, 'UPLOADED', by);
     await this.syncFapUploaded(conn, applicationId, by);
     return {id, checklistId: row.id, documentCode: row.code};

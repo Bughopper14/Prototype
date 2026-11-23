@@ -90,6 +90,8 @@ export class CompanyRecordMapper {
   out.district_id = location.district;
   out.village_id = location.village;
   out.postal_code_id = await ids.postalCodeId(out.city_id, profile.postalCode, db);
+  // the company address column holds the full address (the form shows its street part)
+  out.company_address = await ids.fullAddress(out.company_address, {rt: out.rt, rw: out.rw, villageId: out.village_id, districtId: out.district_id, cityId: out.city_id, provinceId: out.province_id, postalCode: profile.postalCode}, db);
   out.country_id = await ids.countryOfProvince(out.province_id, db);
   const experience = experienceFromEstablishmentDate(out.establishment_date);
   out.experience_years = clean(experience.experienceYears ?? profile.experienceYears, 'int');

@@ -5,7 +5,7 @@ import {QaUploadDropzone} from '@/features/pre-analysis/components/form/delivery
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function QaIlinkCommentField() {
-  const {data} = usePreAnalysisContext();
+  const {data, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* QA Comment — iLink/GPS Performance Check (Document Upload Only) */}
@@ -44,7 +44,9 @@ export function QaIlinkCommentField() {
               }}
             >
               <FileText size={15} color="#2563eb" />
-              <span>QA Comment — iLink/GPS Performance Check</span>
+              <span>
+                QA Comment — iLink/GPS Performance Check{reqMark('qaIlinkComment', 'Unit Delivery Status & QA Check')}
+              </span>
             </label>
             <div style={{fontSize: '0.68rem', color: '#64748b', marginTop: '2px'}}>
               Upload official QA / iLink GPS performance check document (PDF, Word, Excel, Image)

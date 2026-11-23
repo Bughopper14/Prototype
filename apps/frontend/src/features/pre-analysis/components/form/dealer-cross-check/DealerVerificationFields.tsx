@@ -3,7 +3,7 @@ import {TextField} from '@/features/pre-analysis/components/form/fields/TextFiel
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function DealerVerificationFields() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       <div>
@@ -16,7 +16,9 @@ export function DealerVerificationFields() {
             justifyContent: 'space-between',
           }}
         >
-          <span>Dealer Check</span>
+          <span>
+            Dealer Check{reqMark('dealerCheck', 'Cross-Check with Dealer / LMI')}
+          </span>
           <span style={{fontSize: '0.68rem', color: '#1e40af', fontWeight: 600}}>Dealer Verification</span>
         </label>
         <input

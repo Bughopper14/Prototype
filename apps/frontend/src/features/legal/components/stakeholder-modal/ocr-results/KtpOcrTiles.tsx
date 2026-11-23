@@ -56,8 +56,7 @@ export function KtpOcrTiles() {
         </span>
         {ktpParsed.dateOfBirth && (
           <small className="ktp-field-sub">
-            ISO: {ktpParsed.dateOfBirth} · Age: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} yr{' '}
-            {calculateAgeYearsMonths(ktpParsed.dateOfBirth).months} mo
+            Age: {calculateAgeYearsMonths(ktpParsed.dateOfBirth).years} yr {calculateAgeYearsMonths(ktpParsed.dateOfBirth).months} mo
           </small>
         )}
       </div>

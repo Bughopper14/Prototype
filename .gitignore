@@ -78,3 +78,8 @@ scripts/
 # Editor settings and runtime storage
 .vscode/
 apps/backend/storage/
+
+# Old database design workbooks and Excel lock files (the current design workbook is db/3-CRM_Liugong_Database.xlsx)
+apps/backend/db/FAP_Stage_Database_Design.xlsx
+apps/backend/db/approval-authority-added.xlsx
+~$*.xlsx

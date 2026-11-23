@@ -1,4 +1,5 @@
 /** One field of a Terms & Conditions column: free text, or a pick from a master-data list when the field names one. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useMasterData} from '@/shared/master-data';
 import {useEffect} from 'react';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
@@ -49,6 +50,7 @@ export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFi
     <div className="field-group" data-field={field.dataField}>
       <label className="field-label" style={LABEL_STYLE}>
         {field.label}
+        <RequiredStar field={field.dataField} section="Financing Proposal" />
       </label>
       {choices ? (
         <select

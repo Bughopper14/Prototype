@@ -1,4 +1,5 @@
 /** Sub-section 4 of the financing proposal: free-text notes (rich text). */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {highlightFormElement} from '@/features/applications/hooks/useFapPreviewSync';
 import {CrmRichTextEditor} from '@/shared/ui/CrmRichTextEditor';
@@ -42,6 +43,7 @@ export function ProposalNotesCard() {
       >
         <FileText size={15} style={{color: '#0284c7'}} />
         Notes
+        <RequiredStar field="proposalNotes" section="Financing Proposal" />
       </h5>
       <p style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
         Additional notes or specific terms for this financing application proposal

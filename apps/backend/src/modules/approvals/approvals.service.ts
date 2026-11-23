@@ -122,7 +122,13 @@ export class ApprovalsService {
     if (last > 0) {
       const round = await this.repo.roundOf(conn, app.id, scope, last);
       ensure(!round.some(s => OPEN.includes(s.status)), 'The approval of this part is already running.', 409);
-      ensure(!round.length || !round.every(s => s.status === 'APPROVED'), 'This part is already approved.', 409);
+      // A document whose last round was approved but that is no longer VERIFIED got a new file after its approval: it needs a new round.
+      let changedAfterApproval = false;
+      if (scope.type === 'DOCUMENT' && scope.checklistId) {
+        const [[doc]] = await conn.query<any[]>(`SELECT status FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [scope.checklistId]);
+        changedAfterApproval = !!doc && doc.status !== 'VERIFIED';
+      }
+      ensure(!round.length || changedAfterApproval || !round.every(s => s.status === 'APPROVED'), 'This part is already approved.', 409);
     }
     // A PIC Marketing level is approved by the PIC set on the application: it must exist when the round starts.
     let picUserId: number | null = null;

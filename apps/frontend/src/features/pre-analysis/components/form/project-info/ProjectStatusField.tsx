@@ -2,7 +2,7 @@
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function ProjectStatusField() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* PROJECT STATUS: DROPDOWN + REMARKS */}
@@ -18,7 +18,7 @@ export function ProjectStatusField() {
         }}
       >
         <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a', margin: 0}}>
-          Project Status
+          Project Status{reqMark('projectStatus', 'Project Information')}
         </label>
         <select
           name="projectStatus"

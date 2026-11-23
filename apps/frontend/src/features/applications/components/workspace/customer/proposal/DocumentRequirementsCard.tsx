@@ -1,4 +1,5 @@
 /** Sub-section 5 of the financing proposal: the documents required for this proposal. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {useMasterData} from '@/shared/master-data';
 import {FolderCheck} from 'lucide-react';
@@ -101,6 +102,7 @@ export function DocumentRequirementsCard() {
                 }}
               >
                 {docItem.label}
+                <RequiredStar field={docItem.key} section="Financing Proposal" />
               </span>
             </label>
           );

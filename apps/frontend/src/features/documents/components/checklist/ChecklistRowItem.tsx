@@ -100,10 +100,10 @@ export function ChecklistRowItem({
                 className="button small doc-needs"
                 style={!row.check.approval.canRequest ? {opacity: 0.55, cursor: 'not-allowed'} : undefined}
                 disabled={!onRequestApproval || !row.check.approval.canRequest || approvalBusy === row.chkId}
-                title={row.check.approval.canRequest ? 'Send this document for approval' : 'Upload a file for this document first'}
+                title={row.check.approval.canRequest ? (row.check.approval.again ? 'A file was added after this document was approved: send it for approval again' : 'Send this document for approval') : 'Upload a file for this document first'}
                 onClick={() => onRequestApproval?.(row)}
               >
-                <ShieldCheck size={13} /> Needs approval
+                <ShieldCheck size={13} /> {row.check.approval.again ? 'Needs approval again' : 'Needs approval'}
               </button>
               {!row.check.approval.canRequest && (
                 <small className="muted" style={{display: 'block', marginTop: 4}}>

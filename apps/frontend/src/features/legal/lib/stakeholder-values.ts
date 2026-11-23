@@ -1,5 +1,5 @@
 import {currentMasterData} from '@/shared/master-data';
-import {FOREIGN_REGION_KEYS, FOREIGN_REGION_VALUE} from '@liugong/shared';
+import {FOREIGN_REGION_KEYS, FOREIGN_REGION_VALUE, extractStreetAddress} from '@liugong/shared';
 
 export function normalizeStakeholderIdType(
   rawType: string | undefined,
@@ -73,6 +73,8 @@ export function stakeholderEditorValues(s: any) {
     primaryCapital: s.primaryCapital ?? 0,
     citizenship: s.citizenship || (s.nationalityType === 'WNA' ? 'FOREIGN' : 'INDONESIAN'),
     country: s.country || '',
+    // the database keeps the full address; the form shows its street part (it is composed again when saved)
+    address: s.address && !isForeignAddress(s) ? extractStreetAddress(s.address, s) || s.address : s.address,
   };
 }
 

@@ -1,3 +1,4 @@
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {blank, financialFields, inputLimits} from '@liugong/shared';
 import {Plus, X} from 'lucide-react';
 import {byFiscalYear, nextFiscalYear} from '@/features/applications/lib/financial-statements';
@@ -72,7 +73,10 @@ export function FinancialEditor({
                 key={f.key}
                 className={f.key.startsWith('total') || f.key === 'netIncome' ? 'total-row' : ''}
               >
-                <td>{f.label}</td>
+                <td>
+                  {f.label}
+                  <RequiredStar field={f.key} section="Financial Statements" />
+                </td>
                 {rows.map((r, i) => (
                   <td key={i}>
                     <input

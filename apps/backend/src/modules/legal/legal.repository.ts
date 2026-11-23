@@ -239,6 +239,9 @@ export class LegalRepository {
     foreign.push(...location.unresolved);
     out.foreign_region_text = clean(s.foreignRegion) ?? (foreign.length ? foreign.join(', ') : null);
     out.postal_code_id = out.city_id ? await this.ids.tryPostalCodeId(out.city_id, s.postalCode, conn) : null;
+    // the address column holds the full address (the form shows its street part)
+    if (!isForeign)
+      out.address = await this.ids.fullAddress(out.address, {rt: out.rt, rw: out.rw, villageId: out.village_id, districtId: out.district_id, cityId: out.city_id, provinceId: out.province_id, postalCode: s.postalCode}, conn);
     out.is_inherited = s.isInherited ? 1 : 0;
     out.source_deed_id = clean(s.sourceDeedId);
     if (!out.first_name && clean(s.name)) {

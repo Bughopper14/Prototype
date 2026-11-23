@@ -5,7 +5,7 @@
  * crm_fap_doc_requirements, and returns the same shape. Only the first project row and the last three fiscal years are started; empty stays empty.
  */
 import {defaultFiscalYears, newFiscalYearRow} from '@/features/applications/lib/financial-statements';
-import {bankFields, blank, FAP_TERMS_COLUMNS, projectFields} from '@liugong/shared';
+import {bankFields, blank, extractStreetAddress, FAP_TERMS_COLUMNS, projectFields} from '@liugong/shared';
 
 /** Reads a number typed the Indonesian way ("1.500.000.000", "11,5", "11.5% Flat", "36 Bulan"). */
 export function parseMoney(val: any): number {
@@ -30,6 +30,11 @@ export function parseMoney(val: any): number {
 /** Fills the section 05/07/08 form state from what the API returned. */
 export function initDraftBase(a: any) {
   const base = structuredClone(a || {});
+  // the database keeps the FULL address of the company and of the contact person; the form shows and edits the street part (the full one is composed again when saved)
+  const street = (text: any, hints: any) => (text ? extractStreetAddress(String(text), hints) || text : text);
+  if (base.companyAddress) base.companyAddress = street(base.companyAddress, base);
+  if (base.customer?.companyAddress) base.customer.companyAddress = street(base.customer.companyAddress, base.customer);
+  if (base.pic?.currentAddress) base.pic.currentAddress = street(base.pic.currentAddress, base.pic);
   if (!base.projects || base.projects.length === 0) base.projects = [blank(projectFields)];
   if (!base.businessRole && base.business_role) base.businessRole = base.business_role;
   if (!base.industrySegment && base.industry_segment) base.industrySegment = base.industry_segment;

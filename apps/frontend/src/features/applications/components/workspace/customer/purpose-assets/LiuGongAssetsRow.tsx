@@ -1,4 +1,5 @@
 /** Table row: LiuGong heavy equipment and trucks. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {assetSummary} from '@/features/applications/lib/asset-summary';
 
@@ -18,6 +19,7 @@ export function LiuGongAssetsRow() {
         LiuGong
       </td>
       <td style={{padding: '4px'}}>
+        <RequiredStar field="assetSummaryHeLiuGong" section="Purpose of Financing & Fixed Assets" />
         <input
           type="number"
           min="0"
@@ -41,6 +43,7 @@ export function LiuGongAssetsRow() {
         />
       </td>
       <td style={{padding: '4px'}}>
+        <RequiredStar field="assetSummaryTruckLiuGong" section="Purpose of Financing & Fixed Assets" />
         <input
           type="number"
           min="0"
