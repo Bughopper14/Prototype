@@ -25,7 +25,7 @@ type Props = {
 };
 
 const stateOf = (steps: Step[]) =>
-  steps.some(s => s.status === 'REJECTED')
+  steps.some(s => s.status === 'REJECTED' || s.status === 'REOPENED')
     ? 'REJECTED'
     : steps.every(s => s.status === 'APPROVED')
       ? 'APPROVED'

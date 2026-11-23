@@ -147,6 +147,8 @@ export class ApplicationsController {
       .object({
         decision: z.enum(['APPROVED', 'REJECTED']),
         remarks: z.string().trim().max(10000).optional(),
+        /** Rejecting a group: the stages of the group to open again (all of them when left out). */
+        reopenStages: z.array(z.string().trim().min(1).max(50)).optional(),
       })
       .parse(req.body || {});
     return this.applications.decide(req.params.id, z.string().uuid().parse(req.params.stepId), req.actor, {...body, via: 'WEB'});

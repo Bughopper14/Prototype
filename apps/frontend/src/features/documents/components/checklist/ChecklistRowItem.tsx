@@ -119,7 +119,7 @@ export function ChecklistRowItem({
             {(row.check.approval.steps || []).length > 1 &&
               (row.check.approval.steps || []).map((st: any) => (
                 <small key={st.name} className="doc-approval-step" title={`Authority: ${st.authority}`}>
-                  {st.name}: {st.status === 'APPROVED' ? 'approved' : st.status === 'PENDING' ? 'waiting' : st.status === 'REJECTED' ? 'rejected' : st.status === 'WAITING' ? 'queued' : st.status === 'CANCELLED' ? 'closed' : '—'}
+                  {st.name}: {st.status === 'APPROVED' ? 'approved' : st.status === 'PENDING' ? 'waiting' : st.status === 'REJECTED' ? 'rejected' : st.status === 'REOPENED' ? 'opened again' : st.status === 'WAITING' ? 'queued' : st.status === 'CANCELLED' ? 'closed' : '—'}
                 </small>
               ))}
           </div>

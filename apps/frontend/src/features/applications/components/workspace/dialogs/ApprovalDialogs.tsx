@@ -56,11 +56,17 @@ export function ApprovalDecisionDialog() {
   const [gaps, setGaps] = useState<Gap[]>([]);
   const [kind, setKind] = useState<'APPROVED' | 'REJECTED'>('APPROVED');
   const [requesting, setRequesting] = useState(false);
+  // Rejecting a group: the approver picks which stages of the group open again (all of them to begin with)
+  const groupRound = (a.approval?.current || []).find((c: any) => c.scope === 'GROUP' && c.steps.some((s: any) => s.id === decision?.stepId));
+  const groupStages: any[] = groupRound ? (a.stageProgress || []).filter((s: any) => s.groupCode === groupRound.groupCode) : [];
+  const [reopen, setReopen] = useState<string[]>([]);
   useEffect(() => {
     if (decision) setKind(decision.kind);
+    setReopen(groupStages.map(s => s.stage));
   }, [decision?.stepId, decision?.kind]);
   if (!decision) return null;
   const reject = kind === 'REJECTED';
+  const pickStages = reject && groupStages.length > 0;
   const canRequestDocuments = hasAuthority(user, 'CRM_DOCUMENT_UPLOAD');
   const close = () => {
     setGaps([]);
@@ -79,7 +85,7 @@ export function ApprovalDecisionDialog() {
     setError('');
     setGaps([]);
     try {
-      onChange(await api(`/applications/${a.id}/approvals/${decision.stepId}/decision`, 'POST', {decision: kind, remarks: comments.trim() || undefined}));
+      onChange(await api(`/applications/${a.id}/approvals/${decision.stepId}/decision`, 'POST', {decision: kind, remarks: comments.trim() || undefined, ...(pickStages ? {reopenStages: reopen} : {})}));
       setDecision(null);
       notify(reject ? 'Rejected. The stage is open again for changes.' : 'Approved');
     } catch (e: any) {
@@ -108,6 +114,36 @@ export function ApprovalDecisionDialog() {
         ) : (
           <p>The next step (if there is one) is sent to the people who can approve it.</p>
         )}
+        {pickStages && (
+          <fieldset className={'ap-reopen' + (reopen.length === 0 ? ' invalid' : '')}>
+            <legend>
+              <b>Stages to open again</b>
+              <span className="ap-reopen-req">Required · at least 1</span>
+            </legend>
+            <p className="ap-reopen-help">
+              Ticked stages are unlocked with their documents and deeds, and ask for approval again from the first step. Saved data stays.
+            </p>
+            <div className="ap-reopen-count">
+              <span>
+                {reopen.length} of {groupStages.length} selected
+              </span>
+              <button type="button" onClick={() => setReopen(reopen.length === groupStages.length ? [] : groupStages.map((s: any) => s.stage))}>
+                {reopen.length === groupStages.length ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
+            {groupStages.map((s: any) => {
+              const on = reopen.includes(s.stage);
+              return (
+                <label key={s.stage} className={'ap-reopen-item' + (on ? ' on' : '')}>
+                  <input type="checkbox" checked={on} onChange={e => setReopen(r => (e.target.checked ? [...r, s.stage] : r.filter(c => c !== s.stage)))} />
+                  <span className="ap-reopen-name">{s.name}</span>
+                  <span className="ap-reopen-state">{on ? 'Opens again' : 'Stays approved'}</span>
+                </label>
+              );
+            })}
+            {reopen.length === 0 && <div className="ap-reopen-error">Choose at least one stage to open again.</div>}
+          </fieldset>
+        )}
         <label>
           {reject ? 'Reason (required)' : 'Notes (optional)'}
           <textarea rows={4} value={comments} onChange={e => setComments(e.target.value)} placeholder={reject ? 'What must be fixed?' : ''} />
@@ -129,7 +165,7 @@ export function ApprovalDecisionDialog() {
         <button className="button" onClick={close}>
           Cancel
         </button>
-        <button className={'button ' + (reject ? 'ap-reject-solid' : 'primary')} disabled={busy || (reject && !comments.trim())} onClick={confirm}>
+        <button className={'button ' + (reject ? 'ap-reject-solid' : 'primary')} disabled={busy || (reject && !comments.trim()) || (pickStages && reopen.length === 0)} onClick={confirm}>
           {busy ? <Loader2 size={15} className="spin" /> : reject ? <X size={15} /> : <Check size={15} />}
           {reject ? 'Reject' : 'Approve'}
         </button>

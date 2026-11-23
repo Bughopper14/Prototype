@@ -7,7 +7,7 @@ import {CRM} from '../../core/db/crm-tables';
 type Conn = Pick<PoolConnection, 'query' | 'execute'>;
 
 export type ApprovalScope = 'GROUP' | 'STAGE' | 'DOCUMENT' | 'SECTION';
-export type StepStatus = 'WAITING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type StepStatus = 'WAITING' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED' | 'REOPENED';
 
 /**
  * What a round of approval is about: a group, a stage, one document of the application, or a section. A section of a stage is approved

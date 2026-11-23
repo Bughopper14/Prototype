@@ -195,7 +195,7 @@ export class LegalRepository {
     for (const r of rows) {
       const counts = out.get(r.application_id) || {pending: 0, sentBack: 0};
       if (r.review_status === 'PENDING') counts.pending += Number(r.n);
-      if (r.review_status === 'NEEDS_REVISION') counts.sentBack += Number(r.n);
+      if (r.review_status === 'REJECTED') counts.sentBack += Number(r.n);
       out.set(r.application_id, counts);
     }
     return out;
@@ -421,7 +421,7 @@ export class LegalRepository {
       );
   }
 
-  /** Stores the review state produced by deedTransition (PENDING / APPROVED / NEEDS_REVISION). */
+  /** Stores the review state produced by deedTransition (PENDING / APPROVED / REJECTED). */
   async saveReview(conn: Conn, applicationId: string, deed: any, by: string | null) {
     const review = deed.review || {};
     const approved = review.status === 'APPROVED';
@@ -445,15 +445,6 @@ export class LegalRepository {
         by,
         by,
       ],
-    );
-  }
-
-  /** A deed that was approved or sent back and is changed again must be submitted again (NEEDS_REVISION). */
-  async markChanged(conn: Conn, applicationId: string, deedId: string, by: string | null) {
-    await conn.execute(
-      `UPDATE ${CRM.fapLegalDeedReviews} SET review_status='NEEDS_REVISION',updated_by=?
-       WHERE application_id=? AND deed_id=? AND review_status='APPROVED'`,
-      [by, applicationId, deedId],
     );
   }
 }

@@ -4,7 +4,7 @@
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {ApprovalSummary} from '@/features/applications/components/workspace/ApprovalSummary';
-import {HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
+import {groupRejectionOf, HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
 import {Check, ShieldCheck, X} from 'lucide-react';
 
 export function ApproverView() {
@@ -58,7 +58,7 @@ export function ApproverView() {
         <ScopeList scopes={ap.current} onDecide={decide} />
       </div>
 
-      <HistoryList history={ap.history} />
+      <HistoryList history={ap.history} groupReject={groupRejectionOf(ap)} />
     </section>
   );
 }

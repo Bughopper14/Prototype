@@ -1,4 +1,3 @@
-import {validateWrite} from '@liugong/shared';
 
 export const API_BASE = '/api/v1';
 const LOGIN_URL = '/login';
@@ -78,8 +77,6 @@ function readableErrors(errors: {field?: string; detail?: string}[]) {
 }
 
 export function api(path: string, method = 'GET', body?: unknown): Promise<any> {
-  validateWrite(path, method, body);
-
   if (method !== 'GET') {
     recentReads.clear();
     return request(path, method, body);

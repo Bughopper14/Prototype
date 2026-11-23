@@ -2,7 +2,7 @@ import {Module} from '@nestjs/common';
 import {APP_FILTER, APP_GUARD, APP_INTERCEPTOR} from '@nestjs/core';
 import {CrmDatabaseModule} from './core/db/crm-database';
 import {ApiResultInterceptor} from './core/http/api-result.interceptor';
-import {OriginGuard, SessionGuard, WriteValidationGuard} from './core/http/guards';
+import {OriginGuard, SessionGuard} from './core/http/guards';
 import {ProblemFilter} from './core/http/problem.filter';
 import {StorageModule} from './core/storage';
 import {ActivityModule} from './modules/activity/activity.module';
@@ -50,7 +50,6 @@ import {WorkflowsModule} from './modules/workflows/workflows.module';
   providers: [
     {provide: APP_GUARD, useClass: OriginGuard},
     {provide: APP_GUARD, useClass: SessionGuard},
-    {provide: APP_GUARD, useClass: WriteValidationGuard},
     {provide: APP_INTERCEPTOR, useClass: ApiResultInterceptor},
     {provide: APP_FILTER, useClass: ProblemFilter},
   ],

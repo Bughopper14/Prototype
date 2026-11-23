@@ -5,7 +5,6 @@ import {
   DEED_SECTION,
   deedTransition,
   mergeLegal,
-  reviewStatus,
   saveSingleDeed,
 } from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
@@ -29,19 +28,12 @@ export class LegalService {
 
   /**
    * Validates the incoming deeds against the stored ones (shared mergeLegal: a pending deed cannot change, dates in
-   * order) and stores them. A changed deed that was approved goes back to NEEDS_REVISION.
+   * order) and stores them. An approved deed is locked: it only changes after its stage or group is rejected.
    */
   private async store(id: string, previous: any, incoming: any, actor: Actor) {
     for (const d of incoming.deeds || []) if (!d.id) d.id = crypto.randomUUID();
     const merged = mergeLegal(previous, incoming);
-    await this.db.transaction(async conn => {
-      await this.legal.save(conn, id, merged, by(actor));
-      for (const d of merged.deeds) {
-        const before = (previous.deeds || []).find((x: any) => x.id === d.id);
-        if (before && reviewStatus(before) === 'APPROVED' && reviewStatus(d) === 'NEEDS_REVISION')
-          await this.legal.markChanged(conn, id, d.id, by(actor));
-      }
-    });
+    await this.db.transaction(conn => this.legal.save(conn, id, merged, by(actor)));
   }
 
   /** Whole legal tab (deeds and the stakeholders of the selected deed). */

@@ -1,14 +1,14 @@
 import {validateInput} from './input-validation';
 /**
  * Deed review states of crm_fap_legal_deed_reviews.review_status. DRAFT means the deed has no review row yet (never
- * submitted). NEEDS_REVISION covers both a rejected deed and a deed returned with remarks, and an approved deed that
- * was changed afterwards: it has to be submitted again.
+ * submitted). REJECTED covers a deed rejected by a level or returned with remarks, and a deed opened again by the rejection of its
+ * group: it is changed and submitted again. An APPROVED deed is locked.
  */
 export const deedReviewLabels: Record<string, string> = {
   DRAFT: 'Draft',
   PENDING: 'Pending Legal Approval',
   APPROVED: 'Approved',
-  NEEDS_REVISION: 'Needs revision',
+  REJECTED: 'Rejected',
 };
 /** The authority that edits deeds (managed in user management, stored in the DB). */
 /**
@@ -94,11 +94,12 @@ export function mergeLegal(previous: any, incoming: any) {
       'Akta sedang diperiksa. Tunggu hasil pemeriksaan sebelum mengubah data.',
       409,
     );
-    // A changed deed that was ever submitted must be submitted again; a deed never submitted stays a draft.
+    // An approved deed is locked: it is only opened again when its stage or group is rejected.
+    assert(!changed || reviewStatus(old) !== 'APPROVED', 'Akta sudah disetujui dan terkunci.', 409);
     const review = old.review || {status: 'DRAFT', revision: 1};
     return {
       ...data,
-      review: changed && reviewStatus(old) !== 'DRAFT' ? {...review, status: 'NEEDS_REVISION'} : review,
+      review,
       ...(old.approvedSnapshot ? {approvedSnapshot: old.approvedSnapshot, approvedAt: old.approvedAt} : {}),
     };
   });
@@ -121,8 +122,8 @@ export function mergeLegal(previous: any, incoming: any) {
   return {...incoming, deeds};
 }
 /**
- * One review action on a deed: SUBMIT (draft or needs revision → PENDING), APPROVE (PENDING → APPROVED, by someone
- * other than the submitter), REJECT or REMARKS (PENDING → NEEDS_REVISION, with the reason). Returns the deed with its
+ * One review action on a deed: SUBMIT (draft or rejected → PENDING), APPROVE (PENDING → APPROVED, by someone
+ * other than the submitter), REJECT or REMARKS (PENDING → REJECTED, with the reason). Returns the deed with its
  * new review; the caller stores it.
  */
 export function deedTransition(
@@ -145,7 +146,7 @@ export function deedTransition(
   const review: any = {...deed.review};
   if (action === 'SUBMIT') {
     assert(actorCan(actor, DEED_EDIT_AUTHORITY), 'Akun ini tidak memiliki hak untuk mengajukan akta.', 403);
-    assert(['DRAFT', 'NEEDS_REVISION'].includes(status), 'Akta sudah diajukan atau disetujui.', 409);
+    assert(['DRAFT', 'REJECTED'].includes(status), 'Akta sudah diajukan atau disetujui.', 409);
     for (const key of ['deedNumber', 'deedDate', 'ministerialDecreeNumber', 'ministerialDecreeDate'])
       assert(String(deed[key] || '').trim(), `${key} wajib diisi sebelum mengajukan akta.`);
     assert(['establishment', 'amendment'].includes(deed.type), 'Pilih jenis akta.');
@@ -182,7 +183,7 @@ export function deedTransition(
       403,
     );
     assert(comments, action === 'REJECT' ? 'Alasan penolakan wajib diisi.' : 'Remarks wajib diisi.');
-    Object.assign(review, {status: 'NEEDS_REVISION', notes: comments});
+    Object.assign(review, {status: 'REJECTED', notes: comments});
   } else throw new DeedWorkflowError('Aksi approval tidak valid.');
   return {
     ...deed,

@@ -327,8 +327,3 @@ export function validateInput(value: any, now = new Date(), requireCompleteOwner
   }
   walk(value, '');
 }
-export function validateWrite(path: string, method: string, body: any) {
-  // Open draft save policy: allow incomplete/draft saves to proceed as-is.
-  // Mandatory field verification and validations are strictly enforced on submit/stage progression.
-  return;
-}

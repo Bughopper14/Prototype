@@ -34,7 +34,7 @@ export function ReviewComments({
           </li>
           <li>
             <b>Remarks</b>: the deed is not wrong, but MKT must change or add something. It goes back to MKT
-            as "Needs correction" with your note, and MKT submits it again.
+            as "Rejected" with your note, and MKT submits it again.
           </li>
           <li>
             <b>Reject</b>: the deed is refused. It goes back to MKT as "Rejected" with your reason.

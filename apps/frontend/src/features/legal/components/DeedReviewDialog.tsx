@@ -64,7 +64,7 @@ export function DeedReviewDialog({
   // One deed, one approval: when the workflow has an approval for the deed section, the approval of that section decides (the ApprovalSlot on the Legal tab), so this old Submit / Approve / Reject / Remarks is not offered.
   const masterApproves = ((application.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
   const canSubmit =
-      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'NEEDS_REVISION'].includes(status),
+      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(status),
     canApprove = checkIsAdmin(user) && status === 'PENDING';
   useEffect(() => {
     let live = true;
@@ -149,6 +149,7 @@ export function DeedReviewDialog({
           <ReviewHistory deed={deed} />
         </div>
         <ReviewActions
+          status={status}
           canSubmit={canSubmit}
           canApprove={canApprove}
           legacyReview={!masterApproves}

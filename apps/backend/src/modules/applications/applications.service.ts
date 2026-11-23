@@ -213,7 +213,7 @@ export class ApplicationsService {
       const wanted = raw.templates.filter(t => t.scope === 'DOCUMENT' && !!d.documentCode && t.stageCode === d.stageCode && t.documentCode === d.documentCode);
       if (!wanted.length) return {...d, approval: null};
       const round = approval.current.find(c => c.scope === 'DOCUMENT' && c.checklistId === d.id);
-      const state = !round ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED') ? 'REJECTED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
+      const state = !round ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' || x.status === 'REOPENED') ? 'REJECTED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
       const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: round?.steps.find(x => x.code === t.code)?.status ?? 'NOT_REQUESTED'}));
       return {...d, approval: {steps, state, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED')}};
     });
@@ -277,7 +277,7 @@ export class ApplicationsService {
       stageProgress: cfg.stages.map(st => {
         const p = progress.find((x: any) => x.stage_code === st.code);
         const blocked = this.submitGate(cfg, progress, raw.templates, raw.steps, st);
-        return {stage: st.code, name: st.name, group: st.groupName, locked: !!p?.is_locked, submitted: !!p?.submitted_at, completed: !!p?.completed_at, canSubmit: blocked === null, blockedReason: blocked};
+        return {stage: st.code, name: st.name, group: st.groupName, groupCode: st.groupCode, locked: !!p?.is_locked, submitted: !!p?.submitted_at, completed: !!p?.completed_at, canSubmit: blocked === null, blockedReason: blocked};
       }),
       submitLock: {
         ocrComparison,
@@ -640,18 +640,21 @@ export class ApplicationsService {
    * A stage cannot be approved before its mandatory documents are done: every document the workflow marks mandatory in that stage must be
    * approved (when the workflow has an approval for that document) or at least uploaded (when it has none). Refuses with the list.
    */
+  private async assertGroupStagesDone(conn: any, id: string, step: AppStep, verb: 'disetujui' | 'ditolak') {
+    // A group is decided only after every stage in it is approved (a stage without approval is done once it is submitted).
+    if (step.scope !== 'GROUP' || !step.groupCode) return;
+    const [open] = await conn.query(
+      `SELECT s.name FROM ${CRM.frozenWorkflowStages} s
+       LEFT JOIN ${CRM.applicationStageProgress} p ON p.stage_code=s.code AND p.application_id=?
+       WHERE s.workflow_freeze_id=? AND s.group_code=? AND p.completed_at IS NULL`,
+      [id, step.workflowFreezeId, step.groupCode],
+    );
+    if ((open as any[]).length)
+      throw new Problem(422, `Group belum bisa ${verb}: stage berikut belum disetujui (${(open as any[]).map(r => r.name).join(', ')}).`);
+  }
+
   private async assertMandatoryDocumentsDone(conn: any, id: string, step: AppStep) {
-    // A group is approved only after every stage in it is approved (a stage without approval is done once it is submitted).
-    if (step.scope === 'GROUP' && step.groupCode) {
-      const [open] = await conn.query(
-        `SELECT s.name FROM ${CRM.frozenWorkflowStages} s
-         LEFT JOIN ${CRM.applicationStageProgress} p ON p.stage_code=s.code AND p.application_id=?
-         WHERE s.workflow_freeze_id=? AND s.group_code=? AND p.completed_at IS NULL`,
-        [id, step.workflowFreezeId, step.groupCode],
-      );
-      if ((open as any[]).length)
-        throw new Problem(422, `Group belum bisa disetujui: stage berikut belum disetujui (${(open as any[]).map(r => r.name).join(', ')}).`);
-    }
+    await this.assertGroupStagesDone(conn, id, step, 'disetujui');
     if (step.scope !== 'STAGE' || !step.stageCode) return;
     await this.assertMandatoryDocumentsVerified(conn, id, step.stageCode);
     // The rows of a repeating section with an approval in this stage (the deeds): every row that was submitted for approval must be approved
@@ -721,9 +724,9 @@ export class ApplicationsService {
   /**
    * The deed has ONE approval: the master approval round of its section. The review state the Legal tab and the rest of the CRM read
    * (crm_fap_legal_deed_reviews) follows that round: PENDING when it is asked, APPROVED when every level approved it (with the snapshot of the
-   * deed, as the old review kept), NEEDS_REVISION when a level rejected it.
+   * deed, as the old review kept), REJECTED when a level rejected it.
    */
-  private async syncDeedReview(conn: any, applicationId: string, deedId: string, status: 'PENDING' | 'APPROVED' | 'NEEDS_REVISION', actor: Actor, notes?: string | null) {
+  private async syncDeedReview(conn: any, applicationId: string, deedId: string, status: 'PENDING' | 'APPROVED' | 'REJECTED', actor: Actor, notes?: string | null) {
     let snapshot: string | null = null;
     if (status === 'APPROVED') {
       const detail: any = await this.detailOr404(applicationId);
@@ -792,19 +795,34 @@ export class ApplicationsService {
    * remarks and opens the failed stage / group again for a resubmit. The approval that would finish the whole application is
    * refused while data, documents or deeds are still missing.
    */
-  async decide(id: string, stepId: string, actor: Actor, input: {decision: 'APPROVED' | 'REJECTED'; remarks?: string | null; via?: 'WEB' | 'LARK'}) {
+  async decide(id: string, stepId: string, actor: Actor, input: {decision: 'APPROVED' | 'REJECTED'; remarks?: string | null; via?: 'WEB' | 'LARK'; reopenStages?: string[]}) {
     const app = await this.apps.get(id);
     ensure(app, 'Application not found', 404);
     const cfg = await this.config.load(app.workflow_freeze_id);
+    // Rejecting a group opens the stages the approver chose (all of the group when none were chosen) and what hangs under them.
+    const reopenOf = (step: AppStep) => {
+      const inGroup = cfg.stages.filter(s => s.groupCode === step.groupCode).map(s => s.code);
+      const chosen = input.reopenStages;
+      if (!chosen) return inGroup;
+      ensure(chosen.length > 0 && chosen.every(code => inGroup.includes(code)), 'Choose at least one stage of this group to open again.', 422);
+      return [...new Set(chosen)];
+    };
     const result = await this.approvals.decide(id, stepId, actor, input, {
       onRejected: async (conn, step) => {
         if (step.scope === 'SECTION' && step.sectionCode === DEED_SECTION && step.subjectId)
-          await this.syncDeedReview(conn, id, step.subjectId, 'NEEDS_REVISION', actor, String(input.remarks ?? '').trim() || null);
+          await this.syncDeedReview(conn, id, step.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
         if (step.scope === 'DOCUMENT' && step.checklistId) await this.documents.setStatus(conn, step.checklistId, 'REJECTED', by(actor));
-        const stageCodes = step.scope === 'STAGE' ? [step.stageCode!] : step.scope === 'GROUP' ? cfg.stages.filter(s => s.groupCode === step.groupCode).map(s => s.code) : [];
+        const stageCodes = step.scope === 'STAGE' ? [step.stageCode!] : step.scope === 'GROUP' ? reopenOf(step) : [];
         for (const stageCode of stageCodes) {
           await this.apps.saveStageProgress(conn, id, stageCode, {isLocked: false, clearSubmitted: true, clearCompleted: true}, actor);
           if (screenOfForm(cfg.stages.find(s => s.code === stageCode)?.formCode) === 'FAP') await this.apps.updateFap(conn, id, {is_fap_form_locked: 0}, by(actor));
+        }
+        if (step.scope === 'GROUP') {
+          // the stages come back with their documents and deeds: all of them must be asked for approval again, from the first step (the deeds' state follows their approval: see legal/deed-review.ts)
+          const under = await this.approvals.reopenUnder(conn, id, stageCodes, actor);
+          for (const checklistId of under.documents) await this.documents.setStatus(conn, checklistId, 'REJECTED', by(actor));
+          for (const row of under.rows)
+            if (row.sectionCode === DEED_SECTION) await this.syncDeedReview(conn, id, row.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
         }
       },
       onScopeApproved: async (conn, scope) => {
@@ -816,6 +834,11 @@ export class ApplicationsService {
       // the group / stage rules are checked BEFORE the approval marks stages as completed (otherwise a group approval completes its stages first and then finds nothing open)
       beforeApproved: async (conn, step) => {
         await this.assertMandatoryDocumentsDone(conn, id, step);
+      },
+      // a group cannot be rejected either while a stage under it is still not approved
+      beforeRejected: async (conn, step) => {
+        await this.assertGroupStagesDone(conn, id, step, 'ditolak');
+        if (step.scope === 'GROUP') reopenOf(step); // refuses an empty or foreign choice before anything is written
       },
       afterApproved: async conn => {
         await this.assertReadyIfFinished(conn, id, app);

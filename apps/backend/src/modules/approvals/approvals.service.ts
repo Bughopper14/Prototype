@@ -27,6 +27,7 @@ export type Hooks = {
   /** Inside the transaction, after an approval: may throw to refuse it (the final approval checks the data and documents here). */
   /** Runs before anything is written for an Approve: a rule that must hold BEFORE the approval changes the state of stages (it can refuse). */
   beforeApproved?: (conn: Conn, step: AppStep) => Promise<void>;
+  beforeRejected?: (conn: Conn, step: AppStep) => Promise<void>;
   afterApproved?: (conn: Conn, step: AppStep) => Promise<void>;
 };
 
@@ -70,7 +71,7 @@ export function stateOf(input: {
 }): ApprovalState {
   const latest = latestRounds(input.steps);
   const all = [...latest.values()].flat();
-  if (all.some(s => s.status === 'REJECTED')) return 'REJECTED';
+  if (all.some(s => s.status === 'REJECTED' || s.status === 'REOPENED')) return 'REJECTED';
   if (all.some(s => OPEN.includes(s.status))) return 'IN_APPROVAL';
   const required = new Set<string>();
   for (const t of input.templates) {
@@ -185,6 +186,7 @@ export class ApprovalsService {
       ensure(Number.isInteger(actor.portalUserId), 'The decision needs a signed-in user.', 401);
       ensure(!(await this.repo.hasDecided(conn, step.id, actor.portalUserId)), 'You already decided on this step.', 409);
       if (input.decision === 'APPROVED') await hooks.beforeApproved?.(conn, step);
+      else await hooks.beforeRejected?.(conn, step);
       await this.repo.insertDecision(conn, {code: `${step.code}-R${step.roundNo}-${toCode(actor.username || actor.portalUserId)}`.slice(0, 150), stepId: step.id, userId: actor.portalUserId, decision: input.decision, remarks: remarks || null, via: input.via ?? 'WEB'}, by(actor));
       const scope = scopeOf(step);
       const round = await this.repo.roundOf(conn, applicationId, scope, step.roundNo);
@@ -211,6 +213,29 @@ export class ApprovalsService {
       await hooks.afterApproved?.(conn, step);
     });
     return {step, nextPending, scopeApproved, rejected: input.decision === 'REJECTED'};
+  }
+
+  /**
+   * Reopens what hangs under stages that a group rejection opens again: the newest round of the stage and of each of its documents and rows (deeds)
+   * is no longer valid, so a step still open is cancelled and an approved one becomes REOPENED (not rejected: nobody rejected it, its group did; the
+   * resubmit then starts a new round from the first step, and the decisions already given stay as history). Returns the documents and the rows
+   * (deeds) that were affected.
+   */
+  async reopenUnder(conn: Conn, applicationId: string, stageCodes: string[], actor: Actor) {
+    const mine = (await this.repo.stepsOf(applicationId, conn)).filter(s => s.scope !== 'GROUP' && s.stageCode && stageCodes.includes(s.stageCode));
+    const documents: string[] = [];
+    const rows: {sectionCode: string; subjectId: string}[] = [];
+    for (const round of latestRounds(mine).values()) {
+      const open = round.filter(s => OPEN.includes(s.status));
+      const approved = round.filter(s => s.status === 'APPROVED');
+      if (!open.length && !approved.length) continue;
+      await this.repo.setStatus(conn, open.map(s => s.id), 'CANCELLED', by(actor));
+      await this.repo.setStatus(conn, approved.map(s => s.id), 'REOPENED', by(actor));
+      const head = round[0];
+      if (head.scope === 'DOCUMENT' && head.checklistId) documents.push(head.checklistId);
+      if (head.scope === 'SECTION' && head.sectionCode && head.subjectId) rows.push({sectionCode: head.sectionCode, subjectId: head.subjectId});
+    }
+    return {documents, rows};
   }
 
   /** Tells everyone holding the authority of each step that it waits for them (never fails the action). */

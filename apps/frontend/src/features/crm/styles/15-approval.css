@@ -136,3 +136,26 @@
 .ap-tl-step.waiting .ap-tl-who, .ap-tl-step.cancelled .ap-tl-who { color: #64748b; }
 .ap-pill.mine { background: #f59e0b; color: #fff; }
 .ap-tl-row .ap-actions { margin-top: 0; }
+
+/* ---- rejecting a group: which stages open again ---- */
+.ap-reopen { margin: 10px 0 4px; padding: 14px; border: 1.5px solid #cbd5e1; border-radius: 12px; background: #f8fafc; display: grid; gap: 8px; min-width: 0; }
+.ap-reopen.invalid { border-color: #dc2626; background: #fef2f2; }
+.ap-reopen legend { display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 14px; color: #0b1b3f; }
+.ap-reopen-req { padding: 2px 8px; border-radius: 999px; background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700; }
+.ap-reopen-help { margin: 0; font-size: 13px; line-height: 1.45; color: #64748b; }
+.ap-reopen-count { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 700; color: #475569; }
+.ap-reopen-count button { border: 0; background: none; color: #1d4ed8; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 2px 4px; }
+.ap-reopen.invalid .ap-reopen-count span { color: #991b1b; }
+.ap-reopen-item { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; min-height: 46px; padding: 8px 12px; margin: 0; border: 1.5px solid #cbd5e1; border-radius: 10px; background: #fff; text-align: left; cursor: pointer; }
+.ap-reopen-item input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: #dc2626; }
+.ap-reopen-item.on { border-color: #dc2626; background: #fff5f5; }
+.ap-reopen-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; color: #0b1b3f; overflow-wrap: anywhere; }
+.ap-reopen-state { flex: none; font-size: 12px; font-weight: 700; color: #16a34a; }
+.ap-reopen-item.on .ap-reopen-state { color: #b91c1c; }
+.ap-reopen-error { font-size: 13px; font-weight: 700; color: #b91c1c; }
+
+/* a step that was approved and then opened again by its group (not rejected by anybody) */
+.ap-step.reopened { border-left-color: #f59e0b; background: #fffbeb; }
+.ap-pill.reopened { background: #fef3c7; color: #b45309; }
+.ap-tl > li.reopened .ap-tl-dot { background: #fef3c7; border-color: #fbbf24; color: #b45309; }
+.ap-tl-step.reopened { border-color: #fcd34d; background: #fffbeb; }

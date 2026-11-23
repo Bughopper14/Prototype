@@ -1,9 +1,9 @@
 /** What the submitter view and the approver view share: the types of an approval, the layers of a step list and the list of what has to be approved. */
-import {Check, Clock, ExternalLink, History, X} from 'lucide-react';
+import {Check, Clock, ExternalLink, History, RotateCcw, X} from 'lucide-react';
 import {useOpenView} from './ApprovalSummary';
 import {useWorkspace} from './WorkspaceContext';
 
-export const STEP_LABEL: Record<string, string> = {WAITING: 'Waiting its turn', PENDING: 'Needs approval', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Closed'};
+export const STEP_LABEL: Record<string, string> = {WAITING: 'Waiting its turn', PENDING: 'Needs approval', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Closed', REOPENED: 'Opened again'};
 
 export type Step = {id: string; name: string; status: string; sortOrder: number; authorityName: string; canAct: boolean; decisions: {by: string; decision: string; remarks: string | null; decidedAt: string; via: string}[]};
 export type Scope = {scope: string; scopeName: string; roundNo: number; sectionCode?: string | null; subjectId?: string | null; checklistId?: string | null; stageCode?: string | null; groupCode?: string | null; documentCode?: string | null; steps: Step[]};
@@ -22,10 +22,10 @@ export function layersOf(steps: Step[]): Step[][] {
 
 const when = (v?: string | null) => (v ? new Date(v).toLocaleString('en-GB', {dateStyle: 'medium', timeStyle: 'short'}) : '');
 
-type LayerState = 'done' | 'now' | 'next' | 'rejected' | 'closed';
+type LayerState = 'done' | 'now' | 'next' | 'rejected' | 'reopened' | 'closed';
 
 const layerState = (l: Step[]): LayerState =>
-  l.some(s => s.status === 'REJECTED') ? 'rejected' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next';
+  l.some(s => s.status === 'REJECTED') ? 'rejected' : l.some(s => s.status === 'REOPENED') ? 'reopened' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next';
 
 /** Who approves a step, from the authority name ("CRM_FAP-FORM_BS_APPROVE" reads "FAP-FORM BS"); a step with no authority is the PIC Marketing level. */
 const whoOf = (s: Step) => (s.authorityName ? s.authorityName.replace(/^CRM_/i, '').replace(/_?(APPROVE|APPROVAL|APPROVER)$/i, '').replace(/_/g, ' ') : 'PIC Marketing');
@@ -91,7 +91,7 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
                 return (
                   <li key={li} className={state}>
                     <span className="ap-tl-dot" aria-hidden>
-                      {state === 'done' ? <Check size={16} /> : state === 'now' ? <Clock size={16} /> : state === 'rejected' ? <X size={16} /> : li + 1}
+                      {state === 'done' ? <Check size={16} /> : state === 'now' ? <Clock size={16} /> : state === 'rejected' ? <X size={16} /> : state === 'reopened' ? <RotateCcw size={16} /> : li + 1}
                     </span>
                     <div className="ap-tl-body">
                       <div className="ap-tl-level">
@@ -131,7 +131,23 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
 }
 
 /** The earlier rounds (after a reject the stage starts again with a new round). */
-export function HistoryList({history}: {history: Scope[]}) {
+/** A step that was approved and then marked rejected because its group was rejected and opened it again (no reject decision of its own). */
+export const reopenedStep = (s: Step) => s.status === 'REOPENED';
+
+/** The reject decision of the newest group that was rejected: the reason behind every step it opened again. */
+export function groupRejectionOf(ap: Approval) {
+  const rounds = [...ap.current, ...ap.history].filter(c => c.scope === 'GROUP').sort((x, y) => y.roundNo - x.roundNo);
+  for (const c of rounds) {
+    const decision = c.steps.flatMap(s => s.decisions).find(d => d.decision === 'REJECTED');
+    if (decision) return decision;
+  }
+  return null;
+}
+
+/** What a step that was opened again because of its group says in place of a reason of its own. */
+export const fromGroupText = (d: {remarks: string | null} | null) => `Rejected dari Group.${d?.remarks ? ` Remarks: ${d.remarks}` : ''}`;
+
+export function HistoryList({history, groupReject}: {history: Scope[]; groupReject?: {remarks: string | null} | null}) {
   if (!history.length) return null;
   const rejected = history.reduce((n, c) => n + c.steps.filter(s => s.status === 'REJECTED').length, 0);
   return (
@@ -154,6 +170,11 @@ export function HistoryList({history}: {history: Scope[]}) {
                   <span className={'ap-pill ' + s.status.toLowerCase()}>{STEP_LABEL[s.status] ?? s.status}</span>
                 </div>
                 <Decisions step={s} />
+                {reopenedStep(s) && (
+                  <p className="ap-decision">
+                    <X size={14} /> {fromGroupText(groupReject ?? null)}
+                  </p>
+                )}
               </li>
             ))}
           </ol>

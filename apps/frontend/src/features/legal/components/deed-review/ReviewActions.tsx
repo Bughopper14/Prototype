@@ -2,6 +2,7 @@
 import {AlertCircle, Check, FileText, Pencil, Send} from 'lucide-react';
 
 export function ReviewActions({
+  status,
   canSubmit,
   canApprove,
   legacyReview = true,
@@ -13,6 +14,7 @@ export function ReviewActions({
   onEdit,
   action,
 }: {
+  status: string;
   canSubmit: boolean;
   canApprove: boolean;
   /** False when the approval of the deed section in the workflow decides: the old submit / approve / reject / remarks are not drawn. */
@@ -68,7 +70,7 @@ export function ReviewActions({
         {legacyReview && canSubmit && (
           <button className="button primary" disabled={busy} onClick={() => action('SUBMIT')}>
             <Send size={14} />
-            {status === 'NEEDS_REVISION' ? 'Resubmit for Legal Approval' : 'Submit for Legal Approval'}
+            {status === 'REJECTED' ? 'Resubmit for Legal Approval' : 'Submit for Legal Approval'}
           </button>
         )}
         {legacyReview && canApprove && (

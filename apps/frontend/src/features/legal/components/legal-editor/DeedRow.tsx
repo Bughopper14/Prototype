@@ -47,8 +47,8 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
         : '0.00% · No data yet';
   const masterApproves = ((application?.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
   const reviewLabel =
-    hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'NEEDS_REVISION'].includes(reviewStatus(x))
-      ? reviewStatus(x) === 'NEEDS_REVISION'
+    hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
+      ? reviewStatus(x) === 'REJECTED'
         ? 'Resubmit Deed'
         : 'Submit Deed'
       : checkIsAdmin(user) && reviewStatus(x) === 'PENDING'
@@ -99,7 +99,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
         <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
           {deedStatusLabel(x)}
         </span>
-        {reviewStatus(x) === 'NEEDS_REVISION' && x.review?.notes && (
+        {reviewStatus(x) === 'REJECTED' && x.review?.notes && (
           <small className="text-red">{x.review.notes}</small>
         )}
         <small>{x.source === 'Sistem' ? 'Initial system data' : 'Legal Input'}</small>

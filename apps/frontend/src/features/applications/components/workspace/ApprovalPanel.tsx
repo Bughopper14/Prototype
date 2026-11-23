@@ -3,7 +3,7 @@
  * rejected. Deciding is done by somebody else, in the Approvals tab (ApproverView). It is a tab of its own so it never sits above the forms.
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {type Approval} from '@/features/applications/components/workspace/approval-shared';
+import {reopenedStep, type Approval} from '@/features/applications/components/workspace/approval-shared';
 import {api} from '@/shared/lib/api';
 import {Badge} from '@/shared/ui/Badge';
 import {date} from '@/shared/lib/format';
@@ -37,7 +37,20 @@ export function ApprovalPanel() {
   const ap = a.approval as Approval;
   const stages: {stage: string; name: string; group: string; submitted: boolean; completed: boolean; canSubmit: boolean; blockedReason: string | null}[] = a.stageProgress || [];
   const canSubmitRole = isAdminUser || (user?.authorities || []).includes('CRM_WORKFLOW_SUBMIT');
-  const rejected = ap.current.flatMap(c => c.steps.filter(s => s.status === 'REJECTED').map(s => ({scope: c.scopeName, step: s, decision: s.decisions.find(d => d.decision === 'REJECTED')})));
+  // Only what was rejected on its own is listed. What a rejected group opened again is not repeated one by one: the group card says how many.
+  const rejected = ap.current.flatMap(c => c.steps.filter(s => s.status === 'REJECTED').map(s => ({scope: c.scopeName, kind: c.scope, step: s, decision: s.decisions.find(d => d.decision === 'REJECTED')})));
+  const reopened = ap.current.filter(c => c.steps.some(reopenedStep));
+  const reopenedText = [
+    ['STAGE', 'stage', 'stages'],
+    ['DOCUMENT', 'document', 'documents'],
+    ['SECTION', 'deed', 'deeds'],
+  ]
+    .map(([kind, one, many]) => {
+      const n = reopened.filter(c => c.scope === kind).length;
+      return n ? `${n} ${n === 1 ? one : many}` : '';
+    })
+    .filter(Boolean)
+    .join(' · ');
   const submit = (code: string) => {
     setError('');
     setSubmitStageCode(code);
@@ -62,6 +75,16 @@ export function ApprovalPanel() {
               {r.scope}: “{r.step.name}” was rejected
             </b>
             <p>{r.decision?.remarks || 'No reason was written.'}</p>
+            {r.kind === 'GROUP' && reopenedText && (
+              <>
+                <p className="muted">Also opened again ({reopenedText}). Each one asks for approval again after you submit:</p>
+                <ul style={{margin: '4px 0 8px 18px', padding: 0}}>
+                  {[...new Set(reopened.map(c => c.scopeName))].map(name => (
+                    <li key={name}>{name}</li>
+                  ))}
+                </ul>
+              </>
+            )}
             <small>
               {r.decision?.by} · {r.decision?.decidedAt ? date(r.decision.decidedAt) : ''}
               {r.decision?.via === 'LARK' ? ' · from Lark' : ''}
