@@ -76,13 +76,13 @@ export function useLegalEditor({
       deeds.find(x => x.type === (value.selectedDeed || 'establishment'))?.id ||
       deeds[0]?.id,
     parties = editing?.parties || {};
+  // A deed and its stakeholders are one record: once the deed is approved (or being reviewed) nobody edits either of them, administrators included
+  // (the server refuses it too); they open again only when the stage or group is rejected.
   const locked = (d: any) =>
     disabled ||
-    (!checkIsAdmin(user) &&
-      (!hasAuthority(user, DEED_EDIT_AUTHORITY) ||
-        deedPending(d) ||
-        reviewStatus(d) === 'APPROVED' ||
-        application.workflowFlags?.lastStage));
+    deedPending(d) ||
+    reviewStatus(d) === 'APPROVED' ||
+    (!checkIsAdmin(user) && (!hasAuthority(user, DEED_EDIT_AUTHORITY) || application.workflowFlags?.lastStage));
   const [returnToReview, setReturnToReview] = useState<string | null>(null);
   useEffect(() => {
     if (!editRequest) return;

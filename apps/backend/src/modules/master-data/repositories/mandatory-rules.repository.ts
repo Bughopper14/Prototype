@@ -12,19 +12,33 @@ import {CRM} from '../../../core/db/crm-tables';
 export class MandatoryRulesRepository {
   constructor(private readonly db: CrmDatabase) {}
 
-  /** Rules of `workflowId`, or of the active workflow when omitted. */
+  /**
+   * Rules of `workflowId` (the frozen workflow an application runs in: its rules never change after it was frozen), or of the active
+   * workflow when omitted.
+   */
   async list(workflowId?: string) {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT sf.id,
-              s.code AS stage_code,
-              ff.form_code, fs.name AS section, ff.code, ff.field_key, ff.label, sf.is_mandatory AS mandatory
-       FROM ${CRM.workflowStageFields} sf
-       JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
-       JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
-       JOIN ${CRM.workflowStages} s ON s.workflow_code=sf.workflow_code AND s.code=sf.stage_code
-       JOIN ${CRM.workflowStageGroups} g ON g.workflow_code=s.workflow_code AND g.code=s.group_code
-       JOIN ${CRM.workflows} w ON w.code=sf.workflow_code AND ${workflowId ? 'w.id=?' : "w.is_active=1"}
-       ORDER BY g.sort_order,s.sort_order,ff.sort_order`,
+      workflowId
+        ? `SELECT sf.id,
+                  s.code AS stage_code,
+                  ff.form_code, fs.name AS section, ff.code, ff.field_key, ff.label, sf.is_mandatory AS mandatory
+           FROM ${CRM.frozenWorkflowStageFields} sf
+           JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
+           JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
+           JOIN ${CRM.frozenWorkflowStages} s ON s.workflow_freeze_id=sf.workflow_freeze_id AND s.code=sf.stage_code
+           JOIN ${CRM.frozenWorkflowStageGroups} g ON g.workflow_freeze_id=s.workflow_freeze_id AND g.code=s.group_code
+           WHERE sf.workflow_freeze_id=?
+           ORDER BY g.sort_order,s.sort_order,ff.sort_order`
+        : `SELECT sf.id,
+                  s.code AS stage_code,
+                  ff.form_code, fs.name AS section, ff.code, ff.field_key, ff.label, sf.is_mandatory AS mandatory
+           FROM ${CRM.workflowStageFields} sf
+           JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
+           JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
+           JOIN ${CRM.workflowStages} s ON s.workflow_code=sf.workflow_code AND s.code=sf.stage_code
+           JOIN ${CRM.workflowStageGroups} g ON g.workflow_code=s.workflow_code AND g.code=s.group_code
+           JOIN ${CRM.workflows} w ON w.code=sf.workflow_code AND w.is_active=1
+           ORDER BY g.sort_order,s.sort_order,ff.sort_order`,
       workflowId ? [workflowId] : [],
     );
     // the screen of the form names the stage for the forms (FAP / PRE-AN); another form keeps its stage code
