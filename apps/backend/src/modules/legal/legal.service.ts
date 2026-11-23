@@ -1,17 +1,16 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {
-  DEED_APPROVE_AUTHORITY,
   canEditLegal,
+  DEED_SECTION,
   deedTransition,
   mergeLegal,
-  reviewStatus,
   saveSingleDeed,
 } from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {ensure} from '../../core/domain';
 import {recordActivity} from '../activity/activity-log';
-import {notifyHolders, notifyUsers} from '../activity/notifications';
+import {notifyUsers} from '../activity/notifications';
 import type {Actor} from '../auth/session';
 import {ApplicationsService} from '../applications/applications.service';
 import {LegalRepository} from './legal.repository';
@@ -29,19 +28,12 @@ export class LegalService {
 
   /**
    * Validates the incoming deeds against the stored ones (shared mergeLegal: a pending deed cannot change, dates in
-   * order) and stores them. A changed deed that was approved goes back to NEEDS_REVISION.
+   * order) and stores them. An approved deed is locked: it only changes after its stage or group is rejected.
    */
   private async store(id: string, previous: any, incoming: any, actor: Actor) {
     for (const d of incoming.deeds || []) if (!d.id) d.id = crypto.randomUUID();
     const merged = mergeLegal(previous, incoming);
-    await this.db.transaction(async conn => {
-      await this.legal.save(conn, id, merged, by(actor));
-      for (const d of merged.deeds) {
-        const before = (previous.deeds || []).find((x: any) => x.id === d.id);
-        if (before && reviewStatus(before) === 'APPROVED' && reviewStatus(d) === 'NEEDS_REVISION')
-          await this.legal.markChanged(conn, id, d.id, by(actor));
-      }
-    });
+    await this.db.transaction(conn => this.legal.save(conn, id, merged, by(actor)));
   }
 
   /** Whole legal tab (deeds and the stakeholders of the selected deed). */
@@ -80,7 +72,7 @@ export class LegalService {
     return this.applications.detailOr404(id, actor);
   }
 
-  /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. */
+  /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. Stored in crm_fap_legal_deed_reviews. */
   async review(id: string, deedId: string, body: {action: string; revision: number; comments: string}, actor: Actor) {
     const a = await this.applications.detailOr404(id, actor);
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
@@ -107,17 +99,9 @@ export class LegalService {
       },
       actor,
     );
-    const where = `${a.fapNumber} · ${a.companyName || ''} · Akta ${deed.deedNumber}`;
-    if (body.action === 'SUBMIT')
-      await notifyHolders([DEED_APPROVE_AUTHORITY], actor, {
-        applicationId: id,
-        deedId,
-        type: 'DEED_REVIEW',
-        title: 'Akta menunggu approval',
-        message: `${where} diajukan oleh ${actor.name}.`,
-      });
+    const where = [a.companyName, `Akta ${deed.deedNumber}`].filter(Boolean).join(' · ');
     // The deed was reviewed: the user who submitted it acts next.
-    else if (deed.review?.submittedBy)
+    if (body.action !== 'SUBMIT' && deed.review?.submittedBy)
       await notifyUsers([deed.review.submittedBy], actor, {
         applicationId: id,
         deedId,

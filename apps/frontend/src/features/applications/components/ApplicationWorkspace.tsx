@@ -4,15 +4,14 @@ import {DocumentChecklistTab} from '@/features/documents/components/checklist/Do
 import {FapArchiveModal} from '@/features/fap/components/FapArchiveModal';
 import {FapComparisonModal} from '@/features/fap/components/FapComparisonModal';
 import {DeedReviewDialog} from '@/features/legal/components/DeedReviewDialog';
-import {date} from '@/shared/lib/format';
-import {ArrowLeft, CheckCheck, ShieldCheck} from 'lucide-react';
+import {ArrowLeft, ShieldCheck} from 'lucide-react';
 
 import {FormBottomActions} from '@/features/applications/components/workspace/FormBottomActions';
-import {StageActionsBar} from '@/features/applications/components/workspace/StageActionsBar';
+import {ApprovalPanel} from '@/features/applications/components/workspace/ApprovalPanel';
+import {ApproverView} from '@/features/applications/components/workspace/ApproverView';
 import {WorkspaceContext} from '@/features/applications/components/workspace/WorkspaceContext';
 import {SaveLegalConfirmDialog} from '@/features/applications/components/workspace/dialogs/SaveLegalConfirmDialog';
-import {StageTransitionDialog} from '@/features/applications/components/workspace/dialogs/StageTransitionDialog';
-import {SubmitFapConfirmDialog} from '@/features/applications/components/workspace/dialogs/SubmitFapConfirmDialog';
+import {ApprovalDecisionDialog, SubmitStageDialog} from '@/features/applications/components/workspace/dialogs/ApprovalDialogs';
 import {ChevronStepper} from '@/features/applications/components/workspace/header/ChevronStepper';
 import {DetailHeading} from '@/features/applications/components/workspace/header/DetailHeading';
 import {DetailSummary} from '@/features/applications/components/workspace/header/DetailSummary';
@@ -128,6 +127,8 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             isFapLocked={isFapLocked}
           />
         )}
+        {tab === 11 && <ApprovalPanel />}
+        {tab === 10 && <ApproverView />}
         {tab === 9 && (
           <DocumentChecklistTab
             application={a}
@@ -146,27 +147,11 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
               onMarkRead={handleMarkAppActivityRead}
               onMarkAllRead={handleMarkAllAppActivitiesRead}
               title="Recent System Activity"
-              subtitle={`Live record of application changes, form submissions, and section updates for ${a.fapNumber || liveCompanyName || 'this application'}.`}
+              subtitle={`Live record of application changes, form submissions, and section updates for ${liveCompanyName || 'this application'}.`}
               emptyMessage="No activity history for this application yet"
             />
-            {a.signoffs && a.signoffs.length > 0 && (
-              <section className="panel" style={{padding: '16px 20px', borderRadius: 10}}>
-                <h4 style={{margin: '0 0 10px', fontSize: 14, fontWeight: 700, color: '#0f172a'}}>
-                  Signoff Records
-                </h4>
-                <div className="signoffs">
-                  {a.signoffs.map((s: any, i: number) => (
-                    <div key={`${s.role}-${s.signed_at}-${i}`}>
-                      <CheckCheck size={16} />
-                      {s.role} signed off by {s.actor} · {date(s.signed_at)}
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
           </div>
         )}
-        <StageActionsBar />
         {reviewDeedId && (
           <DeedReviewDialog
             application={a}
@@ -182,8 +167,8 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           />
         )}
         <SaveLegalConfirmDialog />
-        <SubmitFapConfirmDialog />
-        <StageTransitionDialog />
+        <ApprovalDecisionDialog />
+        <SubmitStageDialog />
         <NibOcrModal
           open={nibOcrOpen}
           onClose={() => setNibOcrOpen(false)}

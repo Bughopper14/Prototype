@@ -35,7 +35,7 @@ export function PageHeading({
         <h1>{TITLES[page] || page}</h1>
         <p>{DESCRIPTIONS[page]?.(firstName)}</p>
       </div>
-      {newApplicationButton && hasAuthority(user, 'crm_create_application') && (
+      {newApplicationButton && hasAuthority(user, 'CRM_APPLICATION_CREATE') && (
         <button className="button primary" onClick={() => startNewApplication()}>
           <Plus size={17} />
           New application

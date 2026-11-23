@@ -86,7 +86,6 @@ export function useApplicationWorkspace({
   const isPreAnalysis = isPreAnalysisApplication(a);
   const resolvedInitialTab = initialTab === 0 && isPreAnalysis ? 8 : (initialTab ?? 0);
   const [activeStage, setActiveStage] = useState<string>(() => initialStage(a));
-  const [submitFapConfirm, setSubmitFapConfirm] = useState(false);
   const [reviewDeedId, setReviewDeedId] = useState<string | null>(null);
   // "Edit" asked from the review dialog: the Legal editor opens that deed (or its stakeholder list)
   const [editRequest, setEditRequest] = useState<{id: string; what: 'deed' | 'stakeholders'} | null>(null);
@@ -96,7 +95,8 @@ export function useApplicationWorkspace({
     [draft, setDraft] = useState<any>(() => initDraftBase(a)),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(''),
-    [transition, setTransition] = useState(''),
+    [decision, setDecision] = useState<{stepId: string; step: string; kind: 'APPROVED' | 'REJECTED'} | null>(null),
+    [submitStageCode, setSubmitStageCode] = useState<string | null>(null),
     [comments, setComments] = useState(''),
     [saveConfirm, setSaveConfirm] = useState(false),
     [sideBySide, setSideBySide] = useState(true);
@@ -291,11 +291,7 @@ export function useApplicationWorkspace({
     onChange,
     notify,
     setBusy,
-    setError,
     setDraft,
-    setActiveStage,
-    setTab,
-    setSubmitFapConfirm,
     setFapComparisonModal,
   });
 
@@ -350,8 +346,6 @@ export function useApplicationWorkspace({
     resolvedInitialTab,
     activeStage,
     setActiveStage,
-    submitFapConfirm,
-    setSubmitFapConfirm,
     reviewDeedId,
     setReviewDeedId,
     editRequest,
@@ -366,8 +360,10 @@ export function useApplicationWorkspace({
     setBusy,
     error,
     setError,
-    transition,
-    setTransition,
+    decision,
+    setDecision,
+    submitStageCode,
+    setSubmitStageCode,
     comments,
     setComments,
     saveConfirm,
@@ -413,7 +409,6 @@ export function useApplicationWorkspace({
     liveNibDate,
     liveDetailFapData,
     ...access,
-    submitFapStage: approval.submitFapStage,
     localActivities,
     setLocalActivities,
     localReadIds,

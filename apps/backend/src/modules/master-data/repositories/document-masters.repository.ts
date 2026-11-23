@@ -4,16 +4,12 @@ import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
 import {toCode} from '../../../core/domain/code';
-import {DocumentsRepository} from '../../documents/documents.repository';
 
 /** Document types for the checklist (a catalog; which stage lists which document is set in Workflow setup). */
 @Injectable()
 export class DocumentMastersRepository {
   static readonly groups = ['documents'];
-  constructor(
-    private readonly db: CrmDatabase,
-    private readonly checklists: DocumentsRepository,
-  ) {}
+  constructor(private readonly db: CrmDatabase) {}
 
   async catalog(catalog: MasterCatalog): Promise<MasterCatalog> {
     const [rows] = await this.db.pool.query<any[]>(

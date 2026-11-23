@@ -1,4 +1,5 @@
 /** What the current user may see and do in the workspace: tabs, edit rights, workflow buttons and lock state. */
+import {screenOfForm} from '@liugong/shared';
 import {useEffect} from 'react';
 import {isPreAnalysisReached} from '@/features/applications/lib/workspace/stage';
 import {
@@ -36,21 +37,31 @@ export function useWorkspaceAccess({
   const currentAppStage =
     realStage && stageCodes.indexOf(realStage) > stageCodes.indexOf(viewStage) ? realStage : viewStage;
 
-  const stageOrder = stageTabOrder(activeStage);
-  const tabOrder = stageOrder.filter(id => hasAuthority(user, TAB_VIEW_AUTHORITY[id]));
+  // The FAP form tabs (FAP Form, Legal, Stakeholders) belong to the FAP-FORM stage: a workflow without that form does not show them.
+  const workflowStagesOfApp: {formCode?: string | null}[] = a?.workflow?.stages || [];
+  const usesFapForm = !workflowStagesOfApp.length || workflowStagesOfApp.some(s => screenOfForm(s.formCode) === 'FAP');
+  const stageOrder = stageTabOrder(activeStage).filter(id => usesFapForm || ![0, 1, 5].includes(id));
+  // The Approvals tab (10) is for the people who approve: administrators, and whoever holds the authority of a step of this application's approval
+  // rounds (open or finished). The backend decides it (`approval.involved`); someone who may only view the application does not get the tab.
+  const takesPartInApproval = Boolean(a.approval?.involved);
+  const tabOrder = stageOrder.filter(id => hasAuthority(user, TAB_VIEW_AUTHORITY[id]) && (id !== 10 || takesPartInApproval));
   useEffect(() => {
     if (tabOrder.length && !tabOrder.includes(tab)) setTab(tabOrder[0]);
   }, [tabOrder.join(','), tab]);
 
   const isAdminUser = checkIsAdmin(user);
-  // FAP Stage is fully editable at all times per specification
+  // isFapLocked belongs to the signed FAP document (its upload); the lock of the form itself is fapFormLocked below
   const isFapLocked = false;
   // What the user may edit comes from the authorities of their DB role (administrators have all)
-  const canLegal = hasAuthority(user, 'crm_edit_app_legal');
-  const canEditCustomerPic = hasAuthority(user, 'crm_edit_app_customer_pic');
-  const canEdit = hasAuthority(user, 'crm_edit_app_business_banks');
+  const canLegal = hasAuthority(user, 'CRM_LEGAL_EDIT');
+  // Submitting the stage that shows the FAP form locks the form (profile, contact person and sections 05-08); a rejection of the stage opens it again.
+  // The financial statements keep their own rule (editable until the application is approved).
+  const fapFormLocked = Boolean(a?.fapFormLocked);
+  const canEditCustomerPic = hasAuthority(user, 'CRM_CUSTOMER-PIC_EDIT') && !fapFormLocked;
+  const canEdit = hasAuthority(user, 'CRM_BUSINESS-BANK_EDIT') && !fapFormLocked;
   const canFinance =
-    hasAuthority(user, 'crm_edit_app_financial') || hasAuthority(user, 'crm_edit_app_financing_units');
+    hasAuthority(user, 'CRM_FINANCIAL_EDIT') || hasAuthority(user, 'CRM_FINANCING-UNIT_EDIT');
+  const canProposal = canFinance && !fapFormLocked;
 
   return {
     isFapStage,
@@ -66,6 +77,7 @@ export function useWorkspaceAccess({
     canEditCustomerPic,
     canEdit,
     canFinance,
-    actions: (a.availableActions || []) as string[],
+    canProposal,
+    fapFormLocked,
   };
 }

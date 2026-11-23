@@ -185,7 +185,7 @@ export function CustomerDirectory({
             onClick={() => {
               const a = rows.find(r => r.business_partner_id === c.id);
               if (a) open(a.id);
-              else if (hasAuthority(user, 'crm_create_application')) startNewApplication?.(c.id);
+              else if (hasAuthority(user, 'CRM_APPLICATION_CREATE')) startNewApplication?.(c.id);
               else notify('This customer has no applications yet. Use New application to create one.');
             }}
           >

@@ -38,8 +38,10 @@ export function UserManagement({currentUserId, fullName}: {currentUserId: number
       setError(null);
       setDialog(null);
       await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
+    } catch (e: any) {
+      const msg = e instanceof Error ? e.message : String(e || 'Failed');
+      setError(msg);
+      alert(msg);
     }
   }
 

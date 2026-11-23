@@ -1,14 +1,16 @@
 /** One deed row: type and review status, dates, validity, decree, remark categories, stakeholders and actions. */
 import {deedNames} from '@/features/legal/components/DeedViews';
+import {ApprovalSlot} from '@/features/applications/components/workspace/ApprovalSlot';
 import {useLegalEditorContext} from '@/features/legal/components/legal-editor/LegalEditorContext';
-import {hasAuthority} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {date, deedValidity} from '@/shared/lib/format';
-import {deedStatusLabel, DEED_APPROVE_AUTHORITY, DEED_EDIT_AUTHORITY, reviewStatus} from '@liugong/shared';
+import {deedStatusLabel, DEED_EDIT_AUTHORITY, DEED_SECTION, reviewStatus} from '@liugong/shared';
 import {MoreHorizontal} from 'lucide-react';
 
 export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
   const {
     user,
+    application,
     value,
     onChange,
     onReview,
@@ -43,10 +45,40 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
       : total > 0
         ? `✓ ${total.toFixed(2)}%`
         : '0.00% · No data yet';
+  const masterApproves = ((application?.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
+  const reviewLabel =
+    hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
+      ? reviewStatus(x) === 'REJECTED'
+        ? 'Resubmit Deed'
+        : 'Submit Deed'
+      : checkIsAdmin(user) && reviewStatus(x) === 'PENDING'
+        ? 'Review Deed'
+        : 'View Review';
   const val = deedValidity(x.deedDate);
   const isPrimaryEst = primaryEstablishmentDeed?.id === x.id;
   const isLatestAmend = latestAmendmentDeed?.id === x.id;
   const typeLabel = x.type === 'amendment' && isLatestAmend ? 'Latest Amendment Deed' : deedNames[x.type];
+  // Edit / Delete menu: only for someone who can change the deed. Beside the approval status when the deed has an approval, else in the button row.
+  const menuButton = (
+      <button
+        className="button small legal-kebab"
+        aria-label={`Deed action ${x.deedNumber || 'no number'}`}
+        aria-haspopup="menu"
+        aria-expanded={actionMenu?.id === x.id}
+        onClick={e => {
+          e.stopPropagation();
+          const rect = e.currentTarget.getBoundingClientRect();
+          setActionMenu({
+            id: x.id,
+            left: Math.max(8, Math.min(rect.right - 180, window.innerWidth - 188)),
+            top: Math.min(rect.bottom + 5, window.innerHeight - 110),
+          });
+        }}
+      >
+        <MoreHorizontal size={17} />
+      </button>
+  );
+
   return (
     <tr className={selectedId === x.id ? 'selected' : ''} aria-selected={selectedId === x.id}>
       <td data-label="Deed">
@@ -67,7 +99,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
         <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
           {deedStatusLabel(x)}
         </span>
-        {reviewStatus(x) === 'NEEDS_REVISION' && x.review?.notes && (
+        {reviewStatus(x) === 'REJECTED' && x.review?.notes && (
           <small className="text-red">{x.review.notes}</small>
         )}
         <small>{x.source === 'Sistem' ? 'Initial system data' : 'Legal Input'}</small>
@@ -143,43 +175,22 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
       </td>
       <td className="legal-row-action">
         <div className="legal-row-buttons">
-          <button
-            className="button primary small deed-review-action"
-            onClick={e => {
-              e.stopPropagation();
-              onReview(x.id);
-            }}
-          >
-            {hasAuthority(user, DEED_EDIT_AUTHORITY) &&
-            ['DRAFT', 'NEEDS_REVISION'].includes(reviewStatus(x))
-              ? reviewStatus(x) === 'NEEDS_REVISION'
-                ? 'Resubmit Deed'
-                : 'Submit Deed'
-              : hasAuthority(user, DEED_APPROVE_AUTHORITY) && reviewStatus(x) === 'PENDING'
-                ? 'Review Deed'
-                : 'View Review'}
-          </button>
-          {/* Edit/Delete only exist for someone who can change the deed; a reader uses the review button. */}
-          {!rowLocked && (
+          {/* One deed, one approval: when the workflow has an approval for the deed section, the slot below is the approval, so the old Submit / Review buttons are not drawn (only the read-only review stays). */}
+          {(!masterApproves || reviewLabel === 'View Review') && (
             <button
-              className="button small legal-kebab"
-              aria-label={`Deed action ${x.deedNumber || 'no number'}`}
-              aria-haspopup="menu"
-              aria-expanded={actionMenu?.id === x.id}
+              className="button primary small deed-review-action"
               onClick={e => {
                 e.stopPropagation();
-                const rect = e.currentTarget.getBoundingClientRect();
-                setActionMenu({
-                  id: x.id,
-                  left: Math.max(8, Math.min(rect.right - 180, window.innerWidth - 188)),
-                  top: Math.min(rect.bottom + 5, window.innerHeight - 110),
-                });
+                onReview(x.id);
               }}
             >
-              <MoreHorizontal size={17} />
+              {reviewLabel}
             </button>
           )}
+          {!rowLocked && !masterApproves && menuButton}
         </div>
+        {/* The approval of this deed in the workflow, on its own line (nothing is drawn when the workflow has none for the deed section). */}
+        <ApprovalSlot scope="SECTION" code={DEED_SECTION} subjectId={x.id} trailing={!rowLocked && masterApproves ? menuButton : undefined} />
       </td>
     </tr>
   );

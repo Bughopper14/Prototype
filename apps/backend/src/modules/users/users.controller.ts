@@ -1,6 +1,5 @@
 import {Controller, Delete, Get, Post, Put, Res, UseGuards, UseInterceptors} from '@nestjs/common';
 import {ClearSessionCacheInterceptor, ManageSystemGuard} from './manage-system';
-import {AUTHORITY_NAMES} from '@liugong/shared';
 import {z} from 'zod';
 import {exec, many, one, tx} from '../../core/db/query';
 import {USER_TABLES} from '../../core/db/user-tables';
@@ -387,16 +386,12 @@ export class UsersController {
     const b = z
       .object({
         app_id: z.coerce.number().int(),
-        authority_name: z.string().trim().min(1),
+        authority_name: z.string().trim().min(1).max(100),
         description: z.string().default(''),
       })
       .parse(req.body);
-    // An authority only does something when the code checks its exact name, so only known names may be created.
-    ensure(
-      AUTHORITY_NAMES.has(b.authority_name),
-      `Authority '${b.authority_name}' tidak dikenal oleh aplikasi. Pilih dari daftar.`,
-      422,
-    );
+    // An authority is free text: any name may be created. What it does is decided by whatever checks that name (the code of an application,
+    // or the approval steps of a workflow, which keep the name as data).
     ensure(
       !(await one(`SELECT 1 AS x FROM ${USER_TABLES.authorities} WHERE app_id = ? AND authority_name = ?`, [
         b.app_id,

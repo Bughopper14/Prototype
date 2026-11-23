@@ -1,4 +1,6 @@
-/** Workflow setup API (administrators). The definition is edited as one object and saved whole (a draft no application uses). */
+import type {ApplicationsPage} from '@/shared/ui/ApplicationsDialog';
+import type {TimelineVersion} from '@/shared/ui/VersionTimeline';
+/** Workflow setup API (administrators). The definition is edited as one object and saved whole (every save makes a new frozen copy). */
 import {api} from '@/shared/lib/api';
 
 /** Items refer to each other by `key`; for a saved item the key is its code, for a new one the page makes a temporary key. */
@@ -6,39 +8,66 @@ export type Group = {key: string; code?: string | null; name: string; order: num
 export type Stage = {key: string; code?: string | null; groupKey: string; name: string; departmentCode?: string | null; order: number; formCode?: string | null};
 export type FieldRule = {stageKey: string; formCode: string; section: string; code: string; mandatory: boolean};
 export type DocRule = {stageKey: string; documentCode: string; isDefault: boolean; isMandatory: boolean};
+/**
+ * The approval of a place: the code of a master approval (made in Master approval). GROUP needs groupKey, STAGE needs stageKey, SECTION
+ * needs stageKey and sectionCode, DOCUMENT needs stageKey and documentCode. A place has one approval; many places may use the same one.
+ */
+export type ApprovalAssignment = {
+  scope: 'GROUP' | 'STAGE' | 'SECTION' | 'DOCUMENT';
+  groupKey?: string | null;
+  stageKey?: string | null;
+  sectionCode?: string | null;
+  documentCode?: string | null;
+  approvalCode: string;
+};
+/** A master approval: levels run in ascending levelNo; the same levelNo is approved at the same time. A level names an authority of User Management. */
+export type MasterApproval = {
+  code: string;
+  name: string;
+  /** Applications running on a workflow freeze that uses this approval. */
+  applications?: number;
+  description?: string | null;
+  usedIn?: number;
+  /** A level whose approver is the PIC Marketing of the application has isPicMarketing and no authority. */
+  levels: {levelNo: number; authorityName: string; isPicMarketing?: boolean}[];
+};
 export type Definition = {
   groups: Group[];
   stages: Stage[];
   fields: FieldRule[];
   documents: DocRule[];
+  approvals: ApprovalAssignment[];
 };
-export type WorkflowStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE';
 export type WorkflowHeader = {
   id: string;
   code: string;
   name: string;
   description: string | null;
-  versionNo: number;
-  status: WorkflowStatus;
+  /** The one workflow new applications start in (its newest freeze). */
   isActive: boolean;
-  /** Only a draft that no application uses can be edited. */
-  editable: boolean;
-  activatedAt: string | null;
-  activatedBy: string | null;
+  /** The number and time of the newest freeze (every create or edit makes a new one). */
+  freezeVersion: number | null;
+  frozenAt: string | null;
   applications?: number;
   /** Groups in running order with their stages (list only). Same order = run together. */
   flow?: {name: string; order: number; stages: {name: string; order: number}[]}[];
 };
-export type CatalogField = {formCode: string; section: string; code: string; label: string; enforceable: boolean};
+export type CatalogField = {formCode: string; section: string; sectionCode?: string; code: string; label: string; enforceable: boolean};
 export type Catalog = {
   formFields: CatalogField[];
-  forms: {code: string; name: string}[];
-  documents: {code: string; name: string}[];
+  /** isApproval = the place may have an approval (the flag in the masters: the registry). */
+  forms: {code: string; name: string; isApproval: boolean}[];
+  sections: {formCode: string; code: string; name: string; isApproval: boolean; isRepeating: boolean}[];
+  documents: {code: string; name: string; isApproval: boolean}[];
   departments: {code: string; name: string}[];
+  approvals: MasterApproval[];
 };
 export type Issue = {level: 'error' | 'warning'; message: string};
 
-export const emptyDefinition = (): Definition => ({groups: [], stages: [], fields: [], documents: []});
+/** What a level row is called on screen. */
+export const approverLabel = (l: {authorityName: string; isPicMarketing?: boolean}) => (l.isPicMarketing ? 'PIC Marketing' : l.authorityName);
+
+export const emptyDefinition = (): Definition => ({groups: [], stages: [], fields: [], documents: [], approvals: []});
 
 export const workflowApi = {
   list: (): Promise<WorkflowHeader[]> => api('/workflows'),
@@ -48,8 +77,44 @@ export const workflowApi = {
   rename: (id: string, body: {name?: string; description?: string | null}) => api(`/workflows/${id}`, 'PUT', body),
   saveDefinition: (id: string, definition: Definition) => api(`/workflows/${id}/definition`, 'PUT', definition),
   validate: (id: string): Promise<{ok: boolean; issues: Issue[]}> => api(`/workflows/${id}/validate`, 'POST', {}),
-  activate: (id: string, note?: string) => api(`/workflows/${id}/activate`, 'POST', {note}),
-  deactivate: (id: string, note?: string) => api(`/workflows/${id}/deactivate`, 'POST', {note}),
-  history: (id: string): Promise<{action: string; actor: string; note: string | null; at: string; previous: string | null}[]> =>
-    api(`/workflows/${id}/history`),
+  activate: (id: string) => api(`/workflows/${id}/activate`, 'POST', {}),
+  deactivate: (id: string) => api(`/workflows/${id}/deactivate`, 'POST', {}),
+  /** Deletes the workflow; its frozen copies stay. */
+  remove: (id: string): Promise<{removed: string}> => api(`/workflows/${id}`, 'DELETE'),
+  /** The frozen copies of a workflow, newest first. */
+  history: (id: string): Promise<WorkflowHistoryRow[]> => api(`/workflows/${id}/history`),
+  /** The log of one workflow, or (no id) of all workflows including the deleted ones. */
+  activity: (id?: string): Promise<WorkflowLogRow[]> => api(id ? `/workflows/${id}/activity` : '/workflows/activity'),
+  /** The applications running on one version (paged, searchable). */
+  versionApplications: (id: string, freezeId: string, q: string, page: number): Promise<ApplicationsPage> =>
+    api(`/workflows/${id}/history/${freezeId}/applications?q=${encodeURIComponent(q)}&page=${page}`),
+  /** What one frozen copy contained (read only). */
+  version: (id: string, freezeId: string): Promise<WorkflowVersion> => api(`/workflows/${id}/history/${freezeId}`),
 };
+
+export interface WorkflowVersion {
+  freeze: {id: string; freezeVersion: number; at: string; by: string | null; name: string; isLatest: boolean};
+  groups: {code: string; name: string; order: number}[];
+  stages: {code: string; groupCode: string; name: string; departmentCode: string | null; formCode: string | null; order: number}[];
+  fields: {stageCode: string; formCode: string; section: string; code: string; label: string; mandatory: boolean}[];
+  documents: {stageCode: string; code: string; name: string; isDefault: boolean; isMandatory: boolean}[];
+  previous: {id: string; freezeVersion: number} | null;
+  /** What changed against the version before it (null for the first version). */
+  changes: {kind: 'added' | 'removed' | 'changed'; area: string; label: string; detail?: string}[] | null;
+  approvals: {scope: string; groupCode: string | null; stageCode: string | null; sectionCode: string | null; documentCode: string | null; approvalCode: string; approvalName: string; approvalVersion: number | null; levels: string; levelList: {levelNo: number; authorityName: string; isPicMarketing: boolean}[]}[];
+}
+
+export interface WorkflowHistoryRow extends TimelineVersion {
+  name: string;
+  counts: {groups: number; stages: number; fields: number; documents: number; approvals: number};
+}
+
+export interface WorkflowLogRow {
+  code: string;
+  name: string | null;
+  action: 'CREATE' | 'EDIT' | 'RENAME' | 'ACTIVATE' | 'DEACTIVATE' | 'DELETE';
+  summary: string;
+  version: number | null;
+  by: string | null;
+  at: string;
+}

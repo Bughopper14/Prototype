@@ -214,7 +214,8 @@ export const FAP_STYLES_03 = `	text-align:left;
 	border-top:.5pt solid windowtext;
 	border-right:none;
 	border-bottom:.5pt solid windowtext;
-	border-left:1.0pt solid windowtext;}
+	border-left:1.0pt solid windowtext;
+	padding-left:10px !important;}
 .xl161
 	{mso-style-parent:style0;
 	font-size:24.0pt;
@@ -257,7 +258,8 @@ export const FAP_STYLES_03 = `	text-align:left;
 	border-right:none;
 	border-bottom:.5pt solid windowtext;
 	border-left:.5pt solid windowtext;
-	white-space:normal;}
+	white-space:normal;
+	padding-left:10px !important;}
 .xl165
 	{mso-style-parent:style0;
 	font-size:24.0pt;
@@ -279,7 +281,8 @@ export const FAP_STYLES_03 = `	text-align:left;
 	border-top:.5pt solid windowtext;
 	border-right:none;
 	border-bottom:.5pt solid windowtext;
-	border-left:.5pt solid windowtext;}
+	border-left:.5pt solid windowtext;
+	padding-left:10px !important;}
 .xl167
 	{mso-style-parent:style0;
 	font-size:22.0pt;

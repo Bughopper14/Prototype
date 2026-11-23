@@ -1,6 +1,7 @@
 /** Which fields only take digits / letters / Title Case, and the pure parts of editing one field. */
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {resetMasterChildren, resolveWilayahUpwards, type useMasterData} from '@/shared/master-data';
+import {parseAllAddressFields} from '@/features/ocr/lib/nib/address-wilayah';
 import type {Field} from '@liugong/shared';
 
 export const DIGITS_ONLY_KEYS = ['phone', 'mobilePhone', 'phoneFax', 'rt', 'rw'];
@@ -26,6 +27,7 @@ export const TITLE_CASE_KEYS = [
   'modelName',
   'purposeDetail',
   'termsNotes',
+  'companyFullAddress',
   'companyAddress',
   'currentAddress',
   'address',
@@ -91,6 +93,20 @@ export function applyFieldValue({
     const {years, months} = calculateAgeYearsMonths(sanitized);
     next.ageYears = years;
     next.ageMonths = months;
+  }
+  if (f.key === 'companyFullAddress' && sanitized) {
+    const parsed = parseAllAddressFields(sanitized, master);
+    if (parsed.alamat && fields.some(x => x.key === 'companyAddress')) {
+      next.companyAddress = parsed.alamat;
+    }
+    if (parsed.rt && fields.some(x => x.key === 'rt')) next.rt = parsed.rt;
+    if (parsed.rw && fields.some(x => x.key === 'rw')) next.rw = parsed.rw;
+    if (parsed.province && fields.some(x => x.key === 'province')) next.province = parsed.province;
+    if (parsed.city && fields.some(x => x.key === 'city')) next.city = parsed.city;
+    if (parsed.district && fields.some(x => x.key === 'district')) next.district = parsed.district;
+    if (parsed.village && fields.some(x => x.key === 'village')) next.village = parsed.village;
+    if (parsed.postalCode && fields.some(x => x.key === 'postalCode')) next.postalCode = parsed.postalCode;
+    next = resolveWilayahUpwards(next, master);
   }
   if (masterLinked && ['district', 'village', 'postalCode'].includes(f.key)) {
     next = resolveWilayahUpwards(next, master);

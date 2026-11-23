@@ -9,13 +9,13 @@ export function resolvePreanalysis({a, draft, files, row}: ResolverContext) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'Pre-analysis Stage · Comparison';
-    row.sourceDetails = `Berkas Pre-analysis: ${files[0].fileName}`;
+    row.sourceDetails = `Pre-analysis file: ${files[0].fileName}`;
     row.canDelete = false;
   } else if (isPreStage) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'Pre-analysis Stage';
-    row.sourceDetails = 'Formulir Evaluasi Pre-analysis CA telah diisi & tersimpan';
+    row.sourceDetails = 'Pre-analysis CA evaluation form completed & saved';
     row.canDelete = false;
   }
 }

@@ -165,22 +165,22 @@ export const FAP_PAGE_02 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" id="fap-preview-sec-header" style="mso-height-source:userset;height:79.95pt">
 <td class="xl160" colspan="2" height="106" style="border-right:.5pt solid black;
-  height:79.95pt">Tanggal/<font class="font18">Date</font></td>
+  height:79.95pt;padding-left:10px !important;">Tanggal/<font class="font18">Date</font></td>
 <td class="xl162 fap-autofill-val" colspan="2" id="fap-cell-applicationDate" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
 <td class="xl164" colspan="2" style="border-right:.5pt solid black;
-  width:229pt" width="305"><font class="font17">Customer Baru/</font><font class="font18">New
+  width:229pt;padding-left:10px !important;" width="305"><font class="font17">Customer Baru/</font><font class="font18">New
   Customer<span style="mso-spacerun:yes"> </span></font></td>
 <td class="xl98 fap-chk-val" id="fap-cell-custNew" style="border-left:none"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl166" colspan="2" style="border-right:.5pt solid black">Corporate</td>
+<td class="xl166" colspan="2" style="border-right:.5pt solid black;padding-left:10px !important;">Corporate</td>
 <td class="xl99 fap-chk-val" colspan="2" id="fap-cell-corporate" style="border-left:none"> </td>
 <td class="xl100"></td>
 <td class="xl100"></td>
-<td class="xl98">Micro</td>
+<td class="xl98" style="padding-left:10px !important;">Micro</td>
 <td class="xl167 fap-chk-val" colspan="2" id="fap-cell-micro" style="border-left:none"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>
@@ -188,22 +188,22 @@ export const FAP_PAGE_02 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="106" style="mso-height-source:userset;height:79.95pt">
 <td class="xl160" colspan="2" height="106" style="border-right:.5pt solid black;
-  height:79.95pt">Cabang/<font class="font18">Branch</font></td>
+  height:79.95pt;padding-left:10px !important;">Cabang/<font class="font18">Branch</font></td>
 <td class="xl172 fap-autofill-val" colspan="2" id="fap-cell-branchCode" style="border-right:.5pt solid black;border-left:
   none"> </td>
 <td class="xl97"></td>
 <td class="xl164" colspan="2" style="border-right:.5pt solid black;
-  width:229pt" width="305"><font class="font17">Customer Lama /</font><font class="font18">Existing
+  width:229pt;padding-left:10px !important;" width="305"><font class="font17">Customer Lama /</font><font class="font18">Existing
   Customer</font></td>
 <td class="xl98 fap-chk-val" id="fap-cell-custExisting" style="border-top:none;border-left:none"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
-<td class="xl166" colspan="2" style="border-right:.5pt solid black">Commercial</td>
+<td class="xl166" colspan="2" style="border-right:.5pt solid black;padding-left:10px !important;">Commercial</td>
 <td class="xl99 fap-chk-val" colspan="2" id="fap-cell-commercial" style="border-left:none"> </td>
 <td class="xl100"></td>
 <td class="xl100"></td>
-<td class="xl98" style="border-top:none">LiuGong User</td>
+<td class="xl98" style="border-top:none;padding-left:10px !important;">LiuGong User</td>
 <td class="xl167 fap-chk-val" colspan="2" id="fap-cell-liugongUser" style="border-left:none"> </td>
 <td class="xl70"></td>
 <td class="xl70"></td>

@@ -7,7 +7,6 @@ import {buildChecklistRows} from '@/features/documents/lib/checklist/build-rows'
 import {documentDefinitions} from '@/features/documents/lib/checklist/definitions';
 import {useMasterData} from '@/shared/master-data';
 import {hasAuthority} from '@/shared/lib/auth';
-import type {VerifyBody} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {collectStakeholders} from '@/features/documents/lib/checklist/collect-stakeholders';
 import {filterRows} from '@/features/documents/lib/checklist/filter-rows';
 import {summarizeRows} from '@/features/documents/lib/checklist/summarize';
@@ -38,10 +37,21 @@ export function useDocumentChecklist({
   const [previewModal, setPreviewModal] = useState<PreviewState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [targetUploadCode, setTargetUploadCode] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState<ChecklistRow | null>(null);
-  const [verifyBusy, setVerifyBusy] = useState(false);
-  const [verifyError, setVerifyError] = useState('');
-  const canVerify = hasAuthority(user, 'crm_verify_app_documents');
+  // Asking for the approval of one document (a document the workflow wants approved): the same people who may submit a stage
+  const canRequestApproval = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT');
+  const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
+  const requestApproval = async (row: ChecklistRow) => {
+    if (!row.chkId) return;
+    setApprovalBusy(row.chkId);
+    try {
+      onChange(await api(`/applications/${a.id}/documents/${row.chkId}/submit-approval`, 'POST', {}));
+      notify(`${row.name} sent for approval`);
+    } catch (e: any) {
+      notify(e.message || 'Could not ask for approval');
+    } finally {
+      setApprovalBusy(null);
+    }
+  };
 
   const master = useMasterData();
   const definitions = useMemo(() => documentDefinitions(master), [master]);
@@ -51,6 +61,8 @@ export function useDocumentChecklist({
     [definitions, a, draft, allStakeholders],
   );
   const stats = summarizeRows(checklistRows);
+  // the departments the documents of this application have: the only ones the filter offers
+  const departments = useMemo(() => [...new Set(checklistRows.map(r => r.department).filter(Boolean))].sort(), [checklistRows]);
   const filteredRows = useMemo(
     () => filterRows(checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage),
     [checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage],
@@ -89,9 +101,9 @@ export function useDocumentChecklist({
     setZipping(true);
     try {
       const name = await downloadChecklistZip(a.id);
-      notify(`${name} berhasil diunduh.`);
+      notify(`${name} successfully downloaded.`);
     } catch (err: any) {
-      notify(`Gagal mengunduh ZIP: ${err.message || 'Terjadi kesalahan'}`);
+      notify(`Failed to download ZIP: ${err.message || 'An error occurred'}`);
     } finally {
       setZipping(false);
     }
@@ -123,9 +135,9 @@ export function useDocumentChecklist({
       await api(`/applications/${a.id}/documents/upload`, 'POST', formData);
       const updatedApp = await api(`/applications/${a.id}`);
       onChange(updatedApp);
-      notify(`Dokumen ${targetUploadCode} berhasil diunggah.`);
+      notify(`Document ${targetUploadCode} successfully uploaded.`);
     } catch (err: any) {
-      notify(`Gagal mengunggah dokumen: ${err.message || 'Terjadi kesalahan'}`);
+      notify(`Failed to upload document: ${err.message || 'An error occurred'}`);
     } finally {
       setUploadingCode(null);
       setTargetUploadCode(null);
@@ -134,7 +146,7 @@ export function useDocumentChecklist({
 
   // Handler Delete File (Only manual files)
   const handleDeleteManualFile = async (fileId: string, docCode: string) => {
-    if (!window.confirm(`Hapus berkas ini dari Document Checklist? Tindakan ini tidak dapat dibatalkan.`)) {
+    if (!window.confirm(`Delete this file from Document Checklist? This action cannot be undone.`)) {
       return;
     }
 
@@ -143,9 +155,9 @@ export function useDocumentChecklist({
       await api(`/applications/${a.id}/documents/files/${fileId}`, 'DELETE');
       const updatedApp = await api(`/applications/${a.id}`);
       onChange(updatedApp);
-      notify(`Berkas dokumen ${docCode} berhasil dihapus.`);
+      notify(`Document file ${docCode} successfully deleted.`);
     } catch (err: any) {
-      notify(`Gagal menghapus berkas: ${err.message || 'Terjadi kesalahan'}`);
+      notify(`Failed to delete file: ${err.message || 'An error occurred'}`);
     } finally {
       setDeletingFileId(null);
     }
@@ -155,7 +167,7 @@ export function useDocumentChecklist({
   const handleOpenPreview = (row: ChecklistRow) => {
     const url = row.previewUrl || (row.files[0] ? `/documents/${row.files[0].fileName}` : '');
     if (!url) {
-      notify('Pratinjau fisik dokumen belum tersedia untuk item ini.');
+      notify('Physical document preview is not yet available for this item.');
       return;
     }
     const isPdf = url.toLowerCase().endsWith('.pdf') || row.files[0]?.mimeType === 'application/pdf';
@@ -170,40 +182,15 @@ export function useDocumentChecklist({
     });
   };
 
-  const openVerify = (row: ChecklistRow) => {
-    setVerifyError('');
-    setVerifying(row);
-  };
-
-  /** Saves the department's verification; the server checks the workflow status and returns the application. */
-  const handleVerify = async (body: VerifyBody) => {
-    if (!verifying?.chkId) return;
-    setVerifyBusy(true);
-    setVerifyError('');
-    try {
-      const updated = await api(`/applications/${a.id}/checklist/${verifying.chkId}/verify`, 'PATCH', body);
-      onChange(updated);
-      notify(`Dokumen ${verifying.code} ${body.isVerified ? 'terverifikasi' : 'ditolak'} oleh ${body.department}.`);
-      setVerifying(null);
-    } catch (err: any) {
-      setVerifyError(err.message || 'Verifikasi gagal disimpan.');
-    } finally {
-      setVerifyBusy(false);
-    }
-  };
-
   return {
-    canVerify,
-    verifying,
-    setVerifying,
-    verifyBusy,
-    verifyError,
-    openVerify,
-    handleVerify,
+    canRequestApproval,
+    approvalBusy,
+    requestApproval,
     searchTerm,
     setSearchTerm,
     selectedDept,
     setSelectedDept,
+    departments,
     selectedStatus,
     setSelectedStatus,
     stages,

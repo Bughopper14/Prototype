@@ -3,9 +3,11 @@
  * thing to fill is who the debtor is, then save. The forms open after the save.
  */
 import {api} from '@/shared/lib/api';
+import {formatCompanyName} from '@liugong/shared';
 import {IconBox} from '@/shared/ui/IconBox';
 import {masterEntries, useMasterData} from '@/shared/master-data';
-import {ArrowLeft, Building2, Check, Lock, Save, Search} from 'lucide-react';
+import {useSession} from '@/shared/lib/session';
+import {ArrowLeft, Building2, Check, Lock, Save, Search, UserCheck} from 'lucide-react';
 import {useEffect, useMemo, useRef, useState} from 'react';
 import {GroupedStepper, type StageGroup} from '@/features/applications/components/GroupedStepper';
 import {stageTabOrder, TABS} from '@/features/applications/lib/workspace/tabs';
@@ -201,6 +203,8 @@ export function NewApplicationStart({
   onCreated: (applicationId: string) => void;
   notify: (message: string) => void;
 }) {
+  const sessionUser = useSession();
+  const currentUserId = sessionUser?.portalUserId ? Number(sessionUser.portalUserId) : null;
   const master = useMasterData();
   const [kind, setKind] = useState<Kind>(preselectedCustomerId ? 'EXISTING' : 'NEW');
   const [companyName, setCompanyName] = useState('');
@@ -213,10 +217,29 @@ export function NewApplicationStart({
   useEffect(() => {
     api('/marketing-pics')
       .then((data: any) => {
-        if (Array.isArray(data)) setMarketingPics(data);
+        if (Array.isArray(data)) {
+          if (sessionUser && currentUserId && !data.some((u: any) => u.id === currentUserId)) {
+            data.unshift({
+              id: currentUserId,
+              username: sessionUser.username,
+              fullName: sessionUser.name,
+              departmentName: sessionUser.role || 'Current User',
+            });
+          }
+          setMarketingPics(data);
+        }
       })
       .catch(() => undefined);
-  }, []);
+  }, [sessionUser, currentUserId]);
+
+  const handleAssignMyself = () => {
+    if (!currentUserId) return;
+    if (mktPicId === currentUserId) {
+      setMktPicId('');
+    } else {
+      setMktPicId(currentUserId);
+    }
+  };
 
   // The groups and stages of the active workflow (the same ones the saved application will show).
   const [layout, setLayout] = useState<{groups: StageGroup[]; stages: WorkflowStage[]}>({groups: [], stages: []});
@@ -233,7 +256,7 @@ export function NewApplicationStart({
     setBusy(true);
     setError('');
     try {
-      const name = companyName.trim();
+      const name = formatCompanyName(companyName.trim());
       const body =
         kind === 'NEW'
           ? {
@@ -290,7 +313,8 @@ export function NewApplicationStart({
                 autoFocus
                 placeholder="Company name (required)"
                 aria-label="Company name"
-                onChange={e => setCompanyName(e.target.value)}
+                onChange={e => setCompanyName(formatCompanyName(e.target.value))}
+                onBlur={() => setCompanyName(prev => formatCompanyName(prev.trim()))}
                 onKeyDown={e => e.key === 'Enter' && ready && !busy && void save()}
               />
             ) : (
@@ -323,6 +347,34 @@ export function NewApplicationStart({
               Marketing PIC
             </div>
             <MarketingPicPicker users={marketingPics} value={mktPicId} onChange={setMktPicId} />
+            {currentUserId && (
+              <button
+                type="button"
+                className={`button ${mktPicId === currentUserId ? 'on' : ''}`}
+                onClick={handleAssignMyself}
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '38px',
+                  padding: '0 12px',
+                  borderRadius: '8px',
+                  fontSize: '12.5px',
+                  fontWeight: 600,
+                  background: mktPicId === currentUserId ? '#eff6ff' : '#f8fafc',
+                  border: mktPicId === currentUserId ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                  color: mktPicId === currentUserId ? '#1d4ed8' : '#475569',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                title="Gunakan akun saya sendiri sebagai Marketing PIC"
+              >
+                <UserCheck size={15} style={{color: mktPicId === currentUserId ? '#2563eb' : '#64748b'}} />
+                {mktPicId === currentUserId ? 'Assigned to me' : 'Assign to me'}
+              </button>
+            )}
             <button className="button primary" disabled={busy || !ready} onClick={save} style={{flex: '0 0 auto'}}>
               <Save size={16} /> {busy ? 'Saving…' : 'Save application'}
             </button>

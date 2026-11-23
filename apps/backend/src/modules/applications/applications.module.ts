@@ -1,5 +1,6 @@
 import {Module} from '@nestjs/common';
 import {ActivityModule} from '../activity/activity.module';
+import {ApprovalsModule} from '../approvals/approvals.module';
 import {CustomersModule} from '../customers/customers.module';
 import {DocumentsRepository} from '../documents/documents.repository';
 import {FapFreezeRepository} from '../fap/fap-freeze.repository';
@@ -7,32 +8,30 @@ import {FapOcrRepository} from '../fap/fap-ocr.repository';
 import {LegalRepository} from '../legal/legal.repository';
 import {ApplicationsController} from './applications.controller';
 import {ApplicationsService} from './applications.service';
+import {MktPicLookup} from './mkt-pic.lookup';
 import {ApplicationProfileRepository} from './repositories/application-profile.repository';
 import {ApplicationsRepository} from './repositories/applications.repository';
 import {FapSectionsRepository} from './repositories/fap-sections.repository';
 import {FinancialStatementsRepository} from './repositories/financial-statements.repository';
-import {UsersAuthorityLookup} from './workflow/users-authority.lookup';
 import {WorkflowConfigRepository} from './workflow/workflow-config.repository';
-import {WorkflowRepository} from './workflow/workflow.repository';
 
 /** Applications on crm_liugong: header, FAP profile, primary contact and workflow. */
 @Module({
-  imports: [CustomersModule, ActivityModule],
+  imports: [CustomersModule, ActivityModule, ApprovalsModule],
   controllers: [ApplicationsController],
   providers: [
     ApplicationsService,
+    MktPicLookup,
     ApplicationsRepository,
     ApplicationProfileRepository,
     FapSectionsRepository,
     FinancialStatementsRepository,
-    WorkflowRepository,
     WorkflowConfigRepository,
-    UsersAuthorityLookup,
     LegalRepository,
     DocumentsRepository,
     FapOcrRepository,
     FapFreezeRepository,
   ],
-  exports: [ApplicationsService, WorkflowRepository, WorkflowConfigRepository, ApplicationsRepository, LegalRepository, DocumentsRepository, FapOcrRepository, FapFreezeRepository, ActivityModule],
+  exports: [ApplicationsService, WorkflowConfigRepository, ApplicationsRepository, LegalRepository, DocumentsRepository, FapOcrRepository, FapFreezeRepository, ActivityModule, ApprovalsModule],
 })
 export class ApplicationsModule {}

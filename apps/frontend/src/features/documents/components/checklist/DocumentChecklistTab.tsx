@@ -3,7 +3,6 @@ import {ChecklistMetrics} from '@/features/documents/components/checklist/Checkl
 import {ChecklistTable} from '@/features/documents/components/checklist/ChecklistTable';
 import {ChecklistToolbar} from '@/features/documents/components/checklist/ChecklistToolbar';
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
-import {VerifyDocumentDialog} from '@/features/documents/components/checklist/VerifyDocumentDialog';
 import {useDocumentChecklist} from '@/features/documents/hooks/useDocumentChecklist';
 import {ChecklistCustomizeDialog} from '@/features/documents/components/checklist/ChecklistCustomizeDialog';
 import {hasAuthority} from '@/shared/lib/auth';
@@ -22,7 +21,7 @@ export interface DocumentChecklistTabProps {
 export function DocumentChecklistTab({application, draft, user, onChange, notify}: DocumentChecklistTabProps) {
   const c = useDocumentChecklist({application, draft, user, onChange, notify});
   const [customizing, setCustomizing] = useState(false);
-  const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'crm_upload_app_documents');
+  const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'CRM_DOCUMENT_UPLOAD');
 
   return (
     <div className="doc-checklist-container">
@@ -43,35 +42,41 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
             <h2>
               Document Checklist Matrix
               <span className="count-pill" style={{marginLeft: 8}}>
-                {c.filteredRows.length} Dokumen
+                {c.filteredRows.length} Documents
               </span>
             </h2>
             <p className="muted" style={{marginTop: 4}}>
-              Matriks ketersediaan dokumen persyaratan pengajuan pembiayaan. Dokumen yang terhubung otomatis
-              dari section lain terkunci demi integritas data; berkas yang diunggah manual di checklist ini
-              dapat dihapus dan diganti kapan saja.
+              Matrix of required documents for this financing application. Documents automatically connected
+              from other sections are locked for data integrity; files uploaded manually in this checklist
+              can be deleted or replaced at any time.
             </p>
           </div>
-          {canCustomize && (
-            <button type="button" className="button small" onClick={() => setCustomizing(true)}>
-              <Settings2 size={14} /> Customize checklist
+          <div className="doc-head-actions">
+            {canCustomize && (
+              <button
+                type="button"
+                className="button doc-customize-btn"
+                onClick={() => setCustomizing(true)}
+              >
+                <Settings2 size={15} /> Customize checklist
+              </button>
+            )}
+            <button
+              type="button"
+              className="button primary doc-zip-btn"
+              disabled={c.zipping || c.fileCount === 0}
+              title={
+                c.fileCount === 0
+                  ? 'No files uploaded yet'
+                  : `Download ${c.fileCount} files in a single ZIP, organized by stage`
+              }
+              onClick={c.handleDownloadAll}
+            >
+              {c.zipping ? <Loader2 size={15} className="spin" /> : <FileArchive size={15} />}
+              <span>{c.zipping ? 'Preparing ZIP...' : 'Download All (ZIP)'}</span>
+              {!c.zipping && c.fileCount > 0 && <span className="doc-zip-count">{c.fileCount}</span>}
             </button>
-          )}
-          <button
-            type="button"
-            className="button primary doc-zip-btn"
-            disabled={c.zipping || c.fileCount === 0}
-            title={
-              c.fileCount === 0
-                ? 'Belum ada berkas yang diunggah'
-                : `Unduh ${c.fileCount} berkas dalam satu ZIP, dikelompokkan per tahap`
-            }
-            onClick={c.handleDownloadAll}
-          >
-            {c.zipping ? <Loader2 size={15} className="spin" /> : <FileArchive size={15} />}
-            <span>{c.zipping ? 'Menyiapkan ZIP...' : 'Unduh Semua (ZIP)'}</span>
-            {!c.zipping && c.fileCount > 0 && <span className="doc-zip-count">{c.fileCount}</span>}
-          </button>
+          </div>
         </div>
 
         <ChecklistToolbar
@@ -79,6 +84,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           setSearchTerm={c.setSearchTerm}
           selectedDept={c.selectedDept}
           setSelectedDept={c.setSelectedDept}
+          departments={c.departments}
           selectedStatus={c.selectedStatus}
           setSelectedStatus={c.setSelectedStatus}
           stages={c.stages}
@@ -99,7 +105,8 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           onPreview={c.handleOpenPreview}
           onUpload={c.handleTriggerUpload}
           onDelete={c.handleDeleteManualFile}
-          onVerify={c.canVerify ? c.openVerify : undefined}
+          onRequestApproval={c.canRequestApproval ? c.requestApproval : undefined}
+          approvalBusy={c.approvalBusy}
         />
       </section>
 
@@ -107,15 +114,6 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
         <ChecklistCustomizeDialog application={application} onChange={onChange} notify={notify} onClose={() => setCustomizing(false)} />
       )}
 
-      {c.verifying && (
-        <VerifyDocumentDialog
-          row={c.verifying}
-          busy={c.verifyBusy}
-          error={c.verifyError}
-          onSubmit={c.handleVerify}
-          onClose={() => c.setVerifying(null)}
-        />
-      )}
 
       {c.previewModal && (
         <DocumentPreviewModal preview={c.previewModal} onClose={() => c.setPreviewModal(null)} />

@@ -1,7 +1,7 @@
 /** Facility proposed (with the currency strike-through) and the three Terms & Conditions boxes. */
 import type {SheetValues} from '@/features/fap/lib/sheet/sheet-values';
 import type {CellWriters} from '@/features/fap/lib/sheet/cell-writers';
-import type {MasterCatalog} from '@liugong/shared';
+import {resolveFinancingMethodGroup, type MasterCatalog} from '@liugong/shared';
 
 export function applyProposalAndTerms({
   doc,
@@ -31,7 +31,14 @@ export function applyProposalAndTerms({
 
   setText('fap-cell-prop-app-source', facProp.applicationSource);
 
-  setText('fap-cell-prop-val', facProp.financingValue);
+  const rawFinVal = facProp.financingValue;
+  const isFinValEmpty =
+    rawFinVal === undefined ||
+    rawFinVal === null ||
+    String(rawFinVal).trim() === '' ||
+    String(rawFinVal).trim() === '0' ||
+    Number(rawFinVal) === 0;
+  setText('fap-cell-prop-val', isFinValEmpty ? '' : rawFinVal);
 
   // Currency selector with double strikethrough for unselected currency
   const currCell = doc.getElementById('fap-cell-prop-curr-choice');
@@ -72,39 +79,29 @@ export function applyProposalAndTerms({
     }
   };
 
-  setBoxText('fap-cell-tc-fl-purpose', tcFl.workingCapitalInvestment);
+  const selectedGroup = resolveFinancingMethodGroup(facProp.financingMethod);
+  const isFl = selectedGroup === 'termsFinancialLease';
+  const isSlb = selectedGroup === 'termsSaleAndLeaseBack';
+  const isIf = selectedGroup === 'termsInstallmentFinancing';
 
-  setBoxText('fap-cell-tc-fl-curr', tcFl.currency);
+  setBoxText('fap-cell-tc-fl-purpose', isFl ? tcFl.workingCapitalInvestment : '');
+  setBoxText('fap-cell-tc-fl-curr', isFl ? tcFl.currency : '');
+  setBoxText('fap-cell-tc-fl-deposit', isFl ? tcFl.securityDeposit : '');
+  setBoxText('fap-cell-tc-fl-rate', isFl ? tcFl.interestRate : '');
+  setBoxText('fap-cell-tc-fl-tenor', isFl ? tcFl.tenor : '');
+  setBoxText('fap-cell-tc-fl-payment', isFl ? paymentName(tcFl.paymentMethod) : '');
 
-  setBoxText('fap-cell-tc-fl-deposit', tcFl.securityDeposit);
+  setBoxText('fap-cell-tc-slb-purpose', isSlb ? tcSlb.workingCapitalInvestment : '');
+  setBoxText('fap-cell-tc-slb-curr', isSlb ? tcSlb.currency : '');
+  setBoxText('fap-cell-tc-slb-deposit', isSlb ? tcSlb.securityDeposit : '');
+  setBoxText('fap-cell-tc-slb-rate', isSlb ? tcSlb.interestRate : '');
+  setBoxText('fap-cell-tc-slb-tenor', isSlb ? tcSlb.tenor : '');
+  setBoxText('fap-cell-tc-slb-payment', isSlb ? paymentName(tcSlb.paymentMethod) : '');
 
-  setBoxText('fap-cell-tc-fl-rate', tcFl.interestRate);
-
-  setBoxText('fap-cell-tc-fl-tenor', tcFl.tenor);
-
-  setBoxText('fap-cell-tc-fl-payment', paymentName(tcFl.paymentMethod));
-
-  setBoxText('fap-cell-tc-slb-purpose', tcSlb.workingCapitalInvestment);
-
-  setBoxText('fap-cell-tc-slb-curr', tcSlb.currency);
-
-  setBoxText('fap-cell-tc-slb-deposit', tcSlb.securityDeposit);
-
-  setBoxText('fap-cell-tc-slb-rate', tcSlb.interestRate);
-
-  setBoxText('fap-cell-tc-slb-tenor', tcSlb.tenor);
-
-  setBoxText('fap-cell-tc-slb-payment', paymentName(tcSlb.paymentMethod));
-
-  setBoxText('fap-cell-tc-if-purpose', tcIf.workingCapitalInvestment);
-
-  setBoxText('fap-cell-tc-if-curr', tcIf.currency);
-
-  setBoxText('fap-cell-tc-if-dp', tcIf.downPayment);
-
-  setBoxText('fap-cell-tc-if-rate', tcIf.interestRate);
-
-  setBoxText('fap-cell-tc-if-tenor', tcIf.tenor);
-
-  setBoxText('fap-cell-tc-if-payment', paymentName(tcIf.paymentMethod));
+  setBoxText('fap-cell-tc-if-purpose', isIf ? tcIf.workingCapitalInvestment : '');
+  setBoxText('fap-cell-tc-if-curr', isIf ? tcIf.currency : '');
+  setBoxText('fap-cell-tc-if-dp', isIf ? tcIf.downPayment : '');
+  setBoxText('fap-cell-tc-if-rate', isIf ? tcIf.interestRate : '');
+  setBoxText('fap-cell-tc-if-tenor', isIf ? tcIf.tenor : '');
+  setBoxText('fap-cell-tc-if-payment', isIf ? paymentName(tcIf.paymentMethod) : '');
 }

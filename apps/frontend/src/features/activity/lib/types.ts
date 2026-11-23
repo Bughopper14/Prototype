@@ -18,7 +18,6 @@ export interface ActivityChangeItem {
 export interface SystemActivity {
   id: string;
   applicationId?: string;
-  fapNumber?: string;
   companyName: string;
   section: string;
   tabIndex: number;
@@ -35,7 +34,6 @@ export interface SystemActivity {
 export interface SystemNotificationItem {
   id: string;
   applicationId?: string;
-  fapNumber?: string;
   companyName: string;
   section?: string;
   tabIndex?: number;

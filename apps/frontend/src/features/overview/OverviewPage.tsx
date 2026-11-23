@@ -8,7 +8,7 @@ export default function OverviewPage() {
   return (
     <>
       <PageHeading page="Overview" newApplicationButton />
-      <AccessGate authority="crm_view_overview" page="Overview">
+      <AccessGate authority="CRM_OVERVIEW_VIEW" page="Overview">
         <OverviewScreen rows={rows} user={user} open={openApplication} navigate={goTo} />
       </AccessGate>
     </>

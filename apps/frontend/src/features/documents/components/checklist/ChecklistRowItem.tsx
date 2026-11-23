@@ -13,7 +13,8 @@ export function ChecklistRowItem({
   onPreview,
   onUpload,
   onDelete,
-  onVerify,
+  onRequestApproval,
+  approvalBusy,
   showStage,
 }: {
   row: ChecklistRow;
@@ -25,73 +26,98 @@ export function ChecklistRowItem({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
-  onVerify?: (row: ChecklistRow) => void;
+  onRequestApproval?: (row: ChecklistRow) => void;
+  approvalBusy?: string | null;
 }) {
-  const checkedBy = [
-    ['BS', row.check?.checkedByBs],
-    ['CA', row.check?.checkedByCa],
-    ['LEGAL', row.check?.checkedByLegal],
-  ]
-    .filter(([, done]) => done)
-    .map(([dept]) => dept);
   return (
     <tr className={`doc-checklist-row ${row.isAvailable ? 'row-available' : 'row-pending'}`}>
       <td style={{textAlign: 'center', fontWeight: 600, color: '#64748b'}}>{index + 1}</td>
-      {/* Dokumen Info */}
+      {/* Dokumen Info & Metadata */}
       <td>
         <div className="doc-meta-cell">
-          <div className={`doc-code-badge badge-${row.department.toLowerCase()}`}>{row.code}</div>
-          <div>
+          <div className={`doc-code-badge badge-${(row.department || '').toLowerCase()}`}>{row.code}</div>
+          <div className="doc-meta-content">
             <strong className="doc-primary-name">{row.name}</strong>
-            <span className="doc-sub-desc">{row.description}</span>
+            <div className="doc-meta-tags">
+              {row.isMandatory ? (
+                <span className="mandatory-tag tag-required">Mandatory</span>
+              ) : (
+                <span className="mandatory-tag tag-optional">Optional</span>
+              )}
+              {row.department && (
+                <span className={`dept-pill dept-${row.department.toLowerCase()}`}>{row.department}</span>
+              )}
+              {showStage && (
+                <StageBadge code={row.stage} name={row.stageName} />
+              )}
+            </div>
+            {row.description && <span className="doc-sub-desc">{row.description}</span>}
           </div>
         </div>
       </td>
 
-      {/* Tahap workflow */}
-      {showStage && (
-        <td>
-          <StageBadge code={row.stage} name={row.stageName} />
-        </td>
-      )}
-
-      {/* Departemen */}
+      {/* Status Kelengkapan & Approval */}
       <td>
-        <span className={`dept-pill dept-${row.department.toLowerCase()}`}>{row.department}</span>
-      </td>
+        <div className="doc-status-approval-cell">
+          <div className="doc-status-row">
+            {row.isAvailable ? (
+              <span className="status-pill status-ready">
+                <CheckCircle2 size={13} style={{marginRight: 4}} /> Available
+              </span>
+            ) : (
+              <span className="status-pill status-missing">
+                <Clock size={13} style={{marginRight: 4}} /> Missing
+              </span>
+            )}
+            {row.status === 'VERIFIED' && (
+              <span className="status-pill status-ready">
+                <ShieldCheck size={13} style={{marginRight: 4}} /> Verified
+              </span>
+            )}
+            {row.status === 'REJECTED' && (
+              <span className="status-pill status-missing">
+                <XCircle size={13} style={{marginRight: 4}} /> Rejected
+              </span>
+            )}
+          </div>
 
-      {/* Sifat Dokumen */}
-      <td>
-        {row.isMandatory ? (
-          <span className="mandatory-tag tag-required">Wajib</span>
-        ) : (
-          <span className="mandatory-tag tag-optional">Opsional</span>
-        )}
-      </td>
-
-      {/* Status Kelengkapan */}
-      <td>
-        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4}}>
-          {row.isAvailable ? (
-            <span className="status-pill status-ready">
-              <CheckCircle2 size={13} style={{marginRight: 4}} /> Sudah Ada
-            </span>
-          ) : (
-            <span className="status-pill status-missing">
-              <Clock size={13} style={{marginRight: 4}} /> Belum Ada
-            </span>
-          )}
-          {row.status === 'VERIFIED' && (
-            <span className="status-pill status-ready">
-              <ShieldCheck size={13} style={{marginRight: 4}} /> Terverifikasi
-            </span>
-          )}
-          {row.status === 'REJECTED' && (
-            <span className="status-pill status-missing">
-              <XCircle size={13} style={{marginRight: 4}} /> Ditolak
-            </span>
-          )}
-          {checkedBy.length > 0 && <small className="muted">Dicek: {checkedBy.join(', ')}</small>}
+          <div className="doc-approval-row">
+            {row.check?.approval ? (
+              <div className={'doc-approval ' + String(row.check.approval.state).toLowerCase()}>
+                {row.check.approval.state === 'NOT_REQUESTED' ? (
+                  <button
+                    type="button"
+                    className="button small doc-needs"
+                    disabled={!onRequestApproval || !row.check.approval.canRequest || approvalBusy === row.chkId}
+                    title={row.check.approval.canRequest ? 'Send this document for approval' : 'Upload the document first'}
+                    onClick={() => onRequestApproval?.(row)}
+                  >
+                    <ShieldCheck size={13} /> Needs approval
+                  </button>
+                ) : (
+                  <>
+                    <span className="doc-approval-chip">
+                      <ShieldCheck size={13} />
+                      {row.check.approval.state === 'APPROVED' ? 'Approved' : row.check.approval.state === 'REJECTED' ? 'Rejected' : row.check.approval.state === 'REOPENED' ? 'Opened again' : 'Waiting'}
+                    </span>
+                    {(row.check.approval.state === 'REJECTED' || row.check.approval.state === 'REOPENED') && row.check.approval.canRequest && onRequestApproval && (
+                      <button type="button" className="button small doc-needs" disabled={approvalBusy === row.chkId} onClick={() => onRequestApproval(row)}>
+                        Submit again
+                      </button>
+                    )}
+                  </>
+                )}
+                {(row.check.approval.steps || []).length > 1 &&
+                  (row.check.approval.steps || []).map((st: any) => (
+                    <small key={st.name} className="doc-approval-step" title={`Authority: ${st.authority}`}>
+                      {st.name}: {st.status === 'APPROVED' ? 'approved' : st.status === 'PENDING' ? 'waiting' : st.status === 'REJECTED' ? 'rejected' : st.status === 'REOPENED' ? 'opened again' : st.status === 'WAITING' ? 'queued' : st.status === 'CANCELLED' ? 'closed' : '—'}
+                    </small>
+                  ))}
+              </div>
+            ) : (
+              <small className="muted" style={{fontSize: '11px'}}>No approval needed</small>
+            )}
+          </div>
         </div>
       </td>
 
@@ -109,7 +135,6 @@ export function ChecklistRowItem({
           onPreview={onPreview}
           onUpload={onUpload}
           onDelete={onDelete}
-          onVerify={onVerify}
         />
       </td>
     </tr>

@@ -21,8 +21,8 @@ export class BusinessPartnersRepository {
   /** The customer directory with the date of each customer's first application. */
   async list() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT b.id,b.company_name,b.business_category_id,b.nib,b.nib_date,b.npwp,b.establishment_act_no,
-              b.establishment_date,b.created_at,b.updated_at,MIN(a.application_date) AS first_application_date
+      `SELECT b.id,b.company_name,b.business_category_id,b.nib,b.nib_date,b.npwp,
+              b.created_at,b.updated_at,MIN(a.application_date) AS first_application_date
        FROM ${CRM.masterBusinessPartners} b
        LEFT JOIN ${CRM.applications} a ON a.business_partner_id=b.id AND a.deleted_at IS NULL
        WHERE b.deleted_at IS NULL
@@ -36,8 +36,6 @@ export class BusinessPartnersRepository {
       nib: r.nib,
       nibDate: r.nib_date,
       npwp: r.npwp,
-      establishmentActNo: r.establishment_act_no,
-      establishmentDate: r.establishment_date,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
       firstApplicationDate: r.first_application_date,
@@ -81,16 +79,14 @@ export class BusinessPartnersRepository {
     const id = crypto.randomUUID();
     await this.db.pool.execute(
       `INSERT INTO ${CRM.masterBusinessPartners}
-         (id,company_name,business_category_id,nib,npwp,establishment_act_no,establishment_date,created_by)
-       VALUES (?,?,?,?,?,?,?,?)`,
+         (id,company_name,business_category_id,nib,npwp,created_by)
+       VALUES (?,?,?,?,?,?)`,
       [
         id,
         companyName,
         await this.ids.idOf('businessCategory', input.companyType),
         nib,
         npwp,
-        clean(input.establishmentActNo),
-        clean(input.establishmentDate, 'date'),
         by,
       ],
     );

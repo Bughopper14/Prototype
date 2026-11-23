@@ -7,14 +7,14 @@ export function resolveBank({a, draft, files, row}: ResolverContext) {
   if (files.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'MANUAL';
-    row.sourceLabel = 'Upload Manual (Document Checklist)';
-    row.sourceDetails = `Berkas diunggah: ${files[0].fileName}`;
+    row.sourceLabel = 'Manual Upload (Document Checklist)';
+    row.sourceDetails = `Uploaded file: ${files[0].fileName}`;
     row.canDelete = true;
   } else if (banks.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'Pre-analysis · Business & Banks';
-    row.sourceDetails = `Rekening fasilitas bank tercatat: ${banks
+    row.sourceDetails = `Bank facility accounts on file: ${banks
       .map((b: any) => b.bankName || b.bankOrFinInstitution)
       .filter(Boolean)
       .join(', ')}`;

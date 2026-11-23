@@ -10,11 +10,11 @@ import {IDENTITY_TYPES, IdentityDocumentsRepository} from './identity-documents.
 
 /** Reading an identity document with OCR is part of filling in a company, its PIC, its deeds or its stakeholders. */
 const OCR_AUTHORITIES = [
-  'crm_create_application',
-  'crm_edit_app_customer_pic',
-  'crm_edit_app_legal',
-  'crm_edit_app_stakeholders',
-  'crm_manage_customers',
+  'CRM_APPLICATION_CREATE',
+  'CRM_CUSTOMER-PIC_EDIT',
+  'CRM_LEGAL_EDIT',
+  'CRM_STAKEHOLDER_EDIT',
+  'CRM_CUSTOMER_MANAGE',
 ];
 
 /** Stakeholder identity documents (KTP, NPWP, passport, KITAS): OCR scan, save and lookup. */
@@ -92,7 +92,7 @@ export class IdentityDocumentsController {
 
   @Post('stakeholders/documents/save')
   async save(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_edit_app_stakeholders', 'crm_edit_app_legal');
+    requireAuthority(req.actor, 'CRM_STAKEHOLDER_EDIT', 'CRM_LEGAL_EDIT');
     const {stakeholder_id, doc_type, data} = req.body || {};
     if (!stakeholder_id) {
       res.status(400);
@@ -116,7 +116,7 @@ export class IdentityDocumentsController {
 
   @Get('stakeholders/documents/:docType/:stakeholderId')
   async find(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'crm_view_app_stakeholders', 'crm_view_app_legal', 'crm_edit_app_stakeholders');
+    requireAuthority(req.actor, 'CRM_STAKEHOLDER_VIEW', 'CRM_LEGAL_VIEW', 'CRM_STAKEHOLDER_EDIT');
     const type = req.params.docType.toLowerCase();
     if (!IDENTITY_TYPES.includes(type)) {
       res.status(404);

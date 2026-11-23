@@ -1,19 +1,23 @@
 /**
  * Customise the checklist of ONE application: take a default document off it, or add a document (one the workflow
- * offers, another master document, or a free-name one). Other applications keep the workflow's checklist.
+ * offers, a master document, or "Others": a new document typed by name). Other applications keep the workflow's checklist.
  */
 import {api} from '@/shared/lib/api';
+import {departmentLabel} from '@/shared/lib/departments';
 import {Modal} from '@/shared/ui/Modal';
-import {Plus, Trash2, Undo2} from 'lucide-react';
+import {FilePlus2, Plus, Trash2, Undo2} from 'lucide-react';
 import {useCallback, useEffect, useState} from 'react';
 
 type Options = {
-  pool: {workflowStageDocumentId: string; stageCode: string; code: string; name: string; isMandatory: boolean}[];
-  masters: {code: string; name: string; departmentCode: string; isMandatory: boolean}[];
+  pool: {stageCode: string; code: string; name: string; isMandatory: boolean}[];
+  masters: {code: string; name: string}[];
   overrides: {id: string; action: 'ADD' | 'REMOVE'; stageCode: string; code: string; name: string; reason: string | null; by: string}[];
   stages: {code: string; name: string; departmentCode: string | null}[];
   departments: {code: string; name: string}[];
 };
+
+/** The last choice of the master-data list: a document that is not in the list, typed by name. */
+const OTHER = '__other__';
 
 export function ChecklistCustomizeDialog({
   application,
@@ -30,6 +34,8 @@ export function ChecklistCustomizeDialog({
   const [busy, setBusy] = useState(false);
   const [removeId, setRemoveId] = useState('');
   const [reason, setReason] = useState('');
+  const [mode, setMode] = useState<'OFF' | 'ADD'>('ADD');
+  const [source, setSource] = useState<'POOL' | 'MASTER'>('MASTER');
   const [poolId, setPoolId] = useState('');
   const [masterCode, setMasterCode] = useState('');
   const [stage, setStage] = useState('');
@@ -45,7 +51,7 @@ export function ChecklistCustomizeDialog({
 
   // Default documents that can still be taken off this application (no file, not removed yet)
   const removable = (application.documentChecks || []).filter(
-    (d: any) => d.source === 'DEFAULT' && d.workflowStageDocumentId && !(d.files || []).length,
+    (d: any) => d.source === 'DEFAULT' && !(d.files || []).length,
   );
 
   async function run(fn: () => Promise<unknown>, done: string) {
@@ -69,32 +75,51 @@ export function ChecklistCustomizeDialog({
   const stageDept = options.stages.find(x => x.code === defaultStage)?.departmentCode;
   const known = (code: string | null | undefined) => (code && options.departments.some(d => d.code === code) ? code : '');
   const department = known(dept) || known(stageDept) || options.departments[0]?.code || '';
-  const deptSelect = (
-    <label className="wf-dept-pick">
-      Responsible department
-      <select className="wf-input" value={department} onChange={e => setDept(e.target.value)}>
-        {options.departments.map(d => <option key={d.code} value={d.code}>{d.name}</option>)}
-      </select>
-    </label>
-  );
   const stageName = (code: string) => options.stages.find(x => x.code === code)?.name ?? code;
+  const sources = [
+    ...(options.pool.length ? [{key: 'POOL' as const, label: 'Offered by the workflow'}] : []),
+    {key: 'MASTER' as const, label: 'Master data'},
+  ];
+  const src = sources.some(x => x.key === source) ? source : 'MASTER';
+  // "Others" asks for a name; with an empty master list it is the only way to add a document of this kind
+  const isOther = src === 'MASTER' && (!options.masters.length || masterCode === OTHER);
+  const canAdd = !busy && !!department && (src === 'POOL' ? !!poolId : isOther ? !!customName.trim() : !!masterCode);
+  const add = () => {
+    const pool = options.pool.find(x => `${x.stageCode}|${x.code}` === poolId);
+    const body =
+      src === 'POOL' && pool
+        ? {action: 'ADD', stageCode: pool.stageCode, workflowDocumentCode: pool.code, departmentCode: department}
+        : src === 'MASTER' && !isOther
+          ? {action: 'ADD', stageCode: defaultStage, documentCode: masterCode, departmentCode: department}
+          : {action: 'ADD', stageCode: defaultStage, customName: customName.trim(), departmentCode: department, isMandatory: customMandatory};
+    void run(() => post(body), 'Document added').then(() => {
+      setPoolId('');
+      setMasterCode('');
+      setCustomName('');
+      setCustomMandatory(false);
+    });
+  };
 
   return (
-    <Modal title="Customize checklist" onClose={onClose}>
-      <div className="modal-body" style={{display: 'grid', gap: 18, minWidth: 'min(560px, 86vw)'}}>
-        <p className="muted" style={{margin: 0}}>
-          Changes apply to this application only. Every other application keeps the checklist of its workflow.
-        </p>
+    <Modal title="Customize checklist" onClose={onClose} className="cc-modal">
+      <div className="cc-body">
+        <p className="cc-intro">Changes apply to this application only. Every other application keeps the checklist of its workflow.</p>
 
         {options.overrides.length > 0 && (
-          <section>
-            <h4 style={{margin: '0 0 6px'}}>Customised for this application</h4>
-            <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6}}>
+          <section className="cc-list" aria-label="Customised for this application">
+            <h4>Customised for this application</h4>
+            <ul>
               {options.overrides.map(o => (
-                <li key={o.id} style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                <li key={o.id}>
                   <span className={`wf-badge ${o.action === 'ADD' ? 'active' : 'draft'}`}>{o.action === 'ADD' ? 'Added' : 'Removed'}</span>
-                  <span>{o.name} <span className="muted">({stageName(o.stageCode)}){o.reason ? ` · ${o.reason}` : ''}</span></span>
-                  <button className="button small" style={{marginLeft: 'auto'}} disabled={busy} title="Back to the workflow's checklist" onClick={() => run(() => api(`/applications/${application.id}/document-overrides/${o.id}`, 'DELETE'), 'Customization cancelled')}>
+                  <span className="cc-doc">
+                    <b>{o.name}</b>
+                    <small>
+                      {stageName(o.stageCode)}
+                      {o.reason ? ` · ${o.reason}` : ''}
+                    </small>
+                  </span>
+                  <button type="button" className="button small" disabled={busy} title="Back to the workflow's checklist" onClick={() => run(() => api(`/applications/${application.id}/document-overrides/${o.id}`, 'DELETE'), 'Customization cancelled')}>
                     <Undo2 size={13} /> Undo
                   </button>
                 </li>
@@ -103,84 +128,151 @@ export function ChecklistCustomizeDialog({
           </section>
         )}
 
-        <section>
-          <h4 style={{margin: '0 0 6px'}}>Take a default document off</h4>
-          {removable.length === 0 ? (
-            <p className="muted" style={{margin: 0}}>No default document can be taken off (a document that already has a file stays).</p>
-          ) : (
-            <div style={{display: 'grid', gap: 8}}>
-              <select className="wf-input" value={removeId} onChange={e => setRemoveId(e.target.value)}>
-                <option value="">Choose a document…</option>
-                {removable.map((d: any) => (
-                  <option key={d.id} value={d.id}>{d.documentName} ({stageName(d.stageCode)}){d.isMandatory ? ' · mandatory' : ''}</option>
-                ))}
-              </select>
-              <input className="wf-input" placeholder="Reason (required)" value={reason} onChange={e => setReason(e.target.value)} />
-              <button
-                className="button small"
-                disabled={busy || !removeId || !reason.trim()}
-                onClick={() => {
-                  const d = removable.find((x: any) => x.id === removeId);
-                  void run(() => post({action: 'REMOVE', stageCode: d.stageCode, workflowStageDocumentId: d.workflowStageDocumentId, reason: reason.trim()}), 'Document taken off').then(() => {
-                    setRemoveId('');
-                    setReason('');
-                  });
-                }}
-              >
-                <Trash2 size={13} /> Take off
-              </button>
-            </div>
-          )}
-        </section>
+        <div className="cc-tabs" role="tablist" aria-label="What do you want to do">
+          <button type="button" role="tab" aria-selected={mode === 'ADD'} className={mode === 'ADD' ? 'on' : ''} onClick={() => setMode('ADD')}>
+            <FilePlus2 size={15} /> Add a document
+          </button>
+          <button type="button" role="tab" aria-selected={mode === 'OFF'} className={mode === 'OFF' ? 'on' : ''} onClick={() => setMode('OFF')}>
+            <Trash2 size={15} /> Take a default document off
+          </button>
+        </div>
 
-        {options.pool.length > 0 && (
-          <section>
-            <h4 style={{margin: '0 0 6px'}}>Add a document the workflow offers</h4>
-            {deptSelect}
-            <div style={{display: 'flex', gap: 8}}>
-              <select className="wf-input" value={poolId} onChange={e => setPoolId(e.target.value)}>
-                <option value="">Choose a document…</option>
-                {options.pool.map(p => (
-                  <option key={p.workflowStageDocumentId} value={p.workflowStageDocumentId}>{p.name} ({stageName(p.stageCode)})</option>
+        {mode === 'OFF' && (
+          <section className="cc-form">
+            {removable.length === 0 ? (
+              <p className="cc-empty">No default document can be taken off. A document that already has a file stays.</p>
+            ) : (
+              <>
+                <label>
+                  Document
+                  <select value={removeId} onChange={e => setRemoveId(e.target.value)}>
+                    <option value="" disabled>
+                      Choose a document…
+                    </option>
+                    {removable.map((d: any) => (
+                      <option key={d.id} value={d.id}>
+                        {d.documentName} ({stageName(d.stageCode)}){d.isMandatory ? ' · mandatory' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Reason (required)
+                  <input placeholder="Why is it not needed for this customer?" value={reason} onChange={e => setReason(e.target.value)} />
+                </label>
+                <div className="cc-foot">
+                  <button
+                    type="button"
+                    className="button danger"
+                    disabled={busy || !removeId || !reason.trim()}
+                    onClick={() => {
+                      const d = removable.find((x: any) => x.id === removeId);
+                      void run(() => post({action: 'REMOVE', stageCode: d.stageCode, workflowDocumentCode: d.documentCode, reason: reason.trim()}), 'Document taken off').then(() => {
+                        setRemoveId('');
+                        setReason('');
+                      });
+                    }}
+                  >
+                    <Trash2 size={14} /> Take off
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
+        {mode === 'ADD' && (
+          <section className="cc-form">
+            {/* the choice of source is only shown when the workflow offers documents too; with master data alone there is nothing to choose */}
+            {sources.length > 1 && (
+              <div className="cc-seg" role="tablist" aria-label="Where the document comes from">
+                {sources.map(x => (
+                  <button key={x.key} type="button" role="tab" aria-selected={src === x.key} className={src === x.key ? 'on' : ''} onClick={() => setSource(x.key)}>
+                    {x.label}
+                  </button>
                 ))}
-              </select>
-              <button className="button small primary" disabled={busy || !poolId || !department} onClick={() => {
-                const p = options.pool.find(x => x.workflowStageDocumentId === poolId)!;
-                void run(() => post({action: 'ADD', stageCode: p.stageCode, workflowStageDocumentId: poolId, departmentCode: department}), 'Document added').then(() => setPoolId(''));
-              }}>
-                <Plus size={13} /> Add
+              </div>
+            )}
+
+            {src === 'POOL' && (
+              <label>
+                Document
+                <select value={poolId} onChange={e => setPoolId(e.target.value)}>
+                  <option value="" disabled>
+                    Choose a document…
+                  </option>
+                  {options.pool.map(p => (
+                    <option key={`${p.stageCode}|${p.code}`} value={`${p.stageCode}|${p.code}`}>
+                      {p.name} ({stageName(p.stageCode)})
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {src === 'MASTER' && (
+              <>
+                {options.masters.length > 0 && (
+                  <label>
+                    Document
+                    <select value={masterCode} onChange={e => setMasterCode(e.target.value)}>
+                      <option value="" disabled>
+                        Choose from master data…
+                      </option>
+                      {options.masters.map(m => (
+                        <option key={m.code} value={m.code}>
+                          {m.name}
+                        </option>
+                      ))}
+                      <option value={OTHER}>Others (type a new document name)…</option>
+                    </select>
+                  </label>
+                )}
+                {isOther && (
+                  <label>
+                    Document name
+                    <input placeholder="e.g. Surat Keterangan Domisili" value={customName} onChange={e => setCustomName(e.target.value)} />
+                  </label>
+                )}
+              </>
+            )}
+
+            <div className="cc-grid">
+              {src !== 'POOL' && (
+                <label>
+                  Stage
+                  <select value={defaultStage} onChange={e => setStage(e.target.value)}>
+                    {options.stages.map(s => (
+                      <option key={s.code} value={s.code}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label>
+                Responsible department
+                <select value={department} onChange={e => setDept(e.target.value)}>
+                  {options.departments.map(d => (
+                    <option key={d.code} value={d.code}>
+                      {departmentLabel(d)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="cc-foot">
+              {isOther && (
+                <label className="cc-check">
+                  <input type="checkbox" checked={customMandatory} onChange={e => setCustomMandatory(e.target.checked)} /> Mandatory
+                </label>
+              )}
+              <button type="button" className="button primary" disabled={!canAdd} onClick={add}>
+                <Plus size={14} /> Add to checklist
               </button>
             </div>
           </section>
         )}
-
-        <section>
-          <h4 style={{margin: '0 0 6px'}}>Add another document</h4>
-          <div style={{display: 'grid', gap: 8}}>
-            <select className="wf-input" value={defaultStage} onChange={e => setStage(e.target.value)}>
-              {options.stages.map(s => <option key={s.code} value={s.code}>Stage: {s.name}</option>)}
-            </select>
-            {deptSelect}
-            {options.masters.length > 0 && (
-              <div style={{display: 'flex', gap: 8}}>
-                <select className="wf-input" value={masterCode} onChange={e => setMasterCode(e.target.value)}>
-                  <option value="">From Master Data…</option>
-                  {options.masters.map(m => <option key={m.code} value={m.code}>{m.name} ({m.code})</option>)}
-                </select>
-                <button className="button small primary" disabled={busy || !masterCode || !department} onClick={() => void run(() => post({action: 'ADD', stageCode: defaultStage, documentCode: masterCode, departmentCode: department}), 'Document added').then(() => setMasterCode(''))}>
-                  <Plus size={13} /> Add
-                </button>
-              </div>
-            )}
-            <div style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
-              <input className="wf-input" style={{flex: '1 1 220px'}} placeholder="Or a document name, e.g. Surat Keterangan Domisili" value={customName} onChange={e => setCustomName(e.target.value)} />
-              <label className="wf-check"><input type="checkbox" checked={customMandatory} onChange={e => setCustomMandatory(e.target.checked)} /> Mandatory</label>
-              <button className="button small primary" disabled={busy || !customName.trim() || !department} onClick={() => void run(() => post({action: 'ADD', stageCode: defaultStage, customName: customName.trim(), departmentCode: department, isMandatory: customMandatory}), 'Document added').then(() => setCustomName(''))}>
-                <Plus size={13} /> Add
-              </button>
-            </div>
-          </div>
-        </section>
       </div>
     </Modal>
   );

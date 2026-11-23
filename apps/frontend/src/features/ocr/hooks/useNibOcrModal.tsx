@@ -1,10 +1,10 @@
 /** All state, derived values and handlers of NibOcrModal; shared with its sections through NibOcrModalContext. */
 import {validateCompanyEmail} from '@/features/ocr/lib/nib/validate-email';
-import {EMPTY_NIB_FORM, scanResultToForm, type NibFormData} from '@/features/ocr/lib/nib/scan-to-form';
+import {EMPTY_NIB_FORM, nibStreetAddress, scanResultToForm, type NibFormData} from '@/features/ocr/lib/nib/scan-to-form';
 import {extractNibTextFromDocument} from '@/features/ocr/lib/nib/extract';
 import {api} from '@/shared/lib/api';
 import {useMasterData} from '@/shared/master-data';
-import {formatCompanyName, toTitleCase} from '@liugong/shared';
+import {formatCompanyName} from '@liugong/shared';
 import React, {useEffect, useRef, useState} from 'react';
 
 export {validateCompanyEmail};
@@ -15,7 +15,9 @@ export interface NibOcrModalProps {
   onApply: (data: {
     nib?: string;
     companyName?: string;
+    fullAddress?: string;
     alamat?: string;
+    streetAddress?: string;
     email?: string;
     phone?: string;
     tanggalTerbit?: string;
@@ -123,7 +125,9 @@ export function useNibOcrModal({
           setFormData({
             nib: extracted.nib || '',
             companyName: formatCompanyName(extracted.companyName || ''),
+            fullAddress: extracted.fullAddress || extracted.alamat || '',
             alamat: extracted.alamat || '',
+            streetAddress: nibStreetAddress(extracted.alamat || '', extracted),
             email: extracted.email || '',
             phone: extracted.phone || '',
             tanggalTerbit: extracted.tanggalTerbit || '',
@@ -172,6 +176,7 @@ export function useNibOcrModal({
   const filledCount = [
     formData.nib,
     formData.companyName,
+    formData.fullAddress,
     formData.alamat,
     formData.province,
     formData.city,

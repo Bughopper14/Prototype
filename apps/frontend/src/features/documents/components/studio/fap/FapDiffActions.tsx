@@ -1,6 +1,7 @@
 /** FAP diff panel: approve / apply / locked actions bar. */
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
 import {Modal} from '@/shared/ui/Modal';
+import {FapSubmitPlan} from '@/features/documents/components/studio/fap/FapSubmitPlan';
 import {CheckCircle, Loader2, Lock, Pencil} from 'lucide-react';
 
 export function FapDiffActions() {
@@ -45,8 +46,7 @@ export function FapDiffActions() {
                 gap: '8px',
               }}
             >
-              <Lock size={16} /> Physical FAP document has been approved &amp; verified. All FAP Stage data is
-              permanently locked in Pre-analysis.
+              <Lock size={16} /> The FAP Stage has been submitted. Its data is locked while the approval runs.
             </span>
             <div
               className="fap-diff-actions-right"
@@ -66,12 +66,13 @@ export function FapDiffActions() {
                   border: '1px solid #a7f3d0',
                 }}
               >
-                <CheckCircle size={15} /> Document Approved (Locked)
+                <CheckCircle size={15} /> FAP Stage Submitted (Locked)
               </span>
             </div>
           </div>
         ) : (
           <>
+            <FapSubmitPlan application={a} />
             <div
               className="fap-diff-actions-bar"
               style={{
@@ -96,9 +97,9 @@ export function FapDiffActions() {
                   minWidth: '280px',
                 }}
               >
-                Physical FAP document discrepancies are recorded in the Remarks section above. Approving this
-                document will <strong>NOT alter system/database records</strong>, and will{' '}
-                <strong>lock Customer &amp; PIC details</strong> before proceeding to Pre-analysis.
+                Physical FAP document discrepancies are recorded in the Remarks section above. Submitting the
+                FAP Stage will <strong>NOT alter system/database records</strong>, will{' '}
+                <strong>lock Customer &amp; PIC details</strong> and starts the approvals listed above.
               </span>
               <div
                 className="fap-diff-actions-right"
@@ -126,15 +127,15 @@ export function FapDiffActions() {
                     background: '#059669',
                     borderColor: '#059669',
                   }}
-                  title="Approve document verification and lock Customer & PIC details"
+                  title="Submit the FAP Stage and lock Customer & PIC details"
                 >
                   {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />}
-                  Approve Document (Lock Customer &amp; PIC)
+                  Submit FAP Stage (Lock Customer &amp; PIC)
                 </button>
               </div>
             </div>
             {confirmApproveFapOpen && (
-              <Modal title="Confirm Document Approval" onClose={() => setConfirmApproveFapOpen(false)}>
+              <Modal title="Confirm FAP Stage Submit" onClose={() => setConfirmApproveFapOpen(false)}>
                 <div
                   className="modal-body"
                   style={{minWidth: '320px', maxWidth: '480px', padding: '24px 28px'}}
@@ -168,7 +169,7 @@ export function FapDiffActions() {
                         Are you sure?
                       </h3>
                       <p style={{margin: '4px 0 0', fontSize: '12px', color: '#64748b'}}>
-                        {a.customer?.companyName || 'Company'} · {a.fapNumber}
+                        {[a.customer?.companyName || 'Company', a.fapNumber].filter(Boolean).join(' · ')}
                       </p>
                     </div>
                   </div>
@@ -180,7 +181,7 @@ export function FapDiffActions() {
                       margin: '0 0 12px',
                     }}
                   >
-                    Are you sure you want to approve this physical FAP document?
+                    Are you sure you want to submit the FAP Stage with this physical FAP document?
                   </p>
                   <p
                     style={{
@@ -194,8 +195,8 @@ export function FapDiffActions() {
                       border: '1px solid #e2e8f0',
                     }}
                   >
-                    Customer &amp; PIC sections will be locked, and you will proceed directly to the{' '}
-                    <strong>Pre-analysis</strong> stage.
+                    Customer &amp; PIC sections will be locked and the approvals of the stage will start. The
+                    discrepancies stay recorded in the remarks.
                   </p>
                 </div>
                 <div

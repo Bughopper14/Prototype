@@ -2,10 +2,12 @@ import {Injectable} from '@nestjs/common';
 import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
+import {STATE_NAME, type ApprovalState} from '../../approvals/approvals.service';
 
 /**
- * Workflow stages and statuses for the frontend (read only): labels, stage of each status, order and final statuses.
- * Which actions a user may take is decided by the backend from crm_master_workflow (availableActions).
+ * Workflow stages and application states for the frontend (read only): the stages are those of the ACTIVE workflow (an application
+ * carries its own workflow, so its screens use that one); the states are the four an approval can leave an application in.
+ * Who may approve a step is decided by the authority of that step (modules/approvals).
  */
 @Injectable()
 export class WorkflowMastersRepository {
@@ -13,26 +15,16 @@ export class WorkflowMastersRepository {
 
   async catalog(catalog: MasterCatalog): Promise<MasterCatalog> {
     const [stages] = await this.db.pool.query<any[]>(
-      `SELECT code,name,sequence_order,is_active FROM ${CRM.masterWorkflowStages} ORDER BY sequence_order`,
-    );
-    const [statuses] = await this.db.pool.query<any[]>(
-      `SELECT s.code,s.name,s.is_terminal,s.is_active,st.code AS stage_code FROM ${CRM.masterWorkflowStatuses} s
-       JOIN ${CRM.masterWorkflowStages} st ON st.id=s.stage_id ORDER BY st.sequence_order,s.sort_order`,
+      `SELECT s.code,s.name FROM ${CRM.workflowStages} s
+       JOIN ${CRM.workflowStageGroups} g ON g.workflow_code=s.workflow_code AND g.code=s.group_code
+       JOIN ${CRM.workflows} w ON w.code=s.workflow_code AND w.is_active=1
+       ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
     );
     return {
       ...catalog,
-      workflowStage: stages.map(
-        r => ({value: r.code, name: r.name, active: !!r.is_active, sequence: Number(r.sequence_order)}) satisfies MasterItem,
-      ),
-      workflowStatus: statuses.map(
-        r =>
-          ({
-            value: r.code,
-            name: r.name,
-            active: !!r.is_active,
-            parentValue: r.stage_code,
-            terminal: !!r.is_terminal,
-          }) satisfies MasterItem,
+      workflowStage: stages.map((r, i) => ({value: r.code, name: r.name, active: true, sequence: i + 1}) satisfies MasterItem),
+      workflowStatus: (Object.keys(STATE_NAME) as ApprovalState[]).map(
+        code => ({value: code, name: STATE_NAME[code], active: true, terminal: code === 'APPROVED'}) satisfies MasterItem,
       ),
     };
   }

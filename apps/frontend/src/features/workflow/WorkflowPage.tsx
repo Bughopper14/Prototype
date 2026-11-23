@@ -1,24 +1,34 @@
 import {AccessGate} from '@/features/crm/components/AccessGate';
 import {useCrm} from '@/features/crm/components/CrmProvider';
+import {hasAuthority} from '@/shared/lib/auth';
 import {PageHeading} from '@/features/crm/components/PageHeading';
 import {Modal} from '@/shared/ui/Modal';
-import {ChevronRight, Layers, Lock, Pencil, Plus, Power, PowerOff, Zap, History} from 'lucide-react';
+import {toCode} from '@liugong/shared';
+import {ChevronRight, Layers, Lock, Pencil, Plus, Power, PowerOff, Trash2, Zap, History} from 'lucide-react';
 import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
-import {workflowApi, type Catalog, type WorkflowHeader} from './api';
+import {useSearchParams} from 'react-router';
+import {ActivityLog} from '@/shared/ui/ActivityLog';
+import {workflowApi, type Catalog, type WorkflowHeader, type WorkflowLogRow} from './api';
+import {WorkflowHistory} from './WorkflowHistory';
 import {WorkflowEditor} from './editor/WorkflowEditor';
 import {GROUP_COLORS} from './palette';
 import {useConfirm} from './ConfirmDialog';
 
-const STATUS_LABEL = {DRAFT: 'Draft', ACTIVE: 'Active', INACTIVE: 'Deactivated'} as const;
+const STATUS_LABEL = {ACTIVE: 'Active', INACTIVE: 'Not active'} as const;
 
 type Flow = NonNullable<WorkflowHeader['flow']>;
 
 /** The pipeline of a workflow as colored chips: one color per group, steps separated by an arrow, parallel stages marked. */
 function Pipeline({flow}: {flow: Flow}) {
   const steps = useMemo(() => {
-    const out: {order: number; groups: {name: string; color: string; stages: Flow[number]['stages']}[]}[] = [];
+    const out: {order: number; groups: {name: string; color: string; stages: Flow[number]['stages']}[]}[] =
+      [];
     flow.forEach((g, gi) => {
-      const group = {name: g.name, color: GROUP_COLORS[gi % GROUP_COLORS.length], stages: [...g.stages].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))};
+      const group = {
+        name: g.name,
+        color: GROUP_COLORS[gi % GROUP_COLORS.length],
+        stages: [...g.stages].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)),
+      };
       const last = out[out.length - 1];
       if (last && last.order === g.order) last.groups.push(group);
       else out.push({order: g.order, groups: [group]});
@@ -37,7 +47,8 @@ function Pipeline({flow}: {flow: Flow}) {
   return (
     <div className="wf-pipe">
       <b>
-        Pipeline ({steps.length} step{steps.length === 1 ? '' : 's'}, {stageCount} stage{stageCount === 1 ? '' : 's'})
+        Pipeline ({steps.length} step{steps.length === 1 ? '' : 's'}, {stageCount} stage
+        {stageCount === 1 ? '' : 's'})
       </b>
       <div className="wf-pipe-row">
         {steps.map((step, si) => (
@@ -46,11 +57,20 @@ function Pipeline({flow}: {flow: Flow}) {
             <div className="wf-pipe-step">
               {step.groups.flatMap(g =>
                 g.stages.map(s => {
-                  const parallel = step.groups.length > 1 || g.stages.filter(x => x.order === s.order).length > 1;
+                  const parallel =
+                    step.groups.length > 1 || g.stages.filter(x => x.order === s.order).length > 1;
                   return (
-                    <span key={`${g.name}-${s.name}`} className="wf-chip-stage" style={{borderColor: g.color, color: g.color, background: `${g.color}12`}} title={g.name}>
+                    <span
+                      key={`${g.name}-${s.name}`}
+                      className="wf-chip-stage"
+                      style={{borderColor: g.color, color: g.color, background: `${g.color}12`}}
+                      title={g.name}
+                    >
                       {si + 1}. {s.name}
-                      <em>{parallel ? <Zap size={12} /> : <Lock size={12} />} {parallel ? 'Parallel' : 'Sequential'}</em>
+                      <em>
+                        {parallel ? <Zap size={12} /> : <Lock size={12} />}{' '}
+                        {parallel ? 'Parallel' : 'Sequential'}
+                      </em>
                     </span>
                   );
                 }),
@@ -63,15 +83,20 @@ function Pipeline({flow}: {flow: Flow}) {
   );
 }
 
-/** The code the backend will give the workflow (name trimmed, upper-case, other characters become one underscore). */
-const previewCode = (name: string) =>
-  name
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '');
+/** The code the backend will give the workflow: the standard code (@liugong/shared), hyphens, never underscores. */
+const previewCode = toCode;
 
-function NewWorkflowDialog({rows, onClose, onCreated, notify}: {rows: WorkflowHeader[]; onClose: () => void; onCreated: (id: string) => void; notify: (m: string) => void}) {
+function NewWorkflowDialog({
+  rows,
+  onClose,
+  onCreated,
+  notify,
+}: {
+  rows: WorkflowHeader[];
+  onClose: () => void;
+  onCreated: (id: string) => void;
+  notify: (m: string) => void;
+}) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [busy, setBusy] = useState(false);
@@ -91,13 +116,26 @@ function NewWorkflowDialog({rows, onClose, onCreated, notify}: {rows: WorkflowHe
   return (
     <Modal title="New workflow" onClose={onClose} className="wf-new-modal">
       <div className="wf-new">
-        <p className="wf-new-lead">The workflow starts empty. You add its groups, stages, required fields and documents on the next screen, then activate it.</p>
+        <p className="wf-new-lead">
+          The workflow starts empty. You add its groups, stages, required fields and documents on the next
+          screen, then activate it.
+        </p>
 
         <label className="wf-new-field">
           <span>
-            Name <em>required</em>
+            Name{' '}
+            <em className="req" title="Required" aria-label="required">
+              *
+            </em>
           </span>
-          <input value={name} autoFocus placeholder="e.g. Fast-track repeat order" maxLength={150} onChange={e => setName(e.target.value)} onKeyDown={e => e.key === 'Enter' && name.trim() && !busy && void create()} />
+          <input
+            value={name}
+            autoFocus
+            placeholder="e.g. Fast-track repeat order"
+            maxLength={150}
+            onChange={e => setName(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && name.trim() && !busy && void create()}
+          />
           <small className={taken ? 'warn' : ''}>
             {code ? (
               <>
@@ -113,7 +151,13 @@ function NewWorkflowDialog({rows, onClose, onCreated, notify}: {rows: WorkflowHe
           <span>
             Description <em className="opt">optional</em>
           </span>
-          <textarea value={description} rows={2} maxLength={500} placeholder="What is this workflow for?" onChange={e => setDescription(e.target.value)} />
+          <textarea
+            value={description}
+            rows={2}
+            maxLength={500}
+            placeholder="What is this workflow for?"
+            onChange={e => setDescription(e.target.value)}
+          />
         </label>
 
         <div className="wf-new-actions">
@@ -129,55 +173,61 @@ function NewWorkflowDialog({rows, onClose, onCreated, notify}: {rows: WorkflowHe
   );
 }
 
+/** The log of every workflow, also the ones that were deleted (their versions stay, this log says who deleted them). */
+function AllLogDialog({onClose}: {onClose: () => void}) {
+  const [rows, setRows] = useState<WorkflowLogRow[] | null>(null);
+  useEffect(() => {
+    workflowApi
+      .activity()
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, []);
+  return (
+    <Modal title="Activity log of all workflows" onClose={onClose} className="wf-history-modal">
+      <div className="vt-wrap">{rows ? <ActivityLog rows={rows.map(r => ({action: r.action, summary: r.summary, by: r.by, at: r.at, version: r.version, workflow: r.name ?? r.code}))} /> : <div className="loading-strip" />}</div>
+    </Modal>
+  );
+}
+
 function HistoryDialog({workflow, onClose}: {workflow: WorkflowHeader; onClose: () => void}) {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof workflowApi.history>> | null>(null);
   useEffect(() => {
-    workflowApi.history(workflow.id).then(setRows).catch(() => setRows([]));
+    workflowApi
+      .history(workflow.id)
+      .then(setRows)
+      .catch(() => setRows([]));
   }, [workflow.id]);
   return (
     <Modal title={`History of ${workflow.name}`} onClose={onClose} className="wf-history-modal">
       {!rows ? (
         <div className="loading-strip" />
       ) : (
-        <table className="wf-table">
-          <thead>
-            <tr>
-              <th>When</th>
-              <th>Action</th>
-              <th>By</th>
-              <th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((h, i) => (
-              <tr key={i}>
-                <td>{new Date(h.at).toLocaleString('id-ID')}</td>
-                <td>
-                  {h.action}
-                  {h.previous ? ` (was ${h.previous})` : ''}
-                </td>
-                <td>{h.actor}</td>
-                <td>{h.note}</td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={4} className="muted">
-                  No history yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <WorkflowHistory workflowId={workflow.id} rows={rows} />
       )}
     </Modal>
   );
 }
 
-function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowHeader[]; onOpen: (id: string) => void; onNew: () => void; onChanged: () => void; notify: (m: string) => void}) {
-  const [showInactive, setShowInactive] = useState(true);
+function WorkflowList({
+  rows,
+  onOpen,
+  onNew,
+  onChanged,
+  notify,
+}: {
+  rows: WorkflowHeader[];
+  onOpen: (id: string) => void;
+  onNew: () => void;
+  onChanged: () => void;
+  notify: (m: string) => void;
+}) {
+  const {user} = useCrm();
+  // Reading a workflow needs CRM_WORKFLOW_VIEW; creating, changing, deleting and switching the active one need CRM_WORKFLOW_EDIT
+  const canEdit = hasAuthority(user, 'CRM_WORKFLOW_EDIT');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | keyof typeof STATUS_LABEL>('ALL');
   const [confirmAsk, confirmDialog] = useConfirm();
   const [history, setHistory] = useState<WorkflowHeader | null>(null);
+  const [logAll, setLogAll] = useState(false);
   async function run(fn: () => Promise<unknown>, done: string) {
     try {
       await fn();
@@ -189,21 +239,31 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
   }
   const activate = async (w: WorkflowHeader) =>
     (await confirmAsk({
-      title: 'Activate workflow',
-      message: `New applications will start in "${w.name}". Applications that are already running keep their workflow, and the current active workflow is deactivated.`,
-      confirmLabel: 'Activate',
+      title: 'Set workflow active',
+      message: `New applications will start in "${w.name}". Applications that are already running keep the version they started with, and the current active workflow is switched off.`,
+      confirmLabel: 'Set active',
       icon: 'power',
     })) && run(() => workflowApi.activate(w.id), `${w.name} is now active`);
   const deactivate = async (w: WorkflowHeader) =>
     (await confirmAsk({
-      title: 'Deactivate workflow',
-      message: `New applications cannot be created until another workflow is activated. Running applications are not affected.`,
-      confirmLabel: 'Deactivate',
+      title: 'Switch workflow off',
+      message: `New applications cannot be created until another workflow is set active. Running applications are not affected.`,
+      confirmLabel: 'Switch off',
       tone: 'danger',
       icon: 'off',
-    })) && run(() => workflowApi.deactivate(w.id), `${w.name} deactivated`);
+    })) && run(() => workflowApi.deactivate(w.id), `${w.name} switched off`);
 
-  const shown = rows.filter(w => showInactive || w.status !== 'INACTIVE');
+  const remove = async (w: WorkflowHeader) =>
+    (await confirmAsk({
+      title: 'Delete workflow',
+      message: `"${w.name}" is deleted. Applications that already run on it keep their version and are not affected.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+      icon: 'off',
+    })) && run(() => workflowApi.remove(w.id), `${w.name} deleted`);
+
+  const stateOf = (w: WorkflowHeader) => (w.isActive ? 'ACTIVE' : 'INACTIVE');
+  const shown = rows.filter(w => statusFilter === 'ALL' || stateOf(w) === statusFilter);
 
   return (
     <>
@@ -214,22 +274,35 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
         <div className="wf-top-text">
           <h3>Workflow Catalog</h3>
           <p>
-            Pick a workflow to <b>manage its steps, stages and documents</b>, or create a new one. New applications always start in the <b>active</b> workflow.
+            Pick a workflow to <b>manage its steps, stages and documents</b>, or create a new one. New
+            applications always start in the <b>active</b> workflow.
           </p>
         </div>
-        <label className="wf-toggle">
-          <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} />
-          Show deactivated workflows
-        </label>
-        <button className="wf-btn primary" onClick={onNew}>
-          <Plus size={17} /> Create new workflow
+        <select
+          className="wf-status-filter"
+          aria-label="Filter workflows by status"
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value as 'ALL' | keyof typeof STATUS_LABEL)}
+        >
+          <option value="ALL">All statuses</option>
+          <option value="ACTIVE">{STATUS_LABEL.ACTIVE}</option>
+          <option value="INACTIVE">{STATUS_LABEL.INACTIVE}</option>
+        </select>
+        <button className="wf-btn" onClick={() => setLogAll(true)} title="Who created, saved, activated or deleted which workflow">
+          <History size={17} /> Activity log
         </button>
+        {canEdit && (
+          <button className="wf-btn primary" onClick={onNew}>
+            <Plus size={17} /> Create new workflow
+          </button>
+        )}
       </header>
 
       <div className="wf-note-banner">
         <p>
-          A workflow is the route an application takes. Steps run from left to right, groups in the same step run together, and each stage lists the fields and
-          documents it requires. A workflow that applications already run on is locked; to change the process, create a new one and activate it.
+          A workflow is the route an application takes. Steps run from left to right, groups in the same step
+          run together, and each stage lists the fields and documents it requires. A workflow can be
+          edited at any time: every save makes a new version. Applications that are already running stay on the version they started with.
         </p>
       </div>
 
@@ -237,12 +310,12 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
         {shown.map(w => {
           const stageCount = (w.flow || []).reduce((n, g) => n + g.stages.length, 0);
           return (
-            <article key={w.id} className={`wf-card ${w.status.toLowerCase()}`}>
+            <article key={w.id} className={`wf-card ${stateOf(w).toLowerCase()}`}>
               <header>
                 <span className="wf-codechip">{w.code}</span>
-                <span className="wf-ver">v{w.versionNo}</span>
+                <span className="wf-ver">v{w.freezeVersion ?? 0}</span>
                 <span className="wf-spacer" />
-                <span className={`wf-badge ${w.status.toLowerCase()}`}>{STATUS_LABEL[w.status]}</span>
+                <span className={`wf-badge ${stateOf(w).toLowerCase()}`}>{STATUS_LABEL[stateOf(w)]}</span>
               </header>
               <h4>{w.name}</h4>
               <p className="wf-desc">{w.description || 'No description.'}</p>
@@ -252,39 +325,49 @@ function WorkflowList({rows, onOpen, onNew, onChanged, notify}: {rows: WorkflowH
                   <dd>{w.applications ?? 0}</dd>
                 </div>
                 <div>
-                  <dt>Activated</dt>
-                  <dd>{w.activatedAt ? new Date(w.activatedAt).toLocaleDateString('id-ID') : 'Not yet'}</dd>
+                  <dt>Last saved</dt>
+                  <dd>{w.frozenAt ? new Date(w.frozenAt).toLocaleDateString('id-ID') : 'Not yet'}</dd>
                 </div>
               </dl>
               <Pipeline flow={w.flow || []} />
               <button className="wf-open" onClick={() => onOpen(w.id)}>
-                <Pencil size={16} /> {w.editable ? 'Manage steps & stages' : 'View steps & stages'} ({stageCount})
+                <Pencil size={16} /> {canEdit ? 'Manage steps & stages' : 'See details'} (
+                {stageCount})
               </button>
               <footer>
                 <button className="wf-btn small" onClick={() => setHistory(w)}>
                   <History size={15} /> History
                 </button>
-                {w.status !== 'ACTIVE' ? (
-                  <button className="wf-btn small accent" onClick={() => activate(w)}>
-                    <Power size={15} /> Activate
-                  </button>
-                ) : (
-                  <button className="wf-btn small" onClick={() => deactivate(w)}>
-                    <PowerOff size={15} /> Deactivate
+                {canEdit && !w.isActive && (
+                  <button className="wf-btn small" onClick={() => remove(w)} title="Delete this workflow (its versions stay)">
+                    <Trash2 size={15} /> Delete
                   </button>
                 )}
+                {canEdit &&
+                  (!w.isActive ? (
+                    <button className="wf-btn small accent" onClick={() => activate(w)}>
+                      <Power size={15} /> Set active
+                    </button>
+                  ) : (
+                    <button className="wf-btn small" onClick={() => deactivate(w)}>
+                      <PowerOff size={15} /> Switch off
+                    </button>
+                  ))}
               </footer>
             </article>
           );
         })}
-        <button className="wf-card-new" onClick={onNew}>
-          <Plus size={26} />
-          <b>Create new workflow</b>
-          <span>Start empty, then add groups, stages and documents</span>
-        </button>
+        {canEdit && (
+          <button className="wf-card-new" onClick={onNew}>
+            <Plus size={26} />
+            <b>Create new workflow</b>
+            <span>Start empty, then add groups, stages and documents</span>
+          </button>
+        )}
       </div>
       {confirmDialog}
       {history && <HistoryDialog workflow={history} onClose={() => setHistory(null)} />}
+      {logAll && <AllLogDialog onClose={() => setLogAll(false)} />}
     </>
   );
 }
@@ -293,13 +376,28 @@ function WorkflowSetup() {
   const {notify} = useCrm();
   const [rows, setRows] = useState<WorkflowHeader[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [openId, setOpenId] = useState<string | null>(null);
+  // a link from another page (Master Approval) opens a workflow right away: /workflows?open=<id>
+  const [params, setParams] = useSearchParams();
+  const [openId, setOpenId] = useState<string | null>(params.get('open'));
+  useEffect(() => {
+    if (params.get('open')) setParams({}, {replace: true});
+  }, [params, setParams]);
   const [creating, setCreating] = useState(false);
 
-  const reload = useCallback(() => workflowApi.list().then(setRows).catch(e => notify(e.message)), [notify]);
+  const reload = useCallback(
+    () =>
+      workflowApi
+        .list()
+        .then(setRows)
+        .catch(e => notify(e.message)),
+    [notify],
+  );
   useEffect(() => {
     void reload();
-    workflowApi.catalog().then(setCatalog).catch(e => notify(e.message));
+    workflowApi
+      .catalog()
+      .then(setCatalog)
+      .catch(e => notify(e.message));
   }, [reload, notify]);
 
   if (openId && catalog)
@@ -319,7 +417,13 @@ function WorkflowSetup() {
 
   return (
     <div className="wf-page">
-      <WorkflowList rows={rows} onOpen={setOpenId} onNew={() => setCreating(true)} onChanged={reload} notify={notify} />
+      <WorkflowList
+        rows={rows}
+        onOpen={setOpenId}
+        onNew={() => setCreating(true)}
+        onChanged={reload}
+        notify={notify}
+      />
       {creating && (
         <NewWorkflowDialog
           rows={rows}
@@ -340,7 +444,7 @@ export default function WorkflowRoute() {
   return (
     <>
       <PageHeading page="Workflow" />
-      <AccessGate authority="crm_manage_workflow" page="Workflow">
+      <AccessGate authority="CRM_WORKFLOW_VIEW" page="Workflow">
         <WorkflowSetup />
       </AccessGate>
     </>

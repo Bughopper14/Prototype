@@ -14,7 +14,7 @@ export function groupRowsByStage(rows: ChecklistRow[]): StageGroup[] {
   const groups = new Map<string, StageGroup>();
   for (const row of rows) {
     const code = row.stage || NO_STAGE;
-    if (!groups.has(code)) groups.set(code, {code, name: row.stageName || 'Lainnya', rows: [], availableCount: 0});
+    if (!groups.has(code)) groups.set(code, {code, name: row.stageName || 'Other', rows: [], availableCount: 0});
     const g = groups.get(code)!;
     g.rows.push(row);
     if (row.isAvailable) g.availableCount += 1;

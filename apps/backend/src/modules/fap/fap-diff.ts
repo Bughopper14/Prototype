@@ -3,7 +3,7 @@ import {experienceFromEstablishmentDate} from '@liugong/shared';
 /** One difference between the system data and the signed FAP document; '' means the value is empty. */
 export type FapDiff = {field: string; label: string; oldValue: string; newValue: string; section?: string};
 
-/** Where the master (crm_master_field_mandatory_rules) names a field: its label and section. */
+/** Where the master form fields (crm_master_form_fields) name a field: its label and section. */
 export type FieldRule = {label: string; section: string};
 /** Finds the master rule of a field; `anchor` is a field that only exists in the wanted section (so a repeated key such as city picks the right one). */
 export type RuleLookup = (key: string, anchor?: string) => FieldRule | undefined;

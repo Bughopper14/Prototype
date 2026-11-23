@@ -5,8 +5,8 @@ export function resolveLegalOpinion({files, row}: ResolverContext) {
   if (files.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'MANUAL';
-    row.sourceLabel = 'Upload Manual (Document Checklist)';
-    row.sourceDetails = `Berkas diunggah: ${files[0].fileName}`;
+    row.sourceLabel = 'Manual Upload (Document Checklist)';
+    row.sourceDetails = `Uploaded file: ${files[0].fileName}`;
     row.canDelete = true;
   }
 }

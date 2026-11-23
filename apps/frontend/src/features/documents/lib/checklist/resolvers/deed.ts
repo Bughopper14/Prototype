@@ -7,18 +7,18 @@ export function resolveDeed({a, draft, files, row}: ResolverContext) {
   if (files.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'MANUAL';
-    row.sourceLabel = 'Upload Manual (Document Checklist)';
-    row.sourceDetails = `Berkas diunggah: ${files[0].fileName}`;
+    row.sourceLabel = 'Manual Upload (Document Checklist)';
+    row.sourceDetails = `Uploaded file: ${files[0].fileName}`;
     row.canDelete = true;
   } else if (deeds.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
-    row.sourceLabel = 'Legal · Akta Perseroan';
+    row.sourceLabel = 'Legal · Company Deeds';
     const deedSummaries = deeds.map(
       (d: any) =>
-        `${d.type === 'establishment' ? 'Akta Pendirian' : 'Akta Perubahan'} No. ${d.deedNumber || '-'}`,
+        `${d.type === 'establishment' ? 'Establishment Deed' : 'Amendment Deed'} No. ${d.deedNumber || '-'}`,
     );
-    row.sourceDetails = `${deeds.length} Akta tercatat: ${deedSummaries.join(', ')}`;
+    row.sourceDetails = `${deeds.length} deed(s) recorded: ${deedSummaries.join(', ')}`;
     row.canDelete = false;
   }
 }

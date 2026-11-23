@@ -145,7 +145,12 @@ export class FapSectionsRepository {
       financingProposal.facilityProposed = {
         financingMethod: proposal!.financingMethod,
         currencyChoice: proposal!.currency,
-        financingValue: p.financing_value_display ?? (p.financing_value === null ? '' : String(Number(p.financing_value))),
+        financingValue:
+          p.financing_value_display && p.financing_value_display !== '0'
+            ? p.financing_value_display
+            : p.financing_value === null || Number(p.financing_value) === 0
+              ? ''
+              : String(Number(p.financing_value)),
         applicationSource: proposal!.applicationSource,
       };
       financingProposal.realizationPlan = Object.fromEntries(REALIZATION.map(([k, c]) => [k, Number(p[c] ?? 0)]));

@@ -1,16 +1,27 @@
 /** Pure helpers of the financial statements section (FAP 09): new year, auto-sums and ratios. */
-import {blank, financialFields} from '@liugong/shared';
 
 export const MAX_FISCAL_YEARS = 3;
 
-/** A blank statement for the year after the latest one (or last year when there is none). */
+/** The three years a statement starts with: the last three finished years, oldest first (2023, 2024, 2025 in 2026). The user can change them. */
+export function defaultFiscalYears(now = new Date().getFullYear()): number[] {
+  return [now - 3, now - 2, now - 1];
+}
+
+/** The year a new statement gets: the newest of the default years that is not used yet, else the year after the latest one. */
+export function nextFiscalYear(rows: any[]): number {
+  const used = new Set(rows.map((r: any) => Number(r.fiscalYear) || 0).filter((y: number) => y > 0));
+  const free = [...defaultFiscalYears()].reverse().find(y => !used.has(y));
+  return free ?? Math.max(...used) + 1;
+}
+
+/** The statements in the order the database and the FAP sheet keep them: oldest year first. */
+export function byFiscalYear<T extends {fiscalYear?: unknown}>(rows: T[]): T[] {
+  return [...rows].sort((a, b) => (Number(a.fiscalYear) || 0) - (Number(b.fiscalYear) || 0));
+}
+
+/** A blank statement for a year (by default the next free one of the last three years). */
 export function newFiscalYearRow(rows: any[], forcedYear?: number) {
-  const currentYear = new Date().getFullYear();
-  let year = forcedYear;
-  if (year === undefined) {
-    const existingYears = rows.map((r: any) => Number(r.fiscalYear) || 0).filter((y: number) => y > 0);
-    year = existingYears.length > 0 ? Math.max(...existingYears) + 1 : currentYear;
-  }
+  const year = forcedYear ?? nextFiscalYear(rows);
   return {
     fiscalYear: year,
     isAudited: false,

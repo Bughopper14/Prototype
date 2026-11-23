@@ -29,14 +29,26 @@ export function DetailHeading() {
           <h1>{liveCompanyName || (draft.isNew ? 'New Financing Application' : 'Financing Application')}</h1>
         </div>
         <p className="detail-meta">
-          {!draft.isNew && (a.fapNumber || a.code) && <span className="detail-meta-id">{a.fapNumber || a.code}</span>}
+          {!draft.isNew && (a.fapNumber || a.code) && (
+            <span className="detail-meta-id" title="FAP Number">
+              {a.fapNumber || a.code}
+            </span>
+          )}
           {!draft.isNew && a.branchCode && <span>{a.branchCode}</span>}
-          {mktPic && <span>MKT_PIC: {mktPic}</span>}
           {resolvedCity && <span>{resolvedCity}</span>}
           {(draft.companyType || a.companyType) && <span>{label(draft.companyType || a.companyType)}</span>}
           {resolvedSegment && <span>{resolvedSegment}</span>}
           <span>Created {date(draft.applicationDate || a.applicationDate)}</span>
         </p>
+        {!draft.isNew && (
+          <p className="detail-meta">
+            <span>
+              PIC Marketing: <b>{a.mktPic?.name || mktPic || (a.mktPic?.id ? `User #${a.mktPic.id}` : 'not set')}</b>
+              {a.mktPic?.username && a.mktPic.username !== (a.mktPic?.name || mktPic) ? ` (${a.mktPic.username})` : ''}
+            </span>
+            {a.createdBy && <span>Created by {a.createdBy}</span>}
+          </p>
+        )}
       </div>
       <Badge status={draft.isNew ? initialStatusCode() : a.status} />
     </div>

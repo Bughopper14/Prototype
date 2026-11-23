@@ -1,5 +1,5 @@
 /** View, upload / replace and delete (or lock) buttons of a document row. */
-import {Upload, Trash2, Lock, Eye, Loader2, ShieldCheck} from 'lucide-react';
+import {Upload, Trash2, Lock, Eye, Loader2} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function DocumentRowActions({
@@ -9,7 +9,6 @@ export function DocumentRowActions({
   onPreview,
   onUpload,
   onDelete,
-  onVerify,
 }: {
   row: ChecklistRow;
   isUploading: boolean;
@@ -17,7 +16,6 @@ export function DocumentRowActions({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
-  onVerify?: (row: ChecklistRow) => void;
 }) {
   return (
     <div className="doc-row-actions">
@@ -26,24 +24,11 @@ export function DocumentRowActions({
         <button
           type="button"
           className="button small doc-action-btn btn-view"
-          title="Pratinjau Dokumen Fisik"
+          title="Preview Physical Document"
           onClick={() => onPreview(row)}
         >
           <Eye size={13} />
-          <span>Lihat</span>
-        </button>
-      )}
-
-      {/* Verification by BS / CA / Legal */}
-      {onVerify && row.isAvailable && row.chkId && (
-        <button
-          type="button"
-          className="button small doc-action-btn"
-          title="Verifikasi Dokumen"
-          onClick={() => onVerify(row)}
-        >
-          <ShieldCheck size={13} />
-          <span>Verifikasi</span>
+          <span>View</span>
         </button>
       )}
 
@@ -51,12 +36,12 @@ export function DocumentRowActions({
       <button
         type="button"
         className={`button small doc-action-btn ${row.isAvailable ? 'btn-replace' : 'primary btn-upload'}`}
-        title={row.isAvailable ? 'Ganti / Upload Berkas Tambahan' : 'Upload Berkas Sekarang'}
+        title={row.isAvailable ? 'Replace / Upload additional file' : 'Upload file now'}
         disabled={isUploading}
         onClick={() => onUpload(row.code)}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
-        <span>{row.isAvailable ? 'Ganti' : 'Upload'}</span>
+        <span>{row.isAvailable ? 'Replace' : 'Upload'}</span>
       </button>
 
       {/* Delete Button / Lock Indicator */}
@@ -65,7 +50,7 @@ export function DocumentRowActions({
           <button
             type="button"
             className="button small doc-action-btn btn-delete text-danger"
-            title="Hapus Berkas Manual"
+            title="Delete Manual File"
             disabled={deletingFileId === row.files[0].id}
             onClick={() => onDelete(row.files[0].id, row.code)}
           >
@@ -78,7 +63,7 @@ export function DocumentRowActions({
         ) : (
           <div
             className="locked-action-indicator"
-            title={`Dokumen ini terhubung otomatis dari ${row.sourceLabel}. Hapus atau ubah dokumen melalui modul tersebut.`}
+            title={`This document is automatically linked from ${row.sourceLabel}. Delete or update it from that module.`}
           >
             <Lock size={13} />
           </div>

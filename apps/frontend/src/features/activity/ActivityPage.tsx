@@ -8,7 +8,7 @@ export default function ActivityRoute() {
   return (
     <>
       <PageHeading page="Activity" />
-      <AccessGate authority="crm_view_activity" page="Activity">
+      <AccessGate authority="CRM_ACTIVITY_VIEW" page="Activity">
         <ActivityPage
           activities={activities}
           readActivityIds={readActivityIds}

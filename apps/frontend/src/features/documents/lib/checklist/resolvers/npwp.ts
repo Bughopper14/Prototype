@@ -9,14 +9,14 @@ export function resolveNpwp({a, draft, files, row}: ResolverContext) {
   if (files.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'MANUAL';
-    row.sourceLabel = 'Upload Manual (Document Checklist)';
-    row.sourceDetails = `Berkas diunggah: ${files[0].fileName}`;
+    row.sourceLabel = 'Manual Upload (Document Checklist)';
+    row.sourceDetails = `Uploaded file: ${files[0].fileName}`;
     row.canDelete = true;
   } else if (hasNpwpData) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'FAP Stage · Customer & PIC';
-    row.sourceDetails = `NPWP Perusahaan Terdaftar: ${customerNpwp}`;
+    row.sourceDetails = `Registered Company NPWP: ${customerNpwp}`;
     row.canDelete = false;
   }
 }

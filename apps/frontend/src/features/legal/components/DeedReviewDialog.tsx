@@ -9,13 +9,13 @@ import {ReviewNotices} from '@/features/legal/components/deed-review/ReviewNotic
 import {ReviewHeader} from '@/features/legal/components/deed-review/ReviewHeader';
 import {useMasterData} from '@/shared/master-data';
 import {
-  DEED_APPROVE_AUTHORITY,
   DEED_EDIT_AUTHORITY,
+  DEED_SECTION,
   label,
   reviewStatus,
   stakeholderFields,
 } from '@liugong/shared';
-import {hasAuthority} from '@/shared/lib/auth';
+import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {DeedComparison} from './DeedComparison';
@@ -61,9 +61,16 @@ export function DeedReviewDialog({
         return [f.label, money ? Number(raw).toLocaleString('id-ID') : shown] as const;
       })
       .filter(Boolean) as (readonly [string, string])[];
+  // Legal deeds review saved directly in crm_fap_legal_deed_reviews
   const canSubmit =
-      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'NEEDS_REVISION'].includes(status),
-    canApprove = hasAuthority(user, DEED_APPROVE_AUTHORITY) && status === 'PENDING';
+      (checkIsAdmin(user) || hasAuthority(user, DEED_EDIT_AUTHORITY)) && ['DRAFT', 'REJECTED', 'NEEDS_REVISION'].includes(status),
+    canApprove =
+      (checkIsAdmin(user) ||
+        hasAuthority(user, 'CRM_DEED-REVIEW_LEGAL_APPROVE') ||
+        hasAuthority(user, 'CRM_LEGAL_EDIT') ||
+        hasAuthority(user, 'CRM_DEED-REVIEW_BP_APPROVE') ||
+        hasAuthority(user, 'CRM_DEED-REVIEW_BS_APPROVE')) &&
+      status === 'PENDING';
   useEffect(() => {
     let live = true;
     setUrl('');
@@ -147,8 +154,10 @@ export function DeedReviewDialog({
           <ReviewHistory deed={deed} />
         </div>
         <ReviewActions
+          status={status}
           canSubmit={canSubmit}
           canApprove={canApprove}
+          legacyReview={true}
           busy={busy}
           comments={comments}
           documentId={documentId}

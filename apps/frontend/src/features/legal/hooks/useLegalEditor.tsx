@@ -9,7 +9,7 @@ import {stakeholderSaveError} from '@/features/legal/lib/stakeholder-validation'
 import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {isFieldMandatory, useMandatoryRules, useMasterData} from '@/shared/master-data';
-import {deedPending, legalDeedFields, DEED_EDIT_AUTHORITY} from '@liugong/shared';
+import {deedPending, legalDeedFields, reviewStatus, DEED_EDIT_AUTHORITY} from '@liugong/shared';
 import {useEffect, useState} from 'react';
 
 export type LegalEditorProps = {
@@ -80,6 +80,7 @@ export function useLegalEditor({
     (!checkIsAdmin(user) &&
       (!hasAuthority(user, DEED_EDIT_AUTHORITY) ||
         deedPending(d) ||
+        reviewStatus(d) === 'APPROVED' ||
         application.workflowFlags?.lastStage));
   const [returnToReview, setReturnToReview] = useState<string | null>(null);
   useEffect(() => {

@@ -61,7 +61,7 @@ function ApplicationDetail() {
 
 export default function ApplicationPage() {
   return (
-    <AccessGate authority="crm_view_applications" page="Application">
+    <AccessGate authority="CRM_APPLICATION_VIEW" page="Application">
       <ApplicationDetail />
     </AccessGate>
   );

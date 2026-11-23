@@ -1,10 +1,7 @@
-/** The code the backend stores for a name: trimmed, upper-case, anything that is not a letter or digit becomes one hyphen (never an underscore). */
-export const toCode = (value: unknown) =>
-  String(value ?? '')
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+import {toCode} from '@liugong/shared';
+
+/** The standard code of a name lives in @liugong/shared (codes.ts), so the frontend shows the same code the backend stores. */
+export {toCode};
 
 /** A code that is not in `taken` yet: the name as a code, with -2, -3... when it is taken (cut to `max` characters). */
 export function uniqueCode(name: unknown, taken: (code: string) => boolean | Promise<boolean>, max = 50, fallback = 'ITEM') {

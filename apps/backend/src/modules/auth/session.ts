@@ -32,7 +32,8 @@ export type CrmRole = {role: string; displayRole: string; isAdmin: boolean};
 const ROLE_NAME_TO_CODE: Record<string, string> = {
   'Super Admin': 'ADMIN',
   'Marketing (MKT)': 'MKT',
-  'Business Support (BS)': 'BS',
+  'Business Partner (BP)': 'BP',
+  'Business Support (BS)': 'BP',
   'Credit Analyst (CA)': 'CA',
   'Legal Officer (LEGAL)': 'LEGAL',
   'Credit Committee': 'COMMITTEE',

@@ -2,7 +2,8 @@
 import type {MasterCatalog} from '@liugong/shared';
 import {stageName} from '@/shared/master-data';
 
-export type DocDepartment = 'MKT' | 'BS' | 'CA' | 'LEGAL' | 'COMMITTEE';
+/** A department code (the departments come from User Management and the workflow); empty when the document has none. */
+export type DocDepartment = string;
 
 export interface MasterDocDef {
   code: string;
@@ -24,7 +25,7 @@ export function documentDefinitions(master: MasterCatalog): MasterDocDef[] {
       name: x.name,
       title: x.title || x.name,
       // the department and the mandatory flag of a document come from its workflow (the checklist row)
-      department: 'MKT' as DocDepartment,
+      department: '' as DocDepartment,
       isMandatory: false,
       defaultSection: x.section || '',
       description: x.description || '',

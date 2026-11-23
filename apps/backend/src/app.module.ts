@@ -2,7 +2,7 @@ import {Module} from '@nestjs/common';
 import {APP_FILTER, APP_GUARD, APP_INTERCEPTOR} from '@nestjs/core';
 import {CrmDatabaseModule} from './core/db/crm-database';
 import {ApiResultInterceptor} from './core/http/api-result.interceptor';
-import {OriginGuard, SessionGuard, WriteValidationGuard} from './core/http/guards';
+import {OriginGuard, SessionGuard} from './core/http/guards';
 import {ProblemFilter} from './core/http/problem.filter';
 import {StorageModule} from './core/storage';
 import {ActivityModule} from './modules/activity/activity.module';
@@ -19,6 +19,7 @@ import {PortalModule} from './modules/portal/portal.module';
 import {PreAnalysisModule} from './modules/pre-analysis/pre-analysis.module';
 import {SystemModule} from './modules/system/system.module';
 import {UsersModule} from './modules/users/users.module';
+import {MasterApprovalsModule} from './modules/master-approvals/master-approvals.module';
 import {WorkflowsModule} from './modules/workflows/workflows.module';
 
 /**
@@ -43,12 +44,12 @@ import {WorkflowsModule} from './modules/workflows/workflows.module';
     FapModule,
     MasterDataModule,
     WorkflowsModule,
+    MasterApprovalsModule,
     ActivityModule,
   ],
   providers: [
     {provide: APP_GUARD, useClass: OriginGuard},
     {provide: APP_GUARD, useClass: SessionGuard},
-    {provide: APP_GUARD, useClass: WriteValidationGuard},
     {provide: APP_INTERCEPTOR, useClass: ApiResultInterceptor},
     {provide: APP_FILTER, useClass: ProblemFilter},
   ],

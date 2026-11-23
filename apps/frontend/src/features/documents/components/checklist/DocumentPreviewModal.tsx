@@ -18,7 +18,7 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
           <div>
             <h2>{preview.title}</h2>
             <p className="muted" style={{fontSize: '11.5px', marginTop: 2}}>
-              Sumber: <strong>{preview.source}</strong> · {preview.fileName}
+              Source: <strong>{preview.source}</strong> · {preview.fileName}
               {preview.fileSize ? ` · ${formatBytes(preview.fileSize)}` : ''}
             </p>
           </div>
@@ -78,7 +78,7 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
                   msg.style.padding = '30px';
                   msg.style.textAlign = 'center';
                   msg.innerHTML =
-                    '<p>Pratinjau fisik berkas belum dapat dimuat langsung.</p><small>Klik tombol "Buka Berkas" di bawah untuk mengakses dokumen.</small>';
+                    '<p>Unable to display physical preview directly.</p><small>Click "Open in New Tab" below to access the document.</small>';
                   parent.appendChild(msg);
                 }
               }}
@@ -89,8 +89,8 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
         <div className="modal-actions" style={{justifyContent: 'space-between', padding: '14px 20px'}}>
           <div style={{fontSize: '11px', color: '#64748b'}}>
             {preview.uploadedAt
-              ? `Diunggah pada: ${new Date(preview.uploadedAt).toLocaleString('id-ID')}`
-              : 'Tersimpan di penyimpanan dokumen sistem'}
+              ? `Uploaded on: ${new Date(preview.uploadedAt).toLocaleString('en-US')}`
+              : 'Stored in system document repository'}
           </div>
           <div style={{display: 'flex', gap: 8}}>
             <a
@@ -101,10 +101,10 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
               style={{display: 'inline-flex', alignItems: 'center', gap: 6}}
             >
               <ExternalLink size={13} />
-              <span>Buka di Tab Baru</span>
+              <span>Open in New Tab</span>
             </a>
             <button type="button" className="button primary" onClick={() => onClose()}>
-              Tutup
+              Close
             </button>
           </div>
         </div>

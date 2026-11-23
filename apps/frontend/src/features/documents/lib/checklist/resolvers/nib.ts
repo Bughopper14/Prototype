@@ -9,14 +9,14 @@ export function resolveNib({a, draft, files, row}: ResolverContext) {
   if (files.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'MANUAL';
-    row.sourceLabel = 'Upload Manual (Document Checklist)';
-    row.sourceDetails = `Berkas diunggah: ${files[0].fileName}`;
+    row.sourceLabel = 'Manual Upload (Document Checklist)';
+    row.sourceDetails = `Uploaded file: ${files[0].fileName}`;
     row.canDelete = true;
   } else if (hasNibData) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'FAP Stage · Customer & PIC';
-    row.sourceDetails = `NIB Terdaftar: ${customerNib} · ${draft.customer?.companyName || a.customer?.companyName || 'Perusahaan'}`;
+    row.sourceDetails = `Registered NIB: ${customerNib} · ${draft.customer?.companyName || a.customer?.companyName || 'Company'}`;
     row.canDelete = false;
   }
 }

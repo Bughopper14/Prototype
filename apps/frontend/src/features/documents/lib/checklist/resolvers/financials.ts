@@ -7,14 +7,14 @@ export function resolveFinancials({a, draft, files, row}: ResolverContext) {
   if (files.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'MANUAL';
-    row.sourceLabel = 'Upload Manual (Document Checklist)';
-    row.sourceDetails = `Berkas diunggah: ${files[0].fileName}`;
+    row.sourceLabel = 'Manual Upload (Document Checklist)';
+    row.sourceDetails = `Uploaded file: ${files[0].fileName}`;
     row.canDelete = true;
   } else if (statements.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'Pre-analysis · Financial Statements';
-    row.sourceDetails = `Laporan Keuangan terisi untuk tahun buku: ${statements.map((s: any) => s.fiscalYear || s.year).join(', ')}`;
+    row.sourceDetails = `Financial statements on file for fiscal year(s): ${statements.map((s: any) => s.fiscalYear || s.year).join(', ')}`;
     row.canDelete = false;
   }
 }

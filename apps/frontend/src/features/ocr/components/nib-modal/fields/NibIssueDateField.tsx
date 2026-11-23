@@ -20,6 +20,7 @@ export function NibIssueDateField() {
             fontWeight: 600,
             color: '#334155',
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
             gap: 5,
           }}

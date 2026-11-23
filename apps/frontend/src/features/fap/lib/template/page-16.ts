@@ -29,10 +29,18 @@ export const FAP_PAGE_16 = `<table cellpadding="0" cellspacing="0">
 <td class="xl70"></td>
 <td class="xl70"></td>
 </tr>
+<tr height="28" style="mso-height-source:userset;height:21.0pt">
+<td class="xl143" height="28" style="height:21.0pt;border-left:1.0pt solid windowtext;"> </td>
+<td class="xl97" colspan="19"></td>
+<td class="xl72"> </td>
+<td class="xl70"></td>
+<td class="xl70"></td>
+<td class="xl70"></td>
+</tr>
 <tr height="86" style="mso-height-source:userset;height:64.95pt">
 <td class="xl143" height="86" style="height:64.95pt"> </td>
 <td id="fap-cell-fin-audited" class="xl144 fap-autofill-val"> </td>
-<td class="xl97" colspan="2" style="mso-ignore:colspan">Audited (<font class="font20">Yes/No</font><font class="font19">)</font></td>
+<td class="xl97" colspan="2" style="mso-ignore:colspan;padding-left:10px !important;">Audited (<font class="font20">Yes/No</font><font class="font19">)</font></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
@@ -54,8 +62,8 @@ export const FAP_PAGE_16 = `<table cellpadding="0" cellspacing="0">
 <td class="xl70"></td>
 <td class="xl70"></td>
 </tr>
-<tr height="86" style="mso-height-source:userset;height:64.95pt">
-<td class="xl143" height="86" style="height:64.95pt"> </td>
+<tr height="58" style="mso-height-source:userset;height:43.95pt">
+<td class="xl143" height="58" style="height:43.95pt"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>

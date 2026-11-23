@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import type {PoolConnection} from 'mysql2/promise';
-import {ageFromDateOfBirth, deedData, storedDocumentUrl} from '@liugong/shared';
+import {ageFromDateOfBirth, deedData, FOREIGN_REGION_KEYS, FOREIGN_REGION_VALUE, storedDocumentUrl} from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {clean} from '../applications/repositories/company-record';
@@ -50,6 +50,10 @@ const LOCATION = [
   ['village', 'village_id'],
 ] as const;
 
+/** A foreign stakeholder: citizenship FOREIGN, identified by a passport or a KITAS. */
+const isForeignStakeholder = (s: any) =>
+  String(s?.citizenship || '').toUpperCase() === 'FOREIGN' && ['PASSPORT_KITAS', 'PASSPORT', 'KITAS'].includes(String(s?.idType || s?.id_type || '').toUpperCase());
+
 const num = (v: any) => (v === null || v === undefined ? null : Number(v));
 const enumValue = (v: any) => {
   const text = clean(v);
@@ -84,6 +88,8 @@ export class LegalRepository {
     Object.assign(out, ageFromDateOfBirth(row.date_of_birth));
     out.isInherited = !!row.is_inherited;
     out.sourceDeedId = row.source_deed_id ?? null;
+    // a foreign stakeholder (passport / KITAS) always has "Others" in every address field
+    if (isForeignStakeholder(out)) for (const k of FOREIGN_REGION_KEYS) out[k] = FOREIGN_REGION_VALUE;
     out.name = [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' ');
     out.document_path = row.document_path || '';
     out.file_name = row.file_name || '';
@@ -189,7 +195,7 @@ export class LegalRepository {
     for (const r of rows) {
       const counts = out.get(r.application_id) || {pending: 0, sentBack: 0};
       if (r.review_status === 'PENDING') counts.pending += Number(r.n);
-      if (r.review_status === 'NEEDS_REVISION') counts.sentBack += Number(r.n);
+      if (r.review_status === 'REJECTED') counts.sentBack += Number(r.n);
       out.set(r.application_id, counts);
     }
     return out;
@@ -197,7 +203,10 @@ export class LegalRepository {
 
   /* ---------- save ---------- */
 
-  private async stakeholderValues(conn: Conn, s: any) {
+  private async stakeholderValues(conn: Conn, raw: any) {
+    // A foreign stakeholder (FOREIGN, identified by PASSPORT - KITAS) has "Others" in every address field, whatever the request carries.
+    const isForeign = isForeignStakeholder(raw);
+    const s = isForeign ? {...raw, ...Object.fromEntries(FOREIGN_REGION_KEYS.map(k => [k, FOREIGN_REGION_VALUE]))} : raw;
     const out: Record<string, any> = {};
     for (const f of STAKEHOLDER) {
       const v = s[f.key];
@@ -206,6 +215,11 @@ export class LegalRepository {
       else if (f.type === 'number') out[f.column] = parseAmount(v);
       else if (f.type === 'date') out[f.column] = clean(v, 'date');
       else out[f.column] = clean(v);
+    }
+    // "Others" does not fit the 5 characters of RT / RW: they stay empty and are shown as "Others" when the stakeholder is read
+    if (isForeign) {
+      out.rt = null;
+      out.rw = null;
     }
     const age = ageFromDateOfBirth(out.date_of_birth);
     out.age_years = age.ageYears ?? null;
@@ -407,7 +421,7 @@ export class LegalRepository {
       );
   }
 
-  /** Stores the review state produced by deedTransition (PENDING / APPROVED / NEEDS_REVISION). */
+  /** Stores the review state produced by deedTransition (PENDING / APPROVED / REJECTED). */
   async saveReview(conn: Conn, applicationId: string, deed: any, by: string | null) {
     const review = deed.review || {};
     const approved = review.status === 'APPROVED';
@@ -431,15 +445,6 @@ export class LegalRepository {
         by,
         by,
       ],
-    );
-  }
-
-  /** A deed that was approved or sent back and is changed again must be submitted again (NEEDS_REVISION). */
-  async markChanged(conn: Conn, applicationId: string, deedId: string, by: string | null) {
-    await conn.execute(
-      `UPDATE ${CRM.fapLegalDeedReviews} SET review_status='NEEDS_REVISION',updated_by=?
-       WHERE application_id=? AND deed_id=? AND review_status='APPROVED'`,
-      [by, applicationId, deedId],
     );
   }
 }

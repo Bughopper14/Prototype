@@ -94,6 +94,13 @@ export function diffCustomerPic({
   );
   checkField(
     'Registration Office & Company Domicile',
+    'Company Full Address',
+    'companyFullAddress',
+    oldCust.companyFullAddress || beforeApp.companyFullAddress,
+    newCust.companyFullAddress || draft.companyFullAddress,
+  );
+  checkField(
+    'Registration Office & Company Domicile',
     'Company Address',
     'companyAddress',
     oldCust.companyAddress || beforeApp.companyAddress,

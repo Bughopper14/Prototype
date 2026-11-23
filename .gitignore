@@ -1,63 +1,90 @@
+# Dependencies
 node_modules/
-dist/
+.pnpm-store/
+
+# Build outputs
 .next/
+out/
+build/
+
+# Environment variables
 .env
-.env.local
-.env.*.local
-.data/
-output/
-test-results/
-*.log
-__pycache__/
-eng.traineddata
-*.txt
-!requirements.txt
+.env*.local
+!.env.example
 
-scratch/
-notes.md
-PLAN.md
-log.md
-uat-result.md
-file-test/
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
+# Turborepo cache
 .turbo/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Uploaded documents
 storage/documents/
-storage/files/
-storage/mydocuments/
-*.tsbuildinfo
-apps/ocr/tessdata/
+apps/backend/storage/documents/
+storage/uploads/
+storage/exports/
+storage/ocr-output/
+storage/logs/
+*.sqlite
+*.db
+
+# Python OCR
+apps/ocr/__pycache__/
+apps/ocr/venv/
 apps/ocr/.venv/
-apps/backend/scripts/dev/fixtures/
-*.zip
 
-UAT/
-apps/backend/dist-qa/
-
-# Generated database design & mapping Excel exports
-CRM_Current_FAP_Stage_Database_Design.xlsx
-CRM_Database_Design_Master_FAP_PreAnalysis.xlsx
-FAP_Legal_Fields_Mapping.xlsx
-Master_Table_Design_FAP_Legal.xlsx
-
-migration.md
-deleted.md
-compare-notes.md
-
-# All markdown notes stay local (files already tracked by git, such as README.md and TECHNICAL.md, are not affected by this rule)
-*.md
-
-# Working notes live in md/ (README.md and TECHNICAL.md stay in the root)
-md/
-
-# Temporary Analysis, Scratch Diagnostic Scripts & Intermediate Design Documents
-scratch/
-test_*.py
-check_*.py
-list_*.py
-find_*.js
-storage/*inventory*.json
-storage/CRM_Modular_Database_Design*.xlsx
-storage/CRM_Modular_Database_Design*.md
-storage/CRM_User_Management_Prefix_Specification_v2.xlsx
+# Specifications
 storage/CRM_User_Management_Prefix_Specification_v3.xlsx
 
+# test build output of the isolated UAT stack
+apps/backend/.dist-fulltest/
+
+# Tests, build output and local scripts
+FULL TEST/
+FULL TEST backup/
+test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+dist/
+dist-*/
+scripts/
+
+# Editor settings and runtime storage
+.vscode/
+apps/backend/storage/
+
+# UAT Testing artifacts, test runners, and reports
+uat-results/
+execute_*.js
+generate_*.py
+migrate_*.js
+uat_runner.js
+test_*.js
+capture_*.js
+*uat*.json
+*uat*.xlsx
+*uat*.docx
+*UAT*.xlsx
+*UAT*.docx
+*uat*
+*UAT*

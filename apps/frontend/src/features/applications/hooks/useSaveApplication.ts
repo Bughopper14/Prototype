@@ -137,9 +137,9 @@ export function useSaveApplication({
       };
       // FAP sections 05-09 live on the Customer & PIC tab; each part is only sent when the user may edit it,
       // so a user with Customer & PIC rights alone can still save that tab.
-      const canBanks = hasAuthority(user, 'crm_edit_app_business_banks');
+      const canBanks = hasAuthority(user, 'CRM_BUSINESS-BANK_EDIT');
       const canFinance =
-        hasAuthority(user, 'crm_edit_app_financial') || hasAuthority(user, 'crm_edit_app_financing_units');
+        hasAuthority(user, 'CRM_FINANCIAL_EDIT') || hasAuthority(user, 'CRM_FINANCING-UNIT_EDIT');
       const proposal = mergedProposal(draft);
       const bankReferences = bankReferencesWithComments(draft);
       const body =
@@ -227,7 +227,6 @@ export function useSaveApplication({
 
         recordSystemActivity({
           applicationId: a.id,
-          fapNumber: a.fapNumber,
           companyName: resolvedName,
           section: activeSectionName,
           tabIndex: tab,

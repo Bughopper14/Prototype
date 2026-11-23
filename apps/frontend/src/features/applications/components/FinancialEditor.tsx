@@ -1,5 +1,6 @@
 import {blank, financialFields, inputLimits} from '@liugong/shared';
 import {Plus, X} from 'lucide-react';
+import {byFiscalYear, nextFiscalYear} from '@/features/applications/lib/financial-statements';
 
 export function FinancialEditor({
   rows,
@@ -10,6 +11,7 @@ export function FinancialEditor({
   onChange: (r: any[]) => void;
   disabled: boolean;
 }) {
+  const blankYear = (fiscalYear: number) => ({...blank(financialFields), fiscalYear, isAudited: false});
   const change = (i: number, k: string, v: any) =>
     onChange(rows.map((r, j) => (j === i ? {...r, [k]: v} : r)));
   return (
@@ -19,16 +21,7 @@ export function FinancialEditor({
         {!disabled && rows.length < 3 && (
           <button
             className="button small"
-            onClick={() =>
-              onChange([
-                ...rows,
-                {
-                  ...blank(financialFields),
-                  fiscalYear: new Date().getFullYear() - 3 + rows.length,
-                  isAudited: false,
-                },
-              ])
-            }
+            onClick={() => onChange(byFiscalYear([...rows, blankYear(nextFiscalYear(rows))]))}
           >
             <Plus size={15} />
             Add fiscal year

@@ -41,6 +41,7 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
     fullText.match(/(?:kode\s*pos|pos|zip(?:\s*code)?)\s*[:.]?\s*(\d{5})\b/i) ||
     (alamat && alamat.match(/\b(\d{5})\b/)) ||
     fullText.match(/\b(\d{5})\b/);
+  const postalFromText = !!postalMatch;
   if (postalMatch) {
     result.postalCode = postalMatch[1];
   }
@@ -195,10 +196,142 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
     }
   }
 
+  // 11. The places must belong to each other: a city of the province, a district of the city, a village of the district.
+  // A place that does not fit is left empty (better empty than a district of another province).
+  const ownedBy = (child: {parentValue?: string | null}, parent?: {value?: string | null}) =>
+    !parent || !child.parentValue || !parent.value || cleanWilayahStr(child.parentValue) === cleanWilayahStr(parent.value);
+  const pItem = result.province ? pList.find(p => matchWilayahName(p.name, result.province!)) : undefined;
+  let cItem: (typeof cList)[number] | undefined;
+  if (result.city) {
+    const found = cList.filter(c => matchWilayahName(c.name, result.city!));
+    cItem = found.find(c => ownedBy(c, pItem));
+    if (found.length && !cItem) result.city = undefined;
+  }
+  let dItem: (typeof dList)[number] | undefined;
+  if (result.district) {
+    const found = dList.filter(d => matchWilayahName(d.name, result.district!));
+    dItem = found.find(d => ownedBy(d, cItem));
+    if (found.length && !dItem) result.district = undefined;
+  }
+  let villageDropped = false;
+  if (result.village) {
+    const found = vList.filter(v => matchWilayahName(v.name, result.village!));
+    const vItem = found.find(v => ownedBy(v, dItem));
+    if (found.length && !vItem) {
+      result.village = undefined;
+      villageDropped = true;
+    }
+  }
+  // a postal code that came from a place that was dropped is dropped too; one written in the document stays
+  if (!postalFromText && (villageDropped || (!result.village && !result.district))) result.postalCode = undefined;
+
   if (result.province) result.province = normalizeWilayahInput(result.province);
   if (result.city) result.city = normalizeWilayahInput(result.city);
   if (result.district) result.district = normalizeWilayahInput(result.district);
   if (result.village) result.village = normalizeWilayahInput(result.village);
 
   return result;
+}
+
+export function extractStreetAddress(
+  fullAddress: string,
+  wilayah: {village?: string; district?: string; city?: string; province?: string} = {},
+): string {
+  if (!fullAddress) return '';
+  const cleanFull = fullAddress.trim();
+
+  // 1. If there's an explicit split before RT/RW, Kelurahan, Kecamatan, Kota/Kab, Prov, Kode Pos
+  const keywordRegex =
+    /(?:,|\n|\r|\s)+?(?:desa[/\s]*kelurahan|kelurahan|kel\.|kel\b|desa|ds\.|ds\b|kecamatan|kec\.|kec\b|rt[/\s.:]*\d|rw[/\s.:]*\d|(?:rt|rw)\b|kabupaten\/kota|kota\/kabupaten|kabupaten|kota\s*adm(?:inistrasi)?\.?|kota|kot\.|kot\b|kodya\b|kab\.|kab\b|provinsi|propinsi|prov\.|prov\b|prop\.|prop\b|kode\s*pos|\b\d{5}\b)/i;
+  const splitted = cleanFull.split(keywordRegex);
+  if (splitted.length > 1 && splitted[0].trim().length >= 3) {
+    const street = splitted[0]
+      .trim()
+      .replace(/^[:,\s.\-–—=]+/, '')
+      .replace(/[,.\s\-]+$/, '')
+      .trim();
+    if (street) return street;
+  }
+
+  // 2. Segment by comma / newline and stop at first segment matching a known wilayah or region pattern
+  const segments = cleanFull.split(/[,;\n\r]+/);
+  if (segments.length > 1) {
+    const keepSegments: string[] = [];
+    const targets = [wilayah.village, wilayah.district, wilayah.city, wilayah.province]
+      .filter(Boolean)
+      .map(s => String(s).toLowerCase().trim());
+
+    for (const rawSeg of segments) {
+      const seg = rawSeg.trim();
+      if (!seg) continue;
+      const lower = seg.toLowerCase();
+      const isRegionKeyword =
+        /^(?:desa|kelurahan|kel\b|kecamatan|kec\b|rt\b|rw\b|kota\b|kabupaten\b|kab\b|provinsi\b|propinsi\b|kode\s*pos|\d{5}$)/i.test(
+          lower,
+        );
+      const isKnownWilayah = targets.some(
+        t => t && (lower === t || lower.startsWith(t + ' ') || lower.endsWith(' ' + t)),
+      );
+      if (isRegionKeyword || isKnownWilayah) {
+        break;
+      }
+      keepSegments.push(seg);
+    }
+
+    if (keepSegments.length > 0 && keepSegments.length < segments.length) {
+      return keepSegments
+        .join(', ')
+        .replace(/^[:,\s.\-–—=]+/, '')
+        .replace(/[,.\s\-]+$/, '')
+        .trim();
+    }
+  }
+
+  return cleanFull;
+}
+
+/** Parses street address, RT/RW, postal code, and all administrative wilayah directly from a complete address string. */
+export function parseAllAddressFields(
+  fullAddress: string,
+  catalog?: MasterCatalog,
+): {
+  fullAddress: string;
+  alamat: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  village?: string;
+  postalCode?: string;
+  rt?: string;
+  rw?: string;
+} {
+  if (!fullAddress || typeof fullAddress !== 'string') {
+    return {
+      fullAddress: '',
+      alamat: '',
+      province: '',
+      city: '',
+      district: '',
+      village: '',
+      postalCode: '',
+      rt: '',
+      rw: '',
+    };
+  }
+
+  const cleanAddr = fullAddress.trim();
+  const w = extractWilayahFromAddressAndText(cleanAddr, cleanAddr, catalog);
+  const street = extractStreetAddress(cleanAddr, w);
+
+  return {
+    fullAddress: cleanAddr,
+    alamat: street,
+    province: w.province || '',
+    city: w.city || '',
+    district: w.district || '',
+    village: w.village || '',
+    postalCode: w.postalCode || '',
+    rt: w.rt || '',
+    rw: w.rw || '',
+  };
 }

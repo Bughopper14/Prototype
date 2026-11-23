@@ -1,5 +1,6 @@
 /** Footer of the NIB preview: zoom level and remove. */
 import {useNibOcrModalContext} from '@/features/ocr/components/nib-modal/NibOcrModalContext';
+import {EMPTY_NIB_FORM} from '@/features/ocr/lib/nib/scan-to-form';
 
 export function ViewerFooter() {
   const {fileInputRef, setFileUrl, setFileName, fileType, setFileType, zoom, setRawText, setFormData} =
@@ -27,21 +28,7 @@ export function ViewerFooter() {
           setFileName('');
           setFileType(null);
           setRawText('');
-          setFormData({
-            nib: '',
-            companyName: '',
-            alamat: '',
-            email: '',
-            phone: '',
-            tanggalTerbit: '',
-            city: '',
-            district: '',
-            village: '',
-            postalCode: '',
-            province: '',
-            rt: '',
-            rw: '',
-          });
+          setFormData(EMPTY_NIB_FORM);
           if (fileInputRef.current) fileInputRef.current.value = '';
         }}
         style={{

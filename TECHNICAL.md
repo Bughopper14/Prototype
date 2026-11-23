@@ -10,7 +10,7 @@ changing the code.
 | --- | --- |
 | `apps/frontend` | Vite 6, React 19, React Router 7, plain CSS (`login.css`, `portal.css`, CRM styles in `features/crm/styles/*.css`, injected by `CrmStyles.tsx` only inside the CRM), lucide icons, FontAwesome 6 for portal icons, TinyMCE, tesseract.js |
 | `apps/backend` | NestJS 11 on Express, `mysql2` (no ORM), JWT session cookie, helmet, compression, S3/MinIO or local disk storage |
-| `apps/ocr` | Python 3.12: RapidOCR, PyMuPDF, Tesseract fallback, kept alive as a worker process started by the backend |
+| `apps/backend/ocr` | Python 3.12: RapidOCR, PyMuPDF, Tesseract fallback, kept alive as a worker process started by the backend |
 | `packages/shared` | Framework-free TypeScript used by both sides (field definitions, input validation, master catalog, deed workflow), built to ESM + CJS with tsup |
 | Tooling | pnpm workspaces, Turborepo (build order + cache), TypeScript 5, Prettier |
 
@@ -25,7 +25,7 @@ pnpm user:create admin "<password>" "System Admin" --admin       # fresh databas
 pnpm dev                                         # frontend http://localhost:3000, API http://localhost:3001
 ```
 
-OCR: `python -m venv apps/ocr/.venv`, then `apps/ocr/.venv/Scripts/pip install -r apps/ocr/requirements.txt`
+OCR: `python -m venv apps/backend/ocr/.venv`, then `apps/backend/ocr/.venv/Scripts/pip install -r apps/backend/ocr/requirements.txt`
 (`.venv/bin/pip` on Linux/macOS). The backend finds that virtual environment on its own; `PYTHON_PATH` overrides it.
 
 Root scripts (run through Turborepo, `packages/shared` is always built first):
@@ -114,8 +114,8 @@ apps/
         activity/                   activity feed, notifications, workspace menus
         system/                     health checks
     db/                             schema.sql (all DDL), seed.sql (reference data), reset-data.sql
-    scripts/                        create-user, import-pre-analysis, dev/ (mint-session, check-password)
-  ocr/                              Python OCR service (see OCR below)
+    ocr/                            Python OCR service (see OCR below)
+    scripts/                        create-user, dev/ (mint-session, check-password)
 packages/
   shared/src/                       age, deed-workflow, experience, fields, input-validation, master-catalog
 ```
@@ -202,7 +202,7 @@ on demand (and `POST /api/v1/ocr/warmup` loads it in the background when the CRM
 after a crash or timeout. A warm scan takes 0.2–3 s; the first one after a restart waits for the model load.
 
 ```
-apps/ocr/
+apps/backend/ocr/
   ocr_service.py        process_document(): PDF/image reading, fallbacks, document type detection
   ocr_worker.py         long-lived process used by the backend
   ocr_cli.py            one-shot: python ocr_cli.py <file> [type]
@@ -211,7 +211,7 @@ apps/ocr/
   tessdata/             Tesseract language data (git-ignored, exported as TESSDATA_PREFIX)
 ```
 
-The backend looks for the service in `../ocr` relative to `apps/backend` (`OCR_DIR` overrides it). OCR output is a
+The backend looks for the service in `./ocr` relative to `apps/backend` (`OCR_DIR` overrides it). OCR output is a
 suggestion: names and dates need to be checked by a person.
 
 ## Deployment
@@ -221,7 +221,7 @@ suggestion: names and dates need to be checked by a person.
   can be cached for a year.
 - Backend: `pnpm build`, then `node apps/backend/dist/main.js` from `apps/backend` with its `.env`. Set `JWT_SECRET`
   (required in production) and `TRUST_PROXY` for the reverse proxy.
-- OCR: the Python virtual environment must exist next to the backend (`apps/ocr/.venv`) or `PYTHON_PATH` must point to one.
+- OCR: the Python virtual environment must exist next to the backend (`apps/backend/ocr/.venv`) or `PYTHON_PATH` must point to one.
 
 ## Performance notes
 

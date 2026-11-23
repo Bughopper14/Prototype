@@ -1,6 +1,7 @@
 /**
- * Workflow stages and statuses from Master Data (crm_master_workflow_stages / _statuses). Which actions a user may
- * take comes from the backend (availableActions); nothing about the workflow is hardcoded here.
+ * Workflow stages (of the active workflow) and the four states an application can be in (IN_PROGRESS, IN_APPROVAL, REJECTED,
+ * APPROVED), from the master catalog. The state is worked out by the backend from the approval rounds; who may approve a step is
+ * decided by the authority of that step (a.approval), nothing about the workflow is hardcoded here.
  */
 import type {MasterCatalog, MasterItem} from '@liugong/shared';
 import {currentMasterData} from './catalog/store';
@@ -16,17 +17,8 @@ export const workflowStages = (catalog?: MasterCatalog): MasterItem[] => stages(
 export const statusName = (code?: string | null, catalog?: MasterCatalog) =>
   (code && statuses(catalog).find(s => s.value === code)?.name) || code || '';
 
-/** The status every new application starts in: the first status of the first stage. */
-export const initialStatusCode = (catalog?: MasterCatalog) => {
-  const first = stages(catalog)[0];
-  return statuses(catalog).find(s => s.parentValue === first?.value)?.value || '';
-};
-
-/** The status belongs to the first stage (the FAP form is still being prepared or was returned). */
-export const isFirstStageStatus = (code?: string | null, catalog?: MasterCatalog) => {
-  const first = stages(catalog)[0];
-  return !!code && statuses(catalog).some(s => s.value === code && s.parentValue === first?.value);
-};
+/** The state a new application starts in. */
+export const initialStatusCode = () => 'IN_PROGRESS';
 
 export const isTerminalStatus = (code?: string | null, catalog?: MasterCatalog) =>
   !!code && statuses(catalog).some(s => s.value === code && s.terminal);

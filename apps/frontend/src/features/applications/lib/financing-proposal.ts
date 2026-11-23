@@ -2,8 +2,10 @@
  * FAP sections 05 (purpose & assets), 07 (references) and 08 (financing proposal) keep their form state in
  * the draft as `financingPurposeDetail`, `referenceComments` and `financingProposal`. The backend stores them in
  * crm_fap_financing_purposes, crm_fap_bank_facilities, crm_fap_financing_proposals, crm_fap_proposal_terms and
- * crm_fap_doc_requirements, and returns the same shape. No value is defaulted here: empty stays empty.
+ * crm_fap_doc_requirements, and returns the same shape. Only the first project row and the last three fiscal years are started; empty stays empty.
  */
+import {defaultFiscalYears, newFiscalYearRow} from '@/features/applications/lib/financial-statements';
+import {normalizePaymentMethod} from '@/features/applications/components/workspace/customer/proposal/terms-config';
 import {bankFields, blank, FAP_TERMS_COLUMNS, projectFields} from '@liugong/shared';
 
 /** Reads a number typed the Indonesian way ("1.500.000.000", "11,5", "11.5% Flat", "36 Bulan"). */
@@ -32,6 +34,9 @@ export function initDraftBase(a: any) {
   if (!base.projects || base.projects.length === 0) base.projects = [blank(projectFields)];
   if (!base.businessRole && base.business_role) base.businessRole = base.business_role;
   if (!base.industrySegment && base.industry_segment) base.industrySegment = base.industry_segment;
+  // No financial statement yet: start with the last three finished years (2023, 2024, 2025 in 2026). The user can still change or remove them.
+  if (!base.financialStatements || base.financialStatements.length === 0)
+    base.financialStatements = defaultFiscalYears().map(year => newFiscalYearRow([], year));
   if (!base.bankReferences) base.bankReferences = [];
   if (base.bankReferences?.[0]?.comments && !base.referenceComments)
     base.referenceComments = base.bankReferences[0].comments;
@@ -83,8 +88,17 @@ export function mergedProposal(draft: any) {
       terms.tenor,
       draft.proposal?.tenorMonths ? parseMoney(draft.proposal.tenorMonths) : null,
     ),
-    paymentMethod: terms.paymentMethod || draft.proposal?.paymentMethod || '',
-    applicationSource: fp.facilityProposed?.applicationSource || draft.proposal?.applicationSource || '',
+    paymentMethod: normalizePaymentMethod(
+      terms.paymentMethod !== undefined ? terms.paymentMethod : draft.proposal?.paymentMethod,
+    ),
+    applicationSource: (() => {
+      const src = String(
+        fp.facilityProposed?.applicationSource !== undefined
+          ? fp.facilityProposed.applicationSource
+          : draft.proposal?.applicationSource || '',
+      ).trim().toUpperCase();
+      return ['DIRECT', 'DEALER', 'REFERRAL', 'INTERNAL'].includes(src) ? src : '';
+    })(),
     facilityPurpose: terms.workingCapitalInvestment || draft.proposal?.facilityPurpose || '',
     termsNotes: fp.notes !== undefined ? fp.notes : draft.notes || draft.proposal?.termsNotes || '',
     units: draft.proposal?.units || [],

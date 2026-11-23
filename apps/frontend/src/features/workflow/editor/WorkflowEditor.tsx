@@ -7,55 +7,46 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   History,
-  Link2,
   ListChecks,
-  Minus,
   Plus,
   Power,
   PowerOff,
   Save,
+  ShieldCheck,
   Trash2,
-  Unlink,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import {Fragment, useCallback, useEffect, useState} from 'react';
+import {useCrm} from '@/features/crm/components/CrmProvider';
+import {hasAuthority} from '@/shared/lib/auth';
 import {Modal} from '@/shared/ui/Modal';
+import {WorkflowHistory} from '../WorkflowHistory';
 import {workflowApi, type Catalog, type Definition, type Group, type Issue, type Stage, type WorkflowHeader} from '../api';
-import {joinPreviousStep, moveGroup, removePart, sortGroups, sortStages, splitFromStep, stepsOf, tempKey} from '../definition-ops';
+import {placeGroup, placeStage, removePart, sortGroups, sortStages, stepsOf, tempKey, type Placement} from '../definition-ops';
+import {MoveMenu} from './MoveMenu';
 import {GROUP_COLORS} from '../palette';
-import {StagePanel} from './StagePanel';
+import {ApprovalList} from './ApprovalList';
+import {StagePanel, type StageTab} from './StagePanel';
 import {useConfirm} from '../ConfirmDialog';
-
-const STATUS_LABEL = {DRAFT: 'Draft', ACTIVE: 'Active', INACTIVE: 'Deactivated'} as const;
-
-function Stepper({value, onChange, disabled, label}: {value: number; onChange: (v: number) => void; disabled: boolean; label: string}) {
-  return (
-    <span className="wf-stepper" title={label}>
-      <button type="button" disabled={disabled || value <= 1} onClick={() => onChange(value - 1)} aria-label="Earlier">
-        <Minus size={16} />
-      </button>
-      <b>{value}</b>
-      <button type="button" disabled={disabled} onClick={() => onChange(value + 1)} aria-label="Later">
-        <Plus size={16} />
-      </button>
-    </span>
-  );
-}
+import {WorkflowDiagramView} from '../WorkflowDiagram';
 
 export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catalog: Catalog; onBack: () => void; notify: (m: string) => void}) {
+  // Changing a workflow needs CRM_WORKFLOW_EDIT; without it the editor is a read-only view
+  const {user} = useCrm();
+  const canEdit = hasAuthority(user, 'CRM_WORKFLOW_EDIT');
   const [workflow, setWorkflow] = useState<WorkflowHeader | null>(null);
   const [def, setDefState] = useState<Definition | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [panel, setPanel] = useState<{key: string; tab: 'fields' | 'documents'} | null>(null);
+  const [panel, setPanel] = useState<{key: string; tab: StageTab} | null>(null);
   const [history, setHistory] = useState<Awaited<ReturnType<typeof workflowApi.history>> | null>(null);
   const [name, setName] = useState('');
+  const [view, setView] = useState<'steps' | 'diagram'>('steps');
 
   const load = useCallback(async () => {
     const r = await workflowApi.get(id);
@@ -101,7 +92,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
   }, [def, id, notify]);
 
   async function saveName() {
-    if (!workflow || !workflow.editable || name.trim() === workflow.name || !name.trim()) return setName(workflow?.name ?? '');
+    if (!workflow || !canEdit || name.trim() === workflow.name || !name.trim()) return setName(workflow?.name ?? '');
     try {
       await workflowApi.rename(id, {name: name.trim()});
       setWorkflow({...workflow, name: name.trim()});
@@ -121,7 +112,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
       const check = await workflowApi.validate(id);
       setIssues(check.issues);
       if (!check.ok) return notify('Fix the problems shown first');
-      if (!(await confirmAsk({title: 'Activate workflow', message: `New applications will start in "${workflow.name}". Applications that are already running keep their workflow, and the current active workflow is deactivated.`, confirmLabel: 'Activate', icon: 'power'}))) return;
+      if (!(await confirmAsk({title: 'Set workflow active', message: `New applications will start in "${workflow.name}". Applications that are already running keep the version they started with, and the current active workflow is switched off.`, confirmLabel: 'Set active', icon: 'power'}))) return;
       await workflowApi.activate(id);
       notify(`${workflow.name} is now active`);
       await load();
@@ -134,11 +125,11 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
 
   async function deactivate() {
     if (!workflow) return;
-    if (!(await confirmAsk({title: 'Deactivate workflow', message: 'New applications cannot be created until another workflow is activated. Running applications are not affected.', confirmLabel: 'Deactivate', tone: 'danger', icon: 'off'}))) return;
+    if (!(await confirmAsk({title: 'Switch workflow off', message: 'New applications cannot be created until another workflow is set active. Running applications are not affected.', confirmLabel: 'Switch off', tone: 'danger', icon: 'off'}))) return;
     setBusy(true);
     try {
       await workflowApi.deactivate(id);
-      notify('Workflow deactivated');
+      notify('Workflow switched off');
       await load();
     } catch (e: any) {
       notify(e.message);
@@ -156,7 +147,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
   }
 
   if (!workflow || !def) return <div className="loading-strip" />;
-  const locked = !workflow.editable;
+  const locked = !canEdit;
   const steps = stepsOf(def);
   const groupIndex = new Map(sortGroups(def.groups).map((g, i) => [g.key, i]));
   const groupColor = (key: string) => GROUP_COLORS[(groupIndex.get(key) ?? 0) % GROUP_COLORS.length];
@@ -182,6 +173,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
     });
   };
   const requiredCount = (key: string) => def.fields.filter(f => f.stageKey === key && f.mandatory).length;
+  const approvalCount = (key: string) => def.approvals.filter(a => a.stageKey === key).length;
   const docCount = (key: string) => def.documents.filter(d => d.stageKey === key).length;
   const panelStage = panel ? def.stages.find(s => s.key === panel.key) : undefined;
   const errors = issues.filter(i => i.level === 'error');
@@ -194,30 +186,30 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
         </button>
         <div className="wf-title">
           <div className="wf-title-row">
-          {workflow.editable ? (
+          {canEdit ? (
             <input className="wf-title-input" value={name} onChange={e => setName(e.target.value)} onBlur={saveName} aria-label="Workflow name" />
           ) : (
             <h2 className="wf-title-text">{workflow.name}</h2>
           )}
-          <span className={`wf-badge ${workflow.status.toLowerCase()}`}>{STATUS_LABEL[workflow.status]}</span>
+          <span className={`wf-badge ${workflow.isActive ? 'active' : 'inactive'}`}>{workflow.isActive ? 'Active' : 'Not active'}</span>
           </div>
         </div>
         <span className="wf-spacer" />
-        <span className="wf-info" title="Workflow version and the number of applications that run on it">
-          <span>Version {workflow.versionNo}</span>
+        <span className="wf-info" title="The newest version and the number of applications that run on this workflow">
+          <span>v{workflow.freezeVersion ?? 0}</span>
           <span>{workflow.applications ?? 0} application{workflow.applications === 1 ? '' : 's'}</span>
         </span>
         <button className="wf-btn" onClick={openHistory}>
           <History size={18} /> History
         </button>
-        {workflow.status === 'ACTIVE' && (
+        {canEdit && workflow.isActive && (
           <button className="wf-btn" disabled={busy} onClick={deactivate}>
-            <PowerOff size={18} /> Deactivate
+            <PowerOff size={18} /> Switch off
           </button>
         )}
-        {workflow.status !== 'ACTIVE' && (
+        {canEdit && !workflow.isActive && (
           <button className="wf-btn" disabled={busy || saving} onClick={activate}>
-            <Power size={18} /> Activate
+            <Power size={18} /> Set active
           </button>
         )}
         {!locked && (
@@ -227,16 +219,11 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
         )}
       </header>
 
-      {locked && (
-        <div className="wf-banner info">
-          {workflow.status === 'DRAFT' ? 'Applications already run on this workflow, so it is read-only.' : workflow.applications ? 'Applications run on this workflow, so it is read-only.' : 'Only a draft can be edited.'}{' '}
-          To change the process, build a new workflow and activate it. Running applications keep the workflow they started in.
-        </div>
-      )}
+      {locked && <div className="wf-banner info">You can only look at this workflow. Changing it needs the workflow edit authority.</div>}
       {errors.length > 0 && (
         <div className="wf-banner error">
           <b>
-            <XCircle size={18} /> Fix these before activating
+            <XCircle size={18} /> Fix these before setting it active
           </b>
           <ul>{errors.map((e, i) => <li key={i}>{e.message}</li>)}</ul>
         </div>
@@ -247,10 +234,19 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
         </div>
       )}
 
-      <p className="wf-how">
-        <b>How to read this:</b> the steps run from left to right. Groups in the <b>same step run together</b>. Inside a group, stages with the same
-        order run together too. Click a stage to choose its required fields and documents.
-      </p>
+      <div className="wf-tabs" role="tablist" aria-label="Workflow view">
+        <button type="button" role="tab" aria-selected={view === 'steps'} onClick={() => setView('steps')}>
+          Steps &amp; stages
+        </button>
+        <button type="button" role="tab" aria-selected={view === 'diagram'} onClick={() => setView('diagram')}>
+          Diagram
+        </button>
+      </div>
+
+      {view === 'diagram' ? (
+        <WorkflowDiagramView def={def} catalog={catalog} />
+      ) : (
+        <>
 
       <div className="wf-board-scroll">
         <div className="wf-board">
@@ -275,7 +271,11 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
               <section className="wf-step">
                 <header className="wf-step-head">
                   <span className="wf-step-no">Step {si + 1}</span>
-                  {step.groups.length > 1 && <em>{step.groups.length} groups run together</em>}
+                  {step.groups.length > 1 && (
+                    <em title={`${step.groups.length} groups run at the same time`}>
+                      <Zap size={13} /> together
+                    </em>
+                  )}
                 </header>
                 {step.groups.map(group => {
                   const stages = sortStages(def.stages.filter(s => s.groupKey === group.key));
@@ -295,31 +295,14 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                       </div>
                       {!locked && (
                         <div className="wf-group-tools">
-                          <button className="wf-chip" disabled={si === 0 && step.groups.length === 1} onClick={() => setDef(moveGroup(def, group.key, -1))} title="Move to an earlier step">
-                            <ChevronLeft size={16} /> Earlier
-                          </button>
-                          <button className="wf-chip" disabled={si === steps.length - 1 && step.groups.length === 1} onClick={() => setDef(moveGroup(def, group.key, 1))} title="Move to a later step">
-                            Later <ChevronRight size={16} />
-                          </button>
-                          {step.groups.length > 1 ? (
-                            <button className="wf-chip" onClick={() => setDef(splitFromStep(def, group.key))} title="Run after the others instead of together">
-                              <Unlink size={16} /> Run on its own
-                            </button>
-                          ) : (
-                            si > 0 && (
-                              <button className="wf-chip" onClick={() => setDef(joinPreviousStep(def, group.key))} title="Run together with the previous step">
-                                <Link2 size={16} /> Run with previous
-                              </button>
-                            )
-                          )}
+                          <MoveMenu items={def.groups} itemKey={group.key} noun="group" onPlace={(to: Placement) => setDef(placeGroup(def, group.key, to))} />
                         </div>
                       )}
 
                       <div className="wf-stages">
                         {stages.map(stage => {
-                          const together = stages.filter(s => s.order === stage.order).length > 1;
                           return (
-                            <div className="wf-stage" key={stage.key}>
+                            <div className={`wf-stage ${stage.departmentCode ? '' : 'incomplete'}`} key={stage.key}>
                               <div className="wf-stage-top">
                                 <input className="wf-stage-name" disabled={locked} value={stage.name} onChange={e => patchStage(stage.key, {name: e.target.value})} aria-label="Stage name" />
                                 {!locked && (
@@ -332,43 +315,30 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                                   </button>
                                 )}
                               </div>
-                              <div className="wf-stage-row">
-                                <span className="wf-label">Order</span>
-                                <Stepper value={stage.order} disabled={locked} onChange={v => patchStage(stage.key, {order: v})} label="Stages with the same order run together" />
-                                {together && <span className="wf-together">runs together</span>}
-                              </div>
-                              <div className="wf-stage-row">
-                                <span className="wf-label">Dept</span>
-                                <select disabled={locked} value={stage.departmentCode || ''} onChange={e => patchStage(stage.key, {departmentCode: e.target.value || null})}>
-                                  <option value="">None</option>
-                                  {catalog.departments.map(d => (
-                                    <option key={d.code} value={d.code}>
-                                      {d.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="wf-stage-row">
-                                <span className="wf-label">Form</span>
-                                <select disabled={locked} value={stage.formCode || ''} onChange={e => patchStage(stage.key, {formCode: e.target.value || null})}>
-                                  <option value="">No form</option>
-                                  {catalog.forms.map(f => (
-                                    <option key={f.code} value={f.code}>
-                                      {f.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="wf-stage-actions">
+                              <button type="button" className="wf-stage-meta" onClick={() => setPanel({key: stage.key, tab: 'details'})} title="Open the details of this stage">
+                                <span className={stage.departmentCode ? '' : 'wf-missing-text'}>{stage.departmentCode ? (catalog.departments.find(d => d.code === stage.departmentCode)?.name ?? stage.departmentCode) : 'Department needed'}</span>
+                                <span>{catalog.forms.find(f => f.code === stage.formCode)?.name ?? 'No form'}</span>
+                              </button>
+                              {!locked && stages.length > 1 && (
+                                <div className="wf-group-tools">
+                                  <MoveMenu items={stages} itemKey={stage.key} noun="stage" onPlace={(to: Placement) => setDef(placeStage(def, stage.key, to))} />
+                                </div>
+                              )}
+                              <div className="wf-stage-actions three">
                                 <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'fields'})}>
-                                  <ListChecks size={20} />
+                                  <ListChecks size={18} />
                                   <b>{requiredCount(stage.key)}</b>
-                                  <span>required fields</span>
+                                  <span>fields</span>
                                 </button>
                                 <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'documents'})}>
-                                  <FileText size={20} />
+                                  <FileText size={18} />
                                   <b>{docCount(stage.key)}</b>
                                   <span>documents</span>
+                                </button>
+                                <button className="wf-tile" onClick={() => setPanel({key: stage.key, tab: 'approval'})}>
+                                  <ShieldCheck size={18} />
+                                  <b>{approvalCount(stage.key)}</b>
+                                  <span>approvals</span>
                                 </button>
                               </div>
                             </div>
@@ -376,6 +346,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                         })}
                         {!stages.length && <div className="wf-note">No stage yet.</div>}
                       </div>
+                      <ApprovalList def={def} setDef={setDef} catalog={catalog} locked={locked} target={{scope: 'GROUP', groupKey: group.key}} title="Approval of the whole group" />
                       {!locked && (
                         <button className="wf-add" onClick={() => addStage(group)}>
                           <Plus size={18} /> Add stage
@@ -406,42 +377,15 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
           )}
         </div>
       </div>
+        </>
+      )}
 
       {confirmDialog}
       {panel && panelStage && <StagePanel def={def} setDef={setDef} catalog={catalog} stage={panelStage} locked={locked} initialTab={panel.tab} onClose={() => setPanel(null)} />}
 
       {history && (
         <Modal title="History" onClose={() => setHistory(null)} className="wf-history-modal">
-          <table className="wf-table">
-            <thead>
-              <tr>
-                <th>When</th>
-                <th>Action</th>
-                <th>By</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((h, i) => (
-                <tr key={i}>
-                  <td>{new Date(h.at).toLocaleString('id-ID')}</td>
-                  <td>
-                    {h.action}
-                    {h.previous ? ` (was ${h.previous})` : ''}
-                  </td>
-                  <td>{h.actor}</td>
-                  <td>{h.note}</td>
-                </tr>
-              ))}
-              {!history.length && (
-                <tr>
-                  <td colSpan={4} className="muted">
-                    No history yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <WorkflowHistory workflowId={id} rows={history} />
         </Modal>
       )}
     </div>

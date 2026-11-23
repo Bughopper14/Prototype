@@ -12,7 +12,8 @@ export function ChecklistTable({
   onPreview,
   onUpload,
   onDelete,
-  onVerify,
+  onRequestApproval,
+  approvalBusy,
   grouped,
   collapsedStages,
   onToggleStage,
@@ -26,9 +27,10 @@ export function ChecklistTable({
   onPreview: (row: ChecklistRow) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
-  onVerify?: (row: ChecklistRow) => void;
+  onRequestApproval?: (row: ChecklistRow) => void;
+  approvalBusy?: string | null;
 }) {
-  const columns = grouped ? 7 : 8;
+  const columns = 5;
   const groups = grouped ? groupRowsByStage(rows) : [];
   const renderRow = (row: ChecklistRow, idx: number) => (
     <ChecklistRowItem
@@ -41,7 +43,8 @@ export function ChecklistTable({
       onPreview={onPreview}
       onUpload={onUpload}
       onDelete={onDelete}
-      onVerify={onVerify}
+      onRequestApproval={onRequestApproval}
+      approvalBusy={approvalBusy}
     />
   );
   let counter = 0;
@@ -52,13 +55,10 @@ export function ChecklistTable({
         <thead>
           <tr>
             <th style={{width: '40px', textAlign: 'center'}}>NO</th>
-            <th style={{minWidth: '220px'}}>DOKUMEN PERSYARATAN</th>
-            {!grouped && <th style={{width: '140px'}}>TAHAP</th>}
-            <th style={{width: '130px'}}>DEPARTEMEN</th>
-            <th style={{width: '120px'}}>SIFAT</th>
-            <th style={{width: '150px'}}>STATUS KELENGKAPAN</th>
-            <th style={{minWidth: '260px'}}>SUMBER / KETERANGAN INTEGRASI</th>
-            <th style={{width: '180px', textAlign: 'right'}}>AKSI</th>
+            <th>REQUIRED DOCUMENT</th>
+            <th style={{width: '180px'}}>STATUS & APPROVAL</th>
+            <th style={{minWidth: '220px'}}>FILE & SOURCE</th>
+            <th style={{width: '140px', textAlign: 'right'}}>ACTIONS</th>
           </tr>
         </thead>
         <tbody>
@@ -79,7 +79,7 @@ export function ChecklistTable({
                         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         <StageBadge code={g.code} name={g.name} />
                         <span className="doc-group-meta">
-                          {g.rows.length} dokumen · {g.availableCount} terpenuhi
+                          {g.rows.length} documents · {g.availableCount} fulfilled
                         </span>
                       </button>
                     </td>
@@ -94,9 +94,9 @@ export function ChecklistTable({
               <td colSpan={columns} style={{textAlign: 'center', padding: '40px 20px'}}>
                 <AlertCircle size={28} style={{color: '#94a3b8', margin: '0 auto 8px'}} />
                 <p style={{fontWeight: 600, color: '#475569'}}>
-                  Tidak ada dokumen yang sesuai filter atau pencarian
+                  No documents match the current filter or search criteria
                 </p>
-                <small className="muted">Coba ubah kata kunci pencarian atau reset filter departemen.</small>
+                <small className="muted">Try changing your search keywords or resetting the filters.</small>
               </td>
             </tr>
           )}

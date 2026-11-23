@@ -11,14 +11,14 @@ export default function NewApplicationPage() {
   const {customers, reload, notify} = useCrm();
 
   return (
-    <AccessGate authority="crm_create_application" page="New application">
+    <AccessGate authority="CRM_APPLICATION_CREATE" page="New application">
       <NewApplicationStart
         customers={customers}
         preselectedCustomerId={customerId}
         onBack={() => navigate(CRM_PAGES[1].href)}
         onCreated={id => {
           reload();
-          navigate(applicationHref(id), {replace: true});
+          navigate(applicationHref(id, 0), {replace: true});
         }}
         notify={notify}
       />

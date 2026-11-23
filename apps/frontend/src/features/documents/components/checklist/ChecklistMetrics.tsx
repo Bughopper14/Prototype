@@ -1,9 +1,9 @@
-/** The five metric cards above the checklist. */
-import {CheckCircle2, Clock, ShieldCheck, Layers, Sparkles} from 'lucide-react';
+/** The four metric cards above the checklist. */
+import {CheckCircle2, Clock, ShieldCheck, Layers} from 'lucide-react';
 
 const SHOWN = 3;
 
-/** The first few missing documents, with "+N lainnya" for the rest (the full list is in the tooltip). */
+/** The first few missing documents, with "+N more" for the rest (the full list is in the tooltip). */
 function MissingList({items, mandatory}: {items: {name: string; mandatory: boolean}[]; mandatory?: boolean}) {
   if (!items.length) return null;
   const rest = items.length - SHOWN;
@@ -12,10 +12,10 @@ function MissingList({items, mandatory}: {items: {name: string; mandatory: boole
       {items.slice(0, SHOWN).map(i => (
         <li key={i.name}>
           {i.name}
-          {!mandatory && <em className={i.mandatory ? 'tag-wajib' : 'tag-opsional'}>{i.mandatory ? 'wajib' : 'opsional'}</em>}
+          {!mandatory && <em className={i.mandatory ? 'tag-wajib' : 'tag-opsional'}>{i.mandatory ? 'mandatory' : 'optional'}</em>}
         </li>
       ))}
-      {rest > 0 && <li className="bento-more">+{rest} lainnya</li>}
+      {rest > 0 && <li className="bento-more">+{rest} more</li>}
     </ul>
   );
 }
@@ -45,38 +45,38 @@ export function ChecklistMetrics({
     <div className="doc-checklist-bento-grid">
       <div className="doc-checklist-bento-card card-total">
         <div className="bento-top">
-          <span className="bento-lbl">Total Dokumen</span>
+          <span className="bento-lbl">Total Documents</span>
           <Layers size={16} className="bento-icon" />
         </div>
         <div className="bento-val">{stats.totalCount}</div>
-        <small className="bento-sub">Standar matriks legal &amp; kredit</small>
+        <small className="bento-sub">Standard legal &amp; credit matrix</small>
       </div>
 
       <div className="doc-checklist-bento-card card-available">
         <div className="bento-top">
-          <span className="bento-lbl">Sudah Ada</span>
+          <span className="bento-lbl">Fulfilled</span>
           <CheckCircle2 size={16} className="bento-icon" />
         </div>
         <div className="bento-val">
           {stats.availableCount} <span className="bento-total-ratio">/ {stats.totalCount}</span>
         </div>
         <Progress value={availablePct} />
-        <small className="bento-sub text-green">{availablePct}% kelengkapan</small>
+        <small className="bento-sub text-green">{availablePct}% complete</small>
       </div>
 
       <div className="doc-checklist-bento-card card-pending">
         <div className="bento-top">
-          <span className="bento-lbl">Belum Ada</span>
+          <span className="bento-lbl">Missing</span>
           <Clock size={16} className="bento-icon" />
         </div>
         <div className="bento-val">{stats.pendingCount}</div>
-        <small className="bento-sub">{stats.pendingCount > 0 ? 'Perlu diunggah atau ditindaklanjuti' : 'Semua dokumen sudah ada'}</small>
+        <small className="bento-sub">{stats.pendingCount > 0 ? 'Requires upload or follow-up' : 'All documents fulfilled'}</small>
         <MissingList items={pending} />
       </div>
 
       <div className="doc-checklist-bento-card card-mandatory">
         <div className="bento-top">
-          <span className="bento-lbl">Dokumen Wajib</span>
+          <span className="bento-lbl">Mandatory Documents</span>
           <ShieldCheck size={16} className="bento-icon" />
         </div>
         <div className="bento-val">
@@ -84,18 +84,9 @@ export function ChecklistMetrics({
         </div>
         <Progress value={mandatoryPct} />
         <small className={`bento-sub ${mandatoryLeft === 0 ? 'text-green' : 'text-amber'}`}>
-          {mandatoryLeft === 0 ? 'Semua dokumen wajib terpenuhi' : `${mandatoryLeft} wajib belum terpenuhi`}
+          {mandatoryLeft === 0 ? 'All mandatory documents fulfilled' : `${mandatoryLeft} mandatory still required`}
         </small>
         <MissingList items={stats.missingMandatory.map((name: string) => ({name, mandatory: true}))} mandatory />
-      </div>
-
-      <div className="doc-checklist-bento-card card-system">
-        <div className="bento-top">
-          <span className="bento-lbl">Terhubung Sistem</span>
-          <Sparkles size={16} className="bento-icon" />
-        </div>
-        <div className="bento-val">{stats.systemLinkedCount}</div>
-        <small className="bento-sub">Otomatis dari FAP, Customer &amp; Legal</small>
       </div>
     </div>
   );

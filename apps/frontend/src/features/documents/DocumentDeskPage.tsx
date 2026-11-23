@@ -8,7 +8,7 @@ export default function DocumentDeskPage() {
   return (
     <>
       <PageHeading page="Document desk" />
-      <AccessGate authority="crm_view_document_desk" page="Document desk">
+      <AccessGate authority="CRM_DOCUMENT-DESK_VIEW" page="Document desk">
         <DocumentDesk rows={rows} open={openApplication} />
       </AccessGate>
     </>

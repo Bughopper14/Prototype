@@ -40,6 +40,11 @@ const UPPERCASE_WORDS = new Set([
   'pt',
   'cv',
   'ud',
+  'pd',
+  'po',
+  'fa',
+  'ksp',
+  'nv',
   'tbk',
   'llc',
   'ltd',
@@ -76,7 +81,7 @@ export function toTitleCase(str: string): string {
  */
 export function formatCompanyName(str: string): string {
   if (!str) return '';
-  const legalUpper = new Set(['pt', 'cv', 'ud', 'pd', 'fa', 'ksp']);
+  const legalUpper = new Set(['pt', 'cv', 'ud', 'pd', 'po', 'fa', 'ksp', 'nv']);
   const legalTitle = new Set(['koperasi', 'yayasan', 'perum', 'perusda', 'firma']);
 
   let formatted = toTitleCase(str);
@@ -109,7 +114,8 @@ export function formatCompanyName(str: string): string {
 export const profileFields = [
   f('branchCode', 'Branch', 'select'),
   f('customerStatus', 'Customer Relationship', 'select', ['NEW', 'EXISTING']),
-  f('companyAddress', 'Company Address'),
+  f('companyFullAddress', 'Company Full Address', 'textarea'),
+  f('companyAddress', 'Company Address / Domicile'),
   f('province', 'Province'),
   f('city', 'City'),
   f('district', 'District'),
@@ -164,61 +170,6 @@ export const picFields = [
   {...f('currentAddress', 'Full Address', 'textarea'), wide: true},
 ];
 
-export const STAKEHOLDER_POSITIONS = [
-  'MAIN_DIRECTOR',
-  'DIRECTOR',
-  'MAIN_COMMISSIONER',
-  'COMMISSIONER',
-  'BOARD_OF_DIRECTORS',
-  'AUTORIZED_REPRESENTATIVE',
-] as const;
-
-export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
-  MAIN_DIRECTOR: 'Main Director',
-  DIRECTOR: 'Director',
-  MAIN_COMMISSIONER: 'Main Commissioner',
-  COMMISSIONER: 'Commissioner',
-  BOARD_OF_DIRECTORS: 'Board of Directors',
-  AUTORIZED_REPRESENTATIVE: 'Autorized Representative',
-};
-
-export function formatStakeholderPosition(val?: string | null): string {
-  if (!val) return '';
-  const clean = String(val).trim();
-  const upper = clean.toUpperCase().replace(/[\s-]+/g, '_');
-  if (['NONE', '', '_', 'SHAREHOLDER'].includes(upper)) return '';
-  const aliases: Record<string, string> = {
-    ...STAKEHOLDER_POSITION_LABELS,
-    AUTHORIZED_REPRESENTATIVE: 'Autorized Representative',
-    PRESIDENT_DIRECTOR: 'Main Director',
-    PRESIDENT_COMMISSIONER: 'Main Commissioner',
-  };
-  if (aliases[upper] && upper !== 'NONE') return aliases[upper];
-  const match = Object.values(STAKEHOLDER_POSITION_LABELS).find(v => v.toLowerCase() === clean.toLowerCase());
-  if (match) return match;
-  if (clean.toLowerCase() === 'authorized representative') return 'Autorized Representative';
-  return clean;
-}
-
-/** Any stored position wording (English, Indonesian, legacy) → its STAKEHOLDER_POSITIONS key. */
-export function normalizeStakeholderPositionKey(pos?: string | null): string {
-  if (!pos) return '';
-  const clean = String(pos)
-    .trim()
-    .toUpperCase()
-    .replace(/[\s-]+/g, '_');
-  if (['NONE', '', '_', 'SHAREHOLDER'].includes(clean)) return '';
-  if (['MAIN_DIRECTOR', 'PRESIDENT_DIRECTOR', 'DIREKTUR_UTAMA'].includes(clean)) return 'MAIN_DIRECTOR';
-  if (['DIRECTOR', 'DIREKTUR'].includes(clean)) return 'DIRECTOR';
-  if (['MAIN_COMMISSIONER', 'PRESIDENT_COMMISSIONER', 'KOMISARIS_UTAMA'].includes(clean))
-    return 'MAIN_COMMISSIONER';
-  if (['COMMISSIONER', 'KOMISARIS'].includes(clean)) return 'COMMISSIONER';
-  if (['BOARD_OF_DIRECTORS', 'BOD', 'DIREKSI'].includes(clean)) return 'BOARD_OF_DIRECTORS';
-  if (['AUTORIZED_REPRESENTATIVE', 'AUTHORIZED_REPRESENTATIVE', 'KUASA_HUKUM'].includes(clean))
-    return 'AUTORIZED_REPRESENTATIVE';
-  return '';
-}
-
 /**
  * Stakeholder fields (crm_fap_legal_stakeholders). Representative type, position and designation are Master Data
  * selects; the other selects are the ENUM values of the table, and an empty choice is stored as NULL.
@@ -271,6 +222,11 @@ export const stakeholderFields = [
   f('address', 'Address'),
   f('postalCode', 'Postal / ZIP Code'),
 ];
+
+/** Value of every address field of a foreign stakeholder (citizenship FOREIGN, identified by PASSPORT - KITAS): the Indonesian region lists do not apply. */
+export const FOREIGN_REGION_VALUE = 'Others';
+/** The address fields of a foreign stakeholder, all "Others": Country, the regions, RT, RW, the street address and the postal code. */
+export const FOREIGN_REGION_KEYS: readonly string[] = ['country', 'province', 'cityRegency', 'district', 'village', 'rt', 'rw', 'address', 'postalCode'];
 
 export const projectFields = [
   f('projectOwner', 'Project Owner'),

@@ -14,7 +14,7 @@ export default function NotificationsPage() {
   return (
     <>
       <PageHeading page="Notifications" />
-      <AccessGate authority="crm_view_notifications" page="Notifications">
+      <AccessGate authority="CRM_NOTIFICATION_VIEW" page="Notifications">
         <EnhancedNotificationsPage
           notifications={notifications}
           readNotificationIds={readNotificationIds}

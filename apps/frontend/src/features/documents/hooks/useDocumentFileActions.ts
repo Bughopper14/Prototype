@@ -1,6 +1,5 @@
 /** Preview, upload and delete stage files; save FAP remarks; approve, dismiss or re-run the FAP comparison. */
 import {api} from '@/shared/lib/api';
-import {STAGE} from '@/shared/master-data';
 
 /** Document type of the signed FAP form (crm_master_document_types.code); its upload starts the OCR comparison. */
 const FAP_CODE = 'FAP';
@@ -190,14 +189,14 @@ export function useDocumentFileActions({
       });
       const updated = res?.application || (await api(`/applications/${a.id}`));
       setFapComparison(null);
-      notify('Physical FAP document approved. Customer & PIC details locked, proceeding to Pre-analysis.');
+      notify('FAP Stage submitted. Customer & PIC details are locked and the approval has started.');
       if (onApproveDocument) {
         onApproveDocument(updated);
       } else {
-        onChange({...updated, stage: STAGE.PRE_ANALYSIS});
+        onChange(updated);
       }
     } catch (err: any) {
-      setError('Failed to approve document: ' + err.message);
+      setError('Failed to submit the FAP stage: ' + err.message);
     } finally {
       setBusy(false);
     }

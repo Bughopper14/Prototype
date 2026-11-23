@@ -5,6 +5,7 @@ import {blank, customerFields, picFields} from '@liugong/shared';
 export const MASTER_PROFILE_TEXT_KEYS = [
   'branchCode',
   'locationStatus',
+  'companyFullAddress',
   'companyAddress',
   'province',
   'city',

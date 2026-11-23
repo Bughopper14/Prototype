@@ -3,7 +3,7 @@ import {useWorkspace} from '@/features/applications/components/workspace/Workspa
 import {FileSpreadsheet} from 'lucide-react';
 
 export function UnitRealizationPlanCard() {
-  const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
   return (
     <div
       style={{
@@ -139,7 +139,7 @@ export function UnitRealizationPlanCard() {
                         padding: '5px 2px',
                         fontSize: '0.85rem',
                       }}
-                      disabled={!canFinance}
+                      disabled={!canProposal}
                       placeholder="0"
                       value={rPlan.lgHe ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetLgHe', 'proposal')}
@@ -159,7 +159,7 @@ export function UnitRealizationPlanCard() {
                         padding: '5px 2px',
                         fontSize: '0.85rem',
                       }}
-                      disabled={!canFinance}
+                      disabled={!canProposal}
                       placeholder="0"
                       value={rPlan.lgTruck ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetLgTruck', 'proposal')}
@@ -208,7 +208,7 @@ export function UnitRealizationPlanCard() {
                         padding: '5px 2px',
                         fontSize: '0.85rem',
                       }}
-                      disabled={!canFinance}
+                      disabled={!canProposal}
                       placeholder="0"
                       value={rPlan.nlgHe ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetNlgHe', 'proposal')}
@@ -228,7 +228,7 @@ export function UnitRealizationPlanCard() {
                         padding: '5px 2px',
                         fontSize: '0.85rem',
                       }}
-                      disabled={!canFinance}
+                      disabled={!canProposal}
                       placeholder="0"
                       value={rPlan.nlgTruck ?? ''}
                       onFocus={() => handleTriggerFieldSync('propAssetNlgTruck', 'proposal')}

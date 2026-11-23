@@ -49,10 +49,9 @@ export class FapFreezeRepository {
    */
   async freeze(conn: Conn, applicationId: string, stageCode: string, actor: FreezeActor, remarks?: string | null) {
     const [[app]] = await conn.query<any[]>(
-      `SELECT a.*,fp.latest_freeze_version,st.code AS status_code,br.code AS branch_code,br.name AS branch_name
+      `SELECT a.*,fp.latest_freeze_version,br.code AS branch_code,br.name AS branch_name
        FROM ${CRM.applications} a
        LEFT JOIN ${CRM.fapApplicationProfiles} fp ON fp.application_id=a.id
-       JOIN ${CRM.masterWorkflowStatuses} st ON st.id=a.current_status_id
        LEFT JOIN ${CRM.masterBranches} br ON br.id=a.branch_id
        WHERE a.id=? AND a.deleted_at IS NULL FOR UPDATE`,
       [applicationId],
@@ -60,7 +59,7 @@ export class FapFreezeRepository {
     ensure(app, 'Application not found', 404);
     const version = num(app.latest_freeze_version) + 1;
     const freezeId = crypto.randomUUID();
-    const base = {freeze_id: freezeId, source_application_id: applicationId};
+    const base = {fap_freeze_id: freezeId, source_application_id: applicationId};
 
     const [[p = {}]] = await conn.query<any[]>(
       `SELECT p.*,bc.code AS bc_code,bc.name AS bc_name,ps.code AS ps_code,ps.name AS ps_name,
@@ -115,7 +114,8 @@ export class FapFreezeRepository {
       application_date: app.application_date,
       customer_category: app.customer_category,
       stage_code_at_freeze: stageCode,
-      status_code_at_freeze: app.status_code,
+      // an application has no stored status; the frozen copy only records that the stage was submitted
+      status_code_at_freeze: 'SUBMITTED',
       uploaded_fap_file_id: fapFile?.id,
       uploaded_fap_file_name: fapFile?.file_name,
       uploaded_fap_file_path: fapFile?.path,
@@ -133,6 +133,7 @@ export class FapFreezeRepository {
       branch_name: app.branch_name,
       premise_status_code: p.ps_code,
       premise_status_name: p.ps_name,
+      company_full_address: p.company_full_address,
       company_address: p.company_address,
       country_code: p.country_code,
       country_name: p.country_name,
@@ -435,7 +436,7 @@ export class FapFreezeRepository {
       for (const c of categories)
         await insert(conn, CRM.frozenFapLegalDeedRemarkCategories, {
           id: crypto.randomUUID(),
-          freeze_id: freezeId,
+          fap_freeze_id: freezeId,
           frozen_deed_id: frozenDeedId,
           category_code: c.code,
           category_name: c.name,
@@ -443,7 +444,7 @@ export class FapFreezeRepository {
       for (const s of holders)
         await insert(conn, CRM.frozenFapLegalStakeholders, {
           id: crypto.randomUUID(),
-          freeze_id: freezeId,
+          fap_freeze_id: freezeId,
           frozen_deed_id: frozenDeedId,
           source_application_id: applicationId,
           representative_type_code: s.rt_code,
@@ -495,7 +496,7 @@ export class FapFreezeRepository {
        FROM ${CRM.applicationDocumentChecklists} c
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
-       LEFT JOIN ${CRM.workflowStageDocuments} sd ON sd.id=c.workflow_stage_document_id
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
        LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.checklist_id=c.id AND f.is_current_active=1 AND f.deleted_at IS NULL
        WHERE c.application_id=? ORDER BY t.sort_order`,
       [applicationId],
@@ -509,14 +510,6 @@ export class FapFreezeRepository {
         assigned_role: c.assigned_role,
         is_mandatory: c.is_mandatory ? 1 : 0,
         status: c.status,
-        checked_by_mkt: c.checked_by_mkt ? 1 : 0,
-        checked_by_bs: c.checked_by_bs ? 1 : 0,
-        checked_by_ca: c.checked_by_ca ? 1 : 0,
-        checked_by_legal: c.checked_by_legal ? 1 : 0,
-        registration_date: c.registration_date,
-        expired_date: c.expired_date,
-        data_summary: c.data_summary,
-        notes: c.notes,
         active_file_name: c.file_name,
         active_file_path: c.file_path,
         active_file_size: c.file_size,
@@ -558,8 +551,8 @@ export class FapFreezeRepository {
 
   private async assemble(head: any) {
     const rows = async (table: string, order = 'id') => {
-      const [r] = await this.db.pool.query<any[]>(`SELECT * FROM ${table} WHERE freeze_id=? ORDER BY ${order}`, [head.id]);
-      return r.map(({freeze_id, source_application_id, ...rest}: any) => rest);
+      const [r] = await this.db.pool.query<any[]>(`SELECT * FROM ${table} WHERE fap_freeze_id=? ORDER BY ${order}`, [head.id]);
+      return r.map(({fap_freeze_id, source_application_id, ...rest}: any) => rest);
     };
     const [
       primaryContacts, financingPurposes, projectContracts, bankFacilities, financingProposals,

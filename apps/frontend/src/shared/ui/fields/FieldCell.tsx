@@ -215,7 +215,7 @@ export function FieldCell({
             if (onSelectOption) onSelectOption(f.key, e.target.value);
           }}
         >
-          <option value="" hidden></option>
+          <option value=""></option>
           {[...f.options].sort(compareLabels).map(o => (
               <option key={o} value={o}>
                 {f.optionLabels?.[o] ?? toTitleCase(label(o))}

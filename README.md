@@ -226,7 +226,7 @@ pnpm dev                                         # aplikasi: http://localhost:30
 
 Buka aplikasi di **<http://localhost:3000>**. Port 3001 hanya untuk API, bukan tampilan.
 
-OCR dokumen (KTP, NPWP, NIB, FAP, paspor, KITAS) memakai layanan Python di `apps/ocr`. Cara memasangnya ada di bagian OCR
+OCR dokumen (KTP, NPWP, NIB, FAP, paspor, KITAS) memakai layanan Python di `apps/backend/ocr`. Cara memasangnya ada di bagian OCR
 di [TECHNICAL.md](TECHNICAL.md).
 
 Dokumentasi teknis (struktur monorepo, database, API, keamanan, skrip, performa) ada di **[TECHNICAL.md](TECHNICAL.md)**.

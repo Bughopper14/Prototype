@@ -17,34 +17,117 @@ const LABEL_STYLE = {
 } as const;
 
 export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFieldConfig}) {
-  const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
   const terms = draft.financingProposal?.[group] as Record<string, string> | undefined;
-  const value = terms?.[field.key] || '';
+
+  let value = '';
+  const keysToTry = field.readKeys || [field.key];
+  for (const k of keysToTry) {
+    if (terms?.[k] !== undefined && terms?.[k] !== null && String(terms[k]).trim() !== '') {
+      value = String(terms[k]);
+      break;
+    }
+  }
+
+  // Fallback for unassigned state: check if any group had a value
+  if (!value && group === ('termsUnassigned' as any)) {
+    const prop = draft.financingProposal || {};
+    for (const g of ['termsFinancialLease', 'termsSaleAndLeaseBack', 'termsInstallmentFinancing'] as const) {
+      const gTerms = prop[g] as Record<string, string> | undefined;
+      for (const k of keysToTry) {
+        if (gTerms?.[k] !== undefined && gTerms?.[k] !== null && String(gTerms[k]).trim() !== '') {
+          value = String(gTerms[k]);
+          break;
+        }
+      }
+      if (value) break;
+    }
+  }
+
+  // Fallback for currency: if empty in terms, fall back to facilityProposed currencyChoice
+  if (!value && field.key === 'currency') {
+    value =
+      draft.financingProposal?.facilityProposed?.currencyChoice ||
+      draft.proposal?.currency ||
+      '';
+  }
+
+  const normalizedValue = field.normalizeValue ? field.normalizeValue(value) : value;
+
+  const handleFieldChange = (val: string) => {
+    const patch: Record<string, string> = {[field.key]: val};
+    if (field.alsoWrite) {
+      for (const ak of field.alsoWrite) {
+        patch[ak] = val;
+      }
+    }
+    setDraft((prev: any) => {
+      const fp = prev.financingProposal || {};
+      const nextFp: any = {
+        ...fp,
+        [group]: {...(fp[group] || {}), ...patch},
+        ...(group !== ('termsUnassigned' as any)
+          ? {
+              termsUnassigned: {
+                ...(fp.termsUnassigned || {}),
+                ...patch,
+              },
+            }
+          : {}),
+      };
+      if (field.key === 'currency') {
+        nextFp.facilityProposed = {
+          ...(nextFp.facilityProposed || {}),
+          currencyChoice: val,
+        };
+      }
+      return {
+        ...prev,
+        ...(field.key === 'currency' ? {proposal: {...(prev.proposal || {}), currency: val}} : {}),
+        financingProposal: nextFp,
+      };
+    });
+  };
+
   return (
-    <div className="field-group" data-field={field.dataField}>
+    <div className="field-group" data-field={field.dataField} style={{display: 'flex', flexDirection: 'column', width: '100%'}}>
       <label className="field-label" style={LABEL_STYLE}>
         {field.label}
       </label>
-      <input
-        type="text"
-        id={`fap-form-${field.dataField}`}
-        data-field={field.dataField}
-        className="field-input"
-        value={value}
-        disabled={!canFinance}
-        onFocus={() => handleTriggerFieldSync(field.dataField, 'proposal')}
-        onChange={e => {
-          const val = e.target.value;
-          const patch = {[field.key]: val};
-          setDraft((prev: any) => ({
-            ...prev,
-            financingProposal: {
-              ...(prev.financingProposal || {}),
-              [group]: {...(prev.financingProposal?.[group] || {}), ...patch},
-            },
-          }));
-        }}
-      />
+      {field.options ? (
+        <select
+          id={`fap-form-${field.dataField}`}
+          data-field={field.dataField}
+          className="field-input"
+          style={{width: '100%', boxSizing: 'border-box'}}
+          value={normalizedValue}
+          disabled={!canProposal}
+          onFocus={() => handleTriggerFieldSync(field.dataField, 'proposal')}
+          onChange={e => handleFieldChange(e.target.value)}
+        >
+          {field.options.map(opt => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+          {/* Fallback if legacy value is not present in options */}
+          {value && !field.options.some(o => o.value === normalizedValue) && (
+            <option value={value}>{value}</option>
+          )}
+        </select>
+      ) : (
+        <input
+          type="text"
+          id={`fap-form-${field.dataField}`}
+          data-field={field.dataField}
+          className="field-input"
+          style={{width: '100%', boxSizing: 'border-box'}}
+          value={value}
+          disabled={!canProposal}
+          onFocus={() => handleTriggerFieldSync(field.dataField, 'proposal')}
+          onChange={e => handleFieldChange(e.target.value)}
+        />
+      )}
     </div>
   );
 }

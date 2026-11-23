@@ -31,7 +31,7 @@ export function RegistrationOfficeSection() {
           <div className="fap-acc-titles">
             <div className="fap-acc-title-row">
               <h4 className="fap-acc-title">Registration Office & Company Domicile</h4>
-              <span className={`fap-acc-badge ${draft.city && draft.companyAddress ? 'success' : ''}`}>
+              <span className={`fap-acc-badge ${draft.city && (draft.companyAddress || draft.companyFullAddress) ? 'success' : ''}`}>
                 {draft.city ? `${resolvedCity} (${draft.branchCode || 'Branch'})` : 'Not filled'}
               </span>
             </div>
@@ -81,6 +81,7 @@ export function RegistrationOfficeSection() {
             <Fields
               fields={profileFields.filter(f =>
                 [
+                  'companyFullAddress',
                   'companyAddress',
                   'province',
                   'city',

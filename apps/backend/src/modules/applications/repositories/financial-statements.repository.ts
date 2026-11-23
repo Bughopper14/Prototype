@@ -49,6 +49,10 @@ export class FinancialStatementsRepository {
 
   /** Replaces the statements: years not sent are soft-deleted (deleted_at set, is_active NULL as the design asks). */
   async save(conn: Conn, applicationId: string, input: unknown, by: string | null) {
+    // A year whose figures are all blank is an empty line of the form, not a statement: it is left out instead of failing the whole save.
+    const blank = (v: unknown) => v === undefined || v === null || String(v).trim() === '';
+    if (Array.isArray(input))
+      input = input.filter((r: any) => !r || typeof r !== 'object' || Object.keys(METRICS).some(k => !blank(r[k])));
     const amount = z.union([z.string().regex(/^-?\d{1,18}(\.\d{1,2})?$/), z.number().finite()]).transform(String);
     const rows = z
       .array(

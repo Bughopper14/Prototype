@@ -1,0 +1,162 @@
+/* ---- approval panel of an application ---- */
+.ap-panel { display: grid; gap: 16px; margin: 16px 0; padding: 20px 22px; border: 1.5px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 1px 2px #0f172a0d; color: #0f172a; }
+.ap-head { display: flex; align-items: center; gap: 14px; }
+.ap-head > svg { flex: none; color: #002060; }
+.ap-head h3 { margin: 0; font-size: 19px; color: #0b1b3f; }
+.ap-head p { margin: 2px 0 0; font-size: 15px; color: #475569; }
+.ap-head .badge { margin-left: auto; }
+.ap-rejected { display: flex; gap: 14px; padding: 14px 18px; border-radius: 12px; border: 1.5px solid #fecaca; background: #fef2f2; color: #7f1d1d; }
+.ap-rejected > svg { flex: none; margin-top: 2px; color: #dc2626; }
+.ap-rejected b { font-size: 16px; }
+.ap-rejected p { margin: 6px 0; font-size: 15px; line-height: 1.5; color: #991b1b; white-space: pre-wrap; }
+.ap-rejected small { color: #b91c1c; }
+.ap-grid { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(320px, 1.4fr); gap: 22px; }
+.ap-col h4 { margin: 0 0 10px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+.ap-stages { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ap-stages li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; background: #f8fafc; }
+.ap-stages li.done { border-color: #bbf7d0; background: #f0fdf4; }
+.ap-stages li.sent { border-color: #fde68a; background: #fffbeb; }
+.ap-stage-name { display: grid; gap: 2px; }
+.ap-stage-name b { font-size: 15px; color: #0b1b3f; }
+.ap-stage-name small { color: #64748b; }
+.ap-stage-state { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #334155; text-align: right; }
+.ap-stages li.done .ap-stage-state { color: #166534; }
+.ap-stages li.sent .ap-stage-state { color: #92400e; }
+.ap-stage-state .muted { font-weight: 500; max-width: 240px; }
+.ap-scope { display: grid; gap: 8px; margin-bottom: 14px; }
+.ap-scope-title { display: flex; align-items: baseline; gap: 10px; }
+.ap-scope-title b { font-size: 15px; color: #0b1b3f; }
+.ap-scope-title small { color: #64748b; }
+.ap-scope ol:not(.ap-progress) { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ap-step { display: grid; gap: 6px; padding: 12px 14px; border: 1.5px solid #e2e8f0; border-left-width: 6px; border-radius: 12px; background: #fff; }
+.ap-step.pending { border-left-color: #f59e0b; background: #fffbeb; }
+.ap-step.approved { border-left-color: #22c55e; }
+.ap-step.rejected { border-left-color: #ef4444; background: #fef2f2; }
+.ap-step.waiting, .ap-step.cancelled { border-left-color: #cbd5e1; color: #64748b; }
+.ap-step-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.ap-step-top b { font-size: 15px; color: #0b1b3f; }
+.ap-pill { padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; background: #e2e8f0; color: #475569; white-space: nowrap; }
+.ap-pill.pending { background: #fef3c7; color: #92400e; }
+.ap-pill.approved { background: #dcfce7; color: #166534; }
+.ap-pill.rejected { background: #fee2e2; color: #b91c1c; }
+.ap-auth { color: #64748b; }
+.ap-auth code { padding: 2px 7px; border-radius: 6px; background: #f1f5f9; color: #0b1b3f; font-weight: 700; }
+.ap-decision { display: flex; align-items: flex-start; gap: 6px; margin: 0; font-size: 14px; color: #334155; line-height: 1.45; }
+.ap-decision svg { flex: none; margin-top: 3px; }
+.ap-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.ap-reject { color: #b91c1c; border-color: #fecaca; background: #fff; }
+.ap-reject:hover { background: #fef2f2; }
+.ap-reject-solid { background: #dc2626; border-color: #dc2626; color: #fff; }
+.ap-reject-solid:hover:not(:disabled) { background: #b91c1c; }
+.ap-history { padding-top: 6px; border-top: 1px solid #e2e8f0; }
+.ap-history summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 700; color: #475569; }
+.ap-history.has-rejected summary { color: #b91c1c; }
+.ap-history-flag { padding: 1px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 700; }
+.ap-scope.old { margin-top: 12px; opacity: .9; }
+.badge.in_approval, .badge.in_progress { background: #eff6ff; color: #1d4ed8; }
+@media (max-width: 900px) { .ap-grid { grid-template-columns: 1fr; } }
+
+/* approval of one document, in the document checklist */
+.doc-approval { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.doc-approval-chip { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; }
+.doc-approval.approved .doc-approval-chip { background: #dcfce7; color: #166534; }
+.doc-approval.rejected .doc-approval-chip { background: #fee2e2; color: #b91c1c; }
+.doc-approval.reopened .doc-approval-chip { background: #fef3c7; color: #b45309; }
+.doc-approval.pending .doc-approval-chip { background: #fef3c7; color: #92400e; }
+.doc-approval { display: grid; justify-items: start; gap: 4px; }
+.doc-approval-step { color: #475569; font-size: 12px; line-height: 1.3; }
+.ap-mine { display: flex; gap: 14px; padding: 14px 18px; border-radius: 12px; border: 1.5px solid #fde68a; background: #fffbeb; color: #78350f; }
+.ap-mine > svg { flex: none; margin-top: 2px; color: #d97706; }
+.ap-mine b { font-size: 16px; }
+.ap-mine p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; }
+.ap-layer { display: grid; gap: 8px; padding-left: 14px; border-left: 3px solid #c7d2fe; margin-bottom: 12px; }
+.ap-layer-head { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #475569; }
+.ap-layer-head b { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.ap-layer-head em { font-style: normal; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #fef3c7; color: #92400e; }
+.ap-layer-no { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #002060; color: #fff; font-size: 12px; font-weight: 800; margin-left: -25px; }
+.ap-layer-steps { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+
+
+/* approver view and the small bits around it */
+.ap-todo { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.ap-todo li { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border: 1.5px solid #c7d2fe; border-radius: 12px; background: #f5f7ff; }
+.ap-todo li b { display: block; color: #0b1b3f; font-size: 15px; }
+.ap-todo li small { color: #475569; font-size: 13px; }
+.tab-count { margin-left: 8px; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; }
+.doc-needs { display: inline-flex; align-items: center; gap: 6px; }
+
+/* one review dialog: Approve / Reject switch and the request-documents row */
+.ap-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px; }
+.ap-choice button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1.5px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; font-size: 15px; font-weight: 700; color: #475569; cursor: pointer; }
+.ap-choice button.on.approve { background: #dcfce7; border-color: #16a34a; color: #166534; }
+.ap-choice button.on.reject { background: #fee2e2; border-color: #dc2626; color: #991b1b; }
+.ap-request-docs { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 14px; margin-top: 12px; border: 1.5px dashed #94a3b8; border-radius: 12px; background: #f8fafc; }
+.ap-request-docs b { display: block; color: #0b1b3f; font-size: 14px; }
+.ap-request-docs small { color: #64748b; font-size: 13px; }
+
+.ap-grid.single { grid-template-columns: 1fr; }
+.tab-count.ready { background: #002060; }
+
+/* Compact list of all approvals */
+.ap-scope.compact { gap: 4px; margin-bottom: 12px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.ap-scope.compact .ap-scope-title b { font-size: 14px; }
+.ap-scope-sub { color: #64748b; font-size: 12px; }
+.ap-view { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border: 1px solid #cbd5e1; border-radius: 999px; background: #f8fafc; font: inherit; font-size: 12px; font-weight: 700; color: #1e3a8a; cursor: pointer; }
+.ap-view:hover { background: #eef2ff; border-color: #93a7cf; }
+.ap-layer-steps.compact { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ap-step.compact { padding: 6px 10px; gap: 2px; border-width: 1px; border-left-width: 4px; border-radius: 8px; }
+.ap-step.compact .ap-step-top { justify-content: flex-start; flex-wrap: wrap; gap: 8px; }
+.ap-step-who { flex: 1; min-width: 160px; font-size: 12.5px; font-weight: 700; color: #0b1b3f; overflow-wrap: anywhere; }
+.ap-step.compact .ap-layer-no { width: 18px; height: 18px; font-size: 11px; margin-left: 0; }
+.ap-step.compact .ap-actions { display: inline-flex; gap: 6px; }
+
+/* Approval progress: one dot per layer */
+
+/* Approval levels as a timeline: one row per level, a dot (done, now, next, rejected) on a rail, who approves, and where it stands */
+.ap-scope ol.ap-tl { display: grid; gap: 0; margin: 10px 0 2px; padding: 0; list-style: none; }
+.ap-tl > li { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 0 14px; padding-bottom: 14px; }
+.ap-tl > li:last-child { padding-bottom: 0; }
+.ap-tl > li::before { content: ''; position: absolute; left: 15px; top: 34px; bottom: 2px; width: 2px; border-radius: 2px; background: #e2e8f0; }
+.ap-tl > li:last-child::before { display: none; }
+.ap-tl > li.done::before { background: #86efac; }
+.ap-tl-dot { z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #64748b; border: 2px solid #e2e8f0; font-size: 13px; font-weight: 800; }
+.ap-tl > li.done .ap-tl-dot { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.ap-tl > li.now .ap-tl-dot { background: #fef3c7; border-color: #fbbf24; color: #b45309; box-shadow: 0 0 0 4px #fffbeb; }
+.ap-tl > li.rejected .ap-tl-dot { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+.ap-tl-body { display: grid; gap: 8px; min-width: 0; }
+.ap-tl-level { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-height: 22px; }
+.ap-tl-level b { font-size: 14px; color: #0b1b3f; }
+.ap-tl > li.next .ap-tl-level b { color: #64748b; }
+.ap-tl-level small { font-size: 12px; color: #64748b; }
+.ap-tl-step { display: grid; gap: 4px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.ap-tl-step.pending { border-color: #fcd34d; background: #fffbeb; }
+.ap-tl-step.rejected { border-color: #fca5a5; background: #fef2f2; }
+.ap-tl-step.waiting, .ap-tl-step.cancelled { background: #f8fafc; }
+.ap-tl-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ap-tl-who { flex: 1; min-width: 140px; font-size: 13px; font-weight: 700; color: #0b1b3f; overflow-wrap: anywhere; }
+.ap-tl-step.waiting .ap-tl-who, .ap-tl-step.cancelled .ap-tl-who { color: #64748b; }
+.ap-pill.mine { background: #f59e0b; color: #fff; }
+.ap-tl-row .ap-actions { margin-top: 0; }
+
+/* ---- rejecting a group: which stages open again ---- */
+.ap-reopen { margin: 10px 0 4px; padding: 14px; border: 1.5px solid #cbd5e1; border-radius: 12px; background: #f8fafc; display: grid; gap: 8px; min-width: 0; }
+.ap-reopen.invalid { border-color: #dc2626; background: #fef2f2; }
+.ap-reopen legend { display: flex; align-items: center; gap: 8px; padding: 0 6px; font-size: 14px; color: #0b1b3f; }
+.ap-reopen-req { padding: 2px 8px; border-radius: 999px; background: #fee2e2; color: #991b1b; font-size: 11px; font-weight: 700; }
+.ap-reopen-help { margin: 0; font-size: 13px; line-height: 1.45; color: #64748b; }
+.ap-reopen-count { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 700; color: #475569; }
+.ap-reopen-count button { border: 0; background: none; color: #1d4ed8; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 2px 4px; }
+.ap-reopen.invalid .ap-reopen-count span { color: #991b1b; }
+.ap-reopen-item { display: flex; flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; min-height: 46px; padding: 8px 12px; margin: 0; border: 1.5px solid #cbd5e1; border-radius: 10px; background: #fff; text-align: left; cursor: pointer; }
+.ap-reopen-item input { width: 18px; height: 18px; margin: 0; flex: none; accent-color: #dc2626; }
+.ap-reopen-item.on { border-color: #dc2626; background: #fff5f5; }
+.ap-reopen-name { flex: 1; min-width: 0; font-size: 14px; font-weight: 700; color: #0b1b3f; overflow-wrap: anywhere; }
+.ap-reopen-state { flex: none; font-size: 12px; font-weight: 700; color: #16a34a; }
+.ap-reopen-item.on .ap-reopen-state { color: #b91c1c; }
+.ap-reopen-error { font-size: 13px; font-weight: 700; color: #b91c1c; }
+
+/* a step that was approved and then opened again by its group (not rejected by anybody) */
+.ap-step.reopened { border-left-color: #f59e0b; background: #fffbeb; }
+.ap-pill.reopened { background: #fef3c7; color: #b45309; }
+.ap-tl > li.reopened .ap-tl-dot { background: #fef3c7; border-color: #fbbf24; color: #b45309; }
+.ap-tl-step.reopened { border-color: #fcd34d; background: #fffbeb; }

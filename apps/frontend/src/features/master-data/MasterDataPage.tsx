@@ -6,7 +6,7 @@ export default function MasterDataRoute() {
   return (
     <>
       <PageHeading page="Customize master data" />
-      <AccessGate authority="crm_view_master_data" page="Customize master data">
+      <AccessGate authority="CRM_MASTER-DATA_VIEW" page="Customize master data">
         <MasterDataWorkspace />
       </AccessGate>
     </>

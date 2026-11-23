@@ -10,7 +10,7 @@ export class OcrController {
   /** Loads the OCR models in the background when the CRM opens, so the first scan is fast. */
   @Post('ocr/warmup')
   warmUp(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'access_crm_dashboard');
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
     this.ocr.warmUp();
     return {ok: true};
   }

@@ -1,4 +1,4 @@
-/** Domicile address. */
+/** The address exactly as the OCR read it (reference), and the street part of it that is applied to the application. */
 import {Check, Copy, MapPin} from 'lucide-react';
 import {useNibOcrModalContext} from '@/features/ocr/components/nib-modal/NibOcrModalContext';
 
@@ -20,11 +20,12 @@ export function NibAddressField() {
             fontWeight: 600,
             color: '#334155',
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
             gap: 5,
           }}
         >
-          <MapPin size={13} color="#2563eb" /> Company Address / Domicile
+          <MapPin size={13} color="#2563eb" /> OCR Full Address Result
         </label>
         {formData.alamat && (
           <button

@@ -4,15 +4,15 @@ import path from 'node:path';
 import {Injectable, type OnModuleDestroy} from '@nestjs/common';
 
 /**
- * Client for the Python OCR worker (apps/ocr/ocr_worker.py).
+ * Client for the Python OCR worker (apps/backend/ocr/ocr_worker.py).
  *
  * Loading the OCR models takes a long time, so a single worker process is started on first use (or by warmUp)
  * and then reused for every request. Requests are processed one at a time; a request that exceeds its timeout
  * kills the worker, which is started again on the next call.
  */
 
-// apps/ocr, resolved from the backend's working directory (apps/backend); OCR_DIR overrides it.
-const OCR_DIR = path.resolve(process.env.OCR_DIR || '../ocr');
+// apps/backend/ocr, resolved from the backend's working directory (apps/backend); OCR_DIR overrides it.
+const OCR_DIR = path.resolve(process.env.OCR_DIR || 'ocr');
 const STARTUP_TIMEOUT_MS = 120_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 

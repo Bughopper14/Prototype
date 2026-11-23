@@ -5,7 +5,7 @@ import {CrmRichTextEditor} from '@/shared/ui/CrmRichTextEditor';
 import {FileText} from 'lucide-react';
 
 export function ProposalNotesCard() {
-  const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
   return (
     <div
       style={{
@@ -56,7 +56,7 @@ export function ProposalNotesCard() {
           id="fap-form-proposalNotes"
           dataField="proposalNotes"
           value={draft.financingProposal?.notes || ''}
-          disabled={!canFinance}
+          disabled={!canProposal}
           height={220}
           onClick={() => handleTriggerFieldSync('proposalNotes', 'proposal')}
           onChange={content => {
