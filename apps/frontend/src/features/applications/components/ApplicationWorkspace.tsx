@@ -174,6 +174,8 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           onClose={() => setNibOcrOpen(false)}
           onApply={handleApplyNibOcr}
           notify={notify}
+          applicationId={a?.id}
+          onDocumentUploaded={onChange}
         />
         {fapComparisonModal && (
           <FapComparisonModal

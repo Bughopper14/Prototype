@@ -64,7 +64,15 @@ export class DocumentsController {
 
   @Post('applications/:id/documents/upload')
   async upload(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'CRM_DOCUMENT_UPLOAD');
+    requireAuthority(
+      req.actor,
+      'CRM_DOCUMENT_UPLOAD',
+      'CRM_CUSTOMER-PIC_EDIT',
+      'CRM_LEGAL_EDIT',
+      'CRM_STAKEHOLDER_EDIT',
+      'CRM_APPLICATION_CREATE',
+      'CRM_APPLICATION_EDIT',
+    );
     const id = req.params.id;
     const file = req.file;
     ensure(file, 'Choose a file');

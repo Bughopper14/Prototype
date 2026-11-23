@@ -1,0 +1,21 @@
+feat(crm): proposal dropdowns, live installment calculation, self-assign PIC, and approval step remarks
+
+- Proposal & Terms Form:
+  * Replace free-text Payment Method with dropdown select (In Arrear, In Advance, or empty) to prevent invalid code errors
+  * Replace free-text Application Source with dropdown select (Direct, Dealer, Referral, Internal, or empty)
+  * Implement two-way currency sync: toggling IDR/USD in Financing Value automatically syncs currency to Terms & Conditions
+  * Add live Monthly Installment calculation card (non-stepping annuity regular) below Terms & Conditions
+  * Align Application Source dropdown width with Financing Method dropdown
+  * Expand Payment Method and Working Capital/Investment dropdowns to 100% column width, matching adjacent freetext inputs
+
+- New Application Flow:
+  * Add "Assign to me" self-assignment button on Marketing PIC picker for logged-in marketing users
+
+- Header & Detail View:
+  * Remove duplicate MKT_PIC label in header
+  * Hide raw application UUID/hash when FAP number has not been generated
+
+- Database & Approval Workflow:
+  * Remove crm_application_approval_decisions table and store decision remarks directly in crm_application_approval_steps.remarks
+  * Update approval decision handling, status tracking, and stage reopening to read/write remarks directly on approval steps
+  * Align legal deed review status enum and flow to PENDING, APPROVED, REJECTED

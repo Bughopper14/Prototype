@@ -17,11 +17,13 @@ import {
 } from '@/features/ocr/lib/id-documents/types';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {extractStreetAddress, formatKtpFullAddress, type Field} from '@liugong/shared';
+import {api} from '@/shared/lib/api';
 import {useEffect, useMemo, useState} from 'react';
 
 export type StakeholderModalDialogProps = {
   modal: any;
   applicationId?: string;
+  onDocumentUploaded?: (updatedApp: any) => void;
   editorLocked: boolean;
   formError: string;
   onClose: () => void;
@@ -35,6 +37,7 @@ export type StakeholderModalDialogProps = {
 export function useStakeholderModal({
   modal,
   applicationId,
+  onDocumentUploaded,
   editorLocked,
   formError,
   onClose,
@@ -280,11 +283,30 @@ export function useStakeholderModal({
           NPWP: extractNpwpTextFromImage,
           KITAS: extractKitasTextFromImage,
         }[targetType];
+        const targetAppId = modal?.applicationId ?? applicationId;
         const extracted = await extract(f, f.name, {
-          applicationId: modal?.applicationId ?? applicationId,
+          applicationId: targetAppId,
           stakeholderId: curVal.id,
         });
         onChangeValue(mergeExtractedDoc(curVal, targetType, extracted, dataUrl, f));
+
+        // Auto-upload KTP to application's document checklist
+        if (targetType === 'KTP' && targetAppId) {
+          (async () => {
+            try {
+              const docForm = new FormData();
+              docForm.append('file', f);
+              docForm.append('documentCode', 'KTP');
+              await api(`/applications/${targetAppId}/documents/upload`, 'POST', docForm);
+              if (onDocumentUploaded) {
+                const updatedApp = await api(`/applications/${targetAppId}`);
+                onDocumentUploaded(updatedApp);
+              }
+            } catch (upErr) {
+              console.warn('Auto-upload KTP to document checklist failed:', upErr);
+            }
+          })();
+        }
       } catch (err: any) {
         console.warn('OCR error:', err);
         if (err?.code === 'WRONG_DOCUMENT_TYPE') setUploadError(err.message);

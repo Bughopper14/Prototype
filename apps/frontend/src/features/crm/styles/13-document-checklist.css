@@ -308,6 +308,7 @@
 .doc-table-wrapper {
   border-top: 1px solid #e2e8f0;
   overflow-x: auto;
+  position: relative;
 }
 .doc-checklist-table {
   width: 100%;
@@ -319,7 +320,7 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  padding: 11px 14px;
+  padding: 10px 10px;
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
   color: #64748b;
@@ -330,7 +331,7 @@
   white-space: nowrap;
 }
 .doc-checklist-table td {
-  padding: 12px 14px;
+  padding: 10px 10px;
   border-bottom: 1px solid #f1f5f9;
   vertical-align: top;
 }
@@ -338,10 +339,34 @@
   background: #f8fafc;
 }
 
+/* Actions column pinned cleanly on the right edge without artificial shadow dividers */
+.doc-checklist-table th.col-actions,
+.doc-checklist-table th:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  background: #f8fafc;
+  box-shadow: none;
+  text-align: center;
+}
+.doc-checklist-row td.col-actions,
+.doc-checklist-row td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: #ffffff;
+  box-shadow: none;
+  text-align: center;
+}
+.doc-checklist-row:hover td.col-actions,
+.doc-checklist-row:hover td:last-child {
+  background: #f8fafc;
+}
+
 .doc-meta-cell {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
 }
 .doc-meta-content {
   display: flex;
@@ -360,7 +385,8 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
+  gap: 5px;
+  max-width: 200px;
 }
 .doc-status-row {
   display: flex;
@@ -374,12 +400,12 @@
 }
 .doc-code-badge {
   flex-shrink: 0;
-  width: 100px;
-  min-width: 100px;
-  max-width: 100px;
+  width: 56px;
+  min-width: 56px;
+  max-width: 65px;
   box-sizing: border-box;
-  padding: 4px 6px;
-  border-radius: 6px;
+  padding: 3px 4px;
+  border-radius: 5px;
   background: #e2e8f0;
   color: #334155;
   font-size: 10px;
@@ -543,11 +569,18 @@
 }
 
 /* ---- Source and files ---- */
+.doc-checklist-table td.col-source {
+  max-width: 280px;
+  overflow: hidden;
+}
 .doc-source-details-box {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 .source-chip {
   display: inline-flex;
@@ -567,9 +600,12 @@
 }
 .source-sub-text {
   margin: 0;
-  font-size: 11.5px;
+  font-size: 11px;
   color: #475569;
-  line-height: 1.45;
+  line-height: 1.35;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 .doc-file-pills-list {
   display: flex;
@@ -582,7 +618,7 @@
   align-items: center;
   gap: 6px;
   max-width: 100%;
-  padding: 4px 8px;
+  padding: 3px 6px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
@@ -590,7 +626,7 @@
 }
 .file-pill-name {
   min-width: 0;
-  max-width: 170px;
+  max-width: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -619,18 +655,28 @@
 
 /* ---- Row actions ---- */
 .doc-row-actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 6px;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 4px;
+  white-space: nowrap;
 }
 .doc-action-btn {
-  gap: 6px;
-  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 8px;
+  font-size: 11.5px;
+  height: 28px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.doc-action-btn span {
+  font-size: 11.5px;
 }
 .doc-action-btn.btn-delete {
-  padding: 8px 9px;
+  padding: 5px 7px;
   color: #dc2626;
 }
 .doc-action-btn.btn-delete:hover {
@@ -640,11 +686,12 @@
 .locked-action-indicator {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: #f1f5f9;
   color: #94a3b8;
+  flex-shrink: 0;
 }
 
 /* Narrow screens: the toolbar may wrap, it is the only place that does */

@@ -122,12 +122,12 @@ export function ChecklistRowItem({
       </td>
 
       {/* Sumber Integrasi & Bukti */}
-      <td>
+      <td className="col-source">
         <DocumentSourceCell row={row} deletingFileId={deletingFileId} onDelete={onDelete} />
       </td>
 
       {/* Aksi */}
-      <td style={{textAlign: 'right'}}>
+      <td className="col-actions" style={{textAlign: 'center'}}>
         <DocumentRowActions
           row={row}
           isUploading={isUploading}

@@ -368,10 +368,10 @@ export class DocumentsRepository {
   /** The checklist row by its id or by its document type code. */
   async checklistRow(conn: Conn, applicationId: string, idOrCode: string) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code FROM ${CRM.applicationDocumentChecklists} c
+      `SELECT c.*,COALESCE(t.code,c.document_code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       WHERE c.application_id=? AND (c.id=? OR t.code=?) FOR UPDATE`,
-      [applicationId, idOrCode, String(idOrCode).toUpperCase()],
+       WHERE c.application_id=? AND (c.id=? OR t.code=? OR c.document_code=?) FOR UPDATE`,
+      [applicationId, idOrCode, String(idOrCode).toUpperCase(), String(idOrCode).toUpperCase()],
     );
     return rows[0] || null;
   }

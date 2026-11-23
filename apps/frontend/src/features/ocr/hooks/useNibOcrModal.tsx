@@ -32,6 +32,8 @@ export interface NibOcrModalProps {
   notify?: (msg: string) => void;
   existingDocumentUrl?: string;
   existingFileName?: string;
+  applicationId?: string;
+  onDocumentUploaded?: (updatedApp: any) => void;
 }
 
 export function useNibOcrModal({
@@ -41,6 +43,8 @@ export function useNibOcrModal({
   notify,
   existingDocumentUrl,
   existingFileName,
+  applicationId,
+  onDocumentUploaded,
 }: NibOcrModalProps) {
   const master = useMasterData();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -78,6 +82,24 @@ export function useNibOcrModal({
     setOcrLoading(true);
     const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
     setFileType(isPdf ? 'pdf' : 'image');
+
+    // Auto-upload NIB document to application checklist if applicationId is present
+    if (applicationId) {
+      (async () => {
+        try {
+          const docPayload = new FormData();
+          docPayload.append('file', f);
+          docPayload.append('documentCode', 'NIB');
+          await api(`/applications/${applicationId}/documents/upload`, 'POST', docPayload);
+          if (onDocumentUploaded) {
+            const updated = await api(`/applications/${applicationId}`);
+            onDocumentUploaded(updated);
+          }
+        } catch (uploadErr) {
+          console.warn('Auto-upload NIB to document checklist failed:', uploadErr);
+        }
+      })();
+    }
 
     try {
       const objectUrl = URL.createObjectURL(f);

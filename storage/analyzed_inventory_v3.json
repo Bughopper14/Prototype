@@ -1,0 +1,912 @@
+[
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 43,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "await exec(`DELETE FROM ${USER_TABLES.role_authorities} WHERE role_id = ?`, [roleId], conn);",
+    "id": 1,
+    "query_type": "DELETE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 46,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "`INSERT INTO ${USER_TABLES.role_authorities} (role_id, authority_id) VALUES (?, ?)`,",
+    "id": 2,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 61,
+    "prop": "users",
+    "table": "users_users",
+    "code": "FROM ${USER_TABLES.users} u",
+    "id": 3,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 62,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "LEFT JOIN ${USER_TABLES.user_app_roles} uar ON u.id = uar.user_id AND uar.app_id = 1",
+    "id": 4,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 63,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "LEFT JOIN ${USER_TABLES.roles} r ON uar.role_id = r.id AND r.app_id = 1 ORDER BY u.id`),",
+    "id": 5,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 64,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "many(`SELECT * FROM ${USER_TABLES.applications} ORDER BY id`),",
+    "id": 6,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 66,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "`SELECT r.*, a.app_name FROM ${USER_TABLES.roles} r LEFT JOIN ${USER_TABLES.applications} a ON r.app_id = a.id ORDER BY r.app_id, r.id`,",
+    "id": 7,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 66,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "`SELECT r.*, a.app_name FROM ${USER_TABLES.roles} r LEFT JOIN ${USER_TABLES.applications} a ON r.app_id = a.id ORDER BY r.app_id, r.id`,",
+    "id": 8,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 69,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "`SELECT au.*, a.app_name FROM ${USER_TABLES.authorities} au LEFT JOIN ${USER_TABLES.applications} a ON au.app_id = a.id ORDER BY au.app_id, au.id`,",
+    "id": 9,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 69,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "`SELECT au.*, a.app_name FROM ${USER_TABLES.authorities} au LEFT JOIN ${USER_TABLES.applications} a ON au.app_id = a.id ORDER BY au.app_id, au.id`,",
+    "id": 10,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 71,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "many(`SELECT role_id, authority_id FROM ${USER_TABLES.role_authorities}`),",
+    "id": 11,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 73,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT a.*, u.username FROM ${USER_TABLES.audit_logs} a LEFT JOIN ${USER_TABLES.users} u ON a.user_id = u.id ORDER BY a.timestamp DESC LIMIT 500`,",
+    "id": 12,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 73,
+    "prop": "audit_logs",
+    "table": "users_audit_logs",
+    "code": "`SELECT a.*, u.username FROM ${USER_TABLES.audit_logs} a LEFT JOIN ${USER_TABLES.users} u ON a.user_id = u.id ORDER BY a.timestamp DESC LIMIT 500`,",
+    "id": 13,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 76,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT s.*, u.username FROM ${USER_TABLES.session_logs} s LEFT JOIN ${USER_TABLES.users} u ON s.user_id = u.id ORDER BY s.login_time DESC LIMIT 500`,",
+    "id": 14,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 76,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "`SELECT s.*, u.username FROM ${USER_TABLES.session_logs} s LEFT JOIN ${USER_TABLES.users} u ON s.user_id = u.id ORDER BY s.login_time DESC LIMIT 500`,",
+    "id": 15,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 87,
+    "prop": "users",
+    "table": "users_users",
+    "code": "!(await one(`SELECT 1 AS x FROM ${USER_TABLES.users} WHERE username = ?`, [b.username])),",
+    "id": 16,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 92,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`INSERT INTO ${USER_TABLES.users} (username, password_hash, full_name, position, email, is_active) VALUES (?, ?, ?, ?, ?, 1)`,",
+    "id": 17,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 105,
+    "prop": "users",
+    "table": "users_users",
+    "code": "!(await one(`SELECT 1 AS x FROM ${USER_TABLES.users} WHERE username = ? AND id != ?`, [b.username, id])),",
+    "id": 18,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 111,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`UPDATE ${USER_TABLES.users} SET username=?, password_hash=?, full_name=?, position=?, email=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,",
+    "id": 19,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 116,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`UPDATE ${USER_TABLES.users} SET username=?, full_name=?, position=?, email=?, updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`,",
+    "id": 20,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 133,
+    "prop": "users",
+    "table": "users_users",
+    "code": "await exec(`DELETE FROM ${USER_TABLES.users} WHERE id = ?`, [id]);",
+    "id": 21,
+    "query_type": "DELETE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 142,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "many(`SELECT * FROM ${USER_TABLES.applications} ORDER BY id`),",
+    "id": 22,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 143,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "many(`SELECT app_id, role_id FROM ${USER_TABLES.user_app_roles} WHERE user_id = ?`, [id]),",
+    "id": 23,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 144,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "many(`SELECT id, role_name, app_id FROM ${USER_TABLES.roles} ORDER BY app_id, id`),",
+    "id": 24,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 158,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "await exec(`DELETE FROM ${USER_TABLES.user_app_roles} WHERE user_id = ?`, [id], conn);",
+    "id": 25,
+    "query_type": "DELETE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 162,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "`INSERT INTO ${USER_TABLES.user_app_roles} (user_id, app_id, role_id) VALUES (?, ?, ?)`,",
+    "id": 26,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 176,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const user = await one<{username: string}>(`SELECT username FROM ${USER_TABLES.users} WHERE id = ?`, [id]);",
+    "id": 27,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 178,
+    "prop": "users",
+    "table": "users_users",
+    "code": "await exec(`UPDATE ${USER_TABLES.users} SET session_timeout_minutes = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, [",
+    "id": 28,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 194,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const user = await one<{username: string}>(`SELECT username FROM ${USER_TABLES.users} WHERE id = ?`, [id]);",
+    "id": 29,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 196,
+    "prop": "users",
+    "table": "users_users",
+    "code": "await exec(`UPDATE ${USER_TABLES.users} SET force_logout_at = NOW(), updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, [id]);",
+    "id": 30,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 198,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "`UPDATE ${USER_TABLES.session_logs} SET is_invalidated = 1, logout_time = NOW() WHERE user_id = ? AND (logout_time IS NULL OR is_invalidated = 0)`,",
+    "id": 31,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 207,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "await exec(`UPDATE ${USER_TABLES.session_logs} SET is_invalidated = 1, logout_time = NOW() WHERE session_id = ?`, [",
+    "id": 32,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 224,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "await exec(`INSERT INTO ${USER_TABLES.applications} (app_name, url_path, description, icon_class) VALUES (?, ?, ?, ?)`, [",
+    "id": 33,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 236,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "await exec(`DELETE FROM ${USER_TABLES.applications} WHERE id = ?`, [Number(req.params.id)]);",
+    "id": 34,
+    "query_type": "DELETE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 247,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "`INSERT INTO ${USER_TABLES.roles} (app_id, role_name, description) VALUES (?, ?, ?)`,",
+    "id": 35,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 263,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "`UPDATE ${USER_TABLES.roles} SET role_name = ?, description = ? WHERE id = ?`,",
+    "id": 36,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 275,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "await exec(`DELETE FROM ${USER_TABLES.roles} WHERE id = ?`, [Number(req.params.id)]);",
+    "id": 37,
+    "query_type": "DELETE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 296,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "!(await one(`SELECT 1 AS x FROM ${USER_TABLES.authorities} WHERE app_id = ? AND authority_name = ?`, [",
+    "id": 38,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 303,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "await exec(`INSERT INTO ${USER_TABLES.authorities} (app_id, authority_name, description) VALUES (?, ?, ?)`, [",
+    "id": 39,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 317,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "`SELECT authority_name FROM ${USER_TABLES.authorities} WHERE id = ?`,",
+    "id": 40,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 321,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "await exec(`UPDATE ${USER_TABLES.authorities} SET description = ? WHERE id = ?`, [description, id]);",
+    "id": 41,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 330,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "`SELECT r.role_name FROM ${USER_TABLES.role_authorities} ra JOIN ${USER_TABLES.roles} r ON r.id = ra.role_id WHERE ra.authority_id = ?`,",
+    "id": 42,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 330,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "`SELECT r.role_name FROM ${USER_TABLES.role_authorities} ra JOIN ${USER_TABLES.roles} r ON r.id = ra.role_id WHERE ra.authority_id = ?`,",
+    "id": 43,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.controller.ts",
+    "line": 338,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "await exec(`DELETE FROM ${USER_TABLES.authorities} WHERE id = ?`, [id]);",
+    "id": 44,
+    "query_type": "DELETE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 22,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT 1 FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '${USER_TABLES.users}' AND column_name = ?`,",
+    "id": 45,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 26,
+    "prop": "users",
+    "table": "users_users",
+    "code": "await pool.query(`ALTER TABLE ${USER_TABLES.users} ADD COLUMN \\`${col}\\` ${def}`);",
+    "id": 46,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 63,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "FROM ${USER_TABLES.user_app_roles} uar",
+    "id": 47,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 64,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id",
+    "id": 48,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 65,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "JOIN ${USER_TABLES.authorities} a ON a.id = ra.authority_id",
+    "id": 49,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 73,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const row = await one<{n: number}>(`SELECT COUNT(*) AS n FROM ${USER_TABLES.users}`);",
+    "id": 50,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 79,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT * FROM ${USER_TABLES.users} WHERE ${byId ? 'id = ?' : 'username = ? OR email = ?'} LIMIT 1`,",
+    "id": 51,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 86,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`INSERT INTO ${USER_TABLES.users}",
+    "id": 52,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 104,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "`INSERT IGNORE INTO ${USER_TABLES.user_app_roles} (user_id, app_id, role_id)",
+    "id": 53,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 105,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "SELECT ?, r.app_id, r.id FROM ${USER_TABLES.roles} r WHERE r.role_name = 'Super Admin'`,",
+    "id": 54,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 123,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`UPDATE ${USER_TABLES.users}",
+    "id": 55,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 138,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "FROM ${USER_TABLES.user_app_roles} uar",
+    "id": 56,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 139,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id",
+    "id": 57,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/users.repository.ts",
+    "line": 140,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "JOIN ${USER_TABLES.authorities} au ON au.id = ra.authority_id",
+    "id": 58,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/manage-system.ts",
+    "line": 18,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "`SELECT 1 AS ok FROM ${USER_TABLES.user_app_roles} uar",
+    "id": 59,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/manage-system.ts",
+    "line": 19,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id",
+    "id": 60,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "User Management Module",
+    "file": "apps/backend/src/modules/users/manage-system.ts",
+    "line": 20,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "JOIN ${USER_TABLES.authorities} au ON au.id = ra.authority_id",
+    "id": 61,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 85,
+    "prop": "users",
+    "table": "users_users",
+    "code": "FROM ${USER_TABLES.users} u",
+    "id": 62,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 86,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "LEFT JOIN ${USER_TABLES.user_app_roles} uar ON uar.user_id = u.id",
+    "id": 63,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 87,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "LEFT JOIN ${USER_TABLES.roles} r ON r.id = uar.role_id",
+    "id": 64,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 101,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "FROM ${USER_TABLES.user_app_roles} uar",
+    "id": 65,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 102,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "JOIN ${USER_TABLES.roles} r ON r.id = uar.role_id",
+    "id": 66,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 125,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT session_timeout_minutes FROM ${USER_TABLES.users} WHERE id = ?`,",
+    "id": 67,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 146,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "`INSERT INTO ${USER_TABLES.session_logs}",
+    "id": 68,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 151,
+    "prop": "users",
+    "table": "users_users",
+    "code": "await pool.execute(`UPDATE ${USER_TABLES.users} SET last_login_at = NOW() WHERE id = ?`, [userId]).catch(() => {});",
+    "id": 69,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 158,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "`UPDATE ${USER_TABLES.session_logs} SET is_invalidated = 1, logout_time = COALESCE(logout_time, NOW()) WHERE session_id = ?`,",
+    "id": 70,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 172,
+    "prop": "audit_logs",
+    "table": "users_audit_logs",
+    "code": "`INSERT INTO ${USER_TABLES.audit_logs} (user_id, action, app_name, ip_address, timestamp) VALUES (?, ?, ?, ?, NOW())`,",
+    "id": 71,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 217,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "FROM ${USER_TABLES.session_logs}",
+    "id": 72,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 230,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "`UPDATE ${USER_TABLES.session_logs} SET is_invalidated = 1, logout_time = NOW() WHERE session_id = ?`,",
+    "id": 73,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/session.ts",
+    "line": 242,
+    "prop": "session_logs",
+    "table": "users_session_logs",
+    "code": "await pool.query(`UPDATE ${USER_TABLES.session_logs} SET last_activity = NOW()${expiresUpdate} WHERE session_id = ?`, updateParams);",
+    "id": 74,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/auth.controller.ts",
+    "line": 56,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const [rows] = await pool.query<any[]>(`SELECT * FROM ${USER_TABLES.users} WHERE username = ? AND is_active = 1`, [",
+    "id": 75,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/auth.controller.ts",
+    "line": 101,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const [rows] = await pool.query<any[]>(`SELECT password_hash FROM ${USER_TABLES.users} WHERE id = ? AND is_active = 1`, [",
+    "id": 76,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "Authentication & Session Guard",
+    "file": "apps/backend/src/modules/auth/auth.controller.ts",
+    "line": 108,
+    "prop": "users",
+    "table": "users_users",
+    "code": "await pool.query(`UPDATE ${USER_TABLES.users} SET password_hash = ?, updated_at = CURRENT_TIMESTAMP(3) WHERE id = ?`, [",
+    "id": 77,
+    "query_type": "UPDATE"
+  },
+  {
+    "module": "Portal Hub & Gallery",
+    "file": "apps/backend/src/modules/portal/portal.controller.ts",
+    "line": 25,
+    "prop": "applications",
+    "table": "users_applications",
+    "code": "FROM ${USER_TABLES.applications} a",
+    "id": 78,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Portal Hub & Gallery",
+    "file": "apps/backend/src/modules/portal/portal.controller.ts",
+    "line": 26,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "JOIN ${USER_TABLES.user_app_roles} uar ON a.id = uar.app_id",
+    "id": 79,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Portal Hub & Gallery",
+    "file": "apps/backend/src/modules/portal/portal.controller.ts",
+    "line": 27,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "JOIN ${USER_TABLES.roles} r ON uar.role_id = r.id",
+    "id": 80,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Activity & Notification System",
+    "file": "apps/backend/src/modules/activity/users/recipients.ts",
+    "line": 14,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT DISTINCT u.id FROM ${USER_TABLES.users} u",
+    "id": 81,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "Activity & Notification System",
+    "file": "apps/backend/src/modules/activity/users/recipients.ts",
+    "line": 15,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "JOIN ${USER_TABLES.user_app_roles} uar ON uar.user_id = u.id",
+    "id": 82,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Activity & Notification System",
+    "file": "apps/backend/src/modules/activity/users/recipients.ts",
+    "line": 16,
+    "prop": "role_authorities",
+    "table": "users_role_authorities",
+    "code": "JOIN ${USER_TABLES.role_authorities} ra ON ra.role_id = uar.role_id",
+    "id": 83,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Activity & Notification System",
+    "file": "apps/backend/src/modules/activity/users/recipients.ts",
+    "line": 17,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "JOIN ${USER_TABLES.authorities} au ON au.id = ra.authority_id AND au.app_id = uar.app_id",
+    "id": 84,
+    "query_type": "QUERY / REFERENCE"
+  },
+  {
+    "module": "Activity & Notification System",
+    "file": "apps/backend/src/modules/activity/users/recipients.ts",
+    "line": 29,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`SELECT id FROM ${USER_TABLES.users} WHERE is_active = 1 AND username IN (${names.map(() => '?').join(',')})`,",
+    "id": 85,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "Workflow & Approval System",
+    "file": "apps/backend/src/modules/applications/workflow/users-authority.lookup.ts",
+    "line": 12,
+    "prop": "authorities",
+    "table": "users_authorities",
+    "code": "const USERS_AUTHORITIES = USER_TABLES.authorities;",
+    "id": 86,
+    "query_type": "MAPPING / ALIAS"
+  },
+  {
+    "module": "CLI / Developer Scripts",
+    "file": "apps/backend/scripts/create-user.ts",
+    "line": 18,
+    "prop": "users",
+    "table": "users_users",
+    "code": "`INSERT INTO ${USER_TABLES.users} (username, password_hash, full_name, is_admin, is_active) VALUES (?, ?, ?, ?, 1)`,",
+    "id": 87,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "CLI / Developer Scripts",
+    "file": "apps/backend/scripts/create-user.ts",
+    "line": 24,
+    "prop": "user_app_roles",
+    "table": "users_user_app_roles",
+    "code": "`INSERT IGNORE INTO ${USER_TABLES.user_app_roles} (user_id, app_id, role_id)",
+    "id": 88,
+    "query_type": "INSERT"
+  },
+  {
+    "module": "CLI / Developer Scripts",
+    "file": "apps/backend/scripts/create-user.ts",
+    "line": 25,
+    "prop": "roles",
+    "table": "users_roles",
+    "code": "SELECT ?, r.app_id, r.id FROM ${USER_TABLES.roles} r WHERE r.role_name = 'Super Admin'`,",
+    "id": 89,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "CLI / Developer Scripts",
+    "file": "apps/backend/scripts/dev/check-password.ts",
+    "line": 14,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const [rows] = await pool.query<any[]>(`SELECT username, password_hash FROM ${USER_TABLES.users}`);",
+    "id": 90,
+    "query_type": "SELECT"
+  },
+  {
+    "module": "CLI / Developer Scripts",
+    "file": "apps/backend/scripts/dev/mint-session.ts",
+    "line": 14,
+    "prop": "users",
+    "table": "users_users",
+    "code": "const [rows] = await pool.query<any[]>(`SELECT id, username FROM ${USER_TABLES.users} WHERE username = ? AND is_active = 1`, [",
+    "id": 91,
+    "query_type": "SELECT"
+  }
+]

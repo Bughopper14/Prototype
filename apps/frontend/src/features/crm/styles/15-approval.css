@@ -73,7 +73,7 @@
 .doc-approval.reopened .doc-approval-chip { background: #fef3c7; color: #b45309; }
 .doc-approval.pending .doc-approval-chip { background: #fef3c7; color: #92400e; }
 .doc-approval { display: grid; justify-items: start; gap: 4px; }
-.doc-approval-step { color: #475569; font-size: 12px; line-height: 1.3; }
+.doc-approval-step { color: #475569; font-size: 11.5px; line-height: 1.35; word-break: break-word; max-width: 180px; }
 .ap-mine { display: flex; gap: 14px; padding: 14px 18px; border-radius: 12px; border: 1.5px solid #fde68a; background: #fffbeb; color: #78350f; }
 .ap-mine > svg { flex: none; margin-top: 2px; color: #d97706; }
 .ap-mine b { font-size: 16px; }

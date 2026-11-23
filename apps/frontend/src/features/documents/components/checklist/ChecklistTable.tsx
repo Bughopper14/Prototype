@@ -54,11 +54,11 @@ export function ChecklistTable({
       <table className="data-table doc-checklist-table">
         <thead>
           <tr>
-            <th style={{width: '40px', textAlign: 'center'}}>NO</th>
-            <th>REQUIRED DOCUMENT</th>
-            <th style={{width: '180px'}}>STATUS & APPROVAL</th>
-            <th style={{minWidth: '220px'}}>FILE & SOURCE</th>
-            <th style={{width: '140px', textAlign: 'right'}}>ACTIONS</th>
+            <th className="col-no" style={{width: '36px', textAlign: 'center'}}>NO</th>
+            <th className="col-doc" style={{width: '28%', minWidth: '190px'}}>REQUIRED DOCUMENT</th>
+            <th className="col-status" style={{width: '175px', minWidth: '160px'}}>STATUS & APPROVAL</th>
+            <th className="col-source" style={{width: '32%', minWidth: '220px'}}>FILE & SOURCE</th>
+            <th className="col-actions" style={{width: '155px', minWidth: '155px', textAlign: 'center'}}>ACTIONS</th>
           </tr>
         </thead>
         <tbody>

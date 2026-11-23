@@ -17,6 +17,7 @@ export function LegalTab() {
     editRequest,
     setEditRequest,
     setReviewHidden,
+    onChange,
   } = useWorkspace();
   return (
     <>
@@ -29,6 +30,7 @@ export function LegalTab() {
           user={user}
           onReview={beginDeedReview}
           notify={notify}
+          onDocumentUploaded={onChange}
           editRequest={editRequest}
           onEditRequestHandled={() => setEditRequest(null)}
           onEditFinished={async id => {
