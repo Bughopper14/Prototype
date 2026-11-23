@@ -7,7 +7,9 @@ import {toCode} from '@liugong/shared';
 import {ChevronRight, Layers, Lock, Pencil, Plus, Power, PowerOff, Trash2, Zap, History} from 'lucide-react';
 import {Fragment, useCallback, useEffect, useMemo, useState} from 'react';
 import {useSearchParams} from 'react-router';
-import {workflowApi, type Catalog, type WorkflowHeader} from './api';
+import {ActivityLog} from '@/shared/ui/ActivityLog';
+import {workflowApi, type Catalog, type WorkflowHeader, type WorkflowLogRow} from './api';
+import {WorkflowHistory} from './WorkflowHistory';
 import {WorkflowEditor} from './editor/WorkflowEditor';
 import {GROUP_COLORS} from './palette';
 import {useConfirm} from './ConfirmDialog';
@@ -171,6 +173,22 @@ function NewWorkflowDialog({
   );
 }
 
+/** The log of every workflow, also the ones that were deleted (their versions stay, this log says who deleted them). */
+function AllLogDialog({onClose}: {onClose: () => void}) {
+  const [rows, setRows] = useState<WorkflowLogRow[] | null>(null);
+  useEffect(() => {
+    workflowApi
+      .activity()
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, []);
+  return (
+    <Modal title="Activity log of all workflows" onClose={onClose} className="wf-history-modal">
+      <div className="vt-wrap">{rows ? <ActivityLog rows={rows.map(r => ({action: r.action, summary: r.summary, by: r.by, at: r.at, version: r.version, workflow: r.name ?? r.code}))} /> : <div className="loading-strip" />}</div>
+    </Modal>
+  );
+}
+
 function HistoryDialog({workflow, onClose}: {workflow: WorkflowHeader; onClose: () => void}) {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof workflowApi.history>> | null>(null);
   useEffect(() => {
@@ -184,33 +202,7 @@ function HistoryDialog({workflow, onClose}: {workflow: WorkflowHeader; onClose: 
       {!rows ? (
         <div className="loading-strip" />
       ) : (
-        <table className="wf-table">
-          <thead>
-            <tr>
-              <th>Frozen</th>
-              <th>When</th>
-              <th>By</th>
-              <th>Applications</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(h => (
-              <tr key={h.id}>
-                <td>#{h.freezeVersion}{h.isLatest ? ' (newest)' : ''}</td>
-                <td>{new Date(h.at).toLocaleString('id-ID')}</td>
-                <td>{h.by}</td>
-                <td>{h.applications}</td>
-              </tr>
-            ))}
-            {!rows.length && (
-              <tr>
-                <td colSpan={4} className="muted">
-                  Not frozen yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+        <WorkflowHistory workflowId={workflow.id} rows={rows} />
       )}
     </Modal>
   );
@@ -235,6 +227,7 @@ function WorkflowList({
   const [statusFilter, setStatusFilter] = useState<'ALL' | keyof typeof STATUS_LABEL>('ALL');
   const [confirmAsk, confirmDialog] = useConfirm();
   const [history, setHistory] = useState<WorkflowHeader | null>(null);
+  const [logAll, setLogAll] = useState(false);
   async function run(fn: () => Promise<unknown>, done: string) {
     try {
       await fn();
@@ -247,7 +240,7 @@ function WorkflowList({
   const activate = async (w: WorkflowHeader) =>
     (await confirmAsk({
       title: 'Set workflow active',
-      message: `New applications will start in "${w.name}". Applications that are already running keep the frozen copy they started with, and the current active workflow is switched off.`,
+      message: `New applications will start in "${w.name}". Applications that are already running keep the version they started with, and the current active workflow is switched off.`,
       confirmLabel: 'Set active',
       icon: 'power',
     })) && run(() => workflowApi.activate(w.id), `${w.name} is now active`);
@@ -263,7 +256,7 @@ function WorkflowList({
   const remove = async (w: WorkflowHeader) =>
     (await confirmAsk({
       title: 'Delete workflow',
-      message: `"${w.name}" is deleted. Applications that already run on it keep their frozen copy and are not affected.`,
+      message: `"${w.name}" is deleted. Applications that already run on it keep their version and are not affected.`,
       confirmLabel: 'Delete',
       tone: 'danger',
       icon: 'off',
@@ -295,6 +288,9 @@ function WorkflowList({
           <option value="ACTIVE">{STATUS_LABEL.ACTIVE}</option>
           <option value="INACTIVE">{STATUS_LABEL.INACTIVE}</option>
         </select>
+        <button className="wf-btn" onClick={() => setLogAll(true)} title="Who created, saved, activated or deleted which workflow">
+          <History size={17} /> Activity log
+        </button>
         {canEdit && (
           <button className="wf-btn primary" onClick={onNew}>
             <Plus size={17} /> Create new workflow
@@ -306,7 +302,7 @@ function WorkflowList({
         <p>
           A workflow is the route an application takes. Steps run from left to right, groups in the same step
           run together, and each stage lists the fields and documents it requires. A workflow can be
-          edited at any time: every save makes a new frozen copy, and applications that already run keep the copy they started with.
+          edited at any time: every save makes a new version. Applications that are already running stay on the version they started with.
         </p>
       </div>
 
@@ -317,7 +313,7 @@ function WorkflowList({
             <article key={w.id} className={`wf-card ${stateOf(w).toLowerCase()}`}>
               <header>
                 <span className="wf-codechip">{w.code}</span>
-                <span className="wf-ver">frozen #{w.freezeVersion ?? 0}</span>
+                <span className="wf-ver">v{w.freezeVersion ?? 0}</span>
                 <span className="wf-spacer" />
                 <span className={`wf-badge ${stateOf(w).toLowerCase()}`}>{STATUS_LABEL[stateOf(w)]}</span>
               </header>
@@ -329,7 +325,7 @@ function WorkflowList({
                   <dd>{w.applications ?? 0}</dd>
                 </div>
                 <div>
-                  <dt>Last frozen</dt>
+                  <dt>Last saved</dt>
                   <dd>{w.frozenAt ? new Date(w.frozenAt).toLocaleDateString('id-ID') : 'Not yet'}</dd>
                 </div>
               </dl>
@@ -343,7 +339,7 @@ function WorkflowList({
                   <History size={15} /> History
                 </button>
                 {canEdit && !w.isActive && (
-                  <button className="wf-btn small" onClick={() => remove(w)} title="Delete this workflow (its frozen copies stay)">
+                  <button className="wf-btn small" onClick={() => remove(w)} title="Delete this workflow (its versions stay)">
                     <Trash2 size={15} /> Delete
                   </button>
                 )}
@@ -371,6 +367,7 @@ function WorkflowList({
       </div>
       {confirmDialog}
       {history && <HistoryDialog workflow={history} onClose={() => setHistory(null)} />}
+      {logAll && <AllLogDialog onClose={() => setLogAll(false)} />}
     </>
   );
 }

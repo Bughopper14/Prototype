@@ -20,6 +20,7 @@ export function NibNumberField() {
             fontWeight: 600,
             color: '#334155',
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
             gap: 5,
           }}

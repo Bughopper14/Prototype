@@ -49,15 +49,14 @@ export function filterActivities(list: SystemActivity[], search: string) {
       a.companyName.toLowerCase().includes(term) ||
       a.title.toLowerCase().includes(term) ||
       a.section.toLowerCase().includes(term) ||
-      (a.fapNumber && a.fapNumber.toLowerCase().includes(term)) ||
       (a.details && a.details.toLowerCase().includes(term))
     );
   });
 }
 
-/** Notifications that match the search text (title, message, company or FAP number). */
+/** Notifications that match the search text (title, message or company). */
 export function filterNotifications<
-  T extends {title: string; message: string; companyName?: string | null; fapNumber?: string | null},
+  T extends {title: string; message: string; companyName?: string | null},
 >(list: T[], search: string) {
   return list.filter(n => {
     if (!search.trim()) return true;
@@ -65,8 +64,7 @@ export function filterNotifications<
     return (
       n.title.toLowerCase().includes(term) ||
       n.message.toLowerCase().includes(term) ||
-      (n.companyName && n.companyName.toLowerCase().includes(term)) ||
-      (n.fapNumber && n.fapNumber.toLowerCase().includes(term))
+      (n.companyName && n.companyName.toLowerCase().includes(term))
     );
   });
 }

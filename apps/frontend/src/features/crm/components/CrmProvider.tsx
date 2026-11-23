@@ -141,7 +141,6 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
       return {
         id: n.id,
         applicationId: n.applicationId,
-        fapNumber: n.fapNumber,
         companyName: n.companyName || 'Application',
         section: deed ? 'Legal' : 'Workflow',
         tabIndex: deed ? 5 : undefined,

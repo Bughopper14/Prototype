@@ -41,6 +41,7 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
     fullText.match(/(?:kode\s*pos|pos|zip(?:\s*code)?)\s*[:.]?\s*(\d{5})\b/i) ||
     (alamat && alamat.match(/\b(\d{5})\b/)) ||
     fullText.match(/\b(\d{5})\b/);
+  const postalFromText = !!postalMatch;
   if (postalMatch) {
     result.postalCode = postalMatch[1];
   }
@@ -194,6 +195,35 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
       result.postalCode = candidate.value;
     }
   }
+
+  // 11. The places must belong to each other: a city of the province, a district of the city, a village of the district.
+  // A place that does not fit is left empty (better empty than a district of another province).
+  const ownedBy = (child: {parentValue?: string | null}, parent?: {value?: string | null}) =>
+    !parent || !child.parentValue || !parent.value || cleanWilayahStr(child.parentValue) === cleanWilayahStr(parent.value);
+  const pItem = result.province ? pList.find(p => matchWilayahName(p.name, result.province!)) : undefined;
+  let cItem: (typeof cList)[number] | undefined;
+  if (result.city) {
+    const found = cList.filter(c => matchWilayahName(c.name, result.city!));
+    cItem = found.find(c => ownedBy(c, pItem));
+    if (found.length && !cItem) result.city = undefined;
+  }
+  let dItem: (typeof dList)[number] | undefined;
+  if (result.district) {
+    const found = dList.filter(d => matchWilayahName(d.name, result.district!));
+    dItem = found.find(d => ownedBy(d, cItem));
+    if (found.length && !dItem) result.district = undefined;
+  }
+  let villageDropped = false;
+  if (result.village) {
+    const found = vList.filter(v => matchWilayahName(v.name, result.village!));
+    const vItem = found.find(v => ownedBy(v, dItem));
+    if (found.length && !vItem) {
+      result.village = undefined;
+      villageDropped = true;
+    }
+  }
+  // a postal code that came from a place that was dropped is dropped too; one written in the document stays
+  if (!postalFromText && (villageDropped || (!result.village && !result.district))) result.postalCode = undefined;
 
   if (result.province) result.province = normalizeWilayahInput(result.province);
   if (result.city) result.city = normalizeWilayahInput(result.city);

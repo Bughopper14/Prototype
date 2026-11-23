@@ -68,6 +68,7 @@ export const CRM = {
   masterApprovalLevels: crmTable('master_approval_levels'),
   workflowApprovalAssignments: crmTable('workflow_approval_assignments'),
   masterApprovalLogs: crmTable('master_approval_logs'),
+  workflowLogs: crmTable('workflow_logs'),
   applicationApprovalSteps: crmTable('application_approval_steps'),
   applicationApprovalDecisions: crmTable('application_approval_decisions'),
   workflowStageDocuments: crmTable('workflow_stage_documents'),

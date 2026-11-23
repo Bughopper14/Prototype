@@ -34,7 +34,8 @@ export function matchWilayahName(masterName: string, input: string): boolean {
 
   const normInput = cleanWilayahStr(normalizeWilayahInput(input));
   const normMaster = cleanWilayahStr(normalizeWilayahInput(masterName));
-  if (normMaster === normInput) return true;
+  // both empty after the prefix is removed ("Kel." against a place called "Kota") is not a match
+  if (normMaster && normInput && normMaster === normInput) return true;
 
   const coreInput = cleanWilayahStr(stripWilayahPrefix(input));
   const coreMaster = cleanWilayahStr(stripWilayahPrefix(masterName));
@@ -42,12 +43,9 @@ export function matchWilayahName(masterName: string, input: string): boolean {
     return true;
   }
 
-  // Handle DKI Jakarta
-  if (
-    (cInput.includes('dkijakarta') || cInput.includes('jakarta')) &&
-    (cMaster.includes('jakarta') || cMaster.includes('daerahkhususibukotajakarta'))
-  )
-    return true;
+  // "DKI Jakarta" is how documents write the province "Daerah Khusus Ibukota Jakarta". Only the province gets this shortcut:
+  // any name that merely contains "jakarta" (Jakarta Selatan, Jakarta Baru) is a different place.
+  if (cMaster === 'daerahkhususibukotajakarta' && (cInput.includes('dkijakarta') || cInput === 'jakarta')) return true;
 
   return false;
 }

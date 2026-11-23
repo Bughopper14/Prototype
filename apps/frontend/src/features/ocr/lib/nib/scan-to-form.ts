@@ -1,12 +1,15 @@
 /** The NIB form and how the OCR server's scan result is turned into it. */
 import {extractWilayahFromAddressAndText} from '@/features/ocr/lib/nib/address-wilayah';
 import {normalizeWilayahInput, type useMasterData} from '@/shared/master-data';
-import {formatCompanyName} from '@liugong/shared';
+import {extractStreetAddress, formatCompanyName} from '@liugong/shared';
 
 export interface NibFormData {
   nib: string;
   companyName: string;
+  /** The address exactly as the OCR read it (street, region names, postal code) */
   alamat: string;
+  /** Only the street / building part of it: what is left after the region fields below are taken out */
+  streetAddress: string;
   email: string;
   phone: string;
   tanggalTerbit: string;
@@ -23,6 +26,7 @@ export const EMPTY_NIB_FORM: NibFormData = {
   nib: '',
   companyName: '',
   alamat: '',
+  streetAddress: '',
   email: '',
   phone: '',
   tanggalTerbit: '',
@@ -34,6 +38,16 @@ export const EMPTY_NIB_FORM: NibFormData = {
   rt: '',
   rw: '',
 };
+
+/** The street / building part of a full NIB address: what is not a province, city, district, village, RT/RW or postal code. */
+export function nibStreetAddress(
+  fullAddress: string,
+  regions: {province?: string; city?: string; district?: string; village?: string; postalCode?: string},
+): string {
+  return extractStreetAddress(fullAddress, regions)
+    .replace(/^[/:,\-\s.–—=]+/, '')
+    .trim();
+}
 
 /** The form values (and the text shown as "raw") for the data the OCR server returned. */
 export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData>) {
@@ -97,6 +111,13 @@ export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData
     nib: newNib,
     companyName: newCompanyName,
     alamat: rawAddress,
+    streetAddress: nibStreetAddress(rawAddress, {
+      province: newProvince,
+      city: newCity,
+      district: newDistrict,
+      village: newVillage,
+      postalCode: newPostal,
+    }),
     province: newProvince,
     city: newCity,
     district: newDistrict,

@@ -1,5 +1,5 @@
 /** What the submitter view and the approver view share: the types of an approval, the layers of a step list and the list of what has to be approved. */
-import {Check, ExternalLink, History, X} from 'lucide-react';
+import {Check, Clock, ExternalLink, History, X} from 'lucide-react';
 import {useOpenView} from './ApprovalSummary';
 import {useWorkspace} from './WorkspaceContext';
 
@@ -22,22 +22,16 @@ export function layersOf(steps: Step[]): Step[][] {
 
 const when = (v?: string | null) => (v ? new Date(v).toLocaleString('en-GB', {dateStyle: 'medium', timeStyle: 'short'}) : '');
 
-/** Where an approval is: one dot per layer (done, now, waiting or rejected), so anyone sees at a glance who is next. */
-function Progress({layers}: {layers: Step[][]}) {
-  if (layers.length < 2) return null;
-  const stateOf = (l: Step[]) => (l.some(s => s.status === 'REJECTED') ? 'rejected' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next');
-  const label: Record<string, string> = {done: 'Approved', now: 'Needs approval', next: 'Waiting', rejected: 'Rejected', closed: 'Closed'};
-  return (
-    <ol className="ap-progress" aria-label="Approval progress">
-      {layers.map((l, i) => (
-        <li key={i} className={stateOf(l)} title={`Layer ${i + 1}: ${label[stateOf(l)]}`}>
-          <span>{stateOf(l) === 'done' ? <Check size={12} /> : i + 1}</span>
-          <small>{label[stateOf(l)]}</small>
-        </li>
-      ))}
-    </ol>
-  );
-}
+type LayerState = 'done' | 'now' | 'next' | 'rejected' | 'closed';
+
+const layerState = (l: Step[]): LayerState =>
+  l.some(s => s.status === 'REJECTED') ? 'rejected' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next';
+
+/** Who approves a step, from the authority name ("CRM_FAP-FORM_BS_APPROVE" reads "FAP-FORM BS"); a step with no authority is the PIC Marketing level. */
+const whoOf = (s: Step) => (s.authorityName ? s.authorityName.replace(/^CRM_/i, '').replace(/_?(APPROVE|APPROVAL|APPROVER)$/i, '').replace(/_/g, ' ') : 'PIC Marketing');
+
+/** What a step says about itself, in plain words: the person who can decide sees "Your turn". */
+const stepLabel = (s: Step) => (s.status === 'PENDING' ? (s.canAct ? 'Your turn' : 'In review') : s.status === 'WAITING' ? 'Up next' : (STEP_LABEL[s.status] ?? s.status));
 
 const Decisions = ({step}: {step: Step}) => (
   <>
@@ -91,31 +85,44 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
               )}
             </div>
             {approvalName && <small className="ap-scope-sub">{approvalName}</small>}
-            <Progress layers={layersOf(c.steps)} />
-            {layersOf(c.steps).map((layer, li) => (
-              <ul className="ap-layer-steps compact" key={li}>
-                {layer.map(s => (
-                  <li key={s.id} className={'ap-step compact ' + s.status.toLowerCase()}>
-                    <div className="ap-step-top">
-                      <span className="ap-layer-no">{li + 1}</span>
-                      <span className="ap-step-who">Approver</span>
-                      <span className={'ap-pill ' + s.status.toLowerCase()}>{s.status === 'PENDING' && !onDecide ? 'Waiting' : (STEP_LABEL[s.status] ?? s.status)}</span>
-                      {onDecide && s.canAct && (
-                        <span className="ap-actions">
-                          <button type="button" className="button primary small" onClick={() => onDecide(s, 'APPROVED')}>
-                            <Check size={13} /> Approve
-                          </button>
-                          <button type="button" className="button small ap-reject" onClick={() => onDecide(s, 'REJECTED')}>
-                            <X size={13} /> Reject
-                          </button>
-                        </span>
-                      )}
+            <ol className="ap-tl" aria-label="Approval levels">
+              {layersOf(c.steps).map((layer, li) => {
+                const state = layerState(layer);
+                return (
+                  <li key={li} className={state}>
+                    <span className="ap-tl-dot" aria-hidden>
+                      {state === 'done' ? <Check size={16} /> : state === 'now' ? <Clock size={16} /> : state === 'rejected' ? <X size={16} /> : li + 1}
+                    </span>
+                    <div className="ap-tl-body">
+                      <div className="ap-tl-level">
+                        <b>Level {li + 1}</b>
+                        {layer.length > 1 && <small>{layer.length} approvers, all must approve</small>}
+                        {state === 'next' && <small>starts after level {li} is approved</small>}
+                      </div>
+                      {layer.map(s => (
+                        <div key={s.id} className={'ap-tl-step ' + s.status.toLowerCase()}>
+                          <div className="ap-tl-row">
+                            <span className="ap-tl-who">{whoOf(s)}</span>
+                            <span className={'ap-pill ' + s.status.toLowerCase() + (s.status === 'PENDING' && s.canAct ? ' mine' : '')}>{stepLabel(s)}</span>
+                            {onDecide && s.canAct && (
+                              <span className="ap-actions">
+                                <button type="button" className="button primary small" onClick={() => onDecide(s, 'APPROVED')}>
+                                  <Check size={13} /> Approve
+                                </button>
+                                <button type="button" className="button small ap-reject" onClick={() => onDecide(s, 'REJECTED')}>
+                                  <X size={13} /> Reject
+                                </button>
+                              </span>
+                            )}
+                          </div>
+                          <Decisions step={s} />
+                        </div>
+                      ))}
                     </div>
-                    <Decisions step={s} />
                   </li>
-                ))}
-              </ul>
-            ))}
+                );
+              })}
+            </ol>
           </div>
         );
       })}
@@ -126,10 +133,12 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
 /** The earlier rounds (after a reject the stage starts again with a new round). */
 export function HistoryList({history}: {history: Scope[]}) {
   if (!history.length) return null;
+  const rejected = history.reduce((n, c) => n + c.steps.filter(s => s.status === 'REJECTED').length, 0);
   return (
-    <details className="ap-history">
+    <details className={'ap-history' + (rejected ? ' has-rejected' : '')} open={rejected > 0}>
       <summary>
         <History size={15} /> Earlier rounds ({history.length})
+        {rejected > 0 && <span className="ap-history-flag">{rejected} rejected</span>}
       </summary>
       {history.map(c => (
         <div key={`${c.scopeName}-${c.roundNo}`} className="ap-scope old">

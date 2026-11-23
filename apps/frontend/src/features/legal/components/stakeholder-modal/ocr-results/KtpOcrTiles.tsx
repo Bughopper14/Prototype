@@ -1,14 +1,15 @@
 /** Fields read from an e-KTP. */
 import {Check, Copy} from 'lucide-react';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
-import {extractStreetAddress, formatKtpFullAddress} from '@liugong/shared';
+import {cleanAddressText, extractStreetAddress, formatKtpFullAddress} from '@liugong/shared';
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
 
 export function KtpOcrTiles() {
   const {copiedKey, ktpParsed, copyToClipboard} = useStakeholderModalContext();
-  const fullDomicile = formatKtpFullAddress(ktpParsed);
-  const streetAddress =
-    ktpParsed.streetAddress || extractStreetAddress(fullDomicile || ktpParsed.alamat, ktpParsed);
+  const fullDomicile = cleanAddressText(formatKtpFullAddress({...ktpParsed, alamat: cleanAddressText(ktpParsed.alamat)}));
+  const streetAddress = cleanAddressText(
+    ktpParsed.streetAddress || extractStreetAddress(fullDomicile || ktpParsed.alamat, ktpParsed),
+  );
   return (
     <div className="ktp-structured-grid">
       <div className="ktp-field-tile highlight">
@@ -104,7 +105,7 @@ export function KtpOcrTiles() {
 
       <div className="ktp-field-tile full-width highlight">
         <div className="ktp-field-meta">
-          <span className="ktp-field-key">ALAMAT JALAN (SAMPAI NOMOR)</span>
+          <span className="ktp-field-key">ALAMAT JALAN</span>
           {streetAddress && (
             <button
               type="button"
@@ -121,7 +122,7 @@ export function KtpOcrTiles() {
 
       <div className="ktp-field-tile full-width">
         <div className="ktp-field-meta">
-          <span className="ktp-field-key">ALAMAT DOMISILI LENGKAP</span>
+          <span className="ktp-field-key">ALAMAT LENGKAP</span>
           {fullDomicile && (
             <button
               type="button"

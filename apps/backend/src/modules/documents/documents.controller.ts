@@ -188,7 +188,7 @@ export class DocumentsController {
       );
 
     const zip = Buffer.from(zipSync(files, {level: 0}));
-    const label = safe(String(application.fapNumber || id)).replace(/\s+/g, '_');
+    const label = safe(String(application.customer?.companyName || application.companyName || id)).replace(/\s+/g, '_');
     res
       .setHeader('Content-Type', 'application/zip')
       .setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(`Dokumen_${label}.zip`)}`);

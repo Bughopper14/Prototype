@@ -116,6 +116,23 @@ def get_db_conn():
     )
 
 
+def _wilayah_row_fits(row, city: str = "", province: str = "") -> bool:
+    """False when a master-data row (village, postal, district, city, province) contradicts the city or province already read from the document.
+    An empty city or province never contradicts anything."""
+    import re
+
+    clean = lambda s: re.sub(r'[^A-Z0-9]', '', str(s or '').upper())
+    bare = lambda s: re.sub(r'^(?:KOTAADMINISTRASI|KOTAADM|KABUPATEN|KOTA|KAB)', '', clean(s))
+    for known, found in ((city, row[3]), (province, row[4])):
+        k, f = bare(known), bare(found)
+        if not k or not f or k == f or k in f or f in k:
+            continue
+        if 'JAKARTA' in k and 'JAKARTA' in f:  # "DKI Jakarta" is "Daerah Khusus Ibukota Jakarta"
+            continue
+        return False
+    return True
+
+
 def _lookup_wilayah_db(raw_kec: str = "", raw_kel: str = "", raw_pos: str = ""):
     """Resolves (village, postal_code, district, city, province) against crm_master_* tables."""
     import re
@@ -450,6 +467,8 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     if raw_kec or raw_kel or raw_pos:
         try:
             row = _lookup_wilayah_db(raw_kec, raw_kel, raw_pos)
+            if row and not _wilayah_row_fits(row, extracted.get("kabupaten_kota") or extracted.get("city"), extracted.get("provinsi") or extracted.get("province")):
+                row = None  # another city or province than the one on the document
             if row:
                 if row[0]:
                     extracted["kel_desa"] = row[0]
@@ -645,7 +664,8 @@ def post_process_ktp_full(extracted: dict, boxes=None):
     # 4. Alamat Extraction & Cleanup
     raw_al = str(extracted.get("alamat") or "").strip()
     if raw_al:
-        raw_al = re.sub(r'^(?:ALAMAT|ALAMAL|ALAMA|ALANAT)\s*[:.\-–—=~*+]*\s*', '', raw_al, flags=re.IGNORECASE).strip()
+        # the label may come wrapped in quotes ("ALAMAT": "JL. ...")
+        raw_al = re.sub(r'^[\s\x22\x27`]*(?:ALAMAT|ALAMAL|ALAMA|ALANAT)[\s\x22\x27`]*[:.\-–—=~*+]*[\s\x22\x27`]*', '', raw_al, flags=re.IGNORECASE).strip()
         raw_al = re.sub(r'^[^\w]+|[^\w\s\./\-]+$', '', raw_al).strip()
 
     if not raw_al and boxes:
@@ -708,6 +728,7 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         kd = str(extracted["kel_desa"]).strip()
         kd = re.sub(r'^[~*:\-–—\s]+', '', kd)
         kd = re.sub(r'[^a-zA-Z0-9\s]', '', kd).strip().upper()
+        kd = re.sub(r'^(?:KELURAHAN|ELURAHAN|LURAHAN|URAHAN|DESA)\s+', '', kd).strip()
         extracted["kel_desa"] = kd
         extracted["village"] = kd
 
@@ -715,6 +736,8 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         kc = str(extracted["kecamatan"]).strip()
         kc = re.sub(r'^[~*:\-–—\s]+', '', kc)
         kc = re.sub(r'[^a-zA-Z0-9\s]', '', kc).strip().upper()
+        # the end of the label "KECAMATAN" is sometimes read as part of the value ("AMATAN KALIDERES")
+        kc = re.sub(r'^(?:KECAMATAN|ECAMATAN|CAMATAN|AMATAN|MATAN)\s+', '', kc).strip()
         extracted["kecamatan"] = kc
         extracted["district"] = kc
 
@@ -961,7 +984,7 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
         if not val:
             return ""
         v = str(val).strip()
-        m = re.search(r'\b(\d{1,2})[-\s/\.]+([A-Za-z]+)[-\s/\.]+(\d{4})\b', v)
+        m = re.search(r'\b(\d{1,2})[-\s/\.]*([A-Za-z]+)[-\s/\.]*(\d{4})\b', v)
         if m:
             d_val, m_str, y_val = m.groups()
             m_num = month_map.get(m_str.upper())
@@ -1375,13 +1398,30 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
     return data, []
 
 
+def respace_glued(text: str) -> str:
+    """Puts the spaces back in a line the OCR returned glued ("jl.PerakBaratNo.85,KotaSurabaya" -> "jl. Perak Barat No. 85, Kota Surabaya").
+    Lines that already have normal spaces are returned unchanged."""
+    import re
+
+    t = str(text or '')
+    t = re.sub(r',(?=[A-Za-z])', ', ', t)
+    t = re.sub(r'\bKode\s*P[o0]s\s*:?\s*(?=\d{5}\b)', 'Kode Pos: ', t, flags=re.IGNORECASE)
+    if not re.search(r'[a-z][A-Z][a-z]', t):
+        return t
+    t = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', t)
+    t = re.sub(r'(?<=[A-Za-z])\.(?=[A-Za-z0-9])', '. ', t)
+    t = re.sub(r'(?<=:)(?=[A-Za-z0-9])', ' ', t)
+    t = re.sub(r'\bKode\s*P[o0]s\s*:?\s*(?=\d{5}\b)', 'Kode Pos: ', t, flags=re.IGNORECASE)
+    return re.sub(r'\s+', ' ', t).strip()
+
+
 def extract_nib(boxes: list) -> tuple:
     import re
 
     lines = []
     full_text_list = []
     for b in boxes:
-        t = (b.get("text") or "").strip()
+        t = respace_glued((b.get("text") or "").replace("\uff1a", ":").replace("\uff0c", ",").strip())
         if t:
             lines.append(t)
             full_text_list.append(t)
@@ -1490,12 +1530,15 @@ def extract_nib(boxes: list) -> tuple:
                 phone = cand
                 break
     if not phone:
-        tel_candidates = re.findall(r'(?:\+62|08|021|022|031|0[2-9]\d{1,2})[\s\-\.]?\d{3,4}[\s\-\.]?\d{3,5}', full_text)
+        # a number found without a label is a phone number only when it is not part of the NIB or NPWP number
+        no_ids = re.sub(r'\b\d{13}\b', ' ', full_text)
+        no_ids = re.sub(r'\d{2}\.\d{3}\.\d{3}\.\d-\d{3}\.\d{3}', ' ', no_ids)
+        tel_candidates = [c for c in re.findall(r'(?:\+62|08|021|022|031|0[2-9]\d{1,2})[\s\-\.]?\d{3,4}[\s\-\.]?\d{3,5}', no_ids) if not (nib_number and re.sub(r'\D', '', c) in nib_number)]
         if tel_candidates:
             phone = tel_candidates[0].strip()
 
     # 4. Ekstraksi Tanggal Terbit
-    tgl_match = re.search(r'(?:diterbitkan|ditetapkan)(?:\s+di\s+[A-Za-z]+)?\s*,?\s*(?:pada\s+tanggal|tanggal)\s*[:.\-–—=]?\s*(\d{1,2}\s+[A-Za-z]+\s+\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', full_text, re.IGNORECASE)
+    tgl_match = re.search(r'(?:diterbitkan|ditetapkan)(?:\s*di\s*[A-Za-z]+)?\s*,?\s*(?:pada\s*tanggal|tanggal)\s*[:.\-–—=]?\s*(\d{1,2}\s*[A-Za-z]+\s*\d{4}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', full_text, re.IGNORECASE)
     if tgl_match:
         tanggal_terbit = parse_indo_date(tgl_match.group(1))
 
@@ -1528,10 +1571,10 @@ def extract_nib(boxes: list) -> tuple:
     # 5. Ekstraksi Alamat Perusahaan
     addr_lines = []
     capturing_addr = False
-    stop_pat = r'^(?:\d+[\.\)]\s*)?(?:nama|(?:no\.?\s*)?telepon|(?:no\.?\s*)?telp|phone|email|status\s+penanaman|kode\s+kbli|kbli|nomor\s+induk|diterbitkan|pada\s+tanggal)'
+    stop_pat = r'^(?:\d+[\.\)]\s*)?(?:nama|npwp|nomor\s+pokok|(?:no\.?\s*)?telepon|(?:no\.?\s*)?telp|phone|email|status\s+penanaman|kode\s+kbli|kbli|nomor\s+induk|diterbitkan|pada\s+tanggal)'
     for idx, line in enumerate(lines):
         clean_l = line.strip()
-        m_start = re.search(r'^(?:\d+[\.\)]\s*)?(?:alamat\s+perusahaan|alamat\s+kantor|alamat\s+usaha|alamat\s+domisili|alamat)[\s:.\-–—=]*(.*)$', clean_l, re.IGNORECASE)
+        m_start = re.search(r'^(?:\d+[\.\)]\s*)?(?:alamat\s+perusahaan|alamat\s+kantor|alamat\s+usaha|alamat\s+domisili|alamat)[\s:：.\-–—=]*(.*)$', clean_l, re.IGNORECASE)
         if m_start:
             val = m_start.group(1).strip()
             if val:
@@ -1609,8 +1652,9 @@ def extract_nib(boxes: list) -> tuple:
     if addr_lines:
         alamat_full = " ".join(addr_lines)
         alamat_full = re.sub(r'\s+', ' ', alamat_full).strip()
-        alamat_full = re.sub(r'^[:,\s.\-–—]+', '', alamat_full).strip()
-        alamat_full = re.sub(r'^(?:kantor|perusahaan|usaha|domisili)?[\s:.\-–—=]+', '', alamat_full, flags=re.IGNORECASE).strip()
+        alamat_full = re.sub(r'^[/:：,\s.\-–—]+', '', alamat_full).strip()
+        alamat_full = re.sub(r'^(?:korespondensi\b)?[\s:：.\-–—=]*', '', alamat_full, flags=re.IGNORECASE).strip()
+        alamat_full = re.sub(r'^(?:kantor|perusahaan|usaha|domisili)?[\s:：.\-–—=]+', '', alamat_full, flags=re.IGNORECASE).strip()
 
     # Ekstraksi nama jalan spesifik (sebelum Desa/Kelurahan, Kelurahan, Kecamatan, RT/RW)
     street_part = ""
@@ -1688,7 +1732,8 @@ def extract_nib(boxes: list) -> tuple:
                 if b == target_box:
                     continue
                 b_y_center = (b.get('y_min', 0) + b.get('y_max', 0)) / 2
-                if abs(b_y_center - y_center) < 40 and b.get('x_min', 0) >= target_box.get('x_max', 0) - 20:
+                row_h = target_box.get('y_max', 0) - target_box.get('y_min', 0)
+                if abs(b_y_center - y_center) < max(12, row_h * 0.6) and b.get('x_min', 0) >= target_box.get('x_max', 0) - 20:
                     right_boxes.append(b)
             if right_boxes:
                 right_boxes.sort(key=lambda x: x.get('x_min', 0))
@@ -1767,6 +1812,8 @@ def extract_nib(boxes: list) -> tuple:
     if kecamatan or kelurahan or kode_pos:
         try:
             row = _lookup_wilayah_db(kecamatan, kelurahan, kode_pos)
+            if row and not _wilayah_row_fits(row, kota, provinsi):
+                row = None  # another city or province than the one on the document
             if row:
                 if row[0] and not data.get("village"):
                     data["village"] = row[0]

@@ -50,6 +50,8 @@
 .ap-reject-solid:hover:not(:disabled) { background: #b91c1c; }
 .ap-history { padding-top: 6px; border-top: 1px solid #e2e8f0; }
 .ap-history summary { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 14px; font-weight: 700; color: #475569; }
+.ap-history.has-rejected summary { color: #b91c1c; }
+.ap-history-flag { padding: 1px 8px; border-radius: 999px; background: #fee2e2; color: #b91c1c; font-size: 12px; font-weight: 700; }
 .ap-scope.old { margin-top: 12px; opacity: .9; }
 .badge.in_approval, .badge.in_progress { background: #eff6ff; color: #1d4ed8; }
 @media (max-width: 900px) { .ap-grid { grid-template-columns: 1fr; } }
@@ -108,15 +110,29 @@
 .ap-step.compact .ap-actions { display: inline-flex; gap: 6px; }
 
 /* Approval progress: one dot per layer */
-.ap-progress { display: flex; align-items: flex-start; gap: 0; margin: 4px 0 8px; padding: 0; list-style: none; }
-.ap-progress li { flex: 1; display: grid; justify-items: center; gap: 4px; position: relative; text-align: center; }
-.ap-progress li + li::before { content: ''; position: absolute; top: 11px; right: 50%; width: 100%; height: 2px; background: #cbd5e1; z-index: 0; }
-.ap-progress li.done + li::before, .ap-progress li.done + li.now::before { background: #22c55e; }
-.ap-progress li span { z-index: 1; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: #e2e8f0; color: #475569; font-size: 12px; font-weight: 800; }
-.ap-progress li.done span { background: #22c55e; color: #fff; }
-.ap-progress li.now span { background: #f59e0b; color: #fff; box-shadow: 0 0 0 4px #fef3c7; }
-.ap-progress li.rejected span { background: #dc2626; color: #fff; }
-.ap-progress li small { font-size: 11px; font-weight: 700; color: #64748b; }
-.ap-progress li.now small { color: #92400e; }
-.ap-progress li.done small { color: #166534; }
-.ap-progress li.rejected small { color: #b91c1c; }
+
+/* Approval levels as a timeline: one row per level, a dot (done, now, next, rejected) on a rail, who approves, and where it stands */
+.ap-scope ol.ap-tl { display: grid; gap: 0; margin: 10px 0 2px; padding: 0; list-style: none; }
+.ap-tl > li { position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 0 14px; padding-bottom: 14px; }
+.ap-tl > li:last-child { padding-bottom: 0; }
+.ap-tl > li::before { content: ''; position: absolute; left: 15px; top: 34px; bottom: 2px; width: 2px; border-radius: 2px; background: #e2e8f0; }
+.ap-tl > li:last-child::before { display: none; }
+.ap-tl > li.done::before { background: #86efac; }
+.ap-tl-dot { z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; color: #64748b; border: 2px solid #e2e8f0; font-size: 13px; font-weight: 800; }
+.ap-tl > li.done .ap-tl-dot { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.ap-tl > li.now .ap-tl-dot { background: #fef3c7; border-color: #fbbf24; color: #b45309; box-shadow: 0 0 0 4px #fffbeb; }
+.ap-tl > li.rejected .ap-tl-dot { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+.ap-tl-body { display: grid; gap: 8px; min-width: 0; }
+.ap-tl-level { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; min-height: 22px; }
+.ap-tl-level b { font-size: 14px; color: #0b1b3f; }
+.ap-tl > li.next .ap-tl-level b { color: #64748b; }
+.ap-tl-level small { font-size: 12px; color: #64748b; }
+.ap-tl-step { display: grid; gap: 4px; padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.ap-tl-step.pending { border-color: #fcd34d; background: #fffbeb; }
+.ap-tl-step.rejected { border-color: #fca5a5; background: #fef2f2; }
+.ap-tl-step.waiting, .ap-tl-step.cancelled { background: #f8fafc; }
+.ap-tl-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.ap-tl-who { flex: 1; min-width: 140px; font-size: 13px; font-weight: 700; color: #0b1b3f; overflow-wrap: anywhere; }
+.ap-tl-step.waiting .ap-tl-who, .ap-tl-step.cancelled .ap-tl-who { color: #64748b; }
+.ap-pill.mine { background: #f59e0b; color: #fff; }
+.ap-tl-row .ap-actions { margin-top: 0; }

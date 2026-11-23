@@ -16,6 +16,7 @@ import {FinancialStatementsRepository} from './repositories/financial-statements
 import {ApplicationProfileRepository} from './repositories/application-profile.repository';
 import {ApplicationsRepository} from './repositories/applications.repository';
 import {MasterIdLookup} from './repositories/master-ids';
+import {MktPicLookup} from './mkt-pic.lookup';
 import {mandatoryGaps} from './workflow/mandatory-check';
 import {groupsOf, stagesOf, WorkflowConfigRepository, type WorkflowConfig} from './workflow/workflow-config.repository';
 import {ApprovalsService, scopeApproved, STATE_NAME} from '../approvals/approvals.service';
@@ -49,6 +50,7 @@ export class ApplicationsService {
     private readonly documents: DocumentsRepository,
     private readonly fapOcr: FapOcrRepository,
     private readonly freezes: FapFreezeRepository,
+    private readonly mktPics: MktPicLookup,
   ) {}
 
   /* ---------- stages ---------- */
@@ -114,6 +116,7 @@ export class ApplicationsService {
         )[0]
       : [];
     const states = await this.approvals.statesFor(rows.map((r: any) => ({id: r.id, workflow_freeze_id: r.workflow_freeze_id})));
+    const picNames = await this.mktPics.names(rows.map((r: any) => r.mkt_pic_id));
     const mine = new Set((actor ? await this.approvals.inbox(actor) : []).map(x => x.applicationId));
     const configs = new Map<string, WorkflowConfig>();
     for (const code of new Set<string>(rows.map((r: any) => r.workflow_freeze_id))) configs.set(code, await this.config.load(code));
@@ -138,6 +141,8 @@ export class ApplicationsService {
         establishment_act_no: r.establishment_act_no,
         establishment_date: r.establishment_date,
         branch_code: branches.get(r.branch_id) ?? null,
+        mkt_pic_id: r.mkt_pic_id ?? null,
+        mkt_pic_name: picNames.get(Number(r.mkt_pic_id))?.name ?? null,
         company_address: r.company_address,
         city: r.city_id,
         province: r.province_id,
@@ -254,14 +259,12 @@ export class ApplicationsService {
       approval,
       // The places of this application that have an approval in the workflow (a section, a document...): a screen that shows one of them
       // (an ApprovalSlot) looks itself up here by its code.
-      approvalPlaces: (
-        await this.db.pool.query<any[]>(
-          `SELECT scope_type,stage_code,section_code,document_code,approval_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE freeze_id=?`,
-          [app.workflow_freeze_id],
-        )
-      )[0].map(r => ({scope: r.scope_type, stageCode: r.stage_code, sectionCode: r.section_code, documentCode: r.document_code, approvalCode: r.approval_code})),
+      approvalPlaces: await this.approvalPlaces(app.workflow_freeze_id),
       // PIC marketing (one user, set when the application is entered) and who created the application
       mktPicId: app.mkt_pic_id ?? null,
+      // who the PIC Marketing is (name from the users module), for the heading of the application
+      fapFormLocked: !!Number(app.is_fap_form_locked),
+      mktPic: app.mkt_pic_id ? {id: Number(app.mkt_pic_id), ...((await this.mktPics.names([app.mkt_pic_id])).get(Number(app.mkt_pic_id)) ?? {name: '', username: ''})} : null,
       createdBy: app.created_by ?? null,
       legal,
       pic,
@@ -298,6 +301,40 @@ export class ApplicationsService {
 
   /* ---------- writes ---------- */
 
+  /**
+   * Where this workflow has an approval (a document, a section, a stage, a group), with the name of the approval and its levels (who approves,
+   * in order; rows of one level approve together). The screens show it before anything is submitted.
+   */
+  private async approvalPlaces(workflowFreezeId: string) {
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT a.id,a.scope_type,a.stage_code,a.group_code,a.section_code,a.document_code,a.approval_code,f.name AS approval_name,l.level_no,l.authority_name,l.is_pic_marketing
+       FROM ${CRM.frozenWorkflowApprovalAssignments} a
+       LEFT JOIN ${CRM.frozenApprovals} f ON f.id=a.approval_freeze_id
+       LEFT JOIN ${CRM.frozenApprovalLevels} l ON l.approval_freeze_id=a.approval_freeze_id
+       WHERE a.workflow_freeze_id=? ORDER BY a.scope_type,a.code,l.level_no,l.authority_name`,
+      [workflowFreezeId],
+    );
+    const places = new Map<string, any>();
+    for (const r of rows) {
+      const place =
+        places.get(r.id) ??
+        places
+          .set(r.id, {
+            scope: r.scope_type,
+            stageCode: r.stage_code,
+            groupCode: r.group_code,
+            sectionCode: r.section_code,
+            documentCode: r.document_code,
+            approvalCode: r.approval_code,
+            approvalName: r.approval_name,
+            levels: [] as {levelNo: number; authorityName: string; isPicMarketing: boolean}[],
+          })
+          .get(r.id);
+      if (r.level_no !== null) place.levels.push({levelNo: Number(r.level_no), authorityName: r.authority_name || '', isPicMarketing: !!r.is_pic_marketing});
+    }
+    return [...places.values()];
+  }
+
   async create(body: Record<string, any>, actor: Actor) {
     const customerId: string | null = body.customerId ? String(body.customerId) : null;
     const existing = customerId ? await this.partners.get(customerId) : null;
@@ -306,11 +343,10 @@ export class ApplicationsService {
     if (body.companyName && !customer.companyName) customer.companyName = body.companyName;
     ensure(String(customer.companyName || '').trim(), 'Company name is required');
     const profile = {...(existing?.profile || {}), ...body};
-    const category: 'NEW' | 'EXISTING' =
-      (body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW')) ===
-      'EXISTING'
-        ? 'EXISTING'
-        : 'NEW';
+    const asked = String(body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW')).trim().toUpperCase();
+    // a category that is neither NEW nor EXISTING is refused (it used to become NEW without a word)
+    ensure(asked === 'NEW' || asked === 'EXISTING', 'The customer category must be NEW or EXISTING', 422);
+    const category: 'NEW' | 'EXISTING' = asked === 'EXISTING' ? 'EXISTING' : 'NEW';
     const workflowFreezeId = await this.config.activeFreezeId();
     const stage = (await this.config.load(workflowFreezeId)).stages[0];
     ensure(stage, 'The active workflow has no stage yet.', 500);
@@ -329,7 +365,8 @@ export class ApplicationsService {
           customerCategory: category,
           branchId: await this.ids.idOf('branch', profile.branchCode, conn),
           workflowFreezeId,
-          mktPicId: Number.isInteger(Number(body.mktPicId)) && Number(body.mktPicId) > 0 ? Number(body.mktPicId) : null,
+          // the PIC Marketing is the account that enters the application, unless another user is chosen
+          mktPicId: Number.isInteger(Number(body.mktPicId)) && Number(body.mktPicId) > 0 ? Number(body.mktPicId) : Number(actor.portalUserId) > 0 ? Number(actor.portalUserId) : null,
         },
         actor,
       );
@@ -379,6 +416,11 @@ export class ApplicationsService {
       );
   }
 
+  /** Submitting the stage that shows the FAP form locks the form (the frozen copy is made at that moment); a rejection of the stage opens it again. */
+  private assertFapFormOpen(app: any) {
+    ensure(!Number(app.is_fap_form_locked), 'The FAP form is locked because the FAP stage was submitted. It opens again if the stage is rejected.', 409);
+  }
+
   async saveCustomerAndContact(id: string, body: Record<string, any>, actor: Actor, expectedUpdatedAt?: unknown) {
     const current = await this.detailOr404(id, actor);
     const customer = {...(current.customer || {}), ...(body.customer || {})};
@@ -387,6 +429,7 @@ export class ApplicationsService {
     await this.db.transaction(async conn => {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
+      this.assertFapFormOpen(app);
       this.assertFresh(app, expectedUpdatedAt, actor);
       let changed = await this.profiles.saveProfile(conn, id, customer, profile, by(actor));
       changed = (await this.partners.saveFromApplication(conn, app.business_partner_id, customer, profile, by(actor))) || changed;
@@ -421,6 +464,8 @@ export class ApplicationsService {
     await this.db.transaction(async conn => {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
+      // sections 05-08 belong to the FAP form and are locked with it; the financial statements (09) have their own rule below
+      if (Array.isArray(body.projects) || Array.isArray(body.bankReferences) || body.proposal || financingProposal || (profile.financingPurposeDetail ?? body.financingPurposeDetail) !== undefined) this.assertFapFormOpen(app);
       this.assertFresh(app, expectedUpdatedAt, actor);
       await this.fap.save(
         conn,
@@ -535,9 +580,11 @@ export class ApplicationsService {
       for (const scope of scopes) {
         const started = await this.startIfIdle(conn, app, scope, actor);
         pending = pending.concat(started);
-        // no approval step on this stage: it is done as soon as it is submitted
-        if (scope.type === 'STAGE' && !started.length && !(await this.approvals.hasRound(conn, id, scope)))
+        // no approval step on this stage: it is done as soon as it is submitted, but its mandatory documents that have an approval must be verified first
+        if (scope.type === 'STAGE' && !started.length && !(await this.approvals.hasRound(conn, id, scope))) {
+          await this.assertMandatoryDocumentsVerified(conn, id, stage.code);
           await this.apps.saveStageProgress(conn, id, stage.code, {completed: true}, actor);
+        }
       }
       await this.assertReadyIfFinished(conn, id, app);
     });
@@ -568,6 +615,28 @@ export class ApplicationsService {
   }
 
   /**
+   * The mandatory documents of a stage: a document that has an approval in the workflow must be VERIFIED (its approval is finished), a document without
+   * approval only needs a file. Refuses (422) with the list.
+   */
+  private async assertMandatoryDocumentsVerified(conn: any, id: string, stageCode: string) {
+    const [rows] = await conn.query(
+      `SELECT c.id,c.status,t.name,
+              (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files,
+              (SELECT COUNT(*) FROM ${CRM.frozenWorkflowApprovalAssignments} a WHERE a.workflow_freeze_id=sd.workflow_freeze_id AND a.stage_code=sd.stage_code AND a.document_code=sd.document_code) AS approvals
+       FROM ${CRM.applicationDocumentChecklists} c
+       JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
+       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       WHERE c.application_id=? AND c.stage_code=? AND sd.is_mandatory=1`,
+      [id, stageCode],
+    );
+    const pending = (rows as any[]).filter(r => (Number(r.approvals) > 0 ? r.status !== 'VERIFIED' : Number(r.files) === 0));
+    if (pending.length) {
+      const gaps = pending.map(r => ({target: 'DOCUMENTS', label: r.name, detail: Number(r.approvals) > 0 ? 'Belum disetujui' : 'Belum diunggah'}));
+      throw new Problem(422, `Dokumen wajib belum selesai (${gaps.length}): ${gaps.map(g => `${g.label} (${g.detail})`).join('; ')}`, [], gaps);
+    }
+  }
+
+  /**
    * A stage cannot be approved before its mandatory documents are done: every document the workflow marks mandatory in that stage must be
    * approved (when the workflow has an approval for that document) or at least uploaded (when it has none). Refuses with the list.
    */
@@ -577,28 +646,38 @@ export class ApplicationsService {
       const [open] = await conn.query(
         `SELECT s.name FROM ${CRM.frozenWorkflowStages} s
          LEFT JOIN ${CRM.applicationStageProgress} p ON p.stage_code=s.code AND p.application_id=?
-         WHERE s.freeze_id=? AND s.group_code=? AND p.completed_at IS NULL`,
+         WHERE s.workflow_freeze_id=? AND s.group_code=? AND p.completed_at IS NULL`,
         [id, step.workflowFreezeId, step.groupCode],
       );
       if ((open as any[]).length)
         throw new Problem(422, `Group belum bisa disetujui: stage berikut belum disetujui (${(open as any[]).map(r => r.name).join(', ')}).`);
     }
     if (step.scope !== 'STAGE' || !step.stageCode) return;
-    const [rows] = await conn.query(
-      `SELECT c.id,c.status,t.name,
-              (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files,
-              (SELECT COUNT(*) FROM ${CRM.frozenWorkflowApprovalAssignments} a WHERE a.freeze_id=sd.freeze_id AND a.stage_code=sd.stage_code AND a.document_code=sd.document_code) AS approvals
-       FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
-       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       WHERE c.application_id=? AND c.stage_code=? AND sd.is_mandatory=1`,
-      [id, step.stageCode],
+    await this.assertMandatoryDocumentsVerified(conn, id, step.stageCode);
+    // The rows of a repeating section with an approval in this stage (the deeds): every row that was submitted for approval must be approved
+    // (a waiting or rejected one holds the stage back; a row never submitted is ignored), and at least one must be approved.
+    const [places] = await conn.query(
+      `SELECT DISTINCT section_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE workflow_freeze_id=? AND stage_code=? AND scope_type='SECTION'`,
+      [step.workflowFreezeId, step.stageCode],
     );
-    const pending = (rows as any[]).filter(r => (Number(r.approvals) > 0 ? r.status !== 'VERIFIED' : Number(r.files) === 0));
-    if (pending.length) {
-      const gaps = pending.map(r => ({target: 'DOCUMENTS', label: r.name, detail: Number(r.approvals) > 0 ? 'Belum disetujui' : 'Belum diunggah'}));
-      throw new Problem(422, `Dokumen wajib belum selesai (${gaps.length}): ${gaps.map(g => `${g.label} (${g.detail})`).join('; ')}`, [], gaps);
+    const open: {target: string; label: string; detail: string}[] = [];
+    for (const {section_code: sectionCode} of places as any[]) {
+      const table = REPEATING_ROWS[sectionCode];
+      if (!table) continue;
+      const [subjects] = await conn.query(`SELECT id,deed_number FROM ${table} WHERE application_id=?`, [id]);
+      const [steps] = await conn.query(`SELECT subject_id,round_no,status FROM ${CRM.applicationApprovalSteps} WHERE application_id=? AND scope_type='SECTION' AND section_code=?`, [id, sectionCode]);
+      let approved = 0;
+      for (const s of subjects as any[]) {
+        const mine = (steps as any[]).filter(x => x.subject_id === s.id);
+        const last = Math.max(0, ...mine.map(x => Number(x.round_no)));
+        if (!last) continue;
+        const state = mine.some(x => Number(x.round_no) === last && x.status === 'REJECTED') ? 'Ditolak' : mine.filter(x => Number(x.round_no) === last).every(x => x.status === 'APPROVED') ? '' : 'Belum disetujui';
+        if (state) open.push({target: 'LEGAL', label: `Akta ${s.deed_number || ''}`.trim(), detail: state});
+        else approved++;
+      }
+      if (!open.length && !approved) open.push({target: 'LEGAL', label: 'Akta', detail: 'Belum ada akta yang disetujui (minimal satu)'});
     }
+    if (open.length) throw new Problem(422, `Akta belum disetujui (${open.length}): ${open.map(g => `${g.label} (${g.detail})`).join('; ')}`, [], open);
   }
 
   /** When what just happened finishes the whole application, the data, documents and deeds must be complete: otherwise it is refused. */
@@ -677,7 +756,7 @@ export class ApplicationsService {
     const [subject] = await this.db.pool.query<any[]>(`SELECT id FROM ${rows} WHERE id=? AND application_id=?`, [subjectId, id]);
     ensure(subject[0], 'Row not found in this application', 404);
     const [places] = await this.db.pool.query<any[]>(
-      `SELECT stage_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE freeze_id=? AND scope_type='SECTION' AND section_code=?`,
+      `SELECT stage_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE workflow_freeze_id=? AND scope_type='SECTION' AND section_code=?`,
       [app.workflow_freeze_id, sectionCode],
     );
     ensure(places[0], 'This section has no approval in the workflow.', 422);
@@ -738,7 +817,7 @@ export class ApplicationsService {
       beforeApproved: async (conn, step) => {
         await this.assertMandatoryDocumentsDone(conn, id, step);
       },
-      afterApproved: async (conn, step) => {
+      afterApproved: async conn => {
         await this.assertReadyIfFinished(conn, id, app);
       },
     });
@@ -815,8 +894,8 @@ export class ApplicationsService {
        FROM ${CRM.frozenWorkflowStageFields} sf
        JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code
        JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code
-       JOIN ${CRM.frozenWorkflowStages} st ON st.freeze_id=sf.freeze_id AND st.code=sf.stage_code
-       WHERE sf.freeze_id=? AND sf.is_mandatory=1${onlyStage ? ' AND st.code=?' : ''}`,
+       JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=sf.workflow_freeze_id AND st.code=sf.stage_code
+       WHERE sf.workflow_freeze_id=? AND sf.is_mandatory=1${onlyStage ? ' AND st.code=?' : ''}`,
       onlyStage ? [cfg.id, onlyStage] : [cfg.id],
     );
     const stageName = (code: string) => cfg.stageByCode.get(code)?.name;
@@ -830,12 +909,22 @@ export class ApplicationsService {
     const missingDocs = checks.filter((d: any) => d.isMandatory && !(d.files || []).length && (!onlyStage || d.stageCode === onlyStage));
     // The deeds are filled in the stage whose workflow has the approval of the deed section; without one, in the first stage.
     const [deedPlace] = await this.apps.pool.query<any[]>(
-      `SELECT stage_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE freeze_id=? AND scope_type='SECTION' AND section_code=? LIMIT 1`,
+      `SELECT stage_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE workflow_freeze_id=? AND scope_type='SECTION' AND section_code=? LIMIT 1`,
       [cfg.id, DEED_SECTION],
     );
     const deedStage: string | undefined = deedPlace[0]?.stage_code ?? cfg.stages[0]?.code;
     for (const d of missingDocs)
       gaps.push({target: 'DOCUMENTS', label: `Dokumen ${d.documentName}`, detail: stageName(d.stageCode)});
+    // The signed FAP document is compared with the form: while its differences are neither noted nor approved, the stage that shows the FAP form waits.
+    const shownStage = onlyStage ? cfg.stageByCode.get(onlyStage) : undefined;
+    if (shownStage && screenOfForm(shownStage.formCode) === 'FAP') {
+      const [cmp] = await this.apps.pool.query<any[]>(
+        `SELECT comparison_status FROM ${CRM.fapDocumentOcrComparisons} WHERE application_id=? ORDER BY updated_at DESC LIMIT 1`,
+        [id],
+      );
+      if (cmp[0]?.comparison_status === 'HAS_DIFFERENCES')
+        gaps.push({target: 'DOCUMENTS', label: 'Perbedaan dokumen FAP bertanda tangan belum ditinjau', detail: 'Tinjau perbedaannya di tab Documents (catat remarks, lalu setujui atau perbaiki datanya)'});
+    }
     if (!onlyStage && checks.some(d => d.documentCode === 'FAP') && !app.is_fap_doc_uploaded && !missingDocs.some((d: any) => d.documentCode === 'FAP'))
       gaps.push({target: 'DOCUMENTS', label: 'Dokumen FAP bertanda tangan', detail: cfg.stages[0]?.name});
     for (const d of onlyStage && onlyStage !== deedStage ? [] : detail.legal?.deeds || []) {

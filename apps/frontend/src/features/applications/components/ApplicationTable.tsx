@@ -149,6 +149,7 @@ export function ApplicationTable({
             <tr>
               <th>COMPANY / APPLICATION</th>
               <th>BRANCH</th>
+              <th>PIC MARKETING</th>
               <th>FINANCING AMOUNT</th>
               <th>STATUS</th>
               <th>DOCUMENTS</th>
@@ -182,6 +183,7 @@ export function ApplicationTable({
                 <td>
                   <span className="branch">{r.branch_code}</span>
                 </td>
+                <td>{r.mkt_pic_name || (r.mkt_pic_id ? `User #${r.mkt_pic_id}` : <span className="muted">Not set</span>)}</td>
                 <td>
                   <b className="amount">{money(r.financing_value)}</b>
                   <small>{r.tenor_months ? r.tenor_months + ' months' : 'Proposal pending'}</small>

@@ -100,13 +100,6 @@ export class ApplicationsController {
     return this.applications.generateFapNumber(req.params.id, req.actor);
   }
 
-  /** "Submit FAP stage" (kept for the FAP screen): submits the first stage of the application's workflow. */
-  @Put('applications/:id/stage')
-  async submitStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'CRM_WORKFLOW_SUBMIT');
-    return this.applications.submitFirstStage(req.params.id, req.actor, req.body?.remarks);
-  }
-
   /** Submits a stage: locks it and starts the approval of the stage (and of its group when all its stages are submitted). Also the resubmit after a reject. */
   @Post('applications/:id/stages/:stageCode/submit')
   async submitOneStage(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {

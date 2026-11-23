@@ -1,6 +1,6 @@
 /**
  * Customise the checklist of ONE application: take a default document off it, or add a document (one the workflow
- * offers, another master document, or a free-name one). Other applications keep the workflow's checklist.
+ * offers, a master document, or "Others": a new document typed by name). Other applications keep the workflow's checklist.
  */
 import {api} from '@/shared/lib/api';
 import {departmentLabel} from '@/shared/lib/departments';
@@ -10,11 +10,14 @@ import {useCallback, useEffect, useState} from 'react';
 
 type Options = {
   pool: {stageCode: string; code: string; name: string; isMandatory: boolean}[];
-  masters: {code: string; name: string; departmentCode: string; isMandatory: boolean}[];
+  masters: {code: string; name: string}[];
   overrides: {id: string; action: 'ADD' | 'REMOVE'; stageCode: string; code: string; name: string; reason: string | null; by: string}[];
   stages: {code: string; name: string; departmentCode: string | null}[];
   departments: {code: string; name: string}[];
 };
+
+/** The last choice of the master-data list: a document that is not in the list, typed by name. */
+const OTHER = '__other__';
 
 export function ChecklistCustomizeDialog({
   application,
@@ -32,7 +35,7 @@ export function ChecklistCustomizeDialog({
   const [removeId, setRemoveId] = useState('');
   const [reason, setReason] = useState('');
   const [mode, setMode] = useState<'OFF' | 'ADD'>('ADD');
-  const [source, setSource] = useState<'POOL' | 'MASTER' | 'NEW'>('NEW');
+  const [source, setSource] = useState<'POOL' | 'MASTER'>('MASTER');
   const [poolId, setPoolId] = useState('');
   const [masterCode, setMasterCode] = useState('');
   const [stage, setStage] = useState('');
@@ -75,17 +78,18 @@ export function ChecklistCustomizeDialog({
   const stageName = (code: string) => options.stages.find(x => x.code === code)?.name ?? code;
   const sources = [
     ...(options.pool.length ? [{key: 'POOL' as const, label: 'Offered by the workflow'}] : []),
-    ...(options.masters.length ? [{key: 'MASTER' as const, label: 'Master data'}] : []),
-    {key: 'NEW' as const, label: 'New document'},
+    {key: 'MASTER' as const, label: 'Master data'},
   ];
-  const src = sources.some(x => x.key === source) ? source : 'NEW';
-  const canAdd = !busy && !!department && (src === 'POOL' ? !!poolId : src === 'MASTER' ? !!masterCode : !!customName.trim());
+  const src = sources.some(x => x.key === source) ? source : 'MASTER';
+  // "Others" asks for a name; with an empty master list it is the only way to add a document of this kind
+  const isOther = src === 'MASTER' && (!options.masters.length || masterCode === OTHER);
+  const canAdd = !busy && !!department && (src === 'POOL' ? !!poolId : isOther ? !!customName.trim() : !!masterCode);
   const add = () => {
     const pool = options.pool.find(x => `${x.stageCode}|${x.code}` === poolId);
     const body =
       src === 'POOL' && pool
         ? {action: 'ADD', stageCode: pool.stageCode, workflowDocumentCode: pool.code, departmentCode: department}
-        : src === 'MASTER'
+        : src === 'MASTER' && !isOther
           ? {action: 'ADD', stageCode: defaultStage, documentCode: masterCode, departmentCode: department}
           : {action: 'ADD', stageCode: defaultStage, customName: customName.trim(), departmentCode: department, isMandatory: customMandatory};
     void run(() => post(body), 'Document added').then(() => {
@@ -142,7 +146,9 @@ export function ChecklistCustomizeDialog({
                 <label>
                   Document
                   <select value={removeId} onChange={e => setRemoveId(e.target.value)}>
-                    <option value="">Choose a document…</option>
+                    <option value="" disabled>
+                      Choose a document…
+                    </option>
                     {removable.map((d: any) => (
                       <option key={d.id} value={d.id}>
                         {d.documentName} ({stageName(d.stageCode)}){d.isMandatory ? ' · mandatory' : ''}
@@ -177,19 +183,24 @@ export function ChecklistCustomizeDialog({
 
         {mode === 'ADD' && (
           <section className="cc-form">
-            <div className="cc-seg" role="tablist" aria-label="Where the document comes from">
-              {sources.map(x => (
-                <button key={x.key} type="button" role="tab" aria-selected={src === x.key} className={src === x.key ? 'on' : ''} onClick={() => setSource(x.key)}>
-                  {x.label}
-                </button>
-              ))}
-            </div>
+            {/* the choice of source is only shown when the workflow offers documents too; with master data alone there is nothing to choose */}
+            {sources.length > 1 && (
+              <div className="cc-seg" role="tablist" aria-label="Where the document comes from">
+                {sources.map(x => (
+                  <button key={x.key} type="button" role="tab" aria-selected={src === x.key} className={src === x.key ? 'on' : ''} onClick={() => setSource(x.key)}>
+                    {x.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {src === 'POOL' && (
               <label>
                 Document
                 <select value={poolId} onChange={e => setPoolId(e.target.value)}>
-                  <option value="">Choose a document…</option>
+                  <option value="" disabled>
+                    Choose a document…
+                  </option>
                   {options.pool.map(p => (
                     <option key={`${p.stageCode}|${p.code}`} value={`${p.stageCode}|${p.code}`}>
                       {p.name} ({stageName(p.stageCode)})
@@ -199,23 +210,30 @@ export function ChecklistCustomizeDialog({
               </label>
             )}
             {src === 'MASTER' && (
-              <label>
-                Document
-                <select value={masterCode} onChange={e => setMasterCode(e.target.value)}>
-                  <option value="">Choose from master data…</option>
-                  {options.masters.map(m => (
-                    <option key={m.code} value={m.code}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {src === 'NEW' && (
-              <label>
-                Document name
-                <input placeholder="e.g. Surat Keterangan Domisili" value={customName} onChange={e => setCustomName(e.target.value)} />
-              </label>
+              <>
+                {options.masters.length > 0 && (
+                  <label>
+                    Document
+                    <select value={masterCode} onChange={e => setMasterCode(e.target.value)}>
+                      <option value="" disabled>
+                        Choose from master data…
+                      </option>
+                      {options.masters.map(m => (
+                        <option key={m.code} value={m.code}>
+                          {m.name}
+                        </option>
+                      ))}
+                      <option value={OTHER}>Others (type a new document name)…</option>
+                    </select>
+                  </label>
+                )}
+                {isOther && (
+                  <label>
+                    Document name
+                    <input placeholder="e.g. Surat Keterangan Domisili" value={customName} onChange={e => setCustomName(e.target.value)} />
+                  </label>
+                )}
+              </>
             )}
 
             <div className="cc-grid">
@@ -244,7 +262,7 @@ export function ChecklistCustomizeDialog({
             </div>
 
             <div className="cc-foot">
-              {src === 'NEW' && (
+              {isOther && (
                 <label className="cc-check">
                   <input type="checkbox" checked={customMandatory} onChange={e => setCustomMandatory(e.target.checked)} /> Mandatory
                 </label>

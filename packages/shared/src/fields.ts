@@ -164,24 +164,6 @@ export const picFields = [
   {...f('currentAddress', 'Full Address', 'textarea'), wide: true},
 ];
 
-export const STAKEHOLDER_POSITIONS = [
-  'MAIN_DIRECTOR',
-  'DIRECTOR',
-  'MAIN_COMMISSIONER',
-  'COMMISSIONER',
-  'BOARD_OF_DIRECTORS',
-  'AUTORIZED_REPRESENTATIVE',
-] as const;
-
-export const STAKEHOLDER_POSITION_LABELS: Record<string, string> = {
-  MAIN_DIRECTOR: 'Main Director',
-  DIRECTOR: 'Director',
-  MAIN_COMMISSIONER: 'Main Commissioner',
-  COMMISSIONER: 'Commissioner',
-  BOARD_OF_DIRECTORS: 'Board of Directors',
-  AUTORIZED_REPRESENTATIVE: 'Autorized Representative',
-};
-
 /**
  * Stakeholder fields (crm_fap_legal_stakeholders). Representative type, position and designation are Master Data
  * selects; the other selects are the ENUM values of the table, and an empty choice is stored as NULL.
@@ -234,6 +216,11 @@ export const stakeholderFields = [
   f('address', 'Address'),
   f('postalCode', 'Postal / ZIP Code'),
 ];
+
+/** Value of every address field of a foreign stakeholder (citizenship FOREIGN, identified by PASSPORT - KITAS): the Indonesian region lists do not apply. */
+export const FOREIGN_REGION_VALUE = 'Others';
+/** The address fields of a foreign stakeholder, all "Others": Country, the regions, RT, RW, the street address and the postal code. */
+export const FOREIGN_REGION_KEYS: readonly string[] = ['country', 'province', 'cityRegency', 'district', 'village', 'rt', 'rw', 'address', 'postalCode'];
 
 export const projectFields = [
   f('projectOwner', 'Project Owner'),

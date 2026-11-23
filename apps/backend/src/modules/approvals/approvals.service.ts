@@ -235,7 +235,7 @@ export class ApprovalsService {
     const [templates, steps, [stages], [progress], [docs]] = await Promise.all([
       this.repo.templatesOf(workflowFreezeId, conn),
       this.repo.stepsOf(applicationId, conn),
-      conn.query<any[]>(`SELECT code FROM ${CRM.frozenWorkflowStages} WHERE freeze_id=?`, [workflowFreezeId]),
+      conn.query<any[]>(`SELECT code FROM ${CRM.frozenWorkflowStages} WHERE workflow_freeze_id=?`, [workflowFreezeId]),
       conn.query<any[]>(`SELECT stage_code FROM ${CRM.applicationStageProgress} WHERE application_id=? AND submitted_at IS NOT NULL`, [applicationId]),
       conn.query<any[]>(
         `SELECT c.id,c.stage_code,c.document_code,
@@ -262,7 +262,7 @@ export class ApprovalsService {
     const marks = (n: number) => Array(n).fill('?').join(',');
     const [steps, [stages], [progress], [docs]] = await Promise.all([
       this.repo.stepsOfMany(ids),
-      this.db.pool.query<any[]>(`SELECT code,freeze_id FROM ${CRM.frozenWorkflowStages} WHERE freeze_id IN (${marks(codes.length)})`, codes),
+      this.db.pool.query<any[]>(`SELECT code,workflow_freeze_id FROM ${CRM.frozenWorkflowStages} WHERE workflow_freeze_id IN (${marks(codes.length)})`, codes),
       this.db.pool.query<any[]>(`SELECT application_id,stage_code FROM ${CRM.applicationStageProgress} WHERE submitted_at IS NOT NULL AND application_id IN (${marks(ids.length)})`, ids),
       this.db.pool.query<any[]>(
         `SELECT c.application_id,c.id,c.stage_code,c.document_code,
@@ -279,7 +279,7 @@ export class ApprovalsService {
         stateOf({
           templates: templates.get(a.workflow_freeze_id) || [],
           steps: steps.filter(s => s.applicationId === a.id),
-          stageCodes: stages.filter((r: any) => r.freeze_id === a.workflow_freeze_id).map((r: any) => r.code),
+          stageCodes: stages.filter((r: any) => r.workflow_freeze_id === a.workflow_freeze_id).map((r: any) => r.code),
           submittedStageCodes: new Set(progress.filter((r: any) => r.application_id === a.id).map((r: any) => r.stage_code)),
           documents: docs.filter((r: any) => r.application_id === a.id).map((r: any) => ({checklistId: r.id, stageCode: r.stage_code, documentCode: r.document_code, fileCount: Number(r.n)})),
         }),

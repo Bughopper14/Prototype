@@ -227,7 +227,6 @@ export function useSaveApplication({
 
         recordSystemActivity({
           applicationId: a.id,
-          fapNumber: a.fapNumber,
           companyName: resolvedName,
           section: activeSectionName,
           tabIndex: tab,

@@ -49,9 +49,8 @@ export function FapUploadBanner() {
         >
           <Lock size={18} />
           <span>
-            <strong>FAP Document Locked:</strong> Application is now in <strong>Pre-analysis</strong> stage.
-            Physical FAP document has been verified and approved. FAP document file is permanently locked
-            (cannot be re-uploaded or deleted).
+            <strong>FAP Document Locked:</strong> the FAP Stage has been submitted. The physical FAP document
+            was reviewed and its file is locked (cannot be re-uploaded or deleted).
           </span>
         </div>
       ) : (

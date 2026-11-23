@@ -4,7 +4,7 @@ import {useMasterData} from '@/shared/master-data';
 import {FileText} from 'lucide-react';
 
 export function FacilityProposedCard() {
-  const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
   const master = useMasterData();
   return (
     <div
@@ -45,7 +45,7 @@ export function FacilityProposedCard() {
             data-field="financingMethod"
             className="field-input"
             value={draft.financingProposal?.facilityProposed?.financingMethod || ''}
-            disabled={!canFinance}
+            disabled={!canProposal}
             onFocus={() => handleTriggerFieldSync('financingMethod', 'proposal')}
             onChange={e => {
               const val = e.target.value;
@@ -92,7 +92,7 @@ export function FacilityProposedCard() {
                     key={c}
                     type="button"
                     data-field="currencyChoice"
-                    disabled={!canFinance}
+                    disabled={!canProposal}
                     onClick={() => {
                       const nextVal = isSel ? '' : c;
                       setDraft((prev: any) => ({
@@ -130,7 +130,7 @@ export function FacilityProposedCard() {
               className="field-input"
               style={{flex: 1}}
               value={draft.financingProposal?.facilityProposed?.financingValue || ''}
-              disabled={!canFinance}
+              disabled={!canProposal}
               onFocus={() => handleTriggerFieldSync('financingValueProp', 'proposal')}
               onChange={e => {
                 const val = e.target.value;
@@ -157,7 +157,7 @@ export function FacilityProposedCard() {
             data-field="applicationSource"
             className="field-input"
             value={draft.financingProposal?.facilityProposed?.applicationSource || ''}
-            disabled={!canFinance}
+            disabled={!canProposal}
             onFocus={() => handleTriggerFieldSync('applicationSource', 'proposal')}
             onChange={e => {
               const val = e.target.value;

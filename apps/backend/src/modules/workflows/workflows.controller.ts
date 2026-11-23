@@ -40,6 +40,13 @@ export class WorkflowsController {
   }
 
   /** The groups and stages of the active workflow (for the start of a new application). */
+  /** The log of all workflows (also the deleted ones). */
+  @Get('workflows/activity')
+  activityAll(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireView(req.actor);
+    return this.workflows.activity();
+  }
+
   @Get('workflows/layout')
   async layout(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
@@ -103,21 +110,28 @@ export class WorkflowsController {
   activate(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireEdit(req.actor);
     res.status(200);
-    return this.workflows.activate(uuidParam(req.params.id), req.actor.name || req.actor.username || null);
+    return this.workflows.activate(uuidParam(req.params.id), req.actor.username || null);
   }
 
   @Post('workflows/:id/deactivate')
   deactivate(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireEdit(req.actor);
     res.status(200);
-    return this.workflows.deactivate(uuidParam(req.params.id), req.actor.name || req.actor.username || null);
+    return this.workflows.deactivate(uuidParam(req.params.id), req.actor.username || null);
   }
 
   /** Deletes the master workflow; its freezes stay. */
   @Delete('workflows/:id')
   remove(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireEdit(req.actor);
-    return this.workflows.remove(uuidParam(req.params.id));
+    return this.workflows.remove(uuidParam(req.params.id), req.actor.username || null);
+  }
+
+  /** The log of one workflow. */
+  @Get('workflows/:id/activity')
+  activityOf(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireView(req.actor);
+    return this.workflows.activity(uuidParam(req.params.id));
   }
 
   /** The freezes of a workflow (every create or edit). */
@@ -125,6 +139,20 @@ export class WorkflowsController {
   history(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireView(req.actor);
     return this.workflows.history(uuidParam(req.params.id));
+  }
+
+  /** The content of one freeze of a workflow (read only). */
+  @Get('workflows/:id/history/:freezeId')
+  version(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireView(req.actor);
+    return this.workflows.version(uuidParam(req.params.id), uuidParam(req.params.freezeId));
+  }
+
+  /** The applications running on one version of a workflow (paged, searchable). */
+  @Get('workflows/:id/history/:freezeId/applications')
+  versionApplications(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireView(req.actor);
+    return this.workflows.versionApplications(uuidParam(req.params.id), uuidParam(req.params.freezeId), String(req.query?.q ?? '').slice(0, 100), Number(req.query?.page) || 1);
   }
 
   /* ---------- Documents of one application: add or remove against the workflow's checklist ---------- */

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {z} from 'zod';
 import {CrmDatabase} from '../../core/db/crm-database';
+import {diffApprovals, summarize, type ApprovalContent} from '../workflows/workflow-diff';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
 import {toCode} from '../../core/domain/code';
@@ -51,7 +52,7 @@ export class MasterApprovalsService {
   /** Places of the master workflows that point at the approval, and applications running on a workflow freeze that uses it. */
   private readonly usageColumns = `(SELECT COUNT(*) FROM ${CRM.workflowApprovalAssignments} x WHERE x.approval_code=a.code) AS used_in,
               (SELECT COUNT(*) FROM ${CRM.applications} ap WHERE ap.deleted_at IS NULL AND ap.workflow_freeze_id IN
-                (SELECT DISTINCT x.freeze_id FROM ${CRM.frozenWorkflowApprovalAssignments} x WHERE x.approval_code=a.code)) AS apps`;
+                (SELECT DISTINCT x.workflow_freeze_id FROM ${CRM.frozenWorkflowApprovalAssignments} x WHERE x.approval_code=a.code)) AS apps`;
 
   async list() {
     const [approvals] = await this.db.pool.query<any[]>(
@@ -148,11 +149,15 @@ export class MasterApprovalsService {
 
   private async nextCode(name: string) {
     const base = toCode(name) || 'APPROVAL';
-    for (let n = 1; ; n++) {
-      const candidate = (n === 1 ? base : `${base}-${n}`).slice(0, 60);
-      const [rows] = await this.db.pool.query<any[]>(`SELECT 1 FROM ${CRM.masterApprovals} WHERE code=?`, [candidate]);
+    for (let n = 1; n < 1000; n++) {
+      // the suffix is part of the 60 characters (cutting after adding it would give the same code again and again for a long name)
+      const suffix = n === 1 ? '' : `-${n}`;
+      const candidate = base.slice(0, 60 - suffix.length).replace(/-+$/, '') + suffix;
+      // taken for good: the versions of a deleted approval stay, a new approval must not inherit them
+      const [rows] = await this.db.pool.query<any[]>(`SELECT 1 FROM ${CRM.masterApprovals} WHERE code=? UNION ALL SELECT 1 FROM ${CRM.frozenApprovals} WHERE source_approval_code=?`, [candidate, candidate]);
       if (!rows.length) return candidate;
     }
+    throw new Problem(409, 'There is no free code left for this approval name; choose another name');
   }
 
   private describe(levels: {levelNo: number; authorityName: string; isPicMarketing?: boolean}[]) {
@@ -229,5 +234,84 @@ export class MasterApprovalsService {
       [code],
     );
     return rows.map(r => ({action: r.action, summary: r.summary, before: r.before_text, after: r.after_text, at: r.acted_at, by: r.actor_name}));
+  }
+
+  /** The versions of an approval, newest first: what changed, the workflows that use each one and the applications on those workflows. */
+  async versions(code: string) {
+    const [rows] = await this.db.pool.query<any[]>(`SELECT * FROM ${CRM.frozenApprovals} WHERE source_approval_code=? ORDER BY freeze_version ASC`, [code]);
+    if (!rows.length) throw new Problem(404, 'This approval has no versions.');
+    const ids = rows.map(r => r.id);
+    const marks = ids.map(() => '?').join(',');
+    const [lv] = await this.db.pool.query<any[]>(
+      `SELECT approval_freeze_id,level_no,authority_name,is_pic_marketing FROM ${CRM.frozenApprovalLevels} WHERE approval_freeze_id IN (${marks}) ORDER BY level_no,is_pic_marketing,authority_name`,
+      ids,
+    );
+    const [uses] = await this.db.pool.query<any[]>(
+      `SELECT x.approval_freeze_id,x.workflow_freeze_id,w.name,w.freeze_version,x.scope_type,x.group_code,x.stage_code,x.section_code,x.document_code,
+              g.name AS group_name,st.name AS stage_name,sec.name AS section_name,doc.name AS document_name
+       FROM ${CRM.frozenWorkflowApprovalAssignments} x JOIN ${CRM.frozenWorkflows} w ON w.id=x.workflow_freeze_id
+       LEFT JOIN ${CRM.frozenWorkflowStageGroups} g ON g.workflow_freeze_id=x.workflow_freeze_id AND g.code=x.group_code
+       LEFT JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=x.workflow_freeze_id AND st.code=x.stage_code
+       LEFT JOIN ${CRM.masterFormSections} sec ON sec.code=x.section_code
+       LEFT JOIN ${CRM.masterDocumentTypes} doc ON doc.code=x.document_code
+       WHERE x.approval_freeze_id IN (${marks}) ORDER BY w.name,w.freeze_version DESC,x.scope_type,x.stage_code`,
+      ids,
+    );
+    const apps = await this.freezes.applicationsOn([...new Set(uses.map(u => u.workflow_freeze_id as string))]);
+    const placeText = (u: any) =>
+      u.scope_type === 'GROUP'
+        ? `Whole group ${u.group_name ?? u.group_code}`
+        : u.scope_type === 'STAGE'
+          ? `Stage ${u.stage_name ?? u.stage_code}`
+          : u.scope_type === 'DOCUMENT'
+            ? `Document ${u.document_name ?? u.document_code} (in stage ${u.stage_name ?? u.stage_code})`
+            : `Form section ${u.section_name ?? u.section_code} (in stage ${u.stage_name ?? u.stage_code})`;
+    const out = [];
+    let before: ApprovalContent | null = null;
+    for (const r of rows) {
+      const content: ApprovalContent = {
+        name: r.name,
+        approvalType: r.approval_type,
+        description: r.description ?? null,
+        levels: lv.filter(l => l.approval_freeze_id === r.id).map(l => ({levelNo: Number(l.level_no), label: l.is_pic_marketing ? 'PIC Marketing' : (l.authority_name as string)})),
+      };
+      const changes = before ? diffApprovals(before, content) : null;
+      before = content;
+      const mine = uses.filter(u => u.approval_freeze_id === r.id);
+      const seen = new Map<string, {id: string; companyName: string | null; createdAt: string}>();
+      let total = 0;
+      for (const u of mine) {
+        const e = apps.get(u.workflow_freeze_id);
+        total += e?.total ?? 0;
+        for (const a of e?.items ?? []) seen.set(a.id, a);
+      }
+      out.push({
+        id: r.id,
+        freezeVersion: Number(r.freeze_version),
+        at: r.frozen_at,
+        by: r.frozen_by_name,
+        name: r.name,
+        isLatest: !!r.is_latest_freeze,
+        action: changes ? 'EDITED' : 'CREATED',
+        changes,
+        summary: summarize(changes),
+        levels: content.levels,
+        workflows: [...new Set(mine.map(u => u.workflow_freeze_id as string))].map(fid => {
+          const rows = mine.filter(u => u.workflow_freeze_id === fid);
+          return {freezeId: fid, name: rows[0].name as string, freezeVersion: Number(rows[0].freeze_version), places: rows.map(placeText)};
+        }),
+        applications: total,
+        applicationList: [...seen.values()].slice(0, 3),
+      });
+    }
+    return out.reverse();
+  }
+
+  /** The applications running on the workflows that use one version of an approval (paged, searchable). */
+  async versionApplications(code: string, freezeId: string, search: string, page: number) {
+    const [[head]] = await this.db.pool.query<any[]>(`SELECT id FROM ${CRM.frozenApprovals} WHERE id=? AND source_approval_code=?`, [freezeId, code]);
+    if (!head) throw new Problem(404, 'That version does not belong to this approval.');
+    const [uses] = await this.db.pool.query<any[]>(`SELECT DISTINCT workflow_freeze_id FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE approval_freeze_id=?`, [freezeId]);
+    return this.freezes.applicationsPage(uses.map(u => u.workflow_freeze_id as string), search, page);
   }
 }

@@ -40,12 +40,6 @@ export interface TermsGroupConfig {
   fields: TermsFieldConfig[];
 }
 
-export const FINANCING_METHODS: ReadonlyArray<{label: string; group: TermsGroupKey}> = [
-  {label: 'Financial Lease', group: 'termsFinancialLease'},
-  {label: 'Sale and Lease Back', group: 'termsSaleAndLeaseBack'},
-  {label: 'Installment Financing', group: 'termsInstallmentFinancing'},
-];
-
 const COMMON_TAIL = (p: string): TermsFieldConfig[] => [
   {dataField: p + 'Rate', label: 'Bunga / Interest Rate', key: 'interestRate'},
   {dataField: p + 'Tenor', label: 'Jk. Waktu / Tenor', key: 'tenor'},

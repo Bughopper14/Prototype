@@ -12,7 +12,6 @@ import {ApproverView} from '@/features/applications/components/workspace/Approve
 import {WorkspaceContext} from '@/features/applications/components/workspace/WorkspaceContext';
 import {SaveLegalConfirmDialog} from '@/features/applications/components/workspace/dialogs/SaveLegalConfirmDialog';
 import {ApprovalDecisionDialog, SubmitStageDialog} from '@/features/applications/components/workspace/dialogs/ApprovalDialogs';
-import {SubmitFapConfirmDialog} from '@/features/applications/components/workspace/dialogs/SubmitFapConfirmDialog';
 import {ChevronStepper} from '@/features/applications/components/workspace/header/ChevronStepper';
 import {DetailHeading} from '@/features/applications/components/workspace/header/DetailHeading';
 import {DetailSummary} from '@/features/applications/components/workspace/header/DetailSummary';
@@ -148,7 +147,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
               onMarkRead={handleMarkAppActivityRead}
               onMarkAllRead={handleMarkAllAppActivitiesRead}
               title="Recent System Activity"
-              subtitle={`Live record of application changes, form submissions, and section updates for ${a.fapNumber || liveCompanyName || 'this application'}.`}
+              subtitle={`Live record of application changes, form submissions, and section updates for ${liveCompanyName || 'this application'}.`}
               emptyMessage="No activity history for this application yet"
             />
           </div>
@@ -168,7 +167,6 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           />
         )}
         <SaveLegalConfirmDialog />
-        <SubmitFapConfirmDialog />
         <ApprovalDecisionDialog />
         <SubmitStageDialog />
         <NibOcrModal

@@ -1,4 +1,5 @@
 import {currentMasterData} from '@/shared/master-data';
+import {FOREIGN_REGION_KEYS, FOREIGN_REGION_VALUE} from '@liugong/shared';
 
 export function normalizeStakeholderIdType(
   rawType: string | undefined,
@@ -18,22 +19,7 @@ export function normalizeStakeholderIdType(
   return '';
 }
 
-/** Value stored in the address fields of a foreign (PASSPORT - KITAS) stakeholder. */
-export const FOREIGN_REGION_VALUE = 'Others';
-/**
- * Address fields set to "Others" for a foreign stakeholder, Country included: which
- * countries count is not decided yet, so no country list is offered for now.
- */
-export const FOREIGN_REGION_KEYS = [
-  'country',
-  'province',
-  'cityRegency',
-  'district',
-  'village',
-  'rt',
-  'rw',
-  'postalCode',
-];
+export {FOREIGN_REGION_VALUE, FOREIGN_REGION_KEYS};
 
 /** Foreign citizen identified by PASSPORT - KITAS: the address is "Others" from Country onward. */
 export function isForeignAddress(s: any) {

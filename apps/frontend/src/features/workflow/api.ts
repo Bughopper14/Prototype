@@ -1,3 +1,5 @@
+import type {ApplicationsPage} from '@/shared/ui/ApplicationsDialog';
+import type {TimelineVersion} from '@/shared/ui/VersionTimeline';
 /** Workflow setup API (administrators). The definition is edited as one object and saved whole (every save makes a new frozen copy). */
 import {api} from '@/shared/lib/api';
 
@@ -80,6 +82,39 @@ export const workflowApi = {
   /** Deletes the workflow; its frozen copies stay. */
   remove: (id: string): Promise<{removed: string}> => api(`/workflows/${id}`, 'DELETE'),
   /** The frozen copies of a workflow, newest first. */
-  history: (id: string): Promise<{id: string; freezeVersion: number; at: string; by: string | null; name: string; isLatest: boolean; applications: number}[]> =>
-    api(`/workflows/${id}/history`),
+  history: (id: string): Promise<WorkflowHistoryRow[]> => api(`/workflows/${id}/history`),
+  /** The log of one workflow, or (no id) of all workflows including the deleted ones. */
+  activity: (id?: string): Promise<WorkflowLogRow[]> => api(id ? `/workflows/${id}/activity` : '/workflows/activity'),
+  /** The applications running on one version (paged, searchable). */
+  versionApplications: (id: string, freezeId: string, q: string, page: number): Promise<ApplicationsPage> =>
+    api(`/workflows/${id}/history/${freezeId}/applications?q=${encodeURIComponent(q)}&page=${page}`),
+  /** What one frozen copy contained (read only). */
+  version: (id: string, freezeId: string): Promise<WorkflowVersion> => api(`/workflows/${id}/history/${freezeId}`),
 };
+
+export interface WorkflowVersion {
+  freeze: {id: string; freezeVersion: number; at: string; by: string | null; name: string; isLatest: boolean};
+  groups: {code: string; name: string; order: number}[];
+  stages: {code: string; groupCode: string; name: string; departmentCode: string | null; formCode: string | null; order: number}[];
+  fields: {stageCode: string; formCode: string; section: string; code: string; label: string; mandatory: boolean}[];
+  documents: {stageCode: string; code: string; name: string; isDefault: boolean; isMandatory: boolean}[];
+  previous: {id: string; freezeVersion: number} | null;
+  /** What changed against the version before it (null for the first version). */
+  changes: {kind: 'added' | 'removed' | 'changed'; area: string; label: string; detail?: string}[] | null;
+  approvals: {scope: string; groupCode: string | null; stageCode: string | null; sectionCode: string | null; documentCode: string | null; approvalCode: string; approvalName: string; approvalVersion: number | null; levels: string; levelList: {levelNo: number; authorityName: string; isPicMarketing: boolean}[]}[];
+}
+
+export interface WorkflowHistoryRow extends TimelineVersion {
+  name: string;
+  counts: {groups: number; stages: number; fields: number; documents: number; approvals: number};
+}
+
+export interface WorkflowLogRow {
+  code: string;
+  name: string | null;
+  action: 'CREATE' | 'EDIT' | 'RENAME' | 'ACTIVATE' | 'DEACTIVATE' | 'DELETE';
+  summary: string;
+  version: number | null;
+  by: string | null;
+  at: string;
+}

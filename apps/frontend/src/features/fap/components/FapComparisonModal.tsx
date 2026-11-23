@@ -185,9 +185,9 @@ export function FapComparisonModal({
             Physical FAP document verification confirmation:
             <ul style={{margin: '6px 0 0 18px', padding: 0}}>
               <li>
-                <strong>Approve Document:</strong> Will NOT alter system/database records. All discrepancies
-                are noted in Remarks, and Customer &amp; PIC sections will be locked before proceeding to
-                Pre-analysis.
+                <strong>Submit FAP Stage:</strong> Will NOT alter system/database records. All discrepancies
+                are noted in Remarks, Customer &amp; PIC sections are locked, and the approval of the stage
+                starts (the same as Submit).
               </li>
               <li>
                 <strong>Review Remarks:</strong> Closes modal and stays on the document to review or add
@@ -231,7 +231,7 @@ export function FapComparisonModal({
               borderColor: '#059669',
             }}
           >
-            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Approve Document (Lock
+            {busy ? <Loader2 size={14} className="spin" /> : <CheckCircle size={14} />} Submit FAP Stage (Lock
             Customer &amp; PIC)
           </button>
         </div>

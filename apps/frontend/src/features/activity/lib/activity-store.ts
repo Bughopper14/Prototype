@@ -81,7 +81,6 @@ export async function fetchApplicationActivities(applicationId: string): Promise
  */
 export async function recordSystemActivity(params: {
   applicationId?: string;
-  fapNumber?: string;
   companyName?: string;
   section: string;
   tabIndex: number;

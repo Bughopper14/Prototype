@@ -5,6 +5,7 @@ import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {Problem, ensure} from '../../core/domain';
 import {WorkflowFreezeRepository} from './workflow-freeze.repository';
+import {diffVersions, summarize, type VersionContent} from './workflow-diff';
 import {DocumentsRepository} from '../documents/documents.repository';
 import {UsersApproversLookup} from './users-approvers.lookup';
 import {
@@ -196,11 +197,18 @@ export class WorkflowsService {
   /** A code that no workflow uses yet: the name as a code, with -2, -3... when it is taken. */
   private async freshWorkflowCode(conn: Conn, name: string) {
     const base = toCode(name) || 'WORKFLOW';
-    for (let n = 1; ; n++) {
-      const candidate = n === 1 ? base : `${base}-${n}`;
-      const [rows] = await conn.query<any[]>(`SELECT 1 FROM ${CRM.workflows} WHERE code=?`, [candidate.slice(0, 50)]);
-      if (!rows.length) return candidate.slice(0, 50);
+    for (let n = 1; n < 1000; n++) {
+      // the suffix is part of the 50 characters: cutting after adding it would give the same code again and again for a long name
+      const suffix = n === 1 ? '' : `-${n}`;
+      const candidate = base.slice(0, 50 - suffix.length).replace(/-+$/, '') + suffix;
+      // A code is taken for good: a deleted workflow leaves its versions and log behind, and a new one must not inherit them.
+      const [rows] = await conn.query<any[]>(
+        `SELECT 1 FROM ${CRM.workflows} WHERE code=? UNION ALL SELECT 1 FROM ${CRM.frozenWorkflows} WHERE source_workflow_code=? UNION ALL SELECT 1 FROM ${CRM.workflowLogs} WHERE workflow_code=?`,
+        [candidate, candidate, candidate],
+      );
+      if (!rows.length) return candidate;
     }
+    throw new Problem(409, 'There is no free code left for this workflow name; choose another name');
   }
 
   /** A new empty workflow (frozen right away). */
@@ -212,6 +220,7 @@ export class WorkflowsService {
       await conn.execute(`INSERT INTO ${CRM.workflows} (id,code,name,description,is_active,created_by) VALUES (?,?,?,?,0,?)`, [id, code, String(input.name).trim(), input.description || null, by]);
       await this.write(conn, code, emptyDefinition(), by);
       await this.freezes.freezeWorkflow(conn, code, by);
+      await this.freezes.logWorkflow(conn, code, String(input.name).trim(), 'CREATE', `Created the workflow ${String(input.name).trim()}`, by);
     });
     return this.get(id);
   }
@@ -227,6 +236,8 @@ export class WorkflowsService {
         id,
       ]);
       await this.freezes.freezeWorkflow(conn, row.code, by);
+      const nameNow = input.name === undefined ? row.name : String(input.name).trim();
+      await this.freezes.logWorkflow(conn, row.code, nameNow, 'RENAME', input.name !== undefined && nameNow !== row.name ? `Renamed ${row.name} to ${nameNow}` : `Changed the description of ${nameNow}`, by);
     });
     return this.get(id);
   }
@@ -267,6 +278,7 @@ export class WorkflowsService {
       await this.write(conn, code, def, by);
       await conn.execute(`UPDATE ${CRM.workflows} SET updated_by=?,updated_at=CURRENT_TIMESTAMP(3) WHERE id=?`, [by, id]);
       await this.freezes.freezeWorkflow(conn, code, by);
+      await this.freezes.logWorkflow(conn, code, row.name, 'EDIT', `Saved the workflow: ${def.groups.length} group${def.groups.length === 1 ? '' : 's'}, ${def.stages.length} stage${def.stages.length === 1 ? '' : 's'}, ${def.approvals.length} approval${def.approvals.length === 1 ? '' : 's'}`, by);
     });
     return this.get(id);
   }
@@ -399,8 +411,10 @@ export class WorkflowsService {
       const row = await this.lockWorkflow(conn, id);
       ensure(!row.is_active, 'This workflow is already active', 409);
       ensure(await this.freezes.latestWorkflowFreezeId(row.code, conn), 'This workflow has no freeze yet. Save it first.', 409);
+      const [[was]] = await conn.query<any[]>(`SELECT name FROM ${CRM.workflows} WHERE is_active=1 LIMIT 1`);
       await conn.execute(`UPDATE ${CRM.workflows} SET is_active=0 WHERE is_active=1`);
       await conn.execute(`UPDATE ${CRM.workflows} SET is_active=1,updated_by=? WHERE id=?`, [by, id]);
+      await this.freezes.logWorkflow(conn, row.code, row.name, 'ACTIVATE', was ? `Set active (new applications start here now; before: ${was.name})` : 'Set active (new applications start here now)', by);
     });
     return this.get(id);
   }
@@ -411,30 +425,118 @@ export class WorkflowsService {
       const row = await this.lockWorkflow(conn, id);
       ensure(row.is_active, 'Only the active workflow can be switched off', 409);
       await conn.execute(`UPDATE ${CRM.workflows} SET is_active=0,updated_by=? WHERE id=?`, [by, id]);
+      await this.freezes.logWorkflow(conn, row.code, row.name, 'DEACTIVATE', 'Switched off (no new application can start until a workflow is set active)', by);
     });
     return this.get(id);
   }
 
   /** Deletes the master workflow. Its freezes stay (frozen tables have no foreign keys), so applications on them keep running. */
-  async remove(id: string) {
+  async remove(id: string, by: string | null = null) {
     await this.db.transaction(async conn => {
       const row = await this.lockWorkflow(conn, id);
       ensure(!row.is_active, 'The active workflow cannot be deleted. Set another workflow active first.', 409);
       await this.clear(conn, row.code);
       await conn.execute(`DELETE FROM ${CRM.workflows} WHERE id=?`, [id]);
+      await this.freezes.logWorkflow(conn, row.code, row.name, 'DELETE', `Deleted the workflow ${row.name} (its versions and the applications on them stay)`, by);
     });
     return {removed: id};
   }
 
-  /** The freezes of a workflow, newest first (every create or edit made one). */
+  /** The versions of a workflow, newest first: when, by whom, what changed against the version before it, and the applications on each. */
   async history(id: string) {
     const {workflow} = await this.get(id);
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT f.id,f.freeze_version,f.frozen_at,f.frozen_by_name,f.name,f.is_latest_freeze,
-              (SELECT COUNT(*) FROM ${CRM.applications} a WHERE a.workflow_freeze_id=f.id AND a.deleted_at IS NULL) AS applications
-       FROM ${CRM.frozenWorkflows} f WHERE f.source_workflow_code=? ORDER BY f.freeze_version DESC`,
+      `SELECT id,freeze_version,frozen_at,frozen_by_name,name,is_latest_freeze FROM ${CRM.frozenWorkflows} WHERE source_workflow_code=? ORDER BY freeze_version ASC`,
       [workflow.code],
     );
-    return rows.map(r => ({id: r.id, freezeVersion: Number(r.freeze_version), at: r.frozen_at, by: r.frozen_by_name, name: r.name, isLatest: !!r.is_latest_freeze, applications: Number(r.applications)}));
+    const apps = await this.freezes.applicationsOn(rows.map(r => r.id));
+    const out = [];
+    let before: VersionContent | null = null;
+    for (const r of rows) {
+      const content = await this.versionContent(r);
+      const changes = before ? diffVersions(before, content) : null;
+      before = content;
+      const used = apps.get(r.id) ?? {total: 0, items: []};
+      out.push({
+        id: r.id,
+        freezeVersion: Number(r.freeze_version),
+        at: r.frozen_at,
+        by: r.frozen_by_name,
+        name: r.name,
+        isLatest: !!r.is_latest_freeze,
+        action: changes ? 'EDITED' : 'CREATED',
+        changes,
+        summary: summarize(changes),
+        counts: {groups: content.groups.length, stages: content.stages.length, fields: content.fields.length, documents: content.documents.length, approvals: content.approvals.length},
+        applications: used.total,
+        applicationList: used.items,
+      });
+    }
+    return out.reverse();
+  }
+
+  /** What one freeze of a workflow contained and what changed against the version before it (read from the frozen tables only). */
+  async version(id: string, freezeId: string) {
+    const {workflow} = await this.get(id);
+    const heads = async (sql: string, p: unknown[]) => (await this.db.pool.query<any[]>(sql, p))[0];
+    const [head] = await heads(`SELECT id,freeze_version,frozen_at,frozen_by_name,name,is_latest_freeze FROM ${CRM.frozenWorkflows} WHERE id=? AND source_workflow_code=?`, [freezeId, workflow.code]);
+    if (!head) throw new Problem(404, 'That version does not belong to this workflow.');
+    const [before] = await heads(
+      `SELECT id,freeze_version,frozen_at,frozen_by_name,name,is_latest_freeze FROM ${CRM.frozenWorkflows} WHERE source_workflow_code=? AND freeze_version<? ORDER BY freeze_version DESC LIMIT 1`,
+      [workflow.code, head.freeze_version],
+    );
+    const content = await this.versionContent(head);
+    return {...content, previous: before ? {id: before.id, freezeVersion: Number(before.freeze_version)} : null, changes: before ? diffVersions(await this.versionContent(before), content) : null};
+  }
+
+  private async versionContent(head: any): Promise<VersionContent & {freeze: any; stages: any[]; fields: any[]}> {
+    const freezeId = head.id;
+    const q = async (sql: string) => (await this.db.pool.query<any[]>(sql, [freezeId]))[0];
+    const groups = await q(`SELECT code,name,sort_order FROM ${CRM.frozenWorkflowStageGroups} WHERE workflow_freeze_id=? ORDER BY sort_order,name`);
+    const stages = await q(`SELECT code,group_code,name,department_code,form_code,sort_order FROM ${CRM.frozenWorkflowStages} WHERE workflow_freeze_id=? ORDER BY sort_order,name`);
+    const fields = await q(
+      `SELECT sf.stage_code,sf.is_mandatory,sf.form_field_code AS code,ff.label,ff.form_code,fs.name AS section_name FROM ${CRM.frozenWorkflowStageFields} sf
+       LEFT JOIN ${CRM.masterFormFields} ff ON ff.code=sf.form_field_code LEFT JOIN ${CRM.masterFormSections} fs ON fs.code=ff.section_code WHERE sf.workflow_freeze_id=? ORDER BY sf.stage_code,ff.sort_order`,
+    );
+    const documents = await q(
+      `SELECT sd.stage_code,sd.document_code,sd.is_default,sd.is_mandatory,t.name FROM ${CRM.frozenWorkflowStageDocuments} sd
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.code=sd.document_code WHERE sd.workflow_freeze_id=? ORDER BY sd.sort_order`,
+    );
+    const approvals = await q(
+      `SELECT a.approval_freeze_id,a.scope_type,a.group_code,a.stage_code,a.section_code,a.document_code,a.approval_code,fa.name AS approval_name,fa.freeze_version AS approval_version,
+              (SELECT GROUP_CONCAT(CONCAT(l.level_no,': ',IF(l.is_pic_marketing=1,'PIC Marketing',l.authority_name)) ORDER BY l.level_no SEPARATOR '; ') FROM ${CRM.frozenApprovalLevels} l WHERE l.approval_freeze_id=a.approval_freeze_id) AS levels
+       FROM ${CRM.frozenWorkflowApprovalAssignments} a LEFT JOIN ${CRM.frozenApprovals} fa ON fa.id=a.approval_freeze_id WHERE a.workflow_freeze_id=? ORDER BY a.scope_type,a.code`,
+    );
+    const approvalIds = [...new Set(approvals.map(a => a.approval_freeze_id as string))];
+    const levelRows = approvalIds.length
+      ? (await this.db.pool.query<any[]>(`SELECT approval_freeze_id,level_no,authority_name,is_pic_marketing FROM ${CRM.frozenApprovalLevels} WHERE approval_freeze_id IN (${approvalIds.map(() => '?').join(',')}) ORDER BY level_no,is_pic_marketing,authority_name`, approvalIds))[0]
+      : [];
+    return {
+      freeze: {id: head.id, freezeVersion: Number(head.freeze_version), at: head.frozen_at, by: head.frozen_by_name, name: head.name, isLatest: !!head.is_latest_freeze},
+      groups: groups.map(g => ({code: g.code, name: g.name, order: Number(g.sort_order)})),
+      stages: stages.map(s => ({code: s.code, groupCode: s.group_code, name: s.name, departmentCode: s.department_code, formCode: s.form_code, order: Number(s.sort_order)})),
+      fields: fields.map(f => ({stageCode: f.stage_code, formCode: f.form_code, section: f.section_name ?? '', code: f.code, label: f.label ?? f.code, mandatory: !!f.is_mandatory})),
+      documents: documents.map(d => ({stageCode: d.stage_code, code: d.document_code, name: d.name ?? d.document_code, isDefault: !!d.is_default, isMandatory: !!d.is_mandatory})),
+      approvals: approvals.map(a => ({scope: a.scope_type, groupCode: a.group_code, stageCode: a.stage_code, sectionCode: a.section_code, documentCode: a.document_code, approvalCode: a.approval_code, approvalName: a.approval_name ?? a.approval_code, approvalVersion: a.approval_version == null ? null : Number(a.approval_version), levels: a.levels ?? '', levelList: levelRows.filter(l => l.approval_freeze_id === a.approval_freeze_id).map(l => ({levelNo: Number(l.level_no), authorityName: l.authority_name ?? '', isPicMarketing: !!l.is_pic_marketing}))})),
+    };
+  }
+
+  /** The applications running on one version of a workflow (paged, searchable). */
+  async versionApplications(id: string, freezeId: string, search: string, page: number) {
+    const {workflow} = await this.get(id);
+    const [[head]] = await this.db.pool.query<any[]>(`SELECT id FROM ${CRM.frozenWorkflows} WHERE id=? AND source_workflow_code=?`, [freezeId, workflow.code]);
+    if (!head) throw new Problem(404, 'That version does not belong to this workflow.');
+    return this.freezes.applicationsPage([freezeId], search, page);
+  }
+
+  /** The log of workflows: every create, save, rename, activation and deletion, newest first. One workflow (by id) or all of them (also the deleted ones). */
+  async activity(id?: string) {
+    let code: string | null = null;
+    if (id) code = (await this.get(id)).workflow.code;
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT workflow_code,workflow_name,action,summary,freeze_version,actor_name,acted_at FROM ${CRM.workflowLogs}${code ? ' WHERE workflow_code=?' : ''} ORDER BY acted_at DESC,id LIMIT 500`,
+      code ? [code] : [],
+    );
+    return rows.map(r => ({code: r.workflow_code as string, name: r.workflow_name as string | null, action: r.action as string, summary: r.summary as string, version: r.freeze_version == null ? null : Number(r.freeze_version), by: r.actor_name as string | null, at: r.acted_at as string}));
   }
 }

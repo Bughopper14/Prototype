@@ -124,15 +124,15 @@ export class ApprovalsRepository {
 
   /* ---------- the template: the approvals a workflow points at (assignments) and their levels (master approval) ---------- */
 
-  private readonly templateSelect = `SELECT a.id,a.freeze_id AS workflow_freeze_id,a.code,a.scope_type,a.group_code,a.stage_code,
+  private readonly templateSelect = `SELECT a.id,a.workflow_freeze_id AS workflow_freeze_id,a.code,a.scope_type,a.group_code,a.stage_code,
             a.document_code,a.section_code,a.approval_code,ap.name AS approval_name,l.level_no,COALESCE(l.authority_name,'PIC Marketing') AS authority_name,l.is_pic_marketing
      FROM ${CRM.frozenWorkflowApprovalAssignments} a
      JOIN ${CRM.frozenApprovals} ap ON ap.id=a.approval_freeze_id
-     JOIN ${CRM.frozenApprovalLevels} l ON l.freeze_id=a.approval_freeze_id`;
+     JOIN ${CRM.frozenApprovalLevels} l ON l.approval_freeze_id=a.approval_freeze_id`;
 
   async templatesOf(workflowFreezeId: string, conn: Conn = this.db.pool): Promise<TemplateStep[]> {
     const [rows] = await conn.execute<any[]>(
-      `${this.templateSelect} WHERE a.freeze_id=? ORDER BY a.scope_type,a.code,l.level_no,l.is_pic_marketing,l.authority_name`,
+      `${this.templateSelect} WHERE a.workflow_freeze_id=? ORDER BY a.scope_type,a.code,l.level_no,l.is_pic_marketing,l.authority_name`,
       [workflowFreezeId],
     );
     return rows.map(template);
@@ -149,7 +149,7 @@ export class ApprovalsRepository {
             ? ['a.stage_code=? AND a.section_code=?', [scope.stageCode ?? null, scope.sectionCode ?? null]]
             : ['a.stage_code=? AND a.document_code=?', [scope.stageCode ?? null, scope.documentCode ?? null]];
     const [rows] = await conn.execute<any[]>(
-      `${this.templateSelect} WHERE a.freeze_id=? AND a.scope_type=? AND ${where[0]} ORDER BY l.level_no,l.is_pic_marketing,l.authority_name`,
+      `${this.templateSelect} WHERE a.workflow_freeze_id=? AND a.scope_type=? AND ${where[0]} ORDER BY l.level_no,l.is_pic_marketing,l.authority_name`,
       [workflowFreezeId, scope.type, ...(where[1] as (string | null)[])],
     );
     return rows.map(template);

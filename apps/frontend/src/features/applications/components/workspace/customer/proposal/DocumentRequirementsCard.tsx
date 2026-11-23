@@ -4,7 +4,7 @@ import {useMasterData} from '@/shared/master-data';
 import {FolderCheck} from 'lucide-react';
 
 export function DocumentRequirementsCard() {
-  const {draft, setDraft, handleTriggerFieldSync, canFinance} = useWorkspace();
+  const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
   // The requirements, their labels and sheet cells come from Master Data (crm_master_fap_document_requirements).
   const master = useMasterData();
   return (
@@ -66,7 +66,7 @@ export function DocumentRequirementsCard() {
                 borderRadius: '6px',
                 border: isChecked ? '1px solid #93c5fd' : '1px solid #e2e8f0',
                 background: isChecked ? '#eff6ff' : '#f8fafc',
-                cursor: canFinance ? 'pointer' : 'default',
+                cursor: canProposal ? 'pointer' : 'default',
                 transition: 'all 0.15s ease',
               }}
               onFocus={() => handleTriggerFieldSync(docItem.cell, 'proposal')}
@@ -75,8 +75,8 @@ export function DocumentRequirementsCard() {
               <input
                 type="checkbox"
                 checked={isChecked}
-                disabled={!canFinance}
-                style={{marginTop: '2px', cursor: canFinance ? 'pointer' : 'default'}}
+                disabled={!canProposal}
+                style={{marginTop: '2px', cursor: canProposal ? 'pointer' : 'default'}}
                 onChange={e => {
                   const checked = e.target.checked;
                   setDraft((prev: any) => ({

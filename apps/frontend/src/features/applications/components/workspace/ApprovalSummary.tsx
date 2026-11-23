@@ -66,19 +66,6 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
     window.scrollTo({top: 0, behavior: 'smooth'});
   };
 
-  const company = (
-    <Facts
-      rows={[
-        ['Company', a.customer?.companyName],
-        ['NPWP', a.customer?.npwp],
-        ['NIB', a.customer?.nib],
-        ['Address', a.companyAddress],
-        ['Main business', a.mainBusiness],
-        ['Years of experience', a.experienceYears !== undefined ? `${a.experienceYears} years ${a.experienceMonths ?? 0} months` : null],
-      ]}
-    />
-  );
-
   const docList = (list: any[]) =>
     list.length ? (
       <ul className="ap-sum-list">
@@ -87,7 +74,7 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
             <FileText size={14} />
             <span>
               {d.documentName}
-              {d.isMandatory && <b className="ap-req"> · required</b>}
+              {d.isMandatory && <span className="ap-req">Required</span>}
             </span>
             <em>
               {DOC_STATUS[d.status] ?? d.status}
@@ -131,8 +118,7 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
     const notDone = mine.filter(d => d.isMandatory && (d.approval ? d.status !== 'VERIFIED' : !(d.files || []).length));
     return (
       <div className="ap-summary">
-        <b>{stage?.name ?? 'The stage'}: what was submitted</b>
-        {company}
+        <b>{stage?.name ?? 'The stage'}</b>
         <b>Documents of this stage</b>
         {docList(mine)}
         {notDone.length > 0 && (
@@ -177,7 +163,6 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
             This group cannot be approved yet: every stage in it must be approved first ({inGroup.filter(st => !progress.find(x => x.stage === st.code)?.completed).map(st => st.name).join(', ')}).
           </p>
         )}
-        {company}
       </div>
     );
   }

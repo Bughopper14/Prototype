@@ -206,7 +206,7 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'd
                             catalog={catalog}
                             locked={locked}
                             target={sectionTarget}
-                            title={`Approval of this section${approvalSection.isRepeating ? ' (once per row, for example each deed)' : ''}`}
+                            title={`Approval of this section${approvalSection.isRepeating ? ' (once per row)' : ''}`}
                           />
                         )}
                         <div className="wf-field-grid">

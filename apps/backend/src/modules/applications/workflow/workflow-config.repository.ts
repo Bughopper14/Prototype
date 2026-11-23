@@ -53,8 +53,8 @@ export class WorkflowConfigRepository {
     if (!h) throw new Problem(404, 'Workflow not found');
     const [rows] = await this.db.pool.query<any[]>(
       `SELECT s.code,s.name,s.department_code,s.sort_order,s.form_code,g.name AS group_name,g.code AS group_code,g.sort_order AS group_order
-       FROM ${CRM.frozenWorkflowStages} s JOIN ${CRM.frozenWorkflowStageGroups} g ON g.freeze_id=s.freeze_id AND g.code=s.group_code
-       WHERE s.freeze_id=?
+       FROM ${CRM.frozenWorkflowStages} s JOIN ${CRM.frozenWorkflowStageGroups} g ON g.workflow_freeze_id=s.workflow_freeze_id AND g.code=s.group_code
+       WHERE s.workflow_freeze_id=?
        ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
       [freezeId],
     );

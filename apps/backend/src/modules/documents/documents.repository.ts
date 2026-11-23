@@ -51,14 +51,14 @@ export class DocumentsRepository {
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
          (id,application_id,workflow_freeze_id,stage_code,document_type_id,document_code,source_type,override_id,assigned_role,
           created_by)
-       SELECT UUID(),?,sd.freeze_id,sd.stage_code,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),o.id,
+       SELECT UUID(),?,sd.workflow_freeze_id,sd.stage_code,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),o.id,
               COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.frozenWorkflowStageDocuments} sd
-       JOIN ${CRM.frozenWorkflowStages} st ON st.freeze_id=sd.freeze_id AND st.code=sd.stage_code
+       JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=sd.workflow_freeze_id AND st.code=sd.stage_code
        JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o
               ON o.application_id=? AND o.stage_code=sd.stage_code AND o.document_code=sd.document_code AND o.document_type_id IS NULL AND o.custom_name IS NULL AND o.is_active=1
-       WHERE sd.freeze_id=?
+       WHERE sd.workflow_freeze_id=?
          AND ((sd.is_default=1 AND (o.id IS NULL OR o.action<>'REMOVE')) OR (sd.is_default=0 AND o.action='ADD'))`,
       [applicationId, by, applicationId, workflowFreezeId],
     );
@@ -68,7 +68,7 @@ export class DocumentsRepository {
        SELECT UUID(),o.application_id,o.workflow_freeze_id,o.stage_code,o.document_type_id,o.document_code,'ADDED',o.id,
               COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.applicationDocumentOverrides} o
-       JOIN ${CRM.frozenWorkflowStages} st ON st.freeze_id=o.workflow_freeze_id AND st.code=o.stage_code
+       JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=o.workflow_freeze_id AND st.code=o.stage_code
        WHERE o.application_id=? AND o.action='ADD' AND o.is_active=1 AND (o.document_type_id IS NOT NULL OR o.custom_name IS NOT NULL)`,
       [by, applicationId],
     );
@@ -106,7 +106,7 @@ export class DocumentsRepository {
       `SELECT sd.stage_code,t.code,t.name,sd.is_mandatory
        FROM ${CRM.frozenWorkflowStageDocuments} sd
        JOIN ${CRM.masterDocumentTypes} t ON t.id=sd.document_type_id
-       WHERE sd.freeze_id=? AND sd.is_default=0
+       WHERE sd.workflow_freeze_id=? AND sd.is_default=0
          AND NOT EXISTS (SELECT 1 FROM ${CRM.applicationDocumentOverrides} o
                          WHERE o.application_id=? AND o.stage_code=sd.stage_code AND o.document_code=sd.document_code AND o.document_type_id IS NULL AND o.custom_name IS NULL AND o.is_active=1)
        ORDER BY sd.stage_code,sd.sort_order`,
@@ -115,7 +115,7 @@ export class DocumentsRepository {
     const [masters] = await this.db.pool.execute<any[]>(
       `SELECT t.code,t.name FROM ${CRM.masterDocumentTypes} t
        WHERE NOT EXISTS (SELECT 1 FROM ${CRM.frozenWorkflowStageDocuments} sd
-                         WHERE sd.freeze_id=? AND sd.document_type_id=t.id)
+                         WHERE sd.workflow_freeze_id=? AND sd.document_type_id=t.id)
          AND NOT EXISTS (SELECT 1 FROM ${CRM.applicationDocumentOverrides} o
                          WHERE o.application_id=? AND o.document_type_id=t.id AND o.is_active=1)
        ORDER BY t.sort_order`,
@@ -179,14 +179,14 @@ export class DocumentsRepository {
       userName: string;
     },
   ) {
-    const [stage] = await conn.execute<any[]>(`SELECT code FROM ${CRM.frozenWorkflowStages} WHERE code=? AND freeze_id=?`, [o.stageCode, o.workflowFreezeId]);
+    const [stage] = await conn.execute<any[]>(`SELECT code FROM ${CRM.frozenWorkflowStages} WHERE code=? AND workflow_freeze_id=?`, [o.stageCode, o.workflowFreezeId]);
     ensure(stage.length, 'Stage does not belong to the workflow of this application', 422);
     const wsdCode = o.workflowDocumentCode || null;
     let typeId: string | null = null;
     let sd: any = null;
     if (wsdCode) {
       const [rows] = await conn.execute<any[]>(
-        `SELECT * FROM ${CRM.frozenWorkflowStageDocuments} WHERE freeze_id=? AND stage_code=? AND document_code=?`,
+        `SELECT * FROM ${CRM.frozenWorkflowStageDocuments} WHERE workflow_freeze_id=? AND stage_code=? AND document_code=?`,
         [o.workflowFreezeId, o.stageCode, wsdCode],
       );
       sd = rows[0];
@@ -218,6 +218,13 @@ export class DocumentsRepository {
     } else {
       ensure(String(o.customName || '').trim(), 'Give the document a name', 422);
       ensure(o.departmentCode, 'Choose the department responsible for the document', 422);
+      // the same name twice in one stage is the same document: refused like the master and workflow documents are
+      const [same] = await conn.execute<any[]>(
+        `SELECT id FROM ${CRM.applicationDocumentOverrides}
+         WHERE application_id=? AND stage_code=? AND action='ADD' AND is_active=1 AND LOWER(TRIM(custom_name))=LOWER(?)`,
+        [o.applicationId, o.stageCode, String(o.customName).trim()],
+      );
+      ensure(!same.length, 'A document with this name is already on the checklist of the stage', 409);
     }
     // one live customisation per document of a stage (the old unique key on the workflow document did this)
     const docCode = wsdCode ?? o.documentCode ?? null;
@@ -288,10 +295,10 @@ export class DocumentsRepository {
       `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,
               s.code AS stage_code,s.name AS stage_name,${MANDATORY} AS is_mandatory
        FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.frozenWorkflowStages} s ON s.freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
+       JOIN ${CRM.frozenWorkflowStages} s ON s.workflow_freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
-       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
        WHERE c.application_id=? ORDER BY COALESCE(t.sort_order,100000),c.created_at`,
       [applicationId],
     );
@@ -343,7 +350,7 @@ export class DocumentsRepository {
        FROM ${CRM.applicationDocumentFiles} f
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       LEFT JOIN ${CRM.frozenWorkflowStages} s ON s.freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
+       LEFT JOIN ${CRM.frozenWorkflowStages} s ON s.workflow_freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
        WHERE f.application_id=? AND f.deleted_at IS NULL
        ORDER BY t.sort_order,f.version_number,f.uploaded_at`,
       [applicationId],
@@ -408,6 +415,13 @@ export class DocumentsRepository {
     );
     ensure(rows.length, 'File not found in this application', 404);
     const checklistId = rows[0].checklist_id;
+    // a document in verification or already verified keeps its file: deleting it would leave an approval about nothing
+    const [state] = await conn.execute<any[]>(`SELECT status FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [checklistId]);
+    const [running] = await conn.execute<any[]>(
+      `SELECT 1 FROM ${CRM.applicationApprovalSteps} WHERE document_checklist_id=? AND status IN ('PENDING','WAITING') LIMIT 1`,
+      [checklistId],
+    );
+    ensure(!running.length && state[0]?.status !== 'VERIFIED', 'The file of a document that is being verified, or is verified, cannot be deleted', 409);
     await conn.execute(
       `UPDATE ${CRM.applicationDocumentFiles} SET deleted_at=CURRENT_TIMESTAMP(3),is_current_active=0,updated_by=? WHERE id=?`,
       [by, fileId],
@@ -462,12 +476,12 @@ export class DocumentsRepository {
     const [rows] = await this.db.pool.query<any[]>(
       `SELECT c.id AS checklist_id,c.application_id,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
               COALESCE(t.name,o.custom_name) AS document_name,c.assigned_role,
-              ${MANDATORY} AS is_mandatory,c.status,p.fap_registration_number AS fap_number,p.company_name,
+              ${MANDATORY} AS is_mandatory,c.status,p.company_name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS file_count
        FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
-       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
        JOIN ${CRM.applications} a ON a.id=c.application_id AND a.deleted_at IS NULL
        LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
        ORDER BY CASE c.status WHEN 'REJECTED' THEN 0 WHEN 'PENDING' THEN 1 WHEN 'UPLOADED' THEN 2 ELSE 3 END,

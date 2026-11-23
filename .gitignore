@@ -62,3 +62,19 @@ storage/CRM_User_Management_Prefix_Specification_v3.xlsx
 
 # test build output of the isolated UAT stack
 apps/backend/.dist-fulltest/
+
+# Tests, build output and local scripts
+FULL TEST/
+FULL TEST backup/
+test/
+tests/
+__tests__/
+*.test.*
+*.spec.*
+dist/
+dist-*/
+scripts/
+
+# Editor settings and runtime storage
+.vscode/
+apps/backend/storage/

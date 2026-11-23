@@ -86,7 +86,6 @@ export function useApplicationWorkspace({
   const isPreAnalysis = isPreAnalysisApplication(a);
   const resolvedInitialTab = initialTab === 0 && isPreAnalysis ? 8 : (initialTab ?? 0);
   const [activeStage, setActiveStage] = useState<string>(() => initialStage(a));
-  const [submitFapConfirm, setSubmitFapConfirm] = useState(false);
   const [reviewDeedId, setReviewDeedId] = useState<string | null>(null);
   // "Edit" asked from the review dialog: the Legal editor opens that deed (or its stakeholder list)
   const [editRequest, setEditRequest] = useState<{id: string; what: 'deed' | 'stakeholders'} | null>(null);
@@ -292,11 +291,7 @@ export function useApplicationWorkspace({
     onChange,
     notify,
     setBusy,
-    setError,
     setDraft,
-    setActiveStage,
-    setTab,
-    setSubmitFapConfirm,
     setFapComparisonModal,
   });
 
@@ -351,8 +346,6 @@ export function useApplicationWorkspace({
     resolvedInitialTab,
     activeStage,
     setActiveStage,
-    submitFapConfirm,
-    setSubmitFapConfirm,
     reviewDeedId,
     setReviewDeedId,
     editRequest,
@@ -416,7 +409,6 @@ export function useApplicationWorkspace({
     liveNibDate,
     liveDetailFapData,
     ...access,
-    submitFapStage: approval.submitFapStage,
     localActivities,
     setLocalActivities,
     localReadIds,

@@ -149,7 +149,7 @@ export class ApplicationsRepository {
            (id,application_id,workflow_freeze_id,stage_code,is_locked,submitted_at,completed_at,created_by)
          SELECT ?,?,a.workflow_freeze_id,s.code,?,${values.submitted ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},
                 ${values.completed ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},?
-         FROM ${CRM.frozenWorkflowStages} s JOIN ${CRM.applications} a ON a.workflow_freeze_id=s.freeze_id AND a.id=? WHERE s.code=?`,
+         FROM ${CRM.frozenWorkflowStages} s JOIN ${CRM.applications} a ON a.workflow_freeze_id=s.workflow_freeze_id AND a.id=? WHERE s.code=?`,
         [crypto.randomUUID(), applicationId, values.isLocked ? 1 : 0, actor.username || null, applicationId, stageCode],
       );
       return;

@@ -113,7 +113,7 @@ export class LegalService {
       },
       actor,
     );
-    const where = `${a.fapNumber} · ${a.companyName || ''} · Akta ${deed.deedNumber}`;
+    const where = [a.companyName, `Akta ${deed.deedNumber}`].filter(Boolean).join(' · ');
     // The deed was reviewed: the user who submitted it acts next.
     if (body.action !== 'SUBMIT' && deed.review?.submittedBy)
       await notifyUsers([deed.review.submittedBy], actor, {

@@ -7,10 +7,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
   FileText,
   History,
   ListChecks,
@@ -21,13 +17,16 @@ import {
   ShieldCheck,
   Trash2,
   XCircle,
+  Zap,
 } from 'lucide-react';
 import {Fragment, useCallback, useEffect, useState} from 'react';
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {hasAuthority} from '@/shared/lib/auth';
 import {Modal} from '@/shared/ui/Modal';
+import {WorkflowHistory} from '../WorkflowHistory';
 import {workflowApi, type Catalog, type Definition, type Group, type Issue, type Stage, type WorkflowHeader} from '../api';
-import {canMove, moveGroup, moveStage, removePart, runsTogether, setGroupTogether, setStageTogether, sortGroups, sortStages, stepsOf, tempKey} from '../definition-ops';
+import {placeGroup, placeStage, removePart, sortGroups, sortStages, stepsOf, tempKey, type Placement} from '../definition-ops';
+import {MoveMenu} from './MoveMenu';
 import {GROUP_COLORS} from '../palette';
 import {ApprovalList} from './ApprovalList';
 import {StagePanel, type StageTab} from './StagePanel';
@@ -113,7 +112,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
       const check = await workflowApi.validate(id);
       setIssues(check.issues);
       if (!check.ok) return notify('Fix the problems shown first');
-      if (!(await confirmAsk({title: 'Set workflow active', message: `New applications will start in "${workflow.name}". Applications that are already running keep the frozen copy they started with, and the current active workflow is switched off.`, confirmLabel: 'Set active', icon: 'power'}))) return;
+      if (!(await confirmAsk({title: 'Set workflow active', message: `New applications will start in "${workflow.name}". Applications that are already running keep the version they started with, and the current active workflow is switched off.`, confirmLabel: 'Set active', icon: 'power'}))) return;
       await workflowApi.activate(id);
       notify(`${workflow.name} is now active`);
       await load();
@@ -196,8 +195,8 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
           </div>
         </div>
         <span className="wf-spacer" />
-        <span className="wf-info" title="The newest frozen copy and the number of applications that run on this workflow">
-          <span>Frozen #{workflow.freezeVersion ?? 0}</span>
+        <span className="wf-info" title="The newest version and the number of applications that run on this workflow">
+          <span>v{workflow.freezeVersion ?? 0}</span>
           <span>{workflow.applications ?? 0} application{workflow.applications === 1 ? '' : 's'}</span>
         </span>
         <button className="wf-btn" onClick={openHistory}>
@@ -272,7 +271,11 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
               <section className="wf-step">
                 <header className="wf-step-head">
                   <span className="wf-step-no">Step {si + 1}</span>
-                  {step.groups.length > 1 && <em>{step.groups.length} groups run together</em>}
+                  {step.groups.length > 1 && (
+                    <em title={`${step.groups.length} groups run at the same time`}>
+                      <Zap size={13} /> together
+                    </em>
+                  )}
                 </header>
                 {step.groups.map(group => {
                   const stages = sortStages(def.stages.filter(s => s.groupKey === group.key));
@@ -292,29 +295,12 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                       </div>
                       {!locked && (
                         <div className="wf-group-tools">
-                          <button className="wf-chip" disabled={!canMove(def.groups, group.key, -1)} onClick={() => setDef(moveGroup(def, group.key, -1))} title="Swap places with the group before">
-                            <ChevronLeft size={16} /> Earlier
-                          </button>
-                          <button className="wf-chip" disabled={!canMove(def.groups, group.key, 1)} onClick={() => setDef(moveGroup(def, group.key, 1))} title="Swap places with the group after">
-                            Later <ChevronRight size={16} />
-                          </button>
-                          {groupIndex.get(group.key) !== 0 && (
-                            <select
-                              className="wf-chip"
-                              value={runsTogether(def.groups, group.key) ? 'with' : 'after'}
-                              onChange={e => setDef(setGroupTogether(def, group.key, e.target.value === 'with'))}
-                              aria-label="When this group runs"
-                            >
-                              <option value="after">Runs after the group before</option>
-                              <option value="with">Runs together with the group before</option>
-                            </select>
-                          )}
+                          <MoveMenu items={def.groups} itemKey={group.key} noun="group" onPlace={(to: Placement) => setDef(placeGroup(def, group.key, to))} />
                         </div>
                       )}
 
                       <div className="wf-stages">
                         {stages.map(stage => {
-                          const together = stages.filter(s => s.order === stage.order).length > 1;
                           return (
                             <div className={`wf-stage ${stage.departmentCode ? '' : 'incomplete'}`} key={stage.key}>
                               <div className="wf-stage-top">
@@ -332,27 +318,10 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
                               <button type="button" className="wf-stage-meta" onClick={() => setPanel({key: stage.key, tab: 'details'})} title="Open the details of this stage">
                                 <span className={stage.departmentCode ? '' : 'wf-missing-text'}>{stage.departmentCode ? (catalog.departments.find(d => d.code === stage.departmentCode)?.name ?? stage.departmentCode) : 'Department needed'}</span>
                                 <span>{catalog.forms.find(f => f.code === stage.formCode)?.name ?? 'No form'}</span>
-                                {together && <em className="wf-together">runs together</em>}
                               </button>
                               {!locked && stages.length > 1 && (
                                 <div className="wf-group-tools">
-                                  <button className="wf-chip" disabled={!canMove(stages, stage.key, -1)} onClick={() => setDef(moveStage(def, stage.key, -1))} title="Swap places with the stage before">
-                                    <ChevronUp size={16} />
-                                  </button>
-                                  <button className="wf-chip" disabled={!canMove(stages, stage.key, 1)} onClick={() => setDef(moveStage(def, stage.key, 1))} title="Swap places with the stage after">
-                                    <ChevronDown size={16} />
-                                  </button>
-                                  {stages[0].key !== stage.key && (
-                                    <select
-                                      className="wf-chip"
-                                      value={runsTogether(stages, stage.key) ? 'with' : 'after'}
-                                      onChange={e => setDef(setStageTogether(def, stage.key, e.target.value === 'with'))}
-                                      aria-label="When this stage runs"
-                                    >
-                                      <option value="after">After the stage before</option>
-                                      <option value="with">Together with the stage before</option>
-                                    </select>
-                                  )}
+                                  <MoveMenu items={stages} itemKey={stage.key} noun="stage" onPlace={(to: Placement) => setDef(placeStage(def, stage.key, to))} />
                                 </div>
                               )}
                               <div className="wf-stage-actions three">
@@ -416,33 +385,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
 
       {history && (
         <Modal title="History" onClose={() => setHistory(null)} className="wf-history-modal">
-          <table className="wf-table">
-            <thead>
-              <tr>
-                <th>Frozen</th>
-                <th>When</th>
-                <th>By</th>
-                <th>Applications</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map(h => (
-                <tr key={h.id}>
-                  <td>#{h.freezeVersion}{h.isLatest ? ' (newest)' : ''}</td>
-                  <td>{new Date(h.at).toLocaleString('id-ID')}</td>
-                  <td>{h.by}</td>
-                  <td>{h.applications}</td>
-                </tr>
-              ))}
-              {!history.length && (
-                <tr>
-                  <td colSpan={4} className="muted">
-                    No history yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <WorkflowHistory workflowId={id} rows={history} />
         </Modal>
       )}
     </div>

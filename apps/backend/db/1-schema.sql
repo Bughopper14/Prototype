@@ -912,20 +912,20 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_workflows` (
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_groups` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `sort_order` int NOT NULL DEFAULT '0',
   `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frz_wf_group` (`freeze_id`,`code`)
+  UNIQUE KEY `uk_frz_wf_group` (`workflow_freeze_id`,`code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stages` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -934,27 +934,27 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stages` (
   `form_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `description` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frz_wf_stage` (`freeze_id`,`code`),
-  KEY `idx_frz_wf_stage_group` (`freeze_id`,`group_code`)
+  UNIQUE KEY `uk_frz_wf_stage` (`workflow_freeze_id`,`code`),
+  KEY `idx_frz_wf_stage_group` (`workflow_freeze_id`,`group_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_fields` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `form_field_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frz_wf_field` (`freeze_id`,`stage_code`,`form_field_code`)
+  UNIQUE KEY `uk_frz_wf_field` (`workflow_freeze_id`,`stage_code`,`form_field_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_documents` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `group_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `stage_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_type_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -963,14 +963,14 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_stage_documents` (
   `is_mandatory` tinyint(1) NOT NULL DEFAULT '0',
   `sort_order` int NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frz_wf_doc` (`freeze_id`,`stage_code`,`document_code`)
+  UNIQUE KEY `uk_frz_wf_doc` (`workflow_freeze_id`,`stage_code`,`document_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_approval_assignments` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(110) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `scope_type` enum('GROUP','STAGE','DOCUMENT','SECTION') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `section_code` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -980,7 +980,7 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_workflow_approval_assignments` (
   `approval_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `approval_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frz_wf_assign` (`freeze_id`,`code`),
+  UNIQUE KEY `uk_frz_wf_assign` (`workflow_freeze_id`,`code`),
   KEY `idx_frz_wf_assign_approval` (`approval_freeze_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1005,13 +1005,13 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_approvals` (
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_approval_levels` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `approval_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `level_no` int NOT NULL DEFAULT '1',
   `app_id` int DEFAULT NULL,
   `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_pic_marketing` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_frz_ap_level` (`freeze_id`,`level_no`,`authority_name`)
+  UNIQUE KEY `uk_frz_ap_level` (`approval_freeze_id`,`level_no`,`authority_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -1092,7 +1092,7 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_applications` (
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_bank_facilities` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `row_position` int NOT NULL DEFAULT '0',
   `institution_code` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1106,30 +1106,30 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_bank_facilities` (
   `facility_status` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `comments` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_bank_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_bank_facilities_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_bank_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_bank_facilities_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_doc_requirements` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `requirement_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `param_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `requirement_label` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_checked` tinyint(1) NOT NULL DEFAULT '0',
   PRIMARY KEY (`id`),
-  KEY `idx_frz_docreq_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_doc_requirements_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_docreq_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_doc_requirements_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_document_checklists` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1142,15 +1142,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_document_checklists` (
   `active_file_uploaded_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `active_file_uploaded_at` timestamp(3) NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_doc_chk_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_document_checklists_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_doc_chk_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_document_checklists_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_equipment_units` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `row_position` int NOT NULL DEFAULT '0',
   `unit_category_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1168,15 +1168,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_equipment_units` (
   `unit_year` smallint unsigned DEFAULT NULL,
   `specifications` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_eq_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_equipment_units_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_eq_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_equipment_units_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financial_statements` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `fiscal_year` smallint unsigned NOT NULL,
   `is_audited` tinyint(1) NOT NULL DEFAULT '0',
@@ -1198,15 +1198,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financial_statements` (
   `debt_to_equity_ratio` decimal(18,6) DEFAULT NULL,
   `net_profit_margin_pct` decimal(18,6) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_fin_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_financial_statements_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_fin_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_financial_statements_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_proposals` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `facility_purpose_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `facility_purpose_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1232,15 +1232,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_proposals` (
   `realization_total_units` int NOT NULL DEFAULT '0',
   `proposal_notes` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_prop_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_financing_proposals_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_prop_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_financing_proposals_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_purposes` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `purpose_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `param_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1248,30 +1248,30 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_financing_purposes` (
   `group_label` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_selected` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`),
-  KEY `idx_frz_purp_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_financing_purposes_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_purp_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_financing_purposes_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deed_remark_categories` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `frozen_deed_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `category_code` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `category_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_drc_freeze` (`freeze_id`),
+  KEY `idx_frz_drc_freeze` (`fap_freeze_id`),
   KEY `idx_frz_drc_deed` (`frozen_deed_id`),
   CONSTRAINT `fk_frz_legal_deed_remark_categories_deed` FOREIGN KEY (`frozen_deed_id`) REFERENCES `crm_frozen_fap_legal_deeds` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `fk_frz_legal_deed_remark_categories_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  CONSTRAINT `fk_frz_legal_deed_remark_categories_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deeds` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_deed_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `deed_type` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1295,15 +1295,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_deeds` (
   `approved_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `approved_at` timestamp(3) NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_deed_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_legal_deeds_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_deed_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_legal_deeds_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_stakeholders` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `frozen_deed_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `representative_type_code` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1346,17 +1346,17 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_legal_stakeholders` (
   `is_inherited` tinyint(1) NOT NULL DEFAULT '0',
   `source_deed_number` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_stk_freeze` (`freeze_id`),
+  KEY `idx_frz_stk_freeze` (`fap_freeze_id`),
   KEY `idx_frz_stk_deed` (`frozen_deed_id`),
   CONSTRAINT `fk_frz_legal_stakeholders_deed` FOREIGN KEY (`frozen_deed_id`) REFERENCES `crm_frozen_fap_legal_deeds` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT,
-  CONSTRAINT `fk_frz_legal_stakeholders_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  CONSTRAINT `fk_frz_legal_stakeholders_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_ocr_discrepancies` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `section_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `field_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -1365,15 +1365,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_ocr_discrepancies` (
   `ocr_value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `resolution_status` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_ocr_diff_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_ocr_discrepancies_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_ocr_diff_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_ocr_discrepancies_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_primary_contacts` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `pic_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `position_code` varchar(80) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1390,15 +1390,15 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_primary_contacts` (
   `rw` varchar(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `current_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_pic_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_primary_contacts_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_pic_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_primary_contacts_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_frozen_fap_project_contracts` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `fap_freeze_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `source_application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `row_position` int NOT NULL DEFAULT '0',
   `project_owner` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1407,8 +1407,8 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_project_contracts` (
   `project_role_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `contract_status` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `idx_frz_proj_freeze` (`freeze_id`),
-  CONSTRAINT `fk_frz_project_contracts_freeze` FOREIGN KEY (`freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
+  KEY `idx_frz_proj_freeze` (`fap_freeze_id`),
+  CONSTRAINT `fk_frz_project_contracts_freeze` FOREIGN KEY (`fap_freeze_id`) REFERENCES `crm_frozen_fap_applications` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -2270,6 +2270,22 @@ CREATE TABLE IF NOT EXISTS `crm_workflow_stages` (
   CONSTRAINT `fk_wf_stage_form` FOREIGN KEY (`form_code`) REFERENCES `crm_master_forms` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_stage_group_code` FOREIGN KEY (`workflow_code`, `group_code`) REFERENCES `crm_workflow_stage_groups` (`workflow_code`, `code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_wf_stage_wf` FOREIGN KEY (`workflow_code`) REFERENCES `crm_workflows` (`code`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE IF NOT EXISTS `crm_workflow_logs` (
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `workflow_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `action` enum('CREATE','EDIT','RENAME','ACTIVATE','DEACTIVATE','DELETE') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `summary` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `freeze_version` int DEFAULT NULL,
+  `actor_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `acted_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_wf_logs_workflow` (`workflow_code`,`acted_at`),
+  KEY `idx_wf_logs_time` (`acted_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

@@ -8,6 +8,7 @@ import {FapOcrRepository} from '../fap/fap-ocr.repository';
 import {LegalRepository} from '../legal/legal.repository';
 import {ApplicationsController} from './applications.controller';
 import {ApplicationsService} from './applications.service';
+import {MktPicLookup} from './mkt-pic.lookup';
 import {ApplicationProfileRepository} from './repositories/application-profile.repository';
 import {ApplicationsRepository} from './repositories/applications.repository';
 import {FapSectionsRepository} from './repositories/fap-sections.repository';
@@ -20,6 +21,7 @@ import {WorkflowConfigRepository} from './workflow/workflow-config.repository';
   controllers: [ApplicationsController],
   providers: [
     ApplicationsService,
+    MktPicLookup,
     ApplicationsRepository,
     ApplicationProfileRepository,
     FapSectionsRepository,

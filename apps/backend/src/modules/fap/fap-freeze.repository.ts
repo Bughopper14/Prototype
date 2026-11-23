@@ -59,7 +59,7 @@ export class FapFreezeRepository {
     ensure(app, 'Application not found', 404);
     const version = num(app.latest_freeze_version) + 1;
     const freezeId = crypto.randomUUID();
-    const base = {freeze_id: freezeId, source_application_id: applicationId};
+    const base = {fap_freeze_id: freezeId, source_application_id: applicationId};
 
     const [[p = {}]] = await conn.query<any[]>(
       `SELECT p.*,bc.code AS bc_code,bc.name AS bc_name,ps.code AS ps_code,ps.name AS ps_name,
@@ -435,7 +435,7 @@ export class FapFreezeRepository {
       for (const c of categories)
         await insert(conn, CRM.frozenFapLegalDeedRemarkCategories, {
           id: crypto.randomUUID(),
-          freeze_id: freezeId,
+          fap_freeze_id: freezeId,
           frozen_deed_id: frozenDeedId,
           category_code: c.code,
           category_name: c.name,
@@ -443,7 +443,7 @@ export class FapFreezeRepository {
       for (const s of holders)
         await insert(conn, CRM.frozenFapLegalStakeholders, {
           id: crypto.randomUUID(),
-          freeze_id: freezeId,
+          fap_freeze_id: freezeId,
           frozen_deed_id: frozenDeedId,
           source_application_id: applicationId,
           representative_type_code: s.rt_code,
@@ -495,7 +495,7 @@ export class FapFreezeRepository {
        FROM ${CRM.applicationDocumentChecklists} c
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
-       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
        LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.checklist_id=c.id AND f.is_current_active=1 AND f.deleted_at IS NULL
        WHERE c.application_id=? ORDER BY t.sort_order`,
       [applicationId],
@@ -550,8 +550,8 @@ export class FapFreezeRepository {
 
   private async assemble(head: any) {
     const rows = async (table: string, order = 'id') => {
-      const [r] = await this.db.pool.query<any[]>(`SELECT * FROM ${table} WHERE freeze_id=? ORDER BY ${order}`, [head.id]);
-      return r.map(({freeze_id, source_application_id, ...rest}: any) => rest);
+      const [r] = await this.db.pool.query<any[]>(`SELECT * FROM ${table} WHERE fap_freeze_id=? ORDER BY ${order}`, [head.id]);
+      return r.map(({fap_freeze_id, source_application_id, ...rest}: any) => rest);
     };
     const [
       primaryContacts, financingPurposes, projectContracts, bankFacilities, financingProposals,

@@ -25,7 +25,7 @@ export function DocumentDesk({
     d =>
       (status === 'ALL' || (status === 'OPEN' ? d.status !== 'VERIFIED' : d.status === 'VERIFIED')) &&
       (department === 'ALL' || d.assigned_role === department) &&
-      (d.company_name + ' ' + d.application_id + ' ' + (d.fap_number || '') + ' ' + d.document_name)
+      (d.company_name + ' ' + d.application_id + ' ' + d.document_name)
         .toLowerCase()
         .includes(search.toLowerCase()),
   );

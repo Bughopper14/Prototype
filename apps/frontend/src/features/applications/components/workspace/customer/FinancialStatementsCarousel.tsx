@@ -8,8 +8,8 @@ import {FiscalYearTabs} from '@/features/applications/components/workspace/custo
 import {AuditedToggle} from '@/features/applications/components/workspace/customer/financial/AuditedToggle';
 import {StatementsHeader} from '@/features/applications/components/workspace/customer/financial/StatementsHeader';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {useEffect} from 'react';
 import {
+  byFiscalYear,
   editStatementRow,
   MAX_FISCAL_YEARS,
   newFiscalYearRow,
@@ -23,26 +23,12 @@ export function FinancialStatementsCarousel() {
   const maxRows = MAX_FISCAL_YEARS;
   const currentIndex = Math.min(financialActiveIndex, Math.max(rows.length - 1, 0));
 
-  useEffect(() => {
-    if (!draft.financialStatements || draft.financialStatements.length === 0) {
-      const currentYear = new Date().getFullYear();
-      const initialRows = [
-        newFiscalYearRow([], currentYear - 2),
-        newFiscalYearRow([], currentYear - 1),
-        newFiscalYearRow([], currentYear),
-      ];
-      setDraft((prev: any) => ({
-        ...prev,
-        financialStatements: initialRows,
-      }));
-    }
-  }, [draft.financialStatements]);
-
   const addFiscalYear = () => {
     if (rows.length >= maxRows) return;
-    const nextRows = [...rows, newFiscalYearRow(rows)];
+    const added = newFiscalYearRow(rows);
+    const nextRows = byFiscalYear([...rows, added]);
     setDraft({...draft, financialStatements: nextRows});
-    setFinancialActiveIndex(nextRows.length - 1);
+    setFinancialActiveIndex(nextRows.indexOf(added));
   };
 
   const removeFiscalYear = (index: number) => {

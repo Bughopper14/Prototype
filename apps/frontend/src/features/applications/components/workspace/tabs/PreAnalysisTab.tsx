@@ -68,7 +68,6 @@ export function PreAnalysisTab() {
 
               recordSystemActivity({
                 applicationId: a.id,
-                fapNumber: a.fapNumber,
                 companyName: a.customer?.companyName || draft.customer?.companyName || 'Application',
                 section: 'Pre Analysis form',
                 tabIndex: 8,

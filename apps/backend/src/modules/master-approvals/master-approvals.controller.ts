@@ -60,4 +60,18 @@ export class MasterApprovalsController {
     requireView(req.actor);
     return this.approvals.history(codeParam(req.params.code));
   }
+
+  /** The versions (frozen copies) of an approval with what changed and where each one is used. */
+  @Get('master-approvals/:code/versions')
+  versions(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireView(req.actor);
+    return this.approvals.versions(codeParam(req.params.code));
+  }
+
+  /** The applications running on one version of an approval (paged, searchable). */
+  @Get('master-approvals/:code/versions/:freezeId/applications')
+  versionApplications(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireView(req.actor);
+    return this.approvals.versionApplications(codeParam(req.params.code), z.string().uuid().parse(req.params.freezeId), String(req.query?.q ?? '').slice(0, 100), Number(req.query?.page) || 1);
+  }
 }

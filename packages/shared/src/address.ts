@@ -120,6 +120,14 @@ export function extractStreetAddress(
   return street.replace(/[,;\s\-–—]+$/, '').trim();
 }
 
+/** An address as the OCR read it, without a leading "ALAMAT" label (also when it is quoted, "ALAMAT": "JL. ...") and without wrapping quotes. */
+export function cleanAddressText(raw?: string | null): string {
+  return String(raw || '')
+    .replace(/^[\s"'`]*(?:alamat|alamal|alama|alanat)[\s"'`]*[:.\-–—=~*+]*[\s"'`]*/i, '')
+    .replace(/^[\s"'`]+|[\s"'`]+$/g, '')
+    .trim();
+}
+
 export type FullAddressParts = StreetAddressHints & {
   alamat?: string | null;
   rtRw?: string | null;

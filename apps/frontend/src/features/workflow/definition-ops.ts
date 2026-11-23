@@ -59,65 +59,81 @@ function numbered<T extends Ordered>(sorted: T[], together: boolean[]) {
 
 const withOrders = <T extends Ordered>(list: T[], orders: Map<string, number>) => list.map(x => (orders.has(x.key) ? {...x, order: orders.get(x.key)!} : x));
 
-/** Does this item run together with the one before it? (The first item never does.) */
-export function runsTogether<T extends Ordered>(items: T[], key: string): boolean {
-  const {sorted, together} = sequence(items);
-  const i = sorted.findIndex(x => x.key === key);
-  return i > 0 && together[i];
-}
-
-/** Can the item swap with its neighbour on that side? Not when there is none, or when both run at the same time. */
-export function canMove<T extends Ordered>(items: T[], key: string, direction: -1 | 1): boolean {
-  const {sorted, together} = sequence(items);
-  const i = sorted.findIndex(x => x.key === key);
-  const j = i + direction;
-  if (i < 0 || j < 0 || j >= sorted.length) return false;
-  return !(direction === 1 ? together[j] : together[i]);
-}
-
-function moved<T extends Ordered>(items: T[], key: string, direction: -1 | 1): Map<string, number> | null {
-  if (!canMove(items, key, direction)) return null;
-  const {sorted, together} = sequence(items);
-  const i = sorted.findIndex(x => x.key === key);
-  const j = i + direction;
-  [sorted[i], sorted[j]] = [sorted[j], sorted[i]];
-  return numbered(sorted, together);
-}
-
-function setTogether<T extends Ordered>(items: T[], key: string, value: boolean): Map<string, number> | null {
-  const {sorted, together} = sequence(items);
-  const i = sorted.findIndex(x => x.key === key);
-  if (i < 1 || together[i] === value) return null;
-  together[i] = value;
-  return numbered(sorted, together);
-}
-
-/** A group swaps places with the previous / next group. */
-export function moveGroup(def: Definition, key: string, direction: -1 | 1): Definition {
-  const orders = moved(def.groups, key, direction);
-  return orders ? {...def, groups: withOrders(def.groups, orders)} : def;
-}
-
-/** The group runs together with the group before it (true) or after it (false). */
-export function setGroupTogether(def: Definition, key: string, together: boolean): Definition {
-  const orders = setTogether(def.groups, key, together);
-  return orders ? {...def, groups: withOrders(def.groups, orders)} : def;
-}
-
 const stagesOfGroupOf = (def: Definition, key: string) => {
   const groupKey = def.stages.find(s => s.key === key)?.groupKey;
   return def.stages.filter(s => s.groupKey === groupKey);
 };
 
-/** A stage swaps places with the previous / next stage of its group. */
-export function moveStage(def: Definition, key: string, direction: -1 | 1): Definition {
-  const orders = moved(stagesOfGroupOf(def, key), key, direction);
+/**
+ * Where an item goes: together with the step another item is in, as its own new step before/after the step another item is in, or as the
+ * first / last step. The step numbers are made from the positions, so nothing is typed.
+ */
+export type Placement = {with: string} | {before: string} | {after: string} | {first: true} | {last: true};
+
+function place<T extends Ordered>(items: T[], key: string, to: Placement): Map<string, number> | null {
+  const {sorted} = sequence(items);
+  const steps: string[][] = [];
+  let lastOrder: number | null = null;
+  for (const x of sorted) {
+    if (x.key === key) continue;
+    if (x.order === lastOrder) steps[steps.length - 1].push(x.key);
+    else {
+      steps.push([x.key]);
+      lastOrder = x.order;
+    }
+  }
+  const at = (anchor: string) => steps.findIndex(st => st.includes(anchor));
+  if ('with' in to) {
+    const i = at(to.with);
+    if (i < 0) return null;
+    steps[i].push(key);
+  } else if ('before' in to) {
+    const i = at(to.before);
+    if (i < 0) return null;
+    steps.splice(i, 0, [key]);
+  } else if ('after' in to) {
+    const i = at(to.after);
+    if (i < 0) return null;
+    steps.splice(i + 1, 0, [key]);
+  } else if ('first' in to) steps.unshift([key]);
+  else steps.push([key]);
+  const out = new Map<string, number>();
+  steps.forEach((st, i) => st.forEach(k => out.set(k, i + 1)));
+  const now = numbered(sorted, sequence(items).together);
+  return [...out].every(([k, v]) => now.get(k) === v) ? null : out;
+}
+
+export function placeGroup(def: Definition, key: string, to: Placement): Definition {
+  const orders = place(def.groups, key, to);
+  return orders ? {...def, groups: withOrders(def.groups, orders)} : def;
+}
+
+export function placeStage(def: Definition, key: string, to: Placement): Definition {
+  const orders = place(stagesOfGroupOf(def, key), key, to);
   return orders ? {...def, stages: withOrders(def.stages, orders)} : def;
 }
 
-/** The stage runs together with the stage before it in its group (true) or after it (false). */
-export function setStageTogether(def: Definition, key: string, together: boolean): Definition {
-  const orders = setTogether(stagesOfGroupOf(def, key), key, together);
-  return orders ? {...def, stages: withOrders(def.stages, orders)} : def;
+/** The moves this item can make (the ones that would change nothing are left out), for a "Move" menu. */
+export function placementOptions<T extends Ordered>(items: T[], key: string): {label: string; to: Placement; group: 'together' | 'alone'}[] {
+  const {sorted} = sequence(items);
+  const steps: T[][] = [];
+  for (const x of sorted) {
+    const last = steps[steps.length - 1];
+    if (last && last[0].order === x.order) last.push(x);
+    else steps.push([x]);
+  }
+  const names = (st: T[]) => st.filter(x => x.key !== key).map(x => x.name).join(' + ');
+  const out: {label: string; to: Placement; group: 'together' | 'alone'}[] = [];
+  steps.forEach((st, i) => {
+    const others = st.filter(x => x.key !== key);
+    if (!others.length || st.some(x => x.key === key)) return;
+    out.push({label: `${names(st)} (step ${i + 1})`, to: {with: others[0].key}, group: 'together'});
+  });
+  steps.forEach((st, i) => {
+    const others = st.filter(x => x.key !== key);
+    if (!others.length) return;
+    if (i === 0) out.push({label: 'Before everything, as the first step', to: {first: true}, group: 'alone'});
+    out.push({label: `After step ${i + 1} (${names(st)})`, to: {after: others[0].key}, group: 'alone'});
+  });
+  return out.filter(o => place(items, key, o.to) !== null);
 }
-

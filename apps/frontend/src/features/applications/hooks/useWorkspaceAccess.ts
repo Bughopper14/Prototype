@@ -50,14 +50,18 @@ export function useWorkspaceAccess({
   }, [tabOrder.join(','), tab]);
 
   const isAdminUser = checkIsAdmin(user);
-  // FAP Stage is fully editable at all times per specification
+  // isFapLocked belongs to the signed FAP document (its upload); the lock of the form itself is fapFormLocked below
   const isFapLocked = false;
   // What the user may edit comes from the authorities of their DB role (administrators have all)
   const canLegal = hasAuthority(user, 'CRM_LEGAL_EDIT');
-  const canEditCustomerPic = hasAuthority(user, 'CRM_CUSTOMER-PIC_EDIT');
-  const canEdit = hasAuthority(user, 'CRM_BUSINESS-BANK_EDIT');
+  // Submitting the stage that shows the FAP form locks the form (profile, contact person and sections 05-08); a rejection of the stage opens it again.
+  // The financial statements keep their own rule (editable until the application is approved).
+  const fapFormLocked = Boolean(a?.fapFormLocked);
+  const canEditCustomerPic = hasAuthority(user, 'CRM_CUSTOMER-PIC_EDIT') && !fapFormLocked;
+  const canEdit = hasAuthority(user, 'CRM_BUSINESS-BANK_EDIT') && !fapFormLocked;
   const canFinance =
     hasAuthority(user, 'CRM_FINANCIAL_EDIT') || hasAuthority(user, 'CRM_FINANCING-UNIT_EDIT');
+  const canProposal = canFinance && !fapFormLocked;
 
   return {
     isFapStage,
@@ -73,5 +77,7 @@ export function useWorkspaceAccess({
     canEditCustomerPic,
     canEdit,
     canFinance,
+    canProposal,
+    fapFormLocked,
   };
 }

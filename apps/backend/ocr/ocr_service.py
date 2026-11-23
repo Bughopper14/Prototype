@@ -27,6 +27,50 @@ def _log(message: str) -> None:
     sys.stderr.write(f"[ocr] {message}\n")
 
 
+def _respace_nib_boxes(gray: np.ndarray, boxes: Boxes) -> Boxes:
+    """Splits NIB lines that came back without spaces at the visual word gaps; a line is only replaced when no character was lost or changed."""
+    squash = lambda text: re.sub(r"[\W_]", "", str(text or "")).lower()
+    refined = DocumentPreprocessor.refine_ktp_box_spacing(gray, [dict(b) for b in boxes], OCREngine.get_engine())
+    for box, new in zip(boxes, refined):
+        # the splitter also cuts numbers ("031 35571 81", "201 9"): digits are put back together
+        text = re.sub(r"(?<=\d) (?=\d)", "", str(new.get("text") or ""))
+        if " " in text and squash(text) == squash(box.get("text")):
+            box["text"] = text
+    return boxes
+
+
+def _recover_nib_name(image: np.ndarray, boxes: Boxes) -> Boxes:
+    """When the detector found the label "Nama Pelaku Usaha" but no text to its right, reads that strip of the page on its own."""
+    label = next((b for b in boxes if re.search(r"nama\s*(?:pelaku\s*usaha|perusahaan|perseroan)", str(b.get("text") or ""), re.IGNORECASE)), None)
+    if not label or re.search(r"nama\s*(?:pelaku\s*usaha|perusahaan|perseroan)\s*[:：]?\s*\S{4,}", str(label.get("text") or ""), re.IGNORECASE):
+        return boxes
+    h, w = image.shape[:2]
+    yc = (label["y_min"] + label["y_max"]) / 2
+    same_row = max(8, (label["y_max"] - label["y_min"]) * 0.5)
+    if any(b is not label and abs((b["y_min"] + b["y_max"]) / 2 - yc) < same_row and b["x_min"] >= label["x_max"] - 20 for b in boxes):
+        return boxes
+    row_h = label["y_max"] - label["y_min"]
+    # the detector is sensitive to how much of the neighbouring rows it sees: try a few windows until the row of the label gives text
+    for factor in (0.6, 1.0, 1.5, 0.3, 2.0):
+        pad = int(max(6, row_h * factor))
+        x1, y1, y2 = int(label["x_max"]) + 4, max(0, int(label["y_min"]) - pad), min(h, int(label["y_max"]) + pad)
+        strip = image[y1:y2, x1:w]
+        if strip.size == 0:
+            continue
+        row_y = yc - y1
+        found = [b for b in OCREngine.process_image(strip) if abs((b["y_min"] + b["y_max"]) / 2 - row_y) < row_h * 0.6]
+        if found:
+            break
+    if not found:
+        return boxes
+    found.sort(key=lambda b: b["x_min"])
+    text = " ".join(str(b.get("text") or "").strip() for b in found).strip()
+    if len(text) < 4:
+        return boxes
+    boxes.append({**found[0], "text": text, "x_min": x1 + found[0]["x_min"], "x_max": x1 + found[-1]["x_max"], "y_min": label["y_min"], "y_max": label["y_max"], "confidence": float(found[0].get("confidence") or 0.5)})
+    return boxes
+
+
 def _ocr_image(image: np.ndarray, doc_type: str = "") -> Tuple[Boxes, np.ndarray]:
     """RapidOCR first; applies KTP orientation + stripe cleaning when scanning KTP, else standard fallback."""
     if doc_type == "ktp":
@@ -43,6 +87,14 @@ def _ocr_image(image: np.ndarray, doc_type: str = "") -> Tuple[Boxes, np.ndarray
 
     boxes = OCREngine.process_image(image)
     work_img = image
+    if doc_type == "nib" and boxes:
+        # the recognizer often returns the lines of a scanned NIB without spaces: split them at the visual word gaps
+        try:
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
+            boxes = _respace_nib_boxes(gray, boxes)
+            boxes = _recover_nib_name(image, boxes)
+        except Exception as error:
+            _log(f"NIB spacing/name recovery skipped: {error}")
     if not boxes:
         work_img, _ = DocumentPreprocessor.auto_orient_image(image)
         boxes = OCREngine.process_image(work_img)
@@ -164,6 +216,12 @@ def _dump(model: Any) -> Dict[str, Any]:
 
 
 def _extract(kind: str, boxes: Boxes, path: Path) -> Tuple[str, Dict[str, Any]]:
+    if kind != "nib":
+        # the text lines of a digital PDF only carry their block as "box": the extractors read x_min / y_max (a NIB uploaded as a KITAS used to crash on it)
+        for i, b in enumerate(boxes):
+            if "y_max" not in b and isinstance(b.get("box"), (list, tuple)) and len(b["box"]) == 4:
+                b.update(x_min=b["box"][0], y_min=b["box"][1], x_max=b["box"][2], y_max=b["box"][3])
+            b.setdefault("id", i)
     if kind == "fap":
         return "fap", forms.extract_fap(boxes, pdf_path=str(path))[0]
     if kind == "ktp":

@@ -6,6 +6,7 @@ export interface NibOcrExtract {
   nib?: string;
   companyName?: string;
   alamat?: string;
+  streetAddress?: string;
   email?: string;
   phone?: string;
   tanggalTerbit?: string;
@@ -45,7 +46,8 @@ export function applyNibOcrToDraft(
     ...prev,
     ...(rawNib ? {nib: rawNib} : {}),
     ...(rawComp ? {companyName: rawComp} : {}),
-    ...(extracted.alamat ? {companyAddress: extracted.alamat} : {}),
+    // The application keeps the street part only (the regions have their own fields); the full OCR text is a reference in the pop-up
+    ...(extracted.streetAddress || extracted.alamat ? {companyAddress: extracted.streetAddress || extracted.alamat} : {}),
     ...(extracted.email ? {email: extracted.email} : {}),
     ...(extracted.phone ? {phoneFax: extracted.phone} : {}),
     ...(rawDate ? {nibDate: rawDate} : {}),
