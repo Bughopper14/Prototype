@@ -48,6 +48,8 @@ export function buildChecklistRows(
     };
 
     RESOLVERS[def.code]?.({a, draft, files, allStakeholders, row});
+    // a document can have several files (one KTP per stakeholder, several deeds): say how many instead of naming the first one
+    if (files.length > 1 && row.sourceType === 'MANUAL') row.sourceDetails = `${files.length} berkas diunggah`;
 
     return {
       ...def,

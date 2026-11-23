@@ -2,7 +2,6 @@ import {ActivityPage, NibOcrModal} from '@/features/crm/components/lazy';
 import {Documents} from '@/features/documents/components/Documents';
 import {DocumentChecklistTab} from '@/features/documents/components/checklist/DocumentChecklistTab';
 import {FapArchiveModal} from '@/features/fap/components/FapArchiveModal';
-import {FapComparisonModal} from '@/features/fap/components/FapComparisonModal';
 import {DeedReviewDialog} from '@/features/legal/components/DeedReviewDialog';
 import {ArrowLeft, ShieldCheck} from 'lucide-react';
 
@@ -46,17 +45,12 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
     tab,
     busy,
     error,
-    fapComparisonModal,
-    setFapComparisonModal,
     archiveModalOpen,
     setArchiveModalOpen,
     archivesList,
     loadingArchives,
     selectedArchiveIdx,
     setSelectedArchiveIdx,
-    handleApproveDocument,
-    handleApproveFapChangesInDetail,
-    handleCorrectFapDataInDetail,
     liveCompanyName,
     tabs,
     isFapLocked,
@@ -123,7 +117,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             onChange={onChange}
             notify={notify}
             filterStage={activeStage}
-            onApproveDocument={handleApproveDocument}
+            onSubmitStage={() => state.setSubmitStageCode(a.workflow?.stages?.[0]?.code ?? null)}
             isFapLocked={isFapLocked}
           />
         )}
@@ -174,16 +168,8 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           onClose={() => setNibOcrOpen(false)}
           onApply={handleApplyNibOcr}
           notify={notify}
+          applicationId={a?.isNew ? undefined : a?.id}
         />
-        {fapComparisonModal && (
-          <FapComparisonModal
-            comparison={fapComparisonModal}
-            onClose={() => setFapComparisonModal(null)}
-            onApprove={handleApproveFapChangesInDetail}
-            onCorrect={handleCorrectFapDataInDetail}
-            busy={busy}
-          />
-        )}
         {archiveModalOpen && (
           <FapArchiveModal
             application={a}

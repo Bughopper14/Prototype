@@ -28,6 +28,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
       {/* Hidden file input for uploads */}
       <input
         type="file"
+        multiple
         ref={c.fileInputRef}
         style={{display: 'none'}}
         accept=".pdf,.png,.jpg,.jpeg"

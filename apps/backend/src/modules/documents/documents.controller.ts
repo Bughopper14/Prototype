@@ -130,7 +130,7 @@ export class DocumentsController {
     await this.db.transaction(async conn => {
       await this.documents.deleteFile(conn, id, fileId, req.actor.username || null);
     });
-    if (!(await this.documents.currentFapFile(id)).file) await this.comparisons.forget(id);
+    await this.comparisons.forget(fileId);
     await recordActivity(
       {
         applicationId: id,

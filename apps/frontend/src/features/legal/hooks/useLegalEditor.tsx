@@ -10,7 +10,7 @@ import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {isFieldMandatory, useMandatoryRules, useMasterData} from '@/shared/master-data';
 import {deedPending, legalDeedFields, reviewStatus, DEED_EDIT_AUTHORITY} from '@liugong/shared';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 
 export type LegalEditorProps = {
   value: any;
@@ -103,6 +103,29 @@ export function useLegalEditor({
       onEditFinished?.(id);
     }
   }, [returnToReview, editing, stakeholderList, stakeholderModal]);
+  // The deeds the FAP form generates (establishment / latest amendment) exist only on screen until the legal data is saved. They are stored as soon as they
+  // appear, so the database always has the deed that is shown (approval works on the stored deed). Each one is tried once per application.
+  const storedAuto = useRef(new Set<string>());
+  useEffect(() => {
+    if (!application?.id || application.isNew || disabled) return;
+    const pending = deeds.filter(
+      d =>
+        String(d.id).startsWith('system-') &&
+        String(d.deedNumber || '').trim() &&
+        String(d.deedDate || '').trim() &&
+        !locked(d) &&
+        !storedAuto.current.has(`${application.id}:${String(d.deedNumber).trim().toLowerCase()}`),
+    );
+    if (!pending.length) return;
+    for (const d of pending) storedAuto.current.add(`${application.id}:${String(d.deedNumber).trim().toLowerCase()}`);
+    const realized = pending.map(d => ({...d, id: safeUUID(), source: 'Sistem', stakeholders: (Array.isArray(d.stakeholders) ? d.stakeholders : []).map(stakeholderForSave)}));
+    api(`/applications/${application.id}/page-legal`, 'PUT', {legal: {...value, deeds: [...(Array.isArray(value.deeds) ? value.deeds : []), ...realized]}})
+      .then(res => {
+        if (res?.legal) onChange(res.legal);
+      })
+      .catch(e => console.warn('Auto-save of the deed from the FAP form failed:', e));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [application?.id, application?.customer?.establishmentActNo, application?.customer?.establishmentDate, application?.latestDeedNo, application?.latestDeedDate, deeds.length]);
   const listLocked = locked(deeds.find(d => d.id === stakeholderList));
   const editorLocked = locked(stakeholderModal ? deeds.find(d => d.id === stakeholderModal.deedId) : editing);
   const rowsFor = (x: any): any[] =>
@@ -151,6 +174,7 @@ export function useLegalEditor({
       } catch (e: any) {
         console.error('Save legal stakeholders error:', e);
         setFormError(e.message || 'Failed to save stakeholders to database.');
+        notify?.(e.message || 'Failed to save the stakeholders. They are not stored yet.');
       }
     }
   };

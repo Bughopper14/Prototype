@@ -3,7 +3,6 @@ import {getReadActivityIds} from '@/features/activity/lib/activity-store';
 import {type SystemActivity} from '@/features/activity/lib/types';
 import {useApplicationActivity} from '@/features/applications/hooks/useApplicationActivity';
 import {useDeedReview} from '@/features/applications/hooks/useDeedReview';
-import {useFapApproval} from '@/features/applications/hooks/useFapApproval';
 import {useFapArchive} from '@/features/applications/hooks/useFapArchive';
 import {useFapPreviewSync} from '@/features/applications/hooks/useFapPreviewSync';
 import {useLiveFapData} from '@/features/applications/hooks/useLiveFapData';
@@ -191,7 +190,6 @@ export function useApplicationWorkspace({
     }
   };
 
-  const [fapComparisonModal, setFapComparisonModal] = useState<any>(null);
   const archive = useFapArchive({a, notify});
 
   const {
@@ -283,16 +281,6 @@ export function useApplicationWorkspace({
     onChange,
     onCustomerCreated,
     notify,
-  });
-
-  const approval = useFapApproval({
-    a,
-    draft,
-    onChange,
-    notify,
-    setBusy,
-    setDraft,
-    setFapComparisonModal,
   });
 
   const p = draft.proposal || {...blank(proposalFields), units: []};
@@ -393,13 +381,8 @@ export function useApplicationWorkspace({
     setTargetBankRow,
     financialActiveIndex,
     setFinancialActiveIndex,
-    fapComparisonModal,
-    setFapComparisonModal,
     handlePrintFap,
     ...archive,
-    handleApproveDocument: approval.handleApproveDocument,
-    handleApproveFapChangesInDetail: approval.handleApproveFapChangesInDetail,
-    handleCorrectFapDataInDetail: approval.handleCorrectFapDataInDetail,
     liveCompanyName,
     liveCompanyType,
     liveNib,

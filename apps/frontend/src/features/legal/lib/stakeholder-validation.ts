@@ -22,16 +22,14 @@ export function stakeholderSaveError({
   if (totalShare > 100) {
     return `Tidak dapat menyimpan: Total persentase saham pada akta ini menjadi ${totalShare.toFixed(2)}% (melebihi batas 100%). Pemegang saham lain: ${otherTotal.toFixed(2)}%. Maksimal yang dapat diinput: ${Math.max(0, 100 - otherTotal).toFixed(2)}%.`;
   }
-  for (const f of stakeholderFields) {
-    if (!isFieldMandatory(mandatoryRules, 'Shareholders & Management', f.key, false, 'FAP')) continue;
-    const val = valToSave[f.key];
-    if (
-      val === undefined ||
-      val === null ||
-      String(val).trim() === ''
-    ) {
-      return `${f.label} is mandatory and must be filled.`;
-    }
-  }
+  // every mandatory field that is still empty is named at once, not one per click
+  const missing = stakeholderFields
+    .filter(f => isFieldMandatory(mandatoryRules, 'Shareholders & Management', f.key, false, 'FAP'))
+    .filter(f => {
+      const val = valToSave[f.key];
+      return val === undefined || val === null || String(val).trim() === '';
+    })
+    .map(f => f.label);
+  if (missing.length) return `Fill in the mandatory fields: ${missing.join(', ')}.`;
   return null;
 }

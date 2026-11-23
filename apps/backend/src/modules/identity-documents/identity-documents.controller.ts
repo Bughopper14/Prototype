@@ -1,9 +1,12 @@
 import {Controller, Get, Post, Res} from '@nestjs/common';
 import {storedDocumentUrl} from '@liugong/shared';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
+import {CrmDatabase} from '../../core/db/crm-database';
 import {StorageService} from '../../core/storage';
+import {DocumentsRepository} from '../documents/documents.repository';
 import {OcrWorkerService} from '../ocr/ocr-worker.service';
 import {requireAuthority} from '../auth/session';
 import {IDENTITY_TYPES, IdentityDocumentsRepository} from './identity-documents.repository';
@@ -17,6 +20,9 @@ const OCR_AUTHORITIES = [
   'CRM_CUSTOMER_MANAGE',
 ];
 
+/** The checklist document a scan also belongs to: the scanned NIB is the NIB document, a KTP the KTP document, a passport or KITAS the E-KITAS document. */
+const CHECKLIST_DOCUMENT: Record<string, string> = {nib: 'NIB', ktp: 'KTP', passport: 'EKITAS', kitas: 'EKITAS'};
+
 /** Stakeholder identity documents (KTP, NPWP, passport, KITAS): OCR scan, save and lookup. */
 @Controller(API_PREFIX)
 export class IdentityDocumentsController {
@@ -24,7 +30,29 @@ export class IdentityDocumentsController {
     private readonly identities: IdentityDocumentsRepository,
     private readonly storage: StorageService,
     private readonly worker: OcrWorkerService,
+    private readonly db: CrmDatabase,
+    private readonly documents: DocumentsRepository,
   ) {}
+
+  /**
+   * A scanned document is also a file of the application's document checklist (NIB, KTP, E-KITAS), so it shows there and can be sent for approval
+   * without being uploaded a second time. Nothing happens when the scan does not belong to a saved application or the checklist has no such document.
+   */
+  private async addToChecklist(applicationId: string, docType: string, file: {buffer: Buffer; mimetype: string; size: number}, fileName: string, by: string) {
+    const code = CHECKLIST_DOCUMENT[docType];
+    if (!code || !applicationId) return;
+    try {
+      const storageKey = crypto.randomUUID();
+      await this.db.transaction(async conn => {
+        if (!(await this.documents.checklistRow(conn, applicationId, code))) return;
+        await this.storage.put(storageKey, file.buffer, file.mimetype);
+        await this.storage.saveNamedCopy(fileName, file.buffer).catch(() => undefined);
+        await this.documents.addFile(conn, applicationId, code, {fileName, storageKey, storagePath: this.storage.usesS3 ? null : fileName, size: file.size, mimeType: file.mimetype}, by);
+      });
+    } catch (err) {
+      console.warn('The scan could not be added to the document checklist:', err);
+    }
+  }
 
   @Post('ocr/scan')
   async scan(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
@@ -66,6 +94,7 @@ export class IdentityDocumentsController {
       };
     }
     const detectedType = String(result.doc_type || storage.docType).toLowerCase();
+    await this.addToChecklist(appId, detectedType, file, storage.fileName, req.actor.username || req.actor.name || 'system');
     Object.assign(result, {
       fileName: storage.fileName,
       file_name: storage.fileName,

@@ -18,7 +18,6 @@ export function StakeholderModalDialog(props: StakeholderModalDialogProps) {
   const state = useStakeholderModal(props);
   const {
     editorLocked,
-    formError,
     onClose,
     isNewStakeholder,
     isRightPaneVisible,
@@ -53,11 +52,6 @@ export function StakeholderModalDialog(props: StakeholderModalDialogProps) {
           <div className="modal-side-form-pane">
             <FormHeaderBar />
 
-            {formError && (
-              <div className="error" role="alert">
-                {formError}
-              </div>
-            )}
             {isShareExceeded && (
               <div
                 role="alert"

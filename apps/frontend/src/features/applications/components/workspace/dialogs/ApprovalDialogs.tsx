@@ -85,6 +85,8 @@ export function ApprovalDecisionDialog() {
   const reject = kind === 'REJECTED';
   const pickStages = reject && groupStages.length > 0;
   const canRequestDocuments = hasAuthority(user, 'CRM_DOCUMENT_UPLOAD');
+  // the documents added to this application on top of its workflow's checklist: shown here so the choice stays visible
+  const requested = (a.documentChecks || []).filter((d: any) => d.source === 'ADDED');
   const close = () => {
     setGaps([]);
     setDecision(null);
@@ -222,6 +224,17 @@ export function ApprovalDecisionDialog() {
             <div>
               <b>Is a document missing?</b>
               <small>Add it to the checklist of this application. It shows there for whoever uploads the files.</small>
+              {requested.length > 0 && (
+                <div className="ap-requested" aria-label="Documents requested for this application" style={{display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8}}>
+                  <small style={{width: '100%', fontWeight: 600}}>Requested ({requested.length}):</small>
+                  {requested.map((d: any) => (
+                    <span key={d.id} className="wf-badge active" title={d.stageCode}>
+                      {d.documentName}
+                      {(d.files || []).length ? ` · ${(d.files || []).length} file` : ' · no file yet'}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <button type="button" className="button small" onClick={() => setRequesting(true)}>
               <FilePlus2 size={14} /> Request documents

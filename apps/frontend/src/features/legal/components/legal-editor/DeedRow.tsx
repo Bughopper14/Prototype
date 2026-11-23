@@ -54,6 +54,8 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
       : checkIsAdmin(user) && reviewStatus(x) === 'PENDING'
         ? 'Review Deed'
         : 'View Review';
+  // when the approval of this deed waits for this person, the slot below draws the single "Review & decide" button that opens the review dialog, so "View Review" is not drawn as well
+  const decidesHere = masterApproves && ((application?.approval?.current || []) as any[]).some(c => c.scope === 'SECTION' && c.sectionCode === DEED_SECTION && c.subjectId === x.id && (c.steps || []).some((s: any) => s.canAct));
   const val = deedValidity(x.deedDate);
   const isPrimaryEst = primaryEstablishmentDeed?.id === x.id;
   const isLatestAmend = latestAmendmentDeed?.id === x.id;
@@ -176,7 +178,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
       <td className="legal-row-action">
         <div className="legal-row-buttons">
           {/* One deed, one approval: when the workflow has an approval for the deed section, the slot below is the approval, so the old Submit / Review buttons are not drawn (only the read-only review stays). */}
-          {(!masterApproves || reviewLabel === 'View Review') && (
+          {(!masterApproves || reviewLabel === 'View Review') && !decidesHere && (
             <button
               className="button primary small deed-review-action"
               onClick={e => {
@@ -190,7 +192,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
           {!rowLocked && !masterApproves && menuButton}
         </div>
         {/* The approval of this deed in the workflow, on its own line (nothing is drawn when the workflow has none for the deed section). */}
-        <ApprovalSlot scope="SECTION" code={DEED_SECTION} subjectId={x.id} trailing={!rowLocked && masterApproves ? menuButton : undefined} />
+        <ApprovalSlot scope="SECTION" code={DEED_SECTION} subjectId={x.id} trailing={!rowLocked && masterApproves ? menuButton : undefined} onOpenReview={() => onReview(x.id)} />
       </td>
     </tr>
   );

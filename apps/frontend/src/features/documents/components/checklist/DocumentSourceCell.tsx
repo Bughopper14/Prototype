@@ -7,10 +7,13 @@ export function DocumentSourceCell({
   row,
   deletingFileId,
   onDelete,
+  onPreviewFile,
 }: {
   row: ChecklistRow;
   deletingFileId: string | null;
   onDelete: (fileId: string, code: string) => void;
+  /** Opens one chosen file of the row (a row can have several). */
+  onPreviewFile?: (file: any) => void;
 }) {
   return (
     <div className="doc-source-details-box">
@@ -44,7 +47,12 @@ export function DocumentSourceCell({
             return (
               <div key={f.id || f.fileName} className="doc-file-pill">
                 <FileText size={12} className="text-blue" />
-                <span className="file-pill-name" title={f.fileName}>
+                <span
+                  className="file-pill-name"
+                  title={f.fileName}
+                  style={onPreviewFile ? {cursor: 'pointer', textDecoration: 'underline'} : undefined}
+                  onClick={onPreviewFile ? () => onPreviewFile(f) : undefined}
+                >
                   {f.fileName}
                 </span>
                 <span className="file-pill-size">{formatBytes(f.fileSize)}</span>

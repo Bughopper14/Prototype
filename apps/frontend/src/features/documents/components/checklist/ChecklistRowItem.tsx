@@ -23,7 +23,7 @@ export function ChecklistRowItem({
   showStage: boolean;
   isUploading: boolean;
   deletingFileId: string | null;
-  onPreview: (row: ChecklistRow) => void;
+  onPreview: (row: ChecklistRow, file?: any) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;
@@ -94,15 +94,23 @@ export function ChecklistRowItem({
         {row.check?.approval ? (
           <div className={'doc-approval ' + String(row.check.approval.state).toLowerCase()}>
             {row.check.approval.state === 'NOT_REQUESTED' ? (
+              <>
               <button
                 type="button"
                 className="button small doc-needs"
+                style={!row.check.approval.canRequest ? {opacity: 0.55, cursor: 'not-allowed'} : undefined}
                 disabled={!onRequestApproval || !row.check.approval.canRequest || approvalBusy === row.chkId}
-                title={row.check.approval.canRequest ? 'Send this document for approval' : 'Upload the document first'}
+                title={row.check.approval.canRequest ? 'Send this document for approval' : 'Upload a file for this document first'}
                 onClick={() => onRequestApproval?.(row)}
               >
                 <ShieldCheck size={13} /> Needs approval
               </button>
+              {!row.check.approval.canRequest && (
+                <small className="muted" style={{display: 'block', marginTop: 4}}>
+                  Upload a file for this document first.
+                </small>
+              )}
+              </>
             ) : (
               <>
                 <span className="doc-approval-chip">
@@ -130,7 +138,7 @@ export function ChecklistRowItem({
 
       {/* Sumber Integrasi & Bukti */}
       <td>
-        <DocumentSourceCell row={row} deletingFileId={deletingFileId} onDelete={onDelete} />
+        <DocumentSourceCell row={row} deletingFileId={deletingFileId} onDelete={onDelete} onPreviewFile={f => onPreview(row, f)} />
       </td>
 
       {/* Aksi */}

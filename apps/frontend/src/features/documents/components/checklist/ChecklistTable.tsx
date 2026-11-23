@@ -24,7 +24,7 @@ export function ChecklistTable({
   onToggleStage: (code: string) => void;
   uploadingCode: string | null;
   deletingFileId: string | null;
-  onPreview: (row: ChecklistRow) => void;
+  onPreview: (row: ChecklistRow, file?: any) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;

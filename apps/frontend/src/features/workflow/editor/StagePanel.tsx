@@ -86,7 +86,7 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'd
               <label>
                 <span>Department who works on this stage *</span>
                 <select disabled={locked} className={stage.departmentCode ? '' : 'wf-missing'} value={stage.departmentCode || ''} onChange={e => patchStage({departmentCode: e.target.value || null})}>
-                  {!stage.departmentCode && <option value="">Choose a department…</option>}
+                  {!stage.departmentCode && <option value="" disabled hidden>Choose a department…</option>}
                   {catalog.departments.map(d => (
                     <option key={d.code} value={d.code}>
                       {departmentLabel(d)}

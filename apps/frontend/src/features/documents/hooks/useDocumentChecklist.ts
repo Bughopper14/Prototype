@@ -119,23 +119,32 @@ export function useDocumentChecklist({
   };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !targetUploadCode) return;
+    // the FAP has one current signed file; every other document can have several (a KTP per stakeholder, several deeds)
+    const picked = Array.from(e.target.files || []);
+    const files = targetUploadCode === 'FAP' ? picked.slice(0, 1) : picked;
+    if (!files.length || !targetUploadCode) return;
 
     setUploadingCode(targetUploadCode);
     try {
       const row = checklistRows.find(r => r.code === targetUploadCode);
       const checklistId = row?.chkId || targetUploadCode;
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('checklistId', checklistId);
-      formData.append('documentCode', targetUploadCode);
-
-      await api(`/applications/${a.id}/documents/upload`, 'POST', formData);
-      const updatedApp = await api(`/applications/${a.id}`);
-      onChange(updatedApp);
-      notify(`Dokumen ${targetUploadCode} berhasil diunggah.`);
+      let done = 0;
+      const failed: string[] = [];
+      for (const file of files) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('checklistId', checklistId);
+          formData.append('documentCode', targetUploadCode);
+          await api(`/applications/${a.id}/documents/upload`, 'POST', formData);
+          done++;
+        } catch (err: any) {
+          failed.push(`${file.name}: ${err.message || 'gagal'}`);
+        }
+      }
+      if (done) onChange(await api(`/applications/${a.id}`));
+      if (failed.length) notify(`${done} berkas terunggah, ${failed.length} gagal (${failed[0]})`);
+      else notify(done > 1 ? `${done} berkas ${targetUploadCode} berhasil diunggah.` : `Dokumen ${targetUploadCode} berhasil diunggah.`);
     } catch (err: any) {
       notify(`Gagal mengunggah dokumen: ${err.message || 'Terjadi kesalahan'}`);
     } finally {
@@ -164,21 +173,22 @@ export function useDocumentChecklist({
   };
 
   // Handler Preview File
-  const handleOpenPreview = (row: ChecklistRow) => {
-    const url = row.previewUrl || (row.files[0] ? `/documents/${row.files[0].fileName}` : '');
+  const handleOpenPreview = (row: ChecklistRow, chosen?: any) => {
+    const file = chosen || row.files[0];
+    const url = (!chosen && row.previewUrl) || (file ? `/documents/${file.fileName}` : '');
     if (!url) {
       notify('Pratinjau fisik dokumen belum tersedia untuk item ini.');
       return;
     }
-    const isPdf = url.toLowerCase().endsWith('.pdf') || row.files[0]?.mimeType === 'application/pdf';
+    const isPdf = url.toLowerCase().endsWith('.pdf') || file?.mimeType === 'application/pdf';
     setPreviewModal({
       title: `${row.code} · ${row.name}`,
       url,
-      fileName: row.files[0]?.fileName || `${row.code}_document`,
+      fileName: file?.fileName || `${row.code}_document`,
       isPdf,
       source: row.sourceLabel,
-      fileSize: row.files[0]?.fileSize,
-      uploadedAt: row.files[0]?.createdAt,
+      fileSize: file?.fileSize,
+      uploadedAt: file?.createdAt,
     });
   };
 

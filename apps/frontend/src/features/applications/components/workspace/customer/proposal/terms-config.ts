@@ -13,6 +13,8 @@ export interface TermsFieldConfig {
   readKeys?: string[];
   /** When provided, renders as a select dropdown instead of free text. */
   options?: ReadonlyArray<{value: string; label: string}>;
+  /** The master-data list this field is chosen from ('paymentMethod', 'currency'): the saved value is the master code, so it can only be picked, never typed. */
+  master?: 'paymentMethod' | 'currency';
   /** Normalizes stored values (e.g. legacy uppercase/underscore values) to match `options`. */
   normalizeValue?: (raw: string) => string;
 }
@@ -43,7 +45,7 @@ export interface TermsGroupConfig {
 const COMMON_TAIL = (p: string): TermsFieldConfig[] => [
   {dataField: p + 'Rate', label: 'Bunga / Interest Rate', key: 'interestRate'},
   {dataField: p + 'Tenor', label: 'Jk. Waktu / Tenor', key: 'tenor'},
-  {dataField: p + 'Payment', label: 'Cara Pembayaran / Payment Method', key: 'paymentMethod'},
+  {dataField: p + 'Payment', label: 'Cara Pembayaran / Payment Method', key: 'paymentMethod', master: 'paymentMethod'},
 ];
 
 const purposeField = (
@@ -69,7 +71,7 @@ export const TERMS_GROUPS: TermsGroupConfig[] = [
         alsoWrite: ['workingCapitalInvestment'],
         readKeys: ['workingCapitalInvestment', 'investment'],
       }),
-      {dataField: 'flCurrency', label: 'Mata Uang / Currency', key: 'currency'},
+      {dataField: 'flCurrency', label: 'Mata Uang / Currency', key: 'currency', master: 'currency'},
       {dataField: 'flDeposit', label: 'Simpanan Jaminan / Security Deposit', key: 'securityDeposit'},
       ...COMMON_TAIL('fl'),
     ],
@@ -80,7 +82,7 @@ export const TERMS_GROUPS: TermsGroupConfig[] = [
     headerBackground: '#e0f2fe',
     fields: [
       purposeField('slbPurpose'),
-      {dataField: 'slbCurrency', label: 'Mata Uang / Currency', key: 'currency'},
+      {dataField: 'slbCurrency', label: 'Mata Uang / Currency', key: 'currency', master: 'currency'},
       {dataField: 'slbDeposit', label: 'Simpanan Jaminan / Security Deposit', key: 'securityDeposit'},
       ...COMMON_TAIL('slb'),
     ],
@@ -91,7 +93,7 @@ export const TERMS_GROUPS: TermsGroupConfig[] = [
     headerBackground: '#e0f2fe',
     fields: [
       purposeField('ifPurpose'),
-      {dataField: 'ifCurrency', label: 'Mata Uang / Currency', key: 'currency'},
+      {dataField: 'ifCurrency', label: 'Mata Uang / Currency', key: 'currency', master: 'currency'},
       {dataField: 'ifDownPayment', label: 'Uang Muka / Down Payment', key: 'downPayment'},
       ...COMMON_TAIL('if'),
     ],

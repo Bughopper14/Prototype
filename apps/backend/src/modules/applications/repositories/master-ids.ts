@@ -134,6 +134,14 @@ export class MasterIdLookup {
           value,
           ...args,
         ]))[0];
+      // A city is often written without its "Kabupaten" / "Kota" (the master names are "Kabupaten Lumajang", "Kota Malang"): match it
+      // with either prefix, but only when exactly one city answers (a name that is both a Kabupaten and a Kota is not guessed).
+      if (!rows.length && key === 'city') {
+        const bare = value.replace(/^(kabupaten|kab\.?|kota)\s+/i, '').trim();
+        const names = [`kabupaten ${bare}`, `kota ${bare}`, `kab. ${bare}`, bare].map(x => x.toLowerCase());
+        const found = (await db.query<any[]>(`SELECT id FROM ${table} WHERE LOWER(name) IN (?)${scope}`, [names, ...args]))[0];
+        if (found.length === 1) rows = found;
+      }
       out[key] = rows[0]?.id ?? null;
       if (!out[key]) unresolved.push(value);
       parent = out[key];

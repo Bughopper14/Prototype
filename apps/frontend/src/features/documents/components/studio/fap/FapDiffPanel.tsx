@@ -15,10 +15,29 @@ export function FapDiffPanel() {
     fapSectionTitles,
     filteredDiffs,
     activeFiles,
+    activeFile,
+    isFapOcrScanning,
     handleRunFapComparison,
   } = useDocumentsStudioContext();
   return (
     <>
+      {/* An earlier file that was never compared: say so instead of showing nothing, and let it be scanned for the record */}
+      {activeFiles.length > 0 && !fapComparison && activeFile && activeFile.isCurrent === false && (
+        <div className="fap-diff-panel">
+          <div className="fap-diff-banner warning">
+            <AlertTriangle size={18} style={{flexShrink: 0, marginTop: 1}} />
+            <div>
+              <strong>Earlier file:</strong> <strong>{activeFile.fileName}</strong> has no comparison yet. It is not the current signed FAP, so it
+              can only be scanned for the record; approval and submit use the current file.
+              <div style={{marginTop: 10}}>
+                <button type="button" className="button small" disabled={busy || isFapOcrScanning} onClick={handleRunFapComparison}>
+                  {busy || isFapOcrScanning ? <Loader2 size={13} className="spin" /> : <RefreshCw size={13} />} Scan this file with OCR
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {activeFiles.length > 0 && fapComparison && (
         <div className="fap-diff-panel">
           <div className="fap-diff-panel-head">
@@ -49,6 +68,16 @@ export function FapDiffPanel() {
 
           {fapComparison.needsRerun && <RerunOcrNotice />}
 
+          {fapComparison.isCurrent === false && (
+            <div className="fap-diff-banner warning">
+              <AlertTriangle size={18} style={{flexShrink: 0, marginTop: 1}} />
+              <div>
+                <strong>Earlier file:</strong> this is the comparison of a file that is no longer the current signed FAP. It is kept as
+                history and cannot be approved or edited.
+              </div>
+            </div>
+          )}
+
           {/* Notice Alert Banner */}
           {fapComparison.hasDifferences ? (
             <div className="fap-diff-banner warning">
@@ -58,6 +87,14 @@ export function FapDiffPanel() {
                 <strong>{fapComparison.diffs?.length || 0} data differences</strong> detected between the
                 signed physical document and the system database. The submit button is now unlocked. You may
                 approve the data changes to update the system automatically, or keep the existing system data.
+              </div>
+            </div>
+          ) : (fapComparison.notedDiffs?.length || 0) > 0 ? (
+            <div className="fap-diff-banner warning">
+              <AlertTriangle size={18} style={{flexShrink: 0, marginTop: 1}} />
+              <div>
+                <strong>{fapComparison.notedDiffs.length} differences were noted</strong> in the remarks
+                {fapComparison.reviewedBy ? ` by ${fapComparison.reviewedBy}` : ''}. The system data was not changed.
               </div>
             </div>
           ) : (
@@ -151,7 +188,7 @@ export function FapDiffPanel() {
                         </td>
                         <td style={{textAlign: 'center'}}>
                           <span className="fap-diff-badge different">
-                            <AlertTriangle size={11} /> Different
+                            <AlertTriangle size={11} /> {d.noted ? 'Noted' : 'Different'}
                           </span>
                         </td>
                       </tr>

@@ -3,7 +3,7 @@
  * rejected. Deciding is done by somebody else, in the Approvals tab (ApproverView). It is a tab of its own so it never sits above the forms.
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {reopenedStep, type Approval} from '@/features/applications/components/workspace/approval-shared';
+import {reopenedStep, whoOf, type Approval} from '@/features/applications/components/workspace/approval-shared';
 import {api} from '@/shared/lib/api';
 import {Badge} from '@/shared/ui/Badge';
 import {date} from '@/shared/lib/format';
@@ -54,6 +54,26 @@ export function ApprovalPanel() {
     setError('');
     setSubmitStageCode(code);
   };
+  // The approval of a whole group has no button: it starts by itself when every stage of the group is submitted. It is listed here so the submitter sees where it stands.
+  const groupRows = ((a.approvalPlaces || []) as any[])
+    .filter(p => p.scope === 'GROUP')
+    .map(p => {
+      const group = (a.workflow?.groups || []).find((g: any) => g.code === p.groupCode);
+      const round = ap.current.find(c => c.scope === 'GROUP' && c.groupCode === p.groupCode);
+      const steps = round?.steps || [];
+      const allSubmitted = (group?.stageCodes || []).every((code: string) => stages.find(st => st.stage === code)?.submitted);
+      const state = !round
+        ? 'NONE'
+        : steps.some(x => x.status === 'REJECTED' && !x.reopened)
+          ? 'REJECTED'
+          : steps.some(x => x.reopened)
+            ? 'REOPENED'
+            : steps.every(x => x.status === 'APPROVED')
+              ? 'APPROVED'
+              : 'OPEN';
+      const waiting = [...new Set(steps.filter(x => x.status === 'PENDING').map(whoOf))];
+      return {code: p.groupCode as string, name: (group?.name || p.groupCode) as string, approval: (p.approvalName || p.approvalCode || '') as string, state, allSubmitted, waiting};
+    });
 
   return (
     <section className="ap-panel" aria-label="Submit for approval">
@@ -136,6 +156,38 @@ export function ApprovalPanel() {
               </li>
             ))}
           </ul>
+          {groupRows.length > 0 && (
+            <>
+              <h4 style={{marginTop: 16}}>Group approval</h4>
+              <ul className="ap-stages">
+                {groupRows.map(g => (
+                  <li key={g.code} className={g.state === 'APPROVED' ? 'done' : g.state === 'OPEN' ? 'sent' : ''}>
+                    <span className="ap-stage-name">
+                      <b>{g.name}</b>
+                      <small>{g.approval}</small>
+                    </span>
+                    <span className="ap-stage-state">
+                      {g.state === 'APPROVED' ? (
+                        <>
+                          <CheckCircle2 size={16} /> Approved
+                        </>
+                      ) : g.state === 'REJECTED' || g.state === 'REOPENED' ? (
+                        <>
+                          <AlertTriangle size={16} /> {g.state === 'REJECTED' ? 'Rejected' : 'Opened again'}
+                        </>
+                      ) : g.state === 'OPEN' ? (
+                        <>
+                          <Clock size={16} /> Waiting{g.waiting.length ? ` for ${g.waiting.join(', ')}` : ''}
+                        </>
+                      ) : (
+                        <small className="muted">{g.allSubmitted ? 'Starting…' : 'Starts by itself when every stage of this group is submitted.'}</small>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
         </div>
       </div>
     </section>

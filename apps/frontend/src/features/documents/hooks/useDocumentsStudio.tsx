@@ -1,4 +1,5 @@
 /** All state, derived values and handlers of Documents; shared with its sections through DocumentsContext. */
+import {screenOfForm} from '@liugong/shared';
 import {hasAuthority} from '@/shared/lib/auth';
 import {stageName, useMasterData} from '@/shared/master-data';
 import {useEffect, useMemo, useRef, useState} from 'react';
@@ -9,7 +10,8 @@ export type DocumentsProps = {
   onChange: (a: any) => void;
   notify: (s: string) => void;
   filterStage?: string;
-  onApproveDocument?: (updatedApp?: any) => void;
+  /** Opens the Submit dialog of the stage that shows the FAP form (the same dialog as the Submit tab). */
+  onSubmitStage?: () => void;
   isFapLocked?: boolean;
 };
 
@@ -31,19 +33,27 @@ export function useDocumentsStudio({
   onChange,
   notify,
   filterStage,
-  onApproveDocument,
+  onSubmitStage,
   isFapLocked,
 }: DocumentsProps) {
   const master = useMasterData();
-  // The stage documents shown here; their title, department, description and stage come from Master Data.
-  const evidenceDefs = EVIDENCE_CODES.map(code => {
+  // One entry per stage of the application's workflow, in its order; the evidence document of a stage follows the screen of its form
+  // (FAP form -> FAP, Pre-analysis form -> PREANALYSIS, any other -> ICLF). The title and description come from Master Data.
+  const stageEvidence: {code: string; stage: any}[] = (a.workflow?.stages || [])
+    .map((s: any) => {
+      const screen = screenOfForm(s.formCode);
+      return {code: screen === 'FAP' ? 'FAP' : screen === 'PRE_ANALYSIS' ? 'PREANALYSIS' : 'ICLF', stage: s};
+    })
+    .filter((x: {code: string}, i: number, all: {code: string}[]) => all.findIndex(y => y.code === x.code) === i);
+  const evidenceBase: {code: string; stage: any}[] = stageEvidence.length ? stageEvidence : EVIDENCE_CODES.map(code => ({code, stage: null}));
+  const evidenceDefs = evidenceBase.map(({code, stage}) => {
     const doc = (master.documents || []).find(d => d.value === code);
     return {
       code,
       name: doc?.name || code,
       title: doc?.title || doc?.name || code,
-      stageCode: doc?.stage || '',
-      stage: stageName(doc?.stage),
+      stageCode: stage?.code || doc?.stage || '',
+      stage: stage?.name || stageName(doc?.stage),
       badgeClass: BADGE_CLASS[code],
       role: doc?.role || '',
       desc: doc?.description || '',
@@ -68,10 +78,12 @@ export function useDocumentsStudio({
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [isMaximized, setIsMaximized] = useState<boolean>(false);
 
-  const [fapComparison, setFapComparison] = useState<any>(null);
+  // The differences a closed review kept (noted) are listed with the open ones, marked `noted`; hasDifferences still counts the open ones only.
+  const [fapComparison, setFapComparisonRaw] = useState<any>(null);
+  const setFapComparison = (c: any) =>
+    setFapComparisonRaw(c && c.notedDiffs?.length ? {...c, diffs: [...(c.diffs || []), ...c.notedDiffs.map((d: any) => ({...d, noted: true}))]} : c);
   const [fapRemarks, setFapRemarks] = useState<string>('');
   const [remarksSaveStatus, setRemarksSaveStatus] = useState<'idle' | 'unsaved' | 'saving' | 'saved'>('idle');
-  const [confirmApproveFapOpen, setConfirmApproveFapOpen] = useState<boolean>(false);
   const [showHistoryModal, setShowHistoryModal] = useState<boolean>(false);
   const [rightViewMode, setRightViewMode] = useState<'ocr' | 'pdf'>('ocr');
   const [isFapOcrScanning, setIsFapOcrScanning] = useState<boolean>(false);
@@ -169,6 +181,8 @@ export function useDocumentsStudio({
     setRemarksSaveStatus,
     setIsFapOcrScanning,
     activeFiles,
+    activeFileId: activeFile?.id,
+    isFapLocked,
     a,
   });
   const {liveFapData, ocrFapData} = useFapSheetData({fapComparison, master, a});
@@ -177,8 +191,6 @@ export function useDocumentsStudio({
     handleFileUpload,
     handleDeleteFile,
     handleSaveFapRemarks,
-    handleApproveFapChanges,
-    handleDismissFapChanges,
     handleRunFapComparison,
   } = useDocumentFileActions({
     setActiveFileUrl,
@@ -196,7 +208,6 @@ export function useDocumentsStudio({
     a,
     onChange,
     notify,
-    onApproveDocument,
   });
 
   return {
@@ -205,7 +216,7 @@ export function useDocumentsStudio({
     onChange,
     notify,
     filterStage,
-    onApproveDocument,
+    onSubmitStage,
     isFapLocked,
     evidenceDefs,
     defaultCode,
@@ -235,8 +246,6 @@ export function useDocumentsStudio({
     setFapRemarks,
     remarksSaveStatus,
     setRemarksSaveStatus,
-    confirmApproveFapOpen,
-    setConfirmApproveFapOpen,
     showHistoryModal,
     setShowHistoryModal,
     rightViewMode,
@@ -271,8 +280,6 @@ export function useDocumentsStudio({
     handleFileUpload,
     handleDeleteFile,
     handleSaveFapRemarks,
-    handleApproveFapChanges,
-    handleDismissFapChanges,
     handleRunFapComparison,
   };
 }

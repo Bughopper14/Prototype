@@ -61,7 +61,9 @@ export function FacilityProposedCard() {
               }));
             }}
           >
-            <option value="">Select financing method</option>
+            <option value="" disabled hidden>
+              Select financing method
+            </option>
             {(master.financingMethod || [])
               .filter(x => x.active || x.value === draft.financingProposal?.facilityProposed?.financingMethod)
               .map(x => (

@@ -671,6 +671,16 @@ svg.up { transform: rotate(180deg); }
 .cc-seg button.on { background: #0b1b3f; border-color: #0b1b3f; color: #fff; }
 .cc-foot { display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding-top: 4px; }
 .cc-form label.cc-check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; margin-right: auto; }
+.cc-field { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: #334155; }
+.cc-multi { position: relative; }
+.cc-multi-btn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; font-size: 15px; font-weight: 400; color: #0f172a; text-align: left; cursor: pointer; box-sizing: border-box; }
+.cc-multi-btn .ph { color: #64748b; }
+.cc-multi-btn:focus-visible, .cc-multi-btn[aria-expanded='true'] { outline: 2px solid #2563eb33; border-color: #2563eb; }
+.cc-multi-pop { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); max-height: 240px; overflow: auto; background: #fff; border: 1px solid #cbd5e1; border-radius: 10px; box-shadow: 0 8px 24px rgba(15, 23, 42, .14); padding: 4px; }
+.cc-multi-row { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; font-size: 14px; font-weight: 400; color: #0f172a; cursor: pointer; }
+.cc-multi-row:hover { background: #f1f5f9; }
+.cc-multi-row.on { background: #eff6ff; }
+.cc-multi-row input { flex: none; width: 16px; height: 16px; margin: 0; pointer-events: none; }
 .cc-empty { margin: 0; padding: 14px; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b; font-size: 14px; }
 
 /* Approval slot of a row (deeds): status and row menu on one line, full-width action under it */

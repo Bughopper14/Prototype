@@ -66,6 +66,10 @@ export function DeedReviewDialog({
   const canSubmit =
       hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(status),
     canApprove = checkIsAdmin(user) && status === 'PENDING';
+  // The approval of this deed in the workflow is decided right here: the steps of its round that this person may decide (the same ones the Legal tab offered a "Review & decide" button for)
+  const round = ((application.approval?.current || []) as any[]).find(c => c.scope === 'SECTION' && c.sectionCode === DEED_SECTION && c.subjectId === deedId);
+  const actable: any[] = masterApproves ? (round?.steps || []).filter((s: any) => s.canAct) : [];
+  const canDecide = actable.length > 0;
   useEffect(() => {
     let live = true;
     setUrl('');
@@ -99,6 +103,20 @@ export function DeedReviewDialog({
         comments,
       });
       onUpdated(a);
+      onClose();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function decide(decision: 'APPROVED' | 'REJECTED') {
+    setBusy(true);
+    setError('');
+    try {
+      for (const step of actable)
+        await api(`/applications/${application.id}/approvals/${step.id}/decision`, 'POST', {decision, remarks: comments.trim() || undefined});
+      onUpdated(await api(`/applications/${application.id}`));
       onClose();
     } catch (e: any) {
       setError(e.message);
@@ -141,7 +159,8 @@ export function DeedReviewDialog({
             holders={holders}
           />
           <ReviewComments
-            canApprove={canApprove}
+            canApprove={canApprove || canDecide}
+            withRemarks={!masterApproves}
             error={error}
             comments={comments}
             setComments={setComments}
@@ -152,6 +171,8 @@ export function DeedReviewDialog({
           status={status}
           canSubmit={canSubmit}
           canApprove={canApprove}
+          canDecide={canDecide}
+          onDecide={decide}
           legacyReview={!masterApproves}
           busy={busy}
           comments={comments}
