@@ -38,12 +38,20 @@ const stepLabel = (s: Step) => (s.status === 'PENDING' ? (s.canAct ? 'Your turn'
 const Decisions = ({step}: {step: Step}) => (
   <>
     {step.decisions.map((d, i) => (
-      <p key={i} className="ap-decision">
-        {d.decision === 'APPROVED' ? <Check size={14} /> : <X size={14} />} {d.by}: {d.decision === 'APPROVED' ? 'approved' : 'rejected'}
-        {d.decidedAt ? ` · ${when(d.decidedAt)}` : ''}
-        {d.remarks ? ` — ${d.remarks}` : ''}
-        {d.via === 'LARK' ? ' (from Lark)' : ''}
-      </p>
+      <div key={i} className="ap-decision" style={{marginTop: 4}}>
+        <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+          {d.decision === 'APPROVED' ? <Check size={14} /> : <X size={14} />} {d.by}: {d.decision === 'APPROVED' ? 'approved' : 'rejected'}
+          {d.decidedAt ? ` · ${when(d.decidedAt)}` : ''}
+          {d.via === 'LARK' ? ' (from Lark)' : ''}
+        </div>
+        {d.remarks ? (
+          <div
+            className="ap-decision-remarks"
+            style={{paddingLeft: 20, color: '#475569', fontSize: '0.9em', marginTop: 2}}
+            dangerouslySetInnerHTML={{__html: d.remarks}}
+          />
+        ) : null}
+      </div>
     ))}
   </>
 );
@@ -157,7 +165,11 @@ export function groupRejectionOf(ap: Approval) {
 }
 
 /** What a step that was opened again because of its group says in place of a reason of its own. */
-export const fromGroupText = (d: {remarks: string | null} | null) => `Rejected dari Group.${d?.remarks ? ` Remarks: ${d.remarks}` : ''}`;
+export const fromGroupText = (d: {remarks: string | null} | null) => {
+  if (!d?.remarks) return 'Rejected dari Group.';
+  const plain = d.remarks.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+  return `Rejected dari Group.${plain ? ` Remarks: ${plain}` : ''}`;
+};
 
 export function HistoryList({history, groupReject}: {history: Scope[]; groupReject?: {remarks: string | null} | null}) {
   if (!history.length) return null;
