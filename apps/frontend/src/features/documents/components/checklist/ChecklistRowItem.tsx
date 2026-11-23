@@ -23,7 +23,7 @@ export function ChecklistRowItem({
   showStage: boolean;
   isUploading: boolean;
   deletingFileId: string | null;
-  onPreview: (row: ChecklistRow) => void;
+  onPreview: (row: ChecklistRow, file?: any) => void;
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;
@@ -123,7 +123,7 @@ export function ChecklistRowItem({
 
       {/* Sumber Integrasi & Bukti */}
       <td className="col-source">
-        <DocumentSourceCell row={row} deletingFileId={deletingFileId} onDelete={onDelete} />
+        <DocumentSourceCell row={row} deletingFileId={deletingFileId} onDelete={onDelete} onPreviewFile={f => onPreview(row, f)} />
       </td>
 
       {/* Aksi */}

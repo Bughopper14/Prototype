@@ -20,7 +20,6 @@ export function useDocumentFileActions({
   a,
   onChange,
   notify,
-  onApproveDocument,
 }: {
   setActiveFileUrl: React.Dispatch<React.SetStateAction<string>>;
   activeFile: any;
@@ -37,7 +36,6 @@ export function useDocumentFileActions({
   a: any;
   onChange: (a: any) => void;
   notify: (s: string) => void;
-  onApproveDocument: ((updatedApp?: any) => void) | undefined;
 }) {
   async function previewFile(f: any) {
     try {
@@ -180,50 +178,12 @@ export function useDocumentFileActions({
     }
   }
 
-  async function handleApproveFapChanges() {
-    setBusy(true);
-    setError('');
-    try {
-      const res = await api(`/applications/${a.id}/fap-changes/approve`, 'POST', {
-        remarks: fapRemarks,
-      });
-      const updated = res?.application || (await api(`/applications/${a.id}`));
-      setFapComparison(null);
-      notify('FAP Stage submitted. Customer & PIC details are locked and the approval has started.');
-      if (onApproveDocument) {
-        onApproveDocument(updated);
-      } else {
-        onChange(updated);
-      }
-    } catch (err: any) {
-      setError('Failed to submit the FAP stage: ' + err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDismissFapChanges() {
-    setBusy(true);
-    setError('');
-    try {
-      await api(`/applications/${a.id}/fap-changes/dismiss`, 'POST', {
-        remarks: fapRemarks,
-      });
-      setFapComparison(null);
-      notify('Remarks saved. Staying on the current document.');
-    } catch (err: any) {
-      setError('Failed to dismiss data comparison: ' + err.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function handleRunFapComparison() {
     setBusy(true);
     setIsFapOcrScanning(true);
     setError('');
     try {
-      const res = await api(`/applications/${a.id}/fap-comparison/run`, 'POST');
+      const res = await api(`/applications/${a.id}/fap-comparison/run`, 'POST', activeFile?.id ? {fileId: activeFile.id} : {});
       if (res?.comparison) {
         setFapComparison(res.comparison);
         setRightViewMode('ocr');
@@ -248,8 +208,6 @@ export function useDocumentFileActions({
     handleFileUpload,
     handleDeleteFile,
     handleSaveFapRemarks,
-    handleApproveFapChanges,
-    handleDismissFapChanges,
     handleRunFapComparison,
   };
 }

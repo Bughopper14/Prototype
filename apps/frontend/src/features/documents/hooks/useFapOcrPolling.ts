@@ -9,6 +9,8 @@ export function useFapOcrPolling({
   setRemarksSaveStatus,
   setIsFapOcrScanning,
   activeFiles,
+  activeFileId,
+  isFapLocked,
   a,
 }: {
   selectedCode: string;
@@ -17,6 +19,9 @@ export function useFapOcrPolling({
   setRemarksSaveStatus: React.Dispatch<React.SetStateAction<'idle' | 'unsaved' | 'saving' | 'saved'>>;
   setIsFapOcrScanning: React.Dispatch<React.SetStateAction<boolean>>;
   activeFiles: any;
+  activeFileId?: string;
+  /** The stage was submitted: the review is closed, so the comparison is read again. */
+  isFapLocked?: boolean;
   a: any;
 }) {
   // Load existing FAP comparison from backend on stage switch or when files change
@@ -25,7 +30,9 @@ export function useFapOcrPolling({
     let pollTimer: any = null;
 
     if (selectedCode === 'FAP' && activeFiles.length > 0) {
-      api(`/applications/${a.id}/fap-comparison`)
+      // the comparison of the file on screen (the current file when none is chosen yet)
+      const fileQuery = activeFileId ? `?fileId=${encodeURIComponent(activeFileId)}` : '';
+      api(`/applications/${a.id}/fap-comparison${fileQuery}`)
         .then(res => {
           if (isCancelled) return;
           const comp = res?.comparison;
@@ -48,7 +55,7 @@ export function useFapOcrPolling({
               }
               attempts++;
               try {
-                const compRes = await api(`/applications/${a.id}/fap-comparison`);
+                const compRes = await api(`/applications/${a.id}/fap-comparison${fileQuery}`);
                 const c = compRes?.comparison;
                 if (c?.status !== 'processing') {
                   clearInterval(pollTimer);
@@ -90,5 +97,5 @@ export function useFapOcrPolling({
       isCancelled = true;
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [selectedCode, a.id, activeFiles.length]);
+  }, [selectedCode, a.id, activeFiles.length, activeFileId, isFapLocked]);
 }

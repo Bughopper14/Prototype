@@ -26,7 +26,7 @@ export class FapController {
   @Get('applications/:id/fap-comparison')
   async comparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_DOCUMENT_VIEW', 'CRM_DOCUMENT-DESK_VIEW');
-    return {status: 'success', comparison: await this.comparisons.get(req.params.id, req.actor)};
+    return {status: 'success', comparison: await this.comparisons.get(req.params.id, req.actor, req.query?.fileId ? String(req.query.fileId) : undefined)};
   }
 
   @Post('applications/:id/fap-comparison/remarks')
@@ -41,29 +41,9 @@ export class FapController {
   async runComparison(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_LEGAL_EDIT');
     await this.applications.detailOr404(req.params.id, req.actor);
-    const comparison = await this.comparisons.run(req.params.id, req.actor);
+    const comparison = await this.comparisons.run(req.params.id, req.actor, req.body?.fileId ? String(req.body.fileId) : undefined);
     ensure(comparison, 'Belum ada dokumen FAP yang diunggah', 400);
     return {success: true, comparison};
-  }
-
-  /** The FAP document is accepted: the comparison closes and the FAP stage is submitted. */
-  @Post('applications/:id/fap-changes/approve')
-  async approveChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'CRM_LEGAL_EDIT');
-    await this.applications.detailOr404(req.params.id, req.actor);
-    await this.comparisons.approve(req.params.id, req.actor, req.body?.remarks);
-    return {
-      success: true,
-      application: await this.applications.detail(req.params.id, req.actor),
-      customerDetailLocked: false,
-    };
-  }
-
-  @Post('applications/:id/fap-changes/dismiss')
-  async dismissChanges(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    requireAuthority(req.actor, 'CRM_LEGAL_EDIT');
-    await this.comparisons.dismiss(req.params.id, req.actor, req.body?.remarks);
-    return {success: true};
   }
 
   /** Every FAP freeze of the application (crm_frozen_fap_*), newest first. */

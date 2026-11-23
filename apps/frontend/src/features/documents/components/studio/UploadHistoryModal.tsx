@@ -101,6 +101,11 @@ export function UploadHistoryModal() {
                             <span>{sizeStr}</span>
                             {dateStr && <span>• {dateStr}</span>}
                             {f.uploadedBy && <span>• Uploaded by: {f.uploadedBy}</span>}
+                            {activeItem.code === 'FAP' && (
+                              <span style={{fontWeight: 600, color: f.isCurrent ? '#059669' : '#94a3b8'}}>
+                                • {f.isCurrent ? 'Current file' : 'Earlier file'}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -109,12 +114,12 @@ export function UploadHistoryModal() {
                           type="button"
                           className={`button small ${isPreviewed ? 'primary' : ''}`}
                           onClick={() => {
-                            previewFile(f);
+                            if (!isPreviewed) previewFile(f);
                             setShowHistoryModal(false);
                           }}
-                          title="Show in preview screen"
+                          title={isPreviewed ? 'This file is already shown on the screen' : 'Show this file on the screen'}
                         >
-                          <Eye size={13} /> {isPreviewed ? 'Active' : 'Preview'}
+                          <Eye size={13} /> {isPreviewed ? 'Shown now' : 'Show'}
                         </button>
                         <button
                           type="button"

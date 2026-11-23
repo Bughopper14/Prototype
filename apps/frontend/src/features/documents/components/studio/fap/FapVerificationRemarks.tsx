@@ -1,19 +1,21 @@
 /** FAP diff panel: verification remarks editor. */
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
-import {FapRemarksTinyMCE} from '@/features/fap/components/FapComparisonModal';
-import {CheckCircle, FileText, Loader2, Save} from 'lucide-react';
+import {FapRemarksTinyMCE} from '@/features/fap/components/FapRemarksTinyMCE';
+import {CheckCircle, FileText, Loader2} from 'lucide-react';
 
 export function FapVerificationRemarks() {
   const {
     a,
+    isFapLocked,
     busy,
     fapComparison,
     fapRemarks,
     setFapRemarks,
     remarksSaveStatus,
     setRemarksSaveStatus,
-    handleSaveFapRemarks,
   } = useDocumentsStudioContext();
+  // remarks are written on the current file while the stage is not submitted; otherwise they are only read
+  const readOnly = isFapLocked || fapComparison?.isCurrent === false;
   return (
     <div className="fap-diff-remarks-card">
       <div className="fap-diff-remarks-head">
@@ -57,30 +59,13 @@ export function FapVerificationRemarks() {
               <Loader2 size={13} className="spin" /> Saving...
             </span>
           )}
-          <button
-            type="button"
-            className="button small"
-            disabled={busy || remarksSaveStatus === 'saving'}
-            onClick={handleSaveFapRemarks}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              fontSize: '12px',
-              padding: '4px 12px',
-              height: '28px',
-            }}
-            title="Save verification remarks"
-          >
-            <Save size={13} /> Save Remarks
-          </button>
         </div>
       </div>
 
       <FapRemarksTinyMCE
-        key={`${a.id}-${fapComparison?.fileName || 'fap'}`}
+        key={`${a.id}-${fapComparison?.fileId || 'fap'}-${readOnly ? 'ro' : 'rw'}`}
         initialContent={fapRemarks}
-        disabled={busy}
+        disabled={busy || readOnly}
         onChange={content => {
           setFapRemarks(content);
           setRemarksSaveStatus('unsaved');

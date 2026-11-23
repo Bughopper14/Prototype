@@ -73,7 +73,7 @@ export class FapFreezeRepository {
        WHERE p.application_id=?`,
       [applicationId],
     );
-    // The signed FAP form: its current file and the latest OCR comparison.
+    // The signed FAP form: its current file and the OCR comparison of that file.
     const [[fapFile]] = await conn.query<any[]>(
       `SELECT f.id,f.file_name,COALESCE(f.storage_path,f.storage_key) AS path
        FROM ${CRM.applicationDocumentFiles} f
@@ -83,8 +83,8 @@ export class FapFreezeRepository {
       [applicationId],
     );
     const [[comparison]] = await conn.query<any[]>(
-      `SELECT id,remarks FROM ${CRM.fapDocumentOcrComparisons} WHERE application_id=? ORDER BY created_at DESC LIMIT 1`,
-      [applicationId],
+      `SELECT id,remarks FROM ${CRM.fapDocumentOcrComparisons} WHERE application_id=? AND document_file_id<=>? ORDER BY created_at DESC LIMIT 1`,
+      [applicationId, fapFile?.id ?? null],
     );
     const [[bank]] = await conn.query<any[]>(
       `SELECT COALESCE(SUM(monthly_installment),0) AS total FROM ${CRM.fapBankFacilities}

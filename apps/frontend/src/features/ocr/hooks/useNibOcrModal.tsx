@@ -30,6 +30,8 @@ export interface NibOcrModalProps {
     rw?: string;
   }) => void;
   notify?: (msg: string) => void;
+  /** The saved application the scan belongs to: the scanned NIB is also added to its document checklist. */
+  applicationId?: string;
   existingDocumentUrl?: string;
   existingFileName?: string;
   applicationId?: string;
@@ -41,6 +43,7 @@ export function useNibOcrModal({
   onClose,
   onApply,
   notify,
+  applicationId,
   existingDocumentUrl,
   existingFileName,
   applicationId,
@@ -113,6 +116,7 @@ export function useNibOcrModal({
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'nib');
+      if (applicationId) uploadPayload.append('application_id', applicationId);
 
       const res = await api('/ocr/scan', 'POST', uploadPayload);
       if (res && res.data) {

@@ -376,6 +376,17 @@ INSERT IGNORE INTO `crm_workflow_logs` (`id`,`workflow_code`,`workflow_name`,`ac
 INSERT IGNORE INTO `crm_workflow_logs` (`id`,`workflow_code`,`workflow_name`,`action`,`summary`,`freeze_version`,`actor_name`)
   SELECT UUID(),`code`,`name`,'ACTIVATE','Set active (new applications start here now)',1,'seed' FROM `crm_workflows` WHERE `is_active`=1;
 
+-- Stakeholder fields that used to be required by the code (email, mobile phone, primary capital, ID number) are now rules of the workflow:
+-- mandatory on the stage that shows the FAP form, in every workflow and every frozen workflow. They can be changed in Workflow setup (new workflows).
+INSERT IGNORE INTO `crm_workflow_stage_fields` (`id`,`workflow_code`,`stage_code`,`form_field_code`,`is_mandatory`,`created_by`)
+  SELECT UUID(),s.`workflow_code`,s.`code`,f.`code`,1,'seed' FROM `crm_workflow_stages` s
+  JOIN `crm_master_form_fields` f ON f.`code` IN ('SHAREHOLDERS-MANAGEMENT-EMAIL','SHAREHOLDERS-MANAGEMENT-MOBILE-PHONE','SHAREHOLDERS-MANAGEMENT-PRIMARY-CAPITAL','SHAREHOLDERS-MANAGEMENT-ID-NUMBER')
+  WHERE s.`form_code`='FAP-FORM';
+INSERT IGNORE INTO `crm_frozen_workflow_stage_fields` (`id`,`workflow_freeze_id`,`stage_code`,`form_field_code`,`is_mandatory`)
+  SELECT UUID(),s.`workflow_freeze_id`,s.`code`,f.`code`,1 FROM `crm_frozen_workflow_stages` s
+  JOIN `crm_master_form_fields` f ON f.`code` IN ('SHAREHOLDERS-MANAGEMENT-EMAIL','SHAREHOLDERS-MANAGEMENT-MOBILE-PHONE','SHAREHOLDERS-MANAGEMENT-PRIMARY-CAPITAL','SHAREHOLDERS-MANAGEMENT-ID-NUMBER')
+  WHERE s.`form_code`='FAP-FORM';
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

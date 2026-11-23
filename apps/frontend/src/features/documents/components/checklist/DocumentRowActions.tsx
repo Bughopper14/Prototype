@@ -17,6 +17,8 @@ export function DocumentRowActions({
   onUpload: (code: string) => void;
   onDelete: (fileId: string, code: string) => void;
 }) {
+  // "Ganti" (replace) is only for the FAP (one current signed file); every other document takes more files ("Tambah"); a document with no file yet says "Upload"
+  const hasFile = (row.files || []).length > 0;
   return (
     <div className="doc-row-actions">
       {/* Preview button if available */}
@@ -35,18 +37,18 @@ export function DocumentRowActions({
       {/* Upload Button */}
       <button
         type="button"
-        className={`button small doc-action-btn ${row.isAvailable ? 'btn-replace' : 'primary btn-upload'}`}
-        title={row.isAvailable ? 'Replace / Upload additional file' : 'Upload file now'}
+        className={`button small doc-action-btn ${hasFile ? 'btn-replace' : 'primary btn-upload'}`}
+        title={hasFile ? 'Replace / Upload additional file' : 'Upload file now'}
         disabled={isUploading}
         onClick={() => onUpload(row.code)}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
-        <span>{row.isAvailable ? 'Replace' : 'Upload'}</span>
+        <span>{hasFile ? 'Replace' : 'Upload'}</span>
       </button>
 
-      {/* Delete Button / Lock Indicator */}
-      {row.isAvailable &&
-        (row.canDelete && row.files[0]?.id ? (
+      {/* Delete Button / Lock Indicator (with several files each file has its own delete button in the file list) */}
+      {row.isAvailable && !(row.canDelete && row.files.length > 1) &&
+        (row.canDelete && row.files[0]?.id && row.files.length === 1 ? (
           <button
             type="button"
             className="button small doc-action-btn btn-delete text-danger"

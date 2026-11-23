@@ -9,6 +9,7 @@
  */
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
+import {DEED_SECTION} from '@liugong/shared';
 import {ShieldCheck} from 'lucide-react';
 import {useState, type ReactNode} from 'react';
 import {STEP_LABEL, whoOf, type Scope, type Step} from './approval-shared';
@@ -22,6 +23,8 @@ type Props = {
   subjectId: string;
   /** Something drawn at the end of the status line (the row menu of a deed). */
   trailing?: ReactNode;
+  /** When given, the person who may decide gets ONE "Review & decide" button that opens this (the deed review dialog, which holds Approve and Reject). */
+  onOpenReview?: () => void;
 };
 
 const stateOf = (steps: Step[]) =>
@@ -33,7 +36,7 @@ const stateOf = (steps: Step[]) =>
         ? 'APPROVED'
         : 'OPEN';
 
-export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
+export function ApprovalSlot({scope, code, subjectId, trailing, onOpenReview}: Props) {
   const {a: application, user, onChange, notify, setDecision, setComments, setError} = useWorkspace();
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +51,9 @@ export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
   const steps = round?.steps || [];
   const state = round ? stateOf(steps) : 'NONE';
   const canSubmit = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT') && (state === 'NONE' || state === 'REJECTED' || state === 'REOPENED');
+  // a deed that the FAP form generates has a temporary id until it is stored (it is stored automatically as soon as it shows in the Legal tab);
+  // the server cannot start an approval for a row it does not have yet
+  const unsaved = code === DEED_SECTION && String(subjectId).startsWith('system-');
 
   const run = async (path: string, body: any, done: string) => {
     setBusy(true);
@@ -95,22 +101,35 @@ export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
         {trailing}
       </div>
       {canSubmit && (
-        <button type="button" className="button small" disabled={busy} onClick={submit}>
+        <button
+          type="button"
+          className="button small"
+          disabled={busy || unsaved}
+          title={unsaved ? 'The deed is being stored' : undefined}
+          onClick={submit}
+        >
           {state === 'REJECTED' || state === 'REOPENED' ? 'Resubmit for approval' : 'Request approval'}
         </button>
       )}
-      {actable.map(step => (
-        <button
-          key={step.id}
-          type="button"
-          className="button primary small"
-          disabled={busy}
-          title={`${whoOf(step)} · ${step.name}`}
-          onClick={() => decide(step, 'APPROVED')}
-        >
+      {canSubmit && unsaved && <small className="muted">The deed is being stored. Try again in a moment.</small>}
+      {onOpenReview && actable.length > 0 ? (
+        <button type="button" className="button primary small" disabled={busy} onClick={onOpenReview}>
           <ShieldCheck size={14} /> Review &amp; decide
         </button>
-      ))}
+      ) : (
+        actable.map(step => (
+          <button
+            key={step.id}
+            type="button"
+            className="button primary small"
+            disabled={busy}
+            title={`${whoOf(step)} · ${step.name}`}
+            onClick={() => decide(step, 'APPROVED')}
+          >
+            <ShieldCheck size={14} /> Review &amp; decide
+          </button>
+        ))
+      )}
     </div>
   );
 }

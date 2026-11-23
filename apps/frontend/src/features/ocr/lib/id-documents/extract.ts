@@ -22,10 +22,14 @@ function dataUrlToBlob(dataUrl: string): Blob {
 // -------------------------------------------------------------
 // Unified Scanner Caller
 // -------------------------------------------------------------
+/** What a scan belongs to: the stored copy is named after them, and the server also adds it to the document checklist of that application. */
+export type ScanMeta = {applicationId?: string; stakeholderId?: string};
+
 export async function extractIdDocumentFromImage(
   fileOrInput: File | Blob | string,
   docType: 'ktp' | 'passport' | 'npwp' | 'kitas' = 'ktp',
   fileName?: string,
+  meta?: ScanMeta,
 ): Promise<{
   docType: string;
   data: any;
@@ -47,6 +51,8 @@ export async function extractIdDocumentFromImage(
       uploadPayload.append('file', fileOrInput, fileName || `${docType}_scan.jpg`);
     }
     uploadPayload.append('doc_type', docType);
+    if (meta?.applicationId) uploadPayload.append('application_id', meta.applicationId);
+    if (meta?.stakeholderId) uploadPayload.append('stakeholder_id', meta.stakeholderId);
 
     const res = await api('/ocr/scan', 'POST', uploadPayload);
     if (res && res.data) {
@@ -88,9 +94,9 @@ export async function extractIdDocumentFromImage(
 export async function extractKtpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  _meta?: unknown,
+  meta?: ScanMeta,
 ): Promise<ParsedKtpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, meta);
   const d = res.data || {};
   const sLower = String(d.status_perkawinan || d.maritalStatus || d.status || '').toLowerCase();
   const isSingle = sLower.includes('belum') || sLower.includes('tidak') || sLower.includes('single');
@@ -150,9 +156,9 @@ export async function extractKtpTextFromImage(
 export async function extractPassportTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  _meta?: unknown,
+  meta?: ScanMeta,
 ): Promise<ParsedPassportData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName, meta);
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
@@ -182,9 +188,9 @@ export async function extractPassportTextFromImage(
 export async function extractNpwpTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  _meta?: unknown,
+  meta?: ScanMeta,
 ): Promise<ParsedNpwpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName, meta);
   const d = res.data || {};
   return {
     scan: res.scan,
@@ -204,9 +210,9 @@ export async function extractNpwpTextFromImage(
 export async function extractKitasTextFromImage(
   fileOrInput: File | Blob | string,
   fileName?: string,
-  _meta?: unknown,
+  meta?: ScanMeta,
 ): Promise<ParsedKitasData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName, meta);
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;

@@ -5,8 +5,8 @@
 import {api} from '@/shared/lib/api';
 import {departmentLabel} from '@/shared/lib/departments';
 import {Modal} from '@/shared/ui/Modal';
-import {FilePlus2, Plus, Trash2, Undo2} from 'lucide-react';
-import {useCallback, useEffect, useState} from 'react';
+import {ChevronDown, FilePlus2, Plus, Trash2, Undo2} from 'lucide-react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 
 type Options = {
   pool: {stageCode: string; code: string; name: string; isMandatory: boolean}[];
@@ -16,8 +16,51 @@ type Options = {
   departments: {code: string; name: string}[];
 };
 
-/** The last choice of the master-data list: a document that is not in the list, typed by name. */
-const OTHER = '__other__';
+/** A dropdown that looks like the select it replaces, with a tick box on every row so several documents can be chosen at once. */
+function MultiPick({
+  items,
+  picked,
+  onToggle,
+  placeholder,
+  other,
+}: {
+  items: {key: string; label: string}[];
+  picked: string[];
+  onToggle: (key: string) => void;
+  placeholder: string;
+  /** The last row: a document that is not in the list, typed by name. */
+  other?: {label: string; on: boolean; toggle: () => void};
+}) {
+  const [open, setOpen] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const close = (e: MouseEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, []);
+  const count = picked.length + (other?.on ? 1 : 0);
+  const summary = count === 1 ? (picked.length ? items.find(i => i.key === picked[0])?.label : other?.label) : `${count} documents selected`;
+  const row = (key: string, label: string, on: boolean, toggle: () => void) => (
+    <div key={key} role="option" aria-selected={on} className={'cc-multi-row' + (on ? ' on' : '')} onClick={toggle}>
+      <input type="checkbox" checked={on} readOnly tabIndex={-1} />
+      <span>{label}</span>
+    </div>
+  );
+  return (
+    <div className="cc-multi" ref={box}>
+      <button type="button" className="cc-multi-btn" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+        <span className={count ? '' : 'ph'}>{count ? summary : placeholder}</span>
+        <ChevronDown size={16} />
+      </button>
+      {open && (
+        <div className="cc-multi-pop" role="listbox" aria-multiselectable="true">
+          {items.map(i => row(i.key, i.label, picked.includes(i.key), () => onToggle(i.key)))}
+          {other && row('__other__', other.label, other.on, other.toggle)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ChecklistCustomizeDialog({
   application,
@@ -36,8 +79,10 @@ export function ChecklistCustomizeDialog({
   const [reason, setReason] = useState('');
   const [mode, setMode] = useState<'OFF' | 'ADD'>('ADD');
   const [source, setSource] = useState<'POOL' | 'MASTER'>('MASTER');
-  const [poolId, setPoolId] = useState('');
-  const [masterCode, setMasterCode] = useState('');
+  /** The documents ticked in the list: `stageCode|code` for the workflow's list, the document code for the master list. Several can be added at once. */
+  const [picked, setPicked] = useState<string[]>([]);
+  /** "Others" is ticked: a document typed by name is added too. */
+  const [otherOn, setOtherOn] = useState(false);
   const [stage, setStage] = useState('');
   const [customName, setCustomName] = useState('');
   /** The department responsible for a document added to this application: asked for every added document; it starts as the department of the stage. */
@@ -82,22 +127,46 @@ export function ChecklistCustomizeDialog({
   ];
   const src = sources.some(x => x.key === source) ? source : 'MASTER';
   // "Others" asks for a name; with an empty master list it is the only way to add a document of this kind
-  const isOther = src === 'MASTER' && (!options.masters.length || masterCode === OTHER);
-  const canAdd = !busy && !!department && (src === 'POOL' ? !!poolId : isOther ? !!customName.trim() : !!masterCode);
-  const add = () => {
-    const pool = options.pool.find(x => `${x.stageCode}|${x.code}` === poolId);
-    const body =
-      src === 'POOL' && pool
-        ? {action: 'ADD', stageCode: pool.stageCode, workflowDocumentCode: pool.code, departmentCode: department}
-        : src === 'MASTER' && !isOther
-          ? {action: 'ADD', stageCode: defaultStage, documentCode: masterCode, departmentCode: department}
-          : {action: 'ADD', stageCode: defaultStage, customName: customName.trim(), departmentCode: department, isMandatory: customMandatory};
-    void run(() => post(body), 'Document added').then(() => {
-      setPoolId('');
-      setMasterCode('');
+  const isOther = src === 'MASTER' && (!options.masters.length || otherOn);
+  const typed = isOther ? customName.trim() : '';
+  const canAdd = !busy && !!department && (isOther ? !!typed : true) && (picked.length > 0 || !!typed);
+  const toggle = (key: string) => setPicked(p => (p.includes(key) ? p.filter(x => x !== key) : [...p, key]));
+  const add = async () => {
+    const bodies: object[] = [
+      ...picked.map(key => {
+        if (src === 'POOL') {
+          const pool = options.pool.find(x => `${x.stageCode}|${x.code}` === key)!;
+          return {action: 'ADD', stageCode: pool.stageCode, workflowDocumentCode: pool.code, departmentCode: department};
+        }
+        return {action: 'ADD', stageCode: defaultStage, documentCode: key, departmentCode: department};
+      }),
+      ...(typed ? [{action: 'ADD', stageCode: defaultStage, customName: typed, departmentCode: department, isMandatory: customMandatory}] : []),
+    ];
+    setBusy(true);
+    let added = 0;
+    const failed: string[] = [];
+    for (const body of bodies) {
+      try {
+        await post(body);
+        added++;
+      } catch (e: any) {
+        failed.push(e.message || 'Failed');
+      }
+    }
+    try {
+      onChange(await api(`/applications/${application.id}`));
+      await load();
+    } finally {
+      setBusy(false);
+    }
+    notify(failed.length ? `${added} added, ${failed.length} failed: ${failed[0]}` : added === 1 ? 'Document added' : `${added} documents added`);
+    // what could not be added stays ticked so it can be tried again; the rest is cleared
+    if (!failed.length) {
+      setPicked([]);
+      setOtherOn(false);
       setCustomName('');
       setCustomMandatory(false);
-    });
+    }
   };
 
   return (
@@ -187,53 +256,69 @@ export function ChecklistCustomizeDialog({
             {sources.length > 1 && (
               <div className="cc-seg" role="tablist" aria-label="Where the document comes from">
                 {sources.map(x => (
-                  <button key={x.key} type="button" role="tab" aria-selected={src === x.key} className={src === x.key ? 'on' : ''} onClick={() => setSource(x.key)}>
+                  <button key={x.key} type="button" role="tab" aria-selected={src === x.key} className={src === x.key ? 'on' : ''} onClick={() => {
+                      setSource(x.key);
+                      setPicked([]);
+                      setOtherOn(false);
+                    }}>
                     {x.label}
                   </button>
                 ))}
               </div>
             )}
 
-            {src === 'POOL' && (
-              <label>
-                Document
-                <select value={poolId} onChange={e => setPoolId(e.target.value)}>
-                  <option value="" disabled>
-                    Choose a document…
-                  </option>
-                  {options.pool.map(p => (
-                    <option key={`${p.stageCode}|${p.code}`} value={`${p.stageCode}|${p.code}`}>
-                      {p.name} ({stageName(p.stageCode)})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-            {src === 'MASTER' && (
-              <>
-                {options.masters.length > 0 && (
-                  <label>
+            {/* several documents can be ticked in the dropdown; each one is added to this application */}
+            {(() => {
+              const list = src === 'POOL' ? options.pool.map(p => ({key: `${p.stageCode}|${p.code}`, label: `${p.name} (${stageName(p.stageCode)})`})) : options.masters.map(m => ({key: m.code, label: m.name}));
+              return list.length > 0 ? (
+                <>
+                  <div className="cc-field">
                     Document
-                    <select value={masterCode} onChange={e => setMasterCode(e.target.value)}>
-                      <option value="" disabled>
-                        Choose from master data…
-                      </option>
-                      {options.masters.map(m => (
-                        <option key={m.code} value={m.code}>
-                          {m.name}
-                        </option>
-                      ))}
-                      <option value={OTHER}>Others (type a new document name)…</option>
-                    </select>
-                  </label>
-                )}
-                {isOther && (
-                  <label>
-                    Document name
-                    <input placeholder="e.g. Surat Keterangan Domisili" value={customName} onChange={e => setCustomName(e.target.value)} />
-                  </label>
-                )}
-              </>
+                    <MultiPick
+                      items={list}
+                      picked={picked}
+                      onToggle={toggle}
+                      placeholder={src === 'POOL' ? 'Choose documents…' : 'Choose from master data…'}
+                      other={src === 'MASTER' ? {label: 'Others (type a new document name)…', on: otherOn, toggle: () => setOtherOn(v => !v)} : undefined}
+                    />
+                  </div>
+                  {/* what is ticked stays listed while the dropdown is closed; Undo unticks it */}
+                  {(picked.length > 0 || (src === 'MASTER' && otherOn)) && (
+                    <section className="cc-list" aria-label="Selected documents">
+                      <h4>Selected ({picked.length + (src === 'MASTER' && otherOn ? 1 : 0)})</h4>
+                      <ul>
+                        {picked.map(key => (
+                          <li key={key}>
+                            <span className="cc-doc">
+                              <b>{list.find(d => d.key === key)?.label ?? key}</b>
+                            </span>
+                            <button type="button" className="button small" disabled={busy} onClick={() => toggle(key)}>
+                              <Undo2 size={13} /> Undo
+                            </button>
+                          </li>
+                        ))}
+                        {src === 'MASTER' && otherOn && (
+                          <li>
+                            <span className="cc-doc">
+                              <b>{customName.trim() || 'Other document'}</b>
+                              <small>Typed by name</small>
+                            </span>
+                            <button type="button" className="button small" disabled={busy} onClick={() => setOtherOn(false)}>
+                              <Undo2 size={13} /> Undo
+                            </button>
+                          </li>
+                        )}
+                      </ul>
+                    </section>
+                  )}
+                </>
+              ) : null;
+            })()}
+            {isOther && (
+              <label>
+                Document name
+                <input placeholder="e.g. Surat Keterangan Domisili" value={customName} onChange={e => setCustomName(e.target.value)} />
+              </label>
             )}
 
             <div className="cc-grid">
@@ -262,17 +347,22 @@ export function ChecklistCustomizeDialog({
             </div>
 
             <div className="cc-foot">
-              {isOther && (
+              {!!typed && (
                 <label className="cc-check">
                   <input type="checkbox" checked={customMandatory} onChange={e => setCustomMandatory(e.target.checked)} /> Mandatory
                 </label>
               )}
-              <button type="button" className="button primary" disabled={!canAdd} onClick={add}>
-                <Plus size={14} /> Add to checklist
+              <button type="button" className="button primary" disabled={!canAdd} onClick={() => void add()}>
+                <Plus size={14} /> {picked.length + (typed ? 1 : 0) > 1 ? `Add ${picked.length + (typed ? 1 : 0)} documents` : 'Add to checklist'}
               </button>
             </div>
           </section>
         )}
+      </div>
+      <div className="modal-actions">
+        <button type="button" className="button" onClick={onClose}>
+          Close
+        </button>
       </div>
     </Modal>
   );

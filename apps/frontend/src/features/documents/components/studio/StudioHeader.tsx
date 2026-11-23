@@ -35,7 +35,7 @@ export function StudioHeader() {
               onClick={() => setSelectedCode(item.code)}
             >
               <span className="evidence-pill-label">{item.stage}</span>
-              <span className="evidence-pill-role">{item.role}</span>
+              {item.role && <span className="evidence-pill-role">{item.role}</span>}
               <span className={`evidence-pill-count ${count > 0 ? 'has-files' : ''}`}>{count}</span>
               {isDone && <CheckCircle size={13} className="evidence-pill-done-icon" />}
             </button>

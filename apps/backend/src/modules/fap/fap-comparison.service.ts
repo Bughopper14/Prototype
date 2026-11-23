@@ -1,4 +1,5 @@
 import {Injectable} from '@nestjs/common';
+import {Problem} from '../../core/domain';
 import {StorageService} from '../../core/storage';
 import type {Actor} from '../auth/session';
 import {ApplicationsService} from '../applications/applications.service';
@@ -17,7 +18,7 @@ import {FapOcrRepository, FINAL_COMPARISON} from './fap-ocr.repository';
  */
 @Injectable()
 export class FapComparisonService {
-  /** OCR runs in progress, per application (a second request waits for the same run). */
+  /** OCR runs in progress, per FAP file (a second request waits for the same run). */
   private readonly running = new Map<string, Promise<any>>();
 
   constructor(
@@ -51,13 +52,22 @@ export class FapComparisonService {
     };
   }
 
-  /** Runs the OCR of the current FAP file (once per application at a time) and stores the differences. */
-  run(id: string, actor?: Actor) {
-    const busy = this.running.get(id);
+  /** The FAP file a request is about: the one asked for (it must be a file of this application's FAP), else the current one. */
+  private async fapFile(id: string, fileId?: string) {
+    const {fap, file: current} = await this.documents.currentFapFile(id);
+    const file = fileId ? fap?.files.find((f: any) => f.id === fileId) : current;
+    return {file, current};
+  }
+
+  /** Runs the OCR of a FAP file (the current one unless `fileId` is given; once per file at a time) and stores the differences. */
+  async run(id: string, actor?: Actor, fileId?: string) {
+    const {file, current: currentFile} = await this.fapFile(id, fileId);
+    if (!file) return null;
+    const isCurrent = file.id === currentFile?.id;
+    const key = `${id}:${file.id}`;
+    const busy = this.running.get(key);
     if (busy) return busy;
     const task = (async () => {
-      const {file} = await this.documents.currentFapFile(id);
-      if (!file) return null;
       try {
         const result = await this.worker.run(
           await this.storage.locateNamedCopy(file.storagePath || file.fileName),
@@ -65,62 +75,63 @@ export class FapComparisonService {
           120000,
         );
         // The review of this file was closed while the OCR ran (approved / dismissed): the decision stands.
-        const current = await this.ocr.read(id);
-        if (current && current.fileId === file.id && FINAL_COMPARISON.includes(current.status)) return current;
+        const current = await this.ocr.read(id, file.id);
+        if (current && FINAL_COMPARISON.includes(current.status)) return {...current, isCurrent};
         const application = await this.withPrintedNames(await this.applications.detail(id, actor));
         const diffs = computeFapDiffs(application, result.data || {}, await this.ruleLookup()).map(d => ({...d, section: d.section || 'FAP'}));
         await this.ocr.saveResult(id, file.id, diffs, actor?.username || null);
-        return this.ocr.read(id);
+        return {...(await this.ocr.read(id, file.id)), isCurrent};
       } catch (err) {
         console.warn('FAP OCR comparison error:', err);
         return null;
       }
     })();
-    this.running.set(id, task);
-    return task.finally(() => this.running.delete(id));
+    this.running.set(key, task);
+    return task.finally(() => this.running.delete(key));
   }
 
   /**
-   * The comparison for the Documents tab: `processing` while the OCR runs, null when there is no FAP file or it was
-   * never compared. While the review is open the stored differences are checked against the current data.
+   * The comparison of a FAP file for the Documents tab (the current file unless `fileId` is given): `processing` while the OCR
+   * runs, null when the file was never compared. `isCurrent` is false for an earlier file: its comparison is history, read only.
+   * While the review of the current file is open the stored differences are checked against the current data.
    */
-  async get(id: string, actor?: Actor) {
-    const {file} = await this.documents.currentFapFile(id);
+  async get(id: string, actor?: Actor, fileId?: string) {
+    const {file, current: currentFile} = await this.fapFile(id, fileId);
     if (!file) return null;
-    const stored = await this.ocr.read(id);
-    if (this.running.has(id)) return {...(stored || {isFap: true, hasDifferences: false, diffs: []}), status: 'processing'};
-    if (!stored || FINAL_COMPARISON.includes(stored.status)) return stored;
+    const isCurrent = file.id === currentFile?.id;
+    const stored = await this.ocr.read(id, file.id);
+    if (this.running.has(`${id}:${file.id}`))
+      return {...(stored || {isFap: true, hasDifferences: false, diffs: [], notedDiffs: []}), status: 'processing', isCurrent};
+    if (!stored) return null;
+    if (!isCurrent || FINAL_COMPARISON.includes(stored.status)) return {...stored, isCurrent};
     const detail: any = await this.applications.detail(id, actor);
     const remaining = recheckFapDiffs(await this.withPrintedNames(detail), stored.diffs);
     const changed =
       remaining.length !== stored.diffs.length || remaining.some((d, i) => d.oldValue !== stored.diffs[i].oldValue);
-    let current = stored;
+    let latest = stored;
     if (changed) {
       await this.ocr.saveResult(id, stored.fileId, remaining, actor?.username || null, false);
-      current = (await this.ocr.read(id)) || stored;
+      latest = (await this.ocr.read(id, file.id)) || stored;
     }
     // Only the stored differences are re-checked; a field that matched at the scan and was changed since is not
     // seen until the OCR runs again, so the screen warns when the data is newer than the scan.
-    return {...current, needsRerun: new Date(detail.updatedAt).getTime() > new Date(current.comparedAt).getTime()};
+    return {...latest, isCurrent, needsRerun: new Date(detail.updatedAt).getTime() > new Date(latest.comparedAt).getTime()};
   }
 
-  saveRemarks(id: string, remarks: string, actor: Actor) {
-    return this.ocr.saveRemarks(id, remarks, actor.username || null);
+  /** The review is closed or edited on the current file only: an earlier file is history. */
+  private async currentFileOrRefuse(id: string) {
+    const {file} = await this.documents.currentFapFile(id);
+    if (!file) throw new Problem(404, 'Belum ada dokumen FAP yang diunggah.');
+    return file;
   }
 
-  /** The FAP document is accepted: the review closes and the first stage is submitted (locked). */
-  async approve(id: string, actor: Actor, remarks?: string) {
-    await this.ocr.close(id, 'APPROVED', remarks, actor.username || null);
-    await this.applications.submitFirstStage(id, actor, remarks);
+  async saveRemarks(id: string, remarks: string, actor: Actor) {
+    const file = await this.currentFileOrRefuse(id);
+    return this.ocr.saveRemarks(id, file.id, remarks, actor.username || null);
   }
 
-  /** The differences are noted (the data is corrected in the form); the review closes. */
-  dismiss(id: string, actor: Actor, remarks?: string) {
-    return this.ocr.close(id, 'DISMISSED', remarks, actor.username || null);
-  }
-
-  /** The FAP file was removed: the stored comparison goes with it. */
-  forget(id: string) {
-    return this.ocr.clear(id);
+  /** A FAP file was removed: its stored comparison goes with it. */
+  forget(fileId: string) {
+    return this.ocr.clear(fileId);
   }
 }

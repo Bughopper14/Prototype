@@ -605,6 +605,8 @@ export class ApplicationsService {
     // The FAP number is no longer a precondition of any stage. Submitting the stage that shows the FAP form makes the number when the application has none yet
     // (the frozen FAP needs one); it can also be generated earlier with the button of the FAP form.
     if (shows(stage) && !app0.fap_registration_number && !gaps.length) await this.generateFapNumber(id, actor);
+    // Submitting the stage that shows the FAP form accepts the signed FAP document: the differences stay recorded in its remarks and the review closes.
+    if (shows(stage) && !gaps.length) await this.closeFapReview(id, remarks, actor);
     await this.db.transaction(async conn => {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
@@ -649,6 +651,23 @@ export class ApplicationsService {
       actor,
     );
     return {success: true, stage: stage.code, waitingFor: pending.map(p => ({step: p.name, authority: p.authorityName}))};
+  }
+
+  /** Closes the OCR review of the current signed FAP file as APPROVED: open differences are kept as NOTED, the remarks (when given) replace the saved ones. */
+  private async closeFapReview(id: string, remarks: string | undefined, actor: Actor) {
+    const [rows] = await this.apps.pool.query<any[]>(
+      `SELECT c.id FROM ${CRM.fapDocumentOcrComparisons} c
+       JOIN ${CRM.applicationDocumentFiles} f ON f.id=c.document_file_id AND f.deleted_at IS NULL AND f.is_current_active=1
+       WHERE c.application_id=? AND c.comparison_status IN ('HAS_DIFFERENCES','MATCHED')`,
+      [id],
+    );
+    for (const r of rows) {
+      await this.apps.pool.query(
+        `UPDATE ${CRM.fapDocumentOcrComparisons} SET comparison_status='APPROVED',has_differences=0,remarks=COALESCE(?,remarks),reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP(3),updated_by=? WHERE id=?`,
+        [remarks?.trim() ? remarks : null, by(actor), by(actor), r.id],
+      );
+      await this.apps.pool.query(`UPDATE ${CRM.fapDocumentOcrDiscrepancies} SET resolution_status='NOTED' WHERE comparison_id=? AND resolution_status='OPEN'`, [r.id]);
+    }
   }
 
   /** "Submit FAP stage": submits the first stage of the application's workflow. */
@@ -697,6 +716,28 @@ export class ApplicationsService {
     );
     if ((open as any[]).length)
       throw new Problem(422, `Group belum bisa ${verb}: stage berikut belum disetujui (${(open as any[]).map(r => r.name).join(', ')}).`);
+  }
+
+  /**
+   * A deed can only be sent for approval, and approved, while it is complete as it is STORED: the establishment deed has at least one stakeholder and
+   * the shares of a deed that has stakeholders add up to exactly 100%. Read from the database, never from what the screen shows, so a stakeholder deleted
+   * on screen but not saved yet (or in the meantime) cannot slip through.
+   */
+  private async assertDeedComplete(db: any, id: string, deedId: string) {
+    const [rows] = await db.query(
+      `SELECT d.deed_type,d.deed_number,(SELECT COUNT(*) FROM ${CRM.fapLegalStakeholders} s WHERE s.deed_id=d.id) AS n,
+              (SELECT COALESCE(SUM(s.share_percentage),0) FROM ${CRM.fapLegalStakeholders} s WHERE s.deed_id=d.id) AS total
+       FROM ${CRM.fapLegalDeeds} d WHERE d.id=? AND d.application_id=?`,
+      [deedId, id],
+    );
+    const d = (rows as any[])[0];
+    if (!d) return;
+    const name = d.deed_number ? ` ${d.deed_number}` : '';
+    if (!Number(d.n)) {
+      ensure(d.deed_type !== 'ESTABLISHMENT', `Deed${name} has no stakeholder in the database. Add at least one stakeholder and save, then try again.`, 422);
+      return;
+    }
+    ensure(Math.abs(Number(d.total) - 100) <= 0.01, `The shares of deed${name} add up to ${Number(d.total).toFixed(2)}%, not 100%. Correct the stakeholders and save, then try again.`, 422);
   }
 
   private async assertMandatoryDocumentsDone(conn: any, id: string, step: AppStep) {
@@ -803,12 +844,13 @@ export class ApplicationsService {
     const rows = REPEATING_ROWS[sectionCode];
     ensure(rows, 'This section has no rows to approve.', 422);
     const [subject] = await this.db.pool.query<any[]>(`SELECT id FROM ${rows} WHERE id=? AND application_id=?`, [subjectId, id]);
-    ensure(subject[0], 'Row not found in this application', 404);
+    ensure(subject[0], 'This row is not saved yet. Save the form first (Save button at the bottom), then request its approval.', 404);
     const [places] = await this.db.pool.query<any[]>(
       `SELECT stage_code FROM ${CRM.frozenWorkflowApprovalAssignments} WHERE workflow_freeze_id=? AND scope_type='SECTION' AND section_code=?`,
       [app.workflow_freeze_id, sectionCode],
     );
     ensure(places[0], 'This section has no approval in the workflow.', 422);
+    if (sectionCode === DEED_SECTION) await this.assertDeedComplete(this.db.pool, id, subjectId);
     let pending: AppStep[] = [];
     await this.db.transaction(async conn => {
       pending = (await this.approvals.startScope(conn, {id, workflowFreezeId: app.workflow_freeze_id}, {type: 'SECTION', stageCode: places[0].stage_code, sectionCode, subjectId}, actor)).pending;
@@ -882,6 +924,7 @@ export class ApplicationsService {
       },
       // the group / stage rules are checked BEFORE the approval marks stages as completed (otherwise a group approval completes its stages first and then finds nothing open)
       beforeApproved: async (conn, step) => {
+        if (step.scope === 'SECTION' && step.sectionCode === DEED_SECTION && step.subjectId) await this.assertDeedComplete(conn, id, step.subjectId);
         await this.assertMandatoryDocumentsDone(conn, id, step);
       },
       // a group cannot be rejected either while a stage under it is still not approved
@@ -987,16 +1030,6 @@ export class ApplicationsService {
     const deedStage: string | undefined = deedPlace[0]?.stage_code ?? cfg.stages[0]?.code;
     for (const d of missingDocs)
       gaps.push({target: 'DOCUMENTS', label: `Dokumen ${d.documentName}`, detail: stageName(d.stageCode)});
-    // The signed FAP document is compared with the form: while its differences are neither noted nor approved, the stage that shows the FAP form waits.
-    const shownStage = onlyStage ? cfg.stageByCode.get(onlyStage) : undefined;
-    if (shownStage && screenOfForm(shownStage.formCode) === 'FAP') {
-      const [cmp] = await this.apps.pool.query<any[]>(
-        `SELECT comparison_status FROM ${CRM.fapDocumentOcrComparisons} WHERE application_id=? ORDER BY updated_at DESC LIMIT 1`,
-        [id],
-      );
-      if (cmp[0]?.comparison_status === 'HAS_DIFFERENCES')
-        gaps.push({target: 'DOCUMENTS', label: 'Perbedaan dokumen FAP bertanda tangan belum ditinjau', detail: 'Tinjau perbedaannya di tab Documents (catat remarks, lalu setujui atau perbaiki datanya)'});
-    }
     if (!onlyStage && checks.some(d => d.documentCode === 'FAP') && !app.is_fap_doc_uploaded && !missingDocs.some((d: any) => d.documentCode === 'FAP'))
       gaps.push({target: 'DOCUMENTS', label: 'Dokumen FAP bertanda tangan', detail: cfg.stages[0]?.name});
     // Always on, whatever the workflow's rules say: an application needs at least one deed, and its establishment deed at least one stakeholder.

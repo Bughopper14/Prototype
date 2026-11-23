@@ -170,8 +170,7 @@ export function deedTransition(
         [r.firstName, r.lastName, r.name].some(x => String(x || '').trim()),
         'Nama stakeholder wajib diisi.',
       );
-      for (const key of ['email', 'mobilePhone', 'primaryCapital', 'idNumber'])
-        assert(String(r[key] ?? '').trim(), `${key} stakeholder wajib diisi.`);
+      // which other stakeholder fields are mandatory is the workflow's rule (Workflow setup), not a rule of this file
     }
     Object.assign(review, {status: 'PENDING', notes: null, submittedBy: actor.username || actor.name, submittedAt: date});
   } else if (action === 'APPROVE') {

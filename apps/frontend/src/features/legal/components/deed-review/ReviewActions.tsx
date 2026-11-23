@@ -5,6 +5,8 @@ export function ReviewActions({
   status,
   canSubmit,
   canApprove,
+  canDecide = false,
+  onDecide,
   legacyReview = true,
   busy,
   comments,
@@ -17,6 +19,9 @@ export function ReviewActions({
   status: string;
   canSubmit: boolean;
   canApprove: boolean;
+  /** The workflow's approval of this deed waits for this person: Approve / Reject are drawn here. */
+  canDecide?: boolean;
+  onDecide?: (decision: 'APPROVED' | 'REJECTED') => void;
   /** False when the approval of the deed section in the workflow decides: the old submit / approve / reject / remarks are not drawn. */
   legacyReview?: boolean;
   busy: boolean;
@@ -54,6 +59,23 @@ export function ReviewActions({
             <AlertCircle size={14} />
             Reject
           </button>
+        )}
+        {canDecide && onDecide && (
+          <>
+            <button
+              className="button danger"
+              disabled={busy || !comments.trim()}
+              title={comments.trim() ? 'Reject the deed' : 'Write the reason first'}
+              onClick={() => onDecide('REJECTED')}
+            >
+              <AlertCircle size={14} />
+              Reject
+            </button>
+            <button className="button primary" disabled={busy} onClick={() => onDecide('APPROVED')}>
+              <Check size={14} />
+              Approve
+            </button>
+          </>
         )}
         {canSubmit && onEdit && (
           <>
