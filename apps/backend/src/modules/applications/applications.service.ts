@@ -97,6 +97,11 @@ export class ApplicationsService {
 
   /* ---------- reads ---------- */
 
+  /** The active users, for the PIC Marketing dropdown. */
+  mktPicCandidates() {
+    return this.mktPics.candidates();
+  }
+
   async list(actor?: Actor) {
     const [rows, branches, categories, premises, segments, roles, financing, deedReviews, docCounts] = await Promise.all([
       this.apps.list(),
@@ -118,7 +123,7 @@ export class ApplicationsService {
       : [];
     const states = await this.approvals.statesFor(rows.map((r: any) => ({id: r.id, workflow_freeze_id: r.workflow_freeze_id})));
     const picNames = await this.mktPics.names(rows.map((r: any) => r.mkt_pic_id));
-    const mine = new Set((actor ? await this.approvals.inbox(actor) : []).map(x => x.applicationId));
+    const mine = new Set((actor ? await this.approvals.inbox(actor) : []).map((x: any) => x.applicationId));
     const activeFreezeId = await this.config.activeFreezeId().catch(() => null);
     const configs = new Map<string, WorkflowConfig>();
     for (const code of new Set<string>(rows.map((r: any) => r.workflow_freeze_id).filter(Boolean))) {
@@ -836,7 +841,7 @@ export class ApplicationsService {
    * remarks and opens the failed stage / group again for a resubmit. The approval that would finish the whole application is
    * refused while data, documents or deeds are still missing.
    */
-  async decide(id: string, stepId: string, actor: Actor, input: {decision: 'APPROVED' | 'REJECTED'; remarks?: string | null; via?: 'WEB' | 'LARK'; reopenStages?: string[]}) {
+  async decide(id: string, stepId: string, actor: Actor, input: {decision: 'APPROVED' | 'REJECTED'; remarks?: string | null; via?: 'WEB' | 'LARK'; reopenStages?: string[]; keepApproved?: {documents: string[]; deeds: string[]}; reopenItems?: {documents: string[]; deeds: string[]}}) {
     const app = await this.apps.get(id);
     ensure(app, 'Application not found', 404);
     const cfg = await this.config.load(app.workflow_freeze_id);
@@ -858,9 +863,12 @@ export class ApplicationsService {
           await this.apps.saveStageProgress(conn, id, stageCode, {isLocked: false, clearSubmitted: true, clearCompleted: true}, actor);
           if (screenOfForm(cfg.stages.find(s => s.code === stageCode)?.formCode) === 'FAP') await this.apps.updateFap(conn, id, {is_fap_form_locked: 0}, by(actor));
         }
-        if (step.scope === 'GROUP') {
-          // the stages come back with their documents and deeds: all of them must be asked for approval again, from the first step (the deeds' state follows their approval: see legal/deed-review.ts)
-          const under = await this.approvals.reopenUnder(conn, id, stageCodes, actor);
+        const chosen = input.reopenItems;
+        const stageOnly = step.scope === 'STAGE' && !!chosen && (chosen.documents.length > 0 || chosen.deeds.length > 0);
+        if (step.scope === 'GROUP' || stageOnly) {
+          // a group: the stages come back with their documents and deeds, all asked for approval again from the first step (the deeds' state follows their approval: see legal/deed-review.ts)
+          // a stage: only the documents and deeds the approver chose open again with it (the problem may be the stage alone)
+          const under = await this.approvals.reopenUnder(conn, id, stageCodes, actor, step.scope === 'GROUP' ? input.keepApproved : undefined, stageOnly ? chosen : undefined);
           for (const checklistId of under.documents) await this.documents.setStatus(conn, checklistId, 'REJECTED', by(actor));
           for (const row of under.rows)
             if (row.sectionCode === DEED_SECTION) await this.syncDeedReview(conn, id, row.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);

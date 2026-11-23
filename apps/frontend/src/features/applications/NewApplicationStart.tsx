@@ -257,20 +257,22 @@ export function NewApplicationStart({
     setError('');
     try {
       const name = formatCompanyName(companyName.trim());
+      const extra = {
+        ...(branchCode ? {branchCode} : {}),
+        ...(mktPicId ? {mktPicId: Number(mktPicId)} : {}),
+      };
       const body =
         kind === 'NEW'
           ? {
               companyName: name,
               customer: {companyName: name},
               customerCategory: 'NEW',
-              mktPicId: Number(mktPicId),
-              ...(branchCode ? {branchCode} : {}),
+              ...extra,
             }
           : {
               customerId,
               customerCategory: 'EXISTING',
-              mktPicId: Number(mktPicId),
-              ...(branchCode ? {branchCode} : {}),
+              ...extra,
             };
       const application = await api('/applications', 'POST', body);
       notify('Application saved.');

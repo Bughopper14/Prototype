@@ -61,12 +61,18 @@ export type AppStep = {
   isPicMarketing: boolean;
   /** The user who must approve a PIC Marketing step (the application's PIC when the round started). */
   approverUserId: number | null;
-  remarks: string | null;
   status: StepStatus;
   startedAt: Date | null;
   completedAt: Date | null;
+  /** The decision that closed the step (one step, one decision): who, when, from where, and the remarks. Never overwritten, not even when the step is opened again. */
+  decision: 'APPROVED' | 'REJECTED' | null;
+  decidedByUserId: number | null;
+  decidedAt: Date | null;
+  decidedVia: 'WEB' | 'LARK' | null;
+  decisionRemarks: string | null;
 };
 
+/** The decision of a step as the approval screen shows it. */
 export type Decision = {id: string; stepId: string; userId: number; decision: 'APPROVED' | 'REJECTED'; remarks: string | null; decidedAt: Date; via: 'WEB' | 'LARK'};
 
 /** One row of an assignment joined with a level of its master approval: that level is one step of the template. */
@@ -104,10 +110,14 @@ const step = (r: any): AppStep => ({
   authorityName: r.authority_name,
   isPicMarketing: !!r.is_pic_marketing,
   approverUserId: r.approver_user_id === null || r.approver_user_id === undefined ? null : Number(r.approver_user_id),
-  remarks: r.remarks ?? null,
   status: r.status,
   startedAt: r.started_at,
   completedAt: r.completed_at,
+  decision: r.decision ?? null,
+  decidedByUserId: r.decided_by_user_id === null || r.decided_by_user_id === undefined ? null : Number(r.decided_by_user_id),
+  decidedAt: r.decided_at ?? null,
+  decidedVia: r.decided_via ?? null,
+  decisionRemarks: r.decision_remarks ?? null,
 });
 
 /** The scope of a row as a SQL condition: only the columns that name this kind of place are compared (NULL-safe). */
@@ -119,7 +129,7 @@ const scopeWhere = (s: ScopeRef): {sql: string; args: (string | null)[]} => {
   return {sql: 'scope_type=? AND document_checklist_id <=> ?', args: [s.type, s.checklistId ?? null]};
 };
 
-/** Approval steps of a workflow (the template), the rounds of an application, and the decisions on them. CRM tables only. */
+/** Approval steps of a workflow (the template) and the rounds of an application, each step with the decision that closed it. CRM tables only. */
 @Injectable()
 export class ApprovalsRepository {
   constructor(private readonly db: CrmDatabase) {}
@@ -233,18 +243,21 @@ export class ApprovalsRepository {
     await conn.execute(`UPDATE ${CRM.applicationApprovalSteps} SET status=?${stamps},updated_by=? WHERE id IN (${ids.map(() => '?').join(',')})`, [status, by, ...ids]);
   }
 
-  async setDecision(
-    conn: Conn,
-    stepId: string,
-    status: 'APPROVED' | 'REJECTED',
-    approverUserId: number,
-    remarks: string | null,
-    by: string | null,
-  ) {
+  /* ---------- the decision of a step (columns of crm_application_approval_steps) ---------- */
+
+  /** A step is closed by ONE decision: its status becomes the decision, and who / when / from where / why are kept on the step. */
+  async recordDecision(conn: Conn, stepId: string, d: {userId: number; decision: 'APPROVED' | 'REJECTED'; remarks: string | null; via: 'WEB' | 'LARK'}, by: string | null) {
     await conn.execute(
-      `UPDATE ${CRM.applicationApprovalSteps} SET status=?,approver_user_id=?,remarks=?,completed_at=CURRENT_TIMESTAMP(3),updated_by=? WHERE id=?`,
-      [status, approverUserId, remarks, by, stepId],
+      `UPDATE ${CRM.applicationApprovalSteps}
+       SET status=?,completed_at=CURRENT_TIMESTAMP(3),decision=?,decided_by_user_id=?,decided_at=CURRENT_TIMESTAMP(3),decided_via=?,decision_remarks=?,updated_by=? WHERE id=?`,
+      [d.decision, d.decision, d.userId, d.via, d.remarks, by, stepId],
     );
+  }
+
+  /** Steps that were approved and are opened again because their group was rejected: only the status changes, the decision and its time stay as they were. */
+  async reopen(conn: Conn, ids: string[]) {
+    if (!ids.length) return;
+    await conn.execute(`UPDATE ${CRM.applicationApprovalSteps} SET status='REJECTED' WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
   }
 
   /** Steps that wait (PENDING) for any of the authorities, across applications: what a person has to act on. */

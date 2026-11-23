@@ -1,5 +1,5 @@
 /** What the submitter view and the approver view share: the types of an approval, the layers of a step list and the list of what has to be approved. */
-import {Check, Clock, ExternalLink, History, RotateCcw, X} from 'lucide-react';
+import {Check, ChevronDown, Clock, ExternalLink, History, RotateCcw, X} from 'lucide-react';
 import {useOpenView} from './ApprovalSummary';
 import {useWorkspace} from './WorkspaceContext';
 
@@ -7,7 +7,7 @@ import {useWorkspace} from './WorkspaceContext';
 export const shownStatus = (s: Step) => (s.reopened ? 'REOPENED' : s.status);
 export const STEP_LABEL: Record<string, string> = {WAITING: 'Waiting its turn', PENDING: 'Needs approval', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Closed', REOPENED: 'Opened again'};
 
-export type Step = {id: string; name: string; status: string; reopened?: boolean; sortOrder: number; authorityName: string; canAct: boolean; decisions: {by: string; decision: string; remarks: string | null; decidedAt: string; via: string}[]};
+export type Step = {id: string; name: string; status: string; reopened?: boolean; startedAt?: string | null; sortOrder: number; authorityName: string; canAct: boolean; decisions: {by: string; decision: string; remarks: string | null; decidedAt: string; via: string}[]};
 export type Scope = {scope: string; scopeName: string; roundNo: number; sectionCode?: string | null; subjectId?: string | null; checklistId?: string | null; stageCode?: string | null; groupCode?: string | null; documentCode?: string | null; steps: Step[]};
 export type Approval = {state: string; stateName: string; current: Scope[]; history: Scope[]};
 
@@ -30,7 +30,7 @@ const layerState = (l: Step[]): LayerState =>
   l.some(s => shownStatus(s) === 'REJECTED') ? 'rejected' : l.some(s => s.reopened) ? 'reopened' : l.every(s => s.status === 'APPROVED') ? 'done' : l.some(s => s.status === 'PENDING') ? 'now' : l.every(s => s.status === 'CANCELLED') ? 'closed' : 'next';
 
 /** Who approves a step, from the authority name ("CRM_FAP-FORM_BS_APPROVE" reads "FAP-FORM BS"); a step with no authority is the PIC Marketing level. */
-const whoOf = (s: Step) => (s.authorityName ? s.authorityName.replace(/^CRM_/i, '').replace(/_?(APPROVE|APPROVAL|APPROVER)$/i, '').replace(/_/g, ' ') : 'PIC Marketing');
+export const whoOf = (s: Step) => (s.authorityName ? s.authorityName.replace(/^CRM_/i, '').replace(/_?(APPROVE|APPROVAL|APPROVER)$/i, '').replace(/_/g, ' ') : 'PIC Marketing');
 
 /** What a step says about itself, in plain words: the person who can decide sees "Your turn". */
 const stepLabel = (s: Step) => (s.status === 'PENDING' ? (s.canAct ? 'Your turn' : 'In review') : s.status === 'WAITING' ? 'Up next' : (STEP_LABEL[shownStatus(s)] ?? s.status));
@@ -154,16 +154,6 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
 /** A step that was approved and then marked rejected because its group was rejected and opened it again (no reject decision of its own). */
 export const reopenedStep = (s: Step) => !!s.reopened;
 
-/** The reject decision of the newest group that was rejected: the reason behind every step it opened again. */
-export function groupRejectionOf(ap: Approval) {
-  const rounds = [...ap.current, ...ap.history].filter(c => c.scope === 'GROUP').sort((x, y) => y.roundNo - x.roundNo);
-  for (const c of rounds) {
-    const decision = c.steps.flatMap(s => s.decisions).find(d => d.decision === 'REJECTED');
-    if (decision) return decision;
-  }
-  return null;
-}
-
 /** What a step that was opened again because of its group says in place of a reason of its own. */
 export const fromGroupText = (d: {remarks: string | null} | null) => {
   if (!d?.remarks) return 'Rejected dari Group.';
@@ -171,39 +161,143 @@ export const fromGroupText = (d: {remarks: string | null} | null) => {
   return `Rejected dari Group.${plain ? ` Remarks: ${plain}` : ''}`;
 };
 
-export function HistoryList({history, groupReject}: {history: Scope[]; groupReject?: {remarks: string | null} | null}) {
-  if (!history.length) return null;
-  const rejected = history.reduce((n, c) => n + c.steps.filter(s => s.status === 'REJECTED' && !s.reopened).length, 0);
+/** The steps of one earlier round; a step opened again says why (the reason of the group rejection that opened it). */
+function RoundSteps({c, note}: {c: Scope; note: string | null}) {
   return (
-    <details className={'ap-history' + (rejected ? ' has-rejected' : '')} open={rejected > 0}>
-      <summary>
-        <History size={15} /> Earlier rounds ({history.length})
-        {rejected > 0 && <span className="ap-history-flag">{rejected} rejected</span>}
-      </summary>
-      {history.map(c => (
-        <div key={`${c.scopeName}-${c.roundNo}`} className="ap-scope old">
-          <div className="ap-scope-title">
-            <b>{c.scopeName}</b>
-            <small>Round {c.roundNo}</small>
+    <ol>
+      {c.steps.map(s => (
+        <li key={s.id} className={'ap-step ' + shownStatus(s).toLowerCase()}>
+          <div className="ap-step-top">
+            <b>{s.name}</b>
+            <span className={'ap-pill ' + shownStatus(s).toLowerCase()}>{STEP_LABEL[shownStatus(s)] ?? s.status}</span>
           </div>
-          <ol>
-            {c.steps.map(s => (
-              <li key={s.id} className={'ap-step ' + shownStatus(s).toLowerCase()}>
-                <div className="ap-step-top">
-                  <b>{s.name}</b>
-                  <span className={'ap-pill ' + shownStatus(s).toLowerCase()}>{STEP_LABEL[shownStatus(s)] ?? s.status}</span>
-                </div>
-                <Decisions step={s} />
-                {reopenedStep(s) && (
-                  <p className="ap-decision">
-                    <X size={14} /> {fromGroupText(groupReject ?? null)}
-                  </p>
-                )}
-              </li>
-            ))}
-          </ol>
-        </div>
+          <Decisions step={s} />
+          {reopenedStep(s) && note !== null && (
+            <p className="ap-decision">
+              <X size={14} /> {note}
+            </p>
+          )}
+        </li>
       ))}
+    </ol>
+  );
+}
+
+const scopeKey = (c: Scope) => [c.scope, c.groupCode, c.stageCode, c.checklistId, c.sectionCode, c.subjectId].join('|');
+const timeOf = (v?: string | null) => (v ? new Date(v).getTime() : NaN);
+const plainName = (c: Scope) =>
+  c.scope === 'STAGE' ? c.scopeName.replace(/^Stage\s+/, '') : c.scope === 'DOCUMENT' ? c.scopeName.replace(/^Document\s+/, '') : c.scopeName.replace(/^.*·\s*/, '');
+
+/**
+ * The earlier rounds, one block per rejection of the group (each is a round of the whole group), with what that rejection opened again: the stage
+ * first, then its documents and deeds. What a rejection opened is found from the times alone: an item that was opened again belongs to the LAST
+ * rejection of the group between its last approval and the start of its next round (a group can only be rejected when every stage is done, so no
+ * other rejection can fall between the moment an item is opened again and the moment it is submitted again). What was rejected on its own (not by
+ * its group) is listed apart.
+ */
+export function HistoryList({history, current = []}: {history: Scope[]; current?: Scope[]}) {
+  if (!history.length) return null;
+  const all = [...history, ...current];
+  const sameScope = new Map<string, Scope[]>();
+  for (const c of all) sameScope.set(scopeKey(c), [...(sameScope.get(scopeKey(c)) || []), c]);
+  const episodes = all
+    .filter(c => c.scope === 'GROUP' || c.scope === 'STAGE')
+    .flatMap(g =>
+      g.steps.flatMap(s => {
+        const d = s.decisions.find(x => x.decision === 'REJECTED');
+        // a stage rejected on its own is an episode too: the stage itself and the documents / deeds the approver opened with it
+        return s.status === 'REJECTED' && d ? [{group: g, decision: d, t: timeOf(d.decidedAt), items: g.scope === 'STAGE' ? [g] : ([] as Scope[])}] : [];
+      }),
+    )
+    .sort((x, y) => x.t - y.t);
+  const own: Scope[] = [];
+  // what a rejection opened and is not submitted again yet is still the current round of its place: it belongs to its rejection too
+  const opened = current.filter(c => c.scope !== 'GROUP' && c.steps.some(s => s.reopened));
+  for (const c of [...history, ...opened]) {
+    if (c.scope === 'GROUP') continue;
+    if (c.scope === 'STAGE' && episodes.some(e => e.group === c)) continue; // already in its own episode
+    if (!c.steps.some(s => s.reopened)) {
+      own.push(c);
+      continue;
+    }
+    const lastApproval = Math.max(...c.steps.flatMap(s => s.decisions.map(d => timeOf(d.decidedAt))).filter(n => !Number.isNaN(n)));
+    const next = (sameScope.get(scopeKey(c)) || []).find(x => x.roundNo === c.roundNo + 1);
+    const nextStart = next ? Math.min(...next.steps.map(s => timeOf(s.startedAt)).filter(n => !Number.isNaN(n))) : Infinity;
+    const episode = episodes.filter(e => e.t > lastApproval && e.t < nextStart).pop();
+    if (episode) episode.items.push(c);
+    else own.push(c);
+  }
+  const ownRejected = own.filter(c => c.steps.some(s => s.status === 'REJECTED' && !s.reopened)).length;
+  const rejected = episodes.length + ownRejected;
+  return (
+    <details className={'ap-history ap-fold' + (rejected ? ' has-rejected' : '')}>
+      <summary>
+        <ChevronDown size={16} className="ap-chev" />
+        <History size={15} /> Earlier rounds ({episodes.length})
+        {rejected > 0 && <span className="ap-history-flag">{rejected} rejected</span>}
+        <span className="ap-fold-hint">
+          <span className="when-closed">View all</span>
+          <span className="when-open">Hide</span>
+        </span>
+      </summary>
+      {[...episodes].reverse().map(e => {
+        const stages = new Map<string, {name: string; stage?: Scope; documents: Scope[]; deeds: Scope[]}>();
+        for (const c of e.items) {
+          const code = c.stageCode || '';
+          const entry = stages.get(code) || {name: code, documents: [], deeds: []};
+          if (c.scope === 'STAGE') Object.assign(entry, {stage: c, name: plainName(c)});
+          else if (c.scope === 'DOCUMENT') entry.documents.push(c);
+          else entry.deeds.push(c);
+          stages.set(code, entry);
+        }
+        const note = e.group.scope === 'STAGE' ? `Rejected dari Stage.${e.decision.remarks ? ` Remarks: ${e.decision.remarks}` : ''}` : fromGroupText(e.decision);
+        return (
+          <details key={e.group.roundNo + '-' + e.decision.decidedAt} className="ap-episode">
+            <summary>
+              <b>Round {e.group.roundNo}</b> · {e.group.scopeName} rejected by {e.decision.by} · <small>{when(e.decision.decidedAt)}</small>
+              {e.decision.remarks && <span className="ap-episode-why">{e.decision.remarks}</span>}
+            </summary>
+            {stages.size === 0 && <p className="muted">Nothing was opened again by this rejection.</p>}
+            {[...stages.entries()].map(([code, st]) => (
+              <div key={code} className="ap-episode-stage">
+                <p>
+                  <b>Stage opened again: {st.name}</b>
+                </p>
+                {st.stage && (
+                  <details className="ap-episode-item">
+                    <summary>Stage approval · round {st.stage.roundNo}</summary>
+                    <RoundSteps c={st.stage} note={note} />
+                  </details>
+                )}
+                {[...st.documents, ...st.deeds].map(c => (
+                  <details key={scopeKey(c) + c.roundNo} className="ap-episode-item">
+                    <summary>
+                      {c.scope === 'DOCUMENT' ? 'Document' : 'Legal deed'} · {plainName(c)} <small>round {c.roundNo}</small>
+                    </summary>
+                    <RoundSteps c={c} note={note} />
+                  </details>
+                ))}
+              </div>
+            ))}
+          </details>
+        );
+      })}
+      {own.length > 0 && (
+        <details className="ap-episode">
+          <summary>
+            <b>Rejected on their own</b> <small>({own.length})</small>
+          </summary>
+          {own.map(c => (
+            <div key={`${scopeKey(c)}-${c.roundNo}`} className="ap-scope old">
+              <div className="ap-scope-title">
+                <b>{c.scopeName}</b>
+                <small>Round {c.roundNo}</small>
+              </div>
+              <RoundSteps c={c} note={null} />
+            </div>
+          ))}
+        </details>
+      )}
     </details>
   );
 }
