@@ -111,6 +111,12 @@ export function NewApplicationStart({
   useEffect(() => {
     api('/workflows/layout').then(r => setLayout({groups: r.groups || [], stages: r.stages || []})).catch(() => undefined);
   }, []);
+  // PIC Marketing: the account that saves the application unless another user is chosen.
+  const [mktPicId, setMktPicId] = useState('');
+  const [mktPics, setMktPics] = useState<{id: number; name: string; username: string}[]>([]);
+  useEffect(() => {
+    api('/applications/mkt-pics').then(r => setMktPics(Array.isArray(r) ? r : [])).catch(() => undefined);
+  }, []);
   const tabIds = stageTabOrder(layout.stages[0] ? screenOf(layout.stages[0]) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -122,7 +128,8 @@ export function NewApplicationStart({
     setError('');
     try {
       const name = companyName.trim();
-      const body = kind === 'NEW' ? {companyName: name, customer: {companyName: name}, customerCategory: 'NEW', ...(branchCode ? {branchCode} : {})} : {customerId, customerCategory: 'EXISTING', ...(branchCode ? {branchCode} : {})};
+      const extra = {...(branchCode ? {branchCode} : {}), ...(mktPicId ? {mktPicId: Number(mktPicId)} : {})};
+      const body = kind === 'NEW' ? {companyName: name, customer: {companyName: name}, customerCategory: 'NEW', ...extra} : {customerId, customerCategory: 'EXISTING', ...extra};
       const application = await api('/applications', 'POST', body);
       notify('Application saved.');
       onCreated(application.id);
@@ -175,6 +182,15 @@ export function NewApplicationStart({
               {branches.map((b: any) => (
                 <option key={b.value} value={b.value}>
                   {b.name}
+                </option>
+              ))}
+            </select>
+            <select className="new-app-input new-app-branch" value={mktPicId} aria-label="PIC Marketing" onChange={e => setMktPicId(e.target.value)}>
+              <option value="">PIC Marketing: me (default)</option>
+              {mktPics.map(u => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                  {u.username && u.username !== u.name ? ` (${u.username})` : ''}
                 </option>
               ))}
             </select>

@@ -39,27 +39,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_activity_logs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `crm_application_approval_decisions` (
-  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `application_step_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `user_id` int NOT NULL,
-  `decision` enum('APPROVED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
-  `decided_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `decided_via` enum('WEB','LARK') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'WEB',
-  `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-  `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
-  `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_app_decision_person` (`application_step_id`,`user_id`),
-  UNIQUE KEY `uk_app_decision_code` (`application_step_id`,`code`),
-  KEY `idx_app_decision_user` (`user_id`,`decision`),
-  CONSTRAINT `fk_app_decision_step` FOREIGN KEY (`application_step_id`) REFERENCES `crm_application_approval_steps` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_decision_user` FOREIGN KEY (`user_id`) REFERENCES `users_users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `chk_app_decision_reject_remarks` CHECK (((`decision` <> _utf8mb4'REJECTED') or ((`remarks` is not null) and (char_length(trim(`remarks`)) > 0))))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -85,6 +64,11 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `status` enum('WAITING','PENDING','APPROVED','REJECTED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'WAITING',
   `started_at` timestamp(3) NULL DEFAULT NULL,
   `completed_at` timestamp(3) NULL DEFAULT NULL,
+  `decision` enum('APPROVED','REJECTED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `decided_by_user_id` int DEFAULT NULL,
+  `decided_at` timestamp(3) NULL DEFAULT NULL,
+  `decided_via` enum('WEB','LARK') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `decision_remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updated_at` timestamp(3) NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP(3),
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -96,9 +80,12 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   KEY `fk_app_apstep_checklist` (`document_checklist_id`),
   KEY `idx_app_apstep_subject` (`subject_id`),
   KEY `fk_app_apstep_section` (`section_code`),
+  KEY `idx_app_apstep_decider` (`decided_by_user_id`,`decision`),
   CONSTRAINT `fk_app_apstep_app` FOREIGN KEY (`application_id`) REFERENCES `crm_applications` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_app_apstep_checklist` FOREIGN KEY (`document_checklist_id`) REFERENCES `crm_application_document_checklists` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_app_apstep_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE
+  CONSTRAINT `fk_app_apstep_section` FOREIGN KEY (`section_code`) REFERENCES `crm_master_form_sections` (`code`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_app_apstep_decider` FOREIGN KEY (`decided_by_user_id`) REFERENCES `users_users` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_app_apstep_reject_remarks` CHECK (((`decision` is null) or (`decision` <> _utf8mb4'REJECTED') or ((`decision_remarks` is not null) and (char_length(trim(`decision_remarks`)) > 0))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

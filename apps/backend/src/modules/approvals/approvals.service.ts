@@ -3,7 +3,6 @@ import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {ensure} from '../../core/domain';
-import {toCode} from '../../core/domain/code';
 import {newNotification, notifyHolders} from '../activity/notifications';
 import type {Actor} from '../auth/session';
 import {ApprovalsRepository, type AppStep, type Decision, type ScopeRef, type StepStatus, type TemplateStep} from './approvals.repository';
@@ -184,19 +183,16 @@ export class ApprovalsService {
       ensure(step.status === 'PENDING', 'This step is not waiting for a decision.', 409);
       ensure(canActOn(actor, step), 'Akun ini tidak memiliki wewenang untuk aksi ini.', 403);
       ensure(Number.isInteger(actor.portalUserId), 'The decision needs a signed-in user.', 401);
-      ensure(!(await this.repo.hasDecided(conn, step.id, actor.portalUserId)), 'You already decided on this step.', 409);
       if (input.decision === 'APPROVED') await hooks.beforeApproved?.(conn, step);
       else await hooks.beforeRejected?.(conn, step);
-      await this.repo.insertDecision(conn, {code: `${step.code}-R${step.roundNo}-${toCode(actor.username || actor.portalUserId)}`.slice(0, 150), stepId: step.id, userId: actor.portalUserId, decision: input.decision, remarks: remarks || null, via: input.via ?? 'WEB'}, by(actor));
+      await this.repo.recordDecision(conn, step.id, {userId: actor.portalUserId, decision: input.decision, remarks: remarks || null, via: input.via ?? 'WEB'}, by(actor));
       const scope = scopeOf(step);
       const round = await this.repo.roundOf(conn, applicationId, scope, step.roundNo);
       if (input.decision === 'REJECTED') {
-        await this.repo.setStatus(conn, [step.id], 'REJECTED', by(actor));
         await this.repo.setStatus(conn, round.filter(s => s.id !== step.id && OPEN.includes(s.status)).map(s => s.id), 'CANCELLED', by(actor));
         await hooks.onRejected?.(conn, step);
         return;
       }
-      await this.repo.setStatus(conn, [step.id], 'APPROVED', by(actor));
       const after = round.map(s => (s.id === step.id ? {...s, status: 'APPROVED' as StepStatus} : s));
       const sameOrder = after.filter(s => s.sortOrder === step.sortOrder);
       if (sameOrder.every(s => s.status === 'APPROVED')) {
@@ -219,9 +215,9 @@ export class ApprovalsService {
    * Reopens what hangs under stages that a group rejection opens again: the newest round of the stage and of each of its documents and rows (deeds)
    * is no longer valid, so a step still open is cancelled and an approved one becomes REJECTED (nobody rejected it, its group did: the view tells the two apart by the decisions, see `reopened`; the
    * resubmit then starts a new round from the first step, and the decisions already given stay as history). Returns the documents and the rows
-   * (deeds) that were affected.
+   * (deeds) that were affected. `keep` lists approved documents and deeds that stay approved.
    */
-  async reopenUnder(conn: Conn, applicationId: string, stageCodes: string[], actor: Actor) {
+  async reopenUnder(conn: Conn, applicationId: string, stageCodes: string[], actor: Actor, keep?: {documents: string[]; deeds: string[]}, only?: {documents: string[]; deeds: string[]}) {
     const mine = (await this.repo.stepsOf(applicationId, conn)).filter(s => s.scope !== 'GROUP' && s.stageCode && stageCodes.includes(s.stageCode));
     const documents: string[] = [];
     const rows: {sectionCode: string; subjectId: string}[] = [];
@@ -229,8 +225,16 @@ export class ApprovalsService {
       const open = round.filter(s => OPEN.includes(s.status));
       const approved = round.filter(s => s.status === 'APPROVED');
       if (!open.length && !approved.length) continue;
+      // an approved document or deed the approver chose to keep stays approved (only the rest of the stage is opened again)
+      const first = round[0];
+      // `only` (a stage rejected on its own): just the chosen documents and deeds open again, everything else under the stage is left as it is
+      if (only && first.scope === 'DOCUMENT' && !(first.checklistId && only.documents.includes(first.checklistId))) continue;
+      if (only && first.scope === 'SECTION' && !(first.subjectId && only.deeds.includes(first.subjectId))) continue;
+      if (only && first.scope === 'STAGE') continue;
+      if (first.scope === 'DOCUMENT' && first.checklistId && keep?.documents.includes(first.checklistId) && !open.length) continue;
+      if (first.scope === 'SECTION' && first.subjectId && keep?.deeds.includes(first.subjectId) && !open.length) continue;
       await this.repo.setStatus(conn, open.map(s => s.id), 'CANCELLED', by(actor));
-      await this.repo.setStatus(conn, approved.map(s => s.id), 'REJECTED', by(actor));
+      await this.repo.reopen(conn, approved.map(s => s.id));
       const head = round[0];
       if (head.scope === 'DOCUMENT' && head.checklistId) documents.push(head.checklistId);
       if (head.scope === 'SECTION' && head.sectionCode && head.subjectId) rows.push({sectionCode: head.sectionCode, subjectId: head.subjectId});
@@ -315,7 +319,10 @@ export class ApprovalsService {
   /** What the application screen shows: the state, the newest round of every scope with who can act, and the older rounds as history. */
   async view(applicationId: string, workflowFreezeId: string, actor?: Actor, labelOf?: (s: ScopeRef) => string) {
     const steps = await this.repo.stepsOf(applicationId);
-    const decisions = await this.repo.decisionsOf(steps.map(s => s.id));
+    // one step, one decision: the decisions of the screen are the decision columns of the steps
+    const decisions: Decision[] = steps
+      .filter(s => s.decision && s.decidedByUserId !== null && s.decidedAt)
+      .map(s => ({id: s.id, stepId: s.id, userId: s.decidedByUserId as number, decision: s.decision as 'APPROVED' | 'REJECTED', remarks: s.decisionRemarks, decidedAt: s.decidedAt as Date, via: (s.decidedVia ?? 'WEB') as 'WEB' | 'LARK'}));
     const names = await this.users.names(decisions.map(d => d.userId));
     const state = await this.stateFor(applicationId, workflowFreezeId);
     const byStep = new Map<string, Decision[]>();
@@ -329,8 +336,8 @@ export class ApprovalsService {
         code: s.code,
         name: s.name,
         status: s.status,
-        /** A step the group's rejection opened again: it is REJECTED, but nobody rejected it (it only has the approval it got before). */
-        reopened: s.status === 'REJECTED' && ds.some(d => d.decision === 'APPROVED') && !ds.some(d => d.decision === 'REJECTED'),
+        /** A step the group's rejection opened again: it is REJECTED, but nobody rejected it (its decision is still the APPROVED it got before). */
+        reopened: s.status === 'REJECTED' && s.decision === 'APPROVED',
         authorityName: s.authorityName,
         sortOrder: s.sortOrder,
         startedAt: s.startedAt,

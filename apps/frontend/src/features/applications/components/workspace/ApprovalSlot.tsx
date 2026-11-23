@@ -11,7 +11,7 @@ import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
 import {ShieldCheck} from 'lucide-react';
 import {useState, type ReactNode} from 'react';
-import {STEP_LABEL, type Scope, type Step} from './approval-shared';
+import {STEP_LABEL, whoOf, type Scope, type Step} from './approval-shared';
 import {useWorkspace} from './WorkspaceContext';
 
 type Props = {
@@ -105,6 +105,7 @@ export function ApprovalSlot({scope, code, subjectId, trailing}: Props) {
           type="button"
           className="button primary small"
           disabled={busy}
+          title={`${whoOf(step)} · ${step.name}`}
           onClick={() => decide(step, 'APPROVED')}
         >
           <ShieldCheck size={14} /> Review &amp; decide

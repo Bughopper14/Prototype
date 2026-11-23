@@ -4,8 +4,8 @@
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {ApprovalSummary} from '@/features/applications/components/workspace/ApprovalSummary';
-import {groupRejectionOf, HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
-import {Check, ShieldCheck, X} from 'lucide-react';
+import {HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
+import {Check, ChevronDown, ShieldCheck, X} from 'lucide-react';
 
 export function ApproverView() {
   const {a, draft, setDecision, setComments, setError} = useWorkspace();
@@ -52,13 +52,21 @@ export function ApproverView() {
         </ul>
       )}
 
-      <div className="ap-col">
-        <h4>All approvals of this application</h4>
+      <details className="ap-col ap-fold">
+        <summary>
+          <ChevronDown size={16} className="ap-chev" />
+          <h4>All approvals of this application</h4>
+          <span className="ap-fold-count">{ap.current.length}</span>
+          <span className="ap-fold-hint">
+            <span className="when-closed">View all</span>
+            <span className="when-open">Hide</span>
+          </span>
+        </summary>
         {ap.current.length === 0 && <p className="muted">Nothing to approve yet. Approval starts when a stage is submitted.</p>}
         <ScopeList scopes={ap.current} onDecide={decide} />
-      </div>
+      </details>
 
-      <HistoryList history={ap.history} groupReject={groupRejectionOf(ap)} />
+      <HistoryList history={ap.history} current={ap.current} />
     </section>
   );
 }

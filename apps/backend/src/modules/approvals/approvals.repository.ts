@@ -64,8 +64,15 @@ export type AppStep = {
   status: StepStatus;
   startedAt: Date | null;
   completedAt: Date | null;
+  /** The decision that closed the step (one step, one decision): who, when, from where, and the remarks. Never overwritten, not even when the step is opened again. */
+  decision: 'APPROVED' | 'REJECTED' | null;
+  decidedByUserId: number | null;
+  decidedAt: Date | null;
+  decidedVia: 'WEB' | 'LARK' | null;
+  decisionRemarks: string | null;
 };
 
+/** The decision of a step as the approval screen shows it. */
 export type Decision = {id: string; stepId: string; userId: number; decision: 'APPROVED' | 'REJECTED'; remarks: string | null; decidedAt: Date; via: 'WEB' | 'LARK'};
 
 /** One row of an assignment joined with a level of its master approval: that level is one step of the template. */
@@ -106,6 +113,11 @@ const step = (r: any): AppStep => ({
   status: r.status,
   startedAt: r.started_at,
   completedAt: r.completed_at,
+  decision: r.decision ?? null,
+  decidedByUserId: r.decided_by_user_id === null || r.decided_by_user_id === undefined ? null : Number(r.decided_by_user_id),
+  decidedAt: r.decided_at ?? null,
+  decidedVia: r.decided_via ?? null,
+  decisionRemarks: r.decision_remarks ?? null,
 });
 
 /** The scope of a row as a SQL condition: only the columns that name this kind of place are compared (NULL-safe). */
@@ -117,7 +129,7 @@ const scopeWhere = (s: ScopeRef): {sql: string; args: (string | null)[]} => {
   return {sql: 'scope_type=? AND document_checklist_id <=> ?', args: [s.type, s.checklistId ?? null]};
 };
 
-/** Approval steps of a workflow (the template), the rounds of an application, and the decisions on them. CRM tables only. */
+/** Approval steps of a workflow (the template) and the rounds of an application, each step with the decision that closed it. CRM tables only. */
 @Injectable()
 export class ApprovalsRepository {
   constructor(private readonly db: CrmDatabase) {}
@@ -231,27 +243,21 @@ export class ApprovalsRepository {
     await conn.execute(`UPDATE ${CRM.applicationApprovalSteps} SET status=?${stamps},updated_by=? WHERE id IN (${ids.map(() => '?').join(',')})`, [status, by, ...ids]);
   }
 
-  /* ---------- the decisions (crm_application_approval_decisions) ---------- */
+  /* ---------- the decision of a step (columns of crm_application_approval_steps) ---------- */
 
-  async decisionsOf(stepIds: string[], conn: Conn = this.db.pool): Promise<Decision[]> {
-    if (!stepIds.length) return [];
-    const [rows] = await conn.query<any[]>(
-      `SELECT * FROM ${CRM.applicationApprovalDecisions} WHERE application_step_id IN (${stepIds.map(() => '?').join(',')}) ORDER BY decided_at,id`,
-      stepIds,
-    );
-    return rows.map(r => ({id: r.id, stepId: r.application_step_id, userId: Number(r.user_id), decision: r.decision, remarks: r.remarks, decidedAt: r.decided_at, via: r.decided_via}));
-  }
-
-  async hasDecided(conn: Conn, stepId: string, userId: number): Promise<boolean> {
-    const [rows] = await conn.execute<any[]>(`SELECT 1 FROM ${CRM.applicationApprovalDecisions} WHERE application_step_id=? AND user_id=?`, [stepId, userId]);
-    return rows.length > 0;
-  }
-
-  async insertDecision(conn: Conn, d: {code: string; stepId: string; userId: number; decision: 'APPROVED' | 'REJECTED'; remarks: string | null; via: 'WEB' | 'LARK'}, by: string | null) {
+  /** A step is closed by ONE decision: its status becomes the decision, and who / when / from where / why are kept on the step. */
+  async recordDecision(conn: Conn, stepId: string, d: {userId: number; decision: 'APPROVED' | 'REJECTED'; remarks: string | null; via: 'WEB' | 'LARK'}, by: string | null) {
     await conn.execute(
-      `INSERT INTO ${CRM.applicationApprovalDecisions} (id,code,application_step_id,user_id,decision,remarks,decided_via,created_by) VALUES (?,?,?,?,?,?,?,?)`,
-      [crypto.randomUUID(), d.code, d.stepId, d.userId, d.decision, d.remarks, d.via, by],
+      `UPDATE ${CRM.applicationApprovalSteps}
+       SET status=?,completed_at=CURRENT_TIMESTAMP(3),decision=?,decided_by_user_id=?,decided_at=CURRENT_TIMESTAMP(3),decided_via=?,decision_remarks=?,updated_by=? WHERE id=?`,
+      [d.decision, d.decision, d.userId, d.via, d.remarks, by, stepId],
     );
+  }
+
+  /** Steps that were approved and are opened again because their group was rejected: only the status changes, the decision and its time stay as they were. */
+  async reopen(conn: Conn, ids: string[]) {
+    if (!ids.length) return;
+    await conn.execute(`UPDATE ${CRM.applicationApprovalSteps} SET status='REJECTED' WHERE id IN (${ids.map(() => '?').join(',')})`, ids);
   }
 
   /** Steps that wait (PENDING) for any of the authorities, across applications: what a person has to act on. */

@@ -23,6 +23,13 @@ export class ApplicationsController {
     return this.applications.create(body, req.actor);
   }
 
+  /** Active users: the choices for the PIC Marketing of a new application. */
+  @Get('applications/mkt-pics')
+  mktPics(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'CRM_APPLICATION_CREATE');
+    return this.applications.mktPicCandidates();
+  }
+
   @Get('applications/:id')
   detail(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
@@ -149,6 +156,14 @@ export class ApplicationsController {
         remarks: z.string().trim().max(10000).optional(),
         /** Rejecting a group: the stages of the group to open again (all of them when left out). */
         reopenStages: z.array(z.string().trim().min(1).max(50)).optional(),
+        /** Approved documents (checklist ids) and deeds (ids) of the chosen stages that stay approved: only the rest of the stage is opened again. */
+        keepApproved: z
+          .object({documents: z.array(z.string().trim().min(1).max(50)).default([]), deeds: z.array(z.string().trim().min(1).max(50)).default([])})
+          .optional(),
+        /** Rejecting a stage: the approved documents (checklist ids) and deeds (ids) under it that open again too (none when left out). */
+        reopenItems: z
+          .object({documents: z.array(z.string().trim().min(1).max(50)).default([]), deeds: z.array(z.string().trim().min(1).max(50)).default([])})
+          .optional(),
       })
       .parse(req.body || {});
     return this.applications.decide(req.params.id, z.string().uuid().parse(req.params.stepId), req.actor, {...body, via: 'WEB'});

@@ -60,8 +60,25 @@ export function ApprovalDecisionDialog() {
   const groupRound = (a.approval?.current || []).find((c: any) => c.scope === 'GROUP' && c.steps.some((s: any) => s.id === decision?.stepId));
   const groupStages: any[] = groupRound ? (a.stageProgress || []).filter((s: any) => s.groupCode === groupRound.groupCode) : [];
   const [reopen, setReopen] = useState<string[]>([]);
+  // The approved documents and deeds under a stage open with it, but each can stay approved (the problem may be one document only): ids that stay approved
+  const [keep, setKeep] = useState<string[]>([]);
+  const itemsOf = (stageCode: string) =>
+    (a.approval?.current || [])
+      .filter((c: any) => (c.scope === 'DOCUMENT' || c.scope === 'SECTION') && c.stageCode === stageCode && c.steps.length > 0 && c.steps.every((st: any) => st.status === 'APPROVED'))
+      .map((c: any) => ({
+        kind: c.scope === 'DOCUMENT' ? 'document' : 'deed',
+        id: (c.scope === 'DOCUMENT' ? c.checklistId : c.subjectId) as string,
+        name: c.scope === 'DOCUMENT' ? String(c.scopeName).replace(/^Document\s+/, '') : String(c.scopeName).replace(/^.*·\s*/, ''),
+      }))
+      .filter((i: any) => i.id);
+  // Rejecting a stage: its approved documents and deeds can open again with it, but only when the approver chooses them (the problem may be the stage alone)
+  const stageRound = (a.approval?.current || []).find((c: any) => c.scope === 'STAGE' && c.steps.some((s: any) => s.id === decision?.stepId));
+  const stageItems = stageRound ? itemsOf(stageRound.stageCode) : [];
+  const [also, setAlso] = useState<string[]>([]);
   useEffect(() => {
     if (decision) setKind(decision.kind);
+    setKeep([]);
+    setAlso([]);
     setReopen(groupStages.map(s => s.stage));
   }, [decision?.stepId, decision?.kind]);
   if (!decision) return null;
@@ -85,7 +102,17 @@ export function ApprovalDecisionDialog() {
     setError('');
     setGaps([]);
     try {
-      onChange(await api(`/applications/${a.id}/approvals/${decision.stepId}/decision`, 'POST', {decision: kind, remarks: comments.trim() || undefined, ...(pickStages ? {reopenStages: reopen} : {})}));
+      const kept = pickStages ? groupStages.filter(s => reopen.includes(s.stage)).flatMap(s => itemsOf(s.stage)).filter((i: any) => keep.includes(i.id)) : [];
+      onChange(
+        await api(`/applications/${a.id}/approvals/${decision.stepId}/decision`, 'POST', {
+          decision: kind,
+          remarks: comments.trim() || undefined,
+          ...(pickStages ? {reopenStages: reopen, keepApproved: {documents: kept.filter((i: any) => i.kind === 'document').map((i: any) => i.id), deeds: kept.filter((i: any) => i.kind === 'deed').map((i: any) => i.id)}} : {}),
+          ...(reject && stageItems.length > 0 && also.length > 0
+            ? {reopenItems: {documents: stageItems.filter((i: any) => i.kind === 'document' && also.includes(i.id)).map((i: any) => i.id), deeds: stageItems.filter((i: any) => i.kind === 'deed' && also.includes(i.id)).map((i: any) => i.id)}}
+            : {}),
+        }),
+      );
       setDecision(null);
       notify(reject ? 'Rejected. The stage is open again for changes.' : 'Approved');
     } catch (e: any) {
@@ -121,7 +148,7 @@ export function ApprovalDecisionDialog() {
               <span className="ap-reopen-req">Required · at least 1</span>
             </legend>
             <p className="ap-reopen-help">
-              Ticked stages are unlocked with their documents and deeds, and ask for approval again from the first step. Saved data stays.
+              Ticked stages are unlocked and ask for approval again from the first step; their approved documents and deeds open with them unless you untick them. Saved data stays.
             </p>
             <div className="ap-reopen-count">
               <span>
@@ -133,15 +160,57 @@ export function ApprovalDecisionDialog() {
             </div>
             {groupStages.map((s: any) => {
               const on = reopen.includes(s.stage);
+              const items = itemsOf(s.stage);
               return (
-                <label key={s.stage} className={'ap-reopen-item' + (on ? ' on' : '')}>
-                  <input type="checkbox" checked={on} onChange={e => setReopen(r => (e.target.checked ? [...r, s.stage] : r.filter(c => c !== s.stage)))} />
-                  <span className="ap-reopen-name">{s.name}</span>
-                  <span className="ap-reopen-state">{on ? 'Opens again' : 'Stays approved'}</span>
-                </label>
+                <div key={s.stage}>
+                  <label className={'ap-reopen-item' + (on ? ' on' : '')}>
+                    <input type="checkbox" checked={on} onChange={e => setReopen(r => (e.target.checked ? [...r, s.stage] : r.filter(c => c !== s.stage)))} />
+                    <span className="ap-reopen-name">{s.name}</span>
+                    <span className="ap-reopen-state">{on ? 'Opens again' : 'Stays approved'}</span>
+                  </label>
+                  {on && items.length > 0 && (
+                    <div className="ap-reopen-sub">
+                      <small>Opens with it. Untick what is fine: it stays approved.</small>
+                      {items.map((i: any) => (
+                        <label key={i.id} className={'ap-reopen-sub-item' + (keep.includes(i.id) ? ' kept' : '')}>
+                          <input type="checkbox" checked={!keep.includes(i.id)} onChange={e => setKeep(k => (e.target.checked ? k.filter(x => x !== i.id) : [...k, i.id]))} />
+                          <span>
+                            {i.kind === 'document' ? 'Document' : 'Legal deed'} · {i.name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                </div>
               );
             })}
             {reopen.length === 0 && <div className="ap-reopen-error">Choose at least one stage to open again.</div>}
+          </fieldset>
+        )}
+        {reject && stageItems.length > 0 && (
+          <fieldset className="ap-reopen">
+            <legend>
+              <b>Also open again</b>
+              <span className="ap-reopen-req">Optional</span>
+            </legend>
+            <p className="ap-reopen-help">The stage always opens again. Tick the documents or deeds that have a problem too; the ones you leave unticked stay approved.</p>
+            <div className="ap-reopen-count">
+              <span>
+                {also.length} of {stageItems.length} selected
+              </span>
+              <button type="button" onClick={() => setAlso(also.length === stageItems.length ? [] : stageItems.map((i: any) => i.id))}>
+                {also.length === stageItems.length ? 'Clear all' : 'Select all'}
+              </button>
+            </div>
+            {stageItems.map((i: any) => (
+              <label key={i.id} className={'ap-reopen-item' + (also.includes(i.id) ? ' on' : '')}>
+                <input type="checkbox" checked={also.includes(i.id)} onChange={e => setAlso(x => (e.target.checked ? [...x, i.id] : x.filter(y => y !== i.id)))} />
+                <span className="ap-reopen-name">
+                  {i.kind === 'document' ? 'Document' : 'Legal deed'} · {i.name}
+                </span>
+                <span className="ap-reopen-state">{also.includes(i.id) ? 'Opens again' : 'Stays approved'}</span>
+              </label>
+            ))}
           </fieldset>
         )}
         <label>

@@ -10,6 +10,14 @@ import {USER_TABLES} from '../../core/db/user-tables';
 export class MktPicLookup {
   constructor(private readonly db: CrmDatabase) {}
 
+  /** Every active user, for the PIC Marketing dropdown (no role filter for now). */
+  async candidates(): Promise<{id: number; name: string; username: string}[]> {
+    const [rows] = await this.db.pool.query<any[]>(
+      `SELECT id, username, full_name FROM ${USER_TABLES.users} WHERE is_active = 1 ORDER BY COALESCE(NULLIF(full_name, ''), username)`,
+    );
+    return rows.map(r => ({id: Number(r.id), name: String(r.full_name || r.username || ''), username: String(r.username || '')}));
+  }
+
   /** The name (full name, else username) of each user id; ids that do not exist are left out. */
   async names(ids: Iterable<number | null | undefined>): Promise<Map<number, {name: string; username: string}>> {
     const wanted = [...new Set([...ids].map(Number).filter(n => Number.isInteger(n) && n > 0))];
