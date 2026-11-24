@@ -20,8 +20,8 @@ const OCR_AUTHORITIES = [
   'CRM_CUSTOMER_MANAGE',
 ];
 
-/** The checklist document a scan also belongs to: the scanned NIB is the NIB document, a KTP the KTP document, a passport or KITAS the E-KITAS document. */
-const CHECKLIST_DOCUMENT: Record<string, string> = {nib: 'NIB', ktp: 'KTP', passport: 'EKITAS', kitas: 'EKITAS'};
+/** The checklist document a scan also belongs to: the scanned NIB is the NIB document, a KTP the KTP document, a passport or KITAS the E-KITAS document, and NPWP the NPWP document. */
+const CHECKLIST_DOCUMENT: Record<string, string> = {nib: 'NIB', ktp: 'KTP', passport: 'EKITAS', kitas: 'EKITAS', npwp: 'NPWP'};
 
 /** Stakeholder identity documents (KTP, NPWP, passport, KITAS): OCR scan, save and lookup. */
 @Controller(API_PREFIX)

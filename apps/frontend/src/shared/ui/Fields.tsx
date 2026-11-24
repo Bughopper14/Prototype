@@ -13,6 +13,7 @@ export function Fields({
   onFieldFocus,
   activeFieldKey,
   onNibOcr,
+  onNpwpOcr,
   customErrors,
   disableMandatoryRules = false,
   customFieldHeaders,
@@ -28,6 +29,7 @@ export function Fields({
   onFieldFocus?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
   onNibOcr?: () => void;
+  onNpwpOcr?: () => void;
   customErrors?: Record<string, string>;
   /** Ignore Master Data mandatory rules (a form that has its own required checks). */
   disableMandatoryRules?: boolean;
@@ -51,6 +53,7 @@ export function Fields({
           onFieldFocus={onFieldFocus}
           activeFieldKey={activeFieldKey}
           onNibOcr={onNibOcr}
+          onNpwpOcr={onNpwpOcr}
           customErrors={customErrors}
           disableMandatoryRules={disableMandatoryRules}
           customFieldHeaders={customFieldHeaders}

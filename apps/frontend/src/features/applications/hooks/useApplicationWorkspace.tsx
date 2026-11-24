@@ -8,6 +8,7 @@ import {useFapPreviewSync} from '@/features/applications/hooks/useFapPreviewSync
 import {useLiveFapData} from '@/features/applications/hooks/useLiveFapData';
 import {useNewApplication} from '@/features/applications/hooks/useNewApplication';
 import {useNibOcr} from '@/features/applications/hooks/useNibOcr';
+import {useNpwpOcr} from '@/features/applications/hooks/useNpwpOcr';
 import {usePrintFap} from '@/features/applications/hooks/usePrintFap';
 import {useSaveApplication} from '@/features/applications/hooks/useSaveApplication';
 import {useStageSync} from '@/features/applications/hooks/useStageSync';
@@ -130,6 +131,13 @@ export function useApplicationWorkspace({
 
   const {nibOcrOpen, setNibOcrOpen, handleApplyNibOcr} = useNibOcr({
     master,
+    customerCategory,
+    setCustomerCategory,
+    setCustomerDraft,
+    setDraft,
+  });
+
+  const {npwpOcrOpen, setNpwpOcrOpen, handleApplyNpwpOcr} = useNpwpOcr({
     customerCategory,
     setCustomerCategory,
     setCustomerDraft,
@@ -321,6 +329,9 @@ export function useApplicationWorkspace({
     nibOcrOpen,
     setNibOcrOpen,
     handleApplyNibOcr,
+    npwpOcrOpen,
+    setNpwpOcrOpen,
+    handleApplyNpwpOcr,
     selectedCustomer,
     selectExistingCustomer,
     fapCustomerKeys: FAP_CUSTOMER_KEYS,

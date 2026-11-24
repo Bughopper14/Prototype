@@ -14,6 +14,7 @@ export function DebtorIdentitySection() {
     customerDraft,
     setCustomerDraft,
     setNibOcrOpen,
+    setNpwpOcrOpen,
     selectedCustomer,
     fapCustomerFields,
     changeCategory,
@@ -317,6 +318,7 @@ export function DebtorIdentitySection() {
             <Fields
               fields={fapCustomerFields}
               onNibOcr={canEditCustomerPic && !chosen ? () => setNibOcrOpen(true) : undefined}
+              onNpwpOcr={canEditCustomerPic && !chosen ? () => setNpwpOcrOpen(true) : undefined}
               value={customerDraft}
               disabled={!canEditCustomerPic || !!chosen}
               section="customer"

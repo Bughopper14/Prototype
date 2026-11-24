@@ -33,6 +33,7 @@ export function FieldCell({
   onFieldFocus,
   activeFieldKey,
   onNibOcr,
+  onNpwpOcr,
   customErrors,
   disableMandatoryRules,
   customFieldHeaders,
@@ -48,6 +49,7 @@ export function FieldCell({
   onFieldFocus?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
   onNibOcr?: () => void;
+  onNpwpOcr?: () => void;
   customErrors?: Record<string, string>;
   disableMandatoryRules: boolean;
   customFieldHeaders?: Record<string, React.ReactNode>;
@@ -186,6 +188,17 @@ export function FieldCell({
             >
               <ScanLine size={11} />
               <span>Scan OCR NIB</span>
+            </button>
+          )}
+          {f.key === 'npwp' && onNpwpOcr && !disabled && (
+            <button
+              type="button"
+              onClick={onNpwpOcr}
+              title="Upload & Scan Dokumen NPWP Perusahaan · Auto-Fill OCR"
+              className="nib-header-ocr-btn"
+            >
+              <ScanLine size={11} />
+              <span>Scan OCR NPWP</span>
             </button>
           )}
         </div>
