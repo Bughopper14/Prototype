@@ -177,12 +177,19 @@ export function useDocumentChecklist({
   // Handler Preview File
   const handleOpenPreview = (row: ChecklistRow, chosen?: any) => {
     const file = chosen || row.files[0];
-    const url = (!chosen && row.previewUrl) || (file ? `/documents/${file.fileName}` : '');
+    let url = (!chosen && row.previewUrl) || '';
+    if (!url && file) {
+      if (file.storagePath) {
+        url = '/' + String(file.storagePath).replace(/^[\\/]/, '').replace(/^documents\//i, 'documents/');
+      } else {
+        url = `/documents/${file.fileName}`;
+      }
+    }
     if (!url) {
       notify('Physical document preview is not yet available for this item.');
       return;
     }
-    const isPdf = url.toLowerCase().endsWith('.pdf') || file?.mimeType === 'application/pdf';
+    const isPdf = url.toLowerCase().includes('.pdf') || file?.mimeType === 'application/pdf';
     setPreviewModal({
       title: `${row.code} · ${row.name}`,
       url,

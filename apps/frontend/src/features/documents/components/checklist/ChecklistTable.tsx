@@ -1,5 +1,5 @@
-/** The checklist table with its rows, stage headers, approval audit modal and confirmation bubble. */
-import {AlertCircle, ChevronDown, ChevronRight} from 'lucide-react';
+/** The checklist table with its rows, stage headers, approval audit modal, confirmation bubble and pagination. */
+import {AlertCircle, ChevronDown, ChevronLeft, ChevronRight} from 'lucide-react';
 import {useState} from 'react';
 import {ChecklistRowItem} from '@/features/documents/components/checklist/ChecklistRowItem';
 import {DocumentApprovalModal} from '@/features/documents/components/checklist/DocumentApprovalModal';
@@ -36,6 +36,15 @@ export function ChecklistTable({
   const groups = grouped ? groupRowsByStage(rows) : [];
   const [selectedApprovalRow, setSelectedApprovalRow] = useState<ChecklistRow | null>(null);
   const [confirmingSubmitRow, setConfirmingSubmitRow] = useState<ChecklistRow | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'ALL'>(10);
+
+  const totalItems = rows.length;
+  const effectivePageSize = pageSize === 'ALL' ? totalItems : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
+  const page = Math.min(currentPage, totalPages);
+  const startIndex = (page - 1) * effectivePageSize;
+  const displayedRows = pageSize === 'ALL' ? rows : rows.slice(startIndex, startIndex + effectivePageSize);
 
   const handleConfirmSubmit = async (row: ChecklistRow) => {
     if (onRequestApproval) {
@@ -116,7 +125,7 @@ export function ChecklistTable({
                     ...(open ? g.rows.map((row, i) => renderRow(row, start + i)) : []),
                   ];
                 })
-              : rows.map((row, idx) => renderRow(row, idx))}
+              : displayedRows.map((row, idx) => renderRow(row, startIndex + idx))}
 
             {!rows.length && (
               <tr>
@@ -131,6 +140,96 @@ export function ChecklistTable({
             )}
           </tbody>
         </table>
+
+        {/* Pagination & Summary Bar */}
+        <div
+          className="doc-pagination-bar"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 18px',
+            background: '#f8fafc',
+            borderTop: '1px solid #e2e8f0',
+            fontSize: '12px',
+            color: '#64748b',
+          }}
+        >
+          <div style={{display: 'flex', alignItems: 'center', gap: 14}}>
+            <span>
+              {grouped ? (
+                <>
+                  Showing all <strong>{totalItems}</strong> documents in <strong>{groups.length}</strong> stages
+                </>
+              ) : (
+                <>
+                  Showing <strong>{totalItems === 0 ? 0 : startIndex + 1}</strong> to{' '}
+                  <strong>{Math.min(startIndex + effectivePageSize, totalItems)}</strong> of{' '}
+                  <strong>{totalItems}</strong> documents
+                </>
+              )}
+            </span>
+            {!grouped && (
+              <div style={{display: 'inline-flex', alignItems: 'center', gap: 6}}>
+                <span style={{color: '#94a3b8'}}>Rows per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={e => {
+                    setPageSize(e.target.value === 'ALL' ? 'ALL' : Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    border: '1px solid #cbd5e1',
+                    fontSize: '11.5px',
+                    background: '#fff',
+                    color: '#334155',
+                  }}
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value="ALL">All</option>
+                </select>
+              </div>
+            )}
+          </div>
+
+          {!grouped && totalPages > 1 && (
+            <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="button small"
+                style={{padding: '4px 8px', opacity: page <= 1 ? 0.5 : 1}}
+              >
+                <ChevronLeft size={13} />
+              </button>
+              {Array.from({length: totalPages}, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setCurrentPage(p)}
+                  className={`button small ${p === page ? 'primary' : ''}`}
+                  style={{padding: '3px 9px', minWidth: 28, fontSize: '11.5px'}}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="button small"
+                style={{padding: '4px 8px', opacity: page >= totalPages ? 0.5 : 1}}
+              >
+                <ChevronRight size={13} />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Approval Audit Stepper Modal */}

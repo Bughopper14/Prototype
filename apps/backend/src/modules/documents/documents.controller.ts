@@ -264,12 +264,20 @@ export class DocumentsController {
     ensure(token.fileId === req.params.id && token.userId === req.actor.id, 'Invalid document link', 403);
     const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
+    const data = await this.storage.read(file.fileKey);
+    const etag = `"${file.id}-${data.length}"`;
+    if (req.headers.get('if-none-match') === etag) {
+      res.status(304);
+      return res.end();
+    }
     res
       .setHeader('Content-Type', file.mimeType)
+      .setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800')
+      .setHeader('ETag', etag)
       .setHeader(
         'Content-Disposition',
         `${req.query.download === '1' ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
       );
-    return res.send(await this.storage.read(file.fileKey));
+    return res.send(data);
   }
 }
