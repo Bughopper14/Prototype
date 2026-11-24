@@ -1655,3 +1655,34 @@
   justify-content: center;
   gap: 6px;
 }
+
+/* ---- Enlarged Document Preview Modal ---- */
+.modal.doc-preview-modal {
+  width: min(96vw, 1380px) !important;
+  max-width: 1400px !important;
+  height: 93vh !important;
+  max-height: 94vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.modal.doc-preview-modal .modal-body {
+  flex: 1 1 0% !important;
+  padding: 10px !important;
+  background: #0b1329 !important;
+  position: relative !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal.doc-preview-modal .doc-preview-iframe {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+}

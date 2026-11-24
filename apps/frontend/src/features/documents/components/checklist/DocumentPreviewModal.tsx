@@ -15,11 +15,14 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
     setReloadKey(k => k + 1);
   };
 
+  const pdfUrl = preview.isPdf
+    ? (preview.url.includes('#') ? preview.url : `${preview.url}#navpanes=0&view=FitH`)
+    : preview.url;
+
   return (
     <div className="modal-scrim" onClick={() => onClose()}>
       <div
         className="modal doc-preview-modal"
-        style={{width: 'min(95vw, 920px)', maxHeight: '92vh', display: 'flex', flexDirection: 'column'}}
         onClick={e => e.stopPropagation()}
       >
         <div
@@ -129,7 +132,8 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
           ) : preview.isPdf ? (
             <iframe
               key={`pdf-${reloadKey}`}
-              src={preview.url}
+              src={pdfUrl}
+              className="doc-preview-iframe"
               title="PDF Document Preview"
               onLoad={() => setLoading(false)}
               onError={() => {
@@ -138,7 +142,7 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
               }}
               style={{
                 width: '100%',
-                height: '600px',
+                height: '100%',
                 border: 'none',
                 borderRadius: 8,
                 background: '#fff',
