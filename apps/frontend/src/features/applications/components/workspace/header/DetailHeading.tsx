@@ -13,10 +13,12 @@ export function DetailHeading() {
 
   const rawCity = draft.city || a.city;
   const resolvedCity = master.city?.find(c => c.value === rawCity || c.name === rawCity)?.name || rawCity;
+  const rawType = draft.companyType || a.companyType;
+  const resolvedCompanyType = rawType && rawType !== '—' ? label(rawType) : null;
   const rawSegment = draft.industrySegment || a.industrySegment;
-  const resolvedSegment =
-    master.industrySegment?.find(s => s.value === rawSegment || s.name === rawSegment)?.name ||
-    label(rawSegment);
+  const resolvedSegment = rawSegment && rawSegment !== '—'
+    ? (master.industrySegment?.find(s => s.value === rawSegment || s.name === rawSegment)?.name || label(rawSegment))
+    : null;
   const mktPic = draft.mktPicName || a.mktPicName;
 
   return (
@@ -41,8 +43,8 @@ export function DetailHeading() {
           )}
           {!draft.isNew && a.branchCode && <span>{a.branchCode}</span>}
           {resolvedCity && <span>{resolvedCity}</span>}
-          {(draft.companyType || a.companyType) && <span>{label(draft.companyType || a.companyType)}</span>}
-          {resolvedSegment && <span>{resolvedSegment}</span>}
+          {resolvedCompanyType && resolvedCompanyType !== '—' && <span>{resolvedCompanyType}</span>}
+          {resolvedSegment && resolvedSegment !== '—' && <span>{resolvedSegment}</span>}
           <span>Created {date(draft.applicationDate || a.applicationDate)}</span>
         </p>
         {!draft.isNew && (
