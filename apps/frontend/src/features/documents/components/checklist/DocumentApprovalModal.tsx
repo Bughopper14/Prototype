@@ -79,7 +79,7 @@ export function DocumentApprovalModal({
                     <div className="doc-v-step-content">
                       <div className="doc-v-top-info">
                         <span className="doc-v-role-title">
-                          Level {idx + 1}: {st.name || st.authorityName || st.authority || 'Approver'}
+                          Level {idx + 1}: {st.authority || st.authorityName || st.name || 'Approver'}
                         </span>
                         {isApproved ? (
                           <span className="doc-v-pill-status pill-approved">DISETUJUI</span>
