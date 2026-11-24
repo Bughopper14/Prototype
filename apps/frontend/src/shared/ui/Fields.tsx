@@ -9,6 +9,7 @@ export function Fields({
   disabled = false,
   className,
   section,
+  ruleSection,
   onSelectOption,
   onFieldFocus,
   activeFieldKey,
@@ -24,6 +25,8 @@ export function Fields({
   disabled?: boolean;
   className?: string;
   section?: string;
+  /** crm_master_form_sections.code of the section: which mandatory rules apply (the red star). */
+  ruleSection?: string;
   onSelectOption?: (k: string, v: string) => void;
   onFieldFocus?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
@@ -47,6 +50,7 @@ export function Fields({
           onChange={onChange}
           disabled={disabled}
           section={section}
+          ruleSection={ruleSection}
           onSelectOption={onSelectOption}
           onFieldFocus={onFieldFocus}
           activeFieldKey={activeFieldKey}

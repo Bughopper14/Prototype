@@ -94,6 +94,11 @@ export function referenceIssues(def: WorkflowDefinition, knownDocuments: Set<str
     if (!knownDocuments.has(d.documentCode)) err(`Document "${d.documentCode}" does not exist in Master Data.`);
   }
   for (const c of new Set(dupes(def.documents.map(d => `${d.stageKey}|${d.documentCode}`)))) err(`A document is listed twice in the same stage (${c.split('|')[1]}).`);
+  // A document type belongs to ONE stage of a workflow: the Document Checklist of an application is one list, so the same type in two stages would be two rows (two uploads, two approvals) for the same paper.
+  const stageName = new Map(def.stages.map(s => [s.key, s.name]));
+  const usedIn = new Map<string, string[]>();
+  for (const d of def.documents) usedIn.set(d.documentCode, [...new Set([...(usedIn.get(d.documentCode) || []), stageName.get(d.stageKey) ?? d.stageKey])]);
+  for (const [code, names] of usedIn) if (names.length > 1) err(`The document "${code}" is used in more than one stage (${names.join(', ')}). A document belongs to one stage.`);
   for (const c of new Set(dupes(def.fields.map(f => `${f.stageKey}|${f.formCode}|${f.section}|${f.code}`)))) err(`A field is listed twice in the same stage (${c.split('|')[3]}).`);
   const place = (a: WorkflowDefinition['approvals'][number]) =>
     `${a.scope}|${a.scope === 'GROUP' ? a.groupKey : a.stageKey}|${a.scope === 'SECTION' ? a.sectionCode : a.scope === 'DOCUMENT' ? a.documentCode : ''}`;

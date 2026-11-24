@@ -18,7 +18,7 @@ export function ProjectStatusField() {
         }}
       >
         <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a', margin: 0}}>
-          Project Status{reqMark('projectStatus', 'Project Information')}
+          Project Status{reqMark('projectStatus')}
         </label>
         <select
           name="projectStatus"
@@ -52,7 +52,7 @@ export function ProjectStatusField() {
               marginBottom: '3px',
             }}
           >
-            Project Status Remarks
+            Project Status Remarks{reqMark('projectStatusRemarks')}
           </label>
           <input
             type="text"

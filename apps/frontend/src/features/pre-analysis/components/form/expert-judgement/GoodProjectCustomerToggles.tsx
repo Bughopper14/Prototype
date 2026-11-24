@@ -3,7 +3,7 @@ import {PreAnalysisRichEditor} from '@/features/pre-analysis/components/PreAnaly
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function GoodProjectCustomerToggles() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* Good Project & Good Customer Toggles */}
@@ -32,7 +32,7 @@ export function GoodProjectCustomerToggles() {
                 color: data.goodProject ? '#15803d' : '#b91c1c',
               }}
             >
-              Good Project? {data.goodProject ? 'YES' : 'NO'}
+              Good Project{reqMark('goodProject')}? {data.goodProject ? 'YES' : 'NO'}
             </span>
             <button
               type="button"
@@ -52,6 +52,7 @@ export function GoodProjectCustomerToggles() {
               Toggle
             </button>
           </div>
+          <span style={{fontSize: '0.7rem', color: '#475569'}}>Note{reqMark('goodProjectNote')}</span>
           <input
             type="text"
             name="goodProjectNote"
@@ -93,7 +94,7 @@ export function GoodProjectCustomerToggles() {
                 color: data.goodCustomer ? '#15803d' : '#b91c1c',
               }}
             >
-              Good Customer? {data.goodCustomer ? 'YES' : 'NO'}
+              Good Customer{reqMark('goodCustomer')}? {data.goodCustomer ? 'YES' : 'NO'}
             </span>
             <button
               type="button"
@@ -113,6 +114,7 @@ export function GoodProjectCustomerToggles() {
               Toggle
             </button>
           </div>
+          <span style={{fontSize: '0.7rem', color: '#475569'}}>Note{reqMark('goodCustomerNote')}</span>
           <input
             type="text"
             name="goodCustomerNote"
@@ -132,7 +134,9 @@ export function GoodProjectCustomerToggles() {
       </div>
 
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>Brief Note</label>
+        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+          Brief Note{reqMark('briefNote')}
+        </label>
         <PreAnalysisRichEditor
           value={data.briefNote || ''}
           onChange={val => updateField('briefNote', val)}

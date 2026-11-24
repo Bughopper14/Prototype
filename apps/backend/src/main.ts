@@ -5,6 +5,8 @@ import type {NestExpressApplication} from '@nestjs/platform-express';
 import compression from 'compression';
 import helmet from 'helmet';
 import {AppModule} from './app.module';
+import {CRM} from './core/db/crm-tables';
+import {CrmDatabase} from './core/db/crm-database';
 import {bodyParserErrors, bodyParsers} from './core/http/body-parsers';
 
 async function bootstrap() {
@@ -27,6 +29,21 @@ async function bootstrap() {
   if (origins.length) app.enableCors({origin: origins, credentials: true});
 
   app.use('/api', ...bodyParsers, bodyParserErrors);
+
+  // An application is addressed by its number (A-000-26-00001) in URLs; internally it is the uuid, so the number in the path is swapped for it before routing.
+  const db = app.get(CrmDatabase);
+  app.use('/api/v1/applications', async (req: any, _res: any, next: any) => {
+    try {
+      const m = /^\/(A-\d{3}-\d{2}-\d{5})(?=\/|$|\?)/.exec(req.url);
+      if (m) {
+        const [rows] = await db.pool.execute<any[]>(`SELECT id FROM ${CRM.applications} WHERE application_number=? AND deleted_at IS NULL`, [m[1]]);
+        if (rows[0]) req.url = `/${rows[0].id}${req.url.slice(m[0].length)}`;
+      }
+      next();
+    } catch (e) {
+      next(e);
+    }
+  });
 
   app.enableShutdownHooks();
   const port = Number(process.env.API_PORT || 3001);

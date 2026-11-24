@@ -13,7 +13,6 @@ export function LeadAndContactFields() {
         name="leadSource"
         label="Lead Source"
         labelStyle={LABEL_BLOCK}
-        required={['leadSource', 'General Information']}
       />
       <TextField
         name="customerArea"
@@ -26,25 +25,21 @@ export function LeadAndContactFields() {
         name="dealerPic"
         label="Dealer PIC"
         labelStyle={LABEL_INLINE_FLEX}
-        required={['dealerPic', 'General Information']}
       />
       <TextField
         name="lmiPic"
         label="LMI PIC"
         labelStyle={LABEL_INLINE_FLEX}
-        required={['lmiPic', 'General Information']}
       />
       <TextField
         name="lfiPic"
         label="LFI PIC"
         labelStyle={LABEL_INLINE_FLEX}
-        required={['lfiPic', 'General Information']}
       />
       <TextField
         name="customerPic"
         label="Customer PIC"
         labelStyle={LABEL_INLINE_FLEX}
-        required={['customerPic', 'General Information']}
       />
     </>
   );

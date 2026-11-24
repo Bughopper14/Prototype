@@ -1,5 +1,7 @@
 /** Header of the active fiscal year: year, previous / next and delete. */
 import {Trash2} from 'lucide-react';
+import {RequiredStar} from '@/shared/ui/RequiredStar';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function FiscalYearHeader({
   canFinance,
@@ -33,7 +35,7 @@ export function FiscalYearHeader({
           Financial Statement / {String(currentIndex + 1).padStart(2, '0')}
         </span>
         <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
-          <span style={{fontSize: '0.8rem', fontWeight: 600, color: '#475569'}}>Fiscal Year:</span>
+          <span style={{fontSize: '0.8rem', fontWeight: 600, color: '#475569'}}>Fiscal Year:<RequiredStar field="fiscalYear" section={FORM_SECTION.FINANCIAL} /></span>
           <input
             type="number"
             data-field="fiscalYear"

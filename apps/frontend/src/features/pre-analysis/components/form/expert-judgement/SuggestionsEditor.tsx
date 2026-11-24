@@ -3,7 +3,7 @@ import {Trash2} from 'lucide-react';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function SuggestionsEditor() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* Suggestions List */}
@@ -17,7 +17,7 @@ export function SuggestionsEditor() {
           }}
         >
           <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
-            Suggestions / Mitigation Limitations
+            Suggestions / Mitigation Limitations{reqMark('suggestions')}
           </label>
           <button
             type="button"

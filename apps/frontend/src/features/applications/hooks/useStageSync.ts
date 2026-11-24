@@ -1,11 +1,11 @@
 /** Keeps the active stage and tab in step with the application (and with the tab asked for by the parent). */
 import {useEffect} from 'react';
 import {
-  initialStage,
+  initialScreen,
   isPreAnalysisApplication,
   isPreAnalysisReached,
 } from '@/features/applications/lib/workspace/stage';
-import {STAGE} from '@/shared/master-data';
+import {SCREEN} from '@/shared/master-data';
 
 export function useStageSync({
   a,
@@ -23,15 +23,15 @@ export function useStageSync({
   initialTab?: number;
 }) {
   useEffect(() => {
-    setActiveStage(initialStage(a));
+    setActiveStage(initialScreen(a));
     if (isPreAnalysisApplication(a) && tab === 0) setTab(8);
   }, [a.id, a.stage, a.status]);
 
   useEffect(() => {
     if (initialTab !== undefined) {
       setTab(initialTab);
-      if (initialTab === 8) setActiveStage(STAGE.PRE_ANALYSIS);
-      else if ([0, 5, 1].includes(initialTab) && !isPreAnalysisReached(a, draft)) setActiveStage(STAGE.FAP);
+      if (initialTab === 8) setActiveStage(SCREEN.PRE_ANALYSIS);
+      else if ([0, 5, 1].includes(initialTab) && !isPreAnalysisReached(a, draft)) setActiveStage(SCREEN.FAP);
     }
   }, [initialTab, a.id]);
 }

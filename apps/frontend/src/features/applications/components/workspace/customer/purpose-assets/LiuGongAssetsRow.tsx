@@ -2,6 +2,7 @@
 import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {assetSummary} from '@/features/applications/lib/asset-summary';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function LiuGongAssetsRow() {
   const {draft, setDraft, handleTriggerFieldSync, canEdit} = useWorkspace();
@@ -19,7 +20,7 @@ export function LiuGongAssetsRow() {
         LiuGong
       </td>
       <td style={{padding: '4px'}}>
-        <RequiredStar field="assetSummaryHeLiuGong" section="Purpose of Financing & Fixed Assets" />
+        <RequiredStar field="assetSummaryHeLiuGong" section={FORM_SECTION.PURPOSE} />
         <input
           type="number"
           min="0"
@@ -43,7 +44,7 @@ export function LiuGongAssetsRow() {
         />
       </td>
       <td style={{padding: '4px'}}>
-        <RequiredStar field="assetSummaryTruckLiuGong" section="Purpose of Financing & Fixed Assets" />
+        <RequiredStar field="assetSummaryTruckLiuGong" section={FORM_SECTION.PURPOSE} />
         <input
           type="number"
           min="0"

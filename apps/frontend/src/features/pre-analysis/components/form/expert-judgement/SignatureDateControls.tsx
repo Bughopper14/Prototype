@@ -3,7 +3,7 @@ import {getTodaySignatureDate} from '@/features/pre-analysis/lib/defaults';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function SignatureDateControls() {
-  const {signatureDateToDisplay, updateField, highlightAllSignatureDates, todayDateStr} =
+  const {signatureDateToDisplay, updateField, highlightAllSignatureDates, todayDateStr, reqMark} =
     usePreAnalysisContext();
   return (
     <div
@@ -22,7 +22,7 @@ export function SignatureDateControls() {
     >
       <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
         <label style={{fontSize: '0.78rem', fontWeight: 700, color: '#1e3a8a'}}>
-          Default Signature Date:
+          Default Signature Date{reqMark('signatureDate')}:
         </label>
         <input
           type="text"

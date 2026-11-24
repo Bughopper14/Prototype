@@ -1,5 +1,5 @@
 /** The tabs of the application workspace: names, numbering, order per stage and the authority needed to view each. */
-import {STAGE} from '@/shared/master-data';
+import {SCREEN} from '@/shared/master-data';
 /** Tab id → name. The ids are stored with activity entries (tab_index), so they never change. */
 export const TABS: Record<number, string> = {
   0: 'FAP Form',
@@ -21,8 +21,8 @@ export const TAB_NUMBERS: Record<number, number> = {0: 1, 5: 2, 1: 3, 6: 5, 9: 6
  * FAP form (sections 07-09), so "Business & banks" is no longer a tab of its own.
  */
 export function stageTabOrder(activeStage: string): number[] {
-  if (activeStage === STAGE.FAP) return [0, 5, 1, 6, 9, 11, 10, 7];
-  if (activeStage === STAGE.PRE_ANALYSIS) return [8, 4, 6, 9, 11, 10, 7];
+  if (activeStage === SCREEN.FAP) return [0, 5, 1, 6, 9, 11, 10, 7];
+  if (activeStage === SCREEN.PRE_ANALYSIS) return [8, 4, 6, 9, 11, 10, 7];
   return [6, 9, 11, 10, 7];
 }
 

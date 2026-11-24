@@ -11,7 +11,7 @@ export function ExpertJudgementSection() {
     <AccordionSection
       id="sec7"
       step="07"
-      title="7. PRELIMENARY ASSESSMENT"
+      title="7. PRELIMINARY ASSESSMENT"
       highlight
       contentStyle={{padding: '14px', display: 'flex', flexDirection: 'column', gap: '12px'}}
     >

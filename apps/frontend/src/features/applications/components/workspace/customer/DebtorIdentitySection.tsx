@@ -3,9 +3,10 @@ import {GenerateFapNumberButton} from '@/features/applications/components/Genera
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
-import {blank, customerFields} from '@liugong/shared';
+import {blank, customerFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye, Search, X} from 'lucide-react';
 import {useState} from 'react';
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 
 export function DebtorIdentitySection() {
   const {
@@ -188,6 +189,7 @@ export function DebtorIdentitySection() {
               onClick={() => handleTriggerFieldSync('customerCategory', 'header')}
             >
               Customer Category
+              <RequiredStar field="customerCategory" section={FORM_SECTION.DEBTOR} />
             </label>
             <select
               className="customer-category-select-input"
@@ -320,6 +322,7 @@ export function DebtorIdentitySection() {
               value={customerDraft}
               disabled={!canEditCustomerPic || !!chosen}
               section="customer"
+              ruleSection={FORM_SECTION.DEBTOR}
               onFieldFocus={k => handleTriggerFieldSync(k, 'customer')}
               activeFieldKey={activeFieldKey}
               onChange={syncCustomer}

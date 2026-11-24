@@ -80,7 +80,7 @@ export async function recordActivity(entry: ActivityEntry, actor: ActivityActor)
 export async function activityFeed(options: {applicationId?: string; limit?: number} = {}) {
   const limit = Math.min(Math.max(Number(options.limit) || 200, 1), 500);
   const [rows] = await pool.query<any[]>(
-    `SELECT l.*,p.company_name
+    `SELECT l.*,p.company_name,a.application_number
      FROM ${CRM.applicationActivityLogs} l
      JOIN ${CRM.applications} a ON a.id=l.application_id AND a.deleted_at IS NULL
      LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
@@ -93,6 +93,7 @@ export async function activityFeed(options: {applicationId?: string; limit?: num
     return {
       id: r.id,
       applicationId: r.application_id,
+      applicationNumber: r.application_number ?? null,
       companyName: r.company_name || '',
       stage: r.stage_code,
       section: r.section_name || '',

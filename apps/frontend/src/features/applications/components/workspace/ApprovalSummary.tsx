@@ -4,7 +4,7 @@
  * form / documents / legal tab of the right stage.
  */
 import {screenOf} from '@/features/applications/lib/workspace/stage';
-import {STAGE} from '@/shared/master-data';
+import {SCREEN} from '@/shared/master-data';
 import {ChevronRight, FileText, FolderOpen} from 'lucide-react';
 import {useWorkspace} from './WorkspaceContext';
 import type {Scope} from './approval-shared';
@@ -30,7 +30,7 @@ const DOC_STATUS: Record<string, string> = {PENDING: 'Not uploaded', UPLOADED: '
 export function useOpenView() {
   const {a, setActiveStage, setTab} = useWorkspace();
   const stages: any[] = a.workflow?.stages || [];
-  const SCREEN_TAB: Record<string, number> = {[STAGE.FAP]: 0, [STAGE.PRE_ANALYSIS]: 8, [STAGE.ICLF]: 6};
+  const SCREEN_TAB: Record<string, number> = {[SCREEN.FAP]: 0, [SCREEN.PRE_ANALYSIS]: 8, [SCREEN.DOCUMENTS]: 6};
   return (scope: Scope): {label: string; go: () => void} | null => {
     const stageCode = scope.stageCode || stages.find(s => s.groupCode === scope.groupCode)?.code;
     const stage = stages.find(s => s.code === stageCode);
@@ -55,7 +55,7 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
   const docs: any[] = a.documentChecks || [];
   const progress: any[] = a.stageProgress || [];
   /** The tab each screen opens on (the same ones the stage stepper uses). */
-  const SCREEN_TAB: Record<string, number> = {[STAGE.FAP]: 0, [STAGE.PRE_ANALYSIS]: 8, [STAGE.ICLF]: 6};
+  const SCREEN_TAB: Record<string, number> = {[SCREEN.FAP]: 0, [SCREEN.PRE_ANALYSIS]: 8, [SCREEN.DOCUMENTS]: 6};
   /** Opens a stage the way the stepper does: switch to its screen, then to a tab (its first one unless a tab is given, e.g. 5 = Legal). */
   const open = (stageCode: string | null | undefined, tab?: number) => {
     const stage = stages.find(s => s.code === stageCode);

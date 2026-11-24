@@ -17,7 +17,7 @@ export function DealerVerificationFields() {
           }}
         >
           <span>
-            Dealer Check{reqMark('dealerCheck', 'Cross-Check with Dealer / LMI')}
+            Dealer Check{reqMark('dealerCheck')}
           </span>
           <span style={{fontSize: '0.68rem', color: '#1e40af', fontWeight: 600}}>Dealer Verification</span>
         </label>

@@ -3,7 +3,7 @@ import {Trash2} from 'lucide-react';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function CompetitionTableEditor() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* Competition Information Table */}
@@ -17,7 +17,7 @@ export function CompetitionTableEditor() {
           }}
         >
           <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
-            Competition Information
+            Competition Information{reqMark('competitionTable')}
           </label>
           <button
             type="button"

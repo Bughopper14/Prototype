@@ -185,3 +185,21 @@
 .ap-episode-item { margin: 4px 0; }
 .ap-episode-item > summary { cursor: pointer; font-size: 13px; color: #334155; }
 .ap-episode-item > summary small { color: #94a3b8; }
+
+/* ---- approval steps: kind chip, progress, hierarchy ---- */
+.ap-scope.compact { box-shadow: 0 1px 2px rgba(15, 23, 42, .04); }
+.ap-scope.compact .ap-scope-title { flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.ap-scope.compact .ap-scope-title .ap-pill { margin-left: auto; }
+.ap-kind { padding: 2px 8px; border-radius: 6px; background: #e0e7ff; color: #3730a3; font-size: 11px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.ap-scope.kind-stage { margin-left: 16px; }
+.ap-scope.kind-section, .ap-scope.kind-document { margin-left: 32px; }
+.ap-scope.kind-group { border-left: 4px solid #6366f1; }
+.ap-scope.kind-stage { border-left: 4px solid #38bdf8; }
+.ap-scope.kind-section, .ap-scope.kind-document { border-left: 4px solid #cbd5e1; }
+.ap-scope.locked { background: #f8fafc; }
+.ap-scope.locked .ap-tl-step { opacity: .75; }
+.ap-pill.locked, .ap-pill.waiting { background: #e2e8f0; color: #475569; }
+.ap-progress { height: 5px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin: 4px 0 2px; }
+.ap-progress > span { display: block; height: 100%; border-radius: inherit; background: #22c55e; transition: width .25s; }
+.ap-locknote { display: flex; align-items: center; gap: 6px; margin: 2px 0 0; padding: 6px 10px; border-radius: 8px; background: #eef2ff; color: #3730a3; font-size: 12px; }
+@media (max-width: 640px) { .ap-scope.kind-stage { margin-left: 8px; } .ap-scope.kind-section, .ap-scope.kind-document { margin-left: 16px; } }

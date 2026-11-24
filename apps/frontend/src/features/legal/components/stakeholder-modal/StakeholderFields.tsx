@@ -3,6 +3,7 @@ import {Fields} from '@/shared/ui/Fields';
 
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
 import {FOREIGN_REGION_KEYS, isForeignAddress} from '@/features/legal/lib/stakeholder-values';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function StakeholderFields() {
   const {
@@ -92,6 +93,7 @@ export function StakeholderFields() {
       })}
       value={formValue}
       section="Shareholders & Management"
+      ruleSection={FORM_SECTION.STAKEHOLDERS}
       disabled={editorLocked}
       onChange={onChangeValue}
       onSelectOption={handleSelectOption}

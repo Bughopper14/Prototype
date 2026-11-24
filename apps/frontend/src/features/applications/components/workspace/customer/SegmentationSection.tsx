@@ -2,7 +2,7 @@
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {SegmentChecklist} from '@/features/applications/components/workspace/customer/SegmentChecklist';
 import {Repeater} from '@/shared/ui/Repeater';
-import {projectFields} from '@liugong/shared';
+import {projectFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
 
 export function SegmentationSection() {
@@ -68,6 +68,7 @@ export function SegmentationSection() {
             disabled={!canEditCustomerPic}
             carousel
             section="projects"
+            ruleSection={FORM_SECTION.SEGMENTATION}
             targetRowIndex={targetProjectRow}
             onRowChange={setTargetProjectRow}
             onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `projects-${targetProjectRow || 0}`)}

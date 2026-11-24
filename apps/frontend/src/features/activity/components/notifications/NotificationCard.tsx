@@ -142,7 +142,7 @@ export function NotificationCard({
           {item.applicationId && (
             <>
               <span>•</span>
-              <span style={{fontWeight: 600, color: '#334155'}}>{item.applicationId}</span>
+              <span style={{fontWeight: 600, color: '#334155'}}>{item.applicationNumber || item.applicationId}</span>
             </>
           )}
         </div>

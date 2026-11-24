@@ -1,6 +1,6 @@
 /** Checks a stakeholder before it is saved: total shares of the deed and the mandatory fields. */
 import {isFieldMandatory} from '@/shared/master-data';
-import {stakeholderFields} from '@liugong/shared';
+import {stakeholderFields, FORM_SECTION} from '@liugong/shared';
 
 /** The error message to show, or null when the stakeholder can be saved. */
 export function stakeholderSaveError({
@@ -24,7 +24,7 @@ export function stakeholderSaveError({
   }
   // every mandatory field that is still empty is named at once, not one per click
   const missing = stakeholderFields
-    .filter(f => isFieldMandatory(mandatoryRules, 'Shareholders & Management', f.key, false, 'FAP'))
+    .filter(f => isFieldMandatory(mandatoryRules, FORM_SECTION.STAKEHOLDERS, f.key))
     .filter(f => {
       const val = valToSave[f.key];
       return val === undefined || val === null || String(val).trim() === '';

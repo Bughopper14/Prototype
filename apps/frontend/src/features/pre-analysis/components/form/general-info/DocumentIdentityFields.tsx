@@ -46,7 +46,7 @@ export function DocumentIdentityFields() {
             marginBottom: '4px',
           }}
         >
-          FAP No{reqMark('fapNumber', 'General Information')}
+          FAP No{reqMark('fapNumber')}
         </label>
         <input
           type="text"

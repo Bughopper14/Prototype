@@ -29,6 +29,7 @@ export function FieldCell({
   onChange,
   disabled,
   section,
+  ruleSection,
   onSelectOption,
   onFieldFocus,
   activeFieldKey,
@@ -44,6 +45,8 @@ export function FieldCell({
   onChange: (v: any) => void;
   disabled: boolean;
   section?: string;
+  /** crm_master_form_sections.code of the section: which mandatory rules apply to the fields. */
+  ruleSection?: string;
   onSelectOption?: (k: string, v: string) => void;
   onFieldFocus?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
@@ -57,7 +60,7 @@ export function FieldCell({
   const mandatoryRules = useMandatoryRules();
   const isRequired = disableMandatoryRules
     ? false
-    : isFieldMandatory(mandatoryRules, section, f.key, f.required, 'FAP');
+    : isFieldMandatory(mandatoryRules, ruleSection, f.key);
   const rawVal = value?.[f.key];
   const isPlaceholderDash = String(rawVal ?? '').trim() === '-';
   const isPlaceholderZip = f.key === 'postalCode' && String(rawVal ?? '').trim() === '00000';

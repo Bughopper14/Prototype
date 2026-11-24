@@ -1,7 +1,7 @@
 /** Customer section 04: Primary Contact / PIC. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {Fields} from '@/shared/ui/Fields';
-import {picFields} from '@liugong/shared';
+import {picFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
 
 export function PrimaryContactSection() {
@@ -61,6 +61,7 @@ export function PrimaryContactSection() {
             value={draft.pic || {}}
             disabled={!canEditCustomerPic}
             section="pic"
+            ruleSection={FORM_SECTION.PIC}
             onFieldFocus={k => handleTriggerFieldSync(k, 'pic')}
             activeFieldKey={activeFieldKey}
             onChange={pic => setDraft({...draft, pic})}

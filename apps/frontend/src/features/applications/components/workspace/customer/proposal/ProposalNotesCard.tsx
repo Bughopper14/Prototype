@@ -4,6 +4,7 @@ import {useWorkspace} from '@/features/applications/components/workspace/Workspa
 import {highlightFormElement} from '@/features/applications/hooks/useFapPreviewSync';
 import {CrmRichTextEditor} from '@/shared/ui/CrmRichTextEditor';
 import {FileText} from 'lucide-react';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function ProposalNotesCard() {
   const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
@@ -43,7 +44,7 @@ export function ProposalNotesCard() {
       >
         <FileText size={15} style={{color: '#0284c7'}} />
         Notes
-        <RequiredStar field="proposalNotes" section="Financing Proposal" />
+        <RequiredStar field="proposalNotes" section={FORM_SECTION.PROPOSAL} />
       </h5>
       <p style={{fontSize: '12px', color: '#64748b', marginBottom: '12px'}}>
         Additional notes or specific terms for this financing application proposal

@@ -3,7 +3,7 @@ import {PreAnalysisRichEditor} from '@/features/pre-analysis/components/PreAnaly
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function UboInformationField() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* UBO Information with YES/NO Toggle */}
@@ -29,7 +29,7 @@ export function UboInformationField() {
         >
           <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
             <label style={{fontSize: '0.8rem', fontWeight: 700, color: '#1e3a8a', margin: 0}}>
-              UBO Information (Group Shareholding Structure & Legal Profile)
+              UBO Information (Group Shareholding Structure & Legal Profile){reqMark('uboInformation')}
             </label>
             <span
               style={{

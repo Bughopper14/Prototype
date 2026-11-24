@@ -1,7 +1,7 @@
 /** Customer section 02: Registration Office & Domicile. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {Fields} from '@/shared/ui/Fields';
-import {profileFields} from '@liugong/shared';
+import {profileFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
 
 export function RegistrationOfficeSection() {
@@ -65,6 +65,7 @@ export function RegistrationOfficeSection() {
               value={draft}
               disabled={!canEditCustomerPic}
               section="company"
+              ruleSection={FORM_SECTION.REGISTRATION}
               onFieldFocus={k => handleTriggerFieldSync(k, 'company')}
               activeFieldKey={activeFieldKey}
               onChange={setDraft}
@@ -93,6 +94,7 @@ export function RegistrationOfficeSection() {
               value={draft}
               disabled={!canEditCustomerPic}
               section="company"
+              ruleSection={FORM_SECTION.REGISTRATION}
               onFieldFocus={k => handleTriggerFieldSync(k, 'company')}
               activeFieldKey={activeFieldKey}
               onChange={setDraft}

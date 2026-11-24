@@ -2,6 +2,8 @@
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {useMasterData} from '@/shared/master-data';
 import type {MasterItem} from '@liugong/shared';
+import {RequiredStar} from '@/shared/ui/RequiredStar';
+import {FORM_SECTION} from '@liugong/shared';
 
 function OptionList({
   field,
@@ -18,6 +20,7 @@ function OptionList({
     <div data-field={field}>
       <label style={{display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#1e293b', marginBottom: 8}}>
         {title}
+        <RequiredStar field={field} section={FORM_SECTION.SEGMENTATION} />
       </label>
       <div style={{display: 'flex', flexDirection: 'column', gap: 5}}>
         {options

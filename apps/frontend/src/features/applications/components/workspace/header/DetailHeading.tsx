@@ -21,7 +21,7 @@ export function DetailHeading() {
         <p className="detail-meta">
           {!draft.isNew && (
             <span className="detail-meta-id" title="Application ID">
-              {a.id}
+              {a.applicationNumber || a.id}
             </span>
           )}
           {!draft.isNew && a.branchCode && <span>{a.branchCode}</span>}

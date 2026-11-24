@@ -33,6 +33,20 @@ export class ApplicationsRepository {
     return `${String(Number(rows[0].n) + 1).padStart(3, '0')}/AF/${ROMAN_MONTHS[Number(today.slice(5, 7)) - 1]}/${year}`;
   }
 
+  /** Next application number A-CCC-YY-NNNNN: CCC is the customer number, YY is the year of today, NNNNN the running number (+1 for every new application, never reset). The caller holds the lock. */
+  async nextApplicationNumber(conn: Conn, today: string, customerNo: number) {
+    const [rows] = await conn.execute<any[]>(
+      `SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(application_number,'-',-1) AS UNSIGNED)),0) AS n FROM ${CRM.applications} WHERE application_number IS NOT NULL`,
+    );
+    return `A-${String(customerNo).padStart(3, '0')}-${today.slice(2, 4)}-${String(Number(rows[0].n) + 1).padStart(5, '0')}`;
+  }
+
+  /** The id (uuid) of the application with this number, or null. */
+  async idOfNumber(number: string) {
+    const [rows] = await this.db.pool.execute<any[]>(`SELECT id FROM ${CRM.applications} WHERE application_number=? AND deleted_at IS NULL`, [number]);
+    return (rows[0]?.id as string) || null;
+  }
+
   /** Sets the FAP number (stored on the FAP profile of the application); returns false when it already has one. */
   async setFapNumber(conn: Conn, id: string, fapNumber: string, actor: Actor) {
     const [res] = await conn.execute<any>(
@@ -46,6 +60,7 @@ export class ApplicationsRepository {
     conn: Conn,
     app: {
       id: string;
+      applicationNumber: string;
       applicationDate: string;
       customerId: string;
       customerCategory: 'NEW' | 'EXISTING';
@@ -57,11 +72,12 @@ export class ApplicationsRepository {
   ) {
     await conn.execute(
       `INSERT INTO ${CRM.applications}
-         (id,application_date,business_partner_id,customer_category,branch_id,
+         (id,application_number,application_date,business_partner_id,customer_category,branch_id,
           workflow_freeze_id,mkt_pic_id,created_by)
-       VALUES (?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?)`,
       [
         app.id,
+        app.applicationNumber,
         app.applicationDate,
         app.customerId,
         app.customerCategory,

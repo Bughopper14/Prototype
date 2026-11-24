@@ -5,7 +5,10 @@
 import {useMasterData} from '@/shared/master-data';
 import {type FapSheetData} from '@/features/fap/lib/types';
 import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
+import {extractStreetAddress} from '@liugong/shared';
 import {useMemo} from 'react';
+
+const street = (text: any, hints: any): string => (text ? extractStreetAddress(String(text), hints) || String(text) : '');
 
 export function useFapSheetData({
   fapComparison,
@@ -55,7 +58,8 @@ export function useFapSheetData({
       npwp: a.customer?.npwp || a.npwp || '',
       establishmentActNo: a.customer?.establishmentActNo || a.establishmentActNo || '',
       establishmentDate: a.customer?.establishmentDate || a.establishmentDate || '',
-      companyAddress: a.customer?.companyAddress || a.companyAddress || '',
+      // the database keeps the full address; the sheet shows the street part
+      companyAddress: street(a.customer?.companyAddress || a.companyAddress, a.customer || a),
       city: a.customer?.city || a.city || '',
       province: a.customer?.province || a.province || '',
       postalCode: a.customer?.postalCode || a.postalCode || '',
@@ -74,7 +78,7 @@ export function useFapSheetData({
       position: docPic.position || a.position || '',
       phone: docPic.phone || docPic.mobilePhone || a.phone || '',
       picEmail: docPic.email || docPic.picEmail || a.picEmail || '',
-      currentAddress: docPic.currentAddress || docPic.address || a.currentAddress || '',
+      currentAddress: street(docPic.currentAddress || docPic.address || a.currentAddress, docPic),
       picCity:
         master.city?.find(
           x => x.value === docPic.city || x.name?.toLowerCase() === String(docPic.city || '').toLowerCase(),

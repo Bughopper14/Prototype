@@ -25,7 +25,7 @@ export function RecommendationField() {
           marginBottom: '6px',
         }}
       >
-        <span>RECOMMENDATION{reqMark('recommendation', 'Expert Judgement Conclusion')}</span>
+        <span>RECOMMENDATION{reqMark('recommendation')}</span>
         <span
           style={{
             fontSize: '0.72rem',

@@ -2,11 +2,11 @@
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {GroupedStepper} from '@/features/applications/components/GroupedStepper';
 import {screenOf, type WorkflowStage} from '@/features/applications/lib/workspace/stage';
-import {STAGE, useMasterData, workflowStages} from '@/shared/master-data';
+import {SCREEN, useMasterData, workflowStages} from '@/shared/master-data';
 import {useState} from 'react';
 
 /** The tab each screen opens on. */
-const SCREEN_TAB: Record<string, number> = {[STAGE.FAP]: 0, [STAGE.PRE_ANALYSIS]: 8, [STAGE.ICLF]: 6};
+const SCREEN_TAB: Record<string, number> = {[SCREEN.FAP]: 0, [SCREEN.PRE_ANALYSIS]: 8, [SCREEN.DOCUMENTS]: 6};
 
 export function ChevronStepper() {
   const {a, notify, activeStage, setActiveStage, tab, setTab, draft} = useWorkspace();

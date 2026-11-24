@@ -2,6 +2,8 @@
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {usePurposeSelection} from '@/features/applications/hooks/usePurposeSelection';
 import {useMasterData} from '@/shared/master-data';
+import {RequiredStar} from '@/shared/ui/RequiredStar';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function FinancingPurposeColumn() {
   const {canEdit, handleTriggerFieldSync} = useWorkspace();
@@ -33,6 +35,7 @@ export function FinancingPurposeColumn() {
         }}
       >
         <span style={{color: '#2563eb'}}>●</span> Tujuan Pembiayaan / Financing Purpose
+        <RequiredStar field="financingPurposeDetail" section={FORM_SECTION.PURPOSE} />
       </div>
 
       {groups.map(({purpose, options: groupOptions}) => (

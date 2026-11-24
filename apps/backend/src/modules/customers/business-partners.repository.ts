@@ -21,7 +21,7 @@ export class BusinessPartnersRepository {
   /** The customer directory with the date of each customer's first application. */
   async list() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT b.id,b.company_name,b.business_category_id,b.nib,b.nib_date,b.npwp,
+      `SELECT b.id,b.customer_no,b.company_name,b.business_category_id,b.nib,b.nib_date,b.npwp,
               b.created_at,b.updated_at,MIN(a.application_date) AS first_application_date
        FROM ${CRM.masterBusinessPartners} b
        LEFT JOIN ${CRM.applications} a ON a.business_partner_id=b.id AND a.deleted_at IS NULL
@@ -31,6 +31,7 @@ export class BusinessPartnersRepository {
     const categories = await this.ids.codes('businessCategory');
     return rows.map(r => ({
       id: r.id,
+      customerNo: r.customer_no ?? null,
       companyName: r.company_name,
       companyType: categories.get(r.business_category_id) ?? null,
       nib: r.nib,
@@ -94,6 +95,16 @@ export class BusinessPartnersRepository {
   }
 
   /** Keeps the golden record in step with an application's customer and profile data. */
+  /** The customer number (the 3 digits of an application number): 1 for the first customer, +1 for every next one; kept once given. The caller holds the number lock. */
+  async customerNo(conn: Conn, id: string): Promise<number> {
+    const [[row]] = await conn.query<any[]>(`SELECT customer_no FROM ${CRM.masterBusinessPartners} WHERE id=?`, [id]);
+    if (row?.customer_no) return Number(row.customer_no);
+    const [[max]] = await conn.query<any[]>(`SELECT COALESCE(MAX(customer_no),0) AS n FROM ${CRM.masterBusinessPartners}`);
+    const next = Number(max.n) + 1;
+    await conn.query(`UPDATE ${CRM.masterBusinessPartners} SET customer_no=? WHERE id=?`, [next, id]);
+    return next;
+  }
+
   async saveFromApplication(
     conn: Conn,
     id: string,

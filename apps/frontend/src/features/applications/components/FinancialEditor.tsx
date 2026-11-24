@@ -1,5 +1,5 @@
 import {RequiredStar} from '@/shared/ui/RequiredStar';
-import {blank, financialFields, inputLimits} from '@liugong/shared';
+import {blank, financialFields, inputLimits, FORM_SECTION} from '@liugong/shared';
 import {Plus, X} from 'lucide-react';
 import {byFiscalYear, nextFiscalYear} from '@/features/applications/lib/financial-statements';
 
@@ -75,7 +75,7 @@ export function FinancialEditor({
               >
                 <td>
                   {f.label}
-                  <RequiredStar field={f.key} section="Financial Statements" />
+                  <RequiredStar field={f.key} section={FORM_SECTION.FINANCIAL} />
                 </td>
                 {rows.map((r, i) => (
                   <td key={i}>

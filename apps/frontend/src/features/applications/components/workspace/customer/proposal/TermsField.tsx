@@ -7,6 +7,7 @@ import type {
   TermsFieldConfig,
   TermsGroupKey,
 } from '@/features/applications/components/workspace/customer/proposal/terms-config';
+import {FORM_SECTION} from '@liugong/shared';
 
 const LABEL_STYLE = {
   fontSize: '11px',
@@ -50,7 +51,7 @@ export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFi
     <div className="field-group" data-field={field.dataField}>
       <label className="field-label" style={LABEL_STYLE}>
         {field.label}
-        <RequiredStar field={field.dataField} section="Financing Proposal" />
+        <RequiredStar field={field.dataField} section={FORM_SECTION.PROPOSAL} />
       </label>
       {choices ? (
         <select

@@ -1,5 +1,5 @@
 import {Modal} from '@/shared/ui/Modal';
-import {label, storedDocumentUrl} from '@liugong/shared';
+import {extractStreetAddress, label, storedDocumentUrl} from '@liugong/shared';
 import {
   BriefcaseBusiness,
   Check,
@@ -266,7 +266,8 @@ export function StakeholderDetailDialog({
               <div className="detail-kv-item full-width">
                 <span className="detail-kv-lbl">Domicile Address</span>
                 <p className="detail-address-box">
-                  {item.address ||
+                  {(item.address && extractStreetAddress(item.address, item)) ||
+                    item.address ||
                     item.currentAddress ||
                     [
                       item.village ? `Kel. ${item.village}` : null,

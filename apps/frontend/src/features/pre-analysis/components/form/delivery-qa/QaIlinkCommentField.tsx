@@ -45,7 +45,7 @@ export function QaIlinkCommentField() {
             >
               <FileText size={15} color="#2563eb" />
               <span>
-                QA Comment — iLink/GPS Performance Check{reqMark('qaIlinkComment', 'Unit Delivery Status & QA Check')}
+                QA Comment — iLink/GPS Performance Check{reqMark('qaIlinkComment')}
               </span>
             </label>
             <div style={{fontSize: '0.68rem', color: '#64748b', marginTop: '2px'}}>

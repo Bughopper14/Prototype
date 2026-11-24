@@ -8,7 +8,7 @@ export function ExpertJudgementPreview() {
   return (
     <>
       <PreviewSectionTitle n={7} field="recommendation">
-        7. PRELIMENARY ASSESSMENT
+        7. PRELIMINARY ASSESSMENT
       </PreviewSectionTitle>
       <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '9pt', marginBottom: '12px'}}>
         <thead>

@@ -9,7 +9,7 @@ import {stakeholderSaveError} from '@/features/legal/lib/stakeholder-validation'
 import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {isFieldMandatory, useMandatoryRules, useMasterData} from '@/shared/master-data';
-import {deedPending, legalDeedFields, reviewStatus, DEED_EDIT_AUTHORITY} from '@liugong/shared';
+import {deedPending, legalDeedFields, reviewStatus, DEED_EDIT_AUTHORITY, FORM_SECTION} from '@liugong/shared';
 import {useEffect, useRef, useState} from 'react';
 
 export type LegalEditorProps = {
@@ -210,9 +210,9 @@ export function useLegalEditor({
       setFormError('This deed number has already been entered in this application.');
       return;
     }
-    // Which deed fields are required is set in Master Data > Mandatory (section "Legal Deeds & Amendments")
+    // Which deed fields are required is set in Master Data > Mandatory (section LEGAL-DEEDS-AMENDMENTS)
     const deedRequired = (key: string) =>
-      isFieldMandatory(mandatoryRules, 'Legal Deeds & Amendments', key, false, 'FAP');
+      isFieldMandatory(mandatoryRules, FORM_SECTION.DEEDS, key);
     if (deedRequired('type') && !editing.type) {
       setFormError('Deed type is mandatory and must be selected.');
       return;
@@ -341,14 +341,8 @@ export function useLegalEditor({
   );
   // Required deed fields are checked on save against the mandatory rules
   const complete = Boolean(editing && !isDuplicateDeedNumber);
-  const isTypeMandatory = isFieldMandatory(mandatoryRules, 'Legal Deeds & Amendments', 'type', false, 'FAP');
-  const isRemarksMandatory = isFieldMandatory(
-    mandatoryRules,
-    'Legal Deeds & Amendments',
-    'remarks',
-    false,
-    'FAP',
-  );
+  const isTypeMandatory = isFieldMandatory(mandatoryRules, FORM_SECTION.DEEDS, 'type');
+  const isRemarksMandatory = isFieldMandatory(mandatoryRules, FORM_SECTION.DEEDS, 'remarks');
 
   // Active deeds (top table) and historical deeds (bottom table)
   const {

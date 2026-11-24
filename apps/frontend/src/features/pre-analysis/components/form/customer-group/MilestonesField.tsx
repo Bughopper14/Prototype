@@ -3,7 +3,7 @@ import {Trash2} from 'lucide-react';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function MilestonesField() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <div id="preana-form-milestones" data-field="milestones" tabIndex={-1}>
       <div
@@ -14,7 +14,9 @@ export function MilestonesField() {
           marginBottom: '6px',
         }}
       >
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>Company Milestones</label>
+        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+          Company Milestones{reqMark('milestones')}
+        </label>
         <button
           type="button"
           onClick={() => {

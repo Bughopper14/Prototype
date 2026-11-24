@@ -1,5 +1,4 @@
 /** Role of a signatory and its delete button. */
-import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {Trash2} from 'lucide-react';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 import type {SignatoryItem} from '@/features/pre-analysis/lib/types';
@@ -13,7 +12,7 @@ export function SignatoryCardHeader({
   idx: number;
   roleColor: {bg: string; text: string; border: string};
 }) {
-  const {handleUpdateSignatory, triggerSignatorySync, currentSignatories, handleRemoveSignatory} =
+  const {handleUpdateSignatory, triggerSignatorySync, currentSignatories, handleRemoveSignatory, reqMark} =
     usePreAnalysisContext();
   return (
     <div
@@ -100,11 +99,7 @@ export function SignatoryCardHeader({
                 }}
               >
                 {r.replace(' by :', '')}
-                <RequiredStar
-                  field={{'Propose by :': 'proposedBy', 'Reviewed by :': 'reviewedBy', 'Approved by :': 'approvedBy'}[r] as string}
-                  section="Expert Judgement Conclusion"
-                  stage="PRE-AN"
-                />
+                {reqMark({'Propose by :': 'proposedBy', 'Reviewed by :': 'reviewedBy', 'Approved by :': 'approvedBy'}[r] as string)}
               </button>
             ))}
           </div>

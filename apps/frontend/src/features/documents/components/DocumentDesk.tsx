@@ -25,7 +25,7 @@ export function DocumentDesk({
     d =>
       (status === 'ALL' || (status === 'OPEN' ? d.status !== 'VERIFIED' : d.status === 'VERIFIED')) &&
       (department === 'ALL' || d.assigned_role === department) &&
-      (d.company_name + ' ' + d.application_id + ' ' + d.document_name)
+      (d.company_name + ' ' + (d.application_number || d.application_id) + ' ' + d.document_name)
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
@@ -108,10 +108,10 @@ export function DocumentDesk({
               {visible.map(d => (
                 <tr
                   key={d.checklist_id}
-                  onClick={() => open(d.application_id, 6)}
+                  onClick={() => open(d.application_number || d.application_id, 6)}
                   tabIndex={0}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' || e.key === ' ') open(d.application_id, 6);
+                    if (e.key === 'Enter' || e.key === ' ') open(d.application_number || d.application_id, 6);
                   }}
                 >
                   <td>
@@ -122,7 +122,7 @@ export function DocumentDesk({
                     <div className="company-cell">
                       <div>
                         <b>{d.company_name}</b>
-                        <small>{d.application_id}</small>
+                        <small>{d.application_number || d.application_id}</small>
                       </div>
                     </div>
                   </td>

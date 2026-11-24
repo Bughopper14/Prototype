@@ -3,7 +3,7 @@ import {Trash2} from 'lucide-react';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function UnitCompositionField() {
-  const {totalUnits, data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {totalUnits, data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* Current Unit Composition Table */}
@@ -17,7 +17,7 @@ export function UnitCompositionField() {
           }}
         >
           <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
-            Current Unit Composition (Total: {totalUnits} units)
+            Current Unit Composition (Total: {totalUnits} units){reqMark('unitComposition')}
           </label>
           <button
             type="button"

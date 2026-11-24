@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS `crm_application_stage_progress` (
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_applications` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `application_number` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `application_date` date NOT NULL,
   `business_partner_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `customer_category` enum('NEW','EXISTING') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NEW',
@@ -242,6 +243,7 @@ CREATE TABLE IF NOT EXISTS `crm_applications` (
   `created_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `updated_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_app_number` (`application_number`),
   KEY `idx_app_business_partner` (`business_partner_id`),
   KEY `fk_app_branch` (`branch_id`),
   KEY `idx_app_workflow_freeze` (`workflow_freeze_id`),
@@ -1502,6 +1504,7 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_categories` (
 CREATE TABLE IF NOT EXISTS `crm_master_business_partners` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `customer_no` int DEFAULT NULL,
   `company_name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `business_category_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `business_partner_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PROSPECT_CUSTOMER',

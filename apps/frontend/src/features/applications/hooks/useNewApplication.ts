@@ -7,7 +7,7 @@ import {
 } from '@/features/applications/lib/financing-proposal';
 import {api} from '@/shared/lib/api';
 import {validateInput} from '@liugong/shared';
-import {firstStageCode, STAGE} from '@/shared/master-data';
+import {firstStageCode, SCREEN} from '@/shared/master-data';
 
 export function useNewApplication({
   customers,
@@ -196,7 +196,7 @@ export function useNewApplication({
       }
       setDraft(structuredClone(fullApp));
       // An application started from the Pre-analysis step stays on Pre-analysis once it is created.
-      const openTab = activeStage === STAGE.PRE_ANALYSIS ? 8 : 0;
+      const openTab = activeStage === SCREEN.PRE_ANALYSIS ? 8 : 0;
       onChange({...fullApp, openTab});
       // Stay on the new application with every tab unlocked instead of returning to the list.
       setTab(openTab);

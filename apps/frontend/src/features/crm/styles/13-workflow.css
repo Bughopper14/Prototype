@@ -1629,3 +1629,13 @@ svg.up { transform: rotate(180deg); }
 /* Required label of a document and the application lists (no FAP number) */
 .ap-req { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: #fef3c7; color: #92400e; font-size: 11px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; vertical-align: 1px; }
 .adlg-list li { grid-template-columns: minmax(0, 1fr) auto; }
+
+/* sub-section title inside the field list of a form section */
+.wf-sub { grid-column: 1 / -1; margin-top: 8px; padding: 4px 2px; font-size: 11px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: #3730a3; border-bottom: 1px solid #e0e7ff; }
+.wf-field-grid > .wf-sub:first-child { margin-top: 0; }
+.wf-sub-rule { grid-column: 1 / -1; height: 0; margin: 10px 0 2px; border-top: 1px dashed #cbd5e1; }
+
+/* a document that another stage already uses: greyed, with where it is used */
+.wf-field.taken { opacity: .75; background: #f1f5f9; border-style: dashed; cursor: not-allowed; }
+.wf-field.taken > span { color: #64748b; }
+.wf-taken-tag { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: #e0e7ff; color: #3730a3; font-size: 11px; font-weight: 700; font-style: normal; white-space: nowrap; }

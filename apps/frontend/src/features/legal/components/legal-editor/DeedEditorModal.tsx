@@ -4,7 +4,7 @@ import {normalizeRemarksToHtml} from '@/features/legal/lib/remarks-html';
 import {date} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
 import {Modal} from '@/shared/ui/Modal';
-import {legalDeedFields} from '@liugong/shared';
+import {legalDeedFields, FORM_SECTION} from '@liugong/shared';
 import {Save} from 'lucide-react';
 
 import {useLegalEditorContext} from '@/features/legal/components/legal-editor/LegalEditorContext';
@@ -113,6 +113,7 @@ export function DeedEditorModal() {
                 <Fields
                   fields={legalDeedFields}
                   section="Legal Deeds & Amendments"
+                ruleSection={FORM_SECTION.DEEDS}
                   value={editing}
                   disabled={editorLocked}
                   customErrors={

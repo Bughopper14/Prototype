@@ -1,3 +1,2 @@
-// Mandatory-field rules: defaults, form sections and the cached rule store.
+// Mandatory-field rules of the workflow: the rule store and the isFieldMandatory check.
 export * from './rules-store';
-export * from './sections';

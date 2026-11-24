@@ -1,4 +1,6 @@
 /** Audited checkbox that applies to all fiscal years. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function AuditedToggle({
   draft,
@@ -53,7 +55,10 @@ export function AuditedToggle({
             cursor: canFinance ? 'pointer' : 'default',
           }}
         />
-        <span>Audited</span>
+        <span>
+          Audited
+          <RequiredStar field="financialAudited" section={FORM_SECTION.FINANCIAL} />
+        </span>
       </label>
       <span style={{fontSize: '0.78rem', color: '#64748b'}}>
         (Yes / No) · Centang jika laporan keuangan diaudit / Check if statements are audited

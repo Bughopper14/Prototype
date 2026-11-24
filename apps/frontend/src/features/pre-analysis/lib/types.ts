@@ -152,7 +152,7 @@ export interface PreAnalysisData {
   pefindoNotes: string;
   lenderExposures: LenderExposureItem[];
 
-  // 7. PRELIMENARY ASSESSMENT
+  // 7. PRELIMINARY ASSESSMENT
   goodProject: boolean;
   goodProjectNote: string;
   goodCustomer: boolean;

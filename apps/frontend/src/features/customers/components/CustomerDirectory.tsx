@@ -5,6 +5,9 @@ import {label} from '@liugong/shared';
 import {ArrowUpRight, Building2, Search, Users} from 'lucide-react';
 import {useMemo, useState} from 'react';
 
+/** The customer number as shown: 3 digits (001); empty until the customer has its first application. */
+const customerNumber = (n?: number | null) => (n ? String(n).padStart(3, '0') : '');
+
 export function CustomerDirectory({
   customers,
   rows,
@@ -62,6 +65,7 @@ export function CustomerDirectory({
       if (!term) return true;
       return (
         (c.companyName || '').toLowerCase().includes(term) ||
+        customerNumber(c.customerNo).includes(term) ||
         (c.nib || '').includes(term) ||
         (c.npwp || '').includes(term)
       );
@@ -184,7 +188,7 @@ export function CustomerDirectory({
             key={c.id}
             onClick={() => {
               const a = rows.find(r => r.business_partner_id === c.id);
-              if (a) open(a.id);
+              if (a) open(a.application_number || a.id);
               else if (hasAuthority(user, 'CRM_APPLICATION_CREATE')) startNewApplication?.(c.id);
               else notify('This customer has no applications yet. Use New application to create one.');
             }}
@@ -215,6 +219,8 @@ export function CustomerDirectory({
             <h3>{c.companyName}</h3>
             <span className="muted">{label(c.companyType)}</span>
             <dl>
+              <dt>Customer No</dt>
+              <dd style={{fontWeight: 700}}>{customerNumber(c.customerNo) || '—'}</dd>
               <dt>NIB</dt>
               <dd>{c.nib || '—'}</dd>
               <dt>NPWP</dt>

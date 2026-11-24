@@ -472,7 +472,7 @@ export class DocumentsRepository {
   /** Every checklist row of every application, for the Document Desk. */
   async desk() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT c.id AS checklist_id,c.application_id,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
+      `SELECT c.id AS checklist_id,c.application_id,a.application_number,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
               COALESCE(t.name,o.custom_name) AS document_name,c.assigned_role,
               ${MANDATORY} AS is_mandatory,c.status,p.company_name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS file_count

@@ -3,6 +3,7 @@ import React from 'react';
 import {ProjectGroupCard} from '@/features/pre-analysis/components/form/project-info/ProjectGroupCard';
 import {Plus} from 'lucide-react';
 import type {PreAnalysisProjectGroup, PreAnalysisProjectItem} from '@/features/pre-analysis/lib/types';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export const ProjectGroupListEditor: React.FC<{
   title: string;
@@ -12,6 +13,7 @@ export const ProjectGroupListEditor: React.FC<{
   onChange: (groups: PreAnalysisProjectGroup[]) => void;
   onFocus?: () => void;
 }> = ({title, subtitle, dataField, groups, onChange, onFocus}) => {
+  const {reqMark} = usePreAnalysisContext();
   const currentGroups =
     groups && groups.length > 0
       ? groups
@@ -93,7 +95,10 @@ export const ProjectGroupListEditor: React.FC<{
         }}
       >
         <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
-          <span style={{fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a'}}>{title}</span>
+          <span style={{fontSize: '0.85rem', fontWeight: 700, color: '#1e3a8a'}}>
+            {title}
+            {dataField && reqMark(dataField)}
+          </span>
           <span
             style={{
               fontSize: '0.68rem',

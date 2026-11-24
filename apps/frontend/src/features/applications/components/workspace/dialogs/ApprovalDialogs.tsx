@@ -1,7 +1,7 @@
 /** The two dialogs of the approval layer: the review of one step (Approve or Reject in ONE dialog, a reject needs a reason, and a button to request more documents), and submit a stage. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {api} from '@/shared/lib/api';
-import {STAGE} from '@/shared/master-data';
+import {SCREEN} from '@/shared/master-data';
 import {Modal} from '@/shared/ui/Modal';
 import {ChecklistCustomizeDialog} from '@/features/documents/components/checklist/ChecklistCustomizeDialog';
 import {hasAuthority} from '@/shared/lib/auth';
@@ -12,9 +12,9 @@ type Gap = {target: string; label: string; detail?: string};
 
 /** Where each kind of missing item is filled in: the stage view and tab that hold it. */
 const GAP_PLACE: Record<string, {stage?: string; tab: number; name: string}> = {
-  FAP_FORM: {stage: STAGE.FAP, tab: 0, name: 'FAP Form'},
-  PRE_ANALYSIS: {stage: STAGE.PRE_ANALYSIS, tab: 8, name: 'Pre-analysis form'},
-  LEGAL: {stage: STAGE.FAP, tab: 5, name: 'Legal'},
+  FAP_FORM: {stage: SCREEN.FAP, tab: 0, name: 'FAP Form'},
+  PRE_ANALYSIS: {stage: SCREEN.PRE_ANALYSIS, tab: 8, name: 'Pre-analysis form'},
+  LEGAL: {stage: SCREEN.FAP, tab: 5, name: 'Legal'},
   DOCUMENTS: {tab: 6, name: 'Documents'},
 };
 
@@ -128,7 +128,7 @@ export function ApprovalDecisionDialog() {
     <Modal title={`Review · ${decision.step}`} onClose={close}>
       <div className="modal-body">
         <p className="muted">
-          {a.customer?.companyName} · {a.id}
+          {a.customer?.companyName} · {a.applicationNumber || a.id}
         </p>
         <div className="ap-choice" role="tablist" aria-label="Your decision">
           <button type="button" role="tab" aria-selected={!reject} className={!reject ? 'on approve' : ''} onClick={() => setKind('APPROVED')}>
@@ -309,7 +309,7 @@ export function SubmitStageDialog() {
     <Modal title={`Submit ${stage?.name ?? 'stage'}`} onClose={close}>
       <div className="modal-body">
         <p className="muted">
-          {a.customer?.companyName} · {a.id}
+          {a.customer?.companyName} · {a.applicationNumber || a.id}
         </p>
         <p>
           The stage is locked and sent for approval. If something is rejected it opens again so you can fix it and submit once more.

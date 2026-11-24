@@ -9,7 +9,7 @@ import {
   TABS,
 } from '@/features/applications/lib/workspace/tabs';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
-import {STAGE, useMasterData, workflowStages} from '@/shared/master-data';
+import {SCREEN, screenOfStage, useMasterData, workflowStages} from '@/shared/master-data';
 
 export function useWorkspaceAccess({
   a,
@@ -26,13 +26,16 @@ export function useWorkspaceAccess({
   tab: number;
   setTab: (v: number) => void;
 }) {
-  const isFapStage = activeStage === STAGE.FAP;
+  const isFapStage = activeStage === SCREEN.FAP;
   const preAnalysisReached = isPreAnalysisReached(a, draft);
   // The stage the workspace is showing, or the stage of the application's status when that is a later one (for example
   // ICLF, which has no screen of its own yet): "Active Stage" names the stage the application is really in.
   const master = useMasterData();
-  const stageCodes = workflowStages(master).map(s => s.value);
-  const viewStage = preAnalysisReached ? STAGE.PRE_ANALYSIS : STAGE.FAP;
+  const appStages: {code: string; formCode?: string | null}[] = a?.workflow?.stages || [];
+  const stageCodes = appStages.length ? appStages.map(s => s.code) : workflowStages(master).map(s => s.value);
+  // the stage the workspace shows is the first stage of the workflow whose form opens that screen (never a fixed code)
+  const viewScreen = preAnalysisReached ? SCREEN.PRE_ANALYSIS : SCREEN.FAP;
+  const viewStage = appStages.find(s => screenOfStage(s) === viewScreen)?.code ?? stageCodes[0] ?? '';
   const realStage: string | undefined = a.workflowStage?.code;
   const currentAppStage =
     realStage && stageCodes.indexOf(realStage) > stageCodes.indexOf(viewStage) ? realStage : viewStage;

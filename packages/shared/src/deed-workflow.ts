@@ -109,6 +109,14 @@ export function mergeLegal(previous: any, incoming: any) {
       'Akta dalam proses approval atau sudah disetujui tidak boleh dihapus. Buat perubahan dan ajukan ulang.',
       409,
     );
+  // one number, one deed: the form says so, and the server too (two open tabs must not store the same deed twice)
+  const seen = new Set<string>();
+  for (const d of deeds) {
+    const no = String(d.deedNumber ?? '').trim().toLowerCase();
+    if (!no) continue;
+    assert(!seen.has(no), `Nomor akta ${String(d.deedNumber).trim()} sudah dipakai oleh akta lain di aplikasi ini.`, 422);
+    seen.add(no);
+  }
   const est = deeds.find((d: any) => d.type === 'establishment');
   if (est?.deedDate) {
     for (const d of deeds) {

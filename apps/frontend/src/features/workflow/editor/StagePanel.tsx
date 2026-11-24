@@ -2,7 +2,7 @@
 export type StageTab = 'details' | 'fields' | 'documents' | 'approval';
 import {Plus, Search, Trash2, X} from 'lucide-react';
 import {departmentLabel} from '@/shared/lib/departments';
-import {useMemo, useState} from 'react';
+import {useMemo, useState, Fragment} from 'react';
 import type {Catalog, Definition, Stage} from '../api';
 import {ApprovalList, approvalOf} from './ApprovalList';
 
@@ -15,6 +15,26 @@ type Props = {
   initialTab?: StageTab;
   onClose: () => void;
 };
+
+/** What separates the sub-section of a form from the label of its field in the master: "Financial Lease | Currency". */
+const SUB = ' | ';
+
+/**
+ * The sub-sections of a form section, as the form shows them: a field label written "Sub-section | Label" belongs to the sub-section named before
+ * the separator (neighbouring fields with the same name are one sub-section). A field without one is shown with its whole label; when it follows a
+ * sub-section it is set apart by a rule (`afterGroup`), so it does not look like part of the sub-section above it. The order is the master's.
+ */
+function subsectionsOf<T extends {label: string}>(fields: T[]): {title: string | null; fields: T[]; afterGroup: boolean}[] {
+  const parts: {title: string | null; fields: T[]; afterGroup: boolean}[] = [];
+  for (const f of fields) {
+    const i = f.label.indexOf(SUB);
+    const title = i > 0 ? f.label.slice(0, i) : null;
+    const last = parts[parts.length - 1];
+    if (last && last.title === title) last.fields.push(f);
+    else parts.push({title, fields: [f], afterGroup: title === null && !!last && last.title !== null});
+  }
+  return parts;
+}
 
 export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'details', onClose}: Props) {
   const [tab, setTab] = useState<StageTab>(initialTab);
@@ -40,7 +60,13 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'd
 
   const requiredCount = def.fields.filter(f => f.stageKey === stage.key && f.mandatory).length;
   const docs = def.documents.filter(d => d.stageKey === stage.key);
-  const free = catalog.documents.filter(d => !docs.some(r => r.documentCode === d.code));
+  // A document belongs to one stage of a workflow (the checklist of an application is one list): one already used by another stage is shown apart, greyed, with where it is used.
+  const usedElsewhere = new Map<string, string[]>();
+  for (const d of def.documents)
+    if (d.stageKey !== stage.key) usedElsewhere.set(d.documentCode, [...new Set([...(usedElsewhere.get(d.documentCode) || []), def.stages.find(s => s.key === d.stageKey)?.name ?? d.stageKey])]);
+  const notHere = catalog.documents.filter(d => !docs.some(r => r.documentCode === d.code));
+  const free = notHere.filter(d => !usedElsewhere.has(d.code));
+  const taken = notHere.filter(d => usedElsewhere.has(d.code));
   const docName = (code: string) => catalog.documents.find(d => d.code === code)?.name ?? code;
   const patchDoc = (code: string, patch: Partial<Definition['documents'][number]>) =>
     setDef({...def, documents: def.documents.map(d => (d.stageKey === stage.key && d.documentCode === code ? {...d, ...patch} : d))});
@@ -210,16 +236,22 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'd
                           />
                         )}
                         <div className="wf-field-grid">
-                          {shown.map(f => (
-                            <label key={f.code} className={`wf-field ${isMandatory(section, f.code) ? 'on' : ''} ${f.enforceable ? '' : 'off'}`} title={f.enforceable ? undefined : 'The system cannot check this field yet'}>
-                              <input
-                                type="checkbox"
-                                disabled={locked || !f.enforceable}
-                                checked={isMandatory(section, f.code)}
-                                onChange={e => setMandatory(section, [f.code], e.target.checked)}
-                              />
-                              <span>{f.label}</span>
-                            </label>
+                          {subsectionsOf(shown).map(part => (
+                            <Fragment key={part.title ?? part.fields[0].code}>
+                              {part.title && <div className="wf-sub">{part.title}</div>}
+                              {part.afterGroup && <div className="wf-sub-rule" />}
+                              {part.fields.map(f => (
+                                <label key={f.code} className={`wf-field ${isMandatory(section, f.code) ? 'on' : ''} ${f.enforceable ? '' : 'off'}`} title={f.enforceable ? undefined : 'The system cannot check this field yet'}>
+                                  <input
+                                    type="checkbox"
+                                    disabled={locked || !f.enforceable}
+                                    checked={isMandatory(section, f.code)}
+                                    onChange={e => setMandatory(section, [f.code], e.target.checked)}
+                                  />
+                                  <span>{part.title ? f.label.slice(part.title.length + SUB.length) : f.label}</span>
+                                </label>
+                              ))}
+                            </Fragment>
                           ))}
                         </div>
                       </details>
@@ -266,7 +298,7 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'd
                 ))}
                 {!docs.length && <div className="wf-note">No document in this stage yet.</div>}
               </div>
-              {!locked && free.length > 0 && (
+              {!locked && (free.length > 0 || taken.length > 0) && (
                 <div className="wf-add-doc" style={{display: 'grid', gap: 10}}>
                   <div style={{display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap'}}>
                     <b>Add documents</b>
@@ -291,6 +323,20 @@ export function StagePanel({def, setDef, catalog, stage, locked, initialTab = 'd
                       </label>
                     ))}
                   </div>
+                  {taken.length > 0 && (
+                    <>
+                      <small className="wf-muted">Already used by another stage (a document belongs to one stage):</small>
+                      <div className="wf-field-grid">
+                        {taken.map(d => (
+                          <label key={d.code} className="wf-field taken" title="Remove it from that stage first to use it here">
+                            <input type="checkbox" disabled checked={false} readOnly />
+                            <span>{d.name}</span>
+                            <em className="wf-taken-tag">Used in {usedElsewhere.get(d.code)!.join(', ')}</em>
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   <button
                     className="wf-btn primary"
                     disabled={!picks.length}

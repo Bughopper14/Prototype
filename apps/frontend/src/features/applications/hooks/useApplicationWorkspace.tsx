@@ -21,7 +21,7 @@ import {
 } from '@/features/applications/lib/master-customer-fill';
 import {draftFromApplication} from '@/features/applications/lib/workspace/draft-from-application';
 import {calculateInstallment} from '@/features/applications/lib/workspace/loan-calc';
-import {initialStage, isPreAnalysisApplication} from '@/features/applications/lib/workspace/stage';
+import {initialScreen, isPreAnalysisApplication} from '@/features/applications/lib/workspace/stage';
 import {selectMandatoryWorkflow, useMasterData} from '@/shared/master-data';
 import {blank, customerFields, proposalFields} from '@liugong/shared';
 import {useEffect, useRef, useState} from 'react';
@@ -84,7 +84,7 @@ export function useApplicationWorkspace({
   // Stage, tab and the draft being edited
   const isPreAnalysis = isPreAnalysisApplication(a);
   const resolvedInitialTab = initialTab === 0 && isPreAnalysis ? 8 : (initialTab ?? 0);
-  const [activeStage, setActiveStage] = useState<string>(() => initialStage(a));
+  const [activeStage, setActiveStage] = useState<string>(() => initialScreen(a));
   const [reviewDeedId, setReviewDeedId] = useState<string | null>(null);
   // "Edit" asked from the review dialog: the Legal editor opens that deed (or its stakeholder list)
   const [editRequest, setEditRequest] = useState<{id: string; what: 'deed' | 'stakeholders'} | null>(null);

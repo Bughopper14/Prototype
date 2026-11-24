@@ -10,7 +10,6 @@ import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
-import {STAGE} from '@/shared/master-data';
 
 export function useSaveApplication({
   customerCategory,
@@ -165,10 +164,8 @@ export function useSaveApplication({
                 stakeholders: (draft.stakeholders || []).map(stakeholderForSave),
               };
 
-      const currentStage = activeStage || draft.stage || a.stage || STAGE.FAP;
       const v = await api(`/applications/${a.id}/page-${tab === 5 ? 'legal' : 1}`, 'PUT', {
         ...body,
-        stage: currentStage,
         // The server refuses the save when someone else changed the application after it was loaded here
         ...(tab === 5 ? {} : {expectedUpdatedAt: a.updatedAt}),
       });
@@ -176,7 +173,6 @@ export function useSaveApplication({
       const nextApp = {
         ...a,
         ...v,
-        stage: currentStage,
         customer: {
           ...(a.customer || {}),
           ...(v?.customer || {}),

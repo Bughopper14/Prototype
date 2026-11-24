@@ -99,6 +99,21 @@ export function scopeApproved(templates: TemplateStep[], steps: AppStep[], scope
   return !!round && round.length > 0 && round.every(s => s.status === 'APPROVED');
 }
 
+/**
+ * The approval hierarchy is deed / document, then stage, then group. How many things below this scope are not approved yet in their newest round
+ * (a stage waits for its deeds and documents, a group for its stages and everything under them). Submitting is free and parallel; only the
+ * deciding waits: an approver sees the step once everything below it is approved. `groupStages` are the stage codes of the group.
+ */
+export function lowerOpen(steps: AppStep[], scope: {scope?: string; type?: string; stageCode?: string | null; groupCode?: string | null}, groupStages: string[]): number {
+  const kind = scope.scope ?? scope.type;
+  if (kind !== 'STAGE' && kind !== 'GROUP') return 0;
+  const under = (s: AppStep) =>
+    kind === 'STAGE' ? (s.scope === 'DOCUMENT' || s.scope === 'SECTION') && s.stageCode === scope.stageCode : s.scope !== 'GROUP' && !!s.stageCode && groupStages.includes(s.stageCode);
+  let open = 0;
+  for (const round of latestRounds(steps.filter(under)).values()) if (!round.every(s => s.status === 'APPROVED')) open++;
+  return open;
+}
+
 /** Rounds of approval: start (on submit), decide (approve / reject), and read (what the screen shows). */
 @Injectable()
 export class ApprovalsService {
@@ -323,7 +338,7 @@ export class ApprovalsService {
   }
 
   /** What the application screen shows: the state, the newest round of every scope with who can act, and the older rounds as history. */
-  async view(applicationId: string, workflowFreezeId: string, actor?: Actor, labelOf?: (s: ScopeRef) => string) {
+  async view(applicationId: string, workflowFreezeId: string, actor?: Actor, labelOf?: (s: ScopeRef) => string, groupStagesOf?: (groupCode: string) => string[]) {
     const steps = await this.repo.stepsOf(applicationId);
     // one step, one decision: the decisions of the screen are the decision columns of the steps
     const decisions: Decision[] = steps
@@ -335,7 +350,7 @@ export class ApprovalsService {
     for (const d of decisions) byStep.set(d.stepId, [...(byStep.get(d.stepId) || []), d]);
     const latest = latestRounds(steps);
     const latestIds = new Set([...latest.values()].flat().map(s => s.id));
-    const stepView = (s: AppStep) => {
+    const stepView = (s: AppStep, locked: boolean) => {
       const ds = byStep.get(s.id) || [];
       return {
         id: s.id,
@@ -348,11 +363,17 @@ export class ApprovalsService {
         sortOrder: s.sortOrder,
         startedAt: s.startedAt,
         completedAt: s.completedAt,
-        canAct: !!actor && s.status === 'PENDING' && canActOn(actor, s) && !ds.some(d => d.userId === actor.portalUserId),
+        canAct: !locked && !!actor && s.status === 'PENDING' && canActOn(actor, s) && !ds.some(d => d.userId === actor.portalUserId),
         decisions: ds.map(d => ({by: names.get(d.userId) ?? `User ${d.userId}`, decision: d.decision, remarks: d.remarks, decidedAt: d.decidedAt, via: d.via})),
       };
     };
-    const scopeView = (list: AppStep[]) => ({
+    const scopeView = (list: AppStep[], isCurrent = false) => {
+      // a part that is already approved in full is not "waiting for what is below" any more
+      const lower = isCurrent && !list.every(x => x.status === 'APPROVED') ? lowerOpen(steps, list[0], groupStagesOf?.(list[0].groupCode ?? '') ?? []) : 0;
+      return {
+      /** How many things below (deeds and documents under a stage, stages under a group) still have to be approved before this one is shown to its approvers. */
+      lockedBy: lower,
+      locked: lower > 0,
       scope: list[0].scope,
       scopeName: labelOf ? labelOf({type: list[0].scope, groupCode: list[0].groupCode, stageCode: list[0].stageCode, documentCode: list[0].documentCode, checklistId: list[0].checklistId, sectionCode: list[0].sectionCode, subjectId: list[0].subjectId}) : '',
       checklistId: list[0].checklistId,
@@ -362,16 +383,17 @@ export class ApprovalsService {
       groupCode: list[0].groupCode,
       documentCode: list[0].documentCode,
       roundNo: list[0].roundNo,
-      steps: list.map(stepView),
-    });
+      steps: list.map(s => stepView(s, lower > 0)),
+      };
+    };
     const old = new Map<string, AppStep[]>();
     for (const s of steps) if (!latestIds.has(s.id)) old.set(`${scopeKey(s)}#${s.roundNo}`, [...(old.get(`${scopeKey(s)}#${s.roundNo}`) || []), s]);
-    const current = [...latest.values()].map(scopeView);
+    const current = [...latest.values()].map(l => scopeView(l, true));
     return {
       state,
       stateName: STATE_NAME[state],
       current,
-      history: [...old.values()].map(scopeView),
+      history: [...old.values()].map(l => scopeView(l)),
       /** True when the signed-in person has something to approve or reject on this application. */
       actionable: current.some(c => c.steps.some(s => s.canAct)),
       /** True for the administrator and for whoever holds the authority of a step of this application (any round): they get the Approvals tab. The screen never compares authority names itself. */

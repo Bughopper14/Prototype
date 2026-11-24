@@ -13,6 +13,7 @@ export function Repeater({
   description,
   carousel = false,
   section,
+  ruleSection,
   onFieldFocus,
   activeFieldKey,
   targetRowIndex,
@@ -26,6 +27,8 @@ export function Repeater({
   description?: string;
   carousel?: boolean;
   section?: string;
+  /** crm_master_form_sections.code of the section: which mandatory rules apply (the red star). */
+  ruleSection?: string;
   onFieldFocus?: (k: string, section?: string) => void;
   activeFieldKey?: string | null;
   /** Row the FAP preview points at (clicking a row in the sheet turns the carousel to it). */
@@ -134,6 +137,7 @@ export function Repeater({
               value={r}
               disabled={disabled}
               section={secCtx}
+              ruleSection={ruleSection}
               onFieldFocus={onFieldFocus}
               activeFieldKey={activeFieldKey}
               onChange={v => onChange(rows.map((x, j) => (rowIndex === j ? v : x)))}

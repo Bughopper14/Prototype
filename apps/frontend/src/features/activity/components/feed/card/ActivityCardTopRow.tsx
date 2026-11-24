@@ -61,7 +61,7 @@ export function ActivityCardTopRow({
             borderRadius: 4,
           }}
         >
-          {item.applicationId}
+          {item.applicationNumber || item.applicationId}
         </span>
       )}
 

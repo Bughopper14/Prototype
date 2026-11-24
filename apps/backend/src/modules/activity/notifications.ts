@@ -43,7 +43,7 @@ export async function notifyUsers(usernames: string[], except: ActivityActor, n:
 
 export async function notificationsOf(userId: number) {
   const [rows] = await pool.query<any[]>(
-    `SELECT n.*,p.company_name
+    `SELECT n.*,p.company_name,a.application_number
      FROM ${CRM.applicationNotifications} n
      LEFT JOIN ${CRM.applications} a ON a.id=n.application_id
      LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=n.application_id
@@ -54,6 +54,7 @@ export async function notificationsOf(userId: number) {
   return rows.map(r => ({
     id: r.id,
     applicationId: r.application_id,
+    applicationNumber: r.application_number ?? null,
     deedId: r.deed_id,
     type: r.notification_type,
     companyName: r.company_name || '',

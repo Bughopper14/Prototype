@@ -4,7 +4,7 @@ import {PreAnalysisRichEditor} from '@/features/pre-analysis/components/PreAnaly
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function CustomerRoleFields() {
-  const {data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px'}}>
@@ -12,7 +12,9 @@ export function CustomerRoleFields() {
         <TextField name="otherContractors" label="Other Contractor work in the same bowheer" />
       </div>
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>Project Owner</label>
+        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+          Project Owner{reqMark('projectOwner')}
+        </label>
         <PreAnalysisRichEditor
           value={data.projectOwner || ''}
           onChange={val => updateField('projectOwner', val)}
@@ -22,7 +24,9 @@ export function CustomerRoleFields() {
         />
       </div>
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>Bowheer Information</label>
+        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+          Bowheer Information{reqMark('bowheerInfo')}
+        </label>
         <PreAnalysisRichEditor
           value={data.bowheerInfo || ''}
           onChange={val => updateField('bowheerInfo', val)}

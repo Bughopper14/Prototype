@@ -3,8 +3,9 @@ import {useWorkspace} from '@/features/applications/components/workspace/Workspa
 import {CrmRichTextEditor} from '@/shared/ui/CrmRichTextEditor';
 import {Repeater} from '@/shared/ui/Repeater';
 import {money} from '@/shared/lib/format';
-import {bankFields} from '@liugong/shared';
+import {bankFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 
 export function ReferencesSection() {
   const {
@@ -67,6 +68,7 @@ export function ReferencesSection() {
             disabled={!canEdit}
             carousel
             section="banks"
+            ruleSection={FORM_SECTION.BANKS}
             targetRowIndex={targetBankRow}
             onRowChange={setTargetBankRow}
             onFieldFocus={(k, s) => handleTriggerFieldSync(k, s || `banks-${targetBankRow || 0}`)}
@@ -118,6 +120,7 @@ export function ReferencesSection() {
               }}
             >
               Comments
+              <RequiredStar field="referenceComments" section={FORM_SECTION.BANKS} />
             </label>
             <CrmRichTextEditor
               id="fap-form-referenceComments"

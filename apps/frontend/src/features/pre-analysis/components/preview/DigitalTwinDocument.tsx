@@ -57,7 +57,7 @@ export function DigitalTwinDocument() {
       {/* SECTION 6: 6. CROSS-CHECK WITH DEALER / LMI (quick) */}
       <DealerCrossCheckPreview />
 
-      {/* SECTION 7: 7. PRELIMENARY ASSESSMENT */}
+      {/* SECTION 7: 7. PRELIMINARY ASSESSMENT */}
       <ExpertJudgementPreview />
 
       {/* Recommendation Callout */}

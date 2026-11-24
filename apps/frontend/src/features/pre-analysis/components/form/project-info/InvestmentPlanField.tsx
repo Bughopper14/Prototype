@@ -2,7 +2,7 @@
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function InvestmentPlanField() {
-  const {investmentPlanMasterItems, data, updateField, scrollToPreviewElement} = usePreAnalysisContext();
+  const {investmentPlanMasterItems, data, updateField, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       {/* INVESTMENT PLAN: CHECKBOXES FROM MASTER TABLE + REMARKS */}
@@ -23,7 +23,7 @@ export function InvestmentPlanField() {
       >
         <div>
           <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#1e3a8a', margin: 0}}>
-            Investment Plan Options
+            Investment Plan Options{reqMark('investmentPlan')}
           </label>
         </div>
 

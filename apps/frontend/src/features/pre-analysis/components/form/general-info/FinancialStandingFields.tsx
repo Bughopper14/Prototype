@@ -26,7 +26,7 @@ export function FinancialStandingFields() {
             marginBottom: '4px',
           }}
         >
-          Source of Repayment{reqMark('sourceOfRepayment', 'General Information')}
+          Source of Repayment{reqMark('sourceOfRepayment')}
         </label>
         <input
           type="text"

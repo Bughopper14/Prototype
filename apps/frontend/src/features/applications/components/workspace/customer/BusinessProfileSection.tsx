@@ -2,7 +2,7 @@
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {calculateAgeYearsMonths} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
-import {type Field, profileFields} from '@liugong/shared';
+import {type Field, profileFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
 
 export function BusinessProfileSection() {
@@ -86,6 +86,7 @@ export function BusinessProfileSection() {
                     value={operationalValues}
                     disabled={!canEditCustomerPic}
                     section="business"
+                    ruleSection={FORM_SECTION.BUSINESS}
                     onFieldFocus={k => handleTriggerFieldSync(k, 'business')}
                     activeFieldKey={activeFieldKey}
                     onChange={v => {
@@ -117,6 +118,7 @@ export function BusinessProfileSection() {
               value={draft}
               disabled={!canEditCustomerPic}
               section="business"
+                    ruleSection={FORM_SECTION.BUSINESS}
               onFieldFocus={k => handleTriggerFieldSync(k, 'business')}
               activeFieldKey={activeFieldKey}
               onChange={v => {

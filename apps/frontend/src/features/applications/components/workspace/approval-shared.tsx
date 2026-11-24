@@ -1,5 +1,5 @@
 /** What the submitter view and the approver view share: the types of an approval, the layers of a step list and the list of what has to be approved. */
-import {Check, ChevronDown, Clock, ExternalLink, History, RotateCcw, X} from 'lucide-react';
+import {Check, ChevronDown, Clock, ExternalLink, History, Lock, RotateCcw, X} from 'lucide-react';
 import {useOpenView} from './ApprovalSummary';
 import {useWorkspace} from './WorkspaceContext';
 
@@ -8,7 +8,7 @@ export const shownStatus = (s: Step) => (s.reopened ? 'REOPENED' : s.status);
 export const STEP_LABEL: Record<string, string> = {WAITING: 'Waiting its turn', PENDING: 'Needs approval', APPROVED: 'Approved', REJECTED: 'Rejected', CANCELLED: 'Closed', REOPENED: 'Opened again'};
 
 export type Step = {id: string; name: string; status: string; reopened?: boolean; startedAt?: string | null; sortOrder: number; authorityName: string; canAct: boolean; decisions: {by: string; decision: string; remarks: string | null; decidedAt: string; via: string}[]};
-export type Scope = {scope: string; scopeName: string; roundNo: number; sectionCode?: string | null; subjectId?: string | null; checklistId?: string | null; stageCode?: string | null; groupCode?: string | null; documentCode?: string | null; steps: Step[]};
+export type Scope = {scope: string; scopeName: string; roundNo: number; sectionCode?: string | null; subjectId?: string | null; checklistId?: string | null; stageCode?: string | null; groupCode?: string | null; documentCode?: string | null; /** Things below (deeds, documents, stages) that are not approved yet: until then the approvers do not see this one. */ locked?: boolean; lockedBy?: number; steps: Step[]};
 export type Approval = {state: string; stateName: string; current: Scope[]; history: Scope[]};
 
 /** The steps of a thing as layers: steps with the same order are one layer (all asked at the same time), the next layer starts when the one before is approved. */
@@ -59,6 +59,19 @@ function rankOf(c: Scope, stages: any[], groups: any[]): [number, number, number
   return [groupRank, stageRank, c.scope === 'STAGE' ? 0 : c.scope === 'SECTION' ? 1 : 2];
 }
 
+const KIND: Record<string, string> = {GROUP: 'Group', STAGE: 'Stage', SECTION: 'Deed', DOCUMENT: 'Document'};
+
+/** One line for the whole scope: where it stands, from its steps. */
+function scopeSummary(c: Scope): {tone: string; text: string} {
+  const st = c.steps;
+  if (st.some(s => shownStatus(s) === 'REJECTED')) return {tone: 'rejected', text: 'Rejected'};
+  if (st.some(s => s.reopened)) return {tone: 'reopened', text: 'Opened again'};
+  if (st.every(s => s.status === 'APPROVED')) return {tone: 'approved', text: 'Approved'};
+  if (c.locked) return {tone: 'locked', text: 'Waiting for what is below'};
+  if (st.some(s => s.status === 'PENDING')) return {tone: 'pending', text: 'Needs approval'};
+  return {tone: 'waiting', text: 'Waiting'};
+}
+
 /** Everything that has to be approved, in workflow order. Each thing has a button to the screen it is about; with onDecide the steps the person may decide show Approve and Reject. */
 export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step: Step, kind: 'APPROVED' | 'REJECTED') => void}) {
   const {a} = useWorkspace();
@@ -76,10 +89,12 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
         const view = openView(c);
         const approvalName = c.steps[0]?.name.split(' · level')[0] ?? '';
         return (
-          <div className="ap-scope compact" key={`${c.scope}-${c.scopeName}`}>
+          <div className={`ap-scope compact kind-${c.scope.toLowerCase()}${c.locked ? ' locked' : ''}`} key={`${c.scope}-${c.scopeName}`}>
             <div className="ap-scope-title">
-              <b>{c.scopeName}</b>
+              <span className="ap-kind">{KIND[c.scope] ?? c.scope}</span>
+              <b>{c.scopeName.replace(/^(Group|Stage|Document)\s+/, '').replace(/^Section\s+/, '')}</b>
               {c.roundNo > 1 && <small>Round {c.roundNo}</small>}
+              <span className={'ap-pill ' + scopeSummary(c).tone}>{scopeSummary(c).text}</span>
               {view && (
                 <button type="button" className="ap-view" onClick={view.go} title="Open the screen this approval is about">
                   <ExternalLink size={13} /> {view.label}
@@ -87,6 +102,20 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
               )}
             </div>
             {approvalName && <small className="ap-scope-sub">{approvalName}</small>}
+            {(() => {
+              const layers = layersOf(c.steps);
+              const done = layers.filter(l => l.every(s => s.status === 'APPROVED')).length;
+              return (
+                <div className="ap-progress" title={`${done} of ${layers.length} levels approved`}>
+                  <span style={{width: `${(done / Math.max(layers.length, 1)) * 100}%`}} />
+                </div>
+              );
+            })()}
+            {c.locked && !c.steps.every(s => s.status === 'APPROVED') && (
+              <p className="ap-locknote">
+                <Lock size={13} /> {c.lockedBy} item(s) below must be approved first. Approvers see this step after that; submitting is not blocked.
+              </p>
+            )}
             <ol className="ap-tl" aria-label="Approval levels">
               {layersOf(c.steps).map((layer, li) => {
                 const state = layerState(layer);

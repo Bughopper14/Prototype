@@ -7,6 +7,7 @@ export * from './deed-workflow';
 export * from './experience';
 export * from './fap-template';
 export * from './fields';
+export * from './form-rules';
 export * from './input-validation';
 export * from './master-catalog';
 export * from './screens';

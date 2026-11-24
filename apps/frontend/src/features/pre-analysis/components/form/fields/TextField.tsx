@@ -18,8 +18,8 @@ export function TextField({
   labelStyle?: CSSProperties;
   inputStyle?: CSSProperties;
   wrapperStyle?: CSSProperties;
-  /** [field key, section] looked up in the mandatory rules; shows the red asterisk when required. */
-  required?: [string, string];
+  /** The field key looked up in the mandatory rules when it differs from `name`; the red asterisk shows when the workflow requires it. */
+  required?: string;
   /** Show an empty string instead of leaving the input uncontrolled when the value is missing. */
   emptyIfMissing?: boolean;
 }) {
@@ -30,7 +30,7 @@ export function TextField({
       <label style={labelStyle}>
         {label}
         {/* the mark follows the workflow's mandatory rules for this field; `required` only names another key / section to look up */}
-        {reqMark(required?.[0] ?? name, required?.[1] ?? 'General Information')}
+        {reqMark(required ?? name)}
       </label>
       <input
         type="text"

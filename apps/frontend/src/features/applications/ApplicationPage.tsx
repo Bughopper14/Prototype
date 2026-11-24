@@ -6,7 +6,7 @@ import {blank, projectFields} from '@liugong/shared';
 import {useEffect, useState} from 'react';
 import {useNavigate, useParams, useSearchParams} from 'react-router';
 import {ApplicationWorkspace} from './components/ApplicationWorkspace';
-import {STAGE} from '@/shared/master-data';
+import {SCREEN, screenOfStageCode} from '@/shared/master-data';
 
 const PRE_ANALYSIS_TAB = 8;
 
@@ -26,6 +26,9 @@ function ApplicationDetail() {
         if (!live) return;
         if (!record.projects?.length) record.projects = [blank(projectFields)];
         setApplication(record);
+        // an old link with the uuid becomes the link with the application number
+        if (record.applicationNumber && id !== record.applicationNumber)
+          navigate(`${window.location.pathname.replace(/[^/]+$/, record.applicationNumber)}${window.location.search}`, {replace: true});
       })
       .catch(e => live && setError(e.message));
     return () => {
@@ -36,7 +39,7 @@ function ApplicationDetail() {
   if (error) return <div className="error">{error}</div>;
   if (!application) return <div className="loading-strip" />;
 
-  const inPreAnalysis = application.stage === STAGE.PRE_ANALYSIS;
+  const inPreAnalysis = screenOfStageCode(application, application.stage) === SCREEN.PRE_ANALYSIS;
   const initialTab = tabParam !== null ? Number(tabParam) : inPreAnalysis ? PRE_ANALYSIS_TAB : 0;
 
   return (

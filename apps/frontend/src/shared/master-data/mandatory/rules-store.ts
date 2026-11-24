@@ -1,188 +1,72 @@
-/** Mandatory-rule cache (memory + localStorage), server sync, React hook and the isFieldMandatory check. */
+/** The mandatory rules of the workflow an application runs in: loaded from the server, kept in memory, and the isFieldMandatory check the forms use. */
 import {api} from '@/shared/lib/api';
 import {useEffect, useState} from 'react';
-import {getSectionAliases, normalizeRule, normalizeStage, resolveRuleSection} from './sections';
 
-/** Rules come only from the server (crm_workflow_stage_fields of a workflow); the last copy is kept for the next page load. */
-const MANDATORY_STORAGE_KEY = 'liugong_mandatory_rules';
+/** One rule of crm_workflow_stage_fields, as /mandatory sends it: the master field it is about (section code + field key) and whether it is mandatory. */
+export type MandatoryRule = {id: string; formCode: string; sectionCode: string; section: string; fieldKey: string; label: string; enforceable: boolean; mandatory: boolean};
 
-function getInitialMandatoryRules(): any[] {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(MANDATORY_STORAGE_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(normalizeRule) : [];
-  } catch {
-    return [];
-  }
-}
-
-let mandatoryCatalogCache: any[] = getInitialMandatoryRules();
-
-let mandatoryMapCache = new Map<string, boolean>();
-
-function buildMandatoryMap(rules: any[]) {
-  const map = new Map<string, boolean>();
-  // A field is mandatory when any stage of the workflow asks for it (rules of several stages share one stage key here).
-  const put = (key: string, value: boolean) => map.set(key, (map.get(key) ?? false) || value);
-  for (const r of rules) {
-    if (!r) continue;
-    const isMandatory = Boolean(r.mandatory);
-    const fKey = String(r.field_key || '').trim();
-    const sec = String(r.section || '').trim();
-    const stg = normalizeStage(r.stage);
-    if (fKey) {
-      // Stage-scoped entries:
-      put(`${stg}:*:${fKey}`, isMandatory);
-      if (sec) {
-        const aliases = getSectionAliases(sec, stg);
-        for (const al of aliases) {
-          put(`${stg}:${al}:${fKey}`, isMandatory);
-        }
-      }
-      // Global fallback (only if stage is not specified)
-      put(`*:${fKey}`, isMandatory);
-      if (sec) {
-        const aliases = getSectionAliases(sec, stg);
-        for (const al of aliases) {
-          put(`${al}:${fKey}`, isMandatory);
-        }
-      }
-    }
-  }
-  return map;
-}
-
-mandatoryMapCache = buildMandatoryMap(mandatoryCatalogCache);
-
-export function setMandatoryRules(data: any[]) {
-  const normalized = (data || []).map(normalizeRule);
-  mandatoryCatalogCache = normalized;
-  mandatoryMapCache = buildMandatoryMap(normalized);
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem(MANDATORY_STORAGE_KEY, JSON.stringify(normalized));
-    }
-  } catch {}
-  window.dispatchEvent(new Event('mandatory-updated'));
-}
-
-let inFlightMandatoryPromise: Promise<any[]> | null = null;
-
+let rulesCache: MandatoryRule[] = [];
 /** The workflow whose rules the screens use: the one of the open application, else the active workflow. */
 let rulesWorkflowId: string | undefined;
+let inFlight: Promise<MandatoryRule[]> | null = null;
+
+export function setMandatoryRules(data: MandatoryRule[]) {
+  rulesCache = data || [];
+  window.dispatchEvent(new Event('mandatory-updated'));
+}
 
 /** An application opened in a workflow other than the active one needs that workflow's rules. */
 export function selectMandatoryWorkflow(workflowId?: string) {
   if (workflowId === rulesWorkflowId) return;
   rulesWorkflowId = workflowId;
-  inFlightMandatoryPromise = null;
-  mandatoryCatalogCache = [];
-  mandatoryMapCache = new Map();
-  try {
-    localStorage.removeItem(MANDATORY_STORAGE_KEY);
-  } catch {}
+  inFlight = null;
+  setMandatoryRules([]);
   void fetchMandatoryRules();
 }
 
-export function fetchMandatoryRules(): Promise<any[]> {
-  if (inFlightMandatoryPromise) return inFlightMandatoryPromise;
-  inFlightMandatoryPromise = api(rulesWorkflowId ? `/mandatory?workflowId=${encodeURIComponent(rulesWorkflowId)}` : '/mandatory')
+export function fetchMandatoryRules(): Promise<MandatoryRule[]> {
+  if (inFlight) return inFlight;
+  const wanted = rulesWorkflowId;
+  inFlight = api(wanted ? `/mandatory?workflowId=${encodeURIComponent(wanted)}` : '/mandatory')
     .then((data: any) => {
-      inFlightMandatoryPromise = null;
-      if (Array.isArray(data)) {
-        setMandatoryRules(data);
-        return data;
-      }
-      return mandatoryCatalogCache;
+      inFlight = null;
+      // an answer for a workflow that is no longer the selected one is dropped
+      if (Array.isArray(data) && wanted === rulesWorkflowId) setMandatoryRules(data);
+      return rulesCache;
     })
     .catch(() => {
-      inFlightMandatoryPromise = null;
-      return mandatoryCatalogCache;
+      inFlight = null;
+      return rulesCache;
     });
-  return inFlightMandatoryPromise;
+  return inFlight;
 }
 
-export function useMandatoryRules() {
-  const [rules, setRules] = useState<any[]>(() =>
-    mandatoryCatalogCache.map(r => ({...r, section: resolveRuleSection(r)})),
-  );
+export function useMandatoryRules(): MandatoryRule[] {
+  const [rules, setRules] = useState<MandatoryRule[]>(rulesCache);
   useEffect(() => {
     let active = true;
-    fetchMandatoryRules().then(data => {
-      if (active && Array.isArray(data)) {
-        setRules(data.map(normalizeRule));
-      }
-    });
-    const handleUpdate = () => {
-      if (active) setRules(mandatoryCatalogCache.map(normalizeRule));
-    };
-    window.addEventListener('mandatory-updated', handleUpdate);
+    void fetchMandatoryRules().then(data => active && setRules(data));
+    const update = () => active && setRules(rulesCache);
+    window.addEventListener('mandatory-updated', update);
     return () => {
       active = false;
-      window.removeEventListener('mandatory-updated', handleUpdate);
+      window.removeEventListener('mandatory-updated', update);
     };
   }, []);
-  return rules.map(normalizeRule);
+  return rules;
 }
 
-export function isFieldMandatory(
-  rules: any[],
-  section: string | undefined,
-  fieldKey: string,
-  defaultRequired?: boolean,
-  stage?: string,
-): boolean {
-  if (rules && rules.length) {
-    mandatoryMapCache = buildMandatoryMap(rules);
-  } else if (!mandatoryMapCache.size && mandatoryCatalogCache.length) {
-    mandatoryMapCache = buildMandatoryMap(mandatoryCatalogCache);
-  }
-  if (!mandatoryMapCache.size) return Boolean(defaultRequired);
+/** Is the field `fieldKey` of a whole form (crm_master_forms.code, e.g. PRE-ANALYSIS-FORM) mandatory in the workflow? For a form whose field keys are unique across its sections. */
+export function isFormFieldMandatory(rules: MandatoryRule[], formCode: string, fieldKey: string): boolean {
+  return rules.some(r => r.mandatory && r.formCode === formCode && r.fieldKey === fieldKey);
+}
 
-  const normSec = (section || '').toLowerCase().trim();
-  const normStg = stage ? normalizeStage(stage) : '';
-
-  // Fields stored under one key and shown under another (deed decree, stakeholder ids, capital…)
-  const synonyms: Record<string, string[]> = {
-    ministerialDecreeNumber: ['decreeNumber'],
-    decreeNumber: ['ministerialDecreeNumber'],
-    ministerialDecreeDate: ['decreeDate'],
-    decreeDate: ['ministerialDecreeDate'],
-    depositedCapital: ['shareAmount'],
-    shareAmount: ['depositedCapital'],
-    idNumberSecondary: ['taxNumber'],
-    taxNumber: ['idNumberSecondary'],
-    citizenship: ['nationalityType'],
-    nationalityType: ['citizenship'],
-    firstName: ['shareholderName'],
-    name: ['shareholderName'],
-    shareholderName: ['firstName', 'name'],
-    representativeType: ['shareholderPosition'],
-    designation: ['shareholderPosition'],
-    shareholderPosition: ['representativeType', 'designation'],
-  };
-  for (const fk of [fieldKey, ...(synonyms[fieldKey] || [])]) {
-    if (normStg) {
-      if (normSec) {
-        const directKey = `${normStg}:${normSec}:${fk}`;
-        if (mandatoryMapCache.has(directKey)) return mandatoryMapCache.get(directKey)!;
-        for (const al of getSectionAliases(normSec, normStg)) {
-          const aliasKey = `${normStg}:${al}:${fk}`;
-          if (mandatoryMapCache.has(aliasKey)) return mandatoryMapCache.get(aliasKey)!;
-        }
-      }
-      const stageWildKey = `${normStg}:*:${fk}`;
-      if (mandatoryMapCache.has(stageWildKey)) return mandatoryMapCache.get(stageWildKey)!;
-    }
-    if (normSec) {
-      const directKey = `${normSec}:${fk}`;
-      if (mandatoryMapCache.has(directKey)) return mandatoryMapCache.get(directKey)!;
-      for (const al of getSectionAliases(normSec)) {
-        const aliasKey = `${al}:${fk}`;
-        if (mandatoryMapCache.has(aliasKey)) return mandatoryMapCache.get(aliasKey)!;
-      }
-    }
-    if (mandatoryMapCache.has(`*:${fk}`)) return mandatoryMapCache.get(`*:${fk}`)!;
-  }
-
-  return Boolean(defaultRequired);
+/**
+ * Is the input `fieldKey` of the form section `sectionCode` (crm_master_form_sections.code) mandatory in the workflow? True when the workflow marks
+ * the master field mandatory in any of its stages.
+ * No rule, no star: a field the workflow does not ask for is never required.
+ */
+export function isFieldMandatory(rules: MandatoryRule[], sectionCode: string | undefined, fieldKey: string): boolean {
+  if (!sectionCode) return false;
+  return rules.some(r => r.mandatory && r.sectionCode === sectionCode && r.fieldKey === fieldKey);
 }

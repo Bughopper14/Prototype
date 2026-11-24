@@ -5,7 +5,7 @@ import {
   getReadActivityIds,
   saveReadActivityIds,
 } from '@/features/activity/lib/activity-store';
-import {STAGE} from '@/shared/master-data';
+import {SCREEN} from '@/shared/master-data';
 import {useEffect, useMemo} from 'react';
 
 export function useApplicationActivity({
@@ -84,13 +84,13 @@ export function useApplicationActivity({
   const handleOpenSectionFromActivity = (_appId: string, targetTabIndex?: number) => {
     if (targetTabIndex !== undefined) {
       if (targetTabIndex === 8) {
-        setActiveStage(STAGE.PRE_ANALYSIS);
+        setActiveStage(SCREEN.PRE_ANALYSIS);
       } else if ([0, 5, 1].includes(targetTabIndex)) {
-        if (activeStage !== STAGE.FAP && !isPreAnalysisReached) {
-          setActiveStage(STAGE.FAP);
+        if (activeStage !== SCREEN.FAP && !isPreAnalysisReached) {
+          setActiveStage(SCREEN.FAP);
         }
       } else if ([2, 4].includes(targetTabIndex)) {
-        setActiveStage(STAGE.PRE_ANALYSIS);
+        setActiveStage(SCREEN.PRE_ANALYSIS);
       }
       setTab(targetTabIndex);
       setError('');

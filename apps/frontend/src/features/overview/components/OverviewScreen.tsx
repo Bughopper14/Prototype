@@ -147,7 +147,7 @@ export function OverviewScreen({
               key={r.id}
               onClick={() =>
                 open(
-                  r.id,
+                  r.application_number || r.id,
                   hasRejectedDeed(r)
                     ? 5
                     : 0,
@@ -170,7 +170,7 @@ export function OverviewScreen({
                             : 'Review application'}
                 </b>
                 <span>{r.company_name}</span>
-                <small>{r.id}</small>
+                <small>{r.application_number || r.id}</small>
               </div>
               <ChevronRight size={16} />
             </button>

@@ -1,4 +1,4 @@
-import {customerFields, DEED_SECTION, picFields, profileFields, screenOfForm} from '@liugong/shared';
+import {customerFields, DEED_SECTION, FORM_SECTION, picFields, profileFields, screenOfForm} from '@liugong/shared';
 
 /**
  * Mandatory-field check for every section of the FAP form, driven by the workflow's rules
@@ -25,8 +25,12 @@ type Section = {
   read: (detail: any, key: string) => Entry[];
   /** Keys whose "empty" means false rather than blank. */
   booleanKeys?: Set<string>;
+  /** The same, decided by a rule instead of a list. */
+  isBoolean?: (key: string) => boolean;
   /** For a section of repeating rows: true when there is no row at all (the section then needs at least one row). */
   noRows?: (detail: any) => boolean;
+  /** Keys of the section that are one value of the application (read from the detail itself), not one per row. */
+  appKeys?: Set<string>;
 };
 
 const ownKeys = new Set([...customerFields, ...profileFields, ...picFields].map(f => f.key).concat('customerCategory'));
@@ -55,15 +59,6 @@ const list = (
   noRows: d => items(d).length === 0,
 });
 
-const DEED_ALIAS: Record<string, string> = {decreeNumber: 'ministerialDecreeNumber', decreeDate: 'ministerialDecreeDate'};
-const STAKEHOLDER_ALIAS: Record<string, string> = {
-  shareholderName: 'name',
-  shareholderPosition: 'positions',
-  shareAmount: 'depositedCapital',
-  taxNumber: 'idNumberSecondary',
-  nationalityType: 'citizenship',
-};
-
 const stakeholdersOf = (d: any): any[] =>
   (d.legal?.deeds || []).flatMap((deed: any) => (deed.stakeholders || []).map((s: any) => ({...s, __deed: deed.deedNumber})));
 
@@ -84,11 +79,6 @@ const FACILITY: Record<string, string> = {
   propAssetNlgTruck: 'realizationPlan.nlgTruck',
   proposalNotes: 'notes',
 };
-const DOC_REQUIREMENTS = new Set([
-  'COMPANY-PROFILE', 'LEGALITY', 'DEED-ESTABLISHMENT', 'DECREE-MINISTRY-OF-LAW', 'COPY-ID-BOD-SHAREHOLDER',
-  'AUDITED-FINANCIAL-STATEMENTS', 'BANK-STATEMENTS', 'BANK-FINANCING-FACILITY', 'PRODUCTION-REPORT',
-  'LIST-OF-FIXED-ASSETS', 'PROJECT-CONTRACTS',
-]);
 /** The terms column and field a catalog key stands for, or null. */
 function termsPath(key: string): string | null {
   for (const [prefix, [column, fields]] of Object.entries(TERMS)) {
@@ -98,20 +88,21 @@ function termsPath(key: string): string | null {
   }
   return null;
 }
-const proposalPath = (key: string) => FACILITY[key] ?? termsPath(key) ?? (DOC_REQUIREMENTS.has(key) ? `documentRequirements.${key}` : null);
+/** Every other key of the Financing Proposal section is a document requirement (its key is the code of the master document item): a tick stored in documentRequirements. */
+const isDocRequirement = (key: string) => !(key in FACILITY) && termsPath(key) === null;
+const proposalPath = (key: string) => FACILITY[key] ?? termsPath(key) ?? `documentRequirements.${key}`;
 
 const PROPOSAL: Section = {
   target: 'FAP_FORM',
-  has: key => proposalPath(key) !== null,
   read: (d, key) => {
     const path = proposalPath(key)!;
     const fp = d.financingProposal || {};
     // A terms column only exists for a financing method the customer asked for: no column, nothing to check.
     const column = path.split('.')[0];
     if (path.startsWith('terms') && !fp[column]) return [];
-    return [{item: null, value: DOC_REQUIREMENTS.has(key) ? !!get(fp, path) : get(fp, path)}];
+    return [{item: null, value: isDocRequirement(key) ? !!get(fp, path) : get(fp, path)}];
   },
-  booleanKeys: DOC_REQUIREMENTS,
+  isBoolean: isDocRequirement,
 };
 
 const SECTIONS: Record<string, Section> = {
@@ -123,26 +114,23 @@ const SECTIONS: Record<string, Section> = {
     ...own(),
     has: key => ownKeys.has(key) || key === 'financingPurposeDetail',
   },
-  'INDUSTRY-SEGMENTATION-ACTIVE-PROJECTS': list(d => d.projects || [], (_, i) => `proyek ${i + 1}`),
-  'BANK-FACILITIES-REFERENCES': list(
-    d => d.bankReferences || [],
-    (_, i) => `bank ${i + 1}`,
-    alias({referenceComments: 'comments'}),
-  ),
+  // Segmentation and main business are two choices of the application itself, shown in the same section as the project rows.
+  [FORM_SECTION.SEGMENTATION]: {...list(d => d.projects || [], (_, i) => `proyek ${i + 1}`), appKeys: new Set(['industrySegment', 'businessRole'])},
+  [FORM_SECTION.BANKS]: {...list(d => d.bankReferences || [], (_, i) => `bank ${i + 1}`), appKeys: new Set(['referenceComments'])},
   'FINANCING-PROPOSAL': PROPOSAL,
-  'EQUIPMENT-UNITS': list(d => d.proposal?.units || [], (_, i) => `unit ${i + 1}`),
-  'FINANCIAL-STATEMENTS': {
-    ...list(d => d.financialStatements || [], (it, i) => `laporan ${it.fiscalYear ?? i + 1}`, alias({financialAudited: 'isAudited'})),
+  [FORM_SECTION.FINANCIAL]: {
+    ...list(d => d.financialStatements || [], (it, i) => `laporan ${it.fiscalYear ?? i + 1}`),
+    appKeys: new Set(['financialAudited']),
     booleanKeys: new Set(['financialAudited']),
   },
   [DEED_SECTION]: list(
     d => d.legal?.deeds || [],
     (it, i) => `akta ${it.deedNumber || i + 1}`,
-    alias(DEED_ALIAS),
+    undefined,
     'LEGAL',
   ),
   'SHAREHOLDERS-MANAGEMENT': {
-    ...list(stakeholdersOf, (it, i) => `${it.name || `pemegang ${i + 1}`} (akta ${it.__deed || '-'})`, alias(STAKEHOLDER_ALIAS), 'LEGAL'),
+    ...list(stakeholdersOf, (it, i) => `${it.firstName || it.name || `pemegang ${i + 1}`} (akta ${it.__deed || '-'})`, undefined, 'LEGAL'),
     // "Minimum items" of this section is per deed: every deed needs that many stakeholders.
   },
 };
@@ -151,12 +139,16 @@ SECTIONS['PURPOSE-OF-FINANCING-FIXED-ASSETS'].read = (d, key) => [
   {item: null, value: key === 'financingPurposeDetail' ? d.financingPurposeDetail : [d.customer || {}, d].map((s: any) => s[key]).find(v => v !== undefined && v !== null && String(v).trim() !== '')},
 ];
 
+/** A list or group the user never typed into (the form always shows one empty row) holds only empty text: it counts as empty. */
+const blankDeep = (v: unknown): boolean =>
+  Array.isArray(v) ? v.every(blankDeep) : v && typeof v === 'object' ? Object.values(v as object).every(blankDeep) : typeof v === 'string' ? v.replace(/<[^>]*>/g, '').trim() === '' : typeof v === 'number' ? v === 0 : v === undefined || v === null;
+
 /** The Pre-Analysis form is one JSON document of the application (detail.preAnalysis); its fields are read by their key. "Auto (generated on save)" is not a value. */
 const PRE_ANALYSIS: Section = {
   target: 'PRE_ANALYSIS',
   read: (d, key) => {
     const v = d.preAnalysis?.[key];
-    return [{item: null, value: typeof v === 'string' && v.includes('Auto') ? '' : v}];
+    return [{item: null, value: typeof v === 'string' && v.includes('Auto') ? '' : blankDeep(v) ? '' : v}];
   },
 };
 
@@ -177,16 +169,18 @@ export function mandatoryGaps(detail: any, rules: FieldRule[], stageName: (code:
     const section = sectionFor(r);
     // The master decides what is enforceable (is_enforceable); a reader that lists its keys can still refuse one it cannot read.
     if (!section || !r.enforceable || (section.has && !section.has(r.fieldKey))) continue;
+    // A value of the application itself (not of a row) is read from the detail, whether or not the section has rows.
+    const appLevel = !!section.appKeys?.has(r.fieldKey);
     // A required field on a section of repeating rows means the section needs at least one row (one gap per section, not per field).
-    if (section.noRows?.(detail)) {
+    if (!appLevel && section.noRows?.(detail)) {
       if (!noRows.has(r.sectionCode)) {
         noRows.add(r.sectionCode);
         gaps.push({target: section.target, label: `Minimal satu data di ${r.section}`, detail: stageName(r.stageCode)});
       }
       continue;
     }
-    const entries = section.read(detail, r.fieldKey);
-    const boolean = section.booleanKeys?.has(r.fieldKey) ?? false;
+    const entries = appLevel ? [{item: null, value: get(detail, r.fieldKey)}] : section.read(detail, r.fieldKey);
+    const boolean = (section.booleanKeys?.has(r.fieldKey) ?? false) || (section.isBoolean?.(r.fieldKey) ?? false);
     const missing = entries.filter(e => isEmpty(e.value, boolean));
     if (!missing.length) continue;
     const items = missing.map(e => e.item).filter(Boolean);

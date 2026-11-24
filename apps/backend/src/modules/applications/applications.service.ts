@@ -19,7 +19,7 @@ import {MasterIdLookup} from './repositories/master-ids';
 import {MktPicLookup} from './mkt-pic.lookup';
 import {mandatoryGaps} from './workflow/mandatory-check';
 import {groupsOf, stagesOf, WorkflowConfigRepository, type WorkflowConfig} from './workflow/workflow-config.repository';
-import {ApprovalsService, scopeApproved, STATE_NAME} from '../approvals/approvals.service';
+import {ApprovalsService, lowerOpen, scopeApproved, STATE_NAME} from '../approvals/approvals.service';
 import type {AppStep, ScopeRef} from '../approvals/approvals.repository';
 
 type Actor = SessionActor;
@@ -133,6 +133,7 @@ export class ApplicationsService {
       );
       return {
         id: r.id,
+        application_number: r.application_number ?? null,
         business_partner_id: r.business_partner_id,
         customer_category: r.customer_category,
         application_date: r.application_date,
@@ -212,7 +213,7 @@ export class ApplicationsService {
           : sc.type === 'SECTION'
             ? `Section ${sectionNames.get(sc.sectionCode ?? '') ?? sc.sectionCode ?? ''}${sc.subjectId ? ` · ${rowNames.get(sc.subjectId) ?? 'row'}` : ''}`.trim()
             : `Document ${(documentChecks as any[]).find(d => d.id === sc.checklistId)?.documentName ?? ''}`.trim();
-    const approval = await this.approvals.view(id, app.workflow_freeze_id, actor, scopeName);
+    const approval = await this.approvals.view(id, app.workflow_freeze_id, actor, scopeName, g => cfg.stages.filter(x => x.groupCode === g).map(x => x.code));
     // A document the workflow wants approved: how far its approval is, and whether it can be asked for now (it needs a file).
     const documentsWithApproval = (documentChecks as any[]).map(d => {
       const wanted = raw.templates.filter(t => t.scope === 'DOCUMENT' && !!d.documentCode && t.stageCode === d.stageCode && t.documentCode === d.documentCode);
@@ -243,6 +244,7 @@ export class ApplicationsService {
     return {
       ...profile,
       id: app.id,
+      applicationNumber: app.application_number ?? null,
       companyName: customer.companyName ?? null,
       customerId: app.business_partner_id,
       customer,
@@ -362,12 +364,20 @@ export class ApplicationsService {
     const partnerId = customerId || crypto.randomUUID();
     const today = businessToday();
     // No FAP number is made here: Pre-analysis can run first, and the number is generated on demand (generateFapNumber).
+    // The number is taken under a named lock, held until the application is stored, so two users never get the same one.
+    const lockConn = await this.db.pool.getConnection();
+    try {
+      const [lock] = await lockConn.query<any[]>('SELECT GET_LOCK(?, 10) AS ok', ['crm_application_number']);
+      ensure(Number(lock[0]?.ok) === 1, 'Another application is being created. Try again.', 409);
+      try {
     await this.db.transaction(async conn => {
       await this.partners.saveFromApplication(conn, partnerId, customer, profile, by(actor));
+      const applicationNumber = await this.apps.nextApplicationNumber(conn, today, await this.partners.customerNo(conn, partnerId));
       await this.apps.insert(
         conn,
         {
           id,
+          applicationNumber,
           applicationDate: today,
           customerId: partnerId,
           customerCategory: category,
@@ -382,6 +392,12 @@ export class ApplicationsService {
       await this.apps.saveStageProgress(conn, id, stage.code, {}, actor);
       await this.documents.seedChecklist(conn, id, workflowFreezeId, by(actor));
     });
+      } finally {
+        await lockConn.query('SELECT RELEASE_LOCK(?)', ['crm_application_number']);
+      }
+    } finally {
+      lockConn.release();
+    }
     const company = String(customer.companyName).trim();
     const categoryName = category === 'EXISTING' ? 'Existing Customer' : 'New Customer';
     await recordActivity(
@@ -567,8 +583,6 @@ export class ApplicationsService {
     // The FAP number is no longer a precondition of any stage. Submitting the stage that shows the FAP form makes the number when the application has none yet
     // (the frozen FAP needs one); it can also be generated earlier with the button of the FAP form.
     if (shows(stage) && !app0.fap_registration_number && !gaps.length) await this.generateFapNumber(id, actor);
-    // Submitting the stage that shows the FAP form accepts the signed FAP document: the differences stay recorded in its remarks and the review closes.
-    if (shows(stage) && !gaps.length) await this.closeFapReview(id, remarks, actor);
     await this.db.transaction(async conn => {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
@@ -577,6 +591,9 @@ export class ApplicationsService {
       const blocked = this.submitGate(cfg, progress, raw.templates, raw.steps, stage);
       ensure(blocked === null, blocked ?? '', 409);
       if (gaps.length) throw new Problem(422, `${stage.name} is not complete yet (${gaps.length}): ${gaps.map(g => g.label).join('; ')}`, [], gaps);
+      // Submitting the stage that shows the FAP form accepts the signed FAP document: the differences stay recorded in its remarks and the review closes
+      // (inside this transaction, before the freeze copies the differences: a refused submit leaves the review as it was).
+      if (shows(stage)) await this.closeFapReview(conn, id, remarks, actor);
       await this.apps.saveStageProgress(conn, id, stage.code, {isLocked: true, submitted: true, clearCompleted: true}, actor);
       if (shows(stage)) {
         await this.apps.updateFap(conn, id, {is_fap_form_locked: 1}, by(actor));
@@ -616,19 +633,19 @@ export class ApplicationsService {
   }
 
   /** Closes the OCR review of the current signed FAP file as APPROVED: open differences are kept as NOTED, the remarks (when given) replace the saved ones. */
-  private async closeFapReview(id: string, remarks: string | undefined, actor: Actor) {
-    const [rows] = await this.apps.pool.query<any[]>(
+  private async closeFapReview(conn: any, id: string, remarks: string | undefined, actor: Actor) {
+    const [rows] = await conn.query(
       `SELECT c.id FROM ${CRM.fapDocumentOcrComparisons} c
        JOIN ${CRM.applicationDocumentFiles} f ON f.id=c.document_file_id AND f.deleted_at IS NULL AND f.is_current_active=1
        WHERE c.application_id=? AND c.comparison_status IN ('HAS_DIFFERENCES','MATCHED')`,
       [id],
     );
-    for (const r of rows) {
-      await this.apps.pool.query(
+    for (const r of rows as any[]) {
+      await conn.query(
         `UPDATE ${CRM.fapDocumentOcrComparisons} SET comparison_status='APPROVED',has_differences=0,remarks=COALESCE(?,remarks),reviewed_by=?,reviewed_at=CURRENT_TIMESTAMP(3),updated_by=? WHERE id=?`,
         [remarks?.trim() ? remarks : null, by(actor), by(actor), r.id],
       );
-      await this.apps.pool.query(`UPDATE ${CRM.fapDocumentOcrDiscrepancies} SET resolution_status='NOTED' WHERE comparison_id=? AND resolution_status='OPEN'`, [r.id]);
+      await conn.query(`UPDATE ${CRM.fapDocumentOcrDiscrepancies} SET resolution_status='NOTED' WHERE comparison_id=? AND resolution_status='OPEN'`, [r.id]);
     }
   }
 
@@ -687,8 +704,8 @@ export class ApplicationsService {
    */
   private async assertDeedComplete(db: any, id: string, deedId: string) {
     const [rows] = await db.query(
-      `SELECT d.deed_type,d.deed_number,(SELECT COUNT(*) FROM ${CRM.fapLegalStakeholders} s WHERE s.deed_id=d.id) AS n,
-              (SELECT COALESCE(SUM(s.share_percentage),0) FROM ${CRM.fapLegalStakeholders} s WHERE s.deed_id=d.id) AS total
+      `SELECT d.deed_type,d.deed_number,(SELECT COUNT(*) FROM ${CRM.fapLegalStakeholders} s WHERE s.deed_id=d.id AND s.deleted_at IS NULL AND s.is_active=1) AS n,
+              (SELECT COALESCE(SUM(s.share_percentage),0) FROM ${CRM.fapLegalStakeholders} s WHERE s.deed_id=d.id AND s.deleted_at IS NULL AND s.is_active=1) AS total
        FROM ${CRM.fapLegalDeeds} d WHERE d.id=? AND d.application_id=?`,
       [deedId, id],
     );
@@ -887,7 +904,11 @@ export class ApplicationsService {
       // the group / stage rules are checked BEFORE the approval marks stages as completed (otherwise a group approval completes its stages first and then finds nothing open)
       beforeApproved: async (conn, step) => {
         if (step.scope === 'SECTION' && step.sectionCode === DEED_SECTION && step.subjectId) await this.assertDeedComplete(conn, id, step.subjectId);
+        // the checks that name what is missing come first (documents, deeds, stages of the group) ...
         await this.assertMandatoryDocumentsDone(conn, id, step);
+        // ... then the general rule: a stage is decided after the deeds and documents under it, a group after its stages (the screen only shows it then)
+        if (lowerOpen((await this.approvals.raw(id, app.workflow_freeze_id, conn)).steps, step, cfg.stages.filter(x => x.groupCode === step.groupCode).map(x => x.code)))
+          throw new Problem(409, 'Persetujuan ini baru bisa diputuskan setelah semua yang ada di bawahnya (akta, dokumen, stage) disetujui.');
       },
       // a group cannot be rejected either while a stage under it is still not approved
       beforeRejected: async (conn, step) => {

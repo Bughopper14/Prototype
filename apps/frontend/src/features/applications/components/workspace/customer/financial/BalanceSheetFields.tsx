@@ -1,5 +1,6 @@
 /** Balance sheet (Neraca) inputs of the active year. */
 import {RequiredStar} from '@/shared/ui/RequiredStar';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function BalanceSheetFields({
   canFinance,
@@ -57,7 +58,7 @@ export function BalanceSheetFields({
               }}
             >
               {item.label}
-              <RequiredStar field={item.key} section="Financial Statements" />
+              <RequiredStar field={item.key} section={FORM_SECTION.FINANCIAL} />
             </label>
             <input
               type="number"

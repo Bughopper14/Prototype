@@ -3,6 +3,7 @@ import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {useMasterData} from '@/shared/master-data';
 import {FolderCheck} from 'lucide-react';
+import {FORM_SECTION} from '@liugong/shared';
 
 export function DocumentRequirementsCard() {
   const {draft, setDraft, handleTriggerFieldSync, canProposal} = useWorkspace();
@@ -102,7 +103,7 @@ export function DocumentRequirementsCard() {
                 }}
               >
                 {docItem.label}
-                <RequiredStar field={docItem.key} section="Financing Proposal" />
+                <RequiredStar field={docItem.key} section={FORM_SECTION.PROPOSAL} />
               </span>
             </label>
           );
