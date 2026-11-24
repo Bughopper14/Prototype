@@ -114,6 +114,7 @@ export function useNibOcrModal({
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'nib');
+      uploadPayload.append('sub_type', 'NIB');
       if (applicationId) uploadPayload.append('application_id', applicationId);
 
       const res = await api('/ocr/scan', 'POST', uploadPayload);

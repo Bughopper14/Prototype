@@ -23,7 +23,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 // Unified Scanner Caller
 // -------------------------------------------------------------
 /** What a scan belongs to: the stored copy is named after them, and the server also adds it to the document checklist of that application. */
-export type ScanMeta = {applicationId?: string; stakeholderId?: string};
+export type ScanMeta = {applicationId?: string; stakeholderId?: string; subType?: string};
 
 export async function extractIdDocumentFromImage(
   fileOrInput: File | Blob | string,
@@ -51,6 +51,7 @@ export async function extractIdDocumentFromImage(
       uploadPayload.append('file', fileOrInput, fileName || `${docType}_scan.jpg`);
     }
     uploadPayload.append('doc_type', docType);
+    if (meta?.subType) uploadPayload.append('sub_type', meta.subType);
     if (meta?.applicationId) uploadPayload.append('application_id', meta.applicationId);
     if (meta?.stakeholderId) uploadPayload.append('stakeholder_id', meta.stakeholderId);
 
@@ -96,7 +97,7 @@ export async function extractKtpTextFromImage(
   fileName?: string,
   meta?: ScanMeta,
 ): Promise<ParsedKtpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, meta);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, {subType: 'KTPSTAKEHOLDER', ...meta});
   const d = res.data || {};
   const sLower = String(d.status_perkawinan || d.maritalStatus || d.status || '').toLowerCase();
   const isSingle = sLower.includes('belum') || sLower.includes('tidak') || sLower.includes('single');
@@ -158,7 +159,7 @@ export async function extractPassportTextFromImage(
   fileName?: string,
   meta?: ScanMeta,
 ): Promise<ParsedPassportData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName, meta);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'passport', fileName, {subType: 'PASSPORT', ...meta});
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;
@@ -190,7 +191,7 @@ export async function extractNpwpTextFromImage(
   fileName?: string,
   meta?: ScanMeta,
 ): Promise<ParsedNpwpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName, meta);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'npwp', fileName, {subType: 'NPWPSTAKEHOLDER', ...meta});
   const d = res.data || {};
   return {
     scan: res.scan,
@@ -212,7 +213,7 @@ export async function extractKitasTextFromImage(
   fileName?: string,
   meta?: ScanMeta,
 ): Promise<ParsedKitasData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName, meta);
+  const res = await extractIdDocumentFromImage(fileOrInput, 'kitas', fileName, {subType: 'KITAS', ...meta});
   const d = res.data || {};
   const resolvedGen =
     resolveGender(d.gender) || resolveGender(d.jenis_kelamin) || resolveGender(d.sex) || undefined;

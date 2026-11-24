@@ -5,7 +5,7 @@ import path from 'node:path';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {Problem, ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {StorageService} from '../../core/storage';
+import {StorageService, buildDocumentFileName} from '../../core/storage';
 import {recordActivity} from '../activity/activity-log';
 import {ApplicationsService} from '../applications/applications.service';
 import {requireAuthority, signFileToken, verifyFileToken} from '../auth/session';
@@ -78,7 +78,33 @@ export class DocumentsController {
     ensure(file, 'Choose a file');
     assertValidUpload(file);
     const current = await this.unlocked(id, req.actor);
-    const fileName = formattedUploadName(id, file.originalname, file.mimetype);
+    const subType = String(req.body.subType || req.body.sub_type || '').trim().toUpperCase();
+    const row = await this.documents.checklistRow(this.db.pool, id, String(req.body.checklistId || req.body.documentCode || ''));
+    const checklistCode = (row?.code || String(req.body.documentCode || req.body.checklistId || '')).toUpperCase();
+
+    let jenisDoc = subType;
+    if (!jenisDoc) {
+      if (checklistCode === 'KTP') {
+        jenisDoc = 'KTPPENGURUS';
+      } else if (checklistCode === 'NPWP') {
+        jenisDoc = 'NPWPUSAHA';
+      } else if (checklistCode === 'NIB') {
+        jenisDoc = 'NIB';
+      } else {
+        jenisDoc = checklistCode.replace(/[^A-Z0-9_]/g, '') || 'DOC';
+      }
+    }
+
+    let appNumber = current.applicationNumber || current.application_number;
+    if (!appNumber) {
+      const [appRows] = await this.db.pool.execute<any[]>(
+        'SELECT application_number FROM crm_applications WHERE id = ? LIMIT 1',
+        [id],
+      );
+      appNumber = appRows[0]?.application_number || id;
+    }
+
+    const fileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname);
     const storageKey = crypto.randomUUID();
     await this.storage.put(storageKey, file.buffer, file.mimetype);
     // A named copy for the OCR service (local storage only)

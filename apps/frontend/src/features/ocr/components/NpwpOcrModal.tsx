@@ -110,6 +110,7 @@ export function NpwpOcrModal({
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'npwp');
+      uploadPayload.append('sub_type', 'NPWPUSAHA');
       if (applicationId) uploadPayload.append('application_id', applicationId);
 
       const res = await api('/ocr/scan', 'POST', uploadPayload);
