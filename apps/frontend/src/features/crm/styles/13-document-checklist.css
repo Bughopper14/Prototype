@@ -421,7 +421,7 @@
   right: 0;
   z-index: 3;
   background: #f8fafc;
-  box-shadow: -4px 0 10px -4px rgba(15, 23, 42, 0.05);
+  box-shadow: none !important;
   text-align: center;
 }
 .doc-checklist-row td.col-actions,
@@ -430,8 +430,16 @@
   right: 0;
   z-index: 2;
   background: #ffffff;
-  box-shadow: -4px 0 10px -4px rgba(15, 23, 42, 0.05);
+  box-shadow: none !important;
   text-align: center;
+}
+.doc-checklist-table th.col-actions::before,
+.doc-checklist-table th.col-actions::after,
+.doc-checklist-row td.col-actions::before,
+.doc-checklist-row td.col-actions::after {
+  display: none !important;
+  content: none !important;
+  box-shadow: none !important;
 }
 .doc-checklist-row:hover td.col-actions,
 .doc-checklist-row:hover td:last-child {

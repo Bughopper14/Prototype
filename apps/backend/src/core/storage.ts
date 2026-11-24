@@ -113,26 +113,73 @@ export class StorageService {
     );
   }
 
-  /** A named copy under documents/ for the OCR worker (local storage only). */
-  async saveNamedCopy(fileName: string, body: Buffer) {
-    if (this.s3) return;
-    await fs.mkdir(this.documentsDir, {recursive: true});
-    await fs.writeFile(path.join(this.documentsDir, path.basename(fileName)), body);
+  /** Initialises standard document folder structure under documents/<appNumber>/ */
+  async initApplicationFolders(appNumber: string) {
+    if (!appNumber || appNumber === 'unknown' || appNumber === 'APP') return;
+    const cleanApp = String(appNumber).replace(/[^a-zA-Z0-9_-]/g, '') || 'APP';
+    const baseDir = path.join(this.documentsDir, cleanApp);
+    const standardFolders = ['NIB', 'NPWP', 'KTP', 'DEED', 'FAP', 'FINANCIAL', 'BANK', 'OTHERS'];
+    await fs.mkdir(baseDir, {recursive: true});
+    for (const sub of standardFolders) {
+      await fs.mkdir(path.join(baseDir, sub), {recursive: true}).catch(() => undefined);
+    }
   }
 
-  /** The named copy of an upload under documents/, also when only the name prefix matches. */
+  /** A named copy under documents/ (or documents/<appNumber>/<jenisDoc>/) for the OCR worker and local storage. */
+  async saveNamedCopy(fileName: string, body: Buffer, appNumber?: string, jenisDoc?: string): Promise<string> {
+    if (this.s3) return fileName;
+    const cleanApp = appNumber && appNumber !== 'unknown' && appNumber !== 'APP'
+      ? String(appNumber).replace(/[^a-zA-Z0-9_-]/g, '')
+      : null;
+    const cleanDoc = jenisDoc ? String(jenisDoc).toUpperCase().replace(/[^A-Z0-9_]/g, '') : null;
+
+    const targetDir = cleanApp && cleanDoc
+      ? path.join(this.documentsDir, cleanApp, cleanDoc)
+      : this.documentsDir;
+
+    await fs.mkdir(targetDir, {recursive: true});
+    const baseName = path.basename(fileName);
+    await fs.writeFile(path.join(targetDir, baseName), body);
+
+    return cleanApp && cleanDoc
+      ? `Documents/${cleanApp}/${cleanDoc}/${baseName}`
+      : `Documents/${baseName}`;
+  }
+
+  /** The named copy of an upload under documents/, also when only the name prefix matches or when nested under appNumber/jenisDoc. */
   async locateNamedCopy(fileName: string) {
+    const raw = fileName.replace(/^Documents[\\/]/i, '');
+    const direct = path.join(this.documentsDir, raw);
+    try {
+      if ((await fs.stat(direct)).isFile()) return direct;
+    } catch {}
+
     const base = path.basename(fileName);
-    const exact = path.join(this.documentsDir, base);
+    const inRoot = path.join(this.documentsDir, base);
     try {
-      if ((await fs.stat(exact)).isFile()) return exact;
+      if ((await fs.stat(inRoot)).isFile()) return inRoot;
     } catch {}
+
     const prefix = base.split('_[')[0];
-    try {
-      const match = (await fs.readdir(this.documentsDir)).find(f => f.startsWith(prefix));
-      if (match) return path.join(this.documentsDir, match);
-    } catch {}
-    return exact;
+    const findRecursive = async (dir: string, depth = 0): Promise<string | null> => {
+      if (depth > 3) return null;
+      try {
+        const entries = await fs.readdir(dir, {withFileTypes: true});
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isFile()) {
+            if (entry.name === base || entry.name.startsWith(prefix)) return fullPath;
+          } else if (entry.isDirectory()) {
+            const found = await findRecursive(fullPath, depth + 1);
+            if (found) return found;
+          }
+        }
+      } catch {}
+      return null;
+    };
+
+    const found = await findRecursive(this.documentsDir);
+    return found || direct;
   }
 
   /** A file under documents/ from its URL segments, or null when the path leaves that folder. */
@@ -141,19 +188,33 @@ export class StorageService {
     return file.startsWith(this.documentsDir + path.sep) ? file : null;
   }
 
-  /** A unique, sanitised path under documents/<type>/ for an uploaded identity document. */
+  /** A unique, sanitised path under documents/<appNumber>/<jenisDoc>/ (or fallback documents/<type>/) for an uploaded/scanned identity document. */
   async identityDocumentTarget(
     docTypeRaw: string,
     appIdRaw: string,
     stakeholderIdRaw: string,
     originalName: string,
     customFileName?: string,
+    appNumberRaw?: string,
+    jenisDocRaw?: string,
   ) {
     const docType =
       String(docTypeRaw || 'general')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '') || 'general';
-    const typeDir = path.join(this.documentsDir, docType);
+
+    const cleanApp = appNumberRaw && appNumberRaw !== 'unknown' && appNumberRaw !== 'APP'
+      ? String(appNumberRaw).replace(/[^a-zA-Z0-9_-]/g, '')
+      : null;
+    const cleanJenis = jenisDocRaw
+      ? String(jenisDocRaw).toUpperCase().replace(/[^A-Z0-9_]/g, '')
+      : docType.toUpperCase();
+
+    const targetSubdir = cleanApp
+      ? path.join(cleanApp, cleanJenis)
+      : docType;
+
+    const typeDir = path.join(this.documentsDir, targetSubdir);
     await fs.mkdir(typeDir, {recursive: true});
 
     let targetBaseName = '';
@@ -163,10 +224,10 @@ export class StorageService {
       extension = (path.extname(customFileName) || extension).toLowerCase();
       targetBaseName = path.basename(customFileName, extension);
     } else {
-      const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
+      const appLabel = cleanApp || String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
       const cleanStakeholder = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
-      targetBaseName = `${docType}_${cleanApp}`;
-      if (cleanStakeholder && cleanStakeholder !== cleanApp && cleanStakeholder !== 'unknown') {
+      targetBaseName = `${docType}_${appLabel}`;
+      if (cleanStakeholder && cleanStakeholder !== appLabel && cleanStakeholder !== 'unknown') {
         targetBaseName += `_${cleanStakeholder}`;
       }
       targetBaseName += `_${timestamp()}`;
@@ -183,12 +244,13 @@ export class StorageService {
       }
     }
 
+    const relSubdir = targetSubdir.replace(/\\/g, '/');
     return {
       docType,
       fileName,
       savedFilePath: path.join(typeDir, fileName),
-      relativePath: `Documents/${docType}/${fileName}`,
-      fileUrl: `/documents/${docType}/${fileName}`,
+      relativePath: `Documents/${relSubdir}/${fileName}`,
+      fileUrl: `/documents/${relSubdir}/${fileName}`,
     };
   }
 }

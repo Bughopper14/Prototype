@@ -107,15 +107,21 @@ export class DocumentsController {
     const fileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname);
     const storageKey = crypto.randomUUID();
     await this.storage.put(storageKey, file.buffer, file.mimetype);
-    // A named copy for the OCR service (local storage only)
-    await this.storage.saveNamedCopy(fileName, file.buffer).catch(() => undefined);
+    // A named copy for the OCR service (local storage only, stored under documents/<appNumber>/<jenisDoc>/)
+    const relativePath = await this.storage.saveNamedCopy(fileName, file.buffer, appNumber, jenisDoc).catch(() => undefined);
     const by = req.actor.username || req.actor.name;
     const saved = await this.db.transaction(conn =>
       this.documents.addFile(
         conn,
         id,
         String(req.body.checklistId || req.body.documentCode || ''),
-        {fileName, storageKey, storagePath: this.storage.usesS3 ? null : fileName, size: file.size, mimeType: file.mimetype},
+        {
+          fileName,
+          storageKey,
+          storagePath: this.storage.usesS3 ? null : (relativePath || fileName),
+          size: file.size,
+          mimeType: file.mimetype,
+        },
         by,
       ),
     );

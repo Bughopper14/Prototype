@@ -38,7 +38,14 @@ export class IdentityDocumentsController {
    * A scanned document is also a file of the application's document checklist (NIB, KTP, E-KITAS), so it shows there and can be sent for approval
    * without being uploaded a second time. Nothing happens when the scan does not belong to a saved application or the checklist has no such document.
    */
-  private async addToChecklist(applicationId: string, docType: string, file: {buffer: Buffer; mimetype: string; size: number}, fileName: string, by: string) {
+  private async addToChecklist(
+    applicationId: string,
+    docType: string,
+    file: {buffer: Buffer; mimetype: string; size: number},
+    fileName: string,
+    storagePath: string,
+    by: string,
+  ) {
     const code = CHECKLIST_DOCUMENT[docType];
     if (!code || !applicationId) return;
     try {
@@ -46,8 +53,19 @@ export class IdentityDocumentsController {
       await this.db.transaction(async conn => {
         if (!(await this.documents.checklistRow(conn, applicationId, code))) return;
         await this.storage.put(storageKey, file.buffer, file.mimetype);
-        await this.storage.saveNamedCopy(fileName, file.buffer).catch(() => undefined);
-        await this.documents.addFile(conn, applicationId, code, {fileName, storageKey, storagePath: this.storage.usesS3 ? null : fileName, size: file.size, mimeType: file.mimetype}, by);
+        await this.documents.addFile(
+          conn,
+          applicationId,
+          code,
+          {
+            fileName,
+            storageKey,
+            storagePath: this.storage.usesS3 ? null : storagePath,
+            size: file.size,
+            mimeType: file.mimetype,
+          },
+          by,
+        );
       });
     } catch (err) {
       console.warn('The scan could not be added to the document checklist:', err);
@@ -101,6 +119,8 @@ export class IdentityDocumentsController {
       stakeholderId,
       file.originalname,
       customFileName,
+      appNumber,
+      jenisDoc,
     );
     await fs.writeFile(storage.savedFilePath, file.buffer);
 
@@ -124,7 +144,7 @@ export class IdentityDocumentsController {
       };
     }
     const detectedType = String(result.doc_type || storage.docType).toLowerCase();
-    await this.addToChecklist(appId, detectedType, file, storage.fileName, req.actor.username || req.actor.name || 'system');
+    await this.addToChecklist(appId, detectedType, file, storage.fileName, storage.relativePath, req.actor.username || req.actor.name || 'system');
     Object.assign(result, {
       fileName: storage.fileName,
       file_name: storage.fileName,

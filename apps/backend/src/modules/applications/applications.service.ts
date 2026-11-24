@@ -18,6 +18,7 @@ import {ApplicationProfileRepository} from './repositories/application-profile.r
 import {ApplicationsRepository} from './repositories/applications.repository';
 import {MasterIdLookup} from './repositories/master-ids';
 import {MktPicLookup} from './mkt-pic.lookup';
+import {StorageService} from '../../core/storage';
 import {mandatoryGaps} from './workflow/mandatory-check';
 import {groupsOf, stagesOf, WorkflowConfigRepository, type WorkflowConfig} from './workflow/workflow-config.repository';
 import {ApprovalsService, lowerOpen, scopeApproved, STATE_NAME} from '../approvals/approvals.service';
@@ -52,6 +53,7 @@ export class ApplicationsService {
     private readonly fapOcr: FapOcrRepository,
     private readonly freezes: FapFreezeRepository,
     private readonly mktPics: MktPicLookup,
+    private readonly storage: StorageService,
   ) {}
 
   /* ---------- stages ---------- */
@@ -245,7 +247,19 @@ export class ApplicationsService {
       // The checklist document is one bundle: a file added after its approval makes it UPLOADED again, and the finished round no longer counts (it needs approval again).
       const again = !!round && d.status !== 'VERIFIED' && round.steps.every(x => x.status === 'APPROVED');
       const state = !round || again ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' && !x.reopened) ? 'REJECTED' : round.steps.some(x => x.reopened) ? 'REOPENED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
-      const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: shownStatus(again ? undefined : round?.steps.find(x => x.code === t.code))}));
+      const steps = wanted.map(t => {
+        const matched = again ? undefined : round?.steps.find(x => x.code === t.code);
+        return {
+          id: matched?.id || t.id,
+          code: t.code,
+          name: t.name,
+          authority: t.authorityName,
+          authorityName: t.authorityName,
+          order: t.sortOrder,
+          status: shownStatus(matched),
+          decisions: matched?.decisions || [],
+        };
+      });
       return {...d, approval: {steps, state, again, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED' || state === 'REOPENED')}};
     });
     const view = this.viewStage(cfg, progress);
@@ -416,6 +430,7 @@ export class ApplicationsService {
     await this.db.transaction(async conn => {
       await this.partners.saveFromApplication(conn, partnerId, customer, profile, by(actor));
       applicationNumber = await this.apps.nextApplicationNumber(conn, today, await this.partners.customerNo(conn, partnerId));
+      await this.storage.initApplicationFolders(applicationNumber).catch(() => undefined);
       await this.apps.insert(
         conn,
         {

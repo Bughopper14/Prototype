@@ -106,6 +106,10 @@ export function DocumentApprovalModal({
                               </span>
                             )}
                           </>
+                        ) : isApproved ? (
+                          <span style={{color: '#10b981', fontWeight: 600}}>
+                            ✓ Approved
+                          </span>
                         ) : isPending ? (
                           <span style={{color: '#d97706', fontWeight: 600}}>
                             ⏳ Awaiting approval action from the designated authority
