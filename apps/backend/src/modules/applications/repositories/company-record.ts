@@ -18,7 +18,14 @@ export function clean(value: any, type: 'text' | 'date' | 'int' = 'text') {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   const text = String(value).trim();
   if (!text) return null;
-  return type === 'date' ? text.slice(0, 10) : text;
+  if (type === 'date') {
+    const d = text.slice(0, 10);
+    const parsed = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(d + 'T00:00:00Z') : null;
+    if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== d)
+      throw Object.assign(new Error('Format tanggal tidak valid (gunakan YYYY-MM-DD).'), {status: 422});
+    return d;
+  }
+  return text;
 }
 
 /** API field → column of the company columns shared by crm_fap_application_profiles and crm_master_business_partners. */

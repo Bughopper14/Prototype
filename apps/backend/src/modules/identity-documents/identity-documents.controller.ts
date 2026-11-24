@@ -93,7 +93,7 @@ export class IdentityDocumentsController {
       appNumber = appRows[0]?.application_number || appId;
     }
 
-    const customFileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname);
+    const customFileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname, new Date(), file.mimetype);
 
     const storage = await this.storage.identityDocumentTarget(
       docType === 'auto' ? 'ktp' : docType,

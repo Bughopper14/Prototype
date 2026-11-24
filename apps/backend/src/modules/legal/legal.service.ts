@@ -31,7 +31,14 @@ export class LegalService {
    * order) and stores them. An approved deed is locked: it only changes after its stage or group is rejected.
    */
   private async store(id: string, previous: any, incoming: any, actor: Actor) {
-    for (const d of incoming.deeds || []) if (!d.id) d.id = crypto.randomUUID();
+    ensure(incoming && typeof incoming === 'object' && !Array.isArray(incoming), 'Format data legal tidak valid.', 422);
+    if (incoming.deeds !== undefined) {
+      ensure(Array.isArray(incoming.deeds), 'Daftar akta harus berupa array.', 422);
+      for (const d of incoming.deeds) {
+        ensure(d && typeof d === 'object' && !Array.isArray(d), 'Setiap item akta harus berupa objek.', 422);
+        if (!d.id) d.id = crypto.randomUUID();
+      }
+    }
     const merged = mergeLegal(previous, incoming);
     await this.db.transaction(conn => this.legal.save(conn, id, merged, by(actor)));
   }
@@ -77,6 +84,12 @@ export class LegalService {
     const a = await this.applications.detailOr404(id, actor);
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
     ensure(deed, 'Simpan akta terlebih dahulu sebelum mengajukan.', 404);
+    // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old review.
+    ensure(
+      !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION),
+      'Akta ini disetujui lewat approval section akta pada workflow, bukan lewat review ini.',
+      409,
+    );
     const isAdmin = actor.isAdmin || actor.role === 'ADMIN';
     ensure(isAdmin || !a.workflowFlags?.lastStage, 'Approval akta terkunci pada tahap aplikasi ini.', 409);
     if (body.action === 'SUBMIT') ensure(canEditLegal(actor, a), 'Pengajuan akta tidak tersedia pada tahap ini.', 403);

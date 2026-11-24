@@ -83,9 +83,12 @@ export function publishedDeeds(legal: any) {
     .map((d: any) => ({...d.approvedSnapshot, id: d.id, approvedAt: d.approvedAt}));
 }
 export function mergeLegal(previous: any, incoming: any) {
+  assert(incoming && typeof incoming === 'object' && !Array.isArray(incoming), 'Format data legal tidak valid.');
+  if (incoming.deeds !== undefined) assert(Array.isArray(incoming.deeds), 'Daftar akta harus berupa array.');
   const prior = Array.isArray(previous?.deeds) ? previous.deeds : [],
     ids = new Set<string>();
   const deeds = (incoming.deeds || []).map((input: any) => {
+    assert(input && typeof input === 'object' && !Array.isArray(input), 'Setiap item akta harus berupa objek.');
     assert(input.id && typeof input.id === 'string', 'Setiap akta wajib memiliki ID.');
     assert(!ids.has(input.id), 'ID akta tidak boleh duplikat.');
     ids.add(input.id);

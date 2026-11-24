@@ -104,7 +104,7 @@ export class DocumentsController {
       appNumber = appRows[0]?.application_number || id;
     }
 
-    const fileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname);
+    const fileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname, new Date(), file.mimetype);
     const storageKey = crypto.randomUUID();
     await this.storage.put(storageKey, file.buffer, file.mimetype);
     // A named copy for the OCR service (local storage only)

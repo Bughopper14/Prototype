@@ -32,6 +32,15 @@ export function formatTimestampDdmmyyyyhhmm(d = new Date()): string {
   return `${day}${month}${year}${hour}${minute}`;
 }
 
+const SAFE_DOC_EXTS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp']);
+const MIME_TO_EXT: Record<string, string> = {
+  'application/pdf': '.pdf',
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/webp': '.webp',
+};
+
 /**
  * Builds standard document file name: jenisDoc_appNumber_ddmmyyyyhhmm.<ext>
  * e.g. NIB_A-000-26-12345_241120260910.pdf
@@ -41,8 +50,10 @@ export function buildDocumentFileName(
   appNumber: string,
   originalName: string,
   date = new Date(),
+  mimeType?: string,
 ): string {
-  const ext = (path.extname(originalName) || '.pdf').toLowerCase();
+  const rawExt = path.extname(originalName).toLowerCase();
+  const ext = (mimeType && MIME_TO_EXT[mimeType.toLowerCase()]) || (SAFE_DOC_EXTS.has(rawExt) ? rawExt : '.pdf');
   const cleanJenis = jenisDoc.toUpperCase().replace(/[^A-Z0-9_]/g, '') || 'DOC';
   const cleanApp = String(appNumber || 'APP').replace(/[^a-zA-Z0-9_-]/g, '') || 'APP';
   const timeStr = formatTimestampDdmmyyyyhhmm(date);

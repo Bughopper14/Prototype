@@ -357,6 +357,7 @@ export class LegalRepository {
         const oldIds = new Set(old.map(r => r.id));
         const keep: string[] = [];
         for (const s of d.stakeholders) {
+          if (!s || typeof s !== 'object' || Array.isArray(s)) throw bad('Setiap stakeholder harus berupa objek.');
           const sid = oldIds.has(s.id) ? s.id : await this.newStakeholderId(conn, s.id);
           keep.push(sid);
           await this.upsert(
