@@ -11,8 +11,11 @@ export function DetailHeading() {
   const {a, draft, liveCompanyName} = useWorkspace();
   const master = useMasterData();
 
-  const rawCity = draft.city || a.city;
-  const resolvedCity = master.city?.find(c => c.value === rawCity || c.name === rawCity)?.name || rawCity;
+  const rawCity = String(draft.city || a.city || a.customer?.city || '').trim();
+  const resolvedCity =
+    rawCity && rawCity !== '—' && rawCity.toLowerCase() !== 'unknown' && rawCity.toLowerCase() !== 'null'
+      ? master.city?.find(c => c.value === rawCity || c.name.toLowerCase() === rawCity.toLowerCase())?.name || rawCity
+      : null;
   const rawType = draft.companyType || a.companyType;
   const resolvedCompanyType = rawType && rawType !== '—' ? label(rawType) : null;
   const rawSegment = draft.industrySegment || a.industrySegment;
