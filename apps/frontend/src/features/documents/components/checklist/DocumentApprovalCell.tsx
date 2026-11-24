@@ -1,5 +1,5 @@
 /** Spatial micro-stepper approval cell matching the approval workflow mockup. */
-import {ShieldCheck, AlertCircle, Check, Send} from 'lucide-react';
+import {ShieldCheck, AlertCircle, Check, Send, X} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function getShortRoleLabel(step: any, idx: number): string {
@@ -50,8 +50,9 @@ export function DocumentApprovalCell({
   const totalSteps = steps.length;
   const approvedSteps = steps.filter((s: any) => s.status === 'APPROVED').length;
   const activeStepIndex = steps.findIndex((s: any) => s.status === 'PENDING');
-  const isAllApproved = approval.state === 'APPROVED' || (totalSteps > 0 && approvedSteps === totalSteps);
-  const isRejected = approval.state === 'REJECTED';
+  const isStepRejected = steps.some((s: any) => s.status === 'REJECTED');
+  const isRejected = approval.state === 'REJECTED' || isStepRejected;
+  const isAllApproved = !isRejected && (approval.state === 'APPROVED' || (totalSteps > 0 && approvedSteps === totalSteps));
   const isReopened = approval.state === 'REOPENED';
   const isNotRequested = approval.state === 'NOT_REQUESTED';
   const needsSubmission = isNotRequested || isRejected || isReopened;
@@ -66,6 +67,136 @@ export function DocumentApprovalCell({
     ? Math.round((approvedSteps / totalSteps) * 100)
     : 0;
 
+  // Dedicated View for REJECTED status (Matching Gambar 3)
+  if (isRejected) {
+    const rejectedStep = steps.find((s: any) => s.status === 'REJECTED');
+    const rejectedIndex = rejectedStep ? steps.indexOf(rejectedStep) : -1;
+    const rejectedRole = rejectedStep
+      ? getShortRoleLabel(rejectedStep, rejectedIndex)
+      : 'Approver';
+
+    // Get rejection remarks from decisions or step/approval fields
+    const decisions: any[] = rejectedStep?.decisions || [];
+    const rejectDecision =
+      decisions.slice().reverse().find((d: any) => d.decision === 'REJECTED') ||
+      decisions[decisions.length - 1];
+    const rawRemarks =
+      rejectDecision?.remarks ||
+      rejectedStep?.remarks ||
+      rejectedStep?.comment ||
+      approval.remarks ||
+      approval.rejectionReason ||
+      '';
+    const rejectRemarks = rawRemarks.replace(/<[^>]*>/g, '').trim();
+
+    // Fill percentage up to the rejected step (connecting approved steps up to the rejected node)
+    const rejectFillPct =
+      totalSteps > 1 && rejectedIndex >= 0
+        ? Math.round((rejectedIndex / (totalSteps - 1)) * 100)
+        : 100;
+
+    return (
+      <div
+        className="new-approval-card is-rejected"
+        style={{marginTop: '6px'}}
+      >
+        {/* Top Header */}
+        <div className="card-status-bar">
+          <span className="badge-rejected-by">
+            <X size={11} strokeWidth={3} /> Rejected by {rejectedRole}
+          </span>
+          <span className="badge-revision-text">Revision</span>
+        </div>
+
+        {/* Stepper Track with Progress */}
+        {totalSteps > 0 && (
+          <div
+            className="micro-stepper-track"
+            onClick={() => onOpenModal(row)}
+            title="Click to view rejection details"
+            style={{cursor: 'pointer'}}
+          >
+            <div className="track-line-bg" style={{background: '#fee2e2'}} />
+            <div
+              className="track-line-fill"
+              style={{
+                width: `${rejectFillPct}%`,
+                background: '#ef4444',
+              }}
+            />
+            <div className="stepper-nodes">
+              {steps.map((st: any, idx: number) => {
+                const isStepApproved = st.status === 'APPROVED';
+                const isThisStepRejected = st.status === 'REJECTED';
+                const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
+
+                let cls = 'step-dot-wrap';
+                if (isStepApproved) cls += ' done';
+                else if (isThisStepRejected) cls += ' rejected';
+
+                return (
+                  <div key={st.id || idx} className={cls}>
+                    <div className="step-circle">
+                      {isStepApproved ? '✓' : isThisStepRejected ? '✕' : levelNum}
+                    </div>
+                    <span
+                      className="step-lbl"
+                      style={
+                        isThisStepRejected
+                          ? {color: '#dc2626', fontWeight: 700}
+                          : isStepApproved
+                          ? {color: '#059669', fontWeight: 600}
+                          : undefined
+                      }
+                    >
+                      {getShortRoleLabel(st, idx)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Remarks Callout if present */}
+        {rejectRemarks && (
+          <div className="doc-reject-callout">
+            <span className="doc-reject-callout-icon">💬</span>
+            <span className="doc-reject-callout-text">&ldquo;{rejectRemarks}&rdquo;</span>
+          </div>
+        )}
+
+        {/* Resubmit for Approval Button */}
+        <button
+          type="button"
+          className="btn-submit-for-approval btn-resubmit-danger"
+          disabled={!row.isAvailable || approvalBusy === row.chkId}
+          title={
+            !row.isAvailable
+              ? 'Upload document file before resubmitting'
+              : 'Resubmit this document for approval'
+          }
+          onClick={e => {
+            e.stopPropagation();
+            onConfirmSubmit(row);
+          }}
+        >
+          <Send size={12} />
+          <span>Resubmit for Approval</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn-view-pipeline"
+          style={{marginTop: '2px', color: '#2563eb', borderColor: '#bfdbfe'}}
+          onClick={() => onOpenModal(row)}
+        >
+          View Rejection Details &gt;
+        </button>
+      </div>
+    );
+  }
+
   if (needsSubmission) {
     return (
       <div
@@ -73,11 +204,9 @@ export function DocumentApprovalCell({
         style={{marginTop: '6px'}}
       >
         <div className="card-status-bar">
-          <span className={`approval-stage-badge ${isRejected ? 'badge-danger' : 'badge-needs'}`}>
+          <span className="approval-stage-badge badge-needs">
             <ShieldCheck size={11} />{' '}
-            {isRejected
-              ? 'Needs Revision'
-              : approval.again
+            {approval.again
               ? 'Needs approval again'
               : 'Needs approval'}
           </span>
@@ -125,7 +254,7 @@ export function DocumentApprovalCell({
           }}
         >
           <Send size={12} />
-          <span>{approval.again || isRejected || isReopened ? 'Resubmit for Approval' : 'Submit for Approval'}</span>
+          <span>{approval.again || isReopened ? 'Resubmit for Approval' : 'Submit for Approval'}</span>
         </button>
 
         <button

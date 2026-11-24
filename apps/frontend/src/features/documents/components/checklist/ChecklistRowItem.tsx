@@ -1,5 +1,5 @@
 /** One row of the checklist table matching the spatial micro-stepper mockup. */
-import {Check, Clock, XCircle} from 'lucide-react';
+import {Check, Clock, XCircle, X} from 'lucide-react';
 import {DocumentApprovalCell} from '@/features/documents/components/checklist/DocumentApprovalCell';
 import {DocumentRowActions} from '@/features/documents/components/checklist/DocumentRowActions';
 import {DocumentSourceCell} from '@/features/documents/components/checklist/DocumentSourceCell';
@@ -34,6 +34,12 @@ export function ChecklistRowItem({
   onOpenApprovalModal: (row: ChecklistRow) => void;
   onConfirmSubmit: (row: ChecklistRow) => void;
 }) {
+  const approval = row.check?.approval;
+  const isRejected =
+    row.status === 'REJECTED' ||
+    approval?.state === 'REJECTED' ||
+    (approval?.steps || []).some((s: any) => s.status === 'REJECTED');
+
   return (
     <tr className={`doc-checklist-row ${row.isAvailable ? 'row-available' : 'row-pending'}`}>
       {/* 1. NO */}
@@ -60,16 +66,13 @@ export function ChecklistRowItem({
       {/* 3. STATUS & APPROVAL */}
       <td className="col-status">
         <div style={{marginBottom: '4px'}}>
-          {row.isAvailable ? (
+          {isRejected ? (
+            <span className="status-pill pill-rejected">
+              <X size={12} strokeWidth={2.5} style={{marginRight: 4}} /> Needs Revision
+            </span>
+          ) : row.isAvailable ? (
             <span className="status-pill pill-available">
               <Check size={12} style={{marginRight: 4}} /> Available
-            </span>
-          ) : row.status === 'REJECTED' ? (
-            <span
-              className="status-pill pill-missing"
-              style={{color: '#dc2626', borderColor: '#fecaca', background: '#fef2f2'}}
-            >
-              <XCircle size={12} style={{marginRight: 4}} /> Rejected
             </span>
           ) : (
             <span className="status-pill pill-missing">
