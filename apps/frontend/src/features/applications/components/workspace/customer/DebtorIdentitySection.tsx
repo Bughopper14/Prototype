@@ -137,6 +137,18 @@ export function DebtorIdentitySection() {
               marginBottom: 16,
             }}
           >
+            <div>
+              <span style={{fontSize: '0.75rem', color: '#64748b', display: 'block'}}>Application number</span>
+              <b
+                style={{
+                  fontSize: '0.875rem',
+                  color: '#0f172a',
+                  fontFamily: 'ui-monospace, Menlo, Consolas, monospace',
+                }}
+              >
+                {a.applicationNumber || a.application_number || draft.applicationNumber || (draft.isNew ? 'Generated on save' : '-')}
+              </b>
+            </div>
             <div
               style={{cursor: 'pointer'}}
               onClick={() => handleTriggerFieldSync('applicationDate', 'header')}

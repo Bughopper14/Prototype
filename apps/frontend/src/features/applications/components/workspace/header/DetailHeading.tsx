@@ -29,9 +29,14 @@ export function DetailHeading() {
           <h1>{liveCompanyName || (draft.isNew ? 'New Financing Application' : 'Financing Application')}</h1>
         </div>
         <p className="detail-meta">
-          {!draft.isNew && (a.fapNumber || a.code) && (
-            <span className="detail-meta-id" title="FAP Number">
-              {a.fapNumber || a.code}
+          {!draft.isNew && (a.applicationNumber || a.application_number || a.fapNumber || a.code) && (
+            <span className="detail-meta-id" title="Application Number">
+              {a.applicationNumber || a.application_number || a.fapNumber || a.code}
+            </span>
+          )}
+          {!draft.isNew && a.fapNumber && a.fapNumber !== (a.applicationNumber || a.application_number) && (
+            <span className="detail-meta-id" title="FAP Registration Number">
+              FAP: {a.fapNumber}
             </span>
           )}
           {!draft.isNew && a.branchCode && <span>{a.branchCode}</span>}

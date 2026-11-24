@@ -149,6 +149,8 @@ export class ApplicationsService {
         : null;
       return {
         id: r.id,
+        application_number: r.application_number ?? null,
+        applicationNumber: r.application_number ?? null,
         business_partner_id: r.business_partner_id,
         customer_category: r.customer_category,
         application_date: r.application_date,
@@ -261,9 +263,16 @@ export class ApplicationsService {
     const firstStage = cfg.stages[0];
     const firstLocked = progress.some((p: any) => p.stage_code === firstStage?.code && p.is_locked);
     const ocrComparison = await this.fapOcr.read(id);
+    if (!app.application_number) {
+      const generated = await this.apps.generateApplicationNumber(this.db.pool, app.application_date || app.created_at);
+      await this.apps.update(this.db.pool, id, {application_number: generated}, 'system');
+      app.application_number = generated;
+    }
     return {
       ...profile,
       id: app.id,
+      applicationNumber: app.application_number ?? null,
+      application_number: app.application_number ?? null,
       companyName: customer.companyName ?? null,
       customerId: app.business_partner_id,
       customer,
@@ -401,6 +410,7 @@ export class ApplicationsService {
     const id = crypto.randomUUID();
     const partnerId = customerId || crypto.randomUUID();
     const today = businessToday();
+    const applicationNumber = await this.apps.generateApplicationNumber(this.db.pool, today);
     // No FAP number is made here: Pre-analysis can run first, and the number is generated on demand (generateFapNumber).
     await this.db.transaction(async conn => {
       await this.partners.saveFromApplication(conn, partnerId, customer, profile, by(actor));
@@ -408,6 +418,7 @@ export class ApplicationsService {
         conn,
         {
           id,
+          applicationNumber,
           applicationDate: today,
           customerId: partnerId,
           customerCategory: category,
@@ -431,9 +442,10 @@ export class ApplicationsService {
         section: 'Customer & PIC',
         tabIndex: 0,
         actionType: 'CREATE',
-        title: `Created new application for ${company}`,
-        details: `Initiated ${stage.name}, Category: ${categoryName}. The FAP number is not generated yet. Ready for data entry.`,
+        title: `Created new application ${applicationNumber} for ${company}`,
+        details: `Initiated ${stage.name}, Category: ${categoryName}. Application Number: ${applicationNumber}. Ready for data entry.`,
         changes: [
+          {label: 'Application Number', newValue: applicationNumber},
           {label: 'Customer Category', newValue: categoryName},
           {label: 'Company Name', newValue: company},
           {label: 'Initial Stage', newValue: stage.name},

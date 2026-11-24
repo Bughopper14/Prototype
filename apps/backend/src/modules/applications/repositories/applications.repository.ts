@@ -43,10 +43,35 @@ export class ApplicationsRepository {
     return Number(res.affectedRows) === 1;
   }
 
+  /**
+   * Generates a unique application number with format A-000-YY-XXXXX
+   * where A and 000 are constant, YY is the 2-digit year of creation, and XXXXX is 5 random digits.
+   * Checks uniqueness against the database.
+   */
+  async generateApplicationNumber(conn: Conn = this.db.pool, year?: number | string): Promise<string> {
+    const yr = year ? String(year).slice(0, 4) : String(new Date().getFullYear());
+    const yy = yr.slice(-2);
+    const prefix = `A-000-${yy}-`;
+
+    for (let attempt = 0; attempt < 500; attempt++) {
+      const randDigits = String(Math.floor(10000 + Math.random() * 90000));
+      const candidate = `${prefix}${randDigits}`;
+      const [rows] = await conn.execute<any[]>(
+        `SELECT id FROM ${CRM.applications} WHERE application_number = ? LIMIT 1`,
+        [candidate],
+      );
+      if (!rows.length) {
+        return candidate;
+      }
+    }
+    throw new Error('Could not generate a unique application number after 500 attempts.');
+  }
+
   async insert(
     conn: Conn,
     app: {
       id: string;
+      applicationNumber?: string | null;
       applicationDate: string;
       customerId: string;
       customerCategory: 'NEW' | 'EXISTING';
@@ -58,11 +83,12 @@ export class ApplicationsRepository {
   ) {
     await conn.execute(
       `INSERT INTO ${CRM.applications}
-         (id,application_date,business_partner_id,customer_category,branch_id,
+         (id,application_number,application_date,business_partner_id,customer_category,branch_id,
           workflow_freeze_id,mkt_pic_id,created_by)
-       VALUES (?,?,?,?,?,?,?,?)`,
+       VALUES (?,?,?,?,?,?,?,?,?)`,
       [
         app.id,
+        app.applicationNumber ?? null,
         app.applicationDate,
         app.customerId,
         app.customerCategory,

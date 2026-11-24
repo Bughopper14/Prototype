@@ -28,7 +28,7 @@ export function ApplicationTable({
     [dates, setDates] = useState(false);
   const filtered = rows.filter(
     r =>
-      (r.company_name + ' ' + r.id + ' ' + (r.fap_number || '')).toLowerCase().includes(search.toLowerCase()) &&
+      (r.company_name + ' ' + r.id + ' ' + (r.application_number || '') + ' ' + (r.fap_number || '')).toLowerCase().includes(search.toLowerCase()) &&
       (status === 'ALL' || r.status === status) &&
       (branch === 'ALL' || r.branch_code === branch) &&
       (!start || String(r.application_date).slice(0, 10) >= start) &&
@@ -39,9 +39,10 @@ export function ApplicationTable({
   const visible = filtered.slice(page * count, (page + 1) * count);
   function exportCsv() {
     const lines = [
-      ['Application ID', 'FAP No.', 'Customer', 'Branch', 'Status', 'Financing IDR', 'Date'],
+      ['Application ID', 'App No.', 'FAP No.', 'Customer', 'Branch', 'Status', 'Financing IDR', 'Date'],
       ...filtered.map(r => [
         r.id,
+        r.application_number || '',
         r.fap_number || '',
         r.company_name,
         r.branch_code,
@@ -175,9 +176,9 @@ export function ApplicationTable({
                     <div>
                       <b>{r.company_name}</b>
                       <small>
-                        {r.fap_number ? (
+                        {r.application_number || r.fap_number ? (
                           <>
-                            {r.fap_number} <span>· {label(r.company_type)}</span>
+                            {r.application_number || r.fap_number} <span>· {label(r.company_type)}</span>
                           </>
                         ) : (
                           <span>{label(r.company_type)}</span>
