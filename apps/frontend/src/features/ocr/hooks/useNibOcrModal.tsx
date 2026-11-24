@@ -84,24 +84,6 @@ export function useNibOcrModal({
     const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
     setFileType(isPdf ? 'pdf' : 'image');
 
-    // Auto-upload NIB document to application checklist if applicationId is present
-    if (applicationId) {
-      (async () => {
-        try {
-          const docPayload = new FormData();
-          docPayload.append('file', f);
-          docPayload.append('documentCode', 'NIB');
-          await api(`/applications/${applicationId}/documents/upload`, 'POST', docPayload);
-          if (onDocumentUploaded) {
-            const updated = await api(`/applications/${applicationId}`);
-            onDocumentUploaded(updated);
-          }
-        } catch (uploadErr) {
-          console.warn('Auto-upload NIB to document checklist failed:', uploadErr);
-        }
-      })();
-    }
-
     try {
       const objectUrl = URL.createObjectURL(f);
       setFileUrl(objectUrl);
@@ -111,6 +93,7 @@ export function useNibOcrModal({
 
     try {
       // 1. Send file directly to OCR backend scanner (supports PDF, PNG, JPG, JPEG, WEBP)
+      // Note: Backend OCR /ocr/scan already automatically adds the document to checklist via addToChecklist
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'nib');
@@ -125,6 +108,12 @@ export function useNibOcrModal({
         setRawText(scannedText);
         if (notify) {
           notify(`✓ Document ${f.name} successfully scanned and parsed via OCR`);
+        }
+        if (applicationId && onDocumentUploaded) {
+          try {
+            const updated = await api(`/applications/${applicationId}`);
+            onDocumentUploaded(updated);
+          } catch {}
         }
         setOcrLoading(false);
         return;

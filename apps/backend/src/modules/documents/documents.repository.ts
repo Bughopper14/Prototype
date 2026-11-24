@@ -303,7 +303,7 @@ export class DocumentsRepository {
       [applicationId],
     );
     const [files] = await conn.execute<any[]>(
-      `SELECT * FROM ${CRM.applicationDocumentFiles} WHERE application_id=? AND deleted_at IS NULL
+      `SELECT * FROM ${CRM.applicationDocumentFiles} WHERE application_id=? AND deleted_at IS NULL AND is_current_active=1
        ORDER BY version_number,uploaded_at`,
       [applicationId],
     );
@@ -336,7 +336,7 @@ export class DocumentsRepository {
   /** The checklist row of a document with the number of files it has and the stage and document code it comes from (for its approval). */
   async approvalRow(applicationId: string, checklistId: string) {
     const [rows] = await this.db.pool.execute<any[]>(
-      `SELECT c.stage_code,c.document_code,(SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS n
+      `SELECT c.stage_code,c.document_code,(SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL AND f.is_current_active=1) AS n
        FROM ${CRM.applicationDocumentChecklists} c WHERE c.id=? AND c.application_id=?`,
       [checklistId, applicationId],
     );
@@ -351,7 +351,7 @@ export class DocumentsRepository {
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.frozenWorkflowStages} s ON s.workflow_freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
-       WHERE f.application_id=? AND f.deleted_at IS NULL
+       WHERE f.application_id=? AND f.deleted_at IS NULL AND f.is_current_active=1
        ORDER BY t.sort_order,f.version_number,f.uploaded_at`,
       [applicationId],
     );
@@ -451,7 +451,7 @@ export class DocumentsRepository {
       `SELECT COUNT(f.id) AS n FROM ${CRM.applicationDocumentFiles} f
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       WHERE f.application_id=? AND f.deleted_at IS NULL AND t.code=?`,
+       WHERE f.application_id=? AND f.deleted_at IS NULL AND f.is_current_active=1 AND t.code=?`,
       [applicationId, FAP_DOCUMENT_CODE],
     );
     await conn.execute(`UPDATE ${CRM.fapApplicationProfiles} SET is_fap_doc_uploaded=?,updated_by=? WHERE application_id=?`, [
@@ -475,7 +475,7 @@ export class DocumentsRepository {
       `SELECT c.id AS checklist_id,c.application_id,a.application_number,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
               COALESCE(t.name,o.custom_name) AS document_name,c.assigned_role,
               ${MANDATORY} AS is_mandatory,c.status,p.company_name,
-              (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS file_count
+              (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL AND f.is_current_active=1) AS file_count
        FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id

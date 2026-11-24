@@ -2,7 +2,6 @@
 import {NibIssueDateField} from '@/features/ocr/components/nib-modal/fields/NibIssueDateField';
 import {NibContactFields} from '@/features/ocr/components/nib-modal/fields/NibContactFields';
 import {NibRegionFields} from '@/features/ocr/components/nib-modal/fields/NibRegionFields';
-import {NibAddressField} from '@/features/ocr/components/nib-modal/fields/NibAddressField';
 import {NibFullAddressField} from '@/features/ocr/components/nib-modal/fields/NibFullAddressField';
 import {NibStreetField} from '@/features/ocr/components/nib-modal/fields/NibStreetField';
 import {NibCompanyNameField} from '@/features/ocr/components/nib-modal/fields/NibCompanyNameField';
@@ -29,9 +28,6 @@ export function NibExtractedFields() {
 
       {/* FIELD 3: COMPANY FULL ADDRESS */}
       <NibFullAddressField />
-
-      {/* FIELD 4: DOMICILE ADDRESS */}
-      <NibAddressField />
 
       {/* FIELD: STREET PART OF THE ADDRESS (what is applied to the application) */}
       <NibStreetField />
