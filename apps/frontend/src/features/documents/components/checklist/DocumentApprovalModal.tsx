@@ -112,12 +112,23 @@ export function DocumentApprovalModal({
                         : '')
                   : '';
 
-                // Dynamically resolve previous step instead of hardcoding any specific department
-                const prevStep = idx > 0 ? steps[idx - 1] : null;
-                const prevLevel = prevStep?.order ?? prevStep?.sortOrder ?? idx;
-                const prevRole = prevStep ? formatRoleName(prevStep.authority || prevStep.authorityName, prevStep.code) : '';
+                // Dynamically resolve previous distinct level: parallel steps with the same levelNum wait for the previous level
+                const prevLevelSteps = steps.filter((s: any, i: number) => {
+                  const lvl = s.order ?? s.sortOrder ?? (i + 1);
+                  return lvl < levelNum;
+                });
+                const prevStep = prevLevelSteps.length > 0 ? prevLevelSteps[prevLevelSteps.length - 1] : null;
+                const prevLevelNum = prevStep ? (prevStep.order ?? prevStep.sortOrder ?? 1) : null;
+                const allPrevLevelSteps = prevLevelNum
+                  ? prevLevelSteps.filter((s: any, i: number) => (s.order ?? s.sortOrder ?? (i + 1)) === prevLevelNum)
+                  : [];
+                const prevRoles = allPrevLevelSteps
+                  .map((s: any) => formatRoleName(s.authority || s.authorityName, s.code))
+                  .filter(Boolean)
+                  .join(' & ');
+
                 const waitingMessage = prevStep
-                  ? `Waiting for Level ${prevLevel} (${prevRole}) approval`
+                  ? `Waiting for Level ${prevLevelNum} (${prevRoles || formatRoleName(prevStep.authority || prevStep.authorityName, prevStep.code)}) approval`
                   : 'Waiting for document submission';
 
                 let rowClass = 'doc-v-step-row';
