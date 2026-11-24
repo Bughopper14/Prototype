@@ -3,13 +3,28 @@ import {ShieldCheck, AlertCircle, Check, Send} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function getShortRoleLabel(step: any, idx: number): string {
-  const text = `${step.authorityName || ''} ${step.authority || ''} ${step.name || ''}`.toUpperCase();
-  if (text.includes('BUSINESS PARTNER') || text.includes('BP_APPROVE') || text.includes('BP')) return 'BP';
-  if (text.includes('CREDIT') || text.includes('CA_APPROVE') || text.includes('ANALYST')) return 'Credit';
-  if (text.includes('LEGAL') || text.includes('LEGAL_APPROVE')) return 'Legal';
+  const auth = (step.authority || step.authorityName || '').trim();
+  if (auth) {
+    // Regex extract role code right before _APPROVE, _REVIEW, _VERIFY (e.g. CRM_FAP-FORM_CA_APPROVE -> CA)
+    const m = auth.match(/_([A-Za-z0-9]+)_(?:APPROVE|REVIEW|VERIFY)$/i) || auth.match(/_([A-Za-z0-9]+)$/i);
+    if (m && m[1]) {
+      const code = m[1].toUpperCase();
+      if (code === 'LEGAL') return 'Legal';
+      if (code === 'MANAGEMENT') return 'Mgmt';
+      return code;
+    }
+  }
+
+  // Fallback checks on authority / authorityName only (avoid step.name which has full workflow title)
+  const text = `${step.authorityName || ''} ${step.authority || ''}`.toUpperCase();
+  if (text.includes('CA') || text.includes('CREDIT')) return 'CA';
+  if (text.includes('BP') || text.includes('BUSINESS PARTNER')) return 'BP';
+  if (text.includes('BS') || text.includes('BUSINESS SUPPORT')) return 'BS';
+  if (text.includes('LEGAL')) return 'Legal';
   if (text.includes('RISK')) return 'Risk';
-  if (text.includes('BRANCH') || text.includes('BM')) return 'BM';
-  if (text.includes('DIRECTOR') || text.includes('BOD')) return 'Director';
+  if (text.includes('BM') || text.includes('BRANCH')) return 'BM';
+  if (text.includes('BOD') || text.includes('DIRECTOR')) return 'BOD';
+
   const levelNum = step.order ?? step.sortOrder ?? (idx + 1);
   return `L${levelNum}`;
 }
