@@ -37,6 +37,18 @@ function formatWibDate(dateVal?: string | Date): string {
   return `${day} ${month} ${year} · ${hours}:${minutes} WIB`;
 }
 
+function cleanRemarks(text?: string | null): string {
+  if (!text) return '';
+  return text
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .trim();
+}
+
 export function DocumentApprovalModal({
   row,
   isOpen,
@@ -197,9 +209,9 @@ export function DocumentApprovalModal({
                         )}
                       </div>
 
-                      {lastDecision?.remarks ? (
+                      {cleanRemarks(lastDecision?.remarks) ? (
                         <div className="doc-v-remarks-quote">
-                          &ldquo;{lastDecision.remarks}&rdquo;
+                          &ldquo;{cleanRemarks(lastDecision.remarks)}&rdquo;
                         </div>
                       ) : isStepRejected ? (
                         <div style={{marginTop: 6, fontSize: '12px', color: '#dc2626', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0'}}>
