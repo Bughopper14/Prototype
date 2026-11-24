@@ -34,7 +34,6 @@ export interface NibOcrModalProps {
   applicationId?: string;
   existingDocumentUrl?: string;
   existingFileName?: string;
-  applicationId?: string;
   onDocumentUploaded?: (updatedApp: any) => void;
 }
 
@@ -46,7 +45,6 @@ export function useNibOcrModal({
   applicationId,
   existingDocumentUrl,
   existingFileName,
-  applicationId,
   onDocumentUploaded,
 }: NibOcrModalProps) {
   const master = useMasterData();
