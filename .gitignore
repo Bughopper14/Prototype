@@ -1,75 +1,68 @@
-# Dependencies
-node_modules/
-.pnpm-store/
+# System & OS
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Build outputs
-.next/
-out/
-build/
-
-# Environment variables
-.env
-.env*.local
-!.env.example
-
-# Logs
+# Logs & Diagnostics
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
 
-# Turborepo cache
-.turbo/
+# Environment Variables
+.env
+.env.local
+.env.*.local
+!.env.example
 
-# OS files
-.DS_Store
-Thumbs.db
-
-# IDE
-.idea/
-*.swp
-*.swo
-
-# Temporary files
-tmp/
-temp/
-*.tmp
-
-# Uploaded documents
-storage/documents/
-apps/backend/storage/documents/
-storage/uploads/
-storage/exports/
-storage/ocr-output/
-storage/logs/
-*.sqlite
-*.db
-
-# Python OCR
-apps/ocr/__pycache__/
-apps/ocr/venv/
-apps/ocr/.venv/
-
-# Specifications
-storage/CRM_User_Management_Prefix_Specification_v3.xlsx
-
-# test build output of the isolated UAT stack
-apps/backend/.dist-fulltest/
-
-# Tests, build output and local scripts
-FULL TEST/
-FULL TEST backup/
-test/
-tests/
-__tests__/
-*.test.*
-*.spec.*
+# Build Artifacts & Caches
 dist/
-dist-*/
-scripts/
+build/
+out/
+.next/
+.turbo/
+.cache/
+*.tsbuildinfo
+node_modules/
 
-# Editor settings and runtime storage
+# Python / OCR
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# OCR and User Uploads
+storage/uploads/
+storage/temp/
+apps/ocr/uploads/
+apps/ocr/results/
+apps/ocr/processed/
+apps/ocr/temp/
+
+# IDE / Editor Files
+.idea/
+*.sublime-project
+*.sublime-workspace
+.project
+.settings/
+
+# Local Database & Seed Exports (Preserve scripts/migrations, ignore large runtime dumps)
+*.sql.gz
+*.dump
+scripts/dev/temp/
+
+# Keep root storage files safe
+!storage/.gitkeep
+!apps/ocr/uploads/.gitkeep
+
+# Local developer overrides
 .vscode/
 apps/backend/storage/
 
@@ -88,3 +81,13 @@ capture_*.js
 *UAT*.docx
 *uat*
 *UAT*
+
+# Old database design workbooks and Excel lock files (the current design workbook is db/3-CRM_Liugong_Database.xlsx)
+apps/backend/db/FAP_Stage_Database_Design.xlsx
+apps/backend/db/approval-authority-added.xlsx
+~$*.xlsx
+
+# Design mockups
+mockup/
+mockups/
+*mockup*

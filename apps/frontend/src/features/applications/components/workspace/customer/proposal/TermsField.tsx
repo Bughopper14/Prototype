@@ -1,4 +1,5 @@
-/** One free-text field of a Terms & Conditions column. */
+/** One field of a Terms & Conditions column: free text, or a pick from options/master-data. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import type {
   TermsFieldConfig,
@@ -93,6 +94,7 @@ export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFi
     <div className="field-group" data-field={field.dataField} style={{display: 'flex', flexDirection: 'column', width: '100%'}}>
       <label className="field-label" style={LABEL_STYLE}>
         {field.label}
+        <RequiredStar field={field.dataField} section="Financing Proposal" />
       </label>
       {field.options ? (
         <select

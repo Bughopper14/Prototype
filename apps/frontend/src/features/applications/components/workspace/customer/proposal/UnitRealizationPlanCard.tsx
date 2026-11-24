@@ -1,4 +1,5 @@
 /** Sub-section 3 of the financing proposal: units to be realized by brand and equipment type. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {FileSpreadsheet} from 'lucide-react';
 
@@ -127,6 +128,7 @@ export function UnitRealizationPlanCard() {
                     Liugong
                   </td>
                   <td style={{padding: '4px'}} data-field="propAssetLgHe">
+                    <RequiredStar field="propAssetLgHe" section="Financing Proposal" />
                     <input
                       type="number"
                       min="0"
@@ -147,6 +149,7 @@ export function UnitRealizationPlanCard() {
                     />
                   </td>
                   <td style={{padding: '4px'}} data-field="propAssetLgTruck">
+                    <RequiredStar field="propAssetLgTruck" section="Financing Proposal" />
                     <input
                       type="number"
                       min="0"
@@ -196,6 +199,7 @@ export function UnitRealizationPlanCard() {
                     Non Liugong
                   </td>
                   <td style={{padding: '4px'}} data-field="propAssetNlgHe">
+                    <RequiredStar field="propAssetNlgHe" section="Financing Proposal" />
                     <input
                       type="number"
                       min="0"
@@ -216,6 +220,7 @@ export function UnitRealizationPlanCard() {
                     />
                   </td>
                   <td style={{padding: '4px'}} data-field="propAssetNlgTruck">
+                    <RequiredStar field="propAssetNlgTruck" section="Financing Proposal" />
                     <input
                       type="number"
                       min="0"

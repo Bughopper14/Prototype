@@ -376,7 +376,7 @@ CREATE TABLE IF NOT EXISTS `crm_fap_document_ocr_comparisons` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `document_file_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `comparison_status` enum('PENDING','MATCHED','HAS_DIFFERENCES','APPROVED','DISMISSED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING',
+  `comparison_status` enum('PENDING','MATCHED','HAS_DIFFERENCES','APPROVED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PENDING',
   `has_differences` tinyint(1) NOT NULL DEFAULT '0',
   `remarks` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `reviewed_by` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,

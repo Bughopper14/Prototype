@@ -100,6 +100,8 @@ export class ApplicationProfileRepository {
     values.district_id = location.district;
     values.village_id = location.village;
     values.postal_code_id = await this.ids.postalCodeId(values.city_id, pic.postalCode, conn);
+    // the contact's address column holds the full address (the form shows its street part)
+    values.current_address = await this.ids.fullAddress(values.current_address, {rt: values.rt, rw: values.rw, villageId: values.village_id, districtId: values.district_id, cityId: values.city_id, provinceId: values.province_id, postalCode: pic.postalCode}, conn);
     const [rows] = await conn.execute<any[]>(
       `SELECT id FROM ${CRM.fapPrimaryContacts} WHERE application_id=? FOR UPDATE`,
       [applicationId],

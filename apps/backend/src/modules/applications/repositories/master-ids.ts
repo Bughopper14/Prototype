@@ -1,4 +1,5 @@
 import {Injectable} from '@nestjs/common';
+import {extractStreetAddress} from '@liugong/shared';
 import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';
@@ -147,6 +148,29 @@ export class MasterIdLookup {
       parent = out[key];
     }
     return {...out, unresolved};
+  }
+
+  /**
+   * The address column holds the FULL address: the street as it was typed, then RT/RW, the village, the city, the province and the postal code (the district is
+   * left out). Whatever arrives (the street alone, or an address that already carries the regions) is first brought back to its street, so the regions are never
+   * written twice. The screens show the street only again (extractStreetAddress). Nothing is composed for an empty street.
+   */
+  async fullAddress(
+    raw: unknown,
+    parts: {rt?: unknown; rw?: unknown; villageId?: string | null; districtId?: string | null; cityId?: string | null; provinceId?: string | null; postalCode?: unknown},
+    db: Db = this.db.pool,
+  ): Promise<string | null> {
+    const text = String(raw ?? '').trim();
+    if (!text) return null;
+    const nameOf = async (table: string, id?: string | null) => (id ? String((await db.query<any[]>(`SELECT name FROM ${table} WHERE id=?`, [id]))[0][0]?.name ?? '') : '');
+    const village = await nameOf(CRM.masterVillages, parts.villageId);
+    const district = await nameOf(CRM.masterDistricts, parts.districtId);
+    const city = await nameOf(CRM.masterCities, parts.cityId);
+    const province = await nameOf(CRM.masterProvinces, parts.provinceId);
+    const street = extractStreetAddress(text, {village, district, cityRegency: city, province}) || text;
+    const rt = String(parts.rt ?? '').trim();
+    const rw = String(parts.rw ?? '').trim();
+    return [street, rt && rw ? `RT/RW ${rt}/${rw}` : '', village ? `Kel. ${village}` : '', city, province, String(parts.postalCode ?? '').trim()].filter(Boolean).join(', ');
   }
 
   /** The country of a province (profiles store country_id next to the province). */

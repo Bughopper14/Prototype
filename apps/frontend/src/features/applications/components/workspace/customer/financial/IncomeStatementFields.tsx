@@ -1,4 +1,5 @@
 /** Income statement (Laba Rugi) inputs of the active year. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 
 export function IncomeStatementFields({
   canFinance,
@@ -53,6 +54,7 @@ export function IncomeStatementFields({
               }}
             >
               {item.label}
+              <RequiredStar field={item.key} section="Financial Statements" />
             </label>
             <input
               type="number"

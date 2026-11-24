@@ -240,9 +240,11 @@ export class ApplicationsService {
       if (!wanted.length) return {...d, approval: null};
       const round = approval.current.find(c => c.scope === 'DOCUMENT' && c.checklistId === d.id);
       const shownStatus = (x?: {status: string; reopened: boolean}) => (!x ? 'NOT_REQUESTED' : x.reopened ? 'REOPENED' : x.status);
-      const state = !round ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' && !x.reopened) ? 'REJECTED' : round.steps.some(x => x.reopened) ? 'REOPENED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
-      const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: shownStatus(round?.steps.find(x => x.code === t.code))}));
-      return {...d, approval: {steps, state, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED' || state === 'REOPENED')}};
+      // The checklist document is one bundle: a file added after its approval makes it UPLOADED again, and the finished round no longer counts (it needs approval again).
+      const again = !!round && d.status !== 'VERIFIED' && round.steps.every(x => x.status === 'APPROVED');
+      const state = !round || again ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' && !x.reopened) ? 'REJECTED' : round.steps.some(x => x.reopened) ? 'REOPENED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
+      const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: shownStatus(again ? undefined : round?.steps.find(x => x.code === t.code))}));
+      return {...d, approval: {steps, state, again, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED' || state === 'REOPENED')}};
     });
     const view = this.viewStage(cfg, progress);
     const customer: Record<string, any> = {...(saved?.customer || {}), id: app.business_partner_id};

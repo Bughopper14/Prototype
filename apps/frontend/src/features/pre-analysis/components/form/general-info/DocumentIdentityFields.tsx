@@ -4,7 +4,7 @@ import {INPUT_BASE_WHITE, LABEL_BLOCK} from '@/features/pre-analysis/components/
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 
 export function DocumentIdentityFields() {
-  const {data, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     <>
       <TextField
@@ -46,7 +46,7 @@ export function DocumentIdentityFields() {
             marginBottom: '4px',
           }}
         >
-          FAP No
+          FAP No{reqMark('fapNumber', 'General Information')}
         </label>
         <input
           type="text"

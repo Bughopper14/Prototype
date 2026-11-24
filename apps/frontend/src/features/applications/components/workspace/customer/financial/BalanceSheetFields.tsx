@@ -1,4 +1,5 @@
 /** Balance sheet (Neraca) inputs of the active year. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 
 export function BalanceSheetFields({
   canFinance,
@@ -56,6 +57,7 @@ export function BalanceSheetFields({
               }}
             >
               {item.label}
+              <RequiredStar field={item.key} section="Financial Statements" />
             </label>
             <input
               type="number"
