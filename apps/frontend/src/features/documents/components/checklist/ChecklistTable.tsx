@@ -1,7 +1,8 @@
-/** The checklist table with its rows and the empty state. */
+/** The checklist table with its rows, stage headers and approval audit modal. */
 import {AlertCircle, ChevronDown, ChevronRight} from 'lucide-react';
+import {useState} from 'react';
 import {ChecklistRowItem} from '@/features/documents/components/checklist/ChecklistRowItem';
-import {StageBadge} from '@/features/documents/components/checklist/StageBadge';
+import {DocumentApprovalModal} from '@/features/documents/components/checklist/DocumentApprovalModal';
 import {groupRowsByStage} from '@/features/documents/lib/checklist/group-rows';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
@@ -32,6 +33,8 @@ export function ChecklistTable({
 }) {
   const columns = 5;
   const groups = grouped ? groupRowsByStage(rows) : [];
+  const [selectedApprovalRow, setSelectedApprovalRow] = useState<ChecklistRow | null>(null);
+
   const renderRow = (row: ChecklistRow, idx: number) => (
     <ChecklistRowItem
       key={row.chkId || `${row.stage}_${row.code}_${idx}`}
@@ -45,63 +48,89 @@ export function ChecklistTable({
       onDelete={onDelete}
       onRequestApproval={onRequestApproval}
       approvalBusy={approvalBusy}
+      onOpenApprovalModal={setSelectedApprovalRow}
     />
   );
   let counter = 0;
 
   return (
-    <div className="table-scroll doc-table-wrapper">
-      <table className="data-table doc-checklist-table">
-        <thead>
-          <tr>
-            <th className="col-no" style={{width: '40px', minWidth: '40px', textAlign: 'center'}}>NO</th>
-            <th className="col-doc" style={{width: '26%', minWidth: '200px'}}>REQUIRED DOCUMENT</th>
-            <th className="col-status" style={{width: '22%', minWidth: '180px'}}>STATUS & APPROVAL</th>
-            <th className="col-source" style={{width: '36%', minWidth: '220px'}}>FILE & SOURCE</th>
-            <th className="col-actions" style={{width: '160px', minWidth: '160px', textAlign: 'center'}}>ACTIONS</th>
-          </tr>
-        </thead>
-        <tbody>
-          {grouped
-            ? groups.map(g => {
-                const open = !collapsedStages.has(g.code);
-                const start = counter;
-                counter += g.rows.length;
-                return [
-                  <tr key={`g-${g.code}`} className="doc-group-row">
-                    <td colSpan={columns}>
-                      <button
-                        type="button"
-                        className="doc-group-toggle"
-                        aria-expanded={open}
-                        onClick={() => onToggleStage(g.code)}
-                      >
-                        {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                        <StageBadge code={g.code} name={g.name} />
-                        <span className="doc-group-meta">
-                          {g.rows.length} documents · {g.availableCount} fulfilled
-                        </span>
-                      </button>
-                    </td>
-                  </tr>,
-                  ...(open ? g.rows.map((row, i) => renderRow(row, start + i)) : []),
-                ];
-              })
-            : rows.map((row, idx) => renderRow(row, idx))}
-
-          {!rows.length && (
+    <>
+      <div className="table-scroll doc-table-wrapper">
+        <table className="data-table doc-checklist-table doc-table">
+          <thead>
             <tr>
-              <td colSpan={columns} style={{textAlign: 'center', padding: '40px 20px'}}>
-                <AlertCircle size={28} style={{color: '#94a3b8', margin: '0 auto 8px'}} />
-                <p style={{fontWeight: 600, color: '#475569'}}>
-                  No documents match the current filter or search criteria
-                </p>
-                <small className="muted">Try changing your search keywords or resetting the filters.</small>
-              </td>
+              <th className="col-no" style={{width: '40px', minWidth: '40px', textAlign: 'center'}}>
+                NO
+              </th>
+              <th className="col-doc" style={{width: '26%', minWidth: '200px'}}>
+                REQUIRED DOCUMENT
+              </th>
+              <th className="col-status" style={{width: '24%', minWidth: '200px'}}>
+                STATUS &amp; APPROVAL
+              </th>
+              <th className="col-source" style={{width: '34%', minWidth: '220px'}}>
+                FILE &amp; SOURCE
+              </th>
+              <th className="col-actions" style={{width: '160px', minWidth: '160px', textAlign: 'center'}}>
+                ACTIONS
+              </th>
             </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {grouped
+              ? groups.map(g => {
+                  const open = !collapsedStages.has(g.code);
+                  const start = counter;
+                  counter += g.rows.length;
+                  return [
+                    <tr key={`g-${g.code}`} className="doc-group-row">
+                      <td colSpan={columns}>
+                        <button
+                          type="button"
+                          className="doc-group-toggle"
+                          aria-expanded={open}
+                          onClick={() => onToggleStage(g.code)}
+                        >
+                          <span style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}>
+                            {open ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                            <span style={{fontSize: '11px'}}>🔵</span>
+                            <strong>{g.name || g.code}</strong>
+                            <span style={{color: '#94a3b8', margin: '0 2px'}}>·</span>
+                            <span className="doc-group-meta">
+                              {g.rows.length} documents · {g.availableCount} fulfilled
+                            </span>
+                          </span>
+                        </button>
+                      </td>
+                    </tr>,
+                    ...(open ? g.rows.map((row, i) => renderRow(row, start + i)) : []),
+                  ];
+                })
+              : rows.map((row, idx) => renderRow(row, idx))}
+
+            {!rows.length && (
+              <tr>
+                <td colSpan={columns} style={{textAlign: 'center', padding: '40px 20px'}}>
+                  <AlertCircle size={28} style={{color: '#94a3b8', margin: '0 auto 8px'}} />
+                  <p style={{fontWeight: 600, color: '#475569'}}>
+                    No documents match the current filter or search criteria
+                  </p>
+                  <small className="muted">Try changing your search keywords or resetting the filters.</small>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Approval Audit Stepper Modal */}
+      <DocumentApprovalModal
+        row={selectedApprovalRow}
+        isOpen={!!selectedApprovalRow}
+        onClose={() => setSelectedApprovalRow(null)}
+        onRequestApproval={onRequestApproval}
+        approvalBusy={approvalBusy}
+      />
+    </>
   );
 }

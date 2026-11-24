@@ -899,3 +899,522 @@
     width: 100%;
   }
 }
+
+
+/* ========================================================
+   SPATIAL MICRO-STEPPER & APPROVAL WORKFLOW UPGRADES
+   ======================================================== */
+
+.badge-doc-count {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Metadata badges in required document cell */
+.doc-meta-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.doc-code-badge {
+  width: 54px;
+  min-width: 54px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+}
+.doc-meta-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.doc-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.meta-tags-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.tag-mandatory {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.tag-optional {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.tag-bp {
+  background: #e0ecff;
+  color: #1e40af;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.doc-desc {
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* Pills for Status */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.status-pill.pill-missing {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.status-pill.pill-available {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+/* Spatial Micro-Stepper Card */
+.new-approval-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  position: relative;
+  text-align: left;
+}
+.new-approval-card:hover {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.12);
+  transform: translateY(-1px);
+}
+.new-approval-card.not-requested:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  box-shadow: none;
+  transform: none;
+}
+
+.card-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.approval-stage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.badge-level2 {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+.badge-approved-all {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+.badge-needs {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.ratio-indicator {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+/* Light Theme Micro Stepper */
+.micro-stepper-track {
+  display: flex;
+  align-items: center;
+  position: relative;
+  margin: 4px 0;
+  padding: 4px 2px;
+}
+.track-line-bg {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 50%;
+  height: 2.5px;
+  background: #e2e8f0;
+  transform: translateY(-50%);
+  z-index: 1;
+}
+.track-line-fill {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  height: 2.5px;
+  background: #10b981;
+  transform: translateY(-50%);
+  z-index: 2;
+  transition: width 0.35s ease;
+}
+.stepper-nodes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  position: relative;
+  z-index: 3;
+}
+.step-dot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.step-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+.step-dot-wrap.done .step-circle {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+.step-dot-wrap.active .step-circle {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+.step-dot-wrap.rejected .step-circle {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+.step-lbl {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: #64748b;
+}
+.step-dot-wrap.active .step-lbl {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.btn-view-pipeline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #2563eb;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 5px 8px;
+  margin-top: 2px;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  width: 100%;
+}
+.btn-view-pipeline:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+/* Actions Column Buttons */
+.btn-action-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 6px;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-action-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.btn-outline:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+/* Modal Dialog (Light Theme matching mockup) */
+.doc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.doc-modal-dialog {
+  background: #ffffff;
+  border-radius: 14px;
+  width: 620px;
+  max-width: 95vw;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  animation: modalSlideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalSlideIn {
+  from { transform: translateY(12px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.doc-dialog-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+}
+.doc-dialog-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.doc-dialog-close {
+  background: transparent;
+  border: 0;
+  font-size: 18px;
+  color: #64748b;
+  cursor: pointer;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.doc-dialog-close:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.doc-dialog-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 68vh;
+  overflow-y: auto;
+}
+.doc-workflow-info-banner {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 12px;
+  color: #1e40af;
+  line-height: 1.5;
+}
+.doc-vertical-stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+}
+.doc-vertical-stepper::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: #e2e8f0;
+}
+.doc-v-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+}
+.doc-v-step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid #cbd5e1;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  flex-shrink: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.doc-v-step-row.done .doc-v-step-circle {
+  background: #10b981;
+  border-color: #10b981;
+  color: #ffffff;
+}
+.doc-v-step-row.active .doc-v-step-circle {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.doc-v-step-row.rejected .doc-v-step-circle {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+.doc-v-step-content {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.doc-v-step-row.active .doc-v-step-content {
+  border-color: #93c5fd;
+  background: #fbfdff;
+}
+.doc-v-top-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.doc-v-role-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.doc-v-pill-status {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.doc-v-pill-status.pill-approved {
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+.doc-v-pill-status.pill-review {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+.doc-v-pill-status.pill-rejected {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.doc-v-pill-status.pill-waiting {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+.doc-v-user-meta {
+  font-size: 11.5px;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.doc-v-remarks-quote {
+  font-size: 12px;
+  color: #334155;
+  background: #f8fafc;
+  border-left: 3px solid #2563eb;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-top: 4px;
+  font-style: italic;
+}
+.doc-dialog-footer {
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

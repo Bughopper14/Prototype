@@ -42,7 +42,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           <div>
             <h2>
               Document Checklist Matrix
-              <span className="count-pill" style={{marginLeft: 8}}>
+              <span className="badge-doc-count" style={{marginLeft: 8}}>
                 {c.filteredRows.length} Documents
               </span>
             </h2>
