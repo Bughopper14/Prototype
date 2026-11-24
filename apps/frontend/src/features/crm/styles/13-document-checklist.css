@@ -10,8 +10,8 @@
   /* Full width like the other tabs (Activity, Documents): the older rule capped it at 1300px and centered it. */
   width: 100%;
   max-width: none;
-  margin: 0;
-  padding: 20px 0 0;
+  margin: -10px 0 0;
+  padding: 0;
 }
 
 /* ---- Metric cards ---- */
