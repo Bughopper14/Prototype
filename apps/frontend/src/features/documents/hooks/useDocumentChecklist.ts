@@ -65,25 +65,42 @@ export function useDocumentChecklist({
   // the departments the documents of this application have: the only ones the filter offers
   const departments = useMemo(() => [...new Set(checklistRows.map(r => r.department).filter(Boolean))].sort(), [checklistRows]);
 
+  const isDocMissing = (r: ChecklistRow) => !r.isAvailable || r.files.length === 0;
+
+  const isDocActionRequired = (r: ChecklistRow) => {
+    // Only documents with an uploaded file can require an action; unuploaded docs belong to Missing Files
+    if (isDocMissing(r)) return false;
+    const app = r.check?.approval;
+    if (!app) return false;
+    return (
+      app.state === 'NOT_REQUESTED' ||
+      app.state === 'REJECTED' ||
+      app.state === 'REOPENED' ||
+      !!app.canAct
+    );
+  };
+
+  const isDocInReview = (r: ChecklistRow) => {
+    if (isDocMissing(r)) return false;
+    const app = r.check?.approval;
+    return (
+      app?.state === 'PENDING' ||
+      (r.status === 'UPLOADED' && app?.state !== 'APPROVED' && !isDocActionRequired(r))
+    );
+  };
+
+  const isDocApproved = (r: ChecklistRow) => {
+    if (isDocMissing(r)) return false;
+    return r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED';
+  };
+
   const pillCounts = useMemo(() => {
     return {
       all: checklistRows.length,
-      actionRequired: checklistRows.filter(
-        r =>
-          (r.isMandatory && !r.isAvailable) ||
-          r.check?.approval?.state === 'REJECTED' ||
-          r.check?.approval?.state === 'REOPENED' ||
-          (r.isAvailable && (!r.check?.approval || r.check?.approval?.state === 'NOT_REQUESTED')),
-      ).length,
-      inReview: checklistRows.filter(
-        r =>
-          r.check?.approval?.state === 'PENDING' ||
-          (r.status === 'UPLOADED' && r.check?.approval?.state !== 'APPROVED'),
-      ).length,
-      approved: checklistRows.filter(
-        r => r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED',
-      ).length,
-      missing: checklistRows.filter(r => !r.isAvailable || r.files.length === 0).length,
+      actionRequired: checklistRows.filter(isDocActionRequired).length,
+      inReview: checklistRows.filter(isDocInReview).length,
+      approved: checklistRows.filter(isDocApproved).length,
+      missing: checklistRows.filter(isDocMissing).length,
     };
   }, [checklistRows]);
 
@@ -91,25 +108,13 @@ export function useDocumentChecklist({
     let list = checklistRows;
 
     if (quickFilter === 'ACTION_REQUIRED') {
-      list = list.filter(
-        r =>
-          (r.isMandatory && !r.isAvailable) ||
-          r.check?.approval?.state === 'REJECTED' ||
-          r.check?.approval?.state === 'REOPENED' ||
-          (r.isAvailable && (!r.check?.approval || r.check?.approval?.state === 'NOT_REQUESTED')),
-      );
+      list = list.filter(isDocActionRequired);
     } else if (quickFilter === 'IN_REVIEW') {
-      list = list.filter(
-        r =>
-          r.check?.approval?.state === 'PENDING' ||
-          (r.status === 'UPLOADED' && r.check?.approval?.state !== 'APPROVED'),
-      );
+      list = list.filter(isDocInReview);
     } else if (quickFilter === 'APPROVED') {
-      list = list.filter(
-        r => r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED',
-      );
+      list = list.filter(isDocApproved);
     } else if (quickFilter === 'MISSING') {
-      list = list.filter(r => !r.isAvailable || r.files.length === 0);
+      list = list.filter(isDocMissing);
     }
 
     return filterRows(list, searchTerm, selectedDept, selectedStatus, selectedStage);
