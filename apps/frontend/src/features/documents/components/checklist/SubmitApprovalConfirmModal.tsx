@@ -36,7 +36,7 @@ export function SubmitApprovalConfirmModal({
           className="doc-confirm-close"
           onClick={!busy ? onClose : undefined}
           disabled={busy}
-          aria-label="Tutup"
+          aria-label="Close"
         >
           <X size={16} />
         </button>
@@ -50,7 +50,7 @@ export function SubmitApprovalConfirmModal({
           <h3 className="doc-confirm-title">Submit for Approval?</h3>
 
           <p className="doc-confirm-desc">
-            Apakah Anda yakin ingin mengajukan dokumen ini untuk persetujuan (approval)?
+            Are you sure you want to submit this document for approval?
           </p>
 
           {/* Document Summary Card */}
@@ -60,10 +60,10 @@ export function SubmitApprovalConfirmModal({
               <strong className="doc-confirm-name">{row.name}</strong>
             </div>
             <div className="doc-confirm-item-sub">
-              <span>Tahap: <strong>{row.stageName || row.stage}</strong></span>
+              <span>Stage: <strong>{row.stageName || row.stage}</strong></span>
               <span>·</span>
               <span className="text-success" style={{display: 'inline-flex', alignItems: 'center', gap: '3px'}}>
-                <FileCheck size={12} /> {row.files?.length || 1} berkas terlampir
+                <FileCheck size={12} /> {row.files?.length || 1} file(s) attached
               </span>
             </div>
           </div>
@@ -71,7 +71,7 @@ export function SubmitApprovalConfirmModal({
           <p className="doc-confirm-note">
             <ShieldCheck size={13} style={{flexShrink: 0, marginTop: '2px'}} />
             <span>
-              Setelah disubmit, alur persetujuan bertingkat akan dimulai dan dokumen akan diperiksa oleh approver yang berwenang.
+              Once submitted, the multi-level approval workflow will begin and the document will be reviewed by designated authorities.
             </span>
           </p>
 
@@ -83,7 +83,7 @@ export function SubmitApprovalConfirmModal({
               disabled={busy}
               onClick={onClose}
             >
-              Batal (No)
+              Cancel (No)
             </button>
             <button
               type="button"
@@ -94,12 +94,12 @@ export function SubmitApprovalConfirmModal({
               {busy ? (
                 <>
                   <Loader2 size={14} className="spin" />
-                  <span>Mengirimkan...</span>
+                  <span>Submitting...</span>
                 </>
               ) : (
                 <>
                   <Send size={14} />
-                  <span>Ya, Submit (Yes)</span>
+                  <span>Yes, Submit</span>
                 </>
               )}
             </button>

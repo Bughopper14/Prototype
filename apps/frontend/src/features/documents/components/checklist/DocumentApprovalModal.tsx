@@ -41,9 +41,9 @@ export function DocumentApprovalModal({
         <div className="doc-dialog-header">
           <div className="doc-dialog-title">
             <ShieldCheck size={18} className="text-blue" />
-            <span>Alur Persetujuan: {row.name}</span>
+            <span>Approval Flow: {row.name}</span>
           </div>
-          <button type="button" className="doc-dialog-close" onClick={onClose} aria-label="Tutup">
+          <button type="button" className="doc-dialog-close" onClick={onClose} aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -51,8 +51,8 @@ export function DocumentApprovalModal({
         {/* Body */}
         <div className="doc-dialog-body">
           <div className="doc-workflow-info-banner">
-            <strong>Aturan Persetujuan Berjenjang:</strong> Dokumen ini wajib melalui verifikasi dan persetujuan
-            berurutan sesuai tingkatan wewenang yang ditetapkan dalam workflow sebelum pengajuan dapat diselesaikan.
+            <strong>Multi-Level Approval Rules:</strong> This document requires sequential verification and approval
+            based on authority levels defined in the workflow before the application can proceed.
           </div>
 
           {/* Vertical Stepper Audit Trail */}
@@ -83,13 +83,13 @@ export function DocumentApprovalModal({
                           Level {levelNum}: {st.authority || st.authorityName || st.name || 'Approver'}
                         </span>
                         {isApproved ? (
-                          <span className="doc-v-pill-status pill-approved">DISETUJUI</span>
+                          <span className="doc-v-pill-status pill-approved">APPROVED</span>
                         ) : isPending ? (
-                          <span className="doc-v-pill-status pill-review">SEDANG DITINJAU</span>
+                          <span className="doc-v-pill-status pill-review">IN REVIEW</span>
                         ) : isStepRejected ? (
-                          <span className="doc-v-pill-status pill-rejected">DITOLAK / REVISI</span>
+                          <span className="doc-v-pill-status pill-rejected">REJECTED / REVISION</span>
                         ) : (
-                          <span className="doc-v-pill-status pill-waiting">MENUNGGU GILIRAN</span>
+                          <span className="doc-v-pill-status pill-waiting">WAITING FOR TURN</span>
                         )}
                       </div>
 
@@ -99,7 +99,7 @@ export function DocumentApprovalModal({
                             <span>👤 {lastDecision.by || 'Approver'}</span>
                             {lastDecision.decidedAt && (
                               <span style={{fontFamily: 'JetBrains Mono, monospace', fontSize: '11px'}}>
-                                📅 {new Date(lastDecision.decidedAt).toLocaleString('id-ID', {
+                                📅 {new Date(lastDecision.decidedAt).toLocaleString('en-US', {
                                   dateStyle: 'medium',
                                   timeStyle: 'short',
                                 })}
@@ -108,11 +108,15 @@ export function DocumentApprovalModal({
                           </>
                         ) : isPending ? (
                           <span style={{color: '#d97706', fontWeight: 600}}>
-                            ⏳ Menunggu tindakan persetujuan dari tim terkait
+                            ⏳ Awaiting approval action from the designated authority
+                          </span>
+                        ) : levelNum > 1 ? (
+                          <span style={{color: '#94a3b8'}}>
+                            Waiting for Level {levelNum - 1} approval
                           </span>
                         ) : (
                           <span style={{color: '#94a3b8'}}>
-                            Menunggu persetujuan Level {Math.max(1, levelNum - 1)} selesai
+                            Waiting for document submission
                           </span>
                         )}
                       </div>
@@ -129,7 +133,7 @@ export function DocumentApprovalModal({
             ) : (
               <div style={{textAlign: 'center', padding: '24px 16px', color: '#64748b'}}>
                 <Clock size={24} style={{margin: '0 auto 8px', color: '#94a3b8'}} />
-                <p>Belum ada tahapan persetujuan yang dikonfigurasi untuk dokumen ini.</p>
+                <p>No approval stages have been configured for this document.</p>
               </div>
             )}
           </div>
@@ -138,7 +142,7 @@ export function DocumentApprovalModal({
         {/* Footer */}
         <div className="doc-dialog-footer">
           <span style={{fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px'}}>
-            <Lock size={12} /> Seluruh riwayat persetujuan tercatat di audit log.
+            <Lock size={12} /> Complete approval history is recorded in the audit log.
           </span>
 
           <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
@@ -156,7 +160,7 @@ export function DocumentApprovalModal({
                   fontWeight: 600,
                 }}
                 disabled={!row.isAvailable || approvalBusy === row.chkId}
-                title={!row.isAvailable ? 'Upload berkas terlebih dahulu' : 'Submit for Approval'}
+                title={!row.isAvailable ? 'Upload document file before submitting' : 'Submit for Approval'}
                 onClick={() => {
                   onClose();
                   onConfirmSubmit(row);
@@ -168,7 +172,7 @@ export function DocumentApprovalModal({
             )}
 
             <button type="button" className="button" style={{height: '34px', padding: '0 16px'}} onClick={onClose}>
-              Tutup
+              Close
             </button>
           </div>
         </div>

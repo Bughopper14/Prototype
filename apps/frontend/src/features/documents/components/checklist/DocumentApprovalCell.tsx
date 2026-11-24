@@ -76,13 +76,13 @@ export function DocumentApprovalCell({
           <span className={`approval-stage-badge ${isRejected ? 'badge-danger' : 'badge-needs'}`}>
             <ShieldCheck size={11} />{' '}
             {isRejected
-              ? 'Perlu Revisi Dokumen'
+              ? 'Needs Revision'
               : approval.again
               ? 'Needs approval again'
               : 'Needs approval'}
           </span>
           {totalSteps > 0 && (
-            <span className="ratio-indicator">0 / {totalSteps} Selesai</span>
+            <span className="ratio-indicator">0 / {totalSteps} Completed</span>
           )}
         </div>
 
@@ -90,7 +90,7 @@ export function DocumentApprovalCell({
           <div
             className="micro-stepper-track"
             onClick={() => onOpenModal(row)}
-            title="Klik untuk melihat alur persetujuan"
+            title="Click to view approval flow"
             style={{cursor: 'pointer'}}
           >
             <div className="track-line-bg" />
@@ -116,8 +116,8 @@ export function DocumentApprovalCell({
           disabled={!row.isAvailable || approvalBusy === row.chkId}
           title={
             !row.isAvailable
-              ? 'Upload file dokumen terlebih dahulu sebelum submit'
-              : 'Submit dokumen ini untuk persetujuan'
+              ? 'Upload document file before submitting'
+              : 'Submit this document for approval'
           }
           onClick={e => {
             e.stopPropagation();
@@ -134,7 +134,7 @@ export function DocumentApprovalCell({
           style={{marginTop: '2px'}}
           onClick={() => onOpenModal(row)}
         >
-          Lihat Alur Persetujuan &gt;
+          View Approval Flow &gt;
         </button>
       </div>
     );
@@ -150,7 +150,7 @@ export function DocumentApprovalCell({
           : {marginTop: '6px'}
       }
       onClick={() => onOpenModal(row)}
-      title="Klik untuk membuka riwayat persetujuan lengkap"
+      title="Click to view full approval audit trail"
     >
       <div className="card-status-bar">
         {isAllApproved ? (
@@ -168,8 +168,8 @@ export function DocumentApprovalCell({
           style={isAllApproved ? {color: '#047857'} : undefined}
         >
           {isAllApproved
-            ? `${totalSteps} / ${totalSteps} Lengkap`
-            : `${approvedSteps} / ${totalSteps || 1} Selesai`}
+            ? `${totalSteps} / ${totalSteps} Completed`
+            : `${approvedSteps} / ${totalSteps || 1} Completed`}
         </span>
       </div>
 
@@ -219,8 +219,8 @@ export function DocumentApprovalCell({
         }
       >
         {isAllApproved
-          ? '🔍 Lihat Sertifikat Approval >'
-          : '🔍 Lihat Alur Persetujuan >'}
+          ? '🔍 View Approval Certificate >'
+          : '🔍 View Approval Flow >'}
       </button>
     </div>
   );
