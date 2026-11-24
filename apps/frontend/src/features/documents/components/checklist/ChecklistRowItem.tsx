@@ -33,7 +33,7 @@ export function ChecklistRowItem({
     <tr className={`doc-checklist-row ${row.isAvailable ? 'row-available' : 'row-pending'}`}>
       <td style={{textAlign: 'center', fontWeight: 600, color: '#64748b'}}>{index + 1}</td>
       {/* Dokumen Info & Metadata */}
-      <td>
+      <td className="col-doc">
         <div className="doc-meta-cell">
           <div className={`doc-code-badge badge-${(row.department || '').toLowerCase()}`}>{row.code}</div>
           <div className="doc-meta-content">
@@ -57,7 +57,7 @@ export function ChecklistRowItem({
       </td>
 
       {/* Status Kelengkapan & Approval */}
-      <td>
+      <td className="col-status">
         <div className="doc-status-approval-cell">
           <div className="doc-status-row">
             {row.isAvailable ? (

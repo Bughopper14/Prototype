@@ -227,7 +227,7 @@ export function parseNibText(text: string, catalog?: MasterCatalog): ParsedNibDa
   }
 
   if (result.province) result.province = normalizeWilayahInput(result.province);
-  if (result.city) result.city = normalizeWilayahInput(result.city);
+  if (result.city) result.city = result.city.trim();
   if (result.district) result.district = normalizeWilayahInput(result.district);
   if (result.village) result.village = normalizeWilayahInput(result.village);
 

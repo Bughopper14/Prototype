@@ -87,7 +87,7 @@ apps/backend/db/FAP_Stage_Database_Design.xlsx
 apps/backend/db/approval-authority-added.xlsx
 ~$*.xlsx
 
-# Design mockups
+# Design mockups & planning artifacts (never push to repo)
 mockup/
 mockups/
 *mockup*

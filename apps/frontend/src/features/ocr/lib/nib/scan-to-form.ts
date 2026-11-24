@@ -75,7 +75,7 @@ export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData
   // Directly parse all address components (street address, RT/RW, kelurahan, kecamatan, kota, provinsi, kode pos) from the full address
   const parsed = parseAllAddressFields(rawAddress, master);
   let newProvince = normalizeWilayahInput(parsed.province || d.provinsi || d.province || '');
-  let newCity = normalizeWilayahInput(parsed.city || d.kota || d.city || d.cityRegency || '');
+  let newCity = (parsed.city || d.kota || d.city || d.cityRegency || '').trim();
   let newDistrict = normalizeWilayahInput(parsed.district || d.kecamatan || d.district || '');
   let newVillage = normalizeWilayahInput(parsed.village || d.kel_desa || d.village || d.kelurahan || '');
   let newPostal = (parsed.postalCode || d.kode_pos || d.postalCode || '').replace(/\D/g, '').slice(0, 5);

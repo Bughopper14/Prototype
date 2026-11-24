@@ -1,5 +1,5 @@
 /** Pulls province / city / district / village out of the NIB address text. */
-import {cleanWilayahStr, matchWilayahName, normalizeWilayahInput} from '@/shared/master-data';
+import {cleanWilayahStr, getUnifiedParentIds, matchWilayahName, normalizeWilayahInput, stripWilayahPrefix} from '@/shared/master-data';
 import {emptyMasterCatalog, type MasterCatalog} from '@liugong/shared';
 
 export function extractWilayahFromAddressAndText(rawText: string, alamat: string, catalog?: MasterCatalog) {
@@ -103,13 +103,13 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
   if (result.city) {
     const cFound = cList.find(c => matchWilayahName(c.name, result.city!));
     if (cFound) {
-      result.city = normalizeWilayahInput(cFound.name);
+      result.city = cFound.name;
     }
   } else {
     for (const part of [...parts].reverse()) {
       const match = cList.find(c => matchWilayahName(c.name, part));
       if (match) {
-        result.city = normalizeWilayahInput(match.name);
+        result.city = match.name;
         break;
       }
     }
@@ -167,7 +167,7 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
                 matchWilayahName(c.name, dByZip.parentValue!),
             );
             if (cByZip) {
-              result.city = normalizeWilayahInput(cByZip.name);
+              result.city = cByZip.name;
               if (!result.province && cByZip.parentValue) {
                 const pByZip = pList.find(
                   p =>
@@ -196,11 +196,86 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
     }
   }
 
-  // 11. The places must belong to each other: a city of the province, a district of the city, a village of the district.
-  // A place that does not fit is left empty (better empty than a district of another province).
+  // 11. Smart Disambiguation & Adjustment between Kabupaten and Kota:
+  // OCR, system documents, and user input often write "Kabupaten/Kota" or mistakenly write "Kabupaten" instead of "Kota" (or vice versa).
+  // Disambiguate by checking which entity actually owns the detected district or village.
+  const pItem = result.province ? pList.find(p => matchWilayahName(p.name, result.province!)) : undefined;
+
+  let candidateCities: typeof cList = [];
+  if (result.city) {
+    const coreTargetCity = cleanWilayahStr(stripWilayahPrefix(result.city));
+    candidateCities = cList.filter(c => {
+      if (pItem && c.parentValue !== pItem.value) return false;
+      return matchWilayahName(c.name, result.city!) || cleanWilayahStr(stripWilayahPrefix(c.name)) === coreTargetCity;
+    });
+  }
+
+  if (result.district) {
+    const distMatches = dList.filter(d => matchWilayahName(d.name, result.district!));
+    let matchedDist = candidateCities.length > 0
+      ? distMatches.find(d => candidateCities.some(c => c.value === d.parentValue))
+      : undefined;
+
+    if (!matchedDist && pItem) {
+      matchedDist = distMatches.find(d => {
+        const c = cList.find(city => city.value === d.parentValue);
+        return c && c.parentValue === pItem.value;
+      });
+    }
+    if (!matchedDist) matchedDist = distMatches[0];
+
+    if (matchedDist) {
+      const owningCity = cList.find(c => c.value === matchedDist.parentValue);
+      if (owningCity) {
+        result.city = owningCity.name;
+        result.district = normalizeWilayahInput(matchedDist.name);
+        if (!result.province && owningCity.parentValue) {
+          const owningProv = pList.find(p => p.value === owningCity.parentValue);
+          if (owningProv) result.province = normalizeWilayahInput(owningProv.name);
+        }
+      }
+    }
+  } else if (result.village) {
+    const villMatches = vList.filter(v => matchWilayahName(v.name, result.village!));
+    let matchedVill = candidateCities.length > 0
+      ? villMatches.find(v => {
+          const d = dList.find(dist => dist.value === v.parentValue);
+          return d && candidateCities.some(c => c.value === d.parentValue);
+        })
+      : undefined;
+
+    if (!matchedVill) matchedVill = villMatches[0];
+
+    if (matchedVill) {
+      const owningDist = dList.find(d => d.value === matchedVill.parentValue);
+      if (owningDist) {
+        result.district = normalizeWilayahInput(owningDist.name);
+        const owningCity = cList.find(c => c.value === owningDist.parentValue);
+        if (owningCity) {
+          result.city = owningCity.name;
+          if (!result.province && owningCity.parentValue) {
+            const owningProv = pList.find(p => p.value === owningCity.parentValue);
+            if (owningProv) result.province = normalizeWilayahInput(owningProv.name);
+          }
+        }
+      }
+    }
+  } else if (candidateCities.length > 1) {
+    if (/\bkota\s+[a-zA-Z]+/i.test(fullText) && !/kabupaten\/kota|kota\/kabupaten/i.test(fullText)) {
+      const kotaObj = candidateCities.find(c => /kota/i.test(c.name));
+      if (kotaObj) result.city = kotaObj.name;
+    } else if (/\bkabupaten\b|\bkab\.\s+[a-zA-Z]+/i.test(fullText)) {
+      const kabObj = candidateCities.find(c => /kabupaten/i.test(c.name));
+      if (kabObj) result.city = kabObj.name;
+    } else {
+      result.city = candidateCities[0].name;
+    }
+  }
+
+  // 12. Strict ownership verification: ensure each place belongs to its parent
   const ownedBy = (child: {parentValue?: string | null}, parent?: {value?: string | null}) =>
     !parent || !child.parentValue || !parent.value || cleanWilayahStr(child.parentValue) === cleanWilayahStr(parent.value);
-  const pItem = result.province ? pList.find(p => matchWilayahName(p.name, result.province!)) : undefined;
+
   let cItem: (typeof cList)[number] | undefined;
   if (result.city) {
     const found = cList.filter(c => matchWilayahName(c.name, result.city!));
@@ -226,7 +301,7 @@ export function extractWilayahFromAddressAndText(rawText: string, alamat: string
   if (!postalFromText && (villageDropped || (!result.village && !result.district))) result.postalCode = undefined;
 
   if (result.province) result.province = normalizeWilayahInput(result.province);
-  if (result.city) result.city = normalizeWilayahInput(result.city);
+  if (result.city) result.city = result.city.trim();
   if (result.district) result.district = normalizeWilayahInput(result.district);
   if (result.village) result.village = normalizeWilayahInput(result.village);
 
