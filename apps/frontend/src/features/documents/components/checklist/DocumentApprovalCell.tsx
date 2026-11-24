@@ -1,5 +1,5 @@
 /** Spatial micro-stepper approval cell matching the approval workflow mockup. */
-import {ShieldCheck, AlertCircle, Clock, Check} from 'lucide-react';
+import {ShieldCheck, AlertCircle, Check, Send} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function getShortRoleLabel(step: any, idx: number): string {
@@ -15,14 +15,15 @@ export function getShortRoleLabel(step: any, idx: number): string {
 
 export function DocumentApprovalCell({
   row,
-  onRequestApproval,
   approvalBusy,
   onOpenModal,
+  onConfirmSubmit,
 }: {
   row: ChecklistRow;
   onRequestApproval?: (row: ChecklistRow) => void;
   approvalBusy?: string | null;
   onOpenModal: (row: ChecklistRow) => void;
+  onConfirmSubmit: (row: ChecklistRow) => void;
 }) {
   const approval = row.check?.approval;
   if (!approval) {
@@ -35,7 +36,9 @@ export function DocumentApprovalCell({
   const activeStepIndex = steps.findIndex((s: any) => s.status === 'PENDING');
   const isAllApproved = approval.state === 'APPROVED' || (totalSteps > 0 && approvedSteps === totalSteps);
   const isRejected = approval.state === 'REJECTED';
+  const isReopened = approval.state === 'REOPENED';
   const isNotRequested = approval.state === 'NOT_REQUESTED';
+  const needsSubmission = isNotRequested || isRejected || isReopened;
 
   // Fill percentage for the track line
   const fillPct = isAllApproved
@@ -44,17 +47,20 @@ export function DocumentApprovalCell({
     ? Math.round((approvedSteps / totalSteps) * 100)
     : 0;
 
-  if (isNotRequested) {
+  if (needsSubmission) {
     return (
       <div
         className="new-approval-card not-requested"
-        style={{marginTop: '6px', cursor: 'pointer'}}
-        onClick={() => onOpenModal(row)}
-        title="Klik untuk melihat alur persetujuan"
+        style={{marginTop: '6px'}}
       >
         <div className="card-status-bar">
-          <span className="approval-stage-badge badge-needs">
-            <ShieldCheck size={11} /> {approval.again ? 'Needs approval again' : 'Needs approval'}
+          <span className={`approval-stage-badge ${isRejected ? 'badge-danger' : 'badge-needs'}`}>
+            <ShieldCheck size={11} />{' '}
+            {isRejected
+              ? 'Perlu Revisi Dokumen'
+              : approval.again
+              ? 'Needs approval again'
+              : 'Needs approval'}
           </span>
           {totalSteps > 0 && (
             <span className="ratio-indicator">0 / {totalSteps} Selesai</span>
@@ -62,7 +68,12 @@ export function DocumentApprovalCell({
         </div>
 
         {totalSteps > 0 && (
-          <div className="micro-stepper-track">
+          <div
+            className="micro-stepper-track"
+            onClick={() => onOpenModal(row)}
+            title="Klik untuk melihat alur persetujuan"
+            style={{cursor: 'pointer'}}
+          >
             <div className="track-line-bg" />
             <div className="track-line-fill" style={{width: '0%'}} />
             <div className="stepper-nodes">
@@ -76,37 +87,44 @@ export function DocumentApprovalCell({
           </div>
         )}
 
-        {approval.canRequest && onRequestApproval ? (
-          <button
-            type="button"
-            className="btn-view-pipeline"
-            style={{marginTop: '4px', width: '100%', borderColor: '#fde68a', color: '#b45309'}}
-            disabled={approvalBusy === row.chkId}
-            onClick={e => {
-              e.stopPropagation();
-              onRequestApproval(row);
-            }}
-          >
-            <ShieldCheck size={12} /> Ajukan Persetujuan
-          </button>
-        ) : (
-          <button type="button" className="btn-view-pipeline" style={{marginTop: '4px'}}>
-            Lihat Alur Persetujuan &gt;
-          </button>
-        )}
+        {/* Submit for Approval Button */}
+        <button
+          type="button"
+          className="btn-submit-for-approval"
+          disabled={!row.isAvailable || approvalBusy === row.chkId}
+          title={
+            !row.isAvailable
+              ? 'Upload file dokumen terlebih dahulu sebelum submit'
+              : 'Submit dokumen ini untuk persetujuan'
+          }
+          onClick={e => {
+            e.stopPropagation();
+            onConfirmSubmit(row);
+          }}
+        >
+          <Send size={12} />
+          <span>{approval.again || isRejected || isReopened ? 'Resubmit for Approval' : 'Submit for Approval'}</span>
+        </button>
+
+        <button
+          type="button"
+          className="btn-view-pipeline"
+          style={{marginTop: '2px'}}
+          onClick={() => onOpenModal(row)}
+        >
+          Lihat Alur Persetujuan &gt;
+        </button>
       </div>
     );
   }
 
-  // Active or approved or rejected
+  // Active or approved
   return (
     <div
       className="new-approval-card"
       style={
         isAllApproved
           ? {borderColor: '#a7f3d0', background: '#f0fdf4', marginTop: '6px'}
-          : isRejected
-          ? {borderColor: '#fecaca', background: '#fef2f2', marginTop: '6px'}
           : {marginTop: '6px'}
       }
       onClick={() => onOpenModal(row)}
@@ -117,10 +135,6 @@ export function DocumentApprovalCell({
           <span className="approval-stage-badge badge-approved-all">
             <Check size={11} /> Fully Approved
           </span>
-        ) : isRejected ? (
-          <span className="approval-stage-badge" style={{background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca'}}>
-            <AlertCircle size={11} /> Perlu Revisi
-          </span>
         ) : (
           <span className="approval-stage-badge badge-level2">
             ⚡ In Review (Level {activeStepIndex >= 0 ? activeStepIndex + 1 : 1})
@@ -129,7 +143,7 @@ export function DocumentApprovalCell({
 
         <span
           className="ratio-indicator"
-          style={isAllApproved ? {color: '#047857'} : isRejected ? {color: '#dc2626'} : undefined}
+          style={isAllApproved ? {color: '#047857'} : undefined}
         >
           {isAllApproved
             ? `${totalSteps} / ${totalSteps} Lengkap`
@@ -145,7 +159,7 @@ export function DocumentApprovalCell({
             className="track-line-fill"
             style={{
               width: `${fillPct}%`,
-              background: isRejected ? '#ef4444' : '#10b981',
+              background: '#10b981',
             }}
           />
           <div className="stepper-nodes">
@@ -178,15 +192,11 @@ export function DocumentApprovalCell({
         style={
           isAllApproved
             ? {borderColor: '#a7f3d0', color: '#047857'}
-            : isRejected
-            ? {borderColor: '#fecaca', color: '#dc2626'}
             : undefined
         }
       >
         {isAllApproved
           ? '🔍 Lihat Sertifikat Approval >'
-          : isRejected
-          ? '🔍 Lihat Catatan Penolakan >'
           : '🔍 Lihat Alur Persetujuan >'}
       </button>
     </div>

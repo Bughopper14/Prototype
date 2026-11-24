@@ -18,6 +18,7 @@ export function ChecklistRowItem({
   approvalBusy,
   showStage,
   onOpenApprovalModal,
+  onConfirmSubmit,
 }: {
   row: ChecklistRow;
   index: number;
@@ -31,6 +32,7 @@ export function ChecklistRowItem({
   onRequestApproval?: (row: ChecklistRow) => void;
   approvalBusy?: string | null;
   onOpenApprovalModal: (row: ChecklistRow) => void;
+  onConfirmSubmit: (row: ChecklistRow) => void;
 }) {
   return (
     <tr className={`doc-checklist-row ${row.isAvailable ? 'row-available' : 'row-pending'}`}>
@@ -81,6 +83,7 @@ export function ChecklistRowItem({
           onRequestApproval={onRequestApproval}
           approvalBusy={approvalBusy}
           onOpenModal={onOpenApprovalModal}
+          onConfirmSubmit={onConfirmSubmit}
         />
       </td>
 

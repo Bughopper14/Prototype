@@ -1,8 +1,9 @@
-/** The checklist table with its rows, stage headers and approval audit modal. */
+/** The checklist table with its rows, stage headers, approval audit modal and confirmation bubble. */
 import {AlertCircle, ChevronDown, ChevronRight} from 'lucide-react';
 import {useState} from 'react';
 import {ChecklistRowItem} from '@/features/documents/components/checklist/ChecklistRowItem';
 import {DocumentApprovalModal} from '@/features/documents/components/checklist/DocumentApprovalModal';
+import {SubmitApprovalConfirmModal} from '@/features/documents/components/checklist/SubmitApprovalConfirmModal';
 import {groupRowsByStage} from '@/features/documents/lib/checklist/group-rows';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
@@ -34,6 +35,14 @@ export function ChecklistTable({
   const columns = 5;
   const groups = grouped ? groupRowsByStage(rows) : [];
   const [selectedApprovalRow, setSelectedApprovalRow] = useState<ChecklistRow | null>(null);
+  const [confirmingSubmitRow, setConfirmingSubmitRow] = useState<ChecklistRow | null>(null);
+
+  const handleConfirmSubmit = async (row: ChecklistRow) => {
+    if (onRequestApproval) {
+      await onRequestApproval(row);
+    }
+    setConfirmingSubmitRow(null);
+  };
 
   const renderRow = (row: ChecklistRow, idx: number) => (
     <ChecklistRowItem
@@ -49,6 +58,7 @@ export function ChecklistTable({
       onRequestApproval={onRequestApproval}
       approvalBusy={approvalBusy}
       onOpenApprovalModal={setSelectedApprovalRow}
+      onConfirmSubmit={setConfirmingSubmitRow}
     />
   );
   let counter = 0;
@@ -128,8 +138,17 @@ export function ChecklistTable({
         row={selectedApprovalRow}
         isOpen={!!selectedApprovalRow}
         onClose={() => setSelectedApprovalRow(null)}
-        onRequestApproval={onRequestApproval}
+        onConfirmSubmit={setConfirmingSubmitRow}
         approvalBusy={approvalBusy}
+      />
+
+      {/* "Yes or No" Simple Confirmation Bubble Modal */}
+      <SubmitApprovalConfirmModal
+        row={confirmingSubmitRow}
+        isOpen={!!confirmingSubmitRow}
+        onClose={() => setConfirmingSubmitRow(null)}
+        onConfirm={handleConfirmSubmit}
+        busy={approvalBusy === confirmingSubmitRow?.chkId}
       />
     </>
   );

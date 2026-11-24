@@ -1,5 +1,5 @@
 /** Document Approval Audit Trail Modal matching the light theme mockup. */
-import {ShieldCheck, X, Check, AlertCircle, Clock, Lock} from 'lucide-react';
+import {ShieldCheck, X, Check, AlertCircle, Clock, Lock, Send} from 'lucide-react';
 import {useEffect} from 'react';
 import {createPortal} from 'react-dom';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
@@ -8,13 +8,13 @@ export function DocumentApprovalModal({
   row,
   isOpen,
   onClose,
-  onRequestApproval,
+  onConfirmSubmit,
   approvalBusy,
 }: {
   row: ChecklistRow | null;
   isOpen: boolean;
   onClose: () => void;
-  onRequestApproval?: (row: ChecklistRow) => void;
+  onConfirmSubmit: (row: ChecklistRow) => void;
   approvalBusy?: string | null;
 }) {
   useEffect(() => {
@@ -29,6 +29,10 @@ export function DocumentApprovalModal({
 
   const approval = row.check?.approval;
   const steps: any[] = approval?.steps || [];
+  const isNotRequested = approval?.state === 'NOT_REQUESTED';
+  const isRejected = approval?.state === 'REJECTED';
+  const isReopened = approval?.state === 'REOPENED';
+  const canSubmit = isNotRequested || isRejected || isReopened;
 
   return createPortal(
     <div className="doc-modal-backdrop" onClick={onClose}>
@@ -57,19 +61,19 @@ export function DocumentApprovalModal({
               steps.map((st: any, idx: number) => {
                 const isApproved = st.status === 'APPROVED';
                 const isPending = st.status === 'PENDING';
-                const isRejected = st.status === 'REJECTED';
+                const isStepRejected = st.status === 'REJECTED';
                 const decisions: any[] = st.decisions || [];
                 const lastDecision = decisions[decisions.length - 1];
 
                 let rowClass = 'doc-v-step-row';
                 if (isApproved) rowClass += ' done';
                 else if (isPending) rowClass += ' active';
-                else if (isRejected) rowClass += ' rejected';
+                else if (isStepRejected) rowClass += ' rejected';
 
                 return (
                   <div key={st.id || idx} className={rowClass}>
                     <div className="doc-v-step-circle">
-                      {isApproved ? <Check size={16} /> : isRejected ? <AlertCircle size={16} /> : idx + 1}
+                      {isApproved ? <Check size={16} /> : isStepRejected ? <AlertCircle size={16} /> : idx + 1}
                     </div>
 
                     <div className="doc-v-step-content">
@@ -81,7 +85,7 @@ export function DocumentApprovalModal({
                           <span className="doc-v-pill-status pill-approved">DISETUJUI</span>
                         ) : isPending ? (
                           <span className="doc-v-pill-status pill-review">SEDANG DITINJAU</span>
-                        ) : isRejected ? (
+                        ) : isStepRejected ? (
                           <span className="doc-v-pill-status pill-rejected">DITOLAK / REVISI</span>
                         ) : (
                           <span className="doc-v-pill-status pill-waiting">MENUNGGU GILIRAN</span>
@@ -133,11 +137,39 @@ export function DocumentApprovalModal({
         {/* Footer */}
         <div className="doc-dialog-footer">
           <span style={{fontSize: '11.5px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px'}}>
-            <Lock size={12} /> Seluruh riwayat persetujuan tercatat permanen di sistem audit log.
+            <Lock size={12} /> Seluruh riwayat persetujuan tercatat di audit log.
           </span>
-          <button type="button" className="button" style={{height: '34px', padding: '0 16px'}} onClick={onClose}>
-            Tutup
-          </button>
+
+          <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+            {canSubmit && (
+              <button
+                type="button"
+                className="button primary"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '34px',
+                  padding: '0 14px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                }}
+                disabled={!row.isAvailable || approvalBusy === row.chkId}
+                title={!row.isAvailable ? 'Upload berkas terlebih dahulu' : 'Submit for Approval'}
+                onClick={() => {
+                  onClose();
+                  onConfirmSubmit(row);
+                }}
+              >
+                <Send size={13} />
+                <span>{isRejected || isReopened ? 'Resubmit for Approval' : 'Submit for Approval'}</span>
+              </button>
+            )}
+
+            <button type="button" className="button" style={{height: '34px', padding: '0 16px'}} onClick={onClose}>
+              Tutup
+            </button>
+          </div>
         </div>
       </div>
     </div>,
