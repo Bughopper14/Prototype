@@ -120,7 +120,7 @@ export function DocumentApprovalCell({
             <div
               className="track-line-fill"
               style={{
-                width: `${rejectFillPct}%`,
+                width: rejectFillPct > 0 ? `calc((100% - 26px) * ${rejectFillPct / 100})` : '0%',
                 background: '#ef4444',
               }}
             />
@@ -309,7 +309,7 @@ export function DocumentApprovalCell({
           <div
             className="track-line-fill"
             style={{
-              width: `${fillPct}%`,
+              width: fillPct > 0 ? `calc((100% - 26px) * ${fillPct / 100})` : '0%',
               background: '#10b981',
             }}
           />
