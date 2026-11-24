@@ -29,6 +29,7 @@ export function useDocumentChecklist({
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('ALL');
   const [selectedStage, setSelectedStage] = useState<string>('ALL');
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'ACTION_REQUIRED' | 'IN_REVIEW' | 'APPROVED' | 'MISSING'>('ALL');
   const [zipping, setZipping] = useState(false);
   const [grouped, setGrouped] = useState(true);
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
@@ -63,10 +64,56 @@ export function useDocumentChecklist({
   const stats = summarizeRows(checklistRows);
   // the departments the documents of this application have: the only ones the filter offers
   const departments = useMemo(() => [...new Set(checklistRows.map(r => r.department).filter(Boolean))].sort(), [checklistRows]);
-  const filteredRows = useMemo(
-    () => filterRows(checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage),
-    [checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage],
-  );
+
+  const pillCounts = useMemo(() => {
+    return {
+      all: checklistRows.length,
+      actionRequired: checklistRows.filter(
+        r =>
+          (r.isMandatory && !r.isAvailable) ||
+          r.check?.approval?.state === 'REJECTED' ||
+          r.check?.approval?.state === 'REOPENED' ||
+          (r.isAvailable && (!r.check?.approval || r.check?.approval?.state === 'NOT_REQUESTED')),
+      ).length,
+      inReview: checklistRows.filter(
+        r =>
+          r.check?.approval?.state === 'PENDING' ||
+          (r.status === 'UPLOADED' && r.check?.approval?.state !== 'APPROVED'),
+      ).length,
+      approved: checklistRows.filter(
+        r => r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED',
+      ).length,
+      missing: checklistRows.filter(r => !r.isAvailable || r.files.length === 0).length,
+    };
+  }, [checklistRows]);
+
+  const filteredRows = useMemo(() => {
+    let list = checklistRows;
+
+    if (quickFilter === 'ACTION_REQUIRED') {
+      list = list.filter(
+        r =>
+          (r.isMandatory && !r.isAvailable) ||
+          r.check?.approval?.state === 'REJECTED' ||
+          r.check?.approval?.state === 'REOPENED' ||
+          (r.isAvailable && (!r.check?.approval || r.check?.approval?.state === 'NOT_REQUESTED')),
+      );
+    } else if (quickFilter === 'IN_REVIEW') {
+      list = list.filter(
+        r =>
+          r.check?.approval?.state === 'PENDING' ||
+          (r.status === 'UPLOADED' && r.check?.approval?.state !== 'APPROVED'),
+      );
+    } else if (quickFilter === 'APPROVED') {
+      list = list.filter(
+        r => r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED',
+      );
+    } else if (quickFilter === 'MISSING') {
+      list = list.filter(r => !r.isAvailable || r.files.length === 0);
+    }
+
+    return filterRows(list, searchTerm, selectedDept, selectedStatus, selectedStage);
+  }, [checklistRows, quickFilter, searchTerm, selectedDept, selectedStatus, selectedStage]);
   /** Stages of the documents, in checklist order, for the stage filter. */
   const stages = useMemo(() => {
     const seen = new Map<string, string>();
@@ -202,6 +249,9 @@ export function useDocumentChecklist({
   };
 
   return {
+    quickFilter,
+    setQuickFilter,
+    pillCounts,
     canRequestApproval,
     approvalBusy,
     requestApproval,

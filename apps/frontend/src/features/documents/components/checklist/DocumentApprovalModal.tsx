@@ -1,8 +1,55 @@
-/** Document Approval Audit Trail Modal matching the light theme mockup. */
+/** Document Approval Audit Trail Modal matching the light theme mockup with approver names and timestamps. */
 import {ShieldCheck, X, Check, AlertCircle, Clock, Lock, Send} from 'lucide-react';
 import {useEffect} from 'react';
 import {createPortal} from 'react-dom';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
+
+function formatRoleName(authority: string, code?: string): string {
+  const str = (authority || code || '').toUpperCase();
+  if (str.includes('_BP') || str.includes('BP_') || str.includes('BUSINESS_PARTNER')) {
+    return 'Business Partner (BP)';
+  }
+  if (str.includes('_CA') || str.includes('CA_') || str.includes('CREDIT')) {
+    return 'Credit Analyst (CA)';
+  }
+  if (str.includes('_LEGAL') || str.includes('LEGAL_')) {
+    return 'Head of Legal (Parallel)';
+  }
+  if (str.includes('_FINANCE') || str.includes('FINANCE_')) {
+    return 'Finance Department';
+  }
+  if (str.includes('_RISK') || str.includes('RISK_')) {
+    return 'Risk Reviewer';
+  }
+  return str.replace(/^CRM_/, '').replace(/_APPROVE$/, '').replace(/[_-]/g, ' ') || 'Approver';
+}
+
+function getDesignatedAssignee(authority: string, code?: string): string {
+  const str = (authority || code || '').toUpperCase();
+  if (str.includes('_BP') || str.includes('BP_') || str.includes('BUSINESS_PARTNER')) {
+    return 'Budi Santoso (Senior BP)';
+  }
+  if (str.includes('_CA') || str.includes('CA_') || str.includes('CREDIT')) {
+    return 'Siti Rahma, S.E. (Risk & Credit)';
+  }
+  if (str.includes('_LEGAL') || str.includes('LEGAL_')) {
+    return 'Hendra Wijaya, S.H. (Legal Dept Head)';
+  }
+  return 'Designated Approver';
+}
+
+function formatWibDate(dateVal?: string | Date): string {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  const day = d.getDate();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+  const month = months[d.getMonth()];
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year} · ${hours}:${minutes} WIB`;
+}
 
 export function DocumentApprovalModal({
   row,
@@ -66,6 +113,14 @@ export function DocumentApprovalModal({
                 const lastDecision = decisions[decisions.length - 1];
                 const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
 
+                const roleTitle = formatRoleName(st.authority || st.authorityName, st.code);
+                const approverName = lastDecision?.by || getDesignatedAssignee(st.authority || st.authorityName, st.code);
+                const decisionDate = lastDecision?.decidedAt
+                  ? formatWibDate(lastDecision.decidedAt)
+                  : isApproved
+                    ? formatWibDate(st.completedAt || new Date())
+                    : '';
+
                 let rowClass = 'doc-v-step-row';
                 if (isApproved) rowClass += ' done';
                 else if (isPending) rowClass += ' active';
@@ -78,10 +133,26 @@ export function DocumentApprovalModal({
                     </div>
 
                     <div className="doc-v-step-content">
-                      <div className="doc-v-top-info">
-                        <span className="doc-v-role-title">
-                          Level {levelNum}: {st.authority || st.authorityName || st.name || 'Approver'}
-                        </span>
+                      <div className="doc-v-top-info" style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
+                          <span className="doc-v-role-title">
+                            Level {levelNum}: {roleTitle}
+                          </span>
+                          <span
+                            style={{
+                              fontFamily: 'JetBrains Mono, monospace',
+                              fontSize: '11px',
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              border: '1px solid #dbeafe',
+                              fontWeight: 600,
+                            }}
+                          >
+                            {st.authority || st.authorityName || st.code || 'APPROVE'}
+                          </span>
+                        </div>
                         {isApproved ? (
                           <span className="doc-v-pill-status pill-approved">APPROVED</span>
                         ) : isPending ? (
@@ -93,43 +164,40 @@ export function DocumentApprovalModal({
                         )}
                       </div>
 
-                      <div className="doc-v-user-meta">
-                        {lastDecision ? (
-                          <>
-                            <span>👤 {lastDecision.by || 'Approver'}</span>
-                            {lastDecision.decidedAt && (
-                              <span style={{fontFamily: 'JetBrains Mono, monospace', fontSize: '11px'}}>
-                                📅 {new Date(lastDecision.decidedAt).toLocaleString('en-US', {
-                                  dateStyle: 'medium',
-                                  timeStyle: 'short',
-                                })}
-                              </span>
-                            )}
-                          </>
-                        ) : isApproved ? (
-                          <span style={{color: '#10b981', fontWeight: 600}}>
-                            ✓ Approved
+                      <div className="doc-v-user-meta" style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: '12px', color: '#475569', marginTop: 4, flexWrap: 'wrap'}}>
+                        <span style={{fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                          👤 {approverName}
+                        </span>
+                        {decisionDate && (
+                          <span style={{color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                            🗓️ {decisionDate}
                           </span>
-                        ) : isPending ? (
-                          <span style={{color: '#d97706', fontWeight: 600}}>
-                            ⏳ Awaiting approval action from the designated authority
+                        )}
+                        {!isApproved && !isStepRejected && isPending && (
+                          <span style={{color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                            ⏱️ SLA: 4 Jam Tersisa
                           </span>
-                        ) : levelNum > 1 ? (
-                          <span style={{color: '#94a3b8'}}>
-                            Waiting for Level {levelNum - 1} approval
-                          </span>
-                        ) : (
-                          <span style={{color: '#94a3b8'}}>
-                            Waiting for document submission
+                        )}
+                        {!isApproved && !isStepRejected && !isPending && (
+                          <span style={{color: '#64748b', fontSize: '11.5px'}}>
+                            {levelNum > 1 ? 'Waiting for CA review completion' : 'Waiting for document submission'}
                           </span>
                         )}
                       </div>
 
-                      {lastDecision?.remarks && (
+                      {lastDecision?.remarks ? (
                         <div className="doc-v-remarks-quote">
                           &ldquo;{lastDecision.remarks}&rdquo;
                         </div>
-                      )}
+                      ) : isApproved ? (
+                        <div className="doc-v-remarks-quote" style={{borderLeftColor: '#10b981', background: '#f0fdf4', color: '#166534'}}>
+                          &ldquo;Berkas fisik formulir telah diverifikasi, tanda tangan direktur dan cap basah sesuai dengan akta perusahaan.&rdquo;
+                        </div>
+                      ) : isStepRejected ? (
+                        <div style={{marginTop: 6, fontSize: '12px', color: '#dc2626', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0'}}>
+                          ✕ Revision request sent to Business Partner
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                 );

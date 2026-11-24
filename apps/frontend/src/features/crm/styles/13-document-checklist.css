@@ -259,6 +259,52 @@
   text-align: center;
 }
 
+/* ---- Filter Pills Bar (Action Required, In Review, Completed, Missing, All) ---- */
+.filter-pills-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 24px 14px;
+  border-bottom: 1px solid #e2e8f0;
+  overflow-x: auto;
+  background: #ffffff;
+}
+.filter-pill-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  background: #f1f5f9;
+  border: 1px solid transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.filter-pill-tab:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.filter-pill-tab.active {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+  font-weight: 700;
+}
+.pill-counter {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+}
+.filter-pill-tab.active .pill-counter {
+  background: #dbeafe;
+}
+
 /* ---- Toolbar: one stable row; the controls never change between views ---- */
 .doc-checklist-panel .doc-checklist-toolbar {
   display: flex;
