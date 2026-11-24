@@ -64,6 +64,7 @@ export function DocumentApprovalModal({
                 const isStepRejected = st.status === 'REJECTED';
                 const decisions: any[] = st.decisions || [];
                 const lastDecision = decisions[decisions.length - 1];
+                const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
 
                 let rowClass = 'doc-v-step-row';
                 if (isApproved) rowClass += ' done';
@@ -73,13 +74,13 @@ export function DocumentApprovalModal({
                 return (
                   <div key={st.id || idx} className={rowClass}>
                     <div className="doc-v-step-circle">
-                      {isApproved ? <Check size={16} /> : isStepRejected ? <AlertCircle size={16} /> : idx + 1}
+                      {isApproved ? <Check size={16} /> : isStepRejected ? <AlertCircle size={16} /> : levelNum}
                     </div>
 
                     <div className="doc-v-step-content">
                       <div className="doc-v-top-info">
                         <span className="doc-v-role-title">
-                          Level {idx + 1}: {st.authority || st.authorityName || st.name || 'Approver'}
+                          Level {levelNum}: {st.authority || st.authorityName || st.name || 'Approver'}
                         </span>
                         {isApproved ? (
                           <span className="doc-v-pill-status pill-approved">DISETUJUI</span>
@@ -111,7 +112,7 @@ export function DocumentApprovalModal({
                           </span>
                         ) : (
                           <span style={{color: '#94a3b8'}}>
-                            Menunggu persetujuan Level {idx} selesai
+                            Menunggu persetujuan Level {Math.max(1, levelNum - 1)} selesai
                           </span>
                         )}
                       </div>

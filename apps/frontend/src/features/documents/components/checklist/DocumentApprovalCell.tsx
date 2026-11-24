@@ -10,7 +10,8 @@ export function getShortRoleLabel(step: any, idx: number): string {
   if (text.includes('RISK')) return 'Risk';
   if (text.includes('BRANCH') || text.includes('BM')) return 'BM';
   if (text.includes('DIRECTOR') || text.includes('BOD')) return 'Director';
-  return `L${idx + 1}`;
+  const levelNum = step.order ?? step.sortOrder ?? (idx + 1);
+  return `L${levelNum}`;
 }
 
 export function DocumentApprovalCell({
@@ -39,6 +40,9 @@ export function DocumentApprovalCell({
   const isReopened = approval.state === 'REOPENED';
   const isNotRequested = approval.state === 'NOT_REQUESTED';
   const needsSubmission = isNotRequested || isRejected || isReopened;
+
+  const activeStep = activeStepIndex >= 0 ? steps[activeStepIndex] : null;
+  const activeLevel = activeStep?.order ?? activeStep?.sortOrder ?? (activeStepIndex >= 0 ? activeStepIndex + 1 : 1);
 
   // Fill percentage for the track line
   const fillPct = isAllApproved
@@ -77,12 +81,15 @@ export function DocumentApprovalCell({
             <div className="track-line-bg" />
             <div className="track-line-fill" style={{width: '0%'}} />
             <div className="stepper-nodes">
-              {steps.map((st: any, idx: number) => (
-                <div key={st.id || idx} className="step-dot-wrap">
-                  <div className="step-circle">{idx + 1}</div>
-                  <span className="step-lbl">{getShortRoleLabel(st, idx)}</span>
-                </div>
-              ))}
+              {steps.map((st: any, idx: number) => {
+                const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
+                return (
+                  <div key={st.id || idx} className="step-dot-wrap">
+                    <div className="step-circle">{levelNum}</div>
+                    <span className="step-lbl">{getShortRoleLabel(st, idx)}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -137,7 +144,7 @@ export function DocumentApprovalCell({
           </span>
         ) : (
           <span className="approval-stage-badge badge-level2">
-            ⚡ In Review (Level {activeStepIndex >= 0 ? activeStepIndex + 1 : 1})
+            ⚡ In Review (Level {activeLevel})
           </span>
         )}
 
@@ -167,6 +174,7 @@ export function DocumentApprovalCell({
               const isDone = st.status === 'APPROVED';
               const isActive = st.status === 'PENDING' || idx === activeStepIndex;
               const isStepRejected = st.status === 'REJECTED';
+              const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
 
               let cls = 'step-dot-wrap';
               if (isDone) cls += ' done';
@@ -176,7 +184,7 @@ export function DocumentApprovalCell({
               return (
                 <div key={st.id || idx} className={cls}>
                   <div className="step-circle">
-                    {isDone ? '✓' : isStepRejected ? '✕' : idx + 1}
+                    {isDone ? '✓' : isStepRejected ? '✕' : levelNum}
                   </div>
                   <span className="step-lbl">{getShortRoleLabel(st, idx)}</span>
                 </div>
