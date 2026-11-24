@@ -24,7 +24,7 @@ export function ChecklistRowItem({
   isUploading: boolean;
   deletingFileId: string | null;
   onPreview: (row: ChecklistRow, file?: any) => void;
-  onUpload: (code: string) => void;
+  onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;
   approvalBusy?: string | null;

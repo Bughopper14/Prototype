@@ -25,7 +25,7 @@ export function ChecklistTable({
   uploadingCode: string | null;
   deletingFileId: string | null;
   onPreview: (row: ChecklistRow, file?: any) => void;
-  onUpload: (code: string) => void;
+  onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;
   approvalBusy?: string | null;
@@ -34,11 +34,11 @@ export function ChecklistTable({
   const groups = grouped ? groupRowsByStage(rows) : [];
   const renderRow = (row: ChecklistRow, idx: number) => (
     <ChecklistRowItem
-      key={row.code}
+      key={row.chkId || `${row.stage}_${row.code}_${idx}`}
       row={row}
       index={idx}
       showStage={!grouped}
-      isUploading={uploadingCode === row.code}
+      isUploading={uploadingCode === (row.chkId || row.code)}
       deletingFileId={deletingFileId}
       onPreview={onPreview}
       onUpload={onUpload}

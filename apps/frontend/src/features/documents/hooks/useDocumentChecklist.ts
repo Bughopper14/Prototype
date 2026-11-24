@@ -36,7 +36,7 @@ export function useDocumentChecklist({
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<PreviewState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [targetUploadCode, setTargetUploadCode] = useState<string | null>(null);
+  const [targetUpload, setTargetUpload] = useState<{code: string; chkId?: string} | null>(null);
   // Asking for the approval of one document (a document the workflow wants approved): the same people who may submit a stage
   const canRequestApproval = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT');
   const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
@@ -110,8 +110,8 @@ export function useDocumentChecklist({
   };
 
   // Handler Upload File
-  const handleTriggerUpload = (code: string) => {
-    setTargetUploadCode(code);
+  const handleTriggerUpload = (code: string, chkId?: string) => {
+    setTargetUpload({code, chkId});
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
       fileInputRef.current.click();
@@ -121,13 +121,15 @@ export function useDocumentChecklist({
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // the FAP has one current signed file; every other document can have several (a KTP per stakeholder, several deeds)
     const picked = Array.from(e.target.files || []);
-    const files = targetUploadCode === 'FAP' ? picked.slice(0, 1) : picked;
-    if (!files.length || !targetUploadCode) return;
+    if (!targetUpload || !picked.length) return;
+    const {code: docCode, chkId} = targetUpload;
+    const files = docCode === 'FAP' ? picked.slice(0, 1) : picked;
+    if (!files.length) return;
 
-    setUploadingCode(targetUploadCode);
+    setUploadingCode(chkId || docCode);
     try {
-      const row = checklistRows.find(r => r.code === targetUploadCode);
-      const checklistId = row?.chkId || targetUploadCode;
+      const row = chkId ? checklistRows.find(r => r.chkId === chkId) : checklistRows.find(r => r.code === docCode);
+      const checklistId = chkId || row?.chkId || docCode;
       let done = 0;
       const failed: string[] = [];
       for (const file of files) {
@@ -135,7 +137,7 @@ export function useDocumentChecklist({
           const formData = new FormData();
           formData.append('file', file);
           formData.append('checklistId', checklistId);
-          formData.append('documentCode', targetUploadCode);
+          formData.append('documentCode', docCode);
           await api(`/applications/${a.id}/documents/upload`, 'POST', formData);
           done++;
         } catch (err: any) {
@@ -144,12 +146,12 @@ export function useDocumentChecklist({
       }
       if (done) onChange(await api(`/applications/${a.id}`));
       if (failed.length) notify(`${done} files uploaded, ${failed.length} failed (${failed[0]})`);
-      else notify(done > 1 ? `${done} files for ${targetUploadCode} successfully uploaded.` : `Document ${targetUploadCode} successfully uploaded.`);
+      else notify(done > 1 ? `${done} files for ${docCode} successfully uploaded.` : `Document ${docCode} successfully uploaded.`);
     } catch (err: any) {
       notify(`Failed to upload document: ${err.message || 'An error occurred'}`);
     } finally {
       setUploadingCode(null);
-      setTargetUploadCode(null);
+      setTargetUpload(null);
     }
   };
 

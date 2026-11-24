@@ -14,15 +14,16 @@ export function DocumentRowActions({
   isUploading: boolean;
   deletingFileId: string | null;
   onPreview: (row: ChecklistRow) => void;
-  onUpload: (code: string) => void;
+  onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
 }) {
   // "Ganti" (replace) is only for the FAP (one current signed file); every other document takes more files ("Tambah"); a document with no file yet says "Upload"
   const hasFile = (row.files || []).length > 0;
+  const canPreview = row.isAvailable && (hasFile || !!row.previewUrl);
   return (
     <div className="doc-row-actions">
-      {/* Preview button if available */}
-      {row.isAvailable && (
+      {/* Preview button if available and has file/url */}
+      {canPreview && (
         <button
           type="button"
           className="button small doc-action-btn btn-view"
@@ -40,7 +41,7 @@ export function DocumentRowActions({
         className={`button small doc-action-btn ${hasFile ? 'btn-replace' : 'primary btn-upload'}`}
         title={hasFile ? 'Replace / Upload additional file' : 'Upload file now'}
         disabled={isUploading}
-        onClick={() => onUpload(row.code)}
+        onClick={() => onUpload(row.code, row.chkId)}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
         <span>{hasFile ? 'Replace' : 'Upload'}</span>
