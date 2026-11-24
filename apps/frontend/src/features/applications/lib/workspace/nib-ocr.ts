@@ -5,6 +5,7 @@ import {formatCompanyName} from '@liugong/shared';
 export interface NibOcrExtract {
   nib?: string;
   companyName?: string;
+  fullAddress?: string;
   alamat?: string;
   streetAddress?: string;
   email?: string;
@@ -28,11 +29,13 @@ const clean = (extracted: NibOcrExtract) => ({
 /** Company fields to merge into the customer draft, or null when the scan had none of them. */
 export function nibCustomerPatch(extracted: NibOcrExtract) {
   const {rawComp, rawNib, rawDate} = clean(extracted);
-  if (!rawNib && !rawDate && !rawComp) return null;
+  if (!rawNib && !rawDate && !rawComp && !extracted.fullAddress && !extracted.alamat) return null;
   return {
     ...(rawNib ? {nib: rawNib} : {}),
     ...(rawComp ? {companyName: rawComp} : {}),
     ...(rawDate ? {nibDate: rawDate} : {}),
+    ...(extracted.fullAddress ? {companyFullAddress: extracted.fullAddress} : {}),
+    ...(extracted.alamat ? {companyAddress: extracted.alamat} : {}),
   };
 }
 
@@ -46,6 +49,7 @@ export function applyNibOcrToDraft(
     ...prev,
     ...(rawNib ? {nib: rawNib} : {}),
     ...(rawComp ? {companyName: rawComp} : {}),
+    ...(extracted.fullAddress ? {companyFullAddress: extracted.fullAddress} : {}),
     // The application keeps the street part only (the regions have their own fields); the full OCR text is a reference in the pop-up
     ...(extracted.streetAddress || extracted.alamat ? {companyAddress: extracted.streetAddress || extracted.alamat} : {}),
     ...(extracted.email ? {email: extracted.email} : {}),

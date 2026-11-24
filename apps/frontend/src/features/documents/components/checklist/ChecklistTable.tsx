@@ -25,20 +25,20 @@ export function ChecklistTable({
   uploadingCode: string | null;
   deletingFileId: string | null;
   onPreview: (row: ChecklistRow, file?: any) => void;
-  onUpload: (code: string) => void;
+  onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;
   approvalBusy?: string | null;
 }) {
-  const columns = grouped ? 8 : 9;
+  const columns = 5;
   const groups = grouped ? groupRowsByStage(rows) : [];
   const renderRow = (row: ChecklistRow, idx: number) => (
     <ChecklistRowItem
-      key={row.code}
+      key={row.chkId || `${row.stage}_${row.code}_${idx}`}
       row={row}
       index={idx}
       showStage={!grouped}
-      isUploading={uploadingCode === row.code}
+      isUploading={uploadingCode === (row.chkId || row.code)}
       deletingFileId={deletingFileId}
       onPreview={onPreview}
       onUpload={onUpload}
@@ -54,15 +54,11 @@ export function ChecklistTable({
       <table className="data-table doc-checklist-table">
         <thead>
           <tr>
-            <th style={{width: '40px', textAlign: 'center'}}>NO</th>
-            <th style={{minWidth: '220px'}}>DOKUMEN PERSYARATAN</th>
-            {!grouped && <th style={{width: '140px'}}>TAHAP</th>}
-            <th style={{width: '130px'}}>DEPARTEMEN</th>
-            <th style={{width: '120px'}}>SIFAT</th>
-            <th style={{width: '150px'}}>STATUS KELENGKAPAN</th>
-            <th style={{minWidth: '190px'}}>APPROVAL</th>
-            <th style={{minWidth: '260px'}}>SUMBER / KETERANGAN INTEGRASI</th>
-            <th style={{width: '180px', textAlign: 'right'}}>AKSI</th>
+            <th className="col-no" style={{width: '40px', minWidth: '40px', textAlign: 'center'}}>NO</th>
+            <th className="col-doc" style={{width: '26%', minWidth: '200px'}}>REQUIRED DOCUMENT</th>
+            <th className="col-status" style={{width: '22%', minWidth: '180px'}}>STATUS & APPROVAL</th>
+            <th className="col-source" style={{width: '36%', minWidth: '220px'}}>FILE & SOURCE</th>
+            <th className="col-actions" style={{width: '160px', minWidth: '160px', textAlign: 'center'}}>ACTIONS</th>
           </tr>
         </thead>
         <tbody>
@@ -83,7 +79,7 @@ export function ChecklistTable({
                         {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                         <StageBadge code={g.code} name={g.name} />
                         <span className="doc-group-meta">
-                          {g.rows.length} dokumen · {g.availableCount} terpenuhi
+                          {g.rows.length} documents · {g.availableCount} fulfilled
                         </span>
                       </button>
                     </td>
@@ -98,9 +94,9 @@ export function ChecklistTable({
               <td colSpan={columns} style={{textAlign: 'center', padding: '40px 20px'}}>
                 <AlertCircle size={28} style={{color: '#94a3b8', margin: '0 auto 8px'}} />
                 <p style={{fontWeight: 600, color: '#475569'}}>
-                  Tidak ada dokumen yang sesuai filter atau pencarian
+                  No documents match the current filter or search criteria
                 </p>
-                <small className="muted">Coba ubah kata kunci pencarian atau reset filter departemen.</small>
+                <small className="muted">Try changing your search keywords or resetting the filters.</small>
               </td>
             </tr>
           )}

@@ -21,6 +21,34 @@ function timestamp(date = new Date()) {
   return `${day}_${two(date.getHours())}${two(date.getMinutes())}${two(date.getSeconds())}`;
 }
 
+/** Timestamp format: ddmmyyyyhhmm (e.g. 241120260910) */
+export function formatTimestampDdmmyyyyhhmm(d = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const day = pad(d.getDate());
+  const month = pad(d.getMonth() + 1);
+  const year = d.getFullYear();
+  const hour = pad(d.getHours());
+  const minute = pad(d.getMinutes());
+  return `${day}${month}${year}${hour}${minute}`;
+}
+
+/**
+ * Builds standard document file name: jenisDoc_appNumber_ddmmyyyyhhmm.<ext>
+ * e.g. NIB_A-000-26-12345_241120260910.pdf
+ */
+export function buildDocumentFileName(
+  jenisDoc: string,
+  appNumber: string,
+  originalName: string,
+  date = new Date(),
+): string {
+  const ext = (path.extname(originalName) || '.pdf').toLowerCase();
+  const cleanJenis = jenisDoc.toUpperCase().replace(/[^A-Z0-9_]/g, '') || 'DOC';
+  const cleanApp = String(appNumber || 'APP').replace(/[^a-zA-Z0-9_-]/g, '') || 'APP';
+  const timeStr = formatTimestampDdmmyyyyhhmm(date);
+  return `${cleanJenis}_${cleanApp}_${timeStr}${ext}`;
+}
+
 /**
  * File storage: uploaded checklist files under files/ (or S3/MinIO when the S3_* variables are set), and named copies
  * under documents/ that the OCR worker reads (FAP documents, identity documents).
@@ -114,33 +142,44 @@ export class StorageService {
   }
 
   /** A unique, sanitised path under documents/<type>/ for an uploaded identity document. */
-  async identityDocumentTarget(docTypeRaw: string, appIdRaw: string, stakeholderIdRaw: string, originalName: string) {
+  async identityDocumentTarget(
+    docTypeRaw: string,
+    appIdRaw: string,
+    stakeholderIdRaw: string,
+    originalName: string,
+    customFileName?: string,
+  ) {
     const docType =
       String(docTypeRaw || 'general')
         .toLowerCase()
         .replace(/[^a-z0-9_-]/g, '') || 'general';
-    const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
-    const cleanStakeholder = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
-    const extension = (path.extname(originalName) || '.jpg').toLowerCase();
     const typeDir = path.join(this.documentsDir, docType);
     await fs.mkdir(typeDir, {recursive: true});
 
-    let baseName = `${docType}_${cleanApp}`;
-    if (cleanStakeholder && cleanStakeholder !== cleanApp && cleanStakeholder !== 'unknown') {
-      baseName += `_${cleanStakeholder}`;
-    }
-    baseName += `_${timestamp()}`;
+    let targetBaseName = '';
+    let extension = (path.extname(originalName) || '.jpg').toLowerCase();
 
-    // The name is RESERVED by creating the file exclusively ('wx'), so two scans that arrive at the same moment can never pick the same name
-    // (checking first and writing later let simultaneous uploads overwrite each other). The caller writes the content over its own reserved file.
-    let fileName = `${baseName}${extension}`;
+    if (customFileName) {
+      extension = (path.extname(customFileName) || extension).toLowerCase();
+      targetBaseName = path.basename(customFileName, extension);
+    } else {
+      const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
+      const cleanStakeholder = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
+      targetBaseName = `${docType}_${cleanApp}`;
+      if (cleanStakeholder && cleanStakeholder !== cleanApp && cleanStakeholder !== 'unknown') {
+        targetBaseName += `_${cleanStakeholder}`;
+      }
+      targetBaseName += `_${timestamp()}`;
+    }
+
+    let fileName = `${targetBaseName}${extension}`;
     for (let counter = 1; ; counter++) {
       try {
         await (await fs.open(path.join(typeDir, fileName), 'wx')).close();
         break;
       } catch (e: any) {
         if (e?.code !== 'EEXIST') throw e;
-        fileName = `${baseName}_${counter}${extension}`;
+        fileName = `${targetBaseName}_${counter}${extension}`;
       }
     }
 

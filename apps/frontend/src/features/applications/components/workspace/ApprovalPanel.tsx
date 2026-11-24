@@ -93,7 +93,15 @@ export function ApprovalPanel() {
             <b>
               {r.scope}: “{r.step.name}” was rejected
             </b>
-            <p>{r.decision?.remarks || 'No reason was written.'}</p>
+            {r.decision?.remarks ? (
+              <div
+                className="ap-rejected-remarks"
+                style={{margin: '4px 0', fontSize: '0.95em', color: '#1e293b'}}
+                dangerouslySetInnerHTML={{__html: r.decision.remarks}}
+              />
+            ) : (
+              <p>No reason was written.</p>
+            )}
             {r.kind === 'GROUP' &&
               reopenedByStage.map(st => (
                 <div key={st.code} style={{margin: '6px 0 10px'}}>

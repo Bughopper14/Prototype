@@ -15,6 +15,7 @@ export interface NibOcrModalProps {
   onApply: (data: {
     nib?: string;
     companyName?: string;
+    fullAddress?: string;
     alamat?: string;
     streetAddress?: string;
     email?: string;
@@ -33,6 +34,7 @@ export interface NibOcrModalProps {
   applicationId?: string;
   existingDocumentUrl?: string;
   existingFileName?: string;
+  onDocumentUploaded?: (updatedApp: any) => void;
 }
 
 export function useNibOcrModal({
@@ -43,6 +45,7 @@ export function useNibOcrModal({
   applicationId,
   existingDocumentUrl,
   existingFileName,
+  onDocumentUploaded,
 }: NibOcrModalProps) {
   const master = useMasterData();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +84,24 @@ export function useNibOcrModal({
     const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
     setFileType(isPdf ? 'pdf' : 'image');
 
+    // Auto-upload NIB document to application checklist if applicationId is present
+    if (applicationId) {
+      (async () => {
+        try {
+          const docPayload = new FormData();
+          docPayload.append('file', f);
+          docPayload.append('documentCode', 'NIB');
+          await api(`/applications/${applicationId}/documents/upload`, 'POST', docPayload);
+          if (onDocumentUploaded) {
+            const updated = await api(`/applications/${applicationId}`);
+            onDocumentUploaded(updated);
+          }
+        } catch (uploadErr) {
+          console.warn('Auto-upload NIB to document checklist failed:', uploadErr);
+        }
+      })();
+    }
+
     try {
       const objectUrl = URL.createObjectURL(f);
       setFileUrl(objectUrl);
@@ -93,6 +114,7 @@ export function useNibOcrModal({
       const uploadPayload = new FormData();
       uploadPayload.append('file', f);
       uploadPayload.append('doc_type', 'nib');
+      uploadPayload.append('sub_type', 'NIB');
       if (applicationId) uploadPayload.append('application_id', applicationId);
 
       const res = await api('/ocr/scan', 'POST', uploadPayload);
@@ -128,6 +150,7 @@ export function useNibOcrModal({
           setFormData({
             nib: extracted.nib || '',
             companyName: formatCompanyName(extracted.companyName || ''),
+            fullAddress: extracted.fullAddress || extracted.alamat || '',
             alamat: extracted.alamat || '',
             streetAddress: nibStreetAddress(extracted.alamat || '', extracted),
             email: extracted.email || '',
@@ -178,6 +201,7 @@ export function useNibOcrModal({
   const filledCount = [
     formData.nib,
     formData.companyName,
+    formData.fullAddress,
     formData.alamat,
     formData.province,
     formData.city,

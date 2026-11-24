@@ -5,6 +5,7 @@
  * crm_fap_doc_requirements, and returns the same shape. Only the first project row and the last three fiscal years are started; empty stays empty.
  */
 import {defaultFiscalYears, newFiscalYearRow} from '@/features/applications/lib/financial-statements';
+import {normalizePaymentMethod} from '@/features/applications/components/workspace/customer/proposal/terms-config';
 import {bankFields, blank, extractStreetAddress, FAP_TERMS_COLUMNS, projectFields} from '@liugong/shared';
 
 /** Reads a number typed the Indonesian way ("1.500.000.000", "11,5", "11.5% Flat", "36 Bulan"). */
@@ -92,8 +93,17 @@ export function mergedProposal(draft: any) {
       terms.tenor,
       draft.proposal?.tenorMonths ? parseMoney(draft.proposal.tenorMonths) : null,
     ),
-    paymentMethod: terms.paymentMethod || draft.proposal?.paymentMethod || '',
-    applicationSource: fp.facilityProposed?.applicationSource || draft.proposal?.applicationSource || '',
+    paymentMethod: normalizePaymentMethod(
+      terms.paymentMethod !== undefined ? terms.paymentMethod : draft.proposal?.paymentMethod,
+    ),
+    applicationSource: (() => {
+      const src = String(
+        fp.facilityProposed?.applicationSource !== undefined
+          ? fp.facilityProposed.applicationSource
+          : draft.proposal?.applicationSource || '',
+      ).trim().toUpperCase();
+      return ['DIRECT', 'DEALER', 'REFERRAL', 'INTERNAL'].includes(src) ? src : '';
+    })(),
     facilityPurpose: terms.workingCapitalInvestment || draft.proposal?.facilityPurpose || '',
     termsNotes: fp.notes !== undefined ? fp.notes : draft.notes || draft.proposal?.termsNotes || '',
     units: draft.proposal?.units || [],

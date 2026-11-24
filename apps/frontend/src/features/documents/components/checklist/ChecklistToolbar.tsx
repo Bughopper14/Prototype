@@ -37,7 +37,7 @@ export function ChecklistToolbar({
       <div className="search doc-search-input">
         <Search size={16} />
         <input
-          placeholder="Cari nama dokumen, kode (NIB, KTP, DEED), atau detail..."
+          placeholder="Search document name, code (NIB, KTP, DEED), or details..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
@@ -49,12 +49,12 @@ export function ChecklistToolbar({
       </div>
 
       <div className="doc-filters-group">
-        <div className="doc-view-switch" role="group" aria-label="Tampilan daftar">
+        <div className="doc-view-switch" role="group" aria-label="List view switch">
           <button type="button" className={grouped ? 'active' : ''} onClick={() => setGrouped(true)}>
-            Per Tahap
+            By Stage
           </button>
           <button type="button" className={!grouped ? 'active' : ''} onClick={() => setGrouped(false)}>
-            Daftar
+            List
           </button>
         </div>
 
@@ -65,7 +65,7 @@ export function ChecklistToolbar({
             onChange={e => setSelectedDept(e.target.value)}
             className="doc-filter-select"
           >
-            <option value="ALL">Semua Departemen</option>
+            <option value="ALL">All Departments</option>
             {departments.map(d => (
               <option key={d} value={d}>
                 {d}
@@ -80,7 +80,7 @@ export function ChecklistToolbar({
             onChange={e => setSelectedStage(e.target.value)}
             className="doc-filter-select"
           >
-            <option value="ALL">Semua Tahap</option>
+            <option value="ALL">All Stages</option>
             {stages.map(s => (
               <option key={s.code} value={s.code}>
                 {s.name}
@@ -95,9 +95,9 @@ export function ChecklistToolbar({
             onChange={e => setSelectedStatus(e.target.value as StatusFilter)}
             className="doc-filter-select"
           >
-            <option value="ALL">Semua Status</option>
-            <option value="AVAILABLE">✓ Sudah Ada</option>
-            <option value="PENDING">⏳ Belum Ada / Pending</option>
+            <option value="ALL">All Statuses</option>
+            <option value="AVAILABLE">✓ Available</option>
+            <option value="PENDING">⏳ Missing / Pending</option>
           </select>
         </div>
       </div>

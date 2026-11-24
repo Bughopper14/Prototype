@@ -1,11 +1,15 @@
 /** The NIB form and how the OCR server's scan result is turned into it. */
-import {extractWilayahFromAddressAndText} from '@/features/ocr/lib/nib/address-wilayah';
+import {
+  extractWilayahFromAddressAndText,
+  parseAllAddressFields,
+} from '@/features/ocr/lib/nib/address-wilayah';
 import {normalizeWilayahInput, type useMasterData} from '@/shared/master-data';
 import {extractStreetAddress, formatCompanyName} from '@liugong/shared';
 
 export interface NibFormData {
   nib: string;
   companyName: string;
+  fullAddress: string;
   /** The address exactly as the OCR read it (street, region names, postal code) */
   alamat: string;
   /** Only the street / building part of it: what is left after the region fields below are taken out */
@@ -25,6 +29,7 @@ export interface NibFormData {
 export const EMPTY_NIB_FORM: NibFormData = {
   nib: '',
   companyName: '',
+  fullAddress: '',
   alamat: '',
   streetAddress: '',
   email: '',
@@ -67,29 +72,16 @@ export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData
     .replace(/[,.\s\-]+$/, '')
     .trim();
 
-  let newProvince = String(d.provinsi || d.province || '').trim();
-  let newCity = String(d.kota || d.city || d.cityRegency || '').trim();
-  let newDistrict = String(d.kecamatan || d.district || '').trim();
-  let newVillage = String(d.kel_desa || d.village || d.kelurahan || '').trim();
-  let newPostal = String(d.kode_pos || d.postalCode || '')
-    .replace(/\D/g, '')
-    .slice(0, 5);
-  let newRt = String(d.rt || '').trim();
-  let newRw = String(d.rw || '').trim();
-
-  // Always resolve & normalize wilayah fields through master data resolver
-  const w = extractWilayahFromAddressAndText(
-    `${rawAddress} ${newProvince} ${newCity} ${newDistrict} ${newVillage}`,
-    rawAddress,
-    master,
-  );
-  newProvince = normalizeWilayahInput(w.province || newProvince);
-  newCity = normalizeWilayahInput(w.city || newCity);
-  newDistrict = normalizeWilayahInput(w.district || newDistrict);
-  newVillage = normalizeWilayahInput(w.village || newVillage);
-  if (w.postalCode && !newPostal) newPostal = w.postalCode;
-  if (w.rt && !newRt) newRt = w.rt;
-  if (w.rw && !newRw) newRw = w.rw;
+  // Directly parse all address components (street address, RT/RW, kelurahan, kecamatan, kota, provinsi, kode pos) from the full address
+  const parsed = parseAllAddressFields(rawAddress, master);
+  let newProvince = normalizeWilayahInput(parsed.province || d.provinsi || d.province || '');
+  let newCity = (parsed.city || d.kota || d.city || d.cityRegency || '').trim();
+  let newDistrict = normalizeWilayahInput(parsed.district || d.kecamatan || d.district || '');
+  let newVillage = normalizeWilayahInput(parsed.village || d.kel_desa || d.village || d.kelurahan || '');
+  let newPostal = (parsed.postalCode || d.kode_pos || d.postalCode || '').replace(/\D/g, '').slice(0, 5);
+  let newRt = parsed.rt || String(d.rt || '').trim();
+  let newRw = parsed.rw || String(d.rw || '').trim();
+  const streetAddress = parsed.alamat || rawAddress;
 
   const newEmail = String(d.email || '').trim();
   const newPhone = String(d.phone || d.phoneFax || '').trim();
@@ -107,17 +99,22 @@ export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData
     }
   }
 
+  const fullAddress = rawAddress;
+
   const formData: NibFormData = {
     nib: newNib,
     companyName: newCompanyName,
+    fullAddress: fullAddress,
     alamat: rawAddress,
-    streetAddress: nibStreetAddress(rawAddress, {
-      province: newProvince,
-      city: newCity,
-      district: newDistrict,
-      village: newVillage,
-      postalCode: newPostal,
-    }),
+    streetAddress:
+      streetAddress ||
+      nibStreetAddress(rawAddress, {
+        province: newProvince,
+        city: newCity,
+        district: newDistrict,
+        village: newVillage,
+        postalCode: newPostal,
+      }),
     province: newProvince,
     city: newCity,
     district: newDistrict,
@@ -129,5 +126,5 @@ export function scanResultToForm(d: any, master: ReturnType<typeof useMasterData
     rt: newRt,
     rw: newRw,
   };
-  return {formData, rawText: rawAddress || JSON.stringify(d, null, 2)};
+  return {formData, rawText: fullAddress || JSON.stringify(d, null, 2)};
 }

@@ -22,8 +22,18 @@ export class LegalController {
 
   @Post('applications/:id/deeds/:deedId/review')
   reviewDeed(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
-    // Submitting needs the right to edit legal data; approve, reject and remarks of this old review are for administrators (checked per action)
-    requireAuthority(req.actor, 'CRM_LEGAL_EDIT');
+    // Submitting needs legal edit right; approve/reject/remarks are for legal reviewers or administrators
+    if (!req.actor.isAdmin && req.actor.role !== 'ADMIN') {
+      const auths = req.actor.authorities || [];
+      const hasReviewAuth =
+        auths.includes('CRM_LEGAL_EDIT') ||
+        auths.includes('CRM_DEED-REVIEW_LEGAL_APPROVE') ||
+        auths.includes('CRM_DEED-REVIEW_BP_APPROVE') ||
+        auths.includes('CRM_DEED-REVIEW_BS_APPROVE');
+      if (!hasReviewAuth) {
+        requireAuthority(req.actor, 'CRM_LEGAL_EDIT');
+      }
+    }
     const body = z
       .object({
         action: z.enum(['SUBMIT', 'APPROVE', 'REJECT', 'REMARKS']),

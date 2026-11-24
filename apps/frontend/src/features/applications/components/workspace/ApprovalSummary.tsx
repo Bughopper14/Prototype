@@ -168,7 +168,11 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
   }
 
   if (scope.scope === 'DOCUMENT') {
-    const d = docs.find(x => x.id === scope.checklistId);
+    const d = docs.find(
+      x =>
+        x.id === scope.checklistId ||
+        (x.documentCode && scope.documentCode && x.documentCode === scope.documentCode),
+    );
     return (
       <div className="ap-summary">
         <b>The document</b>

@@ -1,4 +1,5 @@
 import {Modal} from '@/shared/ui/Modal';
+import {useMasterData} from '@/shared/master-data';
 import {extractStreetAddress, label, storedDocumentUrl} from '@liugong/shared';
 import {
   BriefcaseBusiness,
@@ -25,6 +26,20 @@ export function StakeholderDetailDialog({
   onEdit: () => void;
   locked: boolean;
 }) {
+  const master = useMasterData();
+
+  const lookupRegionName = (list: any[] | undefined, val: any) => {
+    if (!val) return '';
+    const str = String(val);
+    const found = list?.find(x => x.value === str || x.name === str);
+    return found?.name || str;
+  };
+
+  const provName = lookupRegionName(master.province, item.province);
+  const cityName = lookupRegionName(master.city, item.cityRegency || item.city);
+  const distName = lookupRegionName(master.district, item.district);
+  const villName = lookupRegionName(master.village, item.village);
+
   const [copied, setCopied] = useState<string | null>(null);
   const fullName =
     item.name || [item.firstName, item.middleName, item.lastName].filter(Boolean).join(' ') || 'Stakeholder';
@@ -270,21 +285,20 @@ export function StakeholderDetailDialog({
                     item.address ||
                     item.currentAddress ||
                     [
-                      item.village ? `Kel. ${item.village}` : null,
-                      item.district ? `Kec. ${item.district}` : null,
-                      item.cityRegency || item.city || null,
-                      item.province || null,
+                      villName ? `Kel. ${villName}` : null,
+                      distName ? `Kec. ${distName}` : null,
+                      cityName || null,
+                      provName || null,
                       item.postalCode || null,
                     ]
                       .filter(Boolean)
                       .join(', ') ||
                     'No address data recorded yet.'}
                 </p>
-                {(item.province ||
-                  item.cityRegency ||
-                  item.city ||
-                  item.district ||
-                  item.village ||
+                {(provName ||
+                  cityName ||
+                  distName ||
+                  villName ||
                   item.postalCode ||
                   item.rt ||
                   item.rw) && (
@@ -298,24 +312,24 @@ export function StakeholderDetailDialog({
                       color: '#475569',
                     }}
                   >
-                    {item.province && (
+                    {provName && (
                       <span>
-                        <b>Provinsi:</b> {item.province}
+                        <b>Provinsi:</b> {provName}
                       </span>
                     )}
-                    {(item.cityRegency || item.city) && (
+                    {cityName && (
                       <span>
-                        <b>Kab/Kota:</b> {item.cityRegency || item.city}
+                        <b>Kab/Kota:</b> {cityName}
                       </span>
                     )}
-                    {item.district && (
+                    {distName && (
                       <span>
-                        <b>Kecamatan:</b> {item.district}
+                        <b>Kecamatan:</b> {distName}
                       </span>
                     )}
-                    {item.village && (
+                    {villName && (
                       <span>
-                        <b>Kelurahan:</b> {item.village}
+                        <b>Kelurahan:</b> {villName}
                       </span>
                     )}
                     {(item.rt || item.rw) && (

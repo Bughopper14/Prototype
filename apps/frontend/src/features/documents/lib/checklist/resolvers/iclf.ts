@@ -6,7 +6,7 @@ export function resolveIclf({files, row}: ResolverContext) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'Credit Committee Stage';
-    row.sourceDetails = `Lembar persetujuan ICLF: ${files[0].fileName}`;
+    row.sourceDetails = `ICLF approval sheet: ${files[0].fileName}`;
     row.canDelete = false;
   }
 }

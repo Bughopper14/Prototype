@@ -39,9 +39,6 @@ CREATE TABLE IF NOT EXISTS `crm_application_activity_logs` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `application_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
@@ -61,6 +58,7 @@ CREATE TABLE IF NOT EXISTS `crm_application_approval_steps` (
   `authority_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_pic_marketing` tinyint(1) NOT NULL DEFAULT '0',
   `approver_user_id` int DEFAULT NULL,
+  `remarks` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status` enum('WAITING','PENDING','APPROVED','REJECTED','CANCELLED') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'WAITING',
   `started_at` timestamp(3) NULL DEFAULT NULL,
   `completed_at` timestamp(3) NULL DEFAULT NULL,
@@ -270,6 +268,7 @@ CREATE TABLE IF NOT EXISTS `crm_fap_application_profiles` (
   `establishment_act_no` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `establishment_date` date DEFAULT NULL,
   `premise_status_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_full_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `company_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `country_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `province_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1032,6 +1031,7 @@ CREATE TABLE IF NOT EXISTS `crm_frozen_fap_applications` (
   `branch_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `premise_status_code` varchar(30) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `premise_status_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_full_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `company_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `country_code` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `country_name` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1513,6 +1513,7 @@ CREATE TABLE IF NOT EXISTS `crm_master_business_partners` (
   `npwp` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `branch_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `premise_status_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `company_full_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `company_address` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `country_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `province_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,

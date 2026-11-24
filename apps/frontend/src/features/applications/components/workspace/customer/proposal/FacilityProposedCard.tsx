@@ -2,6 +2,7 @@
 import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {useMasterData} from '@/shared/master-data';
+import {resolveFinancingMethodGroup} from '@liugong/shared';
 import {FileText} from 'lucide-react';
 import {FORM_SECTION} from '@liugong/shared';
 
@@ -40,7 +41,7 @@ export function FacilityProposedCard() {
           gap: '14px',
         }}
       >
-        <div className="field-group" data-field="financingMethod">
+        <div className="field-group" data-field="financingMethod" style={{display: 'flex', flexDirection: 'column'}}>
           <label className="field-label">
             Cara Pembiayaan / Financing Method
             <RequiredStar field="financingMethod" section={FORM_SECTION.PROPOSAL} />
@@ -49,21 +50,34 @@ export function FacilityProposedCard() {
             id="fap-form-financingMethod"
             data-field="financingMethod"
             className="field-input"
+            style={{width: '100%', maxWidth: '280px', boxSizing: 'border-box'}}
             value={draft.financingProposal?.facilityProposed?.financingMethod || ''}
             disabled={!canProposal}
             onFocus={() => handleTriggerFieldSync('financingMethod', 'proposal')}
             onChange={e => {
               const val = e.target.value;
-              setDraft((prev: any) => ({
-                ...prev,
-                financingProposal: {
+              const group = resolveFinancingMethodGroup(val);
+              setDraft((prev: any) => {
+                const unassigned = prev.financingProposal?.termsUnassigned;
+                const nextProposal: any = {
                   ...(prev.financingProposal || {}),
                   facilityProposed: {
                     ...(prev.financingProposal?.facilityProposed || {}),
                     financingMethod: val,
                   },
-                },
-              }));
+                };
+                if (group && unassigned && Object.keys(unassigned).length > 0) {
+                  const currentGroup = prev.financingProposal?.[group] || {};
+                  nextProposal[group] = {
+                    ...unassigned,
+                    ...currentGroup,
+                  };
+                }
+                return {
+                  ...prev,
+                  financingProposal: nextProposal,
+                };
+              });
             }}
           >
             <option value="" disabled hidden>
@@ -105,16 +119,39 @@ export function FacilityProposedCard() {
                     disabled={!canProposal}
                     onClick={() => {
                       const nextVal = isSel ? '' : c;
-                      setDraft((prev: any) => ({
-                        ...prev,
-                        financingProposal: {
-                          ...(prev.financingProposal || {}),
-                          facilityProposed: {
-                            ...(prev.financingProposal?.facilityProposed || {}),
-                            currencyChoice: nextVal,
+                      setDraft((prev: any) => {
+                        const fp = prev.financingProposal || {};
+                        return {
+                          ...prev,
+                          proposal: {
+                            ...(prev.proposal || {}),
+                            currency: nextVal,
                           },
-                        },
-                      }));
+                          financingProposal: {
+                            ...fp,
+                            facilityProposed: {
+                              ...(fp.facilityProposed || {}),
+                              currencyChoice: nextVal,
+                            },
+                            termsFinancialLease: {
+                              ...(fp.termsFinancialLease || {}),
+                              currency: nextVal,
+                            },
+                            termsSaleAndLeaseBack: {
+                              ...(fp.termsSaleAndLeaseBack || {}),
+                              currency: nextVal,
+                            },
+                            termsInstallmentFinancing: {
+                              ...(fp.termsInstallmentFinancing || {}),
+                              currency: nextVal,
+                            },
+                            termsUnassigned: {
+                              ...(fp.termsUnassigned || {}),
+                              currency: nextVal,
+                            },
+                          },
+                        };
+                      });
                       handleTriggerFieldSync('currencyChoice', 'proposal');
                     }}
                     style={{
@@ -160,23 +197,27 @@ export function FacilityProposedCard() {
           </div>
         </div>
 
-        <div className="field-group" data-field="applicationSource">
+        <div className="field-group" data-field="applicationSource" style={{display: 'flex', flexDirection: 'column'}}>
           <label className="field-label">
             Application Source
             <RequiredStar field="applicationSource" section={FORM_SECTION.PROPOSAL} />
           </label>
-          <input
-            type="text"
+          <select
             id="fap-form-applicationSource"
             data-field="applicationSource"
             className="field-input"
-            value={draft.financingProposal?.facilityProposed?.applicationSource || ''}
+            style={{width: '100%', maxWidth: '280px', boxSizing: 'border-box'}}
+            value={draft.financingProposal?.facilityProposed?.applicationSource || draft.proposal?.applicationSource || ''}
             disabled={!canProposal}
             onFocus={() => handleTriggerFieldSync('applicationSource', 'proposal')}
             onChange={e => {
               const val = e.target.value;
               setDraft((prev: any) => ({
                 ...prev,
+                proposal: {
+                  ...(prev.proposal || {}),
+                  applicationSource: val,
+                },
                 financingProposal: {
                   ...(prev.financingProposal || {}),
                   facilityProposed: {
@@ -186,7 +227,24 @@ export function FacilityProposedCard() {
                 },
               }));
             }}
-          />
+          >
+            <option value="">-- Pilih / Kosong --</option>
+            {((master.applicationSource && master.applicationSource.length > 0)
+              ? master.applicationSource.filter(
+                  x => x.active || x.value === (draft.financingProposal?.facilityProposed?.applicationSource || draft.proposal?.applicationSource),
+                )
+              : [
+                  {value: 'DIRECT', name: 'Direct'},
+                  {value: 'DEALER', name: 'Dealer'},
+                  {value: 'REFERRAL', name: 'Referral'},
+                  {value: 'INTERNAL', name: 'Internal'},
+                ]
+            ).map(x => (
+              <option key={x.value} value={x.value}>
+                {x.name || x.value}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
     </div>

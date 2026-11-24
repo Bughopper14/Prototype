@@ -36,7 +36,7 @@ export function useDocumentChecklist({
   const [deletingFileId, setDeletingFileId] = useState<string | null>(null);
   const [previewModal, setPreviewModal] = useState<PreviewState | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [targetUploadCode, setTargetUploadCode] = useState<string | null>(null);
+  const [targetUpload, setTargetUpload] = useState<{code: string; chkId?: string} | null>(null);
   // Asking for the approval of one document (a document the workflow wants approved): the same people who may submit a stage
   const canRequestApproval = hasAuthority(user, 'CRM_WORKFLOW_SUBMIT');
   const [approvalBusy, setApprovalBusy] = useState<string | null>(null);
@@ -101,17 +101,17 @@ export function useDocumentChecklist({
     setZipping(true);
     try {
       const name = await downloadChecklistZip(a.id);
-      notify(`${name} berhasil diunduh.`);
+      notify(`${name} successfully downloaded.`);
     } catch (err: any) {
-      notify(`Gagal mengunduh ZIP: ${err.message || 'Terjadi kesalahan'}`);
+      notify(`Failed to download ZIP: ${err.message || 'An error occurred'}`);
     } finally {
       setZipping(false);
     }
   };
 
   // Handler Upload File
-  const handleTriggerUpload = (code: string) => {
-    setTargetUploadCode(code);
+  const handleTriggerUpload = (code: string, chkId?: string) => {
+    setTargetUpload({code, chkId});
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
       fileInputRef.current.click();
@@ -121,13 +121,15 @@ export function useDocumentChecklist({
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // the FAP has one current signed file; every other document can have several (a KTP per stakeholder, several deeds)
     const picked = Array.from(e.target.files || []);
-    const files = targetUploadCode === 'FAP' ? picked.slice(0, 1) : picked;
-    if (!files.length || !targetUploadCode) return;
+    if (!targetUpload || !picked.length) return;
+    const {code: docCode, chkId} = targetUpload;
+    const files = docCode === 'FAP' ? picked.slice(0, 1) : picked;
+    if (!files.length) return;
 
-    setUploadingCode(targetUploadCode);
+    setUploadingCode(chkId || docCode);
     try {
-      const row = checklistRows.find(r => r.code === targetUploadCode);
-      const checklistId = row?.chkId || targetUploadCode;
+      const row = chkId ? checklistRows.find(r => r.chkId === chkId) : checklistRows.find(r => r.code === docCode);
+      const checklistId = chkId || row?.chkId || docCode;
       let done = 0;
       const failed: string[] = [];
       for (const file of files) {
@@ -135,27 +137,27 @@ export function useDocumentChecklist({
           const formData = new FormData();
           formData.append('file', file);
           formData.append('checklistId', checklistId);
-          formData.append('documentCode', targetUploadCode);
+          formData.append('documentCode', docCode);
           await api(`/applications/${a.id}/documents/upload`, 'POST', formData);
           done++;
         } catch (err: any) {
-          failed.push(`${file.name}: ${err.message || 'gagal'}`);
+          failed.push(`${file.name}: ${err.message || 'failed'}`);
         }
       }
       if (done) onChange(await api(`/applications/${a.id}`));
-      if (failed.length) notify(`${done} berkas terunggah, ${failed.length} gagal (${failed[0]})`);
-      else notify(done > 1 ? `${done} berkas ${targetUploadCode} berhasil diunggah.` : `Dokumen ${targetUploadCode} berhasil diunggah.`);
+      if (failed.length) notify(`${done} files uploaded, ${failed.length} failed (${failed[0]})`);
+      else notify(done > 1 ? `${done} files for ${docCode} successfully uploaded.` : `Document ${docCode} successfully uploaded.`);
     } catch (err: any) {
-      notify(`Gagal mengunggah dokumen: ${err.message || 'Terjadi kesalahan'}`);
+      notify(`Failed to upload document: ${err.message || 'An error occurred'}`);
     } finally {
       setUploadingCode(null);
-      setTargetUploadCode(null);
+      setTargetUpload(null);
     }
   };
 
   // Handler Delete File (Only manual files)
   const handleDeleteManualFile = async (fileId: string, docCode: string) => {
-    if (!window.confirm(`Hapus berkas ini dari Document Checklist? Tindakan ini tidak dapat dibatalkan.`)) {
+    if (!window.confirm(`Delete this file from Document Checklist? This action cannot be undone.`)) {
       return;
     }
 
@@ -164,9 +166,9 @@ export function useDocumentChecklist({
       await api(`/applications/${a.id}/documents/files/${fileId}`, 'DELETE');
       const updatedApp = await api(`/applications/${a.id}`);
       onChange(updatedApp);
-      notify(`Berkas dokumen ${docCode} berhasil dihapus.`);
+      notify(`Document file ${docCode} successfully deleted.`);
     } catch (err: any) {
-      notify(`Gagal menghapus berkas: ${err.message || 'Terjadi kesalahan'}`);
+      notify(`Failed to delete file: ${err.message || 'An error occurred'}`);
     } finally {
       setDeletingFileId(null);
     }
@@ -177,7 +179,7 @@ export function useDocumentChecklist({
     const file = chosen || row.files[0];
     const url = (!chosen && row.previewUrl) || (file ? `/documents/${file.fileName}` : '');
     if (!url) {
-      notify('Pratinjau fisik dokumen belum tersedia untuk item ini.');
+      notify('Physical document preview is not yet available for this item.');
       return;
     }
     const isPdf = url.toLowerCase().endsWith('.pdf') || file?.mimeType === 'application/pdf';

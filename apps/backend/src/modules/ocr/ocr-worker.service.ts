@@ -11,8 +11,23 @@ import {Injectable, type OnModuleDestroy} from '@nestjs/common';
  * kills the worker, which is started again on the next call.
  */
 
-// apps/backend/ocr, resolved from the backend's working directory (apps/backend); OCR_DIR overrides it.
-const OCR_DIR = path.resolve(process.env.OCR_DIR || 'ocr');
+function resolveOcrDir(): string {
+  if (process.env.OCR_DIR) {
+    const custom = path.resolve(process.env.OCR_DIR);
+    if (existsSync(path.join(custom, 'ocr_worker.py'))) return custom;
+  }
+  const inCwd = path.resolve(process.cwd(), 'ocr');
+  if (existsSync(path.join(inCwd, 'ocr_worker.py'))) return inCwd;
+  const inSrc = path.resolve(__dirname, '../../ocr');
+  if (existsSync(path.join(inSrc, 'ocr_worker.py'))) return inSrc;
+  const inBackend = path.resolve(__dirname, '../../../ocr');
+  if (existsSync(path.join(inBackend, 'ocr_worker.py'))) return inBackend;
+  const inRepo = path.resolve(__dirname, '../../../../apps/backend/ocr');
+  if (existsSync(path.join(inRepo, 'ocr_worker.py'))) return inRepo;
+  return path.resolve(process.env.OCR_DIR || 'ocr');
+}
+
+const OCR_DIR = resolveOcrDir();
 const STARTUP_TIMEOUT_MS = 120_000;
 const DEFAULT_REQUEST_TIMEOUT_MS = 60_000;
 
@@ -24,7 +39,12 @@ function pythonExecutable() {
     process.platform === 'win32'
       ? path.join(OCR_DIR, '.venv', 'Scripts', 'python.exe')
       : path.join(OCR_DIR, '.venv', 'bin', 'python');
-  return existsSync(venv) ? venv : 'python';
+  if (existsSync(venv)) return venv;
+  if (process.platform === 'win32') {
+    const localPython = path.join(process.env.LOCALAPPDATA || '', 'Python', 'bin', 'python.exe');
+    if (existsSync(localPython)) return localPython;
+  }
+  return 'python';
 }
 
 @Injectable()

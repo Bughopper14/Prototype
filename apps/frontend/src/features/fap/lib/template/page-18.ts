@@ -150,7 +150,7 @@ export const FAP_PAGE_18 = `<table cellpadding="0" cellspacing="0">
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl239" colspan="5" rowspan="7" style="border-right:1.0pt solid black;
-  width:597pt" width="796">[sign]</td>
+  width:597pt" width="796"> </td>
 <td class="xl66"></td>
 <td class="xl72"> </td>
 <td class="xl70"></td>
@@ -159,8 +159,7 @@ export const FAP_PAGE_18 = `<table cellpadding="0" cellspacing="0">
 </tr>
 <tr height="182" style="mso-height-source:userset;height:136.95pt">
 <td class="xl71" height="182" style="height:136.95pt"> </td>
-<td class="xl226" colspan="6" style="border-right:1.0pt solid black">[sign &amp;
-  company stamp]</td>
+<td class="xl226" colspan="6" style="border-right:1.0pt solid black"> </td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>

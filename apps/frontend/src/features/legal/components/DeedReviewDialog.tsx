@@ -63,9 +63,16 @@ export function DeedReviewDialog({
       .filter(Boolean) as (readonly [string, string])[];
   // One deed, one approval: when the workflow has an approval for the deed section, the approval of that section decides (the ApprovalSlot on the Legal tab), so this old Submit / Approve / Reject / Remarks is not offered.
   const masterApproves = ((application.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
+  // Legal deeds review saved directly in crm_fap_legal_deed_reviews
   const canSubmit =
-      hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(status),
-    canApprove = checkIsAdmin(user) && status === 'PENDING';
+      (checkIsAdmin(user) || hasAuthority(user, DEED_EDIT_AUTHORITY)) && ['DRAFT', 'REJECTED', 'NEEDS_REVISION'].includes(status),
+    canApprove =
+      (checkIsAdmin(user) ||
+        hasAuthority(user, 'CRM_DEED-REVIEW_LEGAL_APPROVE') ||
+        hasAuthority(user, 'CRM_LEGAL_EDIT') ||
+        hasAuthority(user, 'CRM_DEED-REVIEW_BP_APPROVE') ||
+        hasAuthority(user, 'CRM_DEED-REVIEW_BS_APPROVE')) &&
+      status === 'PENDING';
   // The approval of this deed in the workflow is decided right here: the steps of its round that this person may decide (the same ones the Legal tab offered a "Review & decide" button for)
   const round = ((application.approval?.current || []) as any[]).find(c => c.scope === 'SECTION' && c.sectionCode === DEED_SECTION && c.subjectId === deedId);
   const actable: any[] = masterApproves ? (round?.steps || []).filter((s: any) => s.canAct) : [];

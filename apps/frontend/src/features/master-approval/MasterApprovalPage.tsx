@@ -130,7 +130,7 @@ function ApprovalEditor({
             value={name}
             onChange={e => setName(e.target.value)}
             maxLength={100}
-            placeholder="For example: Legal first, then Business Support and Credit Analyst"
+            placeholder="For example: Legal first, then Business Partner and Credit Analyst"
           />
         </label>
         <label className="ma-field">

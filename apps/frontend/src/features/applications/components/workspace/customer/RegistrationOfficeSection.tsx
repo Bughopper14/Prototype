@@ -1,5 +1,6 @@
 /** Customer section 02: Registration Office & Domicile. */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
+import {useMasterData} from '@/shared/master-data';
 import {Fields} from '@/shared/ui/Fields';
 import {profileFields, FORM_SECTION} from '@liugong/shared';
 import {ChevronDown, Eye} from 'lucide-react';
@@ -16,6 +17,9 @@ export function RegistrationOfficeSection() {
     toggleSection,
     canEditCustomerPic,
   } = useWorkspace();
+  const master = useMasterData();
+  const resolvedCity = master.city?.find(c => c.value === draft.city || c.name === draft.city)?.name || draft.city;
+
   return (
     <div
       className={`fap-accordion-card ${openSections['fap-preview-sec-company'] ? 'is-open' : 'is-closed'}`}
@@ -27,8 +31,8 @@ export function RegistrationOfficeSection() {
           <div className="fap-acc-titles">
             <div className="fap-acc-title-row">
               <h4 className="fap-acc-title">Registration Office & Company Domicile</h4>
-              <span className={`fap-acc-badge ${draft.city && draft.companyAddress ? 'success' : ''}`}>
-                {/^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(String(draft.city || '')) ? draft.branchCode || 'Not filled' : draft.city ? `${draft.city} (${draft.branchCode || 'Branch'})` : 'Not filled'}
+              <span className={`fap-acc-badge ${draft.city && (draft.companyAddress || draft.companyFullAddress) ? 'success' : ''}`}>
+                {draft.city ? `${resolvedCity} (${draft.branchCode || 'Branch'})` : 'Not filled'}
               </span>
             </div>
             <p className="fap-acc-subtitle">
@@ -78,6 +82,7 @@ export function RegistrationOfficeSection() {
             <Fields
               fields={profileFields.filter(f =>
                 [
+                  'companyFullAddress',
                   'companyAddress',
                   'province',
                   'city',

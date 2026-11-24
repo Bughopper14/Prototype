@@ -28,8 +28,12 @@ type DeedActor = {
 const isAdminActor = (actor: DeedActor | null | undefined) =>
   Boolean(actor?.isAdmin || actor?.role === 'ADMIN');
 /** True when the actor holds the authority (from the DB roles); administrators hold every authority. */
-export const actorCan = (actor: DeedActor | null | undefined, authority: string) =>
-  Boolean(actor) && (isAdminActor(actor) || (actor!.authorities || []).includes(authority));
+export const actorCan = (actor: DeedActor | null | undefined, authority: string) => {
+  if (!actor) return false;
+  if (isAdminActor(actor)) return true;
+  const target = authority.toLowerCase();
+  return (actor.authorities || []).some(a => String(a).toLowerCase() === target);
+};
 export class DeedWorkflowError extends Error {
   constructor(
     message: string,
@@ -178,14 +182,27 @@ export function deedTransition(
     }
     Object.assign(review, {status: 'PENDING', notes: null, submittedBy: actor.username || actor.name, submittedAt: date});
   } else if (action === 'APPROVE') {
-    assert(isAdminActor(actor), 'Akta disetujui lewat approval section akta pada workflow.', 403);
+    assert(
+      isAdminActor(actor) ||
+        actorCan(actor, 'CRM_DEED-REVIEW_LEGAL_APPROVE') ||
+        actorCan(actor, 'CRM_LEGAL_EDIT') ||
+        actorCan(actor, 'CRM_DEED-REVIEW_BP_APPROVE') ||
+        actorCan(actor, 'CRM_DEED-REVIEW_BS_APPROVE'),
+      'Akun ini tidak memiliki hak untuk menyetujui akta.',
+      403,
+    );
     assert(status === 'PENDING', 'Akta belum diajukan untuk approval.', 409);
     if (!isAdminActor(actor))
       assert(review.submittedBy !== (actor.username || actor.name), 'Pengaju dan approver harus berbeda.', 403);
-    Object.assign(review, {status: 'APPROVED', notes: comments || null, approvedBy: actor.name, approvedAt: date});
+    Object.assign(review, {status: 'APPROVED', notes: comments || null, approvedBy: actor.name || actor.username, approvedAt: date});
   } else if (action === 'REJECT' || action === 'REMARKS') {
     assert(
-      isAdminActor(actor) && status === 'PENDING',
+      (isAdminActor(actor) ||
+        actorCan(actor, 'CRM_DEED-REVIEW_LEGAL_APPROVE') ||
+        actorCan(actor, 'CRM_LEGAL_EDIT') ||
+        actorCan(actor, 'CRM_DEED-REVIEW_BP_APPROVE') ||
+        actorCan(actor, 'CRM_DEED-REVIEW_BS_APPROVE')) &&
+        status === 'PENDING',
       'Pengembalian akta tidak tersedia untuk akun/status ini.',
       403,
     );

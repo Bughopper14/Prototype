@@ -7,6 +7,13 @@ import {ChecklistCustomizeDialog} from '@/features/documents/components/checklis
 import {hasAuthority} from '@/shared/lib/auth';
 import {ArrowRight, Check, FilePlus2, Loader2, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
+import {CrmRichTextEditor} from '@/shared/ui/CrmRichTextEditor';
+
+function isHtmlEmpty(html?: string | null): boolean {
+  if (!html) return true;
+  const text = html.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+  return text.length === 0;
+}
 
 type Gap = {target: string; label: string; detail?: string};
 
@@ -22,7 +29,7 @@ const GAP_PLACE: Record<string, {stage?: string; tab: number; name: string}> = {
 function GapList({gaps, onOpen}: {gaps: Gap[]; onOpen: (gap: Gap) => void}) {
   return (
     <div className="error" style={{maxHeight: 260, overflowY: 'auto'}}>
-      <strong>Belum lengkap ({gaps.length}), lengkapi dulu:</strong>
+      <strong>Requirements incomplete ({gaps.length}), please complete first:</strong>
       {Object.entries(GAP_PLACE).map(([target, place]) => {
         const items = gaps.filter(gap => gap.target === target);
         if (!items.length) return null;
@@ -76,7 +83,10 @@ export function ApprovalDecisionDialog() {
   const stageItems = stageRound ? itemsOf(stageRound.stageCode) : [];
   const [also, setAlso] = useState<string[]>([]);
   useEffect(() => {
-    if (decision) setKind(decision.kind);
+    if (decision) {
+      setKind(decision.kind);
+      setComments('');
+    }
     setKeep([]);
     setAlso([]);
     setReopen(groupStages.map(s => s.stage));
@@ -90,6 +100,7 @@ export function ApprovalDecisionDialog() {
   const close = () => {
     setGaps([]);
     setDecision(null);
+    setComments('');
   };
   const open = (gap: Gap) => {
     const place = GAP_PLACE[gap.target];
@@ -104,18 +115,20 @@ export function ApprovalDecisionDialog() {
     setError('');
     setGaps([]);
     try {
+      const remarks = isHtmlEmpty(comments) ? undefined : comments.trim();
       const kept = pickStages ? groupStages.filter(s => reopen.includes(s.stage)).flatMap(s => itemsOf(s.stage)).filter((i: any) => keep.includes(i.id)) : [];
       onChange(
         await api(`/applications/${a.id}/approvals/${decision.stepId}/decision`, 'POST', {
           decision: kind,
-          remarks: comments.trim() || undefined,
+          remarks,
           ...(pickStages ? {reopenStages: reopen, keepApproved: {documents: kept.filter((i: any) => i.kind === 'document').map((i: any) => i.id), deeds: kept.filter((i: any) => i.kind === 'deed').map((i: any) => i.id)}} : {}),
           ...(reject && stageItems.length > 0 && also.length > 0
-            ? {reopenItems: {documents: stageItems.filter((i: any) => i.kind === 'document' && also.includes(i.id)).map((i: any) => i.id), deeds: stageItems.filter((i: any) => i.kind === 'deed' && also.includes(i.id)).map((i: any) => i.id)}}
+            ? {reopenItems: {documents: stageItems.filter((i: any) => i.kind === 'document' && also.includes(i.id)).map((i: any) => i.id), deeds: stageItems.filter((i: any) => i.kind === 'deed').map((i: any) => i.id)}}
             : {}),
         }),
       );
       setDecision(null);
+      setComments('');
       notify(reject ? 'Rejected. The stage is open again for changes.' : 'Approved');
     } catch (e: any) {
       setError(e.message);
@@ -215,10 +228,20 @@ export function ApprovalDecisionDialog() {
             ))}
           </fieldset>
         )}
-        <label>
-          {reject ? 'Reason (required)' : 'Notes (optional)'}
-          <textarea rows={4} value={comments} onChange={e => setComments(e.target.value)} placeholder={reject ? 'What must be fixed?' : ''} />
-        </label>
+        <div style={{marginTop: 12, marginBottom: 8}}>
+          <label style={{display: 'block', fontWeight: 600, color: '#334155', marginBottom: 6}}>
+            {reject ? 'Reason (required)' : 'Notes (optional)'}
+          </label>
+          <CrmRichTextEditor
+            id="approval-decision-remarks"
+            value={comments || ''}
+            onChange={setComments}
+            height={200}
+            minHeight={160}
+            showMenubar={true}
+            placeholder={reject ? 'What must be fixed?' : 'Notes (optional)...'}
+          />
+        </div>
         {canRequestDocuments && (
           <div className="ap-request-docs">
             <div>
@@ -247,7 +270,7 @@ export function ApprovalDecisionDialog() {
         <button className="button" onClick={close}>
           Cancel
         </button>
-        <button className={'button ' + (reject ? 'ap-reject-solid' : 'primary')} disabled={busy || (reject && !comments.trim()) || (pickStages && reopen.length === 0)} onClick={confirm}>
+        <button className={'button ' + (reject ? 'ap-reject-solid' : 'primary')} disabled={busy || (reject && isHtmlEmpty(comments)) || (pickStages && reopen.length === 0)} onClick={confirm}>
           {busy ? <Loader2 size={15} className="spin" /> : reject ? <X size={15} /> : <Check size={15} />}
           {reject ? 'Reject' : 'Approve'}
         </button>
@@ -264,6 +287,7 @@ export function SubmitStageDialog() {
   // what the stage still lacks is shown as soon as the dialog opens, before Submit is pressed
   useEffect(() => {
     if (!submitStageCode) return;
+    setComments('');
     let alive = true;
     setChecking(true);
     api(`/applications/${a.id}/stages/${encodeURIComponent(submitStageCode)}/check`)
@@ -279,6 +303,7 @@ export function SubmitStageDialog() {
   const close = () => {
     setGaps([]);
     setSubmitStageCode(null);
+    setComments('');
   };
   // the stage is submitted only when it is complete: the list of what is missing has a button to the place that fixes it
   const open = (gap: Gap) => {
@@ -294,9 +319,11 @@ export function SubmitStageDialog() {
     setError('');
     setGaps([]);
     try {
-      await api(`/applications/${a.id}/stages/${submitStageCode}/submit`, 'POST', {remarks: comments.trim() || undefined});
+      const remarks = isHtmlEmpty(comments) ? undefined : comments.trim();
+      await api(`/applications/${a.id}/stages/${submitStageCode}/submit`, 'POST', {remarks});
       onChange(await api(`/applications/${a.id}`));
       setSubmitStageCode(null);
+      setComments('');
       notify(`${stage?.name ?? 'Stage'} submitted`);
     } catch (e: any) {
       setError(e.message);
@@ -314,10 +341,20 @@ export function SubmitStageDialog() {
         <p>
           The stage is locked and sent for approval. If something is rejected it opens again so you can fix it and submit once more.
         </p>
-        <label>
-          Notes (optional)
-          <textarea rows={3} value={comments} onChange={e => setComments(e.target.value)} />
-        </label>
+        <div style={{marginTop: 12, marginBottom: 8}}>
+          <label style={{display: 'block', fontWeight: 600, color: '#334155', marginBottom: 6}}>
+            Notes (optional)
+          </label>
+          <CrmRichTextEditor
+            id="approval-submit-remarks"
+            value={comments || ''}
+            onChange={setComments}
+            height={180}
+            minHeight={140}
+            showMenubar={true}
+            placeholder="Notes (optional)..."
+          />
+        </div>
         {gaps.length > 0 ? <GapList gaps={gaps} onOpen={open} /> : error && <div className="error">{error}</div>}
       </div>
       <div className="modal-actions">

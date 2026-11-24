@@ -1,11 +1,16 @@
 /** NIB (OSS) OCR text → company fields. */
 import {type MasterCatalog} from '@liugong/shared';
 import {normalizeWilayahInput} from '@/shared/master-data';
-import {extractWilayahFromAddressAndText} from './address-wilayah';
+import {
+  extractStreetAddress,
+  extractWilayahFromAddressAndText,
+  parseAllAddressFields,
+} from './address-wilayah';
 
 export interface ParsedNibData {
   nib?: string;
   companyName?: string;
+  fullAddress?: string;
   alamat?: string;
   email?: string;
   phone?: string;
@@ -154,6 +159,7 @@ export function parseNibText(text: string, catalog?: MasterCatalog): ParsedNibDa
       )
       .replace(/[,.\s\-]+$/, '')
       .trim();
+    result.fullAddress = cleanAddr;
     result.alamat = cleanAddr;
   }
 
@@ -198,18 +204,30 @@ export function parseNibText(text: string, catalog?: MasterCatalog): ParsedNibDa
     }
   }
 
-  // 7. Extract Wilayah (Provinsi, Kota, Kecamatan, Kelurahan, Kode Pos, RT/RW) from text and address
-  const wilayah = extractWilayahFromAddressAndText(text, result.alamat || '', catalog);
-  result.province = wilayah.province;
-  result.city = wilayah.city;
-  result.district = wilayah.district;
-  result.village = wilayah.village;
-  result.postalCode = wilayah.postalCode;
-  result.rt = wilayah.rt;
-  result.rw = wilayah.rw;
+  // 7. Extract Wilayah (Provinsi, Kota, Kecamatan, Kelurahan, Kode Pos, RT/RW, Alamat Jalan) directly from fullAddress
+  if (result.fullAddress) {
+    const parsedAddr = parseAllAddressFields(result.fullAddress, catalog);
+    result.alamat = parsedAddr.alamat;
+    result.province = parsedAddr.province;
+    result.city = parsedAddr.city;
+    result.district = parsedAddr.district;
+    result.village = parsedAddr.village;
+    result.postalCode = parsedAddr.postalCode;
+    result.rt = parsedAddr.rt;
+    result.rw = parsedAddr.rw;
+  } else {
+    const wilayah = extractWilayahFromAddressAndText(text, '', catalog);
+    result.province = wilayah.province;
+    result.city = wilayah.city;
+    result.district = wilayah.district;
+    result.village = wilayah.village;
+    result.postalCode = wilayah.postalCode;
+    result.rt = wilayah.rt;
+    result.rw = wilayah.rw;
+  }
 
   if (result.province) result.province = normalizeWilayahInput(result.province);
-  if (result.city) result.city = normalizeWilayahInput(result.city);
+  if (result.city) result.city = result.city.trim();
   if (result.district) result.district = normalizeWilayahInput(result.district);
   if (result.village) result.village = normalizeWilayahInput(result.village);
 

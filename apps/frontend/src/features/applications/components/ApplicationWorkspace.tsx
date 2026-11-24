@@ -1,4 +1,4 @@
-import {ActivityPage, NibOcrModal} from '@/features/crm/components/lazy';
+import {ActivityPage, NibOcrModal, NpwpOcrModal} from '@/features/crm/components/lazy';
 import {Documents} from '@/features/documents/components/Documents';
 import {DocumentChecklistTab} from '@/features/documents/components/checklist/DocumentChecklistTab';
 import {FapArchiveModal} from '@/features/fap/components/FapArchiveModal';
@@ -36,6 +36,9 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
     nibOcrOpen,
     setNibOcrOpen,
     handleApplyNibOcr,
+    npwpOcrOpen,
+    setNpwpOcrOpen,
+    handleApplyNpwpOcr,
     activeStage,
     reviewDeedId,
     setReviewDeedId,
@@ -169,6 +172,15 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           onApply={handleApplyNibOcr}
           notify={notify}
           applicationId={a?.isNew ? undefined : a?.id}
+          onDocumentUploaded={onChange}
+        />
+        <NpwpOcrModal
+          open={npwpOcrOpen}
+          onClose={() => setNpwpOcrOpen(false)}
+          onApply={handleApplyNpwpOcr}
+          notify={notify}
+          applicationId={a?.isNew ? undefined : a?.id}
+          onDocumentUploaded={onChange}
         />
         {archiveModalOpen && (
           <FapArchiveModal

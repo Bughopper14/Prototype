@@ -1,5 +1,9 @@
 /** The three Terms & Conditions columns of the financing proposal (all free text). */
-export type TermsGroupKey = 'termsFinancialLease' | 'termsSaleAndLeaseBack' | 'termsInstallmentFinancing';
+export type TermsGroupKey =
+  | 'termsFinancialLease'
+  | 'termsSaleAndLeaseBack'
+  | 'termsInstallmentFinancing'
+  | 'termsUnassigned';
 
 export interface TermsFieldConfig {
   /** Used as the data-field and the id suffix, so the live document can find the field. */
@@ -20,9 +24,26 @@ export interface TermsFieldConfig {
 }
 
 export const TERMS_PURPOSE_OPTIONS: ReadonlyArray<{value: string; label: string}> = [
+  {value: '', label: '-- Pilih / Kosong --'},
   {value: 'Investment', label: 'Investment'},
   {value: 'Working Capital', label: 'Working Capital'},
 ];
+
+/** Options for Cara Pembayaran / Payment Timing matching master_payment_timings. */
+export const PAYMENT_METHOD_OPTIONS: ReadonlyArray<{value: string; label: string}> = [
+  {value: '', label: '-- Pilih / Kosong --'},
+  {value: 'IN-ARREAR', label: 'In Arrear'},
+  {value: 'IN-ADVANCE', label: 'In Advance'},
+];
+
+/** Normalizes stored Cara Pembayaran / Payment Method values to master code options or empty. */
+export function normalizePaymentMethod(raw?: string | null): string {
+  const s = String(raw || '').trim().toUpperCase();
+  if (!s) return '';
+  if (s.includes('ADVANCE')) return 'IN-ADVANCE';
+  if (s.includes('ARREAR')) return 'IN-ARREAR';
+  return '';
+}
 
 /** Normalizes stored Working Capital / Investment values to dropdown option values. */
 export function normalizeTermsPurpose(raw?: string | null): string {
@@ -45,7 +66,13 @@ export interface TermsGroupConfig {
 const COMMON_TAIL = (p: string): TermsFieldConfig[] => [
   {dataField: p + 'Rate', label: 'Bunga / Interest Rate', key: 'interestRate'},
   {dataField: p + 'Tenor', label: 'Jk. Waktu / Tenor', key: 'tenor'},
-  {dataField: p + 'Payment', label: 'Cara Pembayaran / Payment Method', key: 'paymentMethod', master: 'paymentMethod'},
+  {
+    dataField: p + 'Payment',
+    label: 'Cara Pembayaran / Payment Method',
+    key: 'paymentMethod',
+    options: PAYMENT_METHOD_OPTIONS,
+    normalizeValue: normalizePaymentMethod,
+  },
 ];
 
 const purposeField = (

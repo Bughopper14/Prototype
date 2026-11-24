@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {CrmDatabase} from '../../core/db/crm-database';
-import {StorageService} from '../../core/storage';
+import {StorageService, buildDocumentFileName} from '../../core/storage';
 import {DocumentsRepository} from '../documents/documents.repository';
 import {OcrWorkerService} from '../ocr/ocr-worker.service';
 import {requireAuthority} from '../auth/session';
@@ -20,8 +20,8 @@ const OCR_AUTHORITIES = [
   'CRM_CUSTOMER_MANAGE',
 ];
 
-/** The checklist document a scan also belongs to: the scanned NIB is the NIB document, a KTP the KTP document, a passport or KITAS the E-KITAS document. */
-const CHECKLIST_DOCUMENT: Record<string, string> = {nib: 'NIB', ktp: 'KTP', passport: 'EKITAS', kitas: 'EKITAS'};
+/** The checklist document a scan also belongs to: the scanned NIB is the NIB document, a KTP the KTP document, a passport or KITAS the E-KITAS document, and NPWP the NPWP document. */
+const CHECKLIST_DOCUMENT: Record<string, string> = {nib: 'NIB', ktp: 'KTP', passport: 'EKITAS', kitas: 'EKITAS', npwp: 'NPWP'};
 
 /** Stakeholder identity documents (KTP, NPWP, passport, KITAS): OCR scan, save and lookup. */
 @Controller(API_PREFIX)
@@ -63,14 +63,44 @@ export class IdentityDocumentsController {
       return {error: 'File tidak ditemukan'};
     }
     const docType = String(req.body.doc_type || 'auto').toLowerCase();
+    const subType = String(req.body.sub_type || req.body.context || req.body.subType || '').trim().toUpperCase();
     const stakeholderId = String(req.body.stakeholder_id || '').trim();
     const appId = String(req.body.application_id || req.body.app_id || 'APP').trim();
+
+    let jenisDoc = subType;
+    if (!jenisDoc) {
+      if (docType === 'nib') {
+        jenisDoc = 'NIB';
+      } else if (docType === 'npwp') {
+        jenisDoc = stakeholderId ? 'NPWPSTAKEHOLDER' : 'NPWPUSAHA';
+      } else if (docType === 'ktp') {
+        jenisDoc = stakeholderId ? 'KTPSTAKEHOLDER' : 'KTPPENGURUS';
+      } else if (docType === 'passport') {
+        jenisDoc = 'PASSPORT';
+      } else if (docType === 'kitas') {
+        jenisDoc = 'KITAS';
+      } else {
+        jenisDoc = docType.toUpperCase();
+      }
+    }
+
+    let appNumber = 'APP';
+    if (appId && appId !== 'APP' && appId !== 'unknown') {
+      const [appRows] = await this.db.pool.execute<any[]>(
+        'SELECT application_number FROM crm_applications WHERE id = ? LIMIT 1',
+        [appId],
+      );
+      appNumber = appRows[0]?.application_number || appId;
+    }
+
+    const customFileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname);
 
     const storage = await this.storage.identityDocumentTarget(
       docType === 'auto' ? 'ktp' : docType,
       appId,
       stakeholderId,
       file.originalname,
+      customFileName,
     );
     await fs.writeFile(storage.savedFilePath, file.buffer);
 

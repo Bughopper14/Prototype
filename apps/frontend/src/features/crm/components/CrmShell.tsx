@@ -14,9 +14,9 @@ import {
   LogOut,
   Menu,
   Settings2,
-  Workflow,
   ShieldCheck,
   Users,
+  Workflow,
   X,
   type LucideIcon,
 } from 'lucide-react';

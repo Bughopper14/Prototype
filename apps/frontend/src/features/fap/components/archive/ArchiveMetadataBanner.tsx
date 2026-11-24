@@ -69,9 +69,16 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             display: 'block',
           }}
         >
-          Database Archive ID
+          Archive Reference
         </span>
-        <span style={{fontSize: 11, fontFamily: 'monospace', color: '#475569'}}>{current.id}</span>
+        <strong style={{fontSize: 13, color: '#0f172a'}}>
+          {current.freezeVersion ? `Snapshot v${current.freezeVersion}` : current.version ? `v${current.version}` : 'Snapshot Archive'}
+        </strong>
+        {current.id && (
+          <span style={{fontSize: 10, color: '#94a3b8', display: 'block', fontFamily: 'monospace'}}>
+            Ref #{String(current.id).slice(0, 8)}
+          </span>
+        )}
       </div>
     </div>
   );

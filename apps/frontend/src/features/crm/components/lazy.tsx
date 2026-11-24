@@ -23,6 +23,10 @@ export const NibOcrModal = lazyComponent(() =>
   import('@/features/ocr/components/NibOcrModal').then(m => m.NibOcrModal),
 );
 
+export const NpwpOcrModal = lazyComponent(() =>
+  import('@/features/ocr/components/NpwpOcrModal').then(m => m.NpwpOcrModal),
+);
+
 export const FapSheetPreview = lazyComponent(() =>
   import('@/features/fap/components/FapSheetPreview').then(m => m.FapSheetPreview),
 );

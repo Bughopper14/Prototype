@@ -1,29 +1,27 @@
-node_modules/
-dist/
-.next/
+# System & OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Diagnostics
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment Variables
 .env
 .env.local
 .env.*.local
-.data/
-output/
-test-results/
-*.log
-__pycache__/
-eng.traineddata
-*.txt
-!requirements.txt
+!.env.example
 
-scratch/
-notes.md
-PLAN.md
-log.md
-uat-result.md
-file-test/
-
+# Build Artifacts & Caches
+dist/
+build/
+out/
+.next/
 .turbo/
-storage/documents/
-storage/files/
-storage/mydocuments/
+.cache/
 *.tsbuildinfo
 apps/backend/ocr/tessdata/
 apps/backend/ocr/.venv/

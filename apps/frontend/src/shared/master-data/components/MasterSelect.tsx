@@ -38,7 +38,7 @@ export function MasterSelect({
       onFocus={onFocus}
       onChange={e => select(e.target.value)}
     >
-      <option value="" hidden></option>
+      <option value=""></option>
       {selectedValue && !choices.some(x => x.value === selectedValue) && (
         <option value={selectedValue}>
           {existing?.name || value}

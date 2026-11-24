@@ -1,4 +1,5 @@
 /** Role of a signatory and its delete button. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {Trash2} from 'lucide-react';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 import type {SignatoryItem} from '@/features/pre-analysis/lib/types';

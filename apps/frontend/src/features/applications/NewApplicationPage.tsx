@@ -18,7 +18,7 @@ export default function NewApplicationPage() {
         onBack={() => navigate(CRM_PAGES[1].href)}
         onCreated={id => {
           reload();
-          navigate(applicationHref(id), {replace: true});
+          navigate(applicationHref(id, 0), {replace: true});
         }}
         notify={notify}
       />

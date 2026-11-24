@@ -14,7 +14,7 @@ export function stripWilayahPrefix(str: string): string {
   return String(str)
     .trim()
     .replace(
-      /^(?:kabupaten|kab\b\.?|kota\s*administrasi|kota\s*adm\b\.?|kota|kot\b\.?|kodya\b\.?|kecamatan|kec\b\.?|desa\/kelurahan|kelurahan\/desa|kelurahan|kel\b\.?|desa|ds\b\.?|provinsi|propinsi|prov\b\.?|prop\b\.?)\s*/i,
+      /^(?:kabupaten\/kota|kota\/kabupaten|kabupaten|kab\b\.?|kota\s*administrasi|kota\s*adm\b\.?|kota|kot\b\.?|kodya\b\.?|kecamatan|kec\b\.?|desa\/kelurahan|kelurahan\/desa|kelurahan|kel\b\.?|desa|ds\b\.?|provinsi|propinsi|prov\b\.?|prop\b\.?)\s*/i,
       '',
     )
     .trim();
@@ -55,6 +55,37 @@ export const matchesMasterItem = (item: MasterItem, val: string) => {
   if (item.value === val || item.name === val) return true;
   return matchWilayahName(item.name, val);
 };
+
+/**
+ * Returns all matching parent IDs for a given administrative value.
+ * For example, if 'Kota Cirebon' or 'Kabupaten Cirebon' or 'Cirebon' is selected/entered,
+ * this returns the IDs of BOTH 'Kota Cirebon' and 'Kabupaten Cirebon' so that all children
+ * (districts / subdistricts) are unified and accessible to the user without artificial splits.
+ * Similarly unifies duplicate 'Desa' and 'Kelurahan' parent entries.
+ */
+export function getUnifiedParentIds(list: MasterItem[] | undefined, val: string | undefined): string[] {
+  if (!list || !val) return [];
+  const found = list.filter(item => matchesMasterItem(item, val));
+  if (!found.length) return [val];
+
+  // If matches were found by base name (e.g. Cirebon -> Kota Cirebon & Kabupaten Cirebon),
+  // gather all IDs in the list that share the exact same core stripped name and province (if any).
+  const coreTarget = cleanWilayahStr(stripWilayahPrefix(found[0].name || val));
+  const unified = list.filter(item => {
+    if (found.some(f => f.value === item.value)) return true;
+    const coreItem = cleanWilayahStr(stripWilayahPrefix(item.name));
+    if (coreTarget && coreItem === coreTarget) {
+      // If parents have a parentValue (e.g. province), check that they belong to the same province
+      if (found[0].parentValue && item.parentValue && found[0].parentValue !== item.parentValue) {
+        return false;
+      }
+      return true;
+    }
+    return false;
+  });
+
+  return Array.from(new Set(unified.map(x => x.value)));
+}
 
 export function resolveWilayahUpwards(record: any, data: MasterCatalog) {
   if (!data || !record) return record;
@@ -107,9 +138,13 @@ export function resolveWilayahUpwards(record: any, data: MasterCatalog) {
   }
 
   // Fill the levels above from the parent ids. When the city was found through the district / village that was just
-  // chosen (its parent id), that city and its province win over a different value already in the record.
+  // chosen (its parent id), that city and its province win over a different value already in the record (e.g. adjusting Kota vs Kabupaten).
   const cityFromChild = !!districtItem?.parentValue;
-  const differs = (item: MasterItem, current: unknown) => !!current && !matchesMasterItem(item, String(current));
+  const differs = (item: MasterItem, current: unknown) => {
+    if (!current) return true;
+    if (item.value === current || item.name === current) return false;
+    return true;
+  };
   if (provItem && (!next.province || (cityFromChild && differs(provItem, next.province)))) {
     next.province = provItem.value;
   }

@@ -1,4 +1,5 @@
 /** SLIK / bureau review of every group entity, one card per entity. */
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {EntitySlikCard} from '@/features/pre-analysis/components/form/dealer-cross-check/EntitySlikCard';
 import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 

@@ -14,23 +14,24 @@ export function DocumentRowActions({
   isUploading: boolean;
   deletingFileId: string | null;
   onPreview: (row: ChecklistRow) => void;
-  onUpload: (code: string) => void;
+  onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
 }) {
   // "Ganti" (replace) is only for the FAP (one current signed file); every other document takes more files ("Tambah"); a document with no file yet says "Upload"
   const hasFile = (row.files || []).length > 0;
+  const canPreview = row.isAvailable && (hasFile || !!row.previewUrl);
   return (
     <div className="doc-row-actions">
-      {/* Preview button if available */}
-      {row.isAvailable && (
+      {/* Preview button if available and has file/url */}
+      {canPreview && (
         <button
           type="button"
           className="button small doc-action-btn btn-view"
-          title="Pratinjau Dokumen Fisik"
+          title="Preview Physical Document"
           onClick={() => onPreview(row)}
         >
           <Eye size={13} />
-          <span>Lihat</span>
+          <span>View</span>
         </button>
       )}
 
@@ -38,12 +39,12 @@ export function DocumentRowActions({
       <button
         type="button"
         className={`button small doc-action-btn ${hasFile ? 'btn-replace' : 'primary btn-upload'}`}
-        title={!hasFile ? 'Upload Berkas Sekarang' : row.code === 'FAP' ? 'Ganti Berkas' : 'Tambah Berkas (boleh lebih dari satu)'}
+        title={hasFile ? 'Replace / Upload additional file' : 'Upload file now'}
         disabled={isUploading}
-        onClick={() => onUpload(row.code)}
+        onClick={() => onUpload(row.code, row.chkId)}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
-        <span>{!hasFile ? 'Upload' : row.code === 'FAP' ? 'Ganti' : 'Tambah'}</span>
+        <span>{hasFile ? 'Replace' : 'Upload'}</span>
       </button>
 
       {/* Delete Button / Lock Indicator (with several files each file has its own delete button in the file list) */}
@@ -52,7 +53,7 @@ export function DocumentRowActions({
           <button
             type="button"
             className="button small doc-action-btn btn-delete text-danger"
-            title="Hapus Berkas Manual"
+            title="Delete Manual File"
             disabled={deletingFileId === row.files[0].id}
             onClick={() => onDelete(row.files[0].id, row.code)}
           >
@@ -65,7 +66,7 @@ export function DocumentRowActions({
         ) : (
           <div
             className="locked-action-indicator"
-            title={`Dokumen ini terhubung otomatis dari ${row.sourceLabel}. Hapus atau ubah dokumen melalui modul tersebut.`}
+            title={`This document is automatically linked from ${row.sourceLabel}. Delete or update it from that module.`}
           >
             <Lock size={13} />
           </div>

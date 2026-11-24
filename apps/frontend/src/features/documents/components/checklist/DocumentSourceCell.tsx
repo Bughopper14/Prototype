@@ -18,20 +18,20 @@ export function DocumentSourceCell({
   return (
     <div className="doc-source-details-box">
       {row.sourceType === 'SYSTEM_LINKED' && (
-        <div className="source-chip chip-system" title="Terhubung otomatis dari modul terkait">
+        <div className="source-chip chip-system" title="Automatically connected from related module">
           <Lock size={11} style={{marginRight: 4}} />
           <span>{row.sourceLabel}</span>
         </div>
       )}
       {row.sourceType === 'MANUAL' && (
-        <div className="source-chip chip-manual" title="Diunggah secara mandiri pada checklist">
+        <div className="source-chip chip-manual" title="Uploaded manually in checklist">
           <Upload size={11} style={{marginRight: 4}} />
-          <span>Upload Manual</span>
+          <span>Manual Upload</span>
         </div>
       )}
       {row.sourceType === 'NONE' && (
         <span className="muted" style={{fontSize: '11.5px'}}>
-          Belum ada berkas atau data terkait
+          No files or linked data yet
         </span>
       )}
 
@@ -60,7 +60,7 @@ export function DocumentSourceCell({
                   <button
                     type="button"
                     className="file-delete-icon-btn"
-                    title="Hapus berkas ini"
+                    title="Delete this file"
                     disabled={isDeleting}
                     onClick={() => onDelete(f.id, row.code)}
                   >

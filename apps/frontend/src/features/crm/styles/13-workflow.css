@@ -426,8 +426,12 @@
 .wf-apl-sum { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .wf-apl-sum li { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #0b1b3f; font-weight: 600; flex-wrap: wrap; }
 .wf-apl-sum em { font-style: normal; font-size: 12px; font-weight: 700; color: #92400e; background: #fef3c7; border-radius: 999px; padding: 2px 8px; }
-.wf-apl-modal { width: min(640px, 94vw); }
-.wf-apl-modal-body { display: grid; gap: 14px; padding: 4px 20px 20px; max-height: 75vh; overflow: auto; }
+.modal.wf-apl-modal { width: min(650px, 94vw); max-width: 650px; }
+.wf-apl-modal-body { display: grid; gap: 14px; padding: 4px 6px 16px 16px; max-height: 75vh; overflow-y: auto; box-sizing: border-box; }
+.wf-apl-modal-body::-webkit-scrollbar { width: 6px; }
+.wf-apl-modal-body::-webkit-scrollbar-track { background: transparent; }
+.wf-apl-modal-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.wf-apl-modal-body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .wf-apl-modal-body h3 { margin: 0; font-size: 18px; color: #0b1b3f; }
 .wf-apl-none { margin: 0; color: #64748b; }
 .wf-apl-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

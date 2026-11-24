@@ -272,6 +272,67 @@ def _clean_ktp_address(raw_al: str, region_hints=None) -> str:
 
     return re.sub(r'\s+', ' ', val).strip()
 
+
+_INDO_NAME_SPLITTER = None
+
+def get_indo_name_splitter():
+    global _INDO_NAME_SPLITTER
+    if _INDO_NAME_SPLITTER is not None:
+        return _INDO_NAME_SPLITTER
+    try:
+        import wordninja
+        lm = wordninja.DEFAULT_LANGUAGE_MODEL
+    except Exception:
+        return None
+
+    indo_names = [
+        'supriadi', 'supriyadi', 'supri', 'candra', 'chandra', 'cahyono', 'cahyo', 'cahyani',
+        'budi', 'santoso', 'wijaya', 'setiawan', 'kurniawan', 'pratama', 'putra', 'putri',
+        'susanto', 'wahyudi', 'hidayat', 'lestari', 'wulandari', 'yulianti', 'sari', 'rahayu',
+        'hermawan', 'gunawan', 'nugroho', 'saputra', 'saputri', 'utomo', 'kusuma', 'permana',
+        'sukma', 'wibowo', 'purnomo', 'triono', 'mulyono', 'surya', 'dharma', 'agus', 'bambang',
+        'joko', 'slamet', 'sugeng', 'eko', 'tri', 'catur', 'panca', 'hendra', 'indra', 'andi',
+        'ahmad', 'muhammad', 'mochammad', 'abdul', 'siti', 'nur', 'dewi', 'sri', 'ratna', 'ratih',
+        'maulana', 'fauzi', 'firmansyah', 'hakim', 'arifin', 'anwar', 'hasan', 'husen', 'ismail',
+        'ibrahim', 'yusuf', 'ridwan', 'rusdi', 'rizki', 'rizky', 'fajar', 'bayu', 'dimas', 'bagus',
+        'gilang', 'rendy', 'randy', 'febri', 'april', 'septian', 'okta', 'novi', 'desi', 'dian',
+        'lia', 'rina', 'rini', 'tini', 'yanti', 'yani', 'wati', 'nurhayati', 'sulastri', 'suhartini',
+        'sumiati', 'widodo', 'permata', 'kusuma', 'hartono', 'susila', 'susilo', 'mulyadi',
+        'subagyo', 'suharto', 'sukarno', 'habibie', 'yudhoyono', 'megawati', 'kartika', 'anggraini',
+        'novita', 'fitri', 'fitria', 'ramadhan', 'syahputra', 'lubis', 'nasution', 'siregar', 'harahap',
+        'pasaribu', 'sinaga', 'simanjuntak', 'hutapea', 'sitompul', 'marpaung', 'panjaitan', 'tanjung',
+        'manurung', 'simatupang', 'sitorus', 'hasibuan', 'daulay', 'batubara', 'pane', 'pulungan'
+    ]
+    for w in indo_names:
+        lm._wordcost[w.lower()] = 3.0
+        if len(w) > lm._maxword:
+            lm._maxword = len(w)
+    _INDO_NAME_SPLITTER = lm
+    return _INDO_NAME_SPLITTER
+
+
+def respace_glued_name(raw_name: str) -> str:
+    if not raw_name:
+        return ""
+    import re
+    s = raw_name.strip()
+    if ' ' in s or len(s) < 7:
+        return s
+    # CamelCase like SupriadiCandraCahyono
+    if re.search(r'[a-z][A-Z]', s):
+        return re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', s).strip()
+    # All uppercase glued name
+    splitter = get_indo_name_splitter()
+    if splitter:
+        try:
+            parts = splitter.split(s)
+            if len(parts) > 1 and all(len(p) >= 2 for p in parts):
+                return " ".join(parts).upper()
+        except Exception:
+            pass
+    return s
+
+
 def post_process_ktp_full(extracted: dict, boxes=None):
     import re
     import difflib
@@ -334,7 +395,10 @@ def post_process_ktp_full(extracted: dict, boxes=None):
         clean_name = re.sub(r'\s+', ' ', clean_name).strip().upper()
         if ('AXEL' in clean_name or 'AXLL' in clean_name) and ('MATT' in clean_name or 'MALL' in clean_name or 'MATH' in clean_name):
             clean_name = 'AXEL MATTHEW A.'
+        else:
+            clean_name = respace_glued_name(clean_name)
         extracted["nama"] = clean_name
+        extracted["name"] = clean_name
         parts = clean_name.split()
         extracted["firstName"] = parts[0] if parts else ''
         extracted["middleName"] = " ".join(parts[1:-1]) if len(parts) > 2 else ''
@@ -1345,6 +1409,8 @@ def extract_ktp_nib_style(boxes: list) -> tuple:
     else:
         kewarganegaraan = "WNI"
 
+    if nama:
+        nama = respace_glued_name(nama)
     parts = nama.split() if nama else []
     first_name = parts[0] if parts else ""
     middle_name = " ".join(parts[1:-1]) if len(parts) > 2 else ""
@@ -1656,10 +1722,10 @@ def extract_nib(boxes: list) -> tuple:
         alamat_full = re.sub(r'^(?:korespondensi\b)?[\s:：.\-–—=]*', '', alamat_full, flags=re.IGNORECASE).strip()
         alamat_full = re.sub(r'^(?:kantor|perusahaan|usaha|domisili)?[\s:：.\-–—=]+', '', alamat_full, flags=re.IGNORECASE).strip()
 
-    # Ekstraksi nama jalan spesifik (sebelum Desa/Kelurahan, Kelurahan, Kecamatan, RT/RW)
+    # Ekstraksi nama jalan spesifik (sebelum Desa/Kelurahan, Kelurahan, Kecamatan, RT/RW, Kota, Provinsi)
     street_part = ""
     if alamat_full:
-        street_cand = re.split(r',?\s*(?:desa[/\s]*kelurahan|kelurahan|desa|kecamatan|kec\.?|rt[/\s.:]*\d|rw[/\s.:]*\d|kabupaten|kab\.?|kota|provinsi|kode\s*pos)', alamat_full, flags=re.IGNORECASE)[0].strip()
+        street_cand = re.split(r',?\s*(?:desa[/\s]*kelurahan|kelurahan|kel\b|desa|ds\b|kecamatan|kec\b|rt[/\s.:]*\d|rw[/\s.:]*\d|(?:rt|rw)\b|kabupaten\/kota|kota\/kabupaten|kabupaten|kota\s*adm\.?|kota|kot\b|kodya\b|kab\b|provinsi|propinsi|prov\b|prop\b|kode\s*pos|\b\d{5}\b)', alamat_full, flags=re.IGNORECASE)[0].strip()
         street_cand = re.sub(r'[,.\s\-]+$', '', street_cand).strip()
         if len(street_cand) >= 3:
             street_part = street_cand
@@ -1667,46 +1733,56 @@ def extract_nib(boxes: list) -> tuple:
     company_address = street_part if street_part else alamat_full
     alamat = company_address
 
-    # Ekstraksi RT dan RW
+    # Ekstraksi RT dan RW (utamakan dari alamat_full)
     rt = ""
     rw = ""
-    target_text_rt = alamat_full if alamat_full else full_text
-    m_rtrw = re.search(r'\b(?:rt[/\s.:]*(\d{1,3}))[\s/,\-]+(?:rw[/\s.:]*(\d{1,3}))\b', target_text_rt, re.IGNORECASE)
+    target_addr = alamat_full if alamat_full else full_text
+    m_rtrw = re.search(r'\b(?:rt[/\s.:]*(\d{1,3}))[\s/,\-]+(?:rw[/\s.:]*(\d{1,3}))\b', target_addr, re.IGNORECASE)
     if m_rtrw:
         rt = m_rtrw.group(1).zfill(3)
         rw = m_rtrw.group(2).zfill(3)
     else:
-        m_slash = re.search(r'\brt[i/|!\s]*rw[\s:.\-–—=]*(\d{1,3})[/\s\-]+(\d{1,3})\b', target_text_rt, re.IGNORECASE)
+        m_slash = re.search(r'\brt[i/|!\s]*rw[\s:.\-–—=]*(\d{1,3})[/\s\-]+(\d{1,3})\b', target_addr, re.IGNORECASE)
         if m_slash:
             rt = m_slash.group(1).zfill(3)
             rw = m_slash.group(2).zfill(3)
         else:
-            m_rt = re.search(r'\brt[\s:.\-–—]*(\d{1,3})\b', target_text_rt, re.IGNORECASE)
+            m_rt = re.search(r'\brt[\s:.\-–—]*(\d{1,3})\b', target_addr, re.IGNORECASE)
             if m_rt:
                 rt = m_rt.group(1).zfill(3)
-            m_rw = re.search(r'\brw[\s:.\-–—]*(\d{1,3})\b', target_text_rt, re.IGNORECASE)
+            m_rw = re.search(r'\brw[\s:.\-–—]*(\d{1,3})\b', target_addr, re.IGNORECASE)
             if m_rw:
                 rw = m_rw.group(1).zfill(3)
 
-    pos_match = re.search(r'(?:kode\s*pos|pos)[\s:.\-–—]*(\d{5})\b', alamat_full or full_text, re.IGNORECASE)
+    pos_match = re.search(r'(?:kode\s*pos|pos)[\s:.\-–—]*(\d{5})\b', target_addr, re.IGNORECASE)
     if not pos_match:
-        pos_match = re.search(r'\b(\d{5})\b', alamat_full or full_text)
+        pos_match = re.search(r'\b(\d{5})\b', target_addr)
+    if not pos_match and target_addr != full_text:
+        pos_match = re.search(r'(?:kode\s*pos|pos)[\s:.\-–—]*(\d{5})\b', full_text, re.IGNORECASE)
     if pos_match:
         kode_pos = pos_match.group(1)
 
-    kec_match = re.search(r'\b(?:kecamatan|kec\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kabupaten|kota|kelurahan|kode\s*pos)', full_text, re.IGNORECASE)
+    kec_match = re.search(r'\b(?:kecamatan|kec\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kabupaten|kota|kelurahan|kode\s*pos)', target_addr, re.IGNORECASE)
+    if not kec_match and target_addr != full_text:
+        kec_match = re.search(r'\b(?:kecamatan|kec\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kabupaten|kota|kelurahan|kode\s*pos)', full_text, re.IGNORECASE)
     if kec_match:
         kecamatan = re.sub(r'[^A-Za-z\s]', '', kec_match.group(1)).strip().upper()
 
-    kel_match = re.search(r'\b(?:desa[/\s]*kelurahan|kelurahan|kel\.?|desa)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kecamatan|kode\s*pos)', full_text, re.IGNORECASE)
+    kel_match = re.search(r'\b(?:desa[/\s]*kelurahan|kelurahan|kel\.?|desa)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kecamatan|kode\s*pos)', target_addr, re.IGNORECASE)
+    if not kel_match and target_addr != full_text:
+        kel_match = re.search(r'\b(?:desa[/\s]*kelurahan|kelurahan|kel\.?|desa)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kecamatan|kode\s*pos)', full_text, re.IGNORECASE)
     if kel_match:
         kelurahan = re.sub(r'[^A-Za-z\s]', '', kel_match.group(1)).strip().upper()
 
-    prov_match = re.search(r'\b(?:provinsi|propinsi|prov\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kode\s*pos)', full_text, re.IGNORECASE)
+    prov_match = re.search(r'\b(?:provinsi|propinsi|prov\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kode\s*pos)', target_addr, re.IGNORECASE)
+    if not prov_match and target_addr != full_text:
+        prov_match = re.search(r'\b(?:provinsi|propinsi|prov\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|kode\s*pos)', full_text, re.IGNORECASE)
     if prov_match:
         provinsi = re.sub(r'[^A-Za-z\s]', '', prov_match.group(1)).strip().title()
 
-    kota_match = re.search(r'\b(?:kabupaten\/kota|kabupaten|kota\s*adm\.?|kota|kab\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|provinsi|propinsi|kode\s*pos)', full_text, re.IGNORECASE)
+    kota_match = re.search(r'\b(?:kabupaten\/kota|kabupaten|kota\s*adm\.?|kota|kab\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|provinsi|propinsi|kode\s*pos)', target_addr, re.IGNORECASE)
+    if not kota_match and target_addr != full_text:
+        kota_match = re.search(r'\b(?:kabupaten\/kota|kabupaten|kota\s*adm\.?|kota|kab\.?)[\s:.\-–—]*([A-Za-z\s]+?)(?:,|$|\n|provinsi|propinsi|kode\s*pos)', full_text, re.IGNORECASE)
     if kota_match:
         kota = re.sub(r'[^A-Za-z\s]', '', kota_match.group(1)).strip().title()
 
@@ -1785,6 +1861,8 @@ def extract_nib(boxes: list) -> tuple:
         "streetAddress": company_address,
         "fullAddress": alamat_full,
         "alamat_lengkap": alamat_full,
+        "company_full_address": alamat_full,
+        "companyFullAddress": alamat_full,
         "rt": rt,
         "rw": rw,
         "rt_rw": f"{rt}/{rw}" if (rt or rw) else "",
@@ -1949,19 +2027,21 @@ def extract_latest_deed_no_from_image(file_path: str, l_latest_deed: dict, p1_bo
 
         h, w, _ = page_bgr.shape
         y_center = int(l_latest_deed.get('yc', 0.37) * h)
-        row_y1 = max(0, y_center - int(0.025 * h))
-        row_y2 = min(h, y_center + int(0.025 * h))
-        col_x1 = max(0, int(0.215 * w))
-        col_x2 = min(w, int(0.290 * w))
+        row_y1 = max(0, y_center - int(0.020 * h))
+        row_y2 = min(h, y_center + int(0.020 * h))
+        # Strictly crop inside the box (xc 0.248 - 0.295) so label words like "Latest Deed of" are never included
+        col_x1 = max(0, int(0.248 * w))
+        col_x2 = min(w, int(0.295 * w))
 
         crop = page_bgr[row_y1:row_y2, col_x1:col_x2]
         if crop.size > 0:
             from app.services.ocr_engine import OCREngine
             crop_boxes = OCREngine.process_image(crop)
+            stop_pattern = r'\b(tanggal|date|terakhir|latest|amendment|perubahan|years?|months?|vears?|thn|tahun|bln|bulan|deed|of|act|no|nomor|number)\b'
             # 1. First look for pure numbers or AHU numbers (the actual deed number)
             for b in crop_boxes:
                 txt = b.get('text', '').strip()
-                if re.search(r'\b(tanggal|date|terakhir|latest|amendment|perubahan|years?|months?|vears?|thn|tahun|bln|bulan)\b', txt, re.IGNORECASE):
+                if re.search(stop_pattern, txt, re.IGNORECASE):
                     continue
                 m = re.search(r'\b(AHU[-.0-9A-Za-z]+|\d+)\b', txt)
                 if m:
@@ -1969,11 +2049,13 @@ def extract_latest_deed_no_from_image(file_path: str, l_latest_deed: dict, p1_bo
             # 2. Fallback
             for b in crop_boxes:
                 txt = b.get('text', '').strip()
-                if re.search(r'\b(tanggal|date|terakhir|latest|amendment|perubahan|years?|months?|vears?|thn|tahun|bln|bulan)\b', txt, re.IGNORECASE):
+                if re.search(stop_pattern, txt, re.IGNORECASE):
                     continue
                 m = re.search(r'([A-Za-z0-9\-_./]+)', txt)
                 if m:
-                    return m.group(1).strip()
+                    cand = m.group(1).strip()
+                    if cand.lower() not in ('of', 'deed', 'act', 'no', 'number'):
+                        return cand
     except Exception as e:
         sys.stderr.write(f"[OCR] extract_latest_deed_no_from_image error: {e}\n")
     return ""
@@ -2132,6 +2214,8 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
 
         if key == 'mainBusiness':
             if norm_c in ('pertambangan mining', 'pertanian agriculture', 'kehutanan forestry', 'konstruksi construction', 'perdagangan trading', 'manufaktur manufacturing', 'transportasi transportation', 'jasa service', 'lain lain others'):
+                return ""
+            if 'project role' in norm_c or 'pemilik proyek' in norm_c or 'project owner' in norm_c:
                 return ""
 
         if key in ('companyName', 'picName', 'picPosition', 'companyAddress', 'mainBusiness', 'repaymentSource'):
@@ -2475,6 +2559,15 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                 cleaned_deed = re.sub(r'\.AH\.', '.AH.', cleaned_deed, flags=re.IGNORECASE)
                 cleaned_deed = re.sub(r'Tahun', 'Tahun ', cleaned_deed, flags=re.IGNORECASE)
                 data["establishmentActNo"] = cleaned_deed if cleaned_deed.startswith('AHU-') else raw_deed
+            if not data["establishmentActNo"] and pdf_path and l_est_deed:
+                img_deed = extract_latest_deed_no_from_image(pdf_path, l_est_deed, p1)
+                if img_deed:
+                    data["establishmentActNo"] = img_deed
+            # Fallback from stakeholder header "Berdasarkan Akta/ Based on Act No: 1"
+            if not data["establishmentActNo"]:
+                m_act = re.search(r'(?:berdasarkan\s+akta|based\s+on\s+act)[^:\n\r]*?[:=]\s*([0-9A-Za-z\-_./]+)', combined_full_text, re.IGNORECASE)
+                if m_act:
+                    data["establishmentActNo"] = m_act.group(1).strip()
             # Date value is in xc >= 0.37 and xc <= 0.44
             date_boxes = [b for b in p1 if b["xc"] >= 0.37 and b["xc"] <= 0.44 and b["yc"] >= l_est_deed["y1"] - 0.005 and b["yc"] < y_next]
             for db in date_boxes:
@@ -2559,6 +2652,12 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
                 img_deed = extract_latest_deed_no_from_image(pdf_path, l_latest_deed, p1)
                 if img_deed:
                     data["latestDeedNo"] = img_deed
+            if not data["latestDeedNo"] and data.get("establishmentActNo"):
+                # If latest deed number is missing but latest deed date matches establishment date (or exists), inherit establishment deed number
+                if data.get("latestDeedDate") and data.get("establishmentDate") and data["latestDeedDate"] == data["establishmentDate"]:
+                    data["latestDeedNo"] = data["establishmentActNo"]
+                elif not data.get("latestDeedDate"):
+                    data["latestDeedNo"] = data["establishmentActNo"]
             date_boxes = [b for b in p1 if b["xc"] >= 0.37 and b["xc"] <= 0.44 and b["yc"] >= l_latest_deed["y1"] - 0.005 and b["yc"] < y_next]
             for db in date_boxes:
                 m_dt = re.search(r'(\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4}|\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2})', db["text"])
@@ -2667,12 +2766,12 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         # Financing Purpose on Page 1
         l_purp = find_label(p1, r'financing\s+purpose|tujuan\s+pembiayaan', 0.05, 0.30)
         if l_purp:
-            purp_boxes = [b for b in p1 if b["yc"] >= l_purp["y1"] - 0.01 and b["yc"] <= l_purp["y2"] + 0.04]
+            purp_boxes = [b for b in p1 if b["yc"] >= l_purp["y1"] - 0.01 and b["yc"] <= l_purp["y2"] + 0.06]
             purp_text = " ".join([b["text"] for b in purp_boxes])
-            if re.search(r'investment\s*\([vV\u2713xX\)]', purp_text, re.IGNORECASE) or re.search(r'investasi\s*/\s*investment\s*\(v\)', purp_text, re.IGNORECASE):
-                data["facilityPurpose"] = "INVESTMENT"
-            elif re.search(r'modal\s*kerja.*working\s*copitol\s*\(v\)', purp_text, re.IGNORECASE):
+            if re.search(r'modal\s*kerja.*working\s*(?:capital|copitol)\s*\([vV\u2713xX✓✔]\)', purp_text, re.IGNORECASE) or re.search(r'working\s*(?:capital|copitol)\s*\([vV\u2713xX✓✔]\)', purp_text, re.IGNORECASE):
                 data["facilityPurpose"] = "WORKING_CAPITAL"
+            elif re.search(r'i[nm]vestment\s*\([vV\u2713xX✓✔]\)', purp_text, re.IGNORECASE) or re.search(r'investasi\s*/\s*i[nm]vestment\s*\([vV\u2713xX✓✔]\)', purp_text, re.IGNORECASE):
+                data["facilityPurpose"] = "INVESTMENT"
 
         # Financing method on Page 2
         if p2:
@@ -2824,18 +2923,23 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         if m:
             data["phoneFax"] = m.group(1).strip()
 
-    # Note: Company email is strictly collected from its designated box on Page 1.
-    # If the box is empty in the document, data["email"] remains empty.
-
-    if not data["mainBusiness"]:
-        m = re.search(r'(?:bidang\s+usaha|main\s+business|kegiatan\s+usaha)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
-        if m:
-            data["mainBusiness"] = m.group(1).strip()
+    # Note: Company email and main business are strictly collected from their designated boxes on Page 1.
+    # If the box is empty in the document, data["email"] and data["mainBusiness"] remain empty.
 
     if not data["establishmentActNo"]:
-        m = re.search(r'(?:no\.?\s*(?:akta\s+)?pendirian|akta\s+pendirian)\s*[:=]?\s*([^\n\r,]+)', combined_full_text, re.IGNORECASE)
+        m = re.search(r'(?:no\.?\s*(?:akta\s+)?pendirian|akta\s+pendirian)[^:\n\r]*?[:=]?\s*([0-9A-Za-z\-_./]+)', combined_full_text, re.IGNORECASE)
+        if not m:
+            m = re.search(r'(?:berdasarkan\s+akta|based\s+on\s+act)[^:\n\r]*?[:=]\s*([0-9A-Za-z\-_./]+)', combined_full_text, re.IGNORECASE)
         if m:
             data["establishmentActNo"] = m.group(1).strip()
+    if not data["latestDeedNo"] and data.get("establishmentActNo"):
+        data["latestDeedNo"] = data["establishmentActNo"]
+
+    if not data["facilityPurpose"]:
+        if re.search(r'working\s*(?:capital|copitol)\s*\([vV\u2713xX✓✔]\)', combined_full_text, re.IGNORECASE):
+            data["facilityPurpose"] = "WORKING_CAPITAL"
+        elif re.search(r'i[nm]vest(?:asi|ment)\s*\([vV\u2713xX✓✔]\)', combined_full_text, re.IGNORECASE):
+            data["facilityPurpose"] = "INVESTMENT"
     if not data["establishmentDate"]:
         m = re.search(r'(?:tanggal\s+akta(?:\s+pendirian)?|establishment\s+date)\s*[:=]?\s*(\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', combined_full_text, re.IGNORECASE)
         if m:

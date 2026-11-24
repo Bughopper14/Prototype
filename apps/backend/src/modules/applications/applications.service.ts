@@ -1,8 +1,9 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
-import {businessToday, DEED_SECTION, deedData, screenOfForm} from '@liugong/shared';
+import {businessToday, DEED_SECTION, deedData, formatCompanyName, screenOfForm} from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
+import {USER_TABLES} from '../../core/db/user-tables';
 import {Problem, ensure} from '../../core/domain';
 import {activityFeed, deedHistory, logActivity, recordActivity} from '../activity/activity-log';
 import type {Actor as SessionActor} from '../auth/session';
@@ -122,18 +123,34 @@ export class ApplicationsService {
       : [];
     const states = await this.approvals.statesFor(rows.map((r: any) => ({id: r.id, workflow_freeze_id: r.workflow_freeze_id})));
     const picNames = await this.mktPics.names(rows.map((r: any) => r.mkt_pic_id));
-    const mine = new Set((actor ? await this.approvals.inbox(actor) : []).map(x => x.applicationId));
+    const mine = new Set((actor ? await this.approvals.inbox(actor) : []).map((x: any) => x.applicationId));
+    const activeFreezeId = await this.config.activeFreezeId().catch(() => null);
     const configs = new Map<string, WorkflowConfig>();
-    for (const code of new Set<string>(rows.map((r: any) => r.workflow_freeze_id))) configs.set(code, await this.config.load(code));
+    for (const code of new Set<string>(rows.map((r: any) => r.workflow_freeze_id).filter(Boolean))) {
+      try {
+        configs.set(code, await this.config.load(code));
+      } catch {
+        // Safe fallback for list view
+      }
+    }
+    if (activeFreezeId && !configs.has(activeFreezeId)) {
+      try {
+        configs.set(activeFreezeId, await this.config.load(activeFreezeId));
+      } catch {}
+    }
     return rows.map(r => {
       const state = states.get(r.id) ?? 'IN_PROGRESS';
-      const view = this.viewStage(
-        configs.get(r.workflow_freeze_id)!,
-        progress.filter((p: any) => p.application_id === r.id),
-      );
+      const cfg = configs.get(r.workflow_freeze_id) ?? (activeFreezeId ? configs.get(activeFreezeId) : null);
+      const view = cfg
+        ? this.viewStage(
+            cfg,
+            progress.filter((p: any) => p.application_id === r.id),
+          )
+        : null;
       return {
         id: r.id,
         application_number: r.application_number ?? null,
+        applicationNumber: r.application_number ?? null,
         business_partner_id: r.business_partner_id,
         customer_category: r.customer_category,
         application_date: r.application_date,
@@ -148,8 +165,13 @@ export class ApplicationsService {
         establishment_date: r.establishment_date,
         branch_code: branches.get(r.branch_id) ?? null,
         mkt_pic_id: r.mkt_pic_id ?? null,
-        mkt_pic_name: picNames.get(Number(r.mkt_pic_id))?.name ?? null,
+        mkt_pic_name: picNames.get(Number(r.mkt_pic_id))?.name ?? r.mkt_pic_name ?? r.mkt_pic_username ?? null,
+        mktPicId: r.mkt_pic_id ?? null,
+        mktPicName: picNames.get(Number(r.mkt_pic_id))?.name ?? r.mkt_pic_name ?? r.mkt_pic_username ?? null,
+        company_full_address: r.company_full_address,
+        companyFullAddress: r.company_full_address,
         company_address: r.company_address,
+        companyAddress: r.company_address,
         city: r.city_id,
         province: r.province_id,
         experience_years: r.experience_years,
@@ -245,6 +267,7 @@ export class ApplicationsService {
       ...profile,
       id: app.id,
       applicationNumber: app.application_number ?? null,
+      application_number: app.application_number ?? null,
       companyName: customer.companyName ?? null,
       customerId: app.business_partner_id,
       customer,
@@ -252,6 +275,8 @@ export class ApplicationsService {
       establishmentDate: customer.establishmentDate ?? null,
       nibDate: customer.nibDate ?? null,
       fapNumber: app.fap_registration_number ?? null,
+      mktPicId: app.mkt_pic_id ?? null,
+      mktPicName: app.mkt_pic_name || app.mkt_pic_username || null,
       applicationDate: app.application_date,
       createdAt: app.created_at,
       updatedAt: app.updated_at,
@@ -270,8 +295,6 @@ export class ApplicationsService {
       // The places of this application that have an approval in the workflow (a section, a document...): a screen that shows one of them
       // (an ApprovalSlot) looks itself up here by its code.
       approvalPlaces: await this.approvalPlaces(app.workflow_freeze_id),
-      // PIC marketing (one user, set when the application is entered) and who created the application
-      mktPicId: app.mkt_pic_id ?? null,
       // who the PIC Marketing is (name from the users module), for the heading of the application
       fapFormLocked: !!Number(app.is_fap_form_locked),
       mktPic: app.mkt_pic_id ? {id: Number(app.mkt_pic_id), ...((await this.mktPics.names([app.mkt_pic_id])).get(Number(app.mkt_pic_id)) ?? {name: '', username: ''})} : null,
@@ -307,6 +330,23 @@ export class ApplicationsService {
     const application = await this.detail(id, actor);
     ensure(application, 'Application not found', 404);
     return application;
+  }
+
+  async marketingPics() {
+    const [rows] = await this.apps.pool.query<any[]>(
+      `SELECT u.id, u.username, u.full_name, d.department_name, d.department_code
+       FROM ${USER_TABLES.users} u
+       LEFT JOIN ${USER_TABLES.departments} d ON d.dept_id = u.dept_id
+       WHERE u.is_active = 1
+       ORDER BY u.full_name, u.username`,
+    );
+    return rows.map((u: any) => ({
+      id: Number(u.id),
+      username: u.username,
+      fullName: u.full_name || null,
+      departmentName: u.department_name || null,
+      departmentCode: u.department_code || null,
+    }));
   }
 
   /* ---------- writes ---------- */
@@ -351,7 +391,9 @@ export class ApplicationsService {
     ensure(!customerId || existing, 'Customer not found', 404);
     const customer = {...(existing?.customer || {}), ...(body.customer || {})};
     if (body.companyName && !customer.companyName) customer.companyName = body.companyName;
+    if (customer.companyName) customer.companyName = formatCompanyName(String(customer.companyName).trim());
     ensure(String(customer.companyName || '').trim(), 'Company name is required');
+    // The PIC Marketing is the account that enters the application unless another user is chosen (see mktPicId below); a PIC that cannot be found is refused when the first approval starts.
     const profile = {...(existing?.profile || {}), ...body};
     const asked = String(body.customerCategory || body.customerStatus || (customerId ? 'EXISTING' : 'NEW')).trim().toUpperCase();
     // a category that is neither NEW nor EXISTING is refused (it used to become NEW without a word)
@@ -364,6 +406,7 @@ export class ApplicationsService {
     const partnerId = customerId || crypto.randomUUID();
     const today = businessToday();
     // No FAP number is made here: Pre-analysis can run first, and the number is generated on demand (generateFapNumber).
+    let applicationNumber = '';
     // The number is taken under a named lock, held until the application is stored, so two users never get the same one.
     const lockConn = await this.db.pool.getConnection();
     try {
@@ -372,7 +415,7 @@ export class ApplicationsService {
       try {
     await this.db.transaction(async conn => {
       await this.partners.saveFromApplication(conn, partnerId, customer, profile, by(actor));
-      const applicationNumber = await this.apps.nextApplicationNumber(conn, today, await this.partners.customerNo(conn, partnerId));
+      applicationNumber = await this.apps.nextApplicationNumber(conn, today, await this.partners.customerNo(conn, partnerId));
       await this.apps.insert(
         conn,
         {
@@ -407,9 +450,10 @@ export class ApplicationsService {
         section: 'Customer & PIC',
         tabIndex: 0,
         actionType: 'CREATE',
-        title: `Created new application for ${company}`,
-        details: `Initiated ${stage.name}, Category: ${categoryName}. The FAP number is not generated yet. Ready for data entry.`,
+        title: `Created new application ${applicationNumber} for ${company}`,
+        details: `Initiated ${stage.name}, Category: ${categoryName}. Application Number: ${applicationNumber}. Ready for data entry.`,
         changes: [
+          {label: 'Application Number', newValue: applicationNumber},
           {label: 'Customer Category', newValue: categoryName},
           {label: 'Company Name', newValue: company},
           {label: 'Initial Stage', newValue: stage.name},

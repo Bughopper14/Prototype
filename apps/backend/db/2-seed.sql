@@ -212,7 +212,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `crm_master_premise_statuses` WRITE;
 /*!40000 ALTER TABLE `crm_master_premise_statuses` DISABLE KEYS */;
-INSERT  IGNORE INTO `crm_master_premise_statuses` (`id`, `code`, `name`, `sort_order`, `is_active`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES ('0197b655-f77d-453c-b6d0-112eb5a47bed','RENTED','Rented',2,1,'2026-11-14 13:09:24.949',NULL,NULL,NULL),('59737ee6-a646-4e11-bc39-39a79a88e274','OWNED','Owned',1,1,'2026-11-14 13:09:24.949',NULL,NULL,NULL);
+INSERT  IGNORE INTO `crm_master_premise_statuses` (`id`, `code`, `name`, `sort_order`, `is_active`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES ('0197b655-f77d-453c-b6d0-112eb5a47bed','RENTED','Rented',2,1,'2026-11-14 13:09:24.949',NULL,NULL,NULL),('59737ee6-a646-4e11-bc39-39a79a88e274','OWNED','Owned',1,1,'2026-11-14 13:09:24.949',NULL,NULL,NULL),('c8a4f2d1-6b3e-4a90-8c12-7e5d4a3b2c10','OTHER','Other',3,1,'2026-11-14 13:09:24.949',NULL,NULL,NULL);
 /*!40000 ALTER TABLE `crm_master_premise_statuses` ENABLE KEYS */;
 UNLOCK TABLES;
 

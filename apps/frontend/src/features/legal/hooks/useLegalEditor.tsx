@@ -18,6 +18,7 @@ export type LegalEditorProps = {
   stakeholders: any[];
   onChange: (v: any) => void;
   onStakeholdersChange: (legal: any, rows: any[]) => void;
+  onDocumentUploaded?: (updatedApp: any) => void;
   disabled: boolean;
   user: any;
   onReview: (id: string) => void;

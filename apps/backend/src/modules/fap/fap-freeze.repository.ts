@@ -133,6 +133,7 @@ export class FapFreezeRepository {
       branch_name: app.branch_name,
       premise_status_code: p.ps_code,
       premise_status_name: p.ps_name,
+      company_full_address: p.company_full_address,
       company_address: p.company_address,
       country_code: p.country_code,
       country_name: p.country_name,

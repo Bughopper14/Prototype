@@ -8,11 +8,11 @@ export async function downloadChecklistZip(applicationId: string) {
       credentials: 'same-origin',
     });
   } catch {
-    throw new Error('Tidak dapat terhubung ke server. Coba lagi.');
+    throw new Error('Unable to connect to server. Please try again.');
   }
   if (!response.ok) {
-    if (response.status === 401) throw new Error('Sesi Anda telah berakhir. Silakan login kembali.');
-    let message = 'Gagal mengunduh ZIP.';
+    if (response.status === 401) throw new Error('Your session has expired. Please log in again.');
+    let message = 'Failed to download ZIP.';
     try {
       const body = await response.json();
       message = body.message || body.error || message;
@@ -23,7 +23,7 @@ export async function downloadChecklistZip(applicationId: string) {
   }
   const disposition = response.headers.get('Content-Disposition') || '';
   const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1];
-  const fileName = encoded ? decodeURIComponent(encoded) : 'Dokumen.zip';
+  const fileName = encoded ? decodeURIComponent(encoded) : 'Documents.zip';
   const url = URL.createObjectURL(await response.blob());
   const link = document.createElement('a');
   link.href = url;

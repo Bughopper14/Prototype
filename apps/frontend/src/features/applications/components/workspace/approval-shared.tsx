@@ -38,12 +38,20 @@ const stepLabel = (s: Step) => (s.status === 'PENDING' ? (s.canAct ? 'Your turn'
 const Decisions = ({step}: {step: Step}) => (
   <>
     {step.decisions.map((d, i) => (
-      <p key={i} className="ap-decision">
-        {d.decision === 'APPROVED' ? <Check size={14} /> : <X size={14} />} {d.by}: {d.decision === 'APPROVED' ? 'approved' : 'rejected'}
-        {d.decidedAt ? ` · ${when(d.decidedAt)}` : ''}
-        {d.remarks ? ` — ${d.remarks}` : ''}
-        {d.via === 'LARK' ? ' (from Lark)' : ''}
-      </p>
+      <div key={i} className="ap-decision" style={{marginTop: 4}}>
+        <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+          {d.decision === 'APPROVED' ? <Check size={14} /> : <X size={14} />} {d.by}: {d.decision === 'APPROVED' ? 'approved' : 'rejected'}
+          {d.decidedAt ? ` · ${when(d.decidedAt)}` : ''}
+          {d.via === 'LARK' ? ' (from Lark)' : ''}
+        </div>
+        {d.remarks ? (
+          <div
+            className="ap-decision-remarks"
+            style={{paddingLeft: 20, color: '#475569', fontSize: '0.9em', marginTop: 2}}
+            dangerouslySetInnerHTML={{__html: d.remarks}}
+          />
+        ) : null}
+      </div>
     ))}
   </>
 );
@@ -76,6 +84,7 @@ function scopeSummary(c: Scope): {tone: string; text: string} {
 export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step: Step, kind: 'APPROVED' | 'REJECTED') => void}) {
   const {a} = useWorkspace();
   const openView = useOpenView();
+  const docs: any[] = a?.documentChecks || [];
   const stages: any[] = a.workflow?.stages || [];
   const groups: any[] = a.workflow?.groups || [];
   const ordered = [...scopes].sort((x, y) => {
@@ -86,6 +95,15 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
   return (
     <>
       {ordered.map(c => {
+        const isDocScope = c.scope === 'DOCUMENT';
+        const docForScope = isDocScope
+          ? docs.find(
+              (x: any) =>
+                x.id === c.checklistId ||
+                (x.documentCode && c.documentCode && x.documentCode === c.documentCode),
+            )
+          : null;
+        const canDecideScope = !isDocScope || Boolean(docForScope && docForScope.files && docForScope.files.length > 0);
         const view = openView(c);
         const approvalName = c.steps[0]?.name.split(' · level')[0] ?? '';
         return (
@@ -135,7 +153,7 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
                           <div className="ap-tl-row">
                             <span className="ap-tl-who">{whoOf(s)}</span>
                             <span className={'ap-pill ' + shownStatus(s).toLowerCase() + (s.status === 'PENDING' && s.canAct ? ' mine' : '')}>{stepLabel(s)}</span>
-                            {onDecide && s.canAct && (
+                            {onDecide && s.canAct && canDecideScope && (
                               <span className="ap-actions">
                                 <button type="button" className="button primary small" onClick={() => onDecide(s, 'APPROVED')}>
                                   <Check size={13} /> Approve
@@ -166,7 +184,11 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
 export const reopenedStep = (s: Step) => !!s.reopened;
 
 /** What a step that was opened again because of its group says in place of a reason of its own. */
-export const fromGroupText = (d: {remarks: string | null} | null) => `Rejected dari Group.${d?.remarks ? ` Remarks: ${d.remarks}` : ''}`;
+export const fromGroupText = (d: {remarks: string | null} | null) => {
+  if (!d?.remarks) return 'Rejected dari Group.';
+  const plain = d.remarks.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+  return `Rejected dari Group.${plain ? ` Remarks: ${plain}` : ''}`;
+};
 
 /** The steps of one earlier round; a step opened again says why (the reason of the group rejection that opened it). */
 function RoundSteps({c, note}: {c: Scope; note: string | null}) {

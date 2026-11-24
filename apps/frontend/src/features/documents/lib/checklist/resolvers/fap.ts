@@ -12,9 +12,9 @@ export function resolveFap({a, files, row}: ResolverContext) {
     row.sourceType = 'SYSTEM_LINKED';
     row.sourceLabel = 'FAP Stage · Document Comparison';
     row.sourceDetails = files[0]?.fileName
-      ? `Berkas: ${files[0].fileName} (Dikomparasi dengan template sistem)`
-      : 'Formulir FAP terkomparasi dan terkunci di sistem';
-    row.canDelete = false; // Terhubung dari FAP comparison -> Tidak bisa dihapus di sini
+      ? `File: ${files[0].fileName} (Compared with system template)`
+      : 'FAP form compared and locked in system';
+    row.canDelete = false; // Linked from FAP comparison -> Cannot be deleted here
     if (files[0]) {
       row.previewUrl = `/documents/${files[0].fileName}`;
     }

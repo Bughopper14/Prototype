@@ -7,4 +7,20 @@ export const FAP_TERMS_COLUMNS = {
   termsSaleAndLeaseBack: 'SALE-AND-LEASE-BACK',
   termsInstallmentFinancing: 'INSTALLMENT-FINANCING',
 } as const;
+export type FapTermsColumn = keyof typeof FAP_TERMS_COLUMNS;
 
+/** Resolves a financing method code or label to its FAP terms column group key. */
+export function resolveFinancingMethodGroup(val?: string | null): FapTermsColumn | undefined {
+  const upper = String(val || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[\s-]+/g, '_');
+  if (!upper) return undefined;
+  if (upper === 'FINANCIAL_LEASE' || upper.includes('FINANCIAL_LEASE') || upper.includes('SEWA_PEMBIAYAAN'))
+    return 'termsFinancialLease';
+  if (upper === 'SALE_AND_LEASE_BACK' || upper === 'SLB' || upper.includes('SALE'))
+    return 'termsSaleAndLeaseBack';
+  if (upper === 'INSTALLMENT_FINANCING' || upper.includes('INSTALLMENT') || upper.includes('PEMBELIAN'))
+    return 'termsInstallmentFinancing';
+  return undefined;
+}

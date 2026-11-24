@@ -72,15 +72,9 @@ export class LegalService {
     return this.applications.detailOr404(id, actor);
   }
 
-  /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. */
+  /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. Stored in crm_fap_legal_deed_reviews. */
   async review(id: string, deedId: string, body: {action: string; revision: number; comments: string}, actor: Actor) {
     const a = await this.applications.detailOr404(id, actor);
-    // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old review.
-    ensure(
-      !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION),
-      'Akta ini disetujui lewat approval section akta pada workflow, bukan lewat review ini.',
-      409,
-    );
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
     ensure(deed, 'Simpan akta terlebih dahulu sebelum mengajukan.', 404);
     const isAdmin = actor.isAdmin || actor.role === 'ADMIN';

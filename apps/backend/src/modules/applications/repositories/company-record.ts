@@ -31,6 +31,7 @@ const CUSTOMER_COLUMNS = [
   ['establishmentDate', 'establishment_date', 'date'],
 ] as const;
 const PROFILE_COLUMNS = [
+  ['companyFullAddress', 'company_full_address', 'text'],
   ['companyAddress', 'company_address', 'text'],
   ['rt', 'rt', 'text'],
   ['rw', 'rw', 'text'],

@@ -1,3 +1,4 @@
+import {screenOfForm} from '@liugong/shared';
 import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../../core/db/crm-database';
 import {CRM} from '../../../core/db/crm-tables';

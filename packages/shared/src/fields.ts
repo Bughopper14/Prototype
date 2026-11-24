@@ -40,6 +40,11 @@ const UPPERCASE_WORDS = new Set([
   'pt',
   'cv',
   'ud',
+  'pd',
+  'po',
+  'fa',
+  'ksp',
+  'nv',
   'tbk',
   'llc',
   'ltd',
@@ -76,7 +81,7 @@ export function toTitleCase(str: string): string {
  */
 export function formatCompanyName(str: string): string {
   if (!str) return '';
-  const legalUpper = new Set(['pt', 'cv', 'ud', 'pd', 'fa', 'ksp']);
+  const legalUpper = new Set(['pt', 'cv', 'ud', 'pd', 'po', 'fa', 'ksp', 'nv']);
   const legalTitle = new Set(['koperasi', 'yayasan', 'perum', 'perusda', 'firma']);
 
   let formatted = toTitleCase(str);
@@ -109,7 +114,8 @@ export function formatCompanyName(str: string): string {
 export const profileFields = [
   f('branchCode', 'Branch', 'select'),
   f('customerStatus', 'Customer Relationship', 'select', ['NEW', 'EXISTING']),
-  f('companyAddress', 'Company Address'),
+  f('companyFullAddress', 'Company Full Address', 'textarea'),
+  f('companyAddress', 'Company Address / Domicile'),
   f('province', 'Province'),
   f('city', 'City'),
   f('district', 'District'),

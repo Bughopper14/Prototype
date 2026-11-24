@@ -56,6 +56,7 @@ export function App() {
           <Route path="customers" element={<CustomersPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
           <Route path="workflows" element={<WorkflowPage />} />
+          <Route path="workflow-pipeline" element={<Navigate to="/crm-dashboard/workflows" replace />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="activity" element={<ActivityPage />} />
         </Route>

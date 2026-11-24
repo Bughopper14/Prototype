@@ -293,12 +293,12 @@ export class DocumentsRepository {
   async read(applicationId: string, conn: Conn = this.db.pool) {
     const [rows] = await conn.execute<any[]>(
       `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,
-              s.code AS stage_code,s.name AS stage_name,${MANDATORY} AS is_mandatory
+              COALESCE(s.code,c.stage_code) AS stage_code,COALESCE(s.name,c.stage_code) AS stage_name,${MANDATORY} AS is_mandatory
        FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.frozenWorkflowStages} s ON s.workflow_freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
+       LEFT JOIN ${CRM.frozenWorkflowStages} s ON (s.workflow_freeze_id=c.workflow_freeze_id OR s.workflow_freeze_id=(SELECT workflow_freeze_id FROM ${CRM.applications} WHERE id=c.application_id)) AND s.code=c.stage_code
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
-       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON (sd.workflow_freeze_id=c.workflow_freeze_id OR sd.workflow_freeze_id=(SELECT workflow_freeze_id FROM ${CRM.applications} WHERE id=c.application_id)) AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
        WHERE c.application_id=? ORDER BY COALESCE(t.sort_order,100000),c.created_at`,
       [applicationId],
     );
@@ -368,10 +368,10 @@ export class DocumentsRepository {
   /** The checklist row by its id or by its document type code. */
   async checklistRow(conn: Conn, applicationId: string, idOrCode: string) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT c.*,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code FROM ${CRM.applicationDocumentChecklists} c
+      `SELECT c.*,COALESCE(t.code,c.document_code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
-       WHERE c.application_id=? AND (c.id=? OR t.code=?) FOR UPDATE`,
-      [applicationId, idOrCode, String(idOrCode).toUpperCase()],
+       WHERE c.application_id=? AND (c.id=? OR t.code=? OR c.document_code=?) FOR UPDATE`,
+      [applicationId, idOrCode, String(idOrCode).toUpperCase(), String(idOrCode).toUpperCase()],
     );
     return rows[0] || null;
   }
