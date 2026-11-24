@@ -171,14 +171,19 @@ export function deedTransition(
       Array.isArray(deed.stakeholders) && deed.stakeholders.length,
       'Tambahkan stakeholder/shareholder sebelum mengajukan akta.',
     );
-    validateInput(deedData(deed), now, false);
-    for (const r of deed.stakeholders) {
-      validateInput({...r, nationalityType: r.citizenship === 'FOREIGN' ? 'WNA' : 'WNI'}, now);
-      assert(
-        [r.firstName, r.lastName, r.name].some(x => String(x || '').trim()),
-        'Nama stakeholder wajib diisi.',
-      );
-      // which other stakeholder fields are mandatory is the workflow's rule (Workflow setup), not a rule of this file
+    try {
+      validateInput(deedData(deed), now, false);
+      for (const r of deed.stakeholders) {
+        validateInput({...r, nationalityType: r.citizenship === 'FOREIGN' ? 'WNA' : 'WNI'}, now);
+        assert(
+          [r.firstName, r.lastName, r.name].some(x => String(x || '').trim()),
+          'Nama stakeholder wajib diisi.',
+        );
+        // which other stakeholder fields are mandatory is the workflow's rule (Workflow setup), not a rule of this file
+      }
+    } catch (err: any) {
+      if (err instanceof DeedWorkflowError) throw err;
+      throw new DeedWorkflowError(err?.message || 'Data akta tidak valid.', 422);
     }
     Object.assign(review, {status: 'PENDING', notes: null, submittedBy: actor.username || actor.name, submittedAt: date});
   } else if (action === 'APPROVE') {
