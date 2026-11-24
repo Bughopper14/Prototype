@@ -24,20 +24,6 @@ function formatRoleName(authority: string, code?: string): string {
   return str.replace(/^CRM_/, '').replace(/_APPROVE$/, '').replace(/[_-]/g, ' ') || 'Approver';
 }
 
-function getDesignatedAssignee(authority: string, code?: string): string {
-  const str = (authority || code || '').toUpperCase();
-  if (str.includes('_BP') || str.includes('BP_') || str.includes('BUSINESS_PARTNER')) {
-    return 'Budi Santoso (Senior BP)';
-  }
-  if (str.includes('_CA') || str.includes('CA_') || str.includes('CREDIT')) {
-    return 'Siti Rahma, S.E. (Risk & Credit)';
-  }
-  if (str.includes('_LEGAL') || str.includes('LEGAL_')) {
-    return 'Hendra Wijaya, S.H. (Legal Dept Head)';
-  }
-  return 'Designated Approver';
-}
-
 function formatWibDate(dateVal?: string | Date): string {
   if (!dateVal) return '';
   const d = new Date(dateVal);
@@ -114,12 +100,25 @@ export function DocumentApprovalModal({
                 const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
 
                 const roleTitle = formatRoleName(st.authority || st.authorityName, st.code);
-                const approverName = lastDecision?.by || getDesignatedAssignee(st.authority || st.authorityName, st.code);
-                const decisionDate = lastDecision?.decidedAt
-                  ? formatWibDate(lastDecision.decidedAt)
-                  : isApproved
-                    ? formatWibDate(st.completedAt || new Date())
-                    : '';
+                const hasActed = isApproved || isStepRejected;
+                const approverName = hasActed
+                  ? (lastDecision?.by || st.completedBy || st.approvedBy || st.rejectedBy || st.actor || (isApproved ? 'Authorized Approver' : null))
+                  : null;
+                const decisionDate = hasActed
+                  ? (lastDecision?.decidedAt
+                      ? formatWibDate(lastDecision.decidedAt)
+                      : st.completedAt
+                        ? formatWibDate(st.completedAt)
+                        : '')
+                  : '';
+
+                // Dynamically resolve previous step instead of hardcoding any specific department
+                const prevStep = idx > 0 ? steps[idx - 1] : null;
+                const prevLevel = prevStep?.order ?? prevStep?.sortOrder ?? idx;
+                const prevRole = prevStep ? formatRoleName(prevStep.authority || prevStep.authorityName, prevStep.code) : '';
+                const waitingMessage = prevStep
+                  ? `Waiting for Level ${prevLevel} (${prevRole}) approval`
+                  : 'Waiting for document submission';
 
                 let rowClass = 'doc-v-step-row';
                 if (isApproved) rowClass += ' done';
@@ -165,22 +164,24 @@ export function DocumentApprovalModal({
                       </div>
 
                       <div className="doc-v-user-meta" style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: '12px', color: '#475569', marginTop: 4, flexWrap: 'wrap'}}>
-                        <span style={{fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4}}>
-                          👤 {approverName}
-                        </span>
-                        {decisionDate && (
+                        {hasActed && approverName && (
+                          <span style={{fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                            👤 {approverName}
+                          </span>
+                        )}
+                        {hasActed && decisionDate && (
                           <span style={{color: '#64748b', display: 'inline-flex', alignItems: 'center', gap: 4}}>
                             🗓️ {decisionDate}
                           </span>
                         )}
-                        {!isApproved && !isStepRejected && isPending && (
-                          <span style={{color: '#d97706', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4}}>
-                            ⏱️ SLA: 4 Jam Tersisa
+                        {!hasActed && isPending && (
+                          <span style={{color: '#2563eb', fontWeight: 500, fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                            ⏳ Pending review by authorized {roleTitle}
                           </span>
                         )}
-                        {!isApproved && !isStepRejected && !isPending && (
-                          <span style={{color: '#64748b', fontSize: '11.5px'}}>
-                            {levelNum > 1 ? 'Waiting for CA review completion' : 'Waiting for document submission'}
+                        {!hasActed && !isPending && (
+                          <span style={{color: '#64748b', fontSize: '11.5px', display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                            ⏳ {waitingMessage}
                           </span>
                         )}
                       </div>
@@ -188,10 +189,6 @@ export function DocumentApprovalModal({
                       {lastDecision?.remarks ? (
                         <div className="doc-v-remarks-quote">
                           &ldquo;{lastDecision.remarks}&rdquo;
-                        </div>
-                      ) : isApproved ? (
-                        <div className="doc-v-remarks-quote" style={{borderLeftColor: '#10b981', background: '#f0fdf4', color: '#166534'}}>
-                          &ldquo;Berkas fisik formulir telah diverifikasi, tanda tangan direktur dan cap basah sesuai dengan akta perusahaan.&rdquo;
                         </div>
                       ) : isStepRejected ? (
                         <div style={{marginTop: 6, fontSize: '12px', color: '#dc2626', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0'}}>
