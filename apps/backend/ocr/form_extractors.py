@@ -2269,10 +2269,15 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         "picPostalCode": "",
         "financingValue": None,
         "downPaymentValue": None,
+        "securityDeposit": None,
         "tenorMonths": None,
         "facilityPurpose": "",
         "financingMethod": "",
         "customerStatus": "",
+        "interestRate": None,
+        "paymentMethod": "",
+        "applicationSource": "",
+        "currency": "",
         "stakeholders": [],
         "shareholders": [],
         "raw_text": combined_full_text
@@ -2773,24 +2778,191 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
             elif re.search(r'i[nm]vestment\s*\([vV\u2713xX✓✔]\)', purp_text, re.IGNORECASE) or re.search(r'investasi\s*/\s*i[nm]vestment\s*\([vV\u2713xX✓✔]\)', purp_text, re.IGNORECASE):
                 data["facilityPurpose"] = "INVESTMENT"
 
-        # Financing method on Page 2
+        # Facility Proposed & Terms and Conditions on Page 2
         if p2:
-            l_meth = find_label(p2, r'financing\s+method|metode\s+pembiayaan', 0.05, 0.30)
+            # 1. Facility Proposed section (left side)
+            l_fac_prop = find_label(p2, r'facility\s*proposed', 0.05, 0.35)
+            l_meth = find_label(p2, r'cara\s*pembiayaan|financing\s*method', 0.05, 0.35)
+            l_val = find_label(p2, r'nilai\s*pembiayaan|financing\s*val', 0.05, 0.35)
+            l_src = find_label(p2, r'application\s*source|sumber\s*aplikasi', 0.05, 0.35)
+            l_real_plan = find_label(p2, r'rencana\s*realisasi|unit\s*realization', 0.05, 0.35)
+
+            # Financing method
             if l_meth:
-                m_boxes = [b for b in p2 if b["xc"] >= 0.25 and b["xc"] <= 0.50 and b["yc"] >= l_meth["y1"] - 0.01 and b["yc"] <= l_meth["y2"] + 0.03]
+                y_top = l_meth["y1"] - 0.012
+                y_bot = l_val["y1"] if l_val else l_meth["y2"] + 0.02
+                m_boxes = [b for b in p2 if 0.20 <= b["xc"] <= 0.45 and y_top <= b["yc"] < y_bot]
                 if m_boxes:
-                    m_txt = " ".join([b["text"] for b in m_boxes])
-                    if "installment purchase" in m_txt.lower():
-                        data["financingMethod"] = "INSTALLMENT_PURCHASE"
-                    elif "financial lease" in m_txt.lower():
-                        data["financingMethod"] = "FINANCIAL_LEASE"
-                    elif "sale and leaseback" in m_txt.lower():
-                        data["financingMethod"] = "SALE_AND_LEASEBACK"
-                    else:
-                        if any(opt in m_txt.lower() for opt in ["installment", "financial lease", "sale and leaseback"]):
-                            data["financingMethod"] = m_txt
-                        else:
-                            data["financingMethod"] = ""
+                    m_txt = join_tokens([b["text"] for b in m_boxes])
+                    clean_m = re.sub(r'^[ :\-]+|[ :\-]+$', '', m_txt).strip()
+                    m_low = clean_m.lower()
+                    if "installment" in m_low or "angsuran" in m_low or "pembelian" in m_low:
+                        data["financingMethod"] = "INSTALLMENT-FINANCING"
+                    elif "financial lease" in m_low or "sewa pembiayaan" in m_low:
+                        data["financingMethod"] = "FINANCIAL-LEASE"
+                    elif "sale and lease" in m_low or "sewa kembali" in m_low or "slb" in m_low:
+                        data["financingMethod"] = "SALE-AND-LEASE-BACK"
+                    elif clean_m:
+                        data["financingMethod"] = clean_m
+
+            # Financing value & currency
+            if l_val:
+                y_top = l_val["y1"] - 0.012
+                y_bot = l_src["y1"] if l_src else l_val["y2"] + 0.02
+                v_boxes = [b for b in p2 if 0.20 <= b["xc"] <= 0.45 and y_top <= b["yc"] < y_bot]
+                if v_boxes:
+                    v_txt = join_tokens([b["text"] for b in v_boxes])
+                    if "usd" in v_txt.lower() and "idr" not in v_txt.lower():
+                        data["currency"] = "USD"
+                    elif "idr" in v_txt.lower():
+                        data["currency"] = "IDR"
+                    m_digits = re.findall(r'\b\d[\d.,\s]{4,}\b', v_txt)
+                    if m_digits:
+                        c_digits = re.sub(r'\D', '', m_digits[-1])
+                        if c_digits:
+                            data["financingValue"] = int(c_digits)
+
+            # Application source
+            if l_src:
+                y_top = l_src["y1"] - 0.012
+                y_bot = l_real_plan["y1"] if l_real_plan else l_src["y2"] + 0.025
+                s_boxes = [b for b in p2 if 0.20 <= b["xc"] <= 0.45 and y_top <= b["yc"] < y_bot]
+                if s_boxes:
+                    s_txt = join_tokens([b["text"] for b in s_boxes])
+                    clean_s = re.sub(r'^[ :\-]+|[ :\-]+$', '', s_txt).strip()
+                    if clean_s:
+                        data["applicationSource"] = clean_s
+
+            # 2. Terms & Conditions Columns (Financial Lease, Sale and Lease Back, Installment Financing)
+            terms_columns = [
+                {
+                    "method": "FINANCIAL-LEASE",
+                    "hdr_pattern": r'sewa\s*pembiayaan|financial\s*lease',
+                    "box_x": (0.36, 0.44),
+                    "lbl_x": (0.44, 0.49),
+                },
+                {
+                    "method": "SALE-AND-LEASE-BACK",
+                    "hdr_pattern": r'jual\s*dan\s*sewa|sale\s*and\s*lease',
+                    "box_x": (0.47, 0.54),
+                    "lbl_x": (0.54, 0.59),
+                },
+                {
+                    "method": "INSTALLMENT-FINANCING",
+                    "hdr_pattern": r'pembelian\s*dengan|installment\s*financing',
+                    "box_x": (0.56, 0.64),
+                    "lbl_x": (0.64, 0.72),
+                },
+            ]
+
+            parsed_terms_per_col = []
+            for col in terms_columns:
+                bx1, bx2 = col["box_x"]
+                # Row 1: working capital / investment (yc ~ 0.030 to 0.052)
+                r1_boxes = [b for b in p2 if bx1 <= b["xc"] <= bx2 and 0.030 <= b["yc"] <= 0.052]
+                r1_txt = join_tokens([b["text"] for b in r1_boxes])
+
+                # Row 2: currency (yc ~ 0.052 to 0.068)
+                r2_boxes = [b for b in p2 if bx1 <= b["xc"] <= bx2 and 0.052 < b["yc"] <= 0.068]
+                r2_txt = join_tokens([b["text"] for b in r2_boxes])
+
+                # Row 3: down payment / security deposit (yc ~ 0.068 to 0.088)
+                r3_boxes = [b for b in p2 if bx1 <= b["xc"] <= bx2 and 0.068 < b["yc"] <= 0.088]
+                r3_txt = join_tokens([b["text"] for b in r3_boxes])
+
+                # Row 4: interest rate (yc ~ 0.088 to 0.106)
+                r4_boxes = [b for b in p2 if bx1 <= b["xc"] <= bx2 and 0.088 < b["yc"] <= 0.106]
+                r4_txt = join_tokens([b["text"] for b in r4_boxes])
+
+                # Row 5: tenor (yc ~ 0.106 to 0.124)
+                r5_boxes = [b for b in p2 if bx1 <= b["xc"] <= bx2 and 0.106 < b["yc"] <= 0.124]
+                r5_txt = join_tokens([b["text"] for b in r5_boxes])
+
+                # Row 6: payment method (yc ~ 0.124 to 0.148)
+                r6_boxes = [b for b in p2 if bx1 <= b["xc"] <= bx2 and 0.124 < b["yc"] <= 0.148]
+                r6_txt = join_tokens([b["text"] for b in r6_boxes])
+
+                c_purpose = ""
+                if "invest" in r1_txt.lower():
+                    c_purpose = "INVESTMENT"
+                elif "modal" in r1_txt.lower() or "working" in r1_txt.lower():
+                    c_purpose = "WORKING_CAPITAL"
+
+                c_curr = ""
+                if "usd" in r2_txt.lower() and "idr" not in r2_txt.lower():
+                    c_curr = "USD"
+                elif "idr" in r2_txt.lower():
+                    c_curr = "IDR"
+
+                c_dp = None
+                m_dp = re.findall(r'\b\d[\d.,\s]{3,}\b', r3_txt)
+                if m_dp:
+                    clean_dp = re.sub(r'\D', '', m_dp[-1])
+                    if clean_dp:
+                        c_dp = int(clean_dp)
+
+                c_rate = None
+                m_rate = re.search(r'(\d+(?:[.,]\d+)?)', r4_txt)
+                if m_rate:
+                    try:
+                        c_rate = float(m_rate.group(1).replace(',', '.'))
+                    except Exception:
+                        pass
+
+                c_tenor = None
+                m_tenor = re.search(r'\b(\d{1,3})\b', r5_txt)
+                if m_tenor:
+                    try:
+                        c_tenor = int(m_tenor.group(1))
+                    except Exception:
+                        pass
+
+                c_payment = ""
+                if "advance" in r6_txt.lower() or "muka" in r6_txt.lower():
+                    c_payment = "IN-ADVANCE"
+                elif "arrear" in r6_txt.lower() or "belakang" in r6_txt.lower():
+                    c_payment = "IN-ARREAR"
+
+                fill_count = sum(1 for v in [c_purpose, c_curr, c_dp, c_rate, c_tenor, c_payment] if v is not None and v != "")
+                parsed_terms_per_col.append({
+                    "method": col["method"],
+                    "purpose": c_purpose,
+                    "currency": c_curr,
+                    "dp": c_dp,
+                    "rate": c_rate,
+                    "tenor": c_tenor,
+                    "payment": c_payment,
+                    "fill_count": fill_count
+                })
+
+            best_col = None
+            if data.get("financingMethod"):
+                for tc in parsed_terms_per_col:
+                    if tc["method"] == data["financingMethod"] and tc["fill_count"] > 0:
+                        best_col = tc
+                        break
+            if not best_col:
+                parsed_terms_per_col.sort(key=lambda x: x["fill_count"], reverse=True)
+                if parsed_terms_per_col and parsed_terms_per_col[0]["fill_count"] > 0:
+                    best_col = parsed_terms_per_col[0]
+
+            if best_col and best_col["fill_count"] > 0:
+                if not data.get("financingMethod"):
+                    data["financingMethod"] = best_col["method"]
+                if best_col["purpose"]:
+                    data["facilityPurpose"] = best_col["purpose"]
+                if best_col["currency"] and not data.get("currency"):
+                    data["currency"] = best_col["currency"]
+                if best_col["dp"] is not None:
+                    data["downPaymentValue"] = best_col["dp"]
+                    if best_col["method"] != "INSTALLMENT-FINANCING":
+                        data["securityDeposit"] = best_col["dp"]
+                if best_col["rate"] is not None:
+                    data["interestRate"] = best_col["rate"]
+                if best_col["tenor"] is not None:
+                    data["tenorMonths"] = best_col["tenor"]
+                if best_col["payment"]:
+                    data["paymentMethod"] = best_col["payment"]
 
         # Stakeholders / Shareholders Table Extraction on Page 1
         sh_hdr = find_label(p1, r'struktur\s+organisasi|shareholder\s+structure', 0.40, 0.85)
@@ -2935,11 +3107,67 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
     if not data["latestDeedNo"] and data.get("establishmentActNo"):
         data["latestDeedNo"] = data["establishmentActNo"]
 
+    if not data.get("financingMethod"):
+        m = re.search(r'(?:cara\s+pembiayaan|financing\s+method)\s*[:=]?\s*([^\n\r]+)', combined_full_text, re.IGNORECASE)
+        if m:
+            clean_m = re.sub(r'^[ :\-]+|[ :\-]+$', '', m.group(1)).strip().lower()
+            if "installment" in clean_m or "angsuran" in clean_m or "pembelian" in clean_m:
+                data["financingMethod"] = "INSTALLMENT-FINANCING"
+            elif "financial lease" in clean_m or "sewa pembiayaan" in clean_m:
+                data["financingMethod"] = "FINANCIAL-LEASE"
+            elif "sale and lease" in clean_m or "sewa kembali" in clean_m or "slb" in clean_m:
+                data["financingMethod"] = "SALE-AND-LEASE-BACK"
+
+    if data.get("financingValue") is None:
+        m = re.search(r'(?:nilai\s+pembiayaan|financing\s+value)[^0-9\n\r]*?[:=]?\s*(?:\([^)]*\))?\s*([0-9.,\s]{5,})', combined_full_text, re.IGNORECASE)
+        if m:
+            c_d = re.sub(r'\D', '', m.group(1))
+            if c_d:
+                data["financingValue"] = int(c_d)
+
+    if not data.get("applicationSource"):
+        m = re.search(r'(?:application\s+source|sumber\s+aplikasi)\s*[:=]?\s*([A-Za-z0-9\-_]+)', combined_full_text, re.IGNORECASE)
+        if m:
+            data["applicationSource"] = m.group(1).strip()
+
     if not data["facilityPurpose"]:
         if re.search(r'working\s*(?:capital|copitol)\s*\([vV\u2713xX✓✔]\)', combined_full_text, re.IGNORECASE):
             data["facilityPurpose"] = "WORKING_CAPITAL"
         elif re.search(r'i[nm]vest(?:asi|ment)\s*\([vV\u2713xX✓✔]\)', combined_full_text, re.IGNORECASE):
             data["facilityPurpose"] = "INVESTMENT"
+        elif re.search(r'\b(?:i[nm]vest(?:asi|ment))\b', combined_full_text, re.IGNORECASE):
+            data["facilityPurpose"] = "INVESTMENT"
+        elif re.search(r'\b(?:modal\s*kerja|working\s*capital)\b', combined_full_text, re.IGNORECASE):
+            data["facilityPurpose"] = "WORKING_CAPITAL"
+
+    if data.get("downPaymentValue") is None:
+        m = re.search(r'(?:uang\s+muka|down\s+payment|simpanan\s+jaminan|security\s+deposit)[^0-9\n\r]*?[:=]?\s*([0-9.,\s]{5,})', combined_full_text, re.IGNORECASE)
+        if m:
+            c_d = re.sub(r'\D', '', m.group(1))
+            if c_d:
+                data["downPaymentValue"] = int(c_d)
+
+    if data.get("interestRate") is None:
+        m = re.search(r'(?:bunga|interest\s+rate)[^0-9\n\r]*?[:=]?\s*(\d+(?:[.,]\d+)?)\s*%?', combined_full_text, re.IGNORECASE)
+        if m:
+            try:
+                data["interestRate"] = float(m.group(1).replace(',', '.'))
+            except Exception:
+                pass
+
+    if data.get("tenorMonths") is None:
+        m = re.search(r'(?:jk\.?\s*waktu|tenor)[^0-9\n\r]*?[:=]?\s*(\d{1,3})\s*(?:bulan|months?)?', combined_full_text, re.IGNORECASE)
+        if m:
+            try:
+                data["tenorMonths"] = int(m.group(1))
+            except Exception:
+                pass
+
+    if not data.get("paymentMethod"):
+        m = re.search(r'(?:cara\s+pembayaran|payment\s+method|payment\s+timing)[^A-Za-z\n\r]*?[:=]?\s*(in\s+advance|in\s+arrear|di\s+muka|di\s+belakang)', combined_full_text, re.IGNORECASE)
+        if m:
+            val_p = m.group(1).lower()
+            data["paymentMethod"] = "IN-ADVANCE" if "advance" in val_p or "muka" in val_p else "IN-ARREAR"
     if not data["establishmentDate"]:
         m = re.search(r'(?:tanggal\s+akta(?:\s+pendirian)?|establishment\s+date)\s*[:=]?\s*(\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}|\d{1,2}[-/\.]\d{1,2}[-/\.]\d{4})', combined_full_text, re.IGNORECASE)
         if m:
@@ -2970,7 +3198,7 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
 
     # Sanitize each field against stray punctuation and template boilerplate
     for k in list(data.keys()):
-        if k in ('raw_text', 'financingValue', 'downPaymentValue', 'tenorMonths', 'stakeholders', 'shareholders'):
+        if k in ('raw_text', 'financingValue', 'downPaymentValue', 'securityDeposit', 'tenorMonths', 'interestRate', 'stakeholders', 'shareholders'):
             continue
         data[k] = sanitize_fap_field(k, data.get(k))
 
@@ -2983,13 +3211,15 @@ def extract_fap(boxes: list, full_text: str = None, pdf_path: str = None) -> tup
         not data.get("establishmentActNo") and
         not data.get("establishmentDate") and
         not data.get("picName") and
-        not data.get("stakeholders")
+        not data.get("stakeholders") and
+        data.get("financingValue") is None and
+        not data.get("financingMethod")
     )
     if is_blank_form:
         for k in list(data.keys()):
             if k == "raw_text":
                 continue
-            if k in ("financingValue", "downPaymentValue", "tenorMonths"):
+            if k in ("financingValue", "downPaymentValue", "securityDeposit", "tenorMonths", "interestRate"):
                 data[k] = None
             elif k in ("stakeholders", "shareholders"):
                 data[k] = []

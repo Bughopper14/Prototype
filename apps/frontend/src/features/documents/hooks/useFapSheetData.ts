@@ -5,7 +5,7 @@
 import {useMasterData} from '@/shared/master-data';
 import {type FapSheetData} from '@/features/fap/lib/types';
 import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
-import {extractStreetAddress} from '@liugong/shared';
+import {extractStreetAddress, resolveFinancingMethodGroup} from '@liugong/shared';
 import {useMemo} from 'react';
 
 const street = (text: any, hints: any): string => (text ? extractStreetAddress(String(text), hints) || String(text) : '');
@@ -167,10 +167,43 @@ export function useFapSheetData({
       interestRate: ext.interestRate != null ? ext.interestRate : 0,
       tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : 0,
       paymentMethod: ext.paymentMethod || '',
+      applicationSource: ext.applicationSource || '',
+      currency: ext.currency || '',
       stakeholders: ext.stakeholders || ext.shareholders || [],
       projects: ext.projects || [],
       bankReferences: ext.bankReferences || [],
       financialStatements: ext.financialStatements || [],
+      financingProposal: (() => {
+        const method = ext.financingMethod || '';
+        const group = resolveFinancingMethodGroup(method) || 'termsInstallmentFinancing';
+        const curr = ext.currency || 'IDR';
+        const isAdv = String(ext.paymentMethod || '').toUpperCase().includes('ADVANCE');
+        const paymentVal = isAdv
+          ? 'IN-ADVANCE'
+          : String(ext.paymentMethod || '').toUpperCase().includes('ARREAR')
+            ? 'IN-ARREAR'
+            : ext.paymentMethod || '';
+        const termObj = {
+          workingCapitalInvestment: ext.facilityPurpose || '',
+          currency: curr,
+          downPayment: ext.downPaymentValue != null ? ext.downPaymentValue : '',
+          securityDeposit: ext.securityDeposit != null ? ext.securityDeposit : (ext.downPaymentValue != null ? ext.downPaymentValue : ''),
+          interestRate: ext.interestRate != null ? ext.interestRate : '',
+          tenor: ext.tenorMonths != null ? ext.tenorMonths : '',
+          paymentMethod: paymentVal,
+        };
+        return {
+          facilityProposed: {
+            financingMethod: method,
+            financingValue: ext.financingValue != null ? ext.financingValue : '',
+            currencyChoice: curr,
+            applicationSource: ext.applicationSource || '',
+          },
+          termsFinancialLease: group === 'termsFinancialLease' ? termObj : {},
+          termsSaleAndLeaseBack: group === 'termsSaleAndLeaseBack' ? termObj : {},
+          termsInstallmentFinancing: group === 'termsInstallmentFinancing' ? termObj : {},
+        };
+      })(),
       proposal: {
         facilityPurpose: ext.facilityPurpose || '',
         financingMethod: ext.financingMethod || '',

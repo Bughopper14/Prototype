@@ -66,6 +66,25 @@ function differs(key: string, system: string, document: string, isNumber: boolea
     };
     if (same(purpose)) return false;
   }
+  if (k.includes('method') || k === 'financingmethod') {
+    const method = (s: string) => {
+      const u = s.toUpperCase().replace(/[\s_-]+/g, '');
+      if (u.includes('INSTALLMENT') || u.includes('PEMBELIAN') || u.includes('ANGSURAN')) return 'INSTALLMENT-FINANCING';
+      if (u.includes('FINANCIAL') || u.includes('SEWA')) return 'FINANCIAL-LEASE';
+      if (u.includes('SALE') || u.includes('KEMBALI') || u.includes('SLB')) return 'SALE-AND-LEASE-BACK';
+      return u;
+    };
+    if (same(method)) return false;
+  }
+  if (k.includes('payment') || k === 'paymentmethod') {
+    const payment = (s: string) => {
+      const u = s.toUpperCase().replace(/[\s_-]+/g, '');
+      if (u.includes('ADVANCE') || u.includes('MUKA')) return 'IN-ADVANCE';
+      if (u.includes('ARREAR') || u.includes('BELAKANG')) return 'IN-ARREAR';
+      return u;
+    };
+    if (same(payment)) return false;
+  }
   return true;
 }
 
@@ -135,8 +154,12 @@ const FIELDS: {key: string; label: string; rule?: string; anchor?: string; syste
   {key: 'financingValue', rule: 'financingValueProp', label: 'Nilai Pembiayaan', system: a => a.proposal?.financingValue, number: true},
   {key: 'downPaymentValue', label: 'Uang Muka (DP)', system: a => a.proposal?.downPaymentValue, number: true},
   {key: 'tenorMonths', label: 'Tenor (Bulan)', system: a => a.proposal?.tenorMonths, number: true},
+  {key: 'interestRate', label: 'Suku Bunga (%)', system: a => a.proposal?.interestRate, number: true},
   {key: 'facilityPurpose', label: 'Tujuan Pembiayaan', system: a => a.proposal?.facilityPurpose || a.facilityPurpose},
   {key: 'financingMethod', rule: 'financingMethod', label: 'Metode Pembayaran', system: a => a.proposal?.financingMethod},
+  {key: 'paymentMethod', label: 'Cara Pembayaran', system: a => a.proposal?.paymentMethod},
+  {key: 'currency', label: 'Mata Uang', system: a => a.proposal?.currency},
+  {key: 'applicationSource', label: 'Application Source', system: a => a.proposal?.applicationSource || a.applicationSource},
 ];
 
 /**
