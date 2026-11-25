@@ -244,7 +244,6 @@ export function ApprovalDecisionDialog() {
             height={200}
             minHeight={160}
             showMenubar={true}
-            placeholder={reject ? 'What must be fixed?' : 'Notes (optional)...'}
           />
         </div>
         {canRequestDocuments && (
@@ -357,7 +356,6 @@ export function SubmitStageDialog() {
             height={180}
             minHeight={140}
             showMenubar={true}
-            placeholder="Notes (optional)..."
           />
         </div>
         {gaps.length > 0 ? <GapList gaps={gaps} onOpen={open} /> : error && <div className="error">{error}</div>}
