@@ -83,6 +83,8 @@ export function publishedDeeds(legal: any) {
     .map((d: any) => ({...d.approvedSnapshot, id: d.id, approvedAt: d.approvedAt}));
 }
 export function mergeLegal(previous: any, incoming: any) {
+  assert(incoming && typeof incoming === 'object' && !Array.isArray(incoming), 'Format data legal tidak valid.');
+  if (incoming.deeds !== undefined) assert(Array.isArray(incoming.deeds), 'Daftar akta harus berupa array.');
   const prior = Array.isArray(previous?.deeds) ? previous.deeds : [],
     ids = new Set<string>();
 
@@ -103,6 +105,7 @@ export function mergeLegal(previous: any, incoming: any) {
     String(t || '').trim().toLowerCase() === 'establishment' ? 'establishment' : 'amendment';
 
   const deeds = (incoming.deeds || []).map((input: any) => {
+    assert(input && typeof input === 'object' && !Array.isArray(input), 'Setiap item akta harus berupa objek.');
     assert(input.id && typeof input.id === 'string', 'Setiap akta wajib memiliki ID.');
     assert(!ids.has(input.id), 'ID akta tidak boleh duplikat.');
     ids.add(input.id);
@@ -271,6 +274,7 @@ export function deedTransition(
  */
 export function canEditLegal(actor: any, application: any) {
   if (!actor) return false;
+  if (application?.fapFormLocked) return false;
   if (isAdminActor(actor)) return true;
   if (!actorCan(actor, DEED_EDIT_AUTHORITY)) return false;
   return !application?.workflowFlags?.lastStage;

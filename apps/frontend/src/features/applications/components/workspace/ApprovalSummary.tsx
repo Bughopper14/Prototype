@@ -5,9 +5,33 @@
  */
 import {screenOf} from '@/features/applications/lib/workspace/stage';
 import {SCREEN} from '@/shared/master-data';
-import {ChevronRight, FileText, FolderOpen} from 'lucide-react';
+import {ChevronRight, Eye, FileText, FolderOpen} from 'lucide-react';
+import {useState} from 'react';
+import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
+import type {PreviewState} from '@/features/documents/lib/checklist/types';
+import {storedFileUrl} from '@/features/documents/lib/checklist/file-url';
 import {useWorkspace} from './WorkspaceContext';
 import type {Scope} from './approval-shared';
+
+export function createPreviewState(doc: any, chosenFile?: any): PreviewState | null {
+  if (!doc) return null;
+  const file = chosenFile || (doc.files && doc.files.length > 0 ? doc.files[0] : null);
+  let url = (!chosenFile && doc.previewUrl) || '';
+  if (!url && file) {
+    url = storedFileUrl(file) || (file.fileName ? `/documents/${encodeURIComponent(file.fileName)}` : '');
+  }
+  if (!url) return null;
+  const isPdf = url.toLowerCase().includes('.pdf') || file?.mimeType === 'application/pdf';
+  return {
+    title: doc.documentName || doc.name || file?.fileName || 'Document Preview',
+    url,
+    fileName: file?.fileName || doc.documentName || 'document',
+    isPdf,
+    source: doc.source || 'Uploaded Document',
+    fileSize: file?.fileSize,
+    uploadedAt: file?.createdAt || file?.uploadedAt,
+  };
+}
 
 const dash = (v: any) => (v === null || v === undefined || v === '' ? '-' : String(v));
 
@@ -49,11 +73,27 @@ export function useOpenView() {
   };
 }
 
-export function ApprovalSummary({scope}: {scope: Scope}) {
+export function ApprovalSummary({
+  scope,
+  onPreview: externalOnPreview,
+}: {
+  scope: Scope;
+  onPreview?: (state: PreviewState) => void;
+}) {
   const {a, setActiveStage, setTab} = useWorkspace();
+  const [internalPreview, setInternalPreview] = useState<PreviewState | null>(null);
   const stages: any[] = a.workflow?.stages || [];
   const docs: any[] = a.documentChecks || [];
   const progress: any[] = a.stageProgress || [];
+
+  const handlePreview = (state: PreviewState) => {
+    if (externalOnPreview) {
+      externalOnPreview(state);
+    } else {
+      setInternalPreview(state);
+    }
+  };
+
   /** The tab each screen opens on (the same ones the stage stepper uses). */
   const SCREEN_TAB: Record<string, number> = {[SCREEN.FAP]: 0, [SCREEN.PRE_ANALYSIS]: 8, [SCREEN.DOCUMENTS]: 6};
   /** Opens a stage the way the stepper does: switch to its screen, then to a tab (its first one unless a tab is given, e.g. 5 = Legal). */
@@ -69,54 +109,70 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
   const docList = (list: any[]) =>
     list.length ? (
       <ul className="ap-sum-list">
-        {list.map(d => (
-          <li key={d.id}>
-            <FileText size={14} />
-            <span>
-              {d.documentName}
-              {d.isMandatory && <span className="ap-req">Required</span>}
-            </span>
-            <em>
-              {DOC_STATUS[d.status] ?? d.status}
-              {d.files?.length ? ` · ${d.files.length} file${d.files.length === 1 ? '' : 's'}` : ''}
-            </em>
-          </li>
-        ))}
+        {list.map(d => {
+          const hasFiles = d.files && d.files.length > 0;
+          const previewState = hasFiles ? createPreviewState(d) : null;
+          return (
+            <li key={d.id} className="ap-doc-item">
+              <FileText size={14} className="ap-doc-icon" />
+              <span className="ap-doc-name">
+                {d.documentName}
+                {d.isMandatory && <span className="ap-req">Required</span>}
+              </span>
+              <em className="ap-doc-status">
+                {DOC_STATUS[d.status] ?? d.status}
+                {hasFiles ? ` · ${d.files.length} file${d.files.length === 1 ? '' : 's'}` : ''}
+              </em>
+              {previewState && (
+                <button
+                  type="button"
+                  className="button small ap-btn-view-doc"
+                  title={`View ${d.documentName}`}
+                  onClick={() => handlePreview(previewState)}
+                >
+                  <Eye size={13} />
+                  <span>View Document</span>
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
     ) : (
       <p className="muted">No document in this stage.</p>
     );
 
+  let content: React.ReactNode = null;
+
   if (scope.scope === 'SECTION' && scope.subjectId) {
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === scope.subjectId);
-    if (!deed) return null;
-    return (
-      <div className="ap-summary">
-        <b>The deed</b>
-        <Facts
-          rows={[
-            ['Deed number', deed.deedNumber],
-            ['Type', deed.type === 'amendment' ? 'Amendment deed' : 'Establishment deed'],
-            ['Deed date', deed.deedDate],
-            ['Notary', deed.notaryName],
-            ['Ministerial decree', [deed.ministerialDecreeNumber, deed.ministerialDecreeDate].filter(Boolean).join(' · ')],
-            ['Stakeholders', deed.stakeholders?.length ?? deed.shareholders],
-            ['Remarks', deed.remarks],
-          ]}
-        />
-        <button type="button" className="button small" onClick={() => open(scope.stageCode, 5)}>
-          <FolderOpen size={14} /> Open the Legal tab
-        </button>
-      </div>
-    );
-  }
-
-  if (scope.scope === 'STAGE') {
+    if (deed) {
+      content = (
+        <div className="ap-summary">
+          <b>The deed</b>
+          <Facts
+            rows={[
+              ['Deed number', deed.deedNumber],
+              ['Type', deed.type === 'amendment' ? 'Amendment deed' : 'Establishment deed'],
+              ['Deed date', deed.deedDate],
+              ['Notary', deed.notaryName],
+              ['Ministerial decree', [deed.ministerialDecreeNumber, deed.ministerialDecreeDate].filter(Boolean).join(' · ')],
+              ['Stakeholders', deed.stakeholders?.length ?? deed.shareholders],
+              ['Remarks', deed.remarks],
+            ]}
+          />
+          <button type="button" className="button small" onClick={() => open(scope.stageCode, 5)}>
+            <FolderOpen size={14} /> Open the Legal tab
+          </button>
+        </div>
+      );
+    }
+  } else if (scope.scope === 'STAGE') {
     const stage = stages.find(s => s.code === scope.stageCode);
     const mine = docs.filter(d => d.stageCode === scope.stageCode);
     // a required document is done when it is approved (it has an approval in the workflow) or uploaded (it has none)
     const notDone = mine.filter(d => d.isMandatory && (d.approval ? d.status !== 'VERIFIED' : !(d.files || []).length));
-    return (
+    content = (
       <div className="ap-summary">
         <b>{stage?.name ?? 'The stage'}</b>
         <b>Documents of this stage</b>
@@ -136,11 +192,9 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
         </div>
       </div>
     );
-  }
-
-  if (scope.scope === 'GROUP') {
+  } else if (scope.scope === 'GROUP') {
     const inGroup = stages.filter(s => s.groupCode === scope.groupCode);
-    return (
+    content = (
       <div className="ap-summary">
         <b>The stages of this group</b>
         <ul className="ap-sum-list">
@@ -165,20 +219,28 @@ export function ApprovalSummary({scope}: {scope: Scope}) {
         )}
       </div>
     );
-  }
-
-  if (scope.scope === 'DOCUMENT') {
+  } else if (scope.scope === 'DOCUMENT') {
     const d = docs.find(
       x =>
         x.id === scope.checklistId ||
         (x.documentCode && scope.documentCode && x.documentCode === scope.documentCode),
     );
-    return (
+    content = (
       <div className="ap-summary">
         <b>The document</b>
         {d ? docList([d]) : <p className="muted">Document not found.</p>}
       </div>
     );
   }
-  return null;
+
+  if (!content) return null;
+
+  return (
+    <>
+      {content}
+      {internalPreview && (
+        <DocumentPreviewModal preview={internalPreview} onClose={() => setInternalPreview(null)} />
+      )}
+    </>
+  );
 }

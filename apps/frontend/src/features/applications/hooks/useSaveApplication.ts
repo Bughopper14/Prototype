@@ -10,6 +10,7 @@ import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
+import {useMasterData} from '@/shared/master-data';
 
 export function useSaveApplication({
   customerCategory,
@@ -54,6 +55,7 @@ export function useSaveApplication({
   onChange: (a: any) => void;
   notify: (s: string) => void;
 }) {
+  const master = useMasterData();
   async function save() {
     // FAP Stage is fully editable per specification
     setBusy(true);
@@ -204,6 +206,7 @@ export function useSaveApplication({
             customerDraft,
             resolvedName,
             customerCategory,
+            master,
           });
         } catch (diffErr) {
           console.error('Diff computation error:', diffErr);

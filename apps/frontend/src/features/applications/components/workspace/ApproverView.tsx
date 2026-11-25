@@ -3,12 +3,17 @@
  * application as layers. Submitting is done by somebody else, in the panel above the tabs (ApprovalPanel).
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {ApprovalSummary} from '@/features/applications/components/workspace/ApprovalSummary';
+import {ApprovalSummary, createPreviewState} from '@/features/applications/components/workspace/ApprovalSummary';
 import {HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
-import {Check, ChevronDown, ShieldCheck, X} from 'lucide-react';
+import {Check, ChevronDown, Eye, ShieldCheck, X} from 'lucide-react';
+import {useState} from 'react';
+import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
+import type {PreviewState} from '@/features/documents/lib/checklist/types';
 
 export function ApproverView() {
   const {a, draft, setDecision, setComments, setError} = useWorkspace();
+  const [previewModal, setPreviewModal] = useState<PreviewState | null>(null);
+
   if (draft.isNew || !a.approval) return <p className="muted">Nothing to approve yet.</p>;
   const ap = a.approval as Approval;
   const docs: any[] = a.documentChecks || [];
@@ -51,6 +56,20 @@ export function ApproverView() {
                   </div>
                   {canDecide ? (
                     <div className="ap-actions">
+                      {isDoc && doc && doc.files && doc.files.length > 0 && (
+                        <button
+                          type="button"
+                          className="button small ap-btn-view-doc"
+                          onClick={() => {
+                            const ps = createPreviewState(doc);
+                            if (ps) setPreviewModal(ps);
+                          }}
+                          title={`View ${doc.documentName || 'Document'}`}
+                        >
+                          <Eye size={13} />
+                          <span>View Document</span>
+                        </button>
+                      )}
                       <button type="button" className="button primary small" onClick={() => decide(m.step, 'APPROVED')}>
                         <Check size={14} /> Approve
                       </button>
@@ -73,7 +92,7 @@ export function ApproverView() {
                     </span>
                   )}
                 </div>
-                <ApprovalSummary scope={m.round} />
+                <ApprovalSummary scope={m.round} onPreview={setPreviewModal} />
               </li>
             );
           })}
@@ -91,10 +110,14 @@ export function ApproverView() {
           </span>
         </summary>
         {ap.current.length === 0 && <p className="muted">Nothing to approve yet. Approval starts when a stage is submitted.</p>}
-        <ScopeList scopes={ap.current} onDecide={decide} />
+        <ScopeList scopes={ap.current} onDecide={decide} onPreview={setPreviewModal} />
       </details>
 
       <HistoryList history={ap.history} current={ap.current} />
+
+      {previewModal && (
+        <DocumentPreviewModal preview={previewModal} onClose={() => setPreviewModal(null)} />
+      )}
     </section>
   );
 }

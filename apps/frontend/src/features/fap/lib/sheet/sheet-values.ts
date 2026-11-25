@@ -239,7 +239,15 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
         );
       }
       const prop = (raw as any).proposal || {};
-      const method = (raw as any).financingMethod || prop.financingMethod || '';
+      const rawMethod = String((raw as any).financingMethod || prop.financingMethod || '').toUpperCase();
+      const method =
+        rawMethod.includes('INSTALLMENT') || rawMethod.includes('PEMBELIAN') || rawMethod.includes('ANGSURAN')
+          ? 'INSTALLMENT-FINANCING'
+          : rawMethod.includes('FINANCIAL') || rawMethod.includes('SEWA')
+            ? 'FINANCIAL-LEASE'
+            : rawMethod.includes('SALE') || rawMethod.includes('SLB')
+              ? 'SALE-AND-LEASE-BACK'
+              : (raw as any).financingMethod || prop.financingMethod || '';
       const group = resolveFinancingMethodGroup(method) || 'termsInstallmentFinancing';
       const curr = (raw as any).currency || prop.currency || 'IDR';
       const isAdv = String((raw as any).paymentMethod || prop.paymentMethod || '').toUpperCase().includes('ADVANCE');

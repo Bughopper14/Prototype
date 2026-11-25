@@ -3,24 +3,32 @@ import {ShieldCheck, AlertCircle, Check, Send, X} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function getShortRoleLabel(step: any, idx: number): string {
-  const auth = (step.authority || step.authorityName || '').trim();
+  if (step.isPicMarketing || step.is_pic_marketing) return 'PIC MKT';
+
+  const auth = (step.authority || step.authorityName || step.code || '').trim();
   if (auth) {
     // Regex extract role code right before _APPROVE, _REVIEW, _VERIFY (e.g. CRM_FAP-FORM_CA_APPROVE -> CA)
-    const m = auth.match(/_([A-Za-z0-9]+)_(?:APPROVE|REVIEW|VERIFY)$/i) || auth.match(/_([A-Za-z0-9]+)$/i);
+    const m = auth.match(/_([A-Za-z0-9]+)_(?:APPROVE|APPROVAL|REVIEW|VERIFY)$/i) || auth.match(/_([A-Za-z0-9]+)$/i);
     if (m && m[1]) {
       const code = m[1].toUpperCase();
       if (code === 'LEGAL') return 'Legal';
       if (code === 'MANAGEMENT') return 'Mgmt';
+      if (code === 'PIC' || code === 'MARKETING' || code === 'MKT') return 'PIC MKT';
       return code;
     }
   }
 
-  // Fallback checks on authority / authorityName only (avoid step.name which has full workflow title)
-  const text = `${step.authorityName || ''} ${step.authority || ''}`.toUpperCase();
+  // Fallback checks on authority / authorityName / step.name / step.code
+  const text = `${step.authorityName || ''} ${step.authority || ''} ${step.name || ''} ${step.code || ''}`.toUpperCase();
+  if (text.includes('PIC') && (text.includes('MARKETING') || text.includes('MKT'))) return 'PIC MKT';
+  if (text.includes('PIC MARKETING') || text.includes('MARKETING PIC') || text.includes('PIC MKT')) return 'PIC MKT';
+  if (text.includes('MARKETING') || text.includes('MKT')) return 'PIC MKT';
+  if (text.includes('PIC')) return 'PIC MKT';
   if (text.includes('CA') || text.includes('CREDIT')) return 'CA';
   if (text.includes('BP') || text.includes('BUSINESS PARTNER')) return 'BP';
   if (text.includes('BS') || text.includes('BUSINESS SUPPORT')) return 'BS';
   if (text.includes('LEGAL')) return 'Legal';
+  if (text.includes('MANAGEMENT') || text.includes('MGMT')) return 'Mgmt';
   if (text.includes('RISK')) return 'Risk';
   if (text.includes('BM') || text.includes('BRANCH')) return 'BM';
   if (text.includes('BOD') || text.includes('DIRECTOR')) return 'BOD';
@@ -31,6 +39,7 @@ export function getShortRoleLabel(step: any, idx: number): string {
 
 export function DocumentApprovalCell({
   row,
+  onRequestApproval,
   approvalBusy,
   onOpenModal,
   onConfirmSubmit,
@@ -56,6 +65,8 @@ export function DocumentApprovalCell({
   const isReopened = approval.state === 'REOPENED';
   const isNotRequested = approval.state === 'NOT_REQUESTED';
   const needsSubmission = isNotRequested || isRejected || isReopened;
+  // the user may ask (onRequestApproval is only given then) and the server accepts it (the document has a file and no round is running)
+  const canSubmit = !!onRequestApproval && !!approval.canRequest;
 
   const activeStep = activeStepIndex >= 0 ? steps[activeStepIndex] : null;
   const activeLevel = activeStep?.order ?? activeStep?.sortOrder ?? (activeStepIndex >= 0 ? activeStepIndex + 1 : 1);
@@ -89,11 +100,17 @@ export function DocumentApprovalCell({
       '';
     const rejectRemarks = rawRemarks.replace(/<[^>]*>/g, '').trim();
 
-    // Fill percentage up to the rejected step (connecting approved steps up to the rejected node)
-    const rejectFillPct =
+    // Red fill reaches the rejected step node
+    const redFillPct =
       totalSteps > 1 && rejectedIndex >= 0
         ? Math.round((rejectedIndex / (totalSteps - 1)) * 100)
-        : 100;
+        : 0;
+
+    // Green fill reaches halfway between the previous step and the rejected step
+    const greenFillPct =
+      totalSteps > 1 && rejectedIndex > 0
+        ? Math.round(((rejectedIndex - 0.5) / (totalSteps - 1)) * 100)
+        : 0;
 
     return (
       <div
@@ -105,7 +122,6 @@ export function DocumentApprovalCell({
           <span className="badge-rejected-by">
             <X size={11} strokeWidth={3} /> Rejected by {rejectedRole}
           </span>
-          <span className="badge-revision-text">Revision</span>
         </div>
 
         {/* Stepper Track with Progress */}
@@ -117,14 +133,29 @@ export function DocumentApprovalCell({
             style={{cursor: 'pointer'}}
           >
             <div className="track-line-bg" />
-            <div
-              className="track-line-fill"
-              style={{
-                width: rejectFillPct > 0 ? `calc((100% - 26px) * ${rejectFillPct / 100})` : '0%',
-                background: '#10b981',
-              }}
-            />
-            <div className="stepper-nodes">
+            {/* Red track up to the rejected node */}
+            {redFillPct > 0 && (
+              <div
+                className="track-line-fill"
+                style={{
+                  width: `calc((100% - 26px) * ${redFillPct / 100})`,
+                  background: '#ef4444',
+                  zIndex: 2,
+                }}
+              />
+            )}
+            {/* Green track up to halfway before the rejected node */}
+            {greenFillPct > 0 && (
+              <div
+                className="track-line-fill"
+                style={{
+                  width: `calc((100% - 26px) * ${greenFillPct / 100})`,
+                  background: '#10b981',
+                  zIndex: 3,
+                }}
+              />
+            )}
+            <div className="stepper-nodes" style={{position: 'relative', zIndex: 4}}>
               {steps.map((st: any, idx: number) => {
                 const isStepApproved = st.status === 'APPROVED';
                 const isThisStepRejected = st.status === 'REJECTED';
@@ -170,9 +201,9 @@ export function DocumentApprovalCell({
         <button
           type="button"
           className="btn-submit-for-approval btn-resubmit-danger"
-          disabled={!row.isAvailable || approvalBusy === row.chkId}
+          disabled={!canSubmit || approvalBusy === row.chkId}
           title={
-            !row.isAvailable
+            !approval.canRequest
               ? 'Upload document file before resubmitting'
               : 'Resubmit this document for approval'
           }
@@ -242,9 +273,9 @@ export function DocumentApprovalCell({
         <button
           type="button"
           className="btn-submit-for-approval"
-          disabled={!row.isAvailable || approvalBusy === row.chkId}
+          disabled={!canSubmit || approvalBusy === row.chkId}
           title={
-            !row.isAvailable
+            !approval.canRequest
               ? 'Upload document file before submitting'
               : 'Submit this document for approval'
           }

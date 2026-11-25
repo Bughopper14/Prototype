@@ -6,7 +6,7 @@
 **Penyusun:** QA Lead Tester — Meowth (`office-tester`)  
 **Peninjau & Validasi:** Willy (Lead Solution Architect & Product Owner)  
 **Versi:** 1.0 (Enterprise Comprehensive QA Suite)  
-**Target Sistem:** React 18 SPA + Express REST API + PostgreSQL 15+ + MinIO/S3  
+**Target Sistem:** React 18 SPA + Express REST API + PostgreSQL 15+ + NAS storage  
 **Cakupan Pengujian:** Positive, Negative, Boundary, Edge Case, Security, Concurrency, & Maker-Checker Regression  
 
 ---
@@ -289,7 +289,7 @@ Pengujian mengadopsi standar **ISO/IEC/IEEE 29119** dan metodologi **Testing Pyr
   2. Unggah file tersebut pada checklist dokumen Akta.
 - **Expected Result:**
   - API memeriksa 8 byte pertama (Magic Bytes).
-  - Sistem mendeteksi header bukan `%PDF-` &rarr; Melempar `HTTP 422: Upload file PDF, PNG atau JPEG yang valid`. File tidak disimpan ke disk/S3.
+  - Sistem mendeteksi header bukan `%PDF-` &rarr; Melempar `HTTP 422: Upload file PDF, PNG atau JPEG yang valid`. File tidak disimpan ke disk.
 
 #### TC-DMS-002: Akses Dokumen Privat via Short-Lived Signed URL (Security Test)
 - **Langkah Pengujian:**

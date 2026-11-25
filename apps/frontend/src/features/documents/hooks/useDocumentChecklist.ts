@@ -5,6 +5,7 @@ import {markInView, restoreInView} from '@/features/documents/lib/keep-in-view';
 import {downloadChecklistZip} from '@/features/documents/lib/download-zip';
 import {buildChecklistRows} from '@/features/documents/lib/checklist/build-rows';
 import {documentDefinitions} from '@/features/documents/lib/checklist/definitions';
+import {storedFileUrl} from '@/features/documents/lib/checklist/file-url';
 import {useMasterData} from '@/shared/master-data';
 import {hasAuthority} from '@/shared/lib/auth';
 import {collectStakeholders} from '@/features/documents/lib/checklist/collect-stakeholders';
@@ -80,14 +81,8 @@ export function useDocumentChecklist({
     );
   };
 
-  const isDocInReview = (r: ChecklistRow) => {
-    if (isDocMissing(r)) return false;
-    const app = r.check?.approval;
-    return (
-      app?.state === 'PENDING' ||
-      (r.status === 'UPLOADED' && app?.state !== 'APPROVED' && !isDocActionRequired(r))
-    );
-  };
+  // In review = an approval round is running; a document without approval is never in review
+  const isDocInReview = (r: ChecklistRow) => !isDocMissing(r) && r.check?.approval?.state === 'PENDING';
 
   const isDocApproved = (r: ChecklistRow) => {
     if (isDocMissing(r)) return false;
@@ -229,14 +224,7 @@ export function useDocumentChecklist({
   // Handler Preview File
   const handleOpenPreview = (row: ChecklistRow, chosen?: any) => {
     const file = chosen || row.files[0];
-    let url = (!chosen && row.previewUrl) || '';
-    if (!url && file) {
-      if (file.storagePath) {
-        url = '/' + String(file.storagePath).replace(/^[\\/]/, '').replace(/^documents\//i, 'documents/');
-      } else {
-        url = `/documents/${file.fileName}`;
-      }
-    }
+    const url = (!chosen && row.previewUrl) || storedFileUrl(file);
     if (!url) {
       notify('Physical document preview is not yet available for this item.');
       return;

@@ -55,11 +55,24 @@ export function useWorkspaceAccess({
   const isAdminUser = checkIsAdmin(user);
   // isFapLocked belongs to the signed FAP document (its upload); the lock of the form itself is fapFormLocked below
   const isFapLocked = false;
-  // What the user may edit comes from the authorities of their DB role (administrators have all)
-  const canLegal = hasAuthority(user, 'CRM_LEGAL_EDIT');
-  // Submitting the stage that shows the FAP form locks the form (profile, contact person and sections 05-08); a rejection of the stage opens it again.
-  // The financial statements keep their own rule (editable until the application is approved).
-  const fapFormLocked = Boolean(a?.fapFormLocked);
+
+  // Any document in checklist in approval or approved locks editing:
+  const isChecklistInApproval = (a?.documentChecks || []).some(
+    (d: any) =>
+      (d.approval_status === 'IN_APPROVAL' || d.approval?.state === 'PENDING') &&
+      d.approval?.state !== 'REJECTED',
+  );
+  const fapCheck = (a?.documentChecks || []).find((d: any) => d.documentCode === 'FAP');
+  const isFapDocInApproval =
+    fapCheck?.approval_status === 'IN_APPROVAL' ||
+    fapCheck?.approval?.state === 'PENDING' ||
+    fapCheck?.approval_status === 'APPROVED' ||
+    fapCheck?.approval?.state === 'APPROVED';
+
+  // Submitting the stage that shows the FAP form or submitting document checklist locks the form (profile, contact person, legal deeds/stakeholders, and sections 05-08); a rejection of the stage/document opens it again.
+  const fapFormLocked = Boolean(a?.fapFormLocked) || isFapDocInApproval || isChecklistInApproval;
+  // What the user may edit comes from the authorities of their DB role and approval state
+  const canLegal = hasAuthority(user, 'CRM_LEGAL_EDIT') && !fapFormLocked;
   const canEditCustomerPic = hasAuthority(user, 'CRM_CUSTOMER-PIC_EDIT') && !fapFormLocked;
   const canEdit = hasAuthority(user, 'CRM_BUSINESS-BANK_EDIT') && !fapFormLocked;
   const canFinance =

@@ -1,7 +1,8 @@
 /** What the submitter view and the approver view share: the types of an approval, the layers of a step list and the list of what has to be approved. */
-import {Check, ChevronDown, Clock, ExternalLink, History, Lock, RotateCcw, X} from 'lucide-react';
-import {useOpenView} from './ApprovalSummary';
+import {Check, ChevronDown, Clock, ExternalLink, Eye, History, Lock, RotateCcw, X} from 'lucide-react';
+import {createPreviewState, useOpenView} from './ApprovalSummary';
 import {useWorkspace} from './WorkspaceContext';
+import type {PreviewState} from '@/features/documents/lib/checklist/types';
 
 /** What a step shows: a step the group's rejection opened again is REJECTED in the database, but nobody rejected it. */
 export const shownStatus = (s: Step) => (s.reopened ? 'REOPENED' : s.status);
@@ -81,7 +82,15 @@ function scopeSummary(c: Scope): {tone: string; text: string} {
 }
 
 /** Everything that has to be approved, in workflow order. Each thing has a button to the screen it is about; with onDecide the steps the person may decide show Approve and Reject. */
-export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step: Step, kind: 'APPROVED' | 'REJECTED') => void}) {
+export function ScopeList({
+  scopes,
+  onDecide,
+  onPreview,
+}: {
+  scopes: Scope[];
+  onDecide?: (step: Step, kind: 'APPROVED' | 'REJECTED') => void;
+  onPreview?: (state: PreviewState) => void;
+}) {
   const {a} = useWorkspace();
   const openView = useOpenView();
   const docs: any[] = a?.documentChecks || [];
@@ -155,6 +164,19 @@ export function ScopeList({scopes, onDecide}: {scopes: Scope[]; onDecide?: (step
                             <span className={'ap-pill ' + shownStatus(s).toLowerCase() + (s.status === 'PENDING' && s.canAct ? ' mine' : '')}>{stepLabel(s)}</span>
                             {onDecide && s.canAct && canDecideScope && (
                               <span className="ap-actions">
+                                {isDocScope && docForScope && docForScope.files && docForScope.files.length > 0 && onPreview && (
+                                  <button
+                                    type="button"
+                                    className="button small ap-btn-view-doc"
+                                    onClick={() => {
+                                      const ps = createPreviewState(docForScope);
+                                      if (ps) onPreview(ps);
+                                    }}
+                                    title={`View ${docForScope.documentName || 'Document'}`}
+                                  >
+                                    <Eye size={13} /> View Document
+                                  </button>
+                                )}
                                 <button type="button" className="button primary small" onClick={() => onDecide(s, 'APPROVED')}>
                                   <Check size={13} /> Approve
                                 </button>

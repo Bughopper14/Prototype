@@ -16,7 +16,14 @@ class OCREngine:
     @classmethod
     def get_engine(cls) -> RapidOCR:
         if cls._instance is None:
-            cls._instance = RapidOCR()
+            # Several workers run side by side, so each one gets its own share of the cores (OCR_THREADS); without it every worker starts a thread
+            # per core and they slow each other down.
+            threads = int(os.environ.get("OCR_THREADS", "0") or 0)
+            if threads > 0:
+                cv2.setNumThreads(threads)
+                cls._instance = RapidOCR(intra_op_num_threads=threads, inter_op_num_threads=1)
+            else:
+                cls._instance = RapidOCR()
         return cls._instance
 
     @classmethod

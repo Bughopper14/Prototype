@@ -70,7 +70,7 @@ export class FapComparisonService {
     const task = (async () => {
       try {
         const result = await this.worker.run(
-          await this.storage.locateNamedCopy(file.storagePath || file.fileName),
+          this.storage.absolutePath(file.storagePath),
           'fap',
           120000,
         );

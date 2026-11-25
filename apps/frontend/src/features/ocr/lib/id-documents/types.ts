@@ -1,5 +1,7 @@
 /** A scan stored by POST /ocr/scan: the OCR result and the stored copy, saved to the stakeholder after the deed is saved. */
 export interface IdScan {
+  /** The scan in the server's temp folder; sending it back when the form is saved files it under the application. */
+  tempKey?: string | null;
   docType: string;
   data: any;
   fileName: string | null;

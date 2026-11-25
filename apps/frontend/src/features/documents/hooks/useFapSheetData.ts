@@ -121,6 +121,10 @@ export function useFapSheetData({
           picPosition: liveFapData.position,
           picPhone: liveFapData.phone,
           picAddress: liveFapData.currentAddress,
+          stakeholders: [],
+          shareholders: [],
+          selectedDeedNo: '',
+          selectedDeedDate: '',
           ...(fapComparison.documentValues || {}),
         }
       : {};
@@ -136,8 +140,9 @@ export function useFapSheetData({
       npwp: ext.npwp || '',
       establishmentActNo: ext.establishmentActNo || '',
       establishmentDate: ext.establishmentDate || '',
-      latestDeedNo: ext.latestDeedNo || '',
-      latestDeedDate: ext.latestDeedDate || '',
+      latestDeedNo: ext.latestDeedNo || ext.selectedDeedNo || '',
+      latestDeedDate: ext.latestDeedDate || ext.selectedDeedDate || '',
+      selectedDeedNo: ext.latestDeedNo || ext.selectedDeedNo || '',
       companyAddress: ext.companyAddress || '',
       rt: ext.rt || '',
       rw: ext.rw || '',
@@ -169,13 +174,35 @@ export function useFapSheetData({
       paymentMethod: ext.paymentMethod || '',
       applicationSource: ext.applicationSource || '',
       currency: ext.currency || '',
-      stakeholders: ext.stakeholders || ext.shareholders || [],
+      stakeholders: (() => {
+        if (!fapComparison) return [];
+        const docSh = fapComparison.documentValues?.stakeholders ?? fapComparison.extractedData?.stakeholders;
+        if (!docSh || docSh === '— (Kosong di dokumen)' || docSh === '-' || docSh === '[]') return [];
+        if (Array.isArray(docSh)) return docSh;
+        if (typeof docSh === 'string') {
+          try {
+            const parsed = JSON.parse(docSh);
+            if (Array.isArray(parsed)) return parsed;
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      })(),
       projects: ext.projects || [],
       bankReferences: ext.bankReferences || [],
       financialStatements: ext.financialStatements || [],
       financingProposal: (() => {
-        const method = ext.financingMethod || '';
-        const group = resolveFinancingMethodGroup(method) || 'termsInstallmentFinancing';
+        const rawMethod = String(ext.financingMethod || '').toUpperCase();
+        const cleanMethod =
+          rawMethod.includes('INSTALLMENT') || rawMethod.includes('PEMBELIAN') || rawMethod.includes('ANGSURAN')
+            ? 'INSTALLMENT-FINANCING'
+            : rawMethod.includes('FINANCIAL') || rawMethod.includes('SEWA')
+              ? 'FINANCIAL-LEASE'
+              : rawMethod.includes('SALE') || rawMethod.includes('SLB')
+                ? 'SALE-AND-LEASE-BACK'
+                : ext.financingMethod || '';
+        const group = resolveFinancingMethodGroup(cleanMethod) || 'termsInstallmentFinancing';
         const curr = ext.currency || 'IDR';
         const isAdv = String(ext.paymentMethod || '').toUpperCase().includes('ADVANCE');
         const paymentVal = isAdv
@@ -186,16 +213,16 @@ export function useFapSheetData({
         const termObj = {
           workingCapitalInvestment: ext.facilityPurpose || '',
           currency: curr,
-          downPayment: ext.downPaymentValue != null ? ext.downPaymentValue : '',
-          securityDeposit: ext.securityDeposit != null ? ext.securityDeposit : (ext.downPaymentValue != null ? ext.downPaymentValue : ''),
-          interestRate: ext.interestRate != null ? ext.interestRate : '',
-          tenor: ext.tenorMonths != null ? ext.tenorMonths : '',
+          downPayment: ext.downPaymentValue != null && ext.downPaymentValue !== '' && ext.downPaymentValue !== 0 ? ext.downPaymentValue : '',
+          securityDeposit: ext.securityDeposit != null && ext.securityDeposit !== '' && ext.securityDeposit !== 0 ? ext.securityDeposit : '',
+          interestRate: ext.interestRate != null && ext.interestRate !== '' && ext.interestRate !== 0 ? ext.interestRate : '',
+          tenor: ext.tenorMonths != null && ext.tenorMonths !== '' && ext.tenorMonths !== 0 ? ext.tenorMonths : '',
           paymentMethod: paymentVal,
         };
         return {
           facilityProposed: {
-            financingMethod: method,
-            financingValue: ext.financingValue != null ? ext.financingValue : '',
+            financingMethod: cleanMethod,
+            financingValue: ext.financingValue != null && ext.financingValue !== '' && ext.financingValue !== 0 ? ext.financingValue : '',
             currencyChoice: curr,
             applicationSource: ext.applicationSource || '',
           },

@@ -211,7 +211,18 @@ export function useApplicationWorkspace({
     liveDetailFapData,
   } = useLiveFapData({master, customerCategory, customerDraft, selectedCustomer, draft, a});
 
+  // A change of the checklist only (a scan filed after Apply) must not rebuild the form from the saved data: what was typed or just applied stays.
+  const latestApp = useRef(a);
+  latestApp.current = a;
+  const checklistOnly = useRef<any>(null);
+  const refreshDocuments = (updated: any) => {
+    const next = {...latestApp.current, documentChecks: updated.documentChecks};
+    checklistOnly.current = next;
+    onChange(next);
+  };
+
   useEffect(() => {
+    if (checklistOnly.current === a) return;
     setDraft(draftFromApplication(a));
     if (a.customer) {
       setCustomerDraft(sanitizeCustomerForDraft(structuredClone(a.customer)));
@@ -313,6 +324,7 @@ export function useApplicationWorkspace({
     initialTab,
     onBack,
     onChange,
+    refreshDocuments,
     onCustomerCreated,
     notify,
     master,

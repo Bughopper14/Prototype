@@ -17,7 +17,7 @@ export async function saveStakeholderScans(rows: any[]) {
       await api('/stakeholders/documents/save', 'POST', {
         stakeholder_id: row.id,
         doc_type: scan.docType,
-        data: {...scan.data, file_name: scan.fileName, document_path: scan.documentPath},
+        data: {...scan.data, file_name: scan.fileName, document_path: scan.documentPath, temp_key: scan.tempKey},
       }).catch(e => console.warn('Saving the scanned document failed:', e));
     }
   }

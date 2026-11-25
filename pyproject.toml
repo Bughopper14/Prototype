@@ -1,0 +1,20 @@
+[tool.pyrefly]
+preset = "off"
+python-interpreter = "C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/python.exe"
+python-version = "3.14.0"
+python-platform = "windows"
+disable-type-errors-in-ide = true
+enabled-ignores = [
+    "type",
+    "pyrefly",
+    "pyre",
+    "mypy"
+]
+search-path = [
+    "C:/Users/reage/AppData/Local/Python/pythoncore-3.14-64/Lib/site-packages",
+    "apps/backend/ocr",
+    "apps/ocr"
+]
+
+[tool.pyrefly.errors]
+missing-import = "ignore"

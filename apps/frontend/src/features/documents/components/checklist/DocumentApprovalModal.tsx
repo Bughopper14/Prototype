@@ -21,7 +21,7 @@ function formatRoleName(authority: string, code?: string): string {
   if (str.includes('_RISK') || str.includes('RISK_')) {
     return 'Risk Reviewer';
   }
-  return str.replace(/^CRM_/, '').replace(/_APPROVE$/, '').replace(/[_-]/g, ' ') || 'Approver';
+  return str.replace(/^CRM_/, '').replace(/_APPROV(?:E|AL)$/, '').replace(/[_-]/g, ' ') || 'Approver';
 }
 
 function formatWibDate(dateVal?: string | Date): string {
@@ -55,12 +55,15 @@ export function DocumentApprovalModal({
   onClose,
   onConfirmSubmit,
   approvalBusy,
+  mayRequest,
 }: {
   row: ChecklistRow | null;
   isOpen: boolean;
   onClose: () => void;
   onConfirmSubmit: (row: ChecklistRow) => void;
   approvalBusy?: string | null;
+  /** The user may ask for an approval at all. */
+  mayRequest: boolean;
 }) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -251,8 +254,8 @@ export function DocumentApprovalModal({
                   fontSize: '12px',
                   fontWeight: 600,
                 }}
-                disabled={!row.isAvailable || approvalBusy === row.chkId}
-                title={!row.isAvailable ? 'Upload document file before submitting' : 'Submit for Approval'}
+                disabled={!mayRequest || !approval?.canRequest || approvalBusy === row.chkId}
+                title={!approval?.canRequest ? 'Upload document file before submitting' : 'Submit for Approval'}
                 onClick={() => {
                   onClose();
                   onConfirmSubmit(row);

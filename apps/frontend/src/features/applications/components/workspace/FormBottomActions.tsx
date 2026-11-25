@@ -15,9 +15,10 @@ export function FormBottomActions() {
     canEdit,
     canFinance,
     canEditCustomerPic,
+    canProposal,
   } = useWorkspace();
   // Saving a tab needs the edit authority of that tab (taken from the user's DB role)
-  const canSaveTab = tab === 0 ? canEditCustomerPic || canEdit : tab === 5 ? canLegal : canFinance || canEdit;
+  const canSaveTab = tab === 0 ? canEditCustomerPic || canEdit : tab === 5 ? canLegal : canProposal;
   return (
     <div className="form-bottom-actions">
       <div className="form-bottom-left">

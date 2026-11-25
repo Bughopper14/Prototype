@@ -17,6 +17,15 @@ export function DocumentRowActions({
 }) {
   const hasFile = (row.files || []).length > 0;
   const canPreview = row.isAvailable && (hasFile || !!row.previewUrl);
+  // The FAP has one current signed file (a new one replaces it); every other document keeps all its files.
+  const replaces = row.code === 'FAP';
+
+  const approval = row.check?.approval;
+  const isPendingApproval =
+    approval?.state === 'PENDING' || row.check?.approval_status === 'IN_APPROVAL';
+  const isApproved =
+    approval?.state === 'APPROVED' || row.check?.approval_status === 'APPROVED' || row.status === 'VERIFIED';
+  const isLockedForUpload = isPendingApproval || isApproved;
 
   if (!hasFile) {
     return (
@@ -24,8 +33,8 @@ export function DocumentRowActions({
         <button
           type="button"
           className="btn-action-primary"
-          title="Upload file now"
-          disabled={isUploading}
+          title={isPendingApproval ? 'Dokumen sedang dalam persetujuan' : isApproved ? 'Dokumen telah disetujui' : 'Upload file now'}
+          disabled={isUploading || isLockedForUpload}
           onClick={() => onUpload(row.code, row.chkId)}
         >
           {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
@@ -53,13 +62,26 @@ export function DocumentRowActions({
       <button
         type="button"
         className="btn-outline"
-        style={{height: '32px', padding: '0 10px', fontSize: '11.5px'}}
-        title="Replace / Upload additional file"
-        disabled={isUploading}
+        style={{
+          height: '32px',
+          padding: '0 10px',
+          fontSize: '11.5px',
+          ...(isLockedForUpload ? {opacity: 0.5, cursor: 'not-allowed'} : {}),
+        }}
+        title={
+          isPendingApproval
+            ? 'Dokumen sedang dalam proses persetujuan'
+            : isApproved
+            ? 'Dokumen telah disetujui'
+            : replaces
+            ? 'Upload a new signed file (the current one is replaced)'
+            : 'Upload an additional file'
+        }
+        disabled={isUploading || isLockedForUpload}
         onClick={() => onUpload(row.code, row.chkId)}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
-        <span>Replace</span>
+        <span>{replaces ? 'Replace' : 'Add file'}</span>
       </button>
     </div>
   );

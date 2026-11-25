@@ -118,7 +118,7 @@ export function ChecklistMetrics({
             <Progress value={mandatoryPct} />
             <div className="bento-footer-row">
               <small className={`bento-sub ${mandatoryLeft === 0 ? 'text-green' : 'text-amber'}`}>
-                {mandatoryLeft === 0 ? 'All mandatory fulfilled' : `${mandatoryLeft} mandatory still required`}
+                {mandatoryLeft === 0 ? 'All mandatory uploaded' : `${mandatoryLeft} mandatory still required`}
               </small>
               {mandatoryLeft > 0 && (
                 <span className="bento-click-indicator">

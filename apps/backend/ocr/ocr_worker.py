@@ -4,9 +4,11 @@ Loading the OCR models takes many seconds, so the API keeps one worker process r
 Protocol (one JSON object per line):
   worker -> API   {"ready": true}                                  once the models are loaded
   API -> worker   {"id": 1, "file": "<path>", "type": "auto"}
+                  or {"id": 1, "name": "scan.jpg", "data": "<base64 of the file>", "type": "auto"}   (nothing is written to disk)
   worker -> API   {"id": 1, "result": {...}} | {"id": 1, "error": "<message>"}
 Anything the libraries print goes to stderr, so stdout carries the protocol only.
 """
+import base64
 import io
 import json
 import os
@@ -28,7 +30,8 @@ def main() -> None:
     from ocr_service import process_document
 
     OCREngine.get_engine()  # load the models now, not on the first request
-    send({"ready": True})
+    # the threads this worker was given (OCR_THREADS) are reported back, so the API can show what really runs
+    send({"ready": True, "threads": int(os.environ.get("OCR_THREADS", "0") or 0)})
 
     for line in io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8"):
         line = line.strip()
@@ -36,7 +39,8 @@ def main() -> None:
             continue
         request = json.loads(line)
         try:
-            send({"id": request["id"], "result": process_document(request["file"], request.get("type", "auto"))})
+            data = base64.b64decode(request["data"]) if request.get("data") is not None else None
+            send({"id": request["id"], "result": process_document(request.get("file"), request.get("type", "auto"), data=data, name=request.get("name"))})
         except Exception as error:
             send({"id": request["id"], "error": str(error)})
 

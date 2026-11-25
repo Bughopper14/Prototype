@@ -239,6 +239,7 @@ export function ChecklistTable({
         onClose={() => setSelectedApprovalRow(null)}
         onConfirmSubmit={setConfirmingSubmitRow}
         approvalBusy={approvalBusy}
+        mayRequest={!!onRequestApproval}
       />
 
       {/* "Yes or No" Simple Confirmation Bubble Modal */}

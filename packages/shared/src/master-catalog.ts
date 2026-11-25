@@ -175,8 +175,8 @@ export function validateMasterGroupItems(
   });
 
   if (groupKey === 'documents') {
-    if (!result.some(x => x.value === 'EKITAS') || !result.some(x => x.value === 'LEGAL-OPINION')) {
-      throw Error('E-KITAS and Legal opinion documents must be retained for the review workflow.');
+    if (!result.some(x => x.value === 'NPWP-EKITAS') || !result.some(x => x.value === 'LEGAL-OPINION')) {
+      throw Error('NPWP / E-KITAS and Legal opinion documents must be retained for the review workflow.');
     }
   }
 

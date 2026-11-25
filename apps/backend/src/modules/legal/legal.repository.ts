@@ -1,12 +1,13 @@
 import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import type {PoolConnection} from 'mysql2/promise';
-import {ageFromDateOfBirth, deedData, FOREIGN_REGION_KEYS, FOREIGN_REGION_VALUE, storedDocumentUrl} from '@liugong/shared';
+import {ageFromDateOfBirth, deedData, FOREIGN_REGION_KEYS, FOREIGN_REGION_VALUE} from '@liugong/shared';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {clean} from '../applications/repositories/company-record';
 import {MasterIdLookup, type CodeMaster} from '../applications/repositories/master-ids';
 import {parseAmount} from '../applications/repositories/fap-sections.repository';
+import {IDENTITY_FILE_PREFIX} from '../identity-documents/identity-documents.repository';
 
 type Conn = Pick<PoolConnection, 'query' | 'execute'>;
 const bad = (message: string, status = 422) => Object.assign(new Error(message), {status});
@@ -73,7 +74,7 @@ export class LegalRepository {
 
   /* ---------- read ---------- */
 
-  private async readStakeholder(row: any) {
+  private async readStakeholder(row: any, files: any[]) {
     const out: Record<string, any> = {id: row.id, createdAt: row.created_at, updatedAt: row.updated_at};
     for (const f of STAKEHOLDER)
       out[f.key] = f.master
@@ -93,9 +94,20 @@ export class LegalRepository {
     // a foreign stakeholder (passport / KITAS) always has "Others" in every address field
     if (isForeignStakeholder(out)) for (const k of FOREIGN_REGION_KEYS) out[k] = FOREIGN_REGION_VALUE;
     out.name = [row.first_name, row.middle_name, row.last_name].filter(Boolean).join(' ');
-    out.document_path = row.document_path || '';
-    out.file_name = row.file_name || '';
-    out.fileUrl = storedDocumentUrl(row.document_path) || null;
+    // The identity documents of the stakeholder, the newest file of each kind: the form shows them in its document pane.
+    const own = files.filter(f => f.stakeholder_id === row.id);
+    const newest = (prefixes: string[]) => own.filter(f => prefixes.some(p => String(f.file_name).startsWith(p))).at(-1);
+    for (const [type, prefix] of Object.entries(IDENTITY_FILE_PREFIX)) {
+      const file = newest([prefix]);
+      if (!file) continue;
+      out[`${type}Url`] = `/documents/${file.storage_path}`;
+      out[`${type}FileName`] = file.file_name;
+      out[`${type}Mime`] = file.mime_type;
+    }
+    const primary = newest([IDENTITY_FILE_PREFIX.ktp, IDENTITY_FILE_PREFIX.passport]);
+    out.document_path = primary ? `documents/${primary.storage_path}` : '';
+    out.file_name = primary?.file_name || '';
+    out.fileUrl = primary ? `/documents/${primary.storage_path}` : null;
     return out;
   }
 
@@ -111,24 +123,20 @@ export class LegalRepository {
       [applicationId],
     );
     const [stakeholders] = await this.db.pool.execute<any[]>(
-      `SELECT s.*,COALESCE(k.document_path,p.document_path) AS document_path,COALESCE(k.file_name,p.file_name) AS file_name
-       FROM ${CRM.fapLegalStakeholders} s
-       LEFT JOIN ${CRM.fapOcrKtp} k ON k.stakeholder_id=s.id
-       LEFT JOIN ${CRM.fapOcrPassport} p ON p.stakeholder_id=s.id
-       WHERE s.application_id=? AND s.is_active=1 ORDER BY s.created_at,s.id`,
+      `SELECT s.* FROM ${CRM.fapLegalStakeholders} s WHERE s.application_id=? AND s.is_active=1 ORDER BY s.created_at,s.id`,
       [applicationId],
     );
-    const [reviews] = await this.db.pool.execute<any[]>(
-      `SELECT * FROM ${CRM.fapLegalDeedReviews} WHERE application_id=?`,
+    const [identityFiles] = await this.db.pool.execute<any[]>(
+      `SELECT stakeholder_id,file_name,storage_path,mime_type FROM ${CRM.applicationDocumentFiles}
+       WHERE application_id=? AND stakeholder_id IS NOT NULL AND deleted_at IS NULL ORDER BY uploaded_at,created_at`,
       [applicationId],
     );
     const deeds = [];
     for (const row of rows) {
       const codes = categories.filter(c => c.deed_id === row.id).map(c => c.code);
       const deedStakeholders = await Promise.all(
-        stakeholders.filter(s => s.deed_id === row.id).map(s => this.readStakeholder(s)),
+        stakeholders.filter(s => s.deed_id === row.id).map(s => this.readStakeholder(s, identityFiles)),
       );
-      const review = reviews.find(r => r.deed_id === row.id);
       deeds.push({
         id: row.id,
         type: row.deed_type === 'ESTABLISHMENT' ? 'establishment' : 'amendment',
@@ -149,7 +157,7 @@ export class LegalRepository {
         infoAdded: deedStakeholders.length > 0,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        ...(await this.reviewOf(review)),
+        ...(await this.reviewOf(row)),
       });
     }
     const [hidden] = await this.db.pool.execute<any[]>(
@@ -164,11 +172,12 @@ export class LegalRepository {
   }
 
   /**
-   * Review state for the editor. No row: a draft. The revision used for "deed changed meanwhile" checks is the time
-   * of the last review change. The submitter is the user that last moved the review to PENDING (updated_by).
+   * Approval state of a deed for the editor (it lives on the deed row: approval_status, approval_remarks, decided_by, decided_at). The editor still
+   * speaks DRAFT / PENDING / APPROVED / REJECTED. The revision used for "deed changed meanwhile" checks is the time of the last change of the row.
+   * The submitter is the user that last moved the deed to IN_APPROVAL (updated_by).
    */
   private async reviewOf(row: any) {
-    if (!row) return {review: {status: 'DRAFT', revision: 1}};
+    const status = (({NOT_STARTED: 'DRAFT', IN_APPROVAL: 'PENDING'}) as Record<string, string>)[row.approval_status] ?? row.approval_status;
     const changed = row.updated_at || row.created_at;
     let approvedSnapshot = null;
     try {
@@ -176,28 +185,28 @@ export class LegalRepository {
     } catch {}
     return {
       review: {
-        status: row.review_status,
+        status,
         revision: changed ? new Date(changed).getTime() : 1,
-        notes: row.review_notes,
-        submittedBy: row.review_status === 'PENDING' ? row.updated_by || row.created_by : null,
-        approvedBy: row.approved_by,
-        approvedAt: row.approved_at,
+        notes: row.approval_remarks,
+        submittedBy: status === 'PENDING' ? row.updated_by || row.created_by : null,
+        approvedBy: row.decided_by,
+        approvedAt: row.decided_at,
       },
-      ...(approvedSnapshot ? {approvedSnapshot, approvedAt: row.approved_at} : {}),
+      ...(approvedSnapshot ? {approvedSnapshot, approvedAt: row.decided_at} : {}),
     };
   }
 
   /** Deeds waiting for approval and deeds sent back, per application (application list and overview). */
   async reviewCounts(): Promise<Map<string, {pending: number; sentBack: number}>> {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT r.application_id,r.review_status,COUNT(*) AS n FROM ${CRM.fapLegalDeedReviews} r
-       JOIN ${CRM.fapLegalDeeds} d ON d.id=r.deed_id AND d.deleted_at IS NULL GROUP BY r.application_id,r.review_status`,
+      `SELECT application_id,approval_status,COUNT(*) AS n FROM ${CRM.fapLegalDeeds}
+       WHERE deleted_at IS NULL AND approval_status IN ('IN_APPROVAL','REJECTED') GROUP BY application_id,approval_status`,
     );
     const out = new Map<string, {pending: number; sentBack: number}>();
     for (const r of rows) {
       const counts = out.get(r.application_id) || {pending: 0, sentBack: 0};
-      if (r.review_status === 'PENDING') counts.pending += Number(r.n);
-      if (r.review_status === 'REJECTED') counts.sentBack += Number(r.n);
+      if (r.approval_status === 'IN_APPROVAL') counts.pending += Number(r.n);
+      if (r.approval_status === 'REJECTED') counts.sentBack += Number(r.n);
       out.set(r.application_id, counts);
     }
     return out;
@@ -359,6 +368,7 @@ export class LegalRepository {
         const oldIds = new Set(old.map(r => r.id));
         const keep: string[] = [];
         for (const s of d.stakeholders) {
+          if (!s || typeof s !== 'object' || Array.isArray(s)) throw bad('Setiap stakeholder harus berupa objek.');
           const sid = oldIds.has(s.id) ? s.id : await this.newStakeholderId(conn, s.id);
           keep.push(sid);
           await this.upsert(
@@ -426,30 +436,33 @@ export class LegalRepository {
       );
   }
 
-  /** Stores the review state produced by deedTransition (PENDING / APPROVED / REJECTED). */
+  /** Stores the approval state produced by deedTransition (DRAFT / PENDING / APPROVED / REJECTED) on the deed row. */
   async saveReview(conn: Conn, applicationId: string, deed: any, by: string | null) {
     const review = deed.review || {};
-    const approved = review.status === 'APPROVED';
+    const status = (({DRAFT: 'NOT_STARTED', PENDING: 'IN_APPROVAL'}) as Record<string, string>)[review.status] ?? review.status;
+    await this.setApproval(conn, applicationId, deed.id, status as any, {
+      remarks: review.notes ?? null,
+      snapshot: review.status === 'APPROVED' ? JSON.stringify(deed.approvedSnapshot ?? deedData(deed)) : null,
+      decidedBy: review.status === 'APPROVED' ? review.approvedBy ?? by : null,
+      decidedAt: review.status === 'APPROVED' ? new Date(review.approvedAt || Date.now()) : null,
+      by,
+    });
+  }
+
+  /** The ONE place that writes the approval state of a deed. A snapshot, decider and time are kept once given (they describe the last approval). */
+  async setApproval(
+    conn: Conn,
+    applicationId: string,
+    deedId: string,
+    status: 'NOT_STARTED' | 'IN_APPROVAL' | 'REJECTED' | 'APPROVED',
+    v: {remarks?: string | null; snapshot?: string | null; decidedBy?: string | null; decidedAt?: Date | null; by: string | null},
+  ) {
     await conn.execute(
-      `INSERT INTO ${CRM.fapLegalDeedReviews}
-         (id,application_id,deed_id,review_status,review_notes,approved_snapshot_text,approved_by,approved_at,created_by,updated_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?)
-       ON DUPLICATE KEY UPDATE review_status=VALUES(review_status),review_notes=VALUES(review_notes),
-         approved_snapshot_text=COALESCE(VALUES(approved_snapshot_text),approved_snapshot_text),
-         approved_by=COALESCE(VALUES(approved_by),approved_by),approved_at=COALESCE(VALUES(approved_at),approved_at),
-         updated_by=VALUES(updated_by)`,
-      [
-        crypto.randomUUID(),
-        applicationId,
-        deed.id,
-        review.status,
-        review.notes ?? null,
-        approved ? JSON.stringify(deed.approvedSnapshot ?? deedData(deed)) : null,
-        approved ? review.approvedBy ?? by : null,
-        approved ? new Date(review.approvedAt || Date.now()) : null,
-        by,
-        by,
-      ],
+      `UPDATE ${CRM.fapLegalDeeds}
+       SET approval_status=?,approval_remarks=?,approved_snapshot_text=COALESCE(?,approved_snapshot_text),
+           decided_by=COALESCE(?,decided_by),decided_at=COALESCE(?,decided_at),updated_by=?
+       WHERE id=? AND application_id=?`,
+      [status, v.remarks ?? null, v.snapshot ?? null, v.decidedBy ?? null, v.decidedAt ?? null, v.by, deedId, applicationId],
     );
   }
 }

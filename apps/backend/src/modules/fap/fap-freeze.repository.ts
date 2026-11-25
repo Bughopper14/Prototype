@@ -75,11 +75,11 @@ export class FapFreezeRepository {
     );
     // The signed FAP form: its current file and the OCR comparison of that file.
     const [[fapFile]] = await conn.query<any[]>(
-      `SELECT f.id,f.file_name,COALESCE(f.storage_path,f.storage_key) AS path
+      `SELECT f.id,f.file_name,f.storage_path AS path
        FROM ${CRM.applicationDocumentFiles} f
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id AND t.code='FAP'
-       WHERE f.application_id=? AND f.deleted_at IS NULL AND f.is_current_active=1 LIMIT 1`,
+       WHERE f.application_id=? AND f.deleted_at IS NULL ORDER BY f.uploaded_at DESC,f.created_at DESC LIMIT 1`,
       [applicationId],
     );
     const [[comparison]] = await conn.query<any[]>(
@@ -383,8 +383,8 @@ export class FapFreezeRepository {
 
     /* Legal: deeds with their review state, remark categories and stakeholders */
     const [deeds] = await conn.query<any[]>(
-      `SELECT d.*,r.review_status,r.review_notes,r.approved_by,r.approved_at FROM ${CRM.fapLegalDeeds} d
-       LEFT JOIN ${CRM.fapLegalDeedReviews} r ON r.deed_id=d.id
+      `SELECT d.*,CASE d.approval_status WHEN 'NOT_STARTED' THEN NULL WHEN 'IN_APPROVAL' THEN 'PENDING' ELSE d.approval_status END AS review_status,
+              d.approval_remarks AS review_notes,d.decided_by AS approved_by,d.decided_at AS approved_at FROM ${CRM.fapLegalDeeds} d
        WHERE d.application_id=? AND d.deleted_at IS NULL ORDER BY d.deed_date,d.created_at`,
       [applicationId],
     );
@@ -491,14 +491,19 @@ export class FapFreezeRepository {
 
     /* Documents: checklist state with the current file of each row */
     const [checklist] = await conn.query<any[]>(
-      `SELECT c.*,t.code,t.name,f.file_name,COALESCE(f.storage_path,f.storage_key) AS file_path,f.file_size,
+      // every row of the checklist is frozen, also a document typed by name for this application (it has no master type)
+      `SELECT c.*,COALESCE(t.code,c.document_code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,f.file_name,f.storage_path AS file_path,f.file_size,
               f.uploaded_by,f.uploaded_at,COALESCE(o.is_mandatory,sd.is_mandatory,0) AS is_mandatory
        FROM ${CRM.applicationDocumentChecklists} c
-       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
        LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
-       LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.checklist_id=c.id AND f.is_current_active=1 AND f.deleted_at IS NULL
-       WHERE c.application_id=? ORDER BY t.sort_order`,
+       LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.id=(
+         SELECT f2.id FROM ${CRM.applicationDocumentFiles} f2
+         WHERE f2.checklist_id=c.id AND f2.deleted_at IS NULL
+         ORDER BY f2.uploaded_at DESC,f2.created_at DESC LIMIT 1
+       )
+       WHERE c.application_id=? ORDER BY COALESCE(t.sort_order,100000),c.created_at`,
       [applicationId],
     );
     for (const c of checklist)

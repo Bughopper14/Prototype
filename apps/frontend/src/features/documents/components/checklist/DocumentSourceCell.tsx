@@ -16,6 +16,12 @@ export function DocumentSourceCell({
   onPreviewFile?: (file: any) => void;
 }) {
   const hasFiles = row.files && row.files.length > 0;
+  const approval = row.check?.approval;
+  const isPendingApproval =
+    approval?.state === 'PENDING' || row.check?.approval_status === 'IN_APPROVAL';
+  const isApproved =
+    approval?.state === 'APPROVED' || row.check?.approval_status === 'APPROVED' || row.status === 'VERIFIED';
+  const isLockedForDelete = isPendingApproval || isApproved;
 
   return (
     <div className="doc-source-details-box">
@@ -97,7 +103,7 @@ export function DocumentSourceCell({
                   </span>
                 </div>
 
-                {isManual && f.id && (
+                {isManual && f.id && !isLockedForDelete && (
                   <button
                     type="button"
                     style={{

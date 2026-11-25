@@ -39,7 +39,7 @@ Sistem mengadopsi monorepo terpadu dengan pemisahan lapisan yang tegas antara An
                         ▼                          ▼
 ┌────────────────────────────────┐       ┌───────────────────────────────┐
 │     BLOB STORAGE ADAPTER       │       │    PERSISTENCE TIER (RDBMS)   │
-│ MinIO / AWS S3 (AES-256)       │       │ PostgreSQL 15+ Enterprise     │
+│ Local disk / NAS               │       │ PostgreSQL 15+ Enterprise     │
 │ • File Type Magic Byte Guard   │       │ • Master Lookups (Reference)  │
 │   (PDF, PNG, JPG Verification) │       │ • Dual-Column Free-Text Snaps │
 │ • 15-Minute Signed URLs        │       │ • Deed-Anchored Stakeholders  │

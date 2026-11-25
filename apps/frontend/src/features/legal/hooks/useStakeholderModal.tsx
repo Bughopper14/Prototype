@@ -290,23 +290,7 @@ export function useStakeholderModal({
         });
         onChangeValue(mergeExtractedDoc(curVal, targetType, extracted, dataUrl, f));
 
-        // Auto-upload KTP to application's document checklist
-        if (targetType === 'KTP' && targetAppId) {
-          (async () => {
-            try {
-              const docForm = new FormData();
-              docForm.append('file', f);
-              docForm.append('documentCode', 'KTP');
-              await api(`/applications/${targetAppId}/documents/upload`, 'POST', docForm);
-              if (onDocumentUploaded) {
-                const updatedApp = await api(`/applications/${targetAppId}`);
-                onDocumentUploaded(updatedApp);
-              }
-            } catch (upErr) {
-              console.warn('Auto-upload KTP to document checklist failed:', upErr);
-            }
-          })();
-        }
+        // The scanned file is filed under the application (documents + checklist) by the server when the stakeholder is saved.
       } catch (err: any) {
         console.warn('OCR error:', err);
         if (err?.code === 'WRONG_DOCUMENT_TYPE') setUploadError(err.message);

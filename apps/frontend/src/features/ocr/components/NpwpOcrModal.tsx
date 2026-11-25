@@ -45,6 +45,8 @@ export function NpwpOcrModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  // The scan in the server's temp folder: filed under the application (documents + checklist) when the data is applied.
+  const [tempKey, setTempKey] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -114,6 +116,7 @@ export function NpwpOcrModal({
       if (applicationId) uploadPayload.append('application_id', applicationId);
 
       const res = await api('/ocr/scan', 'POST', uploadPayload);
+      setTempKey(res?.temp_key || null);
       if (res && res.data) {
         const d = res.data;
         extractedNpwp = d.npwp_number || d.raw_npwp || d.npwp || '';
@@ -122,13 +125,6 @@ export function NpwpOcrModal({
         extractedKpp = d.kpp || '';
         extractedTanggal = d.tanggal_terdaftar || '';
 
-        // If backend added it to checklist, notify parent to refresh
-        if (applicationId && onDocumentUploaded) {
-          try {
-            const updated = await api(`/applications/${applicationId}`);
-            onDocumentUploaded(updated);
-          } catch {}
-        }
       }
     } catch (backendErr: any) {
       console.warn('Backend NPWP OCR scan error:', backendErr);
@@ -201,21 +197,14 @@ export function NpwpOcrModal({
       tanggalTerdaftar: formData.tanggalTerdaftar,
     });
 
-    // Auto-upload NPWP document to application checklist if applicationId is present and checklist contains NPWP
-    if (applicationId && selectedFile) {
-      try {
-        const docPayload = new FormData();
-        docPayload.append('file', selectedFile);
-        docPayload.append('documentCode', 'NPWP');
-        await api(`/applications/${applicationId}/documents/upload`, 'POST', docPayload);
-        if (onDocumentUploaded) {
-          const updated = await api(`/applications/${applicationId}`);
-          onDocumentUploaded(updated);
-        }
-      } catch (uploadErr) {
-        // If NPWP is not on the workflow checklist, this fails gracefully as requested
-        console.warn('Auto-upload NPWP to document checklist (if present):', uploadErr);
-      }
+    // The scan is used now: the server files it under the application and adds it to the checklist (when the workflow has an NPWP document).
+    if (tempKey) {
+      api('/ocr/keep', 'POST', {temp_key: tempKey, doc_type: 'npwp'})
+        .then(() => (applicationId && onDocumentUploaded ? api(`/applications/${applicationId}`) : null))
+        .then(updated => {
+          if (updated && onDocumentUploaded) onDocumentUploaded(updated);
+        })
+        .catch(e => console.warn('Filing the NPWP scan failed:', e));
     }
 
     onClose();

@@ -5,7 +5,7 @@ import path from 'node:path';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {Problem, ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {StorageService, buildDocumentFileName} from '../../core/storage';
+import {StorageService, documentExtension} from '../../core/storage';
 import {recordActivity} from '../activity/activity-log';
 import {ApplicationsService} from '../applications/applications.service';
 import {requireAuthority, signFileToken, verifyFileToken} from '../auth/session';
@@ -80,13 +80,14 @@ export class DocumentsController {
     const current = await this.unlocked(id, req.actor);
     const subType = String(req.body.subType || req.body.sub_type || '').trim().toUpperCase();
     const row = await this.documents.checklistRow(this.db.pool, id, String(req.body.checklistId || req.body.documentCode || ''));
+    if (row && (row.approval_status === 'IN_APPROVAL' || row.approval_status === 'APPROVED')) {
+      throw new Problem(409, 'Dokumen sedang dalam proses persetujuan atau telah disetujui, tidak dapat mengunggah berkas baru.');
+    }
     const checklistCode = (row?.code || String(req.body.documentCode || req.body.checklistId || '')).toUpperCase();
 
     let jenisDoc = subType;
     if (!jenisDoc) {
-      if (checklistCode === 'KTP') {
-        jenisDoc = 'KTPPENGURUS';
-      } else if (checklistCode === 'NPWP') {
+      if (checklistCode === 'NPWP') {
         jenisDoc = 'NPWPUSAHA';
       } else if (checklistCode === 'NIB') {
         jenisDoc = 'NIB';
@@ -104,24 +105,17 @@ export class DocumentsController {
       appNumber = appRows[0]?.application_number || id;
     }
 
-    const fileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname);
-    const storageKey = crypto.randomUUID();
-    await this.storage.put(storageKey, file.buffer, file.mimetype);
-    // A named copy for the OCR service (local storage only, stored under documents/<appNumber>/<jenisDoc>/)
-    const relativePath = await this.storage.saveNamedCopy(fileName, file.buffer, appNumber, jenisDoc).catch(() => undefined);
+    // ONE copy, under the folder of the application, named <JENIS>_<application number>_<NNN>; the name the user uploaded is kept in the database only, never shown.
+    const stored = await this.storage.saveDocument(appNumber, jenisDoc, documentExtension(file.originalname, file.mimetype), file.buffer);
+    const fileName = stored.fileName;
+    const storagePath = stored.key;
     const by = req.actor.username || req.actor.name;
     const saved = await this.db.transaction(conn =>
       this.documents.addFile(
         conn,
         id,
         String(req.body.checklistId || req.body.documentCode || ''),
-        {
-          fileName,
-          storageKey,
-          storagePath: this.storage.usesS3 ? null : (relativePath || fileName),
-          size: file.size,
-          mimeType: file.mimetype,
-        },
+        {fileName, originalFileName: String(file.originalname || '').slice(0, 255) || null, storagePath, size: file.size, mimeType: file.mimetype},
         by,
       ),
     );
@@ -153,7 +147,7 @@ export class DocumentsController {
       id: saved.id,
       checklistId: saved.checklistId,
       fileName,
-      fileKey: storageKey,
+      storagePath,
       fileSize: file.size,
       mimeType: file.mimetype,
       uploadedBy: by,
@@ -167,9 +161,27 @@ export class DocumentsController {
     const {id, fileId} = req.params;
     const current = await this.unlocked(id, req.actor);
     const removed = await this.documents.readFile(fileId);
-    await this.db.transaction(async conn => {
-      await this.documents.deleteFile(conn, id, fileId, req.actor.username || null);
-    });
+    ensure(removed, 'File not found', 404);
+    if (removed.checklistId) {
+      const row = await this.documents.checklistRow(this.db.pool, id, removed.checklistId);
+      if (row && (row.approval_status === 'IN_APPROVAL' || row.approval_status === 'APPROVED')) {
+        throw new Problem(409, 'Dokumen sedang dalam proses persetujuan atau telah disetujui, tidak dapat menghapus berkas.');
+      }
+    }
+    // the file moves while the delete is being saved: when the save fails it goes back, so its row never points at nothing
+    const moved: {from: string; to: string}[] = [];
+    try {
+      await this.db.transaction(async conn => {
+        await this.documents.deleteFile(conn, id, fileId, req.actor.username || null, async from => {
+          const to = await this.storage.moveToBin(from);
+          moved.push({from, to});
+          return to;
+        });
+      });
+    } catch (e) {
+      for (const m of moved) await this.storage.moveBack(m.to, m.from).catch(err => console.error(`Could not move ${m.to} back to ${m.from}:`, err));
+      throw e;
+    }
     await this.comparisons.forget(fileId);
     await recordActivity(
       {
@@ -207,7 +219,7 @@ export class DocumentsController {
     for (const e of entries) {
       let data: Buffer;
       try {
-        data = await this.storage.read(e.fileKey);
+        data = await this.storage.read(e.storagePath);
       } catch {
         unreadable.push(`${e.code} ${e.fileName}`);
         continue;
@@ -217,7 +229,7 @@ export class DocumentsController {
       const base = safe(e.fileName);
       const prefix = base.toUpperCase().startsWith(`${e.code.toUpperCase()}_`) ? '' : `${safe(e.code)}_`;
       let name = `${folder}/${prefix}${base}`;
-      for (let n = 2; used.has(name.toLowerCase()); n++) name = `${folder}/${prefix}v${e.version}_${n}_${base}`;
+      for (let n = 2; used.has(name.toLowerCase()); n++) name = `${folder}/${prefix}v${n}_${base}`;
       used.add(name.toLowerCase());
       files[name] = new Uint8Array(data);
     }
@@ -247,9 +259,7 @@ export class DocumentsController {
     const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
     const download = req.query.download === '1';
-    const url = this.storage.usesS3
-      ? await this.storage.signedUrl(file.fileKey, file.fileName, download)
-      : `/api/v1/files/${file.id}/content?token=${signFileToken(file.id, req.actor.id)}${download ? '&download=1' : ''}`;
+    const url = `/api/v1/files/${file.id}/content?token=${signFileToken(file.id, req.actor.id)}${download ? '&download=1' : ''}`;
     return {url, expiresIn: 900};
   }
 
@@ -264,20 +274,12 @@ export class DocumentsController {
     ensure(token.fileId === req.params.id && token.userId === req.actor.id, 'Invalid document link', 403);
     const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
-    const data = await this.storage.read(file.fileKey);
-    const etag = `"${file.id}-${data.length}"`;
-    if (req.headers.get('if-none-match') === etag) {
-      res.status(304);
-      return res.end();
-    }
     res
       .setHeader('Content-Type', file.mimeType)
-      .setHeader('Cache-Control', 'private, max-age=86400, stale-while-revalidate=604800')
-      .setHeader('ETag', etag)
       .setHeader(
         'Content-Disposition',
         `${req.query.download === '1' ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
       );
-    return res.send(data);
+    return res.send(await this.storage.read(file.storagePath));
   }
 }

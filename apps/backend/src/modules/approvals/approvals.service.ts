@@ -140,8 +140,8 @@ export class ApprovalsService {
       // A document whose last round was approved but that is no longer VERIFIED got a new file after its approval: it needs a new round.
       let changedAfterApproval = false;
       if (scope.type === 'DOCUMENT' && scope.checklistId) {
-        const [[doc]] = await conn.query<any[]>(`SELECT status FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [scope.checklistId]);
-        changedAfterApproval = !!doc && doc.status !== 'VERIFIED';
+        const [[doc]] = await conn.query<any[]>(`SELECT approval_status FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [scope.checklistId]);
+        changedAfterApproval = !!doc && doc.approval_status !== 'APPROVED';
       }
       ensure(!round.length || changedAfterApproval || !round.every(s => s.status === 'APPROVED'), 'This part is already approved.', 409);
     }

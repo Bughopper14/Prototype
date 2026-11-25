@@ -3,7 +3,7 @@ import re
 import sys
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -123,18 +123,19 @@ def _digital_text_boxes(pdf) -> Boxes:
     return boxes
 
 
-def _read_pdf(path: Path, doc_type: str) -> Tuple[Boxes, int]:
+def _read_pdf(path: Optional[Path], doc_type: str, data: Optional[bytes] = None, name: str = "") -> Tuple[Boxes, int]:
     import pymupdf
 
-    pdf = pymupdf.open(str(path))
+    name = name or (path.name if path else "")
+    pdf = pymupdf.open(stream=data, filetype="pdf") if data is not None else pymupdf.open(str(path))
     try:
         page_count = len(pdf)
         digital = _digital_text_boxes(pdf)
         if len(digital) >= DIGITAL_TEXT_MIN_LINES and doc_type != "ktp":
             return digital, page_count
 
-        kind = "nib" if doc_type == "nib" or "nib" in path.name.lower() else (
-            "fap" if doc_type == "fap" or "fap" in path.name.lower() else doc_type)
+        kind = "nib" if doc_type == "nib" or "nib" in name.lower() else (
+            "fap" if doc_type == "fap" or "fap" in name.lower() else doc_type)
         matrix = pymupdf.Matrix(PDF_DPI.get(kind, DEFAULT_PDF_DPI) / 72.0, PDF_DPI.get(kind, DEFAULT_PDF_DPI) / 72.0)
         boxes: Boxes = []
         for index in range(min(page_count, MAX_PDF_PAGES.get(kind, DEFAULT_MAX_PDF_PAGES))):
@@ -153,8 +154,8 @@ def _read_pdf(path: Path, doc_type: str) -> Tuple[Boxes, int]:
         pdf.close()
 
 
-def _read_image(path: Path, doc_type: str = "") -> Tuple[Boxes, int]:
-    image, page_count = DocumentPreprocessor.load_document(path)
+def _read_image(path: Optional[Path], doc_type: str = "", data: Optional[bytes] = None, name: Optional[str] = None) -> Tuple[Boxes, int]:
+    image, page_count = DocumentPreprocessor.load_document(path, data, name)
     height, width = image.shape[:2]
     if max(height, width) > MAX_IMAGE_SIDE:
         scale = MAX_IMAGE_SIDE / max(height, width)
@@ -215,7 +216,7 @@ def _dump(model: Any) -> Dict[str, Any]:
     return model.model_dump() if hasattr(model, "model_dump") else dict(model)
 
 
-def _extract(kind: str, boxes: Boxes, path: Path) -> Tuple[str, Dict[str, Any]]:
+def _extract(kind: str, boxes: Boxes, path: Optional[Path]) -> Tuple[str, Dict[str, Any]]:
     if kind != "nib":
         # the text lines of a digital PDF only carry their block as "box": the extractors read x_min / y_max (a NIB uploaded as a KITAS used to crash on it)
         for i, b in enumerate(boxes):
@@ -223,7 +224,7 @@ def _extract(kind: str, boxes: Boxes, path: Path) -> Tuple[str, Dict[str, Any]]:
                 b.update(x_min=b["box"][0], y_min=b["box"][1], x_max=b["box"][2], y_max=b["box"][3])
             b.setdefault("id", i)
     if kind == "fap":
-        return "fap", forms.extract_fap(boxes, pdf_path=str(path))[0]
+        return "fap", forms.extract_fap(boxes, pdf_path=str(path) if path else None)[0]
     if kind == "ktp":
         return "ktp", forms.extract_ktp_nib_style(boxes)[0]
     if kind == "nib":
@@ -237,27 +238,33 @@ def _extract(kind: str, boxes: Boxes, path: Path) -> Tuple[str, Dict[str, Any]]:
     return "generic", _dump(InformationExtractor.extract_generic(boxes)[0])
 
 
-def process_document(file_path: str, doc_type: str = "auto") -> Dict[str, Any]:
-    """Reads one document and returns {status, doc_type, filename, page_count, data}. Raises on failure."""
-    path = Path(file_path)
-    if not path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+def process_document(file_path: Optional[str], doc_type: str = "auto", data: Optional[bytes] = None, name: Optional[str] = None) -> Dict[str, Any]:
+    """Reads one document, from a file (`file_path`) or from its bytes (`data` with its `name`: nothing is written to disk), and returns
+    {status, doc_type, filename, page_count, data}. Raises on failure."""
+    if data is not None:
+        path = None
+        filename = Path(name or "document").name
+    else:
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+        filename = path.name
 
     doc_type = (doc_type or "auto").strip().lower()
     boxes: Boxes = []
     page_count = 1
-    if path.suffix.lower() == ".pdf":
+    if Path(filename).suffix.lower() == ".pdf":
         try:
-            boxes, page_count = _read_pdf(path, doc_type)
+            boxes, page_count = _read_pdf(path, doc_type, data, filename)
         except Exception as error:  # fall back to the image path below
             _log(f"PDF extraction note: {error}")
     if not boxes:
-        boxes, page_count = _read_image(path, doc_type)
+        boxes, page_count = _read_image(path, doc_type, data, filename)
 
     wrong = _wrong_document(doc_type, boxes)
     if wrong:
         return {"status": "wrong_document", "doc_type": doc_type, "type_mismatch": wrong,
-                "filename": path.name, "page_count": page_count, "data": {}}
+                "filename": filename, "page_count": page_count, "data": {}}
 
-    detected, data = _extract(_resolve_type(doc_type, boxes, path.name), boxes, path)
-    return {"status": "success", "doc_type": detected, "filename": path.name, "page_count": page_count, "data": data}
+    detected, data = _extract(_resolve_type(doc_type, boxes, filename), boxes, path)
+    return {"status": "success", "doc_type": detected, "filename": filename, "page_count": page_count, "data": data}

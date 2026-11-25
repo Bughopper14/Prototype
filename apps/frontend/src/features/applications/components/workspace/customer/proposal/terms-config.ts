@@ -25,8 +25,8 @@ export interface TermsFieldConfig {
 
 export const TERMS_PURPOSE_OPTIONS: ReadonlyArray<{value: string; label: string}> = [
   {value: '', label: '-- Pilih / Kosong --'},
-  {value: 'Investment', label: 'Investment'},
-  {value: 'Working Capital', label: 'Working Capital'},
+  {value: 'INVESTMENT', label: 'Investment'},
+  {value: 'WORKING-CAPITAL', label: 'Working Capital'},
 ];
 
 /** Options for Cara Pembayaran / Payment Timing matching master_payment_timings. */
@@ -50,8 +50,8 @@ export function normalizeTermsPurpose(raw?: string | null): string {
   const s = String(raw || '').trim();
   if (!s) return '';
   const upper = s.toUpperCase();
-  if (upper.includes('WORKING') || upper.includes('MODAL')) return 'Working Capital';
-  if (upper.includes('INVEST')) return 'Investment';
+  if (upper.includes('WORKING') || upper.includes('MODAL')) return 'WORKING-CAPITAL';
+  if (upper.includes('INVEST')) return 'INVESTMENT';
   return s;
 }
 
