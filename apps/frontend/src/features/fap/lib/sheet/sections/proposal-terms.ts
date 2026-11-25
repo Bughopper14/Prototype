@@ -27,7 +27,17 @@ export function applyProposalAndTerms({
 
   const tcIf = prop.termsInstallmentFinancing || {};
 
-  setText('fap-cell-prop-method', facProp.financingMethod);
+  const rawMethod = String(facProp.financingMethod || '').toUpperCase();
+  const cleanMethod =
+    rawMethod.includes('INSTALLMENT') || rawMethod.includes('PEMBELIAN') || rawMethod.includes('ANGSURAN')
+      ? 'INSTALLMENT-FINANCING'
+      : rawMethod.includes('FINANCIAL') || rawMethod.includes('SEWA')
+        ? 'FINANCIAL-LEASE'
+        : rawMethod.includes('SALE') || rawMethod.includes('SLB')
+          ? 'SALE-AND-LEASE-BACK'
+          : facProp.financingMethod;
+
+  setText('fap-cell-prop-method', cleanMethod);
 
   setText('fap-cell-prop-app-source', facProp.applicationSource);
 
@@ -49,7 +59,7 @@ export function applyProposalAndTerms({
       .trim();
     if (choice === 'USD') {
       currCell.innerHTML = `: (<span style="text-decoration:line-through;text-decoration-style:double;">IDR</span> / USD)`;
-    } else if (choice === 'IDR') {
+    } else if (choice === 'IDR' || choice === '') {
       currCell.innerHTML = `: (IDR / <span style="text-decoration:line-through;text-decoration-style:double;">USD</span>)`;
     } else {
       currCell.innerHTML = `: (IDR / USD)`;

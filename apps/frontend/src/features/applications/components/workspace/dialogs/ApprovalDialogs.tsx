@@ -47,7 +47,12 @@ function GapList({gaps, onOpen}: {gaps: Gap[]; onOpen: (gap: Gap) => void}) {
               {items.map((gap, i) => (
                 <li key={i}>
                   {gap.label}
-                  {gap.detail && <span className="muted"> · {gap.detail}</span>}
+                  {gap.detail && (
+                    <span className="muted">
+                      {' '}
+                      · {gap.detail === 'Belum disetujui' ? "Haven't approved yet" : gap.detail}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -241,7 +246,6 @@ export function ApprovalDecisionDialog() {
             height={200}
             minHeight={160}
             showMenubar={true}
-            placeholder={reject ? 'What must be fixed?' : 'Notes (optional)...'}
           />
         </div>
         {canRequestDocuments && (
@@ -354,7 +358,6 @@ export function SubmitStageDialog() {
             height={180}
             minHeight={140}
             showMenubar={true}
-            placeholder="Notes (optional)..."
           />
         </div>
         {gaps.length > 0 ? <GapList gaps={gaps} onOpen={open} /> : error && <div className="error">{error}</div>}

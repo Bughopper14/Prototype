@@ -87,6 +87,23 @@ export function mergeLegal(previous: any, incoming: any) {
   if (incoming.deeds !== undefined) assert(Array.isArray(incoming.deeds), 'Daftar akta harus berupa array.');
   const prior = Array.isArray(previous?.deeds) ? previous.deeds : [],
     ids = new Set<string>();
+
+  const normDate = (d: any) => {
+    if (!d) return null;
+    if (d instanceof Date) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    const str = String(d).trim();
+    const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : (str.slice(0, 10) || null);
+  };
+  const normStr = (s: any) => (s === undefined || s === null ? '' : String(s).trim());
+  const normType = (t: any) =>
+    String(t || '').trim().toLowerCase() === 'establishment' ? 'establishment' : 'amendment';
+
   const deeds = (incoming.deeds || []).map((input: any) => {
     assert(input && typeof input === 'object' && !Array.isArray(input), 'Setiap item akta harus berupa objek.');
     assert(input.id && typeof input.id === 'string', 'Setiap akta wajib memiliki ID.');
@@ -95,14 +112,34 @@ export function mergeLegal(previous: any, incoming: any) {
     const old = prior.find((d: any) => d.id === input.id),
       data = deedData(input);
     if (!old) return {...data, review: {status: 'DRAFT', revision: 1}};
-    const changed = JSON.stringify(deedData(old)) !== JSON.stringify(data);
+
+    const isOldApproved = reviewStatus(old) === 'APPROVED';
+    const isOldPending = deedPending(old);
+
+    const coreChanged =
+      normStr(old.deedNumber) !== normStr(input.deedNumber) ||
+      normDate(old.deedDate) !== normDate(input.deedDate) ||
+      normType(old.type || old.deed_type) !== normType(input.type || input.deed_type) ||
+      normStr(old.notaryName) !== normStr(input.notaryName) ||
+      normStr(old.ministerialDecreeNumber) !== normStr(input.ministerialDecreeNumber) ||
+      normDate(old.ministerialDecreeDate) !== normDate(input.ministerialDecreeDate);
+
     assert(
-      !changed || !deedPending(old),
+      !coreChanged || !isOldPending,
       'Akta sedang diperiksa. Tunggu hasil pemeriksaan sebelum mengubah data.',
       409,
     );
     // An approved deed is locked: it is only opened again when its stage or group is rejected.
-    assert(!changed || reviewStatus(old) !== 'APPROVED', 'Akta sudah disetujui dan terkunci.', 409);
+    assert(!coreChanged || !isOldApproved, 'Akta sudah disetujui dan terkunci.', 409);
+
+    if (isOldApproved && !coreChanged) {
+      return {
+        ...old,
+        review: old.review || {status: 'APPROVED', revision: 1},
+        ...(old.approvedSnapshot ? {approvedSnapshot: old.approvedSnapshot, approvedAt: old.approvedAt} : {}),
+      };
+    }
+
     const review = old.review || {status: 'DRAFT', revision: 1};
     return {
       ...data,
@@ -126,12 +163,19 @@ export function mergeLegal(previous: any, incoming: any) {
   }
   const est = deeds.find((d: any) => d.type === 'establishment');
   if (est?.deedDate) {
-    for (const d of deeds) {
-      if (d.type === 'amendment' && d.deedDate)
-        assert(
-          String(d.deedDate).slice(0, 10) >= String(est.deedDate).slice(0, 10),
-          `Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`,
-        );
+    const estDate = normDate(est.deedDate);
+    if (estDate) {
+      for (const d of deeds) {
+        if (d.type === 'amendment' && d.deedDate) {
+          const amdDate = normDate(d.deedDate);
+          if (amdDate) {
+            assert(
+              amdDate >= estDate,
+              `Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`,
+            );
+          }
+        }
+      }
     }
   }
   return {...incoming, deeds};
@@ -230,6 +274,7 @@ export function deedTransition(
  */
 export function canEditLegal(actor: any, application: any) {
   if (!actor) return false;
+  if (application?.fapFormLocked) return false;
   if (isAdminActor(actor)) return true;
   if (!actorCan(actor, DEED_EDIT_AUTHORITY)) return false;
   return !application?.workflowFlags?.lastStage;

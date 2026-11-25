@@ -94,6 +94,71 @@
 .tab-count { margin-left: 8px; display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 12px; font-weight: 800; }
 .doc-needs { display: inline-flex; align-items: center; gap: 6px; }
 
+/* Document item in approval summary */
+.ap-doc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+.ap-doc-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.ap-doc-icon {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+.ap-doc-name {
+  font-weight: 600;
+  color: #0f172a;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ap-doc-status {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  color: #64748b;
+  margin-right: 6px;
+}
+.ap-btn-view-doc {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  padding: 5px 12px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: inherit !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 7px !important;
+  background: #ffffff !important;
+  color: #1e293b !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  white-space: nowrap !important;
+}
+.ap-btn-view-doc:hover {
+  background: #eff6ff !important;
+  border-color: #93c5fd !important;
+  color: #2563eb !important;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1) !important;
+  transform: translateY(-0.5px);
+}
+.ap-btn-view-doc svg {
+  color: #2563eb !important;
+  flex-shrink: 0;
+}
+
 /* one review dialog: Approve / Reject switch and the request-documents row */
 .ap-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 4px 0 8px; }
 .ap-choice button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: 1.5px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; font-size: 15px; font-weight: 700; color: #475569; cursor: pointer; }

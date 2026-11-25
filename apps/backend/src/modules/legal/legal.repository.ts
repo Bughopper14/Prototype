@@ -81,7 +81,9 @@ export class LegalRepository {
         ? await this.ids.codeOf(f.master, row[f.column])
         : f.type === 'number'
           ? num(row[f.column])
-          : (row[f.column] ?? null);
+          : f.type === 'date'
+            ? clean(row[f.column], 'date')
+            : (row[f.column] ?? null);
     out.country = await this.ids.codeOf('country', row.country_id);
     for (const [key, column] of LOCATION) out[key] = row[column] ?? null;
     out.postalCode = await this.ids.postalCodeOf(row.postal_code_id);
@@ -139,16 +141,16 @@ export class LegalRepository {
         id: row.id,
         type: row.deed_type === 'ESTABLISHMENT' ? 'establishment' : 'amendment',
         deedNumber: row.deed_number,
-        deedDate: row.deed_date,
+        deedDate: clean(row.deed_date, 'date'),
         notaryName: row.notary_name,
         ministerialDecreeNumber: row.ministerial_decree_number,
-        ministerialDecreeDate: row.ministerial_decree_date,
+        ministerialDecreeDate: clean(row.ministerial_decree_date, 'date'),
         remarkCategoryId: codes[0] ?? null,
         remarkCategoryIds: codes,
         remarks: row.remarks || '',
         parties: {representative: row.representative_note || '', companyShareholder: row.company_shareholder_note || ''},
         status: row.deed_status,
-        expiryDate: row.valid_until,
+        expiryDate: clean(row.valid_until, 'date'),
         isLatestDeed: !!row.is_latest_deed,
         shareholders: deedStakeholders.filter(s => Number(s.sharePercentage) > 0).length,
         stakeholders: deedStakeholders,

@@ -1269,9 +1269,12 @@
   color: #ffffff;
 }
 .step-lbl {
-  font-size: 9.5px;
+  font-size: 8.5px;
   font-weight: 600;
   color: #64748b;
+  white-space: nowrap;
+  text-align: center;
+  letter-spacing: -0.2px;
 }
 .step-dot-wrap.active .step-lbl {
   color: #2563eb;

@@ -5277,12 +5277,14 @@ nav button {
   background: #fff5dc;
 }
 .deed-review-status.approved {
-  color: #1d4ed8;
-  background: #eff6ff;
+  color: #047857;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
 }
 .deed-review-status.rejected {
-  color: #b2493c;
-  background: #fff0ed;
+  color: #b91c1c;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
 }
 .deed-review-status.needs_correction {
   color: #8a5a00;

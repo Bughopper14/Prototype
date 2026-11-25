@@ -1,10 +1,22 @@
+import {existsSync} from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {Global, Injectable, Module} from '@nestjs/common';
 
 /** Storage root: STORAGE_ROOT (relative to the backend folder, or absolute such as a NAS mount), default ./storage/documents. */
 function storageRoot() {
-  return path.resolve(process.cwd(), process.env.STORAGE_ROOT || './storage/documents');
+  if (process.env.STORAGE_ROOT) {
+    return path.resolve(process.cwd(), process.env.STORAGE_ROOT);
+  }
+  const candidates = [
+    path.resolve(process.cwd(), './storage/documents'),
+    path.resolve(process.cwd(), '../../storage/documents'),
+    path.resolve(process.cwd(), '../storage/documents'),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return candidates[0];
 }
 
 const SAFE_DOC_EXTS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp']);
@@ -34,7 +46,18 @@ const folderOf = (applicationNumber: string) => String(applicationNumber || 'una
 
 /** Temp folder for the scans OCR read: STORAGE_TEMP, default ./storage/temp. Nothing is deleted from it automatically (housekeeping is manual, once a year). */
 function storageTemp() {
-  return path.resolve(process.cwd(), process.env.STORAGE_TEMP || './storage/temp');
+  if (process.env.STORAGE_TEMP) {
+    return path.resolve(process.cwd(), process.env.STORAGE_TEMP);
+  }
+  const candidates = [
+    path.resolve(process.cwd(), './storage/temp'),
+    path.resolve(process.cwd(), '../../storage/temp'),
+    path.resolve(process.cwd(), '../storage/temp'),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return candidates[0];
 }
 
 /**
@@ -51,7 +74,11 @@ export class StorageService {
 
   /** A path under the root from a storage key, or null when the key leaves the root. */
   private within(key: string) {
-    const file = path.resolve(this.rootDir, ...String(key).split(/[\/]+/).filter(Boolean));
+    let cleanKey = String(key || '').replace(/^[\\/]+/, '');
+    if (/^documents[\\/]+/i.test(cleanKey)) {
+      cleanKey = cleanKey.replace(/^documents[\\/]+/i, '');
+    }
+    const file = path.resolve(this.rootDir, ...cleanKey.split(/[\/]+/).filter(Boolean));
     return file.startsWith(this.rootDir + path.sep) ? file : null;
   }
 
@@ -203,11 +230,23 @@ export class StorageService {
    * files, for IT only).
    */
   documentPath(segments: string[]) {
-    const file = this.within(segments.join('/'));
+    let cleanSegments = [...segments];
+    if (cleanSegments[0]?.toLowerCase() === 'documents') {
+      cleanSegments.shift();
+    }
+    const file = this.within(cleanSegments.join('/'));
     if (!file) return null;
     // Windows also reads "bin.", "bin " and "bin::$INDEX_ALLOCATION" as the folder bin
     const hidden = path.relative(this.rootDir, file).split(path.sep).some(part => part.includes(':') || part.replace(/[. ]+$/, '').toLowerCase() === 'bin');
-    return hidden ? null : file;
+    if (hidden) return null;
+    if (existsSync(file)) return file;
+
+    // Fallback: legacy flat files stored directly in rootDir
+    const fileName = path.basename(file);
+    const flatFile = path.join(this.rootDir, fileName);
+    if (existsSync(flatFile)) return flatFile;
+
+    return file;
   }
 }
 

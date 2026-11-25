@@ -29,6 +29,33 @@ const by = (actor: Actor) => actor.username || null;
 /** The table that holds the rows of each repeating section (is_repeating in crm_master_form_sections): one approval round per row. */
 const REPEATING_ROWS: Record<string, string> = {[DEED_SECTION]: CRM.fapLegalDeeds};
 
+/** Regex extract department / role code from authority name (e.g. CRM_FAP-FORM_CA_APPROVE -> CA). */
+function getDeptFromAuthority(authName?: string | null, isPicMarketing?: boolean): string {
+  if (isPicMarketing || !authName || authName.toLowerCase() === 'pic marketing') {
+    return 'PIC Marketing';
+  }
+  const auth = authName.trim();
+  const m = auth.match(/_([A-Za-z0-9]+)_(?:APPROVE|REVIEW|VERIFY)$/i) || auth.match(/_([A-Za-z0-9]+)$/i);
+  if (m && m[1]) {
+    const code = m[1].toUpperCase();
+    if (code === 'LEGAL') return 'Legal';
+    if (code === 'MANAGEMENT') return 'Management';
+    if (code === 'CREDIT' || code === 'CA') return 'CA';
+    if (code === 'BP' || code === 'PARTNER') return 'BP';
+    if (code === 'BS' || code === 'SUPPORT') return 'BS';
+    if (code === 'RISK') return 'Risk';
+    return code;
+  }
+  const text = auth.toUpperCase();
+  if (text.includes('MANAGEMENT')) return 'Management';
+  if (text.includes('LEGAL')) return 'Legal';
+  if (text.includes('CA') || text.includes('CREDIT')) return 'CA';
+  if (text.includes('BP') || text.includes('BUSINESS PARTNER')) return 'BP';
+  if (text.includes('BS') || text.includes('BUSINESS SUPPORT')) return 'BS';
+  if (text.includes('RISK')) return 'Risk';
+  return auth;
+}
+
 /**
  * Applications on the crm_liugong design: header (crm_applications), FAP profile and primary contact, the customer
  * golden record, and the approval of its stages. Each application points at a workflow (crm_applications.workflow_freeze_id) that says
@@ -308,7 +335,16 @@ export class ApplicationsService {
       // (an ApprovalSlot) looks itself up here by its code.
       approvalPlaces: await this.approvalPlaces(app.workflow_freeze_id),
       // who the PIC Marketing is (name from the users module), for the heading of the application
-      fapFormLocked: !!Number(app.is_fap_form_locked),
+      fapFormLocked:
+        !!Number(app.is_fap_form_locked) ||
+        documentsWithApproval.some(
+          d =>
+            d.documentCode === 'FAP' &&
+            (d.approval?.state === 'PENDING' ||
+              d.approval?.state === 'APPROVED' ||
+              d.approval_status === 'IN_APPROVAL' ||
+              d.approval_status === 'APPROVED'),
+        ),
       mktPic: app.mkt_pic_id ? {id: Number(app.mkt_pic_id), ...((await this.mktPics.names([app.mkt_pic_id])).get(Number(app.mkt_pic_id)) ?? {name: '', username: ''})} : null,
       createdBy: app.created_by ?? null,
       legal,
@@ -497,8 +533,18 @@ export class ApplicationsService {
   }
 
   /** Submitting the stage that shows the FAP form locks the form (the frozen copy is made at that moment); a rejection of the stage opens it again. */
-  private assertFapFormOpen(app: any) {
-    ensure(!Number(app.is_fap_form_locked), 'The FAP form is locked because the FAP stage was submitted. It opens again if the stage is rejected.', 409);
+  private async assertFapFormOpen(app: any, conn?: any) {
+    if (Number(app.is_fap_form_locked)) {
+      throw new Problem(409, 'The FAP form is locked because it was submitted for approval. It opens again if rejected.');
+    }
+    const db = conn || this.db.pool;
+    const [rows] = await db.query(
+      `SELECT approval_status FROM ${CRM.applicationDocumentChecklists} WHERE application_id=? AND document_code='FAP'`,
+      [app.id],
+    );
+    if (rows && rows.length > 0 && (rows[0].approval_status === 'IN_APPROVAL' || rows[0].approval_status === 'APPROVED')) {
+      throw new Problem(409, 'The FAP form is locked because it was submitted for approval. It opens again if rejected.');
+    }
   }
 
   async saveCustomerAndContact(id: string, body: Record<string, any>, actor: Actor, expectedUpdatedAt?: unknown) {
@@ -509,7 +555,7 @@ export class ApplicationsService {
     await this.db.transaction(async conn => {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
-      this.assertFapFormOpen(app);
+      await this.assertFapFormOpen(app, conn);
       this.assertFresh(app, expectedUpdatedAt, actor);
       let changed = await this.profiles.saveProfile(conn, id, customer, profile, by(actor));
       changed = (await this.partners.saveFromApplication(conn, app.business_partner_id, customer, profile, by(actor))) || changed;
@@ -545,7 +591,7 @@ export class ApplicationsService {
       const app = await this.apps.get(id, conn, true);
       ensure(app, 'Application not found', 404);
       // sections 05-08 belong to the FAP form and are locked with it; the financial statements (09) have their own rule below
-      if (Array.isArray(body.projects) || Array.isArray(body.bankReferences) || body.proposal || financingProposal || (profile.financingPurposeDetail ?? body.financingPurposeDetail) !== undefined) this.assertFapFormOpen(app);
+      if (Array.isArray(body.projects) || Array.isArray(body.bankReferences) || body.proposal || financingProposal || (profile.financingPurposeDetail ?? body.financingPurposeDetail) !== undefined) await this.assertFapFormOpen(app, conn);
       this.assertFresh(app, expectedUpdatedAt, actor);
       await this.fap.save(
         conn,
@@ -729,7 +775,7 @@ export class ApplicationsService {
    */
   private async assertMandatoryDocumentsVerified(conn: any, id: string, stageCode: string) {
     const [rows] = await conn.query(
-      `SELECT c.id,c.approval_status,t.name,
+      `SELECT c.id,c.status,c.approval_status,c.document_code,t.name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files,
               (SELECT COUNT(*) FROM ${CRM.frozenWorkflowApprovalAssignments} a WHERE a.workflow_freeze_id=sd.workflow_freeze_id AND a.stage_code=sd.stage_code AND a.document_code=sd.document_code) AS approvals
        FROM ${CRM.applicationDocumentChecklists} c
@@ -740,7 +786,43 @@ export class ApplicationsService {
     );
     const pending = (rows as any[]).filter(r => (Number(r.approvals) > 0 ? r.approval_status !== 'APPROVED' : Number(r.files) === 0));
     if (pending.length) {
-      const gaps = pending.map(r => ({target: 'DOCUMENTS', label: r.name, detail: Number(r.approvals) > 0 ? 'Belum disetujui' : 'Belum diunggah'}));
+      const pendingIds = pending.map(r => r.id);
+      const [stepRows] = await conn.query(
+        `SELECT document_checklist_id, round_no, sort_order, authority_name, is_pic_marketing, status
+         FROM ${CRM.applicationApprovalSteps}
+         WHERE application_id=? AND scope_type='DOCUMENT' AND document_checklist_id IN (?)
+         ORDER BY document_checklist_id, round_no, sort_order`,
+        [id, pendingIds.length ? pendingIds : ['']],
+      );
+      const [templateRows] = await conn.query(
+        `SELECT a.document_code, l.level_no, l.authority_name, l.is_pic_marketing
+         FROM ${CRM.frozenWorkflowApprovalAssignments} a
+         JOIN ${CRM.frozenApprovalLevels} l ON l.approval_freeze_id=a.approval_freeze_id
+         JOIN ${CRM.applicationDocumentChecklists} c ON c.application_id=? AND c.stage_code=? AND c.document_code=a.document_code
+         WHERE a.workflow_freeze_id=c.workflow_freeze_id AND a.scope_type='DOCUMENT' AND a.stage_code=?
+         ORDER BY a.document_code, l.level_no`,
+        [id, stageCode, stageCode],
+      );
+
+      const gaps = pending.map(r => {
+        let detail = 'Not uploaded yet';
+        if (Number(r.approvals) > 0) {
+          const docSteps = (stepRows as any[]).filter(s => s.document_checklist_id === r.id);
+          let depts: string[] = [];
+          if (docSteps.length > 0) {
+            const maxRound = Math.max(...docSteps.map(s => Number(s.round_no)));
+            const currentRound = docSteps.filter(s => Number(s.round_no) === maxRound);
+            const unapproved = currentRound.filter(s => s.status !== 'APPROVED');
+            depts = [...new Set(unapproved.map(s => getDeptFromAuthority(s.authority_name, Boolean(s.is_pic_marketing))))].filter(Boolean);
+          } else {
+            const docTemplates = (templateRows as any[]).filter(t => t.document_code === r.document_code);
+            depts = [...new Set(docTemplates.map(t => getDeptFromAuthority(t.authority_name, Boolean(t.is_pic_marketing))))].filter(Boolean);
+          }
+          const deptStr = depts.join(', ');
+          detail = deptStr ? `Haven't approved yet by ${deptStr}` : "Haven't approved yet";
+        }
+        return {target: 'DOCUMENTS', label: r.name, detail};
+      });
       throw new Problem(422, `Dokumen wajib belum selesai (${gaps.length}): ${gaps.map(g => `${g.label} (${g.detail})`).join('; ')}`, [], gaps);
     }
   }
@@ -805,7 +887,16 @@ export class ApplicationsService {
         const mine = (steps as any[]).filter(x => x.subject_id === s.id);
         const last = Math.max(0, ...mine.map(x => Number(x.round_no)));
         if (!last) continue;
-        const state = mine.some(x => Number(x.round_no) === last && x.status === 'REJECTED') ? 'Ditolak' : mine.filter(x => Number(x.round_no) === last).every(x => x.status === 'APPROVED') ? '' : 'Belum disetujui';
+        const unapproved = mine.filter(x => Number(x.round_no) === last && x.status !== 'APPROVED');
+        const depts = [...new Set(unapproved.map(x => getDeptFromAuthority(x.authority_name, Boolean(x.is_pic_marketing))))].filter(Boolean);
+        const isRej = mine.some(x => Number(x.round_no) === last && x.status === 'REJECTED');
+        const state = isRej
+          ? 'Rejected'
+          : unapproved.length === 0
+          ? ''
+          : depts.length
+          ? `Haven't approved yet by ${depts.join(', ')}`
+          : "Haven't approved yet";
         if (state) open.push({target: 'LEGAL', label: `Akta ${s.deed_number || ''}`.trim(), detail: state});
         else approved++;
       }
@@ -854,7 +945,12 @@ export class ApplicationsService {
     let pending: AppStep[] = [];
     await this.db.transaction(async conn => {
       pending = (await this.approvals.startScope(conn, {id, workflowFreezeId: app.workflow_freeze_id}, {type: 'DOCUMENT', checklistId, stageCode: row.stageCode, documentCode: row.documentCode}, actor)).pending;
-      if (pending.length) await this.documents.setApproval(conn, checklistId, 'IN_APPROVAL', by(actor));
+      if (pending.length) {
+        await this.documents.setApproval(conn, checklistId, 'IN_APPROVAL', by(actor));
+        if (row.documentCode === 'FAP') {
+          await this.apps.updateFap(conn, id, {is_fap_form_locked: 1}, by(actor));
+        }
+      }
     });
     ensure(pending.length, 'This document has no approval step in the workflow.', 422);
     const label = await this.label(id);
@@ -958,7 +1054,13 @@ export class ApplicationsService {
         if (step.scope === 'SECTION' && step.sectionCode === DEED_SECTION && step.subjectId)
           await this.syncDeedReview(conn, id, step.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
         const why = String(input.remarks ?? '').trim() || null;
-        if (step.scope === 'DOCUMENT' && step.checklistId) await this.documents.setApproval(conn, step.checklistId, 'REJECTED', by(actor), why);
+        if (step.scope === 'DOCUMENT' && step.checklistId) {
+          await this.documents.setApproval(conn, step.checklistId, 'REJECTED', by(actor), why);
+          const docRow = await this.documents.approvalRow(id, step.checklistId);
+          if (docRow?.documentCode === 'FAP') {
+            await this.apps.updateFap(conn, id, {is_fap_form_locked: 0}, by(actor));
+          }
+        }
         const stageCodes = step.scope === 'STAGE' ? [step.stageCode!] : step.scope === 'GROUP' ? reopenOf(step) : [];
         if (step.scope === 'GROUP' && step.groupCode) await this.apps.setGroupApproval(conn, id, app.workflow_freeze_id, step.groupCode, 'REJECTED', by(actor), why);
         for (const stageCode of stageCodes) {
@@ -981,7 +1083,13 @@ export class ApplicationsService {
       onScopeApproved: async (conn, scope) => {
         if (scope.type === 'SECTION' && scope.sectionCode === DEED_SECTION && scope.subjectId) await this.syncDeedReview(conn, id, scope.subjectId, 'APPROVED', actor);
         const note = String(input.remarks ?? '').trim() || null;
-        if (scope.type === 'DOCUMENT' && scope.checklistId) await this.documents.setApproval(conn, scope.checklistId, 'APPROVED', by(actor), note);
+        if (scope.type === 'DOCUMENT' && scope.checklistId) {
+          await this.documents.setApproval(conn, scope.checklistId, 'APPROVED', by(actor), note);
+          const docRow = await this.documents.approvalRow(id, scope.checklistId);
+          if (docRow?.documentCode === 'FAP') {
+            await this.apps.updateFap(conn, id, {is_fap_form_locked: 1}, by(actor));
+          }
+        }
         const stageCodes = scope.type === 'STAGE' ? [scope.stageCode!] : scope.type === 'GROUP' ? cfg.stages.filter(s => s.groupCode === scope.groupCode).map(s => s.code) : [];
         if (scope.type === 'GROUP' && scope.groupCode) await this.apps.setGroupApproval(conn, id, app.workflow_freeze_id, scope.groupCode, 'APPROVED', by(actor), note);
         for (const stageCode of stageCodes) {

@@ -1,6 +1,7 @@
 /** The values shown in the FAP sheet, worked out from the application, customer, profile and master data. */
 import type {useMasterData} from '@/shared/master-data';
 import type {FapSheetPreviewProps} from '@/features/fap/lib/types';
+import {resolveFinancingMethodGroup} from '@liugong/shared';
 
 export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType<typeof useMasterData>) {
   const raw = props.data || {};
@@ -227,12 +228,58 @@ export function buildSheetValues(props: FapSheetPreviewProps, master: ReturnType
       (props.application as any)?.referenceComments,
       '',
     ),
-    financingProposal: isOcrSide
-      ? (raw as any).financingProposal || {}
-      : (raw as any).financingProposal ||
-        (props.application as any)?.financingProposal ||
-        (props.profile as any)?.financingProposal ||
-        {},
+    financingProposal: (() => {
+      const existing = (raw as any).financingProposal;
+      if (existing && Object.keys(existing).length > 0) return existing;
+      if (!isOcrSide) {
+        return (
+          (props.application as any)?.financingProposal ||
+          (props.profile as any)?.financingProposal ||
+          {}
+        );
+      }
+      const prop = (raw as any).proposal || {};
+      const rawMethod = String((raw as any).financingMethod || prop.financingMethod || '').toUpperCase();
+      const method =
+        rawMethod.includes('INSTALLMENT') || rawMethod.includes('PEMBELIAN') || rawMethod.includes('ANGSURAN')
+          ? 'INSTALLMENT-FINANCING'
+          : rawMethod.includes('FINANCIAL') || rawMethod.includes('SEWA')
+            ? 'FINANCIAL-LEASE'
+            : rawMethod.includes('SALE') || rawMethod.includes('SLB')
+              ? 'SALE-AND-LEASE-BACK'
+              : (raw as any).financingMethod || prop.financingMethod || '';
+      const group = resolveFinancingMethodGroup(method) || 'termsInstallmentFinancing';
+      const curr = (raw as any).currency || prop.currency || 'IDR';
+      const isAdv = String((raw as any).paymentMethod || prop.paymentMethod || '').toUpperCase().includes('ADVANCE');
+      const paymentVal = isAdv
+        ? 'IN-ADVANCE'
+        : String((raw as any).paymentMethod || prop.paymentMethod || '').toUpperCase().includes('ARREAR')
+          ? 'IN-ARREAR'
+          : (raw as any).paymentMethod || prop.paymentMethod || '';
+      const termObj = {
+        workingCapitalInvestment: (raw as any).facilityPurpose || prop.facilityPurpose || '',
+        currency: curr,
+        downPayment: (raw as any).downPaymentValue ?? prop.downPaymentValue ?? '',
+        securityDeposit:
+          (raw as any).securityDeposit ??
+          prop.securityDeposit ??
+          ((raw as any).downPaymentValue ?? prop.downPaymentValue ?? ''),
+        interestRate: (raw as any).interestRate ?? prop.interestRate ?? '',
+        tenor: (raw as any).tenorMonths ?? prop.tenorMonths ?? '',
+        paymentMethod: paymentVal,
+      };
+      return {
+        facilityProposed: {
+          financingMethod: method,
+          financingValue: (raw as any).financingValue ?? prop.financingValue ?? '',
+          currencyChoice: curr,
+          applicationSource: (raw as any).applicationSource || prop.applicationSource || '',
+        },
+        termsFinancialLease: group === 'termsFinancialLease' ? termObj : {},
+        termsSaleAndLeaseBack: group === 'termsSaleAndLeaseBack' ? termObj : {},
+        termsInstallmentFinancing: group === 'termsInstallmentFinancing' ? termObj : {},
+      };
+    })(),
     financialAudited: Boolean(
       (raw as any).financialAudited ??
       (props.profile as any)?.financialAudited ??

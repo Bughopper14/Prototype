@@ -5,7 +5,7 @@
 import {useMasterData} from '@/shared/master-data';
 import {type FapSheetData} from '@/features/fap/lib/types';
 import {calculateAgeYearsMonths, deriveDeedSync} from '@/shared/lib/format';
-import {extractStreetAddress} from '@liugong/shared';
+import {extractStreetAddress, resolveFinancingMethodGroup} from '@liugong/shared';
 import {useMemo} from 'react';
 
 const street = (text: any, hints: any): string => (text ? extractStreetAddress(String(text), hints) || String(text) : '');
@@ -121,6 +121,10 @@ export function useFapSheetData({
           picPosition: liveFapData.position,
           picPhone: liveFapData.phone,
           picAddress: liveFapData.currentAddress,
+          stakeholders: [],
+          shareholders: [],
+          selectedDeedNo: '',
+          selectedDeedDate: '',
           ...(fapComparison.documentValues || {}),
         }
       : {};
@@ -136,8 +140,9 @@ export function useFapSheetData({
       npwp: ext.npwp || '',
       establishmentActNo: ext.establishmentActNo || '',
       establishmentDate: ext.establishmentDate || '',
-      latestDeedNo: ext.latestDeedNo || '',
-      latestDeedDate: ext.latestDeedDate || '',
+      latestDeedNo: ext.latestDeedNo || ext.selectedDeedNo || '',
+      latestDeedDate: ext.latestDeedDate || ext.selectedDeedDate || '',
+      selectedDeedNo: ext.latestDeedNo || ext.selectedDeedNo || '',
       companyAddress: ext.companyAddress || '',
       rt: ext.rt || '',
       rw: ext.rw || '',
@@ -167,10 +172,65 @@ export function useFapSheetData({
       interestRate: ext.interestRate != null ? ext.interestRate : 0,
       tenorMonths: ext.tenorMonths != null ? ext.tenorMonths : 0,
       paymentMethod: ext.paymentMethod || '',
-      stakeholders: ext.stakeholders || ext.shareholders || [],
+      applicationSource: ext.applicationSource || '',
+      currency: ext.currency || '',
+      stakeholders: (() => {
+        if (!fapComparison) return [];
+        const docSh = fapComparison.documentValues?.stakeholders ?? fapComparison.extractedData?.stakeholders;
+        if (!docSh || docSh === '— (Kosong di dokumen)' || docSh === '-' || docSh === '[]') return [];
+        if (Array.isArray(docSh)) return docSh;
+        if (typeof docSh === 'string') {
+          try {
+            const parsed = JSON.parse(docSh);
+            if (Array.isArray(parsed)) return parsed;
+          } catch {
+            return [];
+          }
+        }
+        return [];
+      })(),
       projects: ext.projects || [],
       bankReferences: ext.bankReferences || [],
       financialStatements: ext.financialStatements || [],
+      financingProposal: (() => {
+        const rawMethod = String(ext.financingMethod || '').toUpperCase();
+        const cleanMethod =
+          rawMethod.includes('INSTALLMENT') || rawMethod.includes('PEMBELIAN') || rawMethod.includes('ANGSURAN')
+            ? 'INSTALLMENT-FINANCING'
+            : rawMethod.includes('FINANCIAL') || rawMethod.includes('SEWA')
+              ? 'FINANCIAL-LEASE'
+              : rawMethod.includes('SALE') || rawMethod.includes('SLB')
+                ? 'SALE-AND-LEASE-BACK'
+                : ext.financingMethod || '';
+        const group = resolveFinancingMethodGroup(cleanMethod) || 'termsInstallmentFinancing';
+        const curr = ext.currency || 'IDR';
+        const isAdv = String(ext.paymentMethod || '').toUpperCase().includes('ADVANCE');
+        const paymentVal = isAdv
+          ? 'IN-ADVANCE'
+          : String(ext.paymentMethod || '').toUpperCase().includes('ARREAR')
+            ? 'IN-ARREAR'
+            : ext.paymentMethod || '';
+        const termObj = {
+          workingCapitalInvestment: ext.facilityPurpose || '',
+          currency: curr,
+          downPayment: ext.downPaymentValue != null && ext.downPaymentValue !== '' && ext.downPaymentValue !== 0 ? ext.downPaymentValue : '',
+          securityDeposit: ext.securityDeposit != null && ext.securityDeposit !== '' && ext.securityDeposit !== 0 ? ext.securityDeposit : '',
+          interestRate: ext.interestRate != null && ext.interestRate !== '' && ext.interestRate !== 0 ? ext.interestRate : '',
+          tenor: ext.tenorMonths != null && ext.tenorMonths !== '' && ext.tenorMonths !== 0 ? ext.tenorMonths : '',
+          paymentMethod: paymentVal,
+        };
+        return {
+          facilityProposed: {
+            financingMethod: cleanMethod,
+            financingValue: ext.financingValue != null && ext.financingValue !== '' && ext.financingValue !== 0 ? ext.financingValue : '',
+            currencyChoice: curr,
+            applicationSource: ext.applicationSource || '',
+          },
+          termsFinancialLease: group === 'termsFinancialLease' ? termObj : {},
+          termsSaleAndLeaseBack: group === 'termsSaleAndLeaseBack' ? termObj : {},
+          termsInstallmentFinancing: group === 'termsInstallmentFinancing' ? termObj : {},
+        };
+      })(),
       proposal: {
         facilityPurpose: ext.facilityPurpose || '',
         financingMethod: ext.financingMethod || '',

@@ -47,6 +47,7 @@ export class LegalService {
   async saveDraft(id: string, body: any, actor: Actor) {
     const existing = await this.applications.detailOr404(id, actor);
     ensure(canEditLegal(actor, existing), 'Legal information is locked at this workflow stage', 403);
+    ensure(!existing.fapFormLocked, 'Informasi legal terkunci karena aplikasi telah diajukan untuk persetujuan.', 409);
     const legal = structuredClone(body.legal || (body.deeds ? body : Array.isArray(body) ? {deeds: body} : {deeds: []}));
     if (body.stakeholders && Array.isArray(legal.deeds)) {
       const selected = legal.selectedDeedId || legal.deeds[0]?.id;
@@ -62,6 +63,7 @@ export class LegalService {
     const a = await this.applications.detailOr404(id, actor);
     const legal = a.legal || {deeds: []};
     ensure(canEditLegal(actor, a), 'Akun/tahap ini tidak dapat mengubah akta.', 403);
+    ensure(!a.fapFormLocked, 'Informasi legal terkunci karena aplikasi telah diajukan untuk persetujuan.', 409);
     await this.store(id, legal, saveSingleDeed(legal, deedId, deed), actor);
     await recordActivity(
       {

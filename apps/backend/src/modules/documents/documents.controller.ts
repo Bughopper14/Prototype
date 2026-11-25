@@ -80,6 +80,9 @@ export class DocumentsController {
     const current = await this.unlocked(id, req.actor);
     const subType = String(req.body.subType || req.body.sub_type || '').trim().toUpperCase();
     const row = await this.documents.checklistRow(this.db.pool, id, String(req.body.checklistId || req.body.documentCode || ''));
+    if (row && (row.approval_status === 'IN_APPROVAL' || row.approval_status === 'APPROVED')) {
+      throw new Problem(409, 'Dokumen sedang dalam proses persetujuan atau telah disetujui, tidak dapat mengunggah berkas baru.');
+    }
     const checklistCode = (row?.code || String(req.body.documentCode || req.body.checklistId || '')).toUpperCase();
 
     let jenisDoc = subType;
@@ -158,6 +161,13 @@ export class DocumentsController {
     const {id, fileId} = req.params;
     const current = await this.unlocked(id, req.actor);
     const removed = await this.documents.readFile(fileId);
+    ensure(removed, 'File not found', 404);
+    if (removed.checklistId) {
+      const row = await this.documents.checklistRow(this.db.pool, id, removed.checklistId);
+      if (row && (row.approval_status === 'IN_APPROVAL' || row.approval_status === 'APPROVED')) {
+        throw new Problem(409, 'Dokumen sedang dalam proses persetujuan atau telah disetujui, tidak dapat menghapus berkas.');
+      }
+    }
     // the file moves while the delete is being saved: when the save fails it goes back, so its row never points at nothing
     const moved: {from: string; to: string}[] = [];
     try {
