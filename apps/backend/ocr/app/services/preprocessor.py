@@ -12,14 +12,14 @@ class DocumentPreprocessor:
     """Preprocesses documents (PDF or images) for optimal OCR quality."""
 
     @staticmethod
-    def load_document(file_path: Path) -> Tuple[np.ndarray, int]:
+    def load_document(file_path: Optional[Path], data: Optional[bytes] = None, name: Optional[str] = None) -> Tuple[np.ndarray, int]:
         """
-        Loads document. If PDF, renders first page at 300 DPI.
+        Loads document from a path, or from its bytes (`data`, then `name` gives the extension). If PDF, renders first page at 300 DPI.
         Returns: (numpy image in BGR format, total page count)
         """
-        file_ext = file_path.suffix.lower()
+        file_ext = Path(name).suffix.lower() if name else file_path.suffix.lower()
         if file_ext == ".pdf":
-            doc = fitz.open(str(file_path))
+            doc = fitz.open(stream=data, filetype="pdf") if data is not None else fitz.open(str(file_path))
             page_count = len(doc)
             if page_count == 0:
                 raise ValueError("PDF document contains no pages.")
@@ -37,10 +37,11 @@ class DocumentPreprocessor:
             return img_bgr, page_count
         else:
             # Standard image load
-            img = cv2.imread(str(file_path))
+            img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR) if data is not None else cv2.imread(str(file_path))
             if img is None:
                 # Fallback to PIL in case of special format
-                pil_img = Image.open(str(file_path)).convert("RGB")
+                import io as _io
+                pil_img = Image.open(_io.BytesIO(data) if data is not None else str(file_path)).convert("RGB")
                 img = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
             return img, 1
 

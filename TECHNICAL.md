@@ -9,7 +9,7 @@ changing the code.
 | Part | Technology |
 | --- | --- |
 | `apps/frontend` | Vite 6, React 19, React Router 7, plain CSS (`login.css`, `portal.css`, CRM styles in `features/crm/styles/*.css`, injected by `CrmStyles.tsx` only inside the CRM), lucide icons, FontAwesome 6 for portal icons, TinyMCE, tesseract.js |
-| `apps/backend` | NestJS 11 on Express, `mysql2` (no ORM), JWT session cookie, helmet, compression, S3/MinIO or local disk storage |
+| `apps/backend` | NestJS 11 on Express, `mysql2` (no ORM), JWT session cookie, helmet, compression, local disk or NAS storage |
 | `apps/backend/ocr` | Python 3.12: RapidOCR, PyMuPDF, Tesseract fallback, kept alive as a worker process started by the backend |
 | `packages/shared` | Framework-free TypeScript used by both sides (field definitions, input validation, master catalog, deed workflow), built to ESM + CJS with tsup |
 | Tooling | pnpm workspaces, Turborepo (build order + cache), TypeScript 5, Prettier |
@@ -18,7 +18,7 @@ changing the code.
 
 ```bash
 pnpm install
-cp apps/backend/.env.example apps/backend/.env   # DB_*, JWT_SECRET (production), optional S3_*, CORS_ORIGINS
+cp apps/backend/.env.example apps/backend/.env   # DB_*, JWT_SECRET (production), STORAGE_ROOT, CORS_ORIGINS
 mysql -u root -p < apps/backend/db/current-schema.sql   # creates crm_liugong with every table
 mysql -u root -p < apps/backend/db/current-seed.sql     # reference / master data and the default workflow
 pnpm user:create admin "<password>" "System Admin" --admin       # fresh database only
@@ -99,7 +99,7 @@ apps/
                                     body parsers, @ApiReq() / @Public() decorators
         db/                         connection pool, one/many/exec/tx helpers, audit context, setup (migrations)
         domain/                     Problem/ensure + business rules (stakeholders, financials, installment)
-        storage.ts, ready.ts        file storage (disk or S3); database readiness check
+        storage.ts, ready.ts        file storage (disk or NAS); database readiness check
       modules/                      one folder per domain: <name>.module.ts, <name>.controller.ts, *.repository.ts
         auth/                       /api/auth/* (login, logout, password, heartbeat), /auth/me, sessions/JWT
         portal/                     Apps Hub gallery, page access

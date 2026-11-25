@@ -67,6 +67,7 @@ export async function extractIdDocumentFromImage(
           data: d,
           fileName: res.file_name || null,
           documentPath: res.document_path || null,
+          tempKey: res.temp_key || null,
         },
       };
     }

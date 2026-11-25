@@ -186,4 +186,28 @@ export class ApplicationsRepository {
     if (values.clearCompleted) sets.push('completed_at=NULL');
     await conn.execute(`UPDATE ${CRM.applicationStageProgress} SET ${[...sets, 'updated_by=?'].join(',')} WHERE id=?`, [actor.username || null, rows[0].id]);
   }
+
+  /**
+   * The approval result of a stage (crm_application_stage_progress.approval_status ...). Written next to the decision, in its transaction.
+   * `NOT_STARTED` clears the result; IN_APPROVAL keeps no decider.
+   */
+  async setStageApproval(conn: Conn, applicationId: string, stageCode: string, status: 'NOT_STARTED' | 'IN_APPROVAL' | 'REJECTED' | 'APPROVED', by: string | null, remarks: string | null = null) {
+    const decided = status === 'REJECTED' || status === 'APPROVED';
+    await conn.execute(
+      `UPDATE ${CRM.applicationStageProgress}
+       SET approval_status=?,approval_remarks=?,decided_by=?,decided_at=${decided ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},updated_by=? WHERE application_id=? AND stage_code=?`,
+      [status, decided ? remarks : null, decided ? by : null, by, applicationId, stageCode],
+    );
+  }
+
+  /** The approval result of a group (crm_application_group_progress): the row is made when the group is first touched. */
+  async setGroupApproval(conn: Conn, applicationId: string, workflowFreezeId: string, groupCode: string, status: 'NOT_STARTED' | 'IN_APPROVAL' | 'REJECTED' | 'APPROVED', by: string | null, remarks: string | null = null) {
+    const decided = status === 'REJECTED' || status === 'APPROVED';
+    await conn.execute(
+      `INSERT INTO ${CRM.applicationGroupProgress} (id,application_id,workflow_freeze_id,group_code,approval_status,approval_remarks,decided_by,decided_at,created_by)
+       VALUES (?,?,?,?,?,?,?,${decided ? 'CURRENT_TIMESTAMP(3)' : 'NULL'},?)
+       ON DUPLICATE KEY UPDATE approval_status=VALUES(approval_status),approval_remarks=VALUES(approval_remarks),decided_by=VALUES(decided_by),decided_at=VALUES(decided_at),updated_by=VALUES(created_by)`,
+      [crypto.randomUUID(), applicationId, workflowFreezeId, groupCode, status, decided ? remarks : null, decided ? by : null, by],
+    );
+  }
 }

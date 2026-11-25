@@ -75,7 +75,7 @@ export class FapFreezeRepository {
     );
     // The signed FAP form: its current file and the OCR comparison of that file.
     const [[fapFile]] = await conn.query<any[]>(
-      `SELECT f.id,f.file_name,COALESCE(f.storage_path,f.storage_key) AS path
+      `SELECT f.id,f.file_name,f.storage_path AS path
        FROM ${CRM.applicationDocumentFiles} f
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id AND t.code='FAP'
@@ -383,8 +383,8 @@ export class FapFreezeRepository {
 
     /* Legal: deeds with their review state, remark categories and stakeholders */
     const [deeds] = await conn.query<any[]>(
-      `SELECT d.*,r.review_status,r.review_notes,r.approved_by,r.approved_at FROM ${CRM.fapLegalDeeds} d
-       LEFT JOIN ${CRM.fapLegalDeedReviews} r ON r.deed_id=d.id
+      `SELECT d.*,CASE d.approval_status WHEN 'NOT_STARTED' THEN NULL WHEN 'IN_APPROVAL' THEN 'PENDING' ELSE d.approval_status END AS review_status,
+              d.approval_remarks AS review_notes,d.decided_by AS approved_by,d.decided_at AS approved_at FROM ${CRM.fapLegalDeeds} d
        WHERE d.application_id=? AND d.deleted_at IS NULL ORDER BY d.deed_date,d.created_at`,
       [applicationId],
     );
@@ -491,7 +491,7 @@ export class FapFreezeRepository {
 
     /* Documents: checklist state with the current file of each row */
     const [checklist] = await conn.query<any[]>(
-      `SELECT c.*,t.code,t.name,f.file_name,COALESCE(f.storage_path,f.storage_key) AS file_path,f.file_size,
+      `SELECT c.*,t.code,t.name,f.file_name,f.storage_path AS file_path,f.file_size,
               f.uploaded_by,f.uploaded_at,COALESCE(o.is_mandatory,sd.is_mandatory,0) AS is_mandatory
        FROM ${CRM.applicationDocumentChecklists} c
        JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id

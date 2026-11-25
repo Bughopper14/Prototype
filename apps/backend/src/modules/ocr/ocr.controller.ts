@@ -1,4 +1,4 @@
-import {Controller, Post, Res} from '@nestjs/common';
+import {Controller, Get, Post, Res} from '@nestjs/common';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
 import {requireAuthority} from '../auth/session';
 import {OcrWorkerService} from './ocr-worker.service';
@@ -13,5 +13,12 @@ export class OcrController {
     requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
     this.ocr.warmUp();
     return {ok: true};
+  }
+
+  /** The OCR pool as it runs (OCR_WORKERS, OCR_THREADS, OCR_MAX_QUEUE and what each worker reports). */
+  @Get('ocr/status')
+  status(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
+    return this.ocr.status();
   }
 }

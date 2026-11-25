@@ -68,7 +68,7 @@ function rankOf(c: Scope, stages: any[], groups: any[]): [number, number, number
 }
 
 const KIND: Record<string, string> = {GROUP: 'Group', STAGE: 'Stage', SECTION: 'Deed', DOCUMENT: 'Document'};
-
+  
 /** One line for the whole scope: where it stands, from its steps. */
 function scopeSummary(c: Scope): {tone: string; text: string} {
   const st = c.steps;

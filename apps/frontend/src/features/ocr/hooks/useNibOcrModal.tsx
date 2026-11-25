@@ -50,6 +50,8 @@ export function useNibOcrModal({
   const master = useMasterData();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
+  // The scan in the server's temp folder: it is filed under the application (documents + checklist) when the data is applied to the form.
+  const [tempKey, setTempKey] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
   const [fileType, setFileType] = useState<'pdf' | 'image' | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -84,24 +86,6 @@ export function useNibOcrModal({
     const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
     setFileType(isPdf ? 'pdf' : 'image');
 
-    // Auto-upload NIB document to application checklist if applicationId is present
-    if (applicationId) {
-      (async () => {
-        try {
-          const docPayload = new FormData();
-          docPayload.append('file', f);
-          docPayload.append('documentCode', 'NIB');
-          await api(`/applications/${applicationId}/documents/upload`, 'POST', docPayload);
-          if (onDocumentUploaded) {
-            const updated = await api(`/applications/${applicationId}`);
-            onDocumentUploaded(updated);
-          }
-        } catch (uploadErr) {
-          console.warn('Auto-upload NIB to document checklist failed:', uploadErr);
-        }
-      })();
-    }
-
     try {
       const objectUrl = URL.createObjectURL(f);
       setFileUrl(objectUrl);
@@ -118,6 +102,7 @@ export function useNibOcrModal({
       if (applicationId) uploadPayload.append('application_id', applicationId);
 
       const res = await api('/ocr/scan', 'POST', uploadPayload);
+      setTempKey(res?.temp_key || null);
       if (res && res.data) {
         const d = res.data;
         const {formData: scanned, rawText: scannedText} = scanResultToForm(d, master);
@@ -228,6 +213,8 @@ export function useNibOcrModal({
     if (notify) {
       notify(`✓ ${filledCount} NIB fields successfully synced to form`);
     }
+    // The scan is used now: the server files it under the application and adds it to the checklist.
+    if (tempKey) api('/ocr/keep', 'POST', {temp_key: tempKey, doc_type: 'nib'}).catch(e => console.warn('Filing the NIB scan failed:', e));
     onClose();
   };
 

@@ -2,8 +2,6 @@
 import type {ResolverContext} from '@/features/documents/lib/checklist/types';
 import {resolveFap} from '@/features/documents/lib/checklist/resolvers/fap';
 import {resolveNib} from '@/features/documents/lib/checklist/resolvers/nib';
-import {resolveKtp} from '@/features/documents/lib/checklist/resolvers/ktp';
-import {resolveEkitas} from '@/features/documents/lib/checklist/resolvers/ekitas';
 import {resolveDeed} from '@/features/documents/lib/checklist/resolvers/deed';
 import {resolveNpwp} from '@/features/documents/lib/checklist/resolvers/npwp';
 import {resolvePreanalysis} from '@/features/documents/lib/checklist/resolvers/preanalysis';
@@ -13,12 +11,13 @@ import {resolveQuotation} from '@/features/documents/lib/checklist/resolvers/quo
 import {resolveContract} from '@/features/documents/lib/checklist/resolvers/contract';
 import {resolveLegalOpinion} from '@/features/documents/lib/checklist/resolvers/legal-opinion';
 import {resolveIclf} from '@/features/documents/lib/checklist/resolvers/iclf';
+import {resolveKtpPassport, resolveNpwpEkitas} from '@/features/documents/lib/checklist/resolvers/stakeholder-identity';
 
 export const RESOLVERS: Record<string, (ctx: ResolverContext) => void> = {
+  'KTP-PASSPORT': resolveKtpPassport,
+  'NPWP-EKITAS': resolveNpwpEkitas,
   FAP: resolveFap,
   NIB: resolveNib,
-  KTP: resolveKtp,
-  EKITAS: resolveEkitas,
   DEED: resolveDeed,
   NPWP: resolveNpwp,
   PREANALYSIS: resolvePreanalysis,

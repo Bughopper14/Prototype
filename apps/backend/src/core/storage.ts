@@ -1,35 +1,10 @@
 import fs from 'node:fs/promises';
-import fsSync from 'node:fs';
 import path from 'node:path';
-import {GetObjectCommand, PutObjectCommand, S3Client} from '@aws-sdk/client-s3';
-import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
 import {Global, Injectable, Module} from '@nestjs/common';
 
-/** Storage root: STORAGE_DIR when it exists, otherwise the `storage` folder of the backend. */
+/** Storage root: STORAGE_ROOT (relative to the backend folder, or absolute such as a NAS mount), default ./storage/documents. */
 function storageRoot() {
-  const fromEnv = process.env.STORAGE_DIR ? path.resolve(process.env.STORAGE_DIR) : null;
-  if (fromEnv && fsSync.existsSync(fromEnv)) return fromEnv;
-  const inCwd = path.resolve(process.cwd(), 'storage');
-  if (fsSync.existsSync(inCwd)) return inCwd;
-  const inRepo = path.resolve(__dirname, '../../../../storage');
-  return fsSync.existsSync(inRepo) ? inRepo : inCwd;
-}
-
-function timestamp(date = new Date()) {
-  const two = (n: number) => String(n).padStart(2, '0');
-  const day = `${date.getFullYear()}${two(date.getMonth() + 1)}${two(date.getDate())}`;
-  return `${day}_${two(date.getHours())}${two(date.getMinutes())}${two(date.getSeconds())}`;
-}
-
-/** Timestamp format: ddmmyyyyhhmm (e.g. 241120260910) */
-export function formatTimestampDdmmyyyyhhmm(d = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const day = pad(d.getDate());
-  const month = pad(d.getMonth() + 1);
-  const year = d.getFullYear();
-  const hour = pad(d.getHours());
-  const minute = pad(d.getMinutes());
-  return `${day}${month}${year}${hour}${minute}`;
+  return path.resolve(process.cwd(), process.env.STORAGE_ROOT || './storage/documents');
 }
 
 const SAFE_DOC_EXTS = new Set(['.pdf', '.png', '.jpg', '.jpeg', '.webp']);
@@ -41,166 +16,143 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/webp': '.webp',
 };
 
-/**
- * Builds standard document file name: jenisDoc_appNumber_ddmmyyyyhhmm.<ext>
- * e.g. NIB_A-000-26-12345_241120260910.pdf
- */
-export function buildDocumentFileName(
-  jenisDoc: string,
-  appNumber: string,
-  originalName: string,
-  date = new Date(),
-  mimeType?: string,
-): string {
-  const rawExt = path.extname(originalName).toLowerCase();
-  const ext = (mimeType && MIME_TO_EXT[mimeType.toLowerCase()]) || (SAFE_DOC_EXTS.has(rawExt) ? rawExt : '.pdf');
-  const cleanJenis = jenisDoc.toUpperCase().replace(/[^A-Z0-9_]/g, '') || 'DOC';
+/** The safe extension of an upload: from its MIME type, else from its name when that is an allowed one, else .pdf. */
+export function documentExtension(originalName: string, mimeType?: string): string {
+  const rawExt = path.extname(originalName || '').toLowerCase();
+  return (mimeType && MIME_TO_EXT[mimeType.toLowerCase()]) || (SAFE_DOC_EXTS.has(rawExt) ? rawExt : '.pdf');
+}
+
+/** The part every file name of a document shares: jenisDoc_appNumber (e.g. NIB_A-001-26-00001); the number and extension are added when it is stored. */
+export function documentBase(jenisDoc: string, appNumber: string): string {
+  const cleanJenis = String(jenisDoc || '').toUpperCase().replace(/[^A-Z0-9_]/g, '') || 'DOC';
   const cleanApp = String(appNumber || 'APP').replace(/[^a-zA-Z0-9_-]/g, '') || 'APP';
-  const timeStr = formatTimestampDdmmyyyyhhmm(date);
-  return `${cleanJenis}_${cleanApp}_${timeStr}${ext}`;
+  return `${cleanJenis}_${cleanApp}`;
+}
+
+/** The folder name of an application under STORAGE_ROOT and STORAGE_TEMP. */
+const folderOf = (applicationNumber: string) => String(applicationNumber || 'unassigned').replace(/[^a-zA-Z0-9_-]/g, '') || 'unassigned';
+
+/** Temp folder for the scans OCR read: STORAGE_TEMP, default ./storage/temp. Nothing is deleted from it automatically (housekeeping is manual, once a year). */
+function storageTemp() {
+  return path.resolve(process.cwd(), process.env.STORAGE_TEMP || './storage/temp');
 }
 
 /**
- * File storage: uploaded checklist files under files/ (or S3/MinIO when the S3_* variables are set), and named copies
- * under documents/ that the OCR worker reads (FAP documents, identity documents).
+ * File storage on local disk or a mounted NAS. Files of an application live under STORAGE_ROOT/<application number>/ as
+ * `<JENIS>_<application number>_<NNN>.<ext>` (`NIB_A-001-26-00001_001.pdf`); NNN counts per document type from 001 (the last one + 1) and the
+ * storage key of a file is that relative path. The scans OCR reads are written to STORAGE_TEMP/<application number>/ as
+ * `<JENIS>_<application number>_<NNN>_T<NN>.<ext>` (NNN the document number the scan would get, T the attempt under it) and are not deleted automatically.
  */
 @Injectable()
 export class StorageService {
-  readonly documentsDir: string;
-  readonly filesDir: string;
-  private readonly bucket = process.env.S3_BUCKET || null;
-  private readonly s3 = this.bucket
-    ? new S3Client({
-        region: process.env.S3_REGION || 'ap-southeast-1',
-        endpoint: process.env.S3_ENDPOINT || undefined,
-        forcePathStyle: !!process.env.S3_ENDPOINT,
-        credentials: {
-          accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
-          secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
-        },
-      })
-    : null;
+  /** Root of the stored files (STORAGE_ROOT). */
+  readonly rootDir = storageRoot();
+  readonly tempDir = storageTemp();
 
-  constructor() {
-    const root = storageRoot();
-    this.documentsDir = path.join(root, 'documents');
-    this.filesDir = path.join(root, 'files');
+  /** A path under the root from a storage key, or null when the key leaves the root. */
+  private within(key: string) {
+    const file = path.resolve(this.rootDir, ...String(key).split(/[\/]+/).filter(Boolean));
+    return file.startsWith(this.rootDir + path.sep) ? file : null;
   }
 
-  get usesS3() {
-    return !!this.s3;
+  /** Applications being numbered right now: one writer at a time per application, so two uploads never take the same number (also for different document types). */
+  private readonly numbering = new Map<string, Promise<unknown>>();
+
+  private serial<T>(key: string, work: () => Promise<T>): Promise<T> {
+    const run = (this.numbering.get(key) ?? Promise.resolve()).then(work, work);
+    const tail = run.catch(() => undefined);
+    this.numbering.set(key, tail);
+    void tail.then(() => {
+      if (this.numbering.get(key) === tail) this.numbering.delete(key);
+    });
+    return run;
   }
 
-  /** Stores an uploaded checklist file under its storage key. */
-  async put(key: string, body: Buffer, contentType: string) {
-    if (this.s3) {
-      await this.s3.send(
-        new PutObjectCommand({
-          Bucket: this.bucket!,
-          Key: key,
-          Body: body,
-          ContentType: contentType,
-          ServerSideEncryption: 'AES256',
-        }),
-      );
-      return;
-    }
-    await fs.mkdir(this.filesDir, {recursive: true});
-    await fs.writeFile(path.join(this.filesDir, key), body);
+  /** The numbers already used by one document type in an application folder (`<base>_001`, `<base>_002` ...). */
+  private async usedNumbers(dir: string, base: string) {
+    const names = await fs.readdir(dir).catch(() => [] as string[]);
+    // `base` only holds letters, digits, _ and - (documentBase cleans it), so it needs no escaping
+    const pattern = new RegExp(`^${base}_(\\d{3,})\\.[^.]+$`);
+    return names.map(name => pattern.exec(name)).filter((m): m is RegExpExecArray => !!m).map(m => Number(m[1]));
   }
 
-  /** Contents of a locally stored checklist file. */
-  read(key: string) {
-    return fs.readFile(path.join(this.filesDir, path.basename(key)));
+  private static readonly number = (n: number) => String(n).padStart(3, '0');
+
+  /**
+   * Stores a file of an application (the document itself): `<JENIS>_<application number>_<NNN>`, NNN counting per document type from 001 (the highest
+   * number of that type + 1), or `preferred` (the number its scan was filed under in temp) when nobody took it meanwhile. Returns the storage key and name.
+   */
+  saveDocument(applicationNumber: string, jenisDoc: string, ext: string, body: Buffer, preferred?: number) {
+    const folder = folderOf(applicationNumber);
+    return this.serial(folder, async () => {
+      const dir = path.join(this.rootDir, folder);
+      await fs.mkdir(dir, {recursive: true});
+      const base = documentBase(jenisDoc, applicationNumber);
+      const used = await this.usedNumbers(dir, base);
+      let n = preferred !== undefined && !used.includes(preferred) ? preferred : used.length ? Math.max(...used) + 1 : 1;
+      for (;; n++) {
+        const fileName = `${base}_${StorageService.number(n)}${ext}`;
+        try {
+          await fs.writeFile(path.join(dir, fileName), body, {flag: 'wx'});
+          return {key: `${folder}/${fileName}`, fileName, number: n};
+        } catch (e: any) {
+          if (e?.code !== 'EEXIST') throw e;
+        }
+      }
+    });
   }
 
-  /** A pre-signed S3 link (15 minutes), inline or as a download. Only when S3 is configured. */
-  signedUrl(key: string, fileName: string, download: boolean) {
-    const disposition = `${download ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(fileName)}`;
-    return getSignedUrl(
-      this.s3!,
-      new GetObjectCommand({Bucket: this.bucket!, Key: key, ResponseContentDisposition: disposition}),
-      {expiresIn: 900},
-    );
+  /**
+   * Writes a scan for OCR to the temp folder of its application and returns its path. It is named after the document number it would get:
+   * `<JENIS>_<application number>_<NNN>_T<NN>`, NNN the next free document number of that type (from 001), NN the running number (from 01) of the scans
+   * filed under that NNN (a scan that was not kept, e.g. the wrong document, leaves NNN free, so the next scan is NNN_T02). Nothing is deleted from the
+   * temp folder automatically.
+   */
+  saveTemp(applicationNumber: string, jenisDoc: string, ext: string, body: Buffer) {
+    const folder = folderOf(applicationNumber);
+    return this.serial(folder, async () => {
+      const base = documentBase(jenisDoc, applicationNumber);
+      const used = await this.usedNumbers(path.join(this.rootDir, folder), base);
+      const n = used.length ? Math.max(...used) + 1 : 1;
+      const dir = path.join(this.tempDir, folder);
+      await fs.mkdir(dir, {recursive: true});
+      const prefix = `${base}_${StorageService.number(n)}_T`;
+      const taken = (await fs.readdir(dir)).filter(name => name.startsWith(prefix)).map(name => /_T(\d+)\.[^.]+$/.exec(name)).filter((m): m is RegExpExecArray => !!m).map(m => Number(m[1]));
+      for (let t = taken.length ? Math.max(...taken) + 1 : 1; ; t++) {
+        const fileName = `${prefix}${String(t).padStart(2, '0')}${ext}`;
+        try {
+          await fs.writeFile(path.join(dir, fileName), body, {flag: 'wx'});
+          return {key: `${folder}/${fileName}`, fileName, absolutePath: path.join(dir, fileName), number: n};
+        } catch (e: any) {
+          if (e?.code !== 'EEXIST') throw e;
+        }
+      }
+    });
   }
 
-  /** A named copy under documents/ for the OCR worker (local storage only). */
-  async saveNamedCopy(fileName: string, body: Buffer) {
-    if (this.s3) return;
-    await fs.mkdir(this.documentsDir, {recursive: true});
-    await fs.writeFile(path.join(this.documentsDir, path.basename(fileName)), body);
+  /** Contents of a stored file. */
+  async read(key: string) {
+    const file = this.within(key);
+    if (!file) throw new Error('Invalid storage key');
+    return fs.readFile(file);
   }
 
-  /** The named copy of an upload under documents/, also when only the name prefix matches. */
-  async locateNamedCopy(fileName: string) {
-    const base = path.basename(fileName);
-    const exact = path.join(this.documentsDir, base);
-    try {
-      if ((await fs.stat(exact)).isFile()) return exact;
-    } catch {}
-    const prefix = base.split('_[')[0];
-    try {
-      const match = (await fs.readdir(this.documentsDir)).find(f => f.startsWith(prefix));
-      if (match) return path.join(this.documentsDir, match);
-    } catch {}
-    return exact;
+  /** The absolute path of a file in the temp folder from its key (`<application number>/<file>`), or null when the key leaves the temp folder. */
+  tempAbsolute(key: string) {
+    const file = path.resolve(this.tempDir, ...String(key).split(/[\/]+/).filter(Boolean));
+    return file.startsWith(this.tempDir + path.sep) ? file : null;
   }
 
-  /** A file under documents/ from its URL segments, or null when the path leaves that folder. */
+  /** The absolute path of a stored file (for the OCR worker). */
+  absolutePath(key: string) {
+    const file = this.within(key);
+    if (!file) throw new Error('Invalid storage key');
+    return file;
+  }
+
+  /** A file under the root from its URL segments, or null when the path leaves the root. */
   documentPath(segments: string[]) {
-    const file = path.resolve(this.documentsDir, ...segments);
-    return file.startsWith(this.documentsDir + path.sep) ? file : null;
-  }
-
-  /** A unique, sanitised path under documents/<type>/ for an uploaded identity document. */
-  async identityDocumentTarget(
-    docTypeRaw: string,
-    appIdRaw: string,
-    stakeholderIdRaw: string,
-    originalName: string,
-    customFileName?: string,
-  ) {
-    const docType =
-      String(docTypeRaw || 'general')
-        .toLowerCase()
-        .replace(/[^a-z0-9_-]/g, '') || 'general';
-    const typeDir = path.join(this.documentsDir, docType);
-    await fs.mkdir(typeDir, {recursive: true});
-
-    let targetBaseName = '';
-    let extension = (path.extname(originalName) || '.jpg').toLowerCase();
-
-    if (customFileName) {
-      extension = (path.extname(customFileName) || extension).toLowerCase();
-      targetBaseName = path.basename(customFileName, extension);
-    } else {
-      const cleanApp = String(appIdRaw || 'unknown').replace(/[^a-zA-Z0-9_-]/g, '') || 'app';
-      const cleanStakeholder = String(stakeholderIdRaw || '').replace(/[^a-zA-Z0-9_-]/g, '');
-      targetBaseName = `${docType}_${cleanApp}`;
-      if (cleanStakeholder && cleanStakeholder !== cleanApp && cleanStakeholder !== 'unknown') {
-        targetBaseName += `_${cleanStakeholder}`;
-      }
-      targetBaseName += `_${timestamp()}`;
-    }
-
-    let fileName = `${targetBaseName}${extension}`;
-    for (let counter = 1; ; counter++) {
-      try {
-        await (await fs.open(path.join(typeDir, fileName), 'wx')).close();
-        break;
-      } catch (e: any) {
-        if (e?.code !== 'EEXIST') throw e;
-        fileName = `${targetBaseName}_${counter}${extension}`;
-      }
-    }
-
-    return {
-      docType,
-      fileName,
-      savedFilePath: path.join(typeDir, fileName),
-      relativePath: `Documents/${docType}/${fileName}`,
-      fileUrl: `/documents/${docType}/${fileName}`,
-    };
+    return this.within(segments.join('/'));
   }
 }
 

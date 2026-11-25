@@ -5,7 +5,7 @@ import path from 'node:path';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {Problem, ensure} from '../../core/domain';
 import {API_PREFIX, ApiReq, type ApiRequest, type ApiResponse} from '../../core/http/api-request';
-import {StorageService, buildDocumentFileName} from '../../core/storage';
+import {StorageService, documentExtension} from '../../core/storage';
 import {recordActivity} from '../activity/activity-log';
 import {ApplicationsService} from '../applications/applications.service';
 import {requireAuthority, signFileToken, verifyFileToken} from '../auth/session';
@@ -84,9 +84,7 @@ export class DocumentsController {
 
     let jenisDoc = subType;
     if (!jenisDoc) {
-      if (checklistCode === 'KTP') {
-        jenisDoc = 'KTPPENGURUS';
-      } else if (checklistCode === 'NPWP') {
+      if (checklistCode === 'NPWP') {
         jenisDoc = 'NPWPUSAHA';
       } else if (checklistCode === 'NIB') {
         jenisDoc = 'NIB';
@@ -104,18 +102,17 @@ export class DocumentsController {
       appNumber = appRows[0]?.application_number || id;
     }
 
-    const fileName = buildDocumentFileName(jenisDoc, appNumber, file.originalname, new Date(), file.mimetype);
-    const storageKey = crypto.randomUUID();
-    await this.storage.put(storageKey, file.buffer, file.mimetype);
-    // A named copy for the OCR service (local storage only)
-    await this.storage.saveNamedCopy(fileName, file.buffer).catch(() => undefined);
+    // ONE copy, under the folder of the application, named <JENIS>_<application number>_<NNN>; the name the user uploaded is kept in the database only, never shown.
+    const stored = await this.storage.saveDocument(appNumber, jenisDoc, documentExtension(file.originalname, file.mimetype), file.buffer);
+    const fileName = stored.fileName;
+    const storagePath = stored.key;
     const by = req.actor.username || req.actor.name;
     const saved = await this.db.transaction(conn =>
       this.documents.addFile(
         conn,
         id,
         String(req.body.checklistId || req.body.documentCode || ''),
-        {fileName, storageKey, storagePath: this.storage.usesS3 ? null : fileName, size: file.size, mimeType: file.mimetype},
+        {fileName, originalFileName: String(file.originalname || '').slice(0, 255) || null, storagePath, size: file.size, mimeType: file.mimetype},
         by,
       ),
     );
@@ -147,7 +144,7 @@ export class DocumentsController {
       id: saved.id,
       checklistId: saved.checklistId,
       fileName,
-      fileKey: storageKey,
+      storagePath,
       fileSize: file.size,
       mimeType: file.mimetype,
       uploadedBy: by,
@@ -201,7 +198,7 @@ export class DocumentsController {
     for (const e of entries) {
       let data: Buffer;
       try {
-        data = await this.storage.read(e.fileKey);
+        data = await this.storage.read(e.storagePath);
       } catch {
         unreadable.push(`${e.code} ${e.fileName}`);
         continue;
@@ -241,9 +238,7 @@ export class DocumentsController {
     const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
     const download = req.query.download === '1';
-    const url = this.storage.usesS3
-      ? await this.storage.signedUrl(file.fileKey, file.fileName, download)
-      : `/api/v1/files/${file.id}/content?token=${signFileToken(file.id, req.actor.id)}${download ? '&download=1' : ''}`;
+    const url = `/api/v1/files/${file.id}/content?token=${signFileToken(file.id, req.actor.id)}${download ? '&download=1' : ''}`;
     return {url, expiresIn: 900};
   }
 
@@ -264,6 +259,6 @@ export class DocumentsController {
         'Content-Disposition',
         `${req.query.download === '1' ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
       );
-    return res.send(await this.storage.read(file.fileKey));
+    return res.send(await this.storage.read(file.storagePath));
   }
 }

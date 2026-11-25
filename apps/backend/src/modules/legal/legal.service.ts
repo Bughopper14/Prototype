@@ -79,7 +79,7 @@ export class LegalService {
     return this.applications.detailOr404(id, actor);
   }
 
-  /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. Stored in crm_fap_legal_deed_reviews. */
+  /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. Stored on the deed row (approval_status ...). */
   async review(id: string, deedId: string, body: {action: string; revision: number; comments: string}, actor: Actor) {
     const a = await this.applications.detailOr404(id, actor);
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
