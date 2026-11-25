@@ -30,6 +30,33 @@ const by = (actor: Actor) => actor.username || null;
 /** The table that holds the rows of each repeating section (is_repeating in crm_master_form_sections): one approval round per row. */
 const REPEATING_ROWS: Record<string, string> = {[DEED_SECTION]: CRM.fapLegalDeeds};
 
+/** Regex extract department / role code from authority name (e.g. CRM_FAP-FORM_CA_APPROVE -> CA). */
+function getDeptFromAuthority(authName?: string | null, isPicMarketing?: boolean): string {
+  if (isPicMarketing || !authName || authName.toLowerCase() === 'pic marketing') {
+    return 'PIC Marketing';
+  }
+  const auth = authName.trim();
+  const m = auth.match(/_([A-Za-z0-9]+)_(?:APPROVE|REVIEW|VERIFY)$/i) || auth.match(/_([A-Za-z0-9]+)$/i);
+  if (m && m[1]) {
+    const code = m[1].toUpperCase();
+    if (code === 'LEGAL') return 'Legal';
+    if (code === 'MANAGEMENT') return 'Management';
+    if (code === 'CREDIT' || code === 'CA') return 'CA';
+    if (code === 'BP' || code === 'PARTNER') return 'BP';
+    if (code === 'BS' || code === 'SUPPORT') return 'BS';
+    if (code === 'RISK') return 'Risk';
+    return code;
+  }
+  const text = auth.toUpperCase();
+  if (text.includes('MANAGEMENT')) return 'Management';
+  if (text.includes('LEGAL')) return 'Legal';
+  if (text.includes('CA') || text.includes('CREDIT')) return 'CA';
+  if (text.includes('BP') || text.includes('BUSINESS PARTNER')) return 'BP';
+  if (text.includes('BS') || text.includes('BUSINESS SUPPORT')) return 'BS';
+  if (text.includes('RISK')) return 'Risk';
+  return auth;
+}
+
 /**
  * Applications on the crm_liugong design: header (crm_applications), FAP profile and primary contact, the customer
  * golden record, and the approval of its stages. Each application points at a workflow (crm_applications.workflow_freeze_id) that says
@@ -723,7 +750,7 @@ export class ApplicationsService {
    */
   private async assertMandatoryDocumentsVerified(conn: any, id: string, stageCode: string) {
     const [rows] = await conn.query(
-      `SELECT c.id,c.status,t.name,
+      `SELECT c.id,c.status,c.document_code,t.name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS files,
               (SELECT COUNT(*) FROM ${CRM.frozenWorkflowApprovalAssignments} a WHERE a.workflow_freeze_id=sd.workflow_freeze_id AND a.stage_code=sd.stage_code AND a.document_code=sd.document_code) AS approvals
        FROM ${CRM.applicationDocumentChecklists} c
@@ -734,7 +761,43 @@ export class ApplicationsService {
     );
     const pending = (rows as any[]).filter(r => (Number(r.approvals) > 0 ? r.status !== 'VERIFIED' : Number(r.files) === 0));
     if (pending.length) {
-      const gaps = pending.map(r => ({target: 'DOCUMENTS', label: r.name, detail: Number(r.approvals) > 0 ? 'Belum disetujui' : 'Belum diunggah'}));
+      const pendingIds = pending.map(r => r.id);
+      const [stepRows] = await conn.query(
+        `SELECT document_checklist_id, round_no, sort_order, authority_name, is_pic_marketing, status
+         FROM ${CRM.applicationApprovalSteps}
+         WHERE application_id=? AND scope_type='DOCUMENT' AND document_checklist_id IN (?)
+         ORDER BY document_checklist_id, round_no, sort_order`,
+        [id, pendingIds.length ? pendingIds : ['']],
+      );
+      const [templateRows] = await conn.query(
+        `SELECT a.document_code, l.level_no, l.authority_name, l.is_pic_marketing
+         FROM ${CRM.frozenWorkflowApprovalAssignments} a
+         JOIN ${CRM.frozenApprovalLevels} l ON l.approval_freeze_id=a.approval_freeze_id
+         JOIN ${CRM.applicationDocumentChecklists} c ON c.application_id=? AND c.stage_code=? AND c.document_code=a.document_code
+         WHERE a.workflow_freeze_id=c.workflow_freeze_id AND a.scope_type='DOCUMENT' AND a.stage_code=?
+         ORDER BY a.document_code, l.level_no`,
+        [id, stageCode, stageCode],
+      );
+
+      const gaps = pending.map(r => {
+        let detail = 'Not uploaded yet';
+        if (Number(r.approvals) > 0) {
+          const docSteps = (stepRows as any[]).filter(s => s.document_checklist_id === r.id);
+          let depts: string[] = [];
+          if (docSteps.length > 0) {
+            const maxRound = Math.max(...docSteps.map(s => Number(s.round_no)));
+            const currentRound = docSteps.filter(s => Number(s.round_no) === maxRound);
+            const unapproved = currentRound.filter(s => s.status !== 'APPROVED');
+            depts = [...new Set(unapproved.map(s => getDeptFromAuthority(s.authority_name, Boolean(s.is_pic_marketing))))].filter(Boolean);
+          } else {
+            const docTemplates = (templateRows as any[]).filter(t => t.document_code === r.document_code);
+            depts = [...new Set(docTemplates.map(t => getDeptFromAuthority(t.authority_name, Boolean(t.is_pic_marketing))))].filter(Boolean);
+          }
+          const deptStr = depts.join(', ');
+          detail = deptStr ? `Haven't approved yet by ${deptStr}` : "Haven't approved yet";
+        }
+        return {target: 'DOCUMENTS', label: r.name, detail};
+      });
       throw new Problem(422, `Dokumen wajib belum selesai (${gaps.length}): ${gaps.map(g => `${g.label} (${g.detail})`).join('; ')}`, [], gaps);
     }
   }
@@ -799,7 +862,16 @@ export class ApplicationsService {
         const mine = (steps as any[]).filter(x => x.subject_id === s.id);
         const last = Math.max(0, ...mine.map(x => Number(x.round_no)));
         if (!last) continue;
-        const state = mine.some(x => Number(x.round_no) === last && x.status === 'REJECTED') ? 'Ditolak' : mine.filter(x => Number(x.round_no) === last).every(x => x.status === 'APPROVED') ? '' : 'Belum disetujui';
+        const unapproved = mine.filter(x => Number(x.round_no) === last && x.status !== 'APPROVED');
+        const depts = [...new Set(unapproved.map(x => getDeptFromAuthority(x.authority_name, Boolean(x.is_pic_marketing))))].filter(Boolean);
+        const isRej = mine.some(x => Number(x.round_no) === last && x.status === 'REJECTED');
+        const state = isRej
+          ? 'Rejected'
+          : unapproved.length === 0
+          ? ''
+          : depts.length
+          ? `Haven't approved yet by ${depts.join(', ')}`
+          : "Haven't approved yet";
         if (state) open.push({target: 'LEGAL', label: `Akta ${s.deed_number || ''}`.trim(), detail: state});
         else approved++;
       }

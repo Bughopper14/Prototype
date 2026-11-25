@@ -47,7 +47,12 @@ function GapList({gaps, onOpen}: {gaps: Gap[]; onOpen: (gap: Gap) => void}) {
               {items.map((gap, i) => (
                 <li key={i}>
                   {gap.label}
-                  {gap.detail && <span className="muted"> · {gap.detail}</span>}
+                  {gap.detail && (
+                    <span className="muted">
+                      {' '}
+                      · {gap.detail === 'Belum disetujui' ? "Haven't approved yet" : gap.detail}
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>
