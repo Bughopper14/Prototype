@@ -5,7 +5,7 @@ import {useLegalEditorContext} from '@/features/legal/components/legal-editor/Le
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {date, deedValidity} from '@/shared/lib/format';
 import {deedStatusLabel, DEED_EDIT_AUTHORITY, DEED_SECTION, reviewStatus} from '@liugong/shared';
-import {MoreHorizontal} from 'lucide-react';
+import {Check, MoreHorizontal} from 'lucide-react';
 
 export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
   const {
@@ -99,6 +99,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
         </div>
         <b className="legal-deed-number">{x.deedNumber || 'Number not filled'}</b>
         <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
+          {reviewStatus(x) === 'APPROVED' && <Check size={10} style={{strokeWidth: 2.5, marginRight: 3}} />}
           {deedStatusLabel(x)}
         </span>
         {reviewStatus(x) === 'REJECTED' && x.review?.notes && (

@@ -92,14 +92,43 @@ export function mergeLegal(previous: any, incoming: any) {
     const old = prior.find((d: any) => d.id === input.id),
       data = deedData(input);
     if (!old) return {...data, review: {status: 'DRAFT', revision: 1}};
-    const changed = JSON.stringify(deedData(old)) !== JSON.stringify(data);
+
+    const normDate = (d: any) => {
+      if (!d) return null;
+      if (d instanceof Date) return d.toISOString().slice(0, 10);
+      const str = String(d).trim();
+      const m = str.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : str;
+    };
+    const normStr = (s: any) => (s === undefined || s === null ? '' : String(s).trim());
+
+    const isOldApproved = reviewStatus(old) === 'APPROVED';
+    const isOldPending = deedPending(old);
+
+    const coreChanged =
+      normStr(old.deedNumber) !== normStr(input.deedNumber) ||
+      normDate(old.deedDate) !== normDate(input.deedDate) ||
+      normStr(old.type) !== normStr(input.type) ||
+      normStr(old.notaryName) !== normStr(input.notaryName) ||
+      normStr(old.ministerialDecreeNumber) !== normStr(input.ministerialDecreeNumber) ||
+      normDate(old.ministerialDecreeDate) !== normDate(input.ministerialDecreeDate);
+
     assert(
-      !changed || !deedPending(old),
+      !coreChanged || !isOldPending,
       'Akta sedang diperiksa. Tunggu hasil pemeriksaan sebelum mengubah data.',
       409,
     );
     // An approved deed is locked: it is only opened again when its stage or group is rejected.
-    assert(!changed || reviewStatus(old) !== 'APPROVED', 'Akta sudah disetujui dan terkunci.', 409);
+    assert(!coreChanged || !isOldApproved, 'Akta sudah disetujui dan terkunci.', 409);
+
+    if (isOldApproved && !coreChanged) {
+      return {
+        ...old,
+        review: old.review || {status: 'APPROVED', revision: 1},
+        ...(old.approvedSnapshot ? {approvedSnapshot: old.approvedSnapshot, approvedAt: old.approvedAt} : {}),
+      };
+    }
+
     const review = old.review || {status: 'DRAFT', revision: 1};
     return {
       ...data,
