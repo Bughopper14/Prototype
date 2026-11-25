@@ -85,6 +85,23 @@ export function publishedDeeds(legal: any) {
 export function mergeLegal(previous: any, incoming: any) {
   const prior = Array.isArray(previous?.deeds) ? previous.deeds : [],
     ids = new Set<string>();
+
+  const normDate = (d: any) => {
+    if (!d) return null;
+    if (d instanceof Date) {
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+    const str = String(d).trim();
+    const match = str.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? match[1] : (str.slice(0, 10) || null);
+  };
+  const normStr = (s: any) => (s === undefined || s === null ? '' : String(s).trim());
+  const normType = (t: any) =>
+    String(t || '').trim().toLowerCase() === 'establishment' ? 'establishment' : 'amendment';
+
   const deeds = (incoming.deeds || []).map((input: any) => {
     assert(input.id && typeof input.id === 'string', 'Setiap akta wajib memiliki ID.');
     assert(!ids.has(input.id), 'ID akta tidak boleh duplikat.');
@@ -93,22 +110,13 @@ export function mergeLegal(previous: any, incoming: any) {
       data = deedData(input);
     if (!old) return {...data, review: {status: 'DRAFT', revision: 1}};
 
-    const normDate = (d: any) => {
-      if (!d) return null;
-      if (d instanceof Date) return d.toISOString().slice(0, 10);
-      const str = String(d).trim();
-      const m = str.match(/^(\d{4}-\d{2}-\d{2})/);
-      return m ? m[1] : str;
-    };
-    const normStr = (s: any) => (s === undefined || s === null ? '' : String(s).trim());
-
     const isOldApproved = reviewStatus(old) === 'APPROVED';
     const isOldPending = deedPending(old);
 
     const coreChanged =
       normStr(old.deedNumber) !== normStr(input.deedNumber) ||
       normDate(old.deedDate) !== normDate(input.deedDate) ||
-      normStr(old.type) !== normStr(input.type) ||
+      normType(old.type || old.deed_type) !== normType(input.type || input.deed_type) ||
       normStr(old.notaryName) !== normStr(input.notaryName) ||
       normStr(old.ministerialDecreeNumber) !== normStr(input.ministerialDecreeNumber) ||
       normDate(old.ministerialDecreeDate) !== normDate(input.ministerialDecreeDate);
@@ -152,12 +160,19 @@ export function mergeLegal(previous: any, incoming: any) {
   }
   const est = deeds.find((d: any) => d.type === 'establishment');
   if (est?.deedDate) {
-    for (const d of deeds) {
-      if (d.type === 'amendment' && d.deedDate)
-        assert(
-          String(d.deedDate).slice(0, 10) >= String(est.deedDate).slice(0, 10),
-          `Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`,
-        );
+    const estDate = normDate(est.deedDate);
+    if (estDate) {
+      for (const d of deeds) {
+        if (d.type === 'amendment' && d.deedDate) {
+          const amdDate = normDate(d.deedDate);
+          if (amdDate) {
+            assert(
+              amdDate >= estDate,
+              `Tanggal akta perubahan (${d.deedDate}) tidak boleh sebelum tanggal akta pendirian (${est.deedDate}).`,
+            );
+          }
+        }
+      }
     }
   }
   return {...incoming, deeds};
