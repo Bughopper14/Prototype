@@ -279,12 +279,13 @@ export function HistoryList({history, current = []}: {history: Scope[]; current?
           else entry.deeds.push(c);
           stages.set(code, entry);
         }
-        const note = e.group.scope === 'STAGE' ? `Rejected dari Stage.${e.decision.remarks ? ` Remarks: ${e.decision.remarks}` : ''}` : fromGroupText(e.decision);
+        const cleanRemarks = e.decision.remarks?.replace(/<[^>]*>/g, '').replace(/&nbsp;/gi, ' ').trim();
+        const note = e.group.scope === 'STAGE' ? `Rejected dari Stage.${cleanRemarks ? ` Remarks: ${cleanRemarks}` : ''}` : fromGroupText(e.decision);
         return (
           <details key={e.group.roundNo + '-' + e.decision.decidedAt} className="ap-episode">
             <summary>
               <b>Round {e.group.roundNo}</b> · {e.group.scopeName} rejected by {e.decision.by} · <small>{when(e.decision.decidedAt)}</small>
-              {e.decision.remarks && <span className="ap-episode-why">{e.decision.remarks}</span>}
+              {cleanRemarks && <span className="ap-episode-why">{cleanRemarks}</span>}
             </summary>
             {stages.size === 0 && <p className="muted">Nothing was opened again by this rejection.</p>}
             {[...stages.entries()].map(([code, st]) => (

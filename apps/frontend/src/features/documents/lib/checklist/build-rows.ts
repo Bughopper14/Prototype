@@ -5,6 +5,7 @@
  * application that is not saved yet has no checklist, so it shows every active master document.
  */
 import type {MasterDocDef} from '@/features/documents/lib/checklist/definitions';
+import {storedFileUrl} from '@/features/documents/lib/checklist/file-url';
 import {RESOLVERS} from '@/features/documents/lib/checklist/resolvers';
 import type {ChecklistRow, RowState} from '@/features/documents/lib/checklist/types';
 
@@ -29,7 +30,7 @@ export function buildChecklistRows(
         sourceDetails: '',
         canDelete: false, // system linked files cannot be deleted here
         isMandatory: chk.isMandatory != null ? !!chk.isMandatory : !!def?.isMandatory,
-        previewUrl: files[0]?.fileUrl || (files[0]?.fileName ? `/documents/${files[0].fileName}` : ''),
+        previewUrl: storedFileUrl(files[0]),
       };
 
       RESOLVERS[chk.documentCode]?.({a, draft, files, allStakeholders, row});

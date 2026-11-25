@@ -1,4 +1,5 @@
 /** The identity documents of the stakeholders: KTP / passport (primary identity) and personal NPWP / E-KITAS (second identity). */
+import {storedFileUrl} from '@/features/documents/lib/checklist/file-url';
 import type {ResolverContext} from '@/features/documents/lib/checklist/types';
 
 function resolveIdentity({files, allStakeholders, row}: ResolverContext, label: string, urlFields: string[]) {
@@ -10,7 +11,7 @@ function resolveIdentity({files, allStakeholders, row}: ResolverContext, label: 
     row.sourceLabel = `Stakeholder Identity (${label})`;
     row.sourceDetails = files.length === 1 ? `Uploaded file: ${files[0].fileName}` : `${files.length} uploaded files (${files[0].fileName})`;
     row.canDelete = true;
-    row.previewUrl = files[0].fileUrl || (holders[0] ? urlOf(holders[0]) : '');
+    row.previewUrl = storedFileUrl(files[0]);
   } else if (holders.length > 0) {
     row.isAvailable = true;
     row.sourceType = 'SYSTEM_LINKED';

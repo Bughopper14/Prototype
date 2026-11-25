@@ -42,7 +42,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           <div>
             <h2>
               Document Checklist Matrix
-              <span className="count-pill" style={{marginLeft: 8}}>
+              <span className="badge-doc-count" style={{marginLeft: 8}}>
                 {c.filteredRows.length} Documents
               </span>
             </h2>
@@ -78,6 +78,57 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
               {!c.zipping && c.fileCount > 0 && <span className="doc-zip-count">{c.fileCount}</span>}
             </button>
           </div>
+        </div>
+
+        {/* Quick Filter Pills Bar matching design mockup */}
+        <div className="filter-pills-bar">
+          <button
+            type="button"
+            className={`filter-pill-tab ${c.quickFilter === 'ALL' ? 'active' : ''}`}
+            onClick={() => c.setQuickFilter('ALL')}
+          >
+            All Documents <span className="pill-counter">{c.pillCounts.all}</span>
+          </button>
+          <button
+            type="button"
+            className={`filter-pill-tab ${c.quickFilter === 'ACTION_REQUIRED' ? 'active' : ''}`}
+            onClick={() => c.setQuickFilter('ACTION_REQUIRED')}
+          >
+            🚨 Action Required{' '}
+            <span className="pill-counter" style={{background: '#fee2e2', color: '#b91c1c'}}>
+              {c.pillCounts.actionRequired}
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`filter-pill-tab ${c.quickFilter === 'IN_REVIEW' ? 'active' : ''}`}
+            onClick={() => c.setQuickFilter('IN_REVIEW')}
+          >
+            ⚡ In Review{' '}
+            <span className="pill-counter" style={{background: '#eff6ff', color: '#1d4ed8'}}>
+              {c.pillCounts.inReview}
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`filter-pill-tab ${c.quickFilter === 'APPROVED' ? 'active' : ''}`}
+            onClick={() => c.setQuickFilter('APPROVED')}
+          >
+            ✓ Fully Approved{' '}
+            <span className="pill-counter" style={{background: '#ecfdf5', color: '#047857'}}>
+              {c.pillCounts.approved}
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`filter-pill-tab ${c.quickFilter === 'MISSING' ? 'active' : ''}`}
+            onClick={() => c.setQuickFilter('MISSING')}
+          >
+            ⏳ Missing Files{' '}
+            <span className="pill-counter" style={{background: '#fffbeb', color: '#b45309'}}>
+              {c.pillCounts.missing}
+            </span>
+          </button>
         </div>
 
         <ChecklistToolbar

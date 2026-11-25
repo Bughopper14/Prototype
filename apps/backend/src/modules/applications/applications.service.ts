@@ -245,7 +245,19 @@ export class ApplicationsService {
       // The checklist document is one bundle: a file added after its approval makes it UPLOADED again, and the finished round no longer counts (it needs approval again).
       const again = !!round && d.status !== 'VERIFIED' && round.steps.every(x => x.status === 'APPROVED');
       const state = !round || again ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' && !x.reopened) ? 'REJECTED' : round.steps.some(x => x.reopened) ? 'REOPENED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
-      const steps = wanted.map(t => ({name: t.name, authority: t.authorityName, order: t.sortOrder, status: shownStatus(again ? undefined : round?.steps.find(x => x.code === t.code))}));
+      const steps = wanted.map(t => {
+        const matched = again ? undefined : round?.steps.find(x => x.code === t.code);
+        return {
+          id: matched?.id || t.id,
+          code: t.code,
+          name: t.name,
+          authority: t.authorityName,
+          authorityName: t.authorityName,
+          order: t.sortOrder,
+          status: shownStatus(matched),
+          decisions: matched?.decisions || [],
+        };
+      });
       return {...d, approval: {steps, state, again, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED' || state === 'REOPENED')}};
     });
     const view = this.viewStage(cfg, progress);

@@ -5,6 +5,7 @@ import {markInView, restoreInView} from '@/features/documents/lib/keep-in-view';
 import {downloadChecklistZip} from '@/features/documents/lib/download-zip';
 import {buildChecklistRows} from '@/features/documents/lib/checklist/build-rows';
 import {documentDefinitions} from '@/features/documents/lib/checklist/definitions';
+import {storedFileUrl} from '@/features/documents/lib/checklist/file-url';
 import {useMasterData} from '@/shared/master-data';
 import {hasAuthority} from '@/shared/lib/auth';
 import {collectStakeholders} from '@/features/documents/lib/checklist/collect-stakeholders';
@@ -29,6 +30,7 @@ export function useDocumentChecklist({
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('ALL');
   const [selectedStage, setSelectedStage] = useState<string>('ALL');
+  const [quickFilter, setQuickFilter] = useState<'ALL' | 'ACTION_REQUIRED' | 'IN_REVIEW' | 'APPROVED' | 'MISSING'>('ALL');
   const [zipping, setZipping] = useState(false);
   const [grouped, setGrouped] = useState(true);
   const [collapsedStages, setCollapsedStages] = useState<Set<string>>(new Set());
@@ -63,10 +65,61 @@ export function useDocumentChecklist({
   const stats = summarizeRows(checklistRows);
   // the departments the documents of this application have: the only ones the filter offers
   const departments = useMemo(() => [...new Set(checklistRows.map(r => r.department).filter(Boolean))].sort(), [checklistRows]);
-  const filteredRows = useMemo(
-    () => filterRows(checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage),
-    [checklistRows, searchTerm, selectedDept, selectedStatus, selectedStage],
-  );
+
+  const isDocMissing = (r: ChecklistRow) => !r.isAvailable || r.files.length === 0;
+
+  const isDocActionRequired = (r: ChecklistRow) => {
+    // Only documents with an uploaded file can require an action; unuploaded docs belong to Missing Files
+    if (isDocMissing(r)) return false;
+    const app = r.check?.approval;
+    if (!app) return false;
+    return (
+      app.state === 'NOT_REQUESTED' ||
+      app.state === 'REJECTED' ||
+      app.state === 'REOPENED' ||
+      !!app.canAct
+    );
+  };
+
+  const isDocInReview = (r: ChecklistRow) => {
+    if (isDocMissing(r)) return false;
+    const app = r.check?.approval;
+    return (
+      app?.state === 'PENDING' ||
+      (r.status === 'UPLOADED' && app?.state !== 'APPROVED' && !isDocActionRequired(r))
+    );
+  };
+
+  const isDocApproved = (r: ChecklistRow) => {
+    if (isDocMissing(r)) return false;
+    return r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED';
+  };
+
+  const pillCounts = useMemo(() => {
+    return {
+      all: checklistRows.length,
+      actionRequired: checklistRows.filter(isDocActionRequired).length,
+      inReview: checklistRows.filter(isDocInReview).length,
+      approved: checklistRows.filter(isDocApproved).length,
+      missing: checklistRows.filter(isDocMissing).length,
+    };
+  }, [checklistRows]);
+
+  const filteredRows = useMemo(() => {
+    let list = checklistRows;
+
+    if (quickFilter === 'ACTION_REQUIRED') {
+      list = list.filter(isDocActionRequired);
+    } else if (quickFilter === 'IN_REVIEW') {
+      list = list.filter(isDocInReview);
+    } else if (quickFilter === 'APPROVED') {
+      list = list.filter(isDocApproved);
+    } else if (quickFilter === 'MISSING') {
+      list = list.filter(isDocMissing);
+    }
+
+    return filterRows(list, searchTerm, selectedDept, selectedStatus, selectedStage);
+  }, [checklistRows, quickFilter, searchTerm, selectedDept, selectedStatus, selectedStage]);
   /** Stages of the documents, in checklist order, for the stage filter. */
   const stages = useMemo(() => {
     const seen = new Map<string, string>();
@@ -177,12 +230,12 @@ export function useDocumentChecklist({
   // Handler Preview File
   const handleOpenPreview = (row: ChecklistRow, chosen?: any) => {
     const file = chosen || row.files[0];
-    const url = (!chosen && row.previewUrl) || (file ? `/documents/${file.fileName}` : '');
+    const url = (!chosen && row.previewUrl) || storedFileUrl(file);
     if (!url) {
       notify('Physical document preview is not yet available for this item.');
       return;
     }
-    const isPdf = url.toLowerCase().endsWith('.pdf') || file?.mimeType === 'application/pdf';
+    const isPdf = url.toLowerCase().includes('.pdf') || file?.mimeType === 'application/pdf';
     setPreviewModal({
       title: `${row.code} · ${row.name}`,
       url,
@@ -195,6 +248,9 @@ export function useDocumentChecklist({
   };
 
   return {
+    quickFilter,
+    setQuickFilter,
+    pillCounts,
     canRequestApproval,
     approvalBusy,
     requestApproval,

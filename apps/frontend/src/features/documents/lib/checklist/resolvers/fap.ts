@@ -1,4 +1,5 @@
 /** Where the FAP document comes from and whether it is available. */
+import {storedFileUrl} from '@/features/documents/lib/checklist/file-url';
 import type {ResolverContext} from '@/features/documents/lib/checklist/types';
 
 export function resolveFap({a, files, row}: ResolverContext) {
@@ -16,7 +17,7 @@ export function resolveFap({a, files, row}: ResolverContext) {
       : 'FAP form compared and locked in system';
     row.canDelete = false; // Linked from FAP comparison -> Cannot be deleted here
     if (files[0]) {
-      row.previewUrl = `/documents/${files[0].fileName}`;
+      row.previewUrl = storedFileUrl(files[0]);
     }
   }
 }
