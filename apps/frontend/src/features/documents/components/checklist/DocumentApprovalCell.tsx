@@ -60,11 +60,11 @@ export function DocumentApprovalCell({
   const activeStep = activeStepIndex >= 0 ? steps[activeStepIndex] : null;
   const activeLevel = activeStep?.order ?? activeStep?.sortOrder ?? (activeStepIndex >= 0 ? activeStepIndex + 1 : 1);
 
-  // Fill percentage for the track line
+  // Fill percentage for the track line (Opsi B: halfway progress towards the active in-review step)
   const fillPct = isAllApproved
     ? 100
-    : totalSteps > 0
-    ? Math.round((approvedSteps / totalSteps) * 100)
+    : totalSteps > 1 && approvedSteps > 0
+    ? Math.round(((approvedSteps - 0.5) / (totalSteps - 1)) * 100)
     : 0;
 
   // Dedicated View for REJECTED status (Matching Gambar 3)
@@ -116,12 +116,12 @@ export function DocumentApprovalCell({
             title="Click to view rejection details"
             style={{cursor: 'pointer'}}
           >
-            <div className="track-line-bg" style={{background: '#fee2e2'}} />
+            <div className="track-line-bg" />
             <div
               className="track-line-fill"
               style={{
                 width: rejectFillPct > 0 ? `calc((100% - 26px) * ${rejectFillPct / 100})` : '0%',
-                background: '#ef4444',
+                background: '#10b981',
               }}
             />
             <div className="stepper-nodes">
