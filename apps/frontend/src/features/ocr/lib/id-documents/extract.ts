@@ -98,7 +98,7 @@ export async function extractKtpTextFromImage(
   fileName?: string,
   meta?: ScanMeta,
 ): Promise<ParsedKtpData> {
-  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, {subType: 'KTPSTAKEHOLDER', ...meta});
+  const res = await extractIdDocumentFromImage(fileOrInput, 'ktp', fileName, {subType: 'KTP', ...meta});
   const d = res.data || {};
   const sLower = String(d.status_perkawinan || d.maritalStatus || d.status || '').toLowerCase();
   const isSingle = sLower.includes('belum') || sLower.includes('tidak') || sLower.includes('single');

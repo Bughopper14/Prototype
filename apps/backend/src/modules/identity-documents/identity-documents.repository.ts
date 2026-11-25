@@ -3,7 +3,7 @@ import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 
 /** The identity documents of a stakeholder, by the name their file starts with (`<JENIS>_<application number>_<NNN>`, see documentBase). */
-export const IDENTITY_FILE_PREFIX: Record<string, string> = {ktp: 'KTPSTAKEHOLDER_', npwp: 'NPWPSTAKEHOLDER_', passport: 'PASSPORT_', kitas: 'KITAS_'};
+export const IDENTITY_FILE_PREFIX: Record<string, string> = {ktp: 'KTP_', npwp:'NPWPSTAKEHOLDER_', passport: 'PASSPORT_', kitas: 'KITAS_'};
 export const IDENTITY_TYPES = Object.keys(IDENTITY_FILE_PREFIX);
 
 /** Stakeholders and the files of their identity documents (crm_application_document_files.stakeholder_id). */
@@ -29,7 +29,7 @@ export class IdentityDocumentsRepository {
   async latestFile(stakeholderId: string, docType: string) {
     const [rows] = await this.db.pool.execute<any[]>(
       `SELECT file_name,storage_path,mime_type FROM ${CRM.applicationDocumentFiles}
-       WHERE stakeholder_id=? AND deleted_at IS NULL AND file_name LIKE ? ORDER BY uploaded_at DESC,version_number DESC LIMIT 1`,
+       WHERE stakeholder_id=? AND deleted_at IS NULL AND file_name LIKE ? ORDER BY uploaded_at DESC,created_at DESC LIMIT 1`,
       [stakeholderId, `${IDENTITY_FILE_PREFIX[docType].replace(/_/g, '\\_')}%`],
     );
     return rows[0] ? {fileName: rows[0].file_name as string, storagePath: rows[0].storage_path as string, mimeType: rows[0].mime_type as string} : null;

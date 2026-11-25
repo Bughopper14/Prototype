@@ -32,6 +32,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
     user,
     onBack,
     onChange,
+    refreshDocuments,
     notify,
     nibOcrOpen,
     setNibOcrOpen,
@@ -172,7 +173,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           onApply={handleApplyNibOcr}
           notify={notify}
           applicationId={a?.isNew ? undefined : a?.id}
-          onDocumentUploaded={onChange}
+          onDocumentUploaded={refreshDocuments}
         />
         <NpwpOcrModal
           open={npwpOcrOpen}
@@ -180,7 +181,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           onApply={handleApplyNpwpOcr}
           notify={notify}
           applicationId={a?.isNew ? undefined : a?.id}
-          onDocumentUploaded={onChange}
+          onDocumentUploaded={refreshDocuments}
         />
         {archiveModalOpen && (
           <FapArchiveModal

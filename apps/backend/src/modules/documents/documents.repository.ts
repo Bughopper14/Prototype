@@ -10,14 +10,13 @@ type Conn = Pick<PoolConnection, 'query' | 'execute'>;
 /** The signed FAP form (crm_master_document_types.code); uploading it unlocks "Submit FAP stage". */
 export const FAP_DOCUMENT_CODE = 'FAP';
 
-const fileModel = (f: any) => ({
+const fileModel = (f: any, isCurrent = true) => ({
   id: f.id,
   checklistId: f.checklist_id,
   applicationId: f.application_id,
   fileName: f.file_name,
   storagePath: f.storage_path,
-  version: f.version_number,
-  isCurrent: !!f.is_current_active,
+  isCurrent,
   fileSize: Number(f.file_size),
   mimeType: f.mime_type,
   uploadedBy: f.uploaded_by,
@@ -307,30 +306,33 @@ export class DocumentsRepository {
     );
     const [files] = await conn.execute<any[]>(
       `SELECT * FROM ${CRM.applicationDocumentFiles} WHERE application_id=? AND deleted_at IS NULL
-       ORDER BY version_number,uploaded_at`,
+       ORDER BY uploaded_at,created_at,id`,
       [applicationId],
     );
-    return rows.map(d => ({
-      id: d.id,
-      applicationId: d.application_id,
-      documentCode: d.code,
-      documentName: d.name,
-      /** Workflow stage the document belongs to (crm_application_document_checklists.stage_code). */
-      stageCode: d.stage_code,
-      stageName: d.stage_name,
-      /** DEFAULT = from the workflow; ADDED = added for this application only. */
-      source: d.source_type,
-      overrideId: d.override_id,
-      assignedRole: d.assigned_role,
-      isMandatory: !!d.is_mandatory,
-      /** What the screens read: PENDING / UPLOADED while no decision, then VERIFIED (approved) or REJECTED. */
-      status: legacyStatus(d.status, d.approval_status),
-      approvalStatus: d.approval_status,
-      approvalRemarks: d.approval_remarks ?? null,
-      decidedBy: d.decided_by ?? null,
-      decidedAt: d.decided_at ?? null,
-      files: files.filter(f => f.checklist_id === d.id).map(fileModel),
-    }));
+    return rows.map(d => {
+      const rowFiles = files.filter(f => f.checklist_id === d.id);
+      return {
+        id: d.id,
+        applicationId: d.application_id,
+        documentCode: d.code,
+        documentName: d.name,
+        /** Workflow stage the document belongs to (crm_application_document_checklists.stage_code). */
+        stageCode: d.stage_code,
+        stageName: d.stage_name,
+        /** DEFAULT = from the workflow; ADDED = added for this application only. */
+        source: d.source_type,
+        overrideId: d.override_id,
+        assignedRole: d.assigned_role,
+        isMandatory: !!d.is_mandatory,
+        /** What the screens read: PENDING / UPLOADED while no decision, then VERIFIED (approved) or REJECTED. */
+        status: legacyStatus(d.status, d.approval_status),
+        approvalStatus: d.approval_status,
+        approvalRemarks: d.approval_remarks ?? null,
+        decidedBy: d.decided_by ?? null,
+        decidedAt: d.decided_at ?? null,
+        files: rowFiles.map((f, idx) => fileModel(f, idx === rowFiles.length - 1)),
+      };
+    });
   }
 
   async readFile(fileId: string) {
@@ -354,20 +356,20 @@ export class DocumentsRepository {
   /** Every file of the application's checklist (the ones the checklist lists), with its document and stage, for the ZIP. */
   async filesForZip(applicationId: string) {
     const [rows] = await this.db.pool.execute<any[]>(
-      `SELECT f.id,f.file_name,f.storage_path,f.version_number,t.code,t.sort_order,s.name AS stage_name
+      // a document typed by name for one application has no master type: it is listed (and zipped) like any other
+      `SELECT f.id,f.file_name,f.storage_path,COALESCE(t.code,c.document_code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,s.name AS stage_name
        FROM ${CRM.applicationDocumentFiles} f
        JOIN ${CRM.applicationDocumentChecklists} c ON c.id=f.checklist_id
-       JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.frozenWorkflowStages} s ON s.workflow_freeze_id=c.workflow_freeze_id AND s.code=c.stage_code
        WHERE f.application_id=? AND f.deleted_at IS NULL
-       ORDER BY t.sort_order,f.version_number,f.uploaded_at`,
+       ORDER BY COALESCE(t.sort_order,100000),f.uploaded_at,f.created_at,f.id`,
       [applicationId],
     );
     return rows.map(r => ({
       id: r.id as string,
       fileName: r.file_name as string,
       storagePath: r.storage_path as string,
-      version: Number(r.version_number),
       code: r.code as string,
       stageName: (r.stage_name as string | null) ?? '',
     }));
@@ -384,7 +386,7 @@ export class DocumentsRepository {
     return rows[0] || null;
   }
 
-  /** Stores a new file version; earlier versions stay, the new one is the current one. */
+  /** Stores a new file on the checklist row (active = deleted_at IS NULL). */
   async addFile(
     conn: Conn,
     applicationId: string,
@@ -394,18 +396,13 @@ export class DocumentsRepository {
   ) {
     const row = await this.checklistRow(conn, applicationId, checklistIdOrCode);
     ensure(row, 'Checklist item not found', 404);
-    const [[last]] = await conn.execute<any[]>(
-      `SELECT COALESCE(MAX(version_number),0) AS v FROM ${CRM.applicationDocumentFiles} WHERE checklist_id=?`,
-      [row.id],
-    );
-    await conn.execute(`UPDATE ${CRM.applicationDocumentFiles} SET is_current_active=0 WHERE checklist_id=?`, [row.id]);
     const id = crypto.randomUUID();
     await conn.execute(
       `INSERT INTO ${CRM.applicationDocumentFiles}
-         (id,checklist_id,application_id,stakeholder_id,version_number,file_name,original_file_name,storage_path,file_size,mime_type,
-          is_current_active,uploaded_by,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,1,?,?)`,
-      [id, row.id, applicationId, file.stakeholderId ?? null, Number(last.v) + 1, file.fileName, file.originalFileName, file.storagePath, file.size, file.mimeType, by, by],
+         (id,checklist_id,application_id,stakeholder_id,file_name,original_file_name,storage_path,file_size,mime_type,
+          uploaded_by,created_by)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, row.id, applicationId, file.stakeholderId ?? null, file.fileName, file.originalFileName, file.storagePath, file.size, file.mimeType, by, by],
     );
     // A new file makes the document UPLOADED again, also when it was verified: the checklist document is one bundle, so it needs its approval again
     // (the approval of a document that changed after it was approved can be asked for once more: see ApprovalsService.startScope).
@@ -414,10 +411,30 @@ export class DocumentsRepository {
     return {id, checklistId: row.id, documentCode: row.code};
   }
 
-  /** Soft-deletes a file; the newest remaining version becomes current and the checklist row follows. */
-  async deleteFile(conn: Conn, applicationId: string, fileId: string, by: string | null) {
+  /** Is this stored file named by a snapshot of the application: a frozen FAP (signed form or checklist) or the approved snapshot of a deed? */
+  private async inSnapshot(conn: Conn, applicationId: string, storagePath: string) {
     const [rows] = await conn.execute<any[]>(
-      `SELECT checklist_id FROM ${CRM.applicationDocumentFiles} WHERE id=? AND application_id=? AND deleted_at IS NULL FOR UPDATE`,
+      `SELECT EXISTS(SELECT 1 FROM ${CRM.frozenFapApplications} p WHERE p.source_application_id=? AND p.uploaded_fap_file_path=?)
+           OR EXISTS(SELECT 1 FROM ${CRM.frozenFapDocumentChecklists} z JOIN ${CRM.frozenFapApplications} p ON p.id=z.fap_freeze_id
+                     WHERE p.source_application_id=? AND z.active_file_path=?)
+           OR EXISTS(SELECT 1 FROM ${CRM.fapLegalDeeds} d WHERE d.application_id=? AND LOCATE(?,d.approved_snapshot_text)>0) AS held`,
+      [applicationId, storagePath, applicationId, storagePath, applicationId, storagePath],
+    );
+    return Number(rows[0].held) === 1;
+  }
+
+  /**
+   * Soft-deletes a file (sets deleted_at); it moves to bin/ unless a snapshot refers to it. The checklist status follows the remaining files.
+   */
+  async deleteFile(
+    conn: Conn,
+    applicationId: string,
+    fileId: string,
+    by: string | null,
+    moveToBin?: (storagePath: string) => Promise<string>,
+  ) {
+    const [rows] = await conn.execute<any[]>(
+      `SELECT checklist_id,storage_path FROM ${CRM.applicationDocumentFiles} WHERE id=? AND application_id=? AND deleted_at IS NULL FOR UPDATE`,
       [fileId, applicationId],
     );
     ensure(rows.length, 'File not found in this application', 404);
@@ -429,16 +446,17 @@ export class DocumentsRepository {
       [checklistId],
     );
     ensure(!running.length && state[0]?.approval_status !== 'APPROVED', 'The file of a document that is being verified, or is verified, cannot be deleted', 409);
+    // a file a snapshot refers to stays where the snapshot says it is: frozen data is never rewritten
+    const kept = await this.inSnapshot(conn, applicationId, rows[0].storage_path);
+    const binPath = moveToBin && !kept ? await moveToBin(rows[0].storage_path) : rows[0].storage_path;
     await conn.execute(
-      `UPDATE ${CRM.applicationDocumentFiles} SET deleted_at=CURRENT_TIMESTAMP(3),is_current_active=0,updated_by=? WHERE id=?`,
-      [by, fileId],
+      `UPDATE ${CRM.applicationDocumentFiles} SET deleted_at=CURRENT_TIMESTAMP(3),storage_path=?,updated_by=? WHERE id=?`,
+      [binPath, by, fileId],
     );
     const [remaining] = await conn.execute<any[]>(
-      `SELECT id FROM ${CRM.applicationDocumentFiles} WHERE checklist_id=? AND deleted_at IS NULL ORDER BY version_number DESC LIMIT 1`,
+      `SELECT id FROM ${CRM.applicationDocumentFiles} WHERE checklist_id=? AND deleted_at IS NULL LIMIT 1`,
       [checklistId],
     );
-    if (remaining.length)
-      await conn.execute(`UPDATE ${CRM.applicationDocumentFiles} SET is_current_active=1 WHERE id=?`, [remaining[0].id]);
     await this.setFileStatus(conn, checklistId, remaining.length ? 'UPLOADED' : 'PENDING', by);
     await this.syncFapUploaded(conn, applicationId, by);
   }
@@ -447,14 +465,16 @@ export class DocumentsRepository {
    * The state of a checklist row is stored on the row (not computed: the lists read it for every application; a stored value costs 2 ms where the
    * computed one cost 57 s for 552 applications, measured). Two writers, so each fact has one place:
    *  - setFileStatus: `status` follows the FILES (PENDING without a file, UPLOADED with one). A new or removed file also takes the approval back to
-   *    NOT_STARTED (the checklist document is one bundle, so it needs its approval again).
+   *    NOT_STARTED (the checklist document is one bundle, so it needs its approval again); while a round is still running it stays IN_APPROVAL.
    *  - setApproval: `approval_status` + approval_remarks + decided_by / decided_at follow the approval round of the document.
    */
   async setFileStatus(conn: Conn, checklistId: string, status: 'PENDING' | 'UPLOADED', by: string | null) {
     await conn.execute(
       `UPDATE ${CRM.applicationDocumentChecklists}
-       SET status=?,approval_status='NOT_STARTED',approval_remarks=NULL,decided_by=NULL,decided_at=NULL,updated_by=? WHERE id=?`,
-      [status, by, checklistId],
+       SET status=?,
+           approval_status=IF(EXISTS(SELECT 1 FROM ${CRM.applicationApprovalSteps} s WHERE s.document_checklist_id=? AND s.status IN ('PENDING','WAITING')),'IN_APPROVAL','NOT_STARTED'),
+           approval_remarks=NULL,decided_by=NULL,decided_at=NULL,updated_by=? WHERE id=?`,
+      [status, checklistId, by, checklistId],
     );
   }
 

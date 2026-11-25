@@ -19,6 +19,7 @@ export function computeApplicationDiff(params: {
   customerDraft?: any;
   resolvedName?: string;
   customerCategory?: string;
+  master?: Record<string, {value: string; name: string}[] | undefined>;
 }): {
   changes: ActivityChangeItem[];
   details: string;
@@ -78,6 +79,15 @@ export function computeApplicationDiff(params: {
     case 8:
       diffPreAnalysis(ctx);
       break;
+  }
+
+  // Regions are held as ids: the feed shows their names
+  for (const c of changes) {
+    const field = c.field ?? '';
+    if (!['province', 'city', 'district', 'village'].includes(field)) continue;
+    const nameOf = (value: any) => params.master?.[field]?.find(x => x.value === value)?.name ?? value;
+    c.oldValue = nameOf(c.oldValue);
+    c.newValue = nameOf(c.newValue);
   }
 
   // Construct structured text details snippet

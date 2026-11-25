@@ -126,7 +126,7 @@ export class LegalRepository {
     );
     const [identityFiles] = await this.db.pool.execute<any[]>(
       `SELECT stakeholder_id,file_name,storage_path,mime_type FROM ${CRM.applicationDocumentFiles}
-       WHERE application_id=? AND stakeholder_id IS NOT NULL AND deleted_at IS NULL ORDER BY uploaded_at,version_number`,
+       WHERE application_id=? AND stakeholder_id IS NOT NULL AND deleted_at IS NULL ORDER BY uploaded_at,created_at`,
       [applicationId],
     );
     const deeds = [];

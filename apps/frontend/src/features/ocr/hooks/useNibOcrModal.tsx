@@ -116,14 +116,15 @@ export function useNibOcrModal({
       }
     } catch (backendErr: any) {
       console.warn('Backend OCR scan failed:', backendErr);
-      if (isPdf) {
+      // only a picture can be read in the browser instead
+      if (!f.type.startsWith('image/')) {
         setOcrLoading(false);
         if (notify) notify(`Document scan error: ${backendErr?.message || 'Server error'}`);
         return;
       }
     }
 
-    if (!isPdf) {
+    if (f.type.startsWith('image/')) {
       // 2. Client-side fallback for images when server is unavailable
       const r = new FileReader();
       r.onload = async () => {
@@ -214,7 +215,14 @@ export function useNibOcrModal({
       notify(`✓ ${filledCount} NIB fields successfully synced to form`);
     }
     // The scan is used now: the server files it under the application and adds it to the checklist.
-    if (tempKey) api('/ocr/keep', 'POST', {temp_key: tempKey, doc_type: 'nib'}).catch(e => console.warn('Filing the NIB scan failed:', e));
+    if (tempKey) {
+      api('/ocr/keep', 'POST', {temp_key: tempKey, doc_type: 'nib'})
+        .then(() => (applicationId && onDocumentUploaded ? api(`/applications/${applicationId}`) : null))
+        .then(updated => {
+          if (updated && onDocumentUploaded) onDocumentUploaded(updated);
+        })
+        .catch(e => console.warn('Filing the NIB scan failed:', e));
+    }
     onClose();
   };
 

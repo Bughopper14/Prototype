@@ -1733,8 +1733,9 @@
 .modal.doc-preview-modal {
   width: min(96vw, 1380px) !important;
   max-width: 1400px !important;
-  height: 93vh !important;
-  max-height: 94vh !important;
+  /* the screen minus the padding of the scrim (80px above, 24px below), so the footer is never cut off */
+  height: calc(100vh - 104px) !important;
+  max-height: calc(100vh - 104px) !important;
   display: flex !important;
   flex-direction: column !important;
   border-radius: 12px;
@@ -1758,4 +1759,15 @@
   border: none !important;
   border-radius: 8px !important;
   background: #ffffff !important;
+}
+
+/* The document code is shown in full: a long one wraps instead of being cut off */
+.doc-checklist-table .doc-code-badge {
+  width: 96px;
+  min-width: 96px;
+  max-width: 96px;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: break-word;
+  line-height: 1.35;
 }

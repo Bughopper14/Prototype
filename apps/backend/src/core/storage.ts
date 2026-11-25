@@ -68,12 +68,15 @@ export class StorageService {
     return run;
   }
 
-  /** The numbers already used by one document type in an application folder (`<base>_001`, `<base>_002` ...). */
+  /** The numbers already used by one document type in an application folder and its bin/ subfolder (`<base>_001`, `<base>_002` ...). */
   private async usedNumbers(dir: string, base: string) {
-    const names = await fs.readdir(dir).catch(() => [] as string[]);
+    const [active, binned] = await Promise.all([
+      fs.readdir(dir).catch(() => [] as string[]),
+      fs.readdir(path.join(dir, 'bin')).catch(() => [] as string[]),
+    ]);
     // `base` only holds letters, digits, _ and - (documentBase cleans it), so it needs no escaping
-    const pattern = new RegExp(`^${base}_(\\d{3,})\\.[^.]+$`);
-    return names.map(name => pattern.exec(name)).filter((m): m is RegExpExecArray => !!m).map(m => Number(m[1]));
+    const pattern = new RegExp(`^${base}_(\\d{3,})(?:_\\d+)?\\.[^.]+$`);
+    return [...active, ...binned].map(name => pattern.exec(name)).filter((m): m is RegExpExecArray => !!m).map(m => Number(m[1]));
   }
 
   private static readonly number = (n: number) => String(n).padStart(3, '0');
@@ -127,6 +130,51 @@ export class StorageService {
           if (e?.code !== 'EEXIST') throw e;
         }
       }
+    });
+  }
+
+  /**
+   * Moves a soft-deleted document into `<application number>/bin/<fileName>` under STORAGE_ROOT and returns its new storage key.
+   * Safe when the file is already in `bin/` or missing on disk.
+   */
+  async moveToBin(key: string): Promise<string> {
+    const src = this.within(key);
+    if (!src) throw new Error('Invalid storage key');
+    const parts = String(key).split(/[\\/]+/).filter(Boolean);
+    if (parts.length >= 2 && parts[1] === 'bin') return parts.join('/');
+    const folder = parts[0] || 'unassigned';
+    const fileName = parts[parts.length - 1] || path.basename(src);
+    const binDir = path.join(this.rootDir, folder, 'bin');
+    await fs.mkdir(binDir, {recursive: true});
+    const ext = path.extname(fileName);
+    const stem = path.basename(fileName, ext);
+    let targetName = fileName;
+    let dst = path.join(binDir, targetName);
+    if (await fs.stat(dst).then(() => true, () => false)) {
+      targetName = `${stem}_${Date.now()}${ext}`;
+      dst = path.join(binDir, targetName);
+    }
+    try {
+      await fs.rename(src, dst);
+    } catch (e: any) {
+      if (e?.code === 'EXDEV') {
+        await fs.copyFile(src, dst);
+        await fs.unlink(src).catch(() => undefined);
+      } else if (e?.code !== 'ENOENT') {
+        throw e;
+      }
+    }
+    return `${folder}/bin/${targetName}`;
+  }
+
+  /** Puts a moved file back at its earlier storage key (nothing to do when it never moved). */
+  async moveBack(fromKey: string, toKey: string) {
+    const src = this.within(fromKey);
+    const dst = this.within(toKey);
+    if (!src || !dst) throw new Error('Invalid storage key');
+    if (src === dst) return;
+    await fs.rename(src, dst).catch((e: any) => {
+      if (e?.code !== 'ENOENT') throw e;
     });
   }
 

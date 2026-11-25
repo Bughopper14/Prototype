@@ -696,11 +696,16 @@ export class ApplicationsService {
 
   /** Closes the OCR review of the current signed FAP file as APPROVED: open differences are kept as NOTED, the remarks (when given) replace the saved ones. */
   private async closeFapReview(conn: any, id: string, remarks: string | undefined, actor: Actor) {
+    // the current file first, then its review: an earlier file's review is history and never changes
     const [rows] = await conn.query(
       `SELECT c.id FROM ${CRM.fapDocumentOcrComparisons} c
-       JOIN ${CRM.applicationDocumentFiles} f ON f.id=c.document_file_id AND f.deleted_at IS NULL AND f.is_current_active=1
-       WHERE c.application_id=? AND c.comparison_status IN ('HAS_DIFFERENCES','MATCHED')`,
-      [id],
+       WHERE c.application_id=? AND c.comparison_status IN ('HAS_DIFFERENCES','MATCHED') AND c.document_file_id=(
+         SELECT f.id FROM ${CRM.applicationDocumentFiles} f
+         JOIN ${CRM.applicationDocumentChecklists} k ON k.id=f.checklist_id
+         JOIN ${CRM.masterDocumentTypes} t ON t.id=k.document_type_id AND t.code='FAP'
+         WHERE f.application_id=? AND f.deleted_at IS NULL ORDER BY f.uploaded_at DESC,f.created_at DESC,f.id DESC LIMIT 1
+       )`,
+      [id, id],
     );
     for (const r of rows as any[]) {
       await conn.query(

@@ -17,6 +17,8 @@ export function DocumentRowActions({
 }) {
   const hasFile = (row.files || []).length > 0;
   const canPreview = row.isAvailable && (hasFile || !!row.previewUrl);
+  // The FAP has one current signed file (a new one replaces it); every other document keeps all its files.
+  const replaces = row.code === 'FAP';
 
   if (!hasFile) {
     return (
@@ -54,12 +56,12 @@ export function DocumentRowActions({
         type="button"
         className="btn-outline"
         style={{height: '32px', padding: '0 10px', fontSize: '11.5px'}}
-        title="Replace / Upload additional file"
+        title={replaces ? 'Upload a new signed file (the current one is replaced)' : 'Upload an additional file'}
         disabled={isUploading}
         onClick={() => onUpload(row.code, row.chkId)}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
-        <span>Replace</span>
+        <span>{replaces ? 'Replace' : 'Add file'}</span>
       </button>
     </div>
   );

@@ -81,14 +81,8 @@ export function useDocumentChecklist({
     );
   };
 
-  const isDocInReview = (r: ChecklistRow) => {
-    if (isDocMissing(r)) return false;
-    const app = r.check?.approval;
-    return (
-      app?.state === 'PENDING' ||
-      (r.status === 'UPLOADED' && app?.state !== 'APPROVED' && !isDocActionRequired(r))
-    );
-  };
+  // In review = an approval round is running; a document without approval is never in review
+  const isDocInReview = (r: ChecklistRow) => !isDocMissing(r) && r.check?.approval?.state === 'PENDING';
 
   const isDocApproved = (r: ChecklistRow) => {
     if (isDocMissing(r)) return false;

@@ -198,7 +198,14 @@ export function NpwpOcrModal({
     });
 
     // The scan is used now: the server files it under the application and adds it to the checklist (when the workflow has an NPWP document).
-    if (tempKey) api('/ocr/keep', 'POST', {temp_key: tempKey, doc_type: 'npwp'}).catch(e => console.warn('Filing the NPWP scan failed:', e));
+    if (tempKey) {
+      api('/ocr/keep', 'POST', {temp_key: tempKey, doc_type: 'npwp'})
+        .then(() => (applicationId && onDocumentUploaded ? api(`/applications/${applicationId}`) : null))
+        .then(updated => {
+          if (updated && onDocumentUploaded) onDocumentUploaded(updated);
+        })
+        .catch(e => console.warn('Filing the NPWP scan failed:', e));
+    }
 
     onClose();
   };

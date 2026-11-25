@@ -233,6 +233,8 @@ export function ApprovalDecisionDialog() {
             {reject ? 'Reason (required)' : 'Notes (optional)'}
           </label>
           <CrmRichTextEditor
+            // the editor reads its placeholder only when it starts: Approve and Reject each get their own
+            key={kind}
             id="approval-decision-remarks"
             value={comments || ''}
             onChange={setComments}

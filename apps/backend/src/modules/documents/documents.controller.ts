@@ -158,9 +158,20 @@ export class DocumentsController {
     const {id, fileId} = req.params;
     const current = await this.unlocked(id, req.actor);
     const removed = await this.documents.readFile(fileId);
-    await this.db.transaction(async conn => {
-      await this.documents.deleteFile(conn, id, fileId, req.actor.username || null);
-    });
+    // the file moves while the delete is being saved: when the save fails it goes back, so its row never points at nothing
+    const moved: {from: string; to: string}[] = [];
+    try {
+      await this.db.transaction(async conn => {
+        await this.documents.deleteFile(conn, id, fileId, req.actor.username || null, async from => {
+          const to = await this.storage.moveToBin(from);
+          moved.push({from, to});
+          return to;
+        });
+      });
+    } catch (e) {
+      for (const m of moved) await this.storage.moveBack(m.to, m.from).catch(err => console.error(`Could not move ${m.to} back to ${m.from}:`, err));
+      throw e;
+    }
     await this.comparisons.forget(fileId);
     await recordActivity(
       {
@@ -208,7 +219,7 @@ export class DocumentsController {
       const base = safe(e.fileName);
       const prefix = base.toUpperCase().startsWith(`${e.code.toUpperCase()}_`) ? '' : `${safe(e.code)}_`;
       let name = `${folder}/${prefix}${base}`;
-      for (let n = 2; used.has(name.toLowerCase()); n++) name = `${folder}/${prefix}v${e.version}_${n}_${base}`;
+      for (let n = 2; used.has(name.toLowerCase()); n++) name = `${folder}/${prefix}v${n}_${base}`;
       used.add(name.toLowerCase());
       files[name] = new Uint8Array(data);
     }
