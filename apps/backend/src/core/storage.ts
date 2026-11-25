@@ -198,9 +198,16 @@ export class StorageService {
     return file;
   }
 
-  /** A file under the root from its URL segments, or null when the path leaves the root. */
+  /**
+   * A stored file from its URL segments, or null when it must not be served: the path leaves the root, or it goes into a bin/ folder (deleted
+   * files, for IT only).
+   */
   documentPath(segments: string[]) {
-    return this.within(segments.join('/'));
+    const file = this.within(segments.join('/'));
+    if (!file) return null;
+    // Windows also reads "bin.", "bin " and "bin::$INDEX_ALLOCATION" as the folder bin
+    const hidden = path.relative(this.rootDir, file).split(path.sep).some(part => part.includes(':') || part.replace(/[. ]+$/, '').toLowerCase() === 'bin');
+    return hidden ? null : file;
   }
 }
 

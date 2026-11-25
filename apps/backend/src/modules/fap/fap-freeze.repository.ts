@@ -4,12 +4,16 @@ import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
 import {ensure} from '../../core/domain';
+import {UsersNamesLookup} from '../approvals/users-names.lookup';
 
 type Conn = Pick<PoolConnection, 'execute' | 'query'>;
 type Row = Record<string, unknown>;
 
 /** The user who freezes (frozen_by_user_id refers to users_users.id, without a foreign key). */
 export type FreezeActor = {portalUserId?: number; name?: string; username?: string; role?: string; displayRole?: string};
+
+/** Why a freeze was made: the stage was submitted, or its approval was decided. */
+export type FreezeResult = 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 
 const num = (v: unknown) => Number(v) || 0;
 const pct = (part: number, total: number) => (total ? Math.round((part * 10000) / total) / 100 : 0);
@@ -35,19 +39,24 @@ const LOCATION_COLUMNS = (x: string) =>
    ${x}di.name AS district_name,${x}vi.name AS village_name,${x}pc.postal_code AS postal_code`;
 
 /**
- * FAP freeze: an immutable copy of the FAP as submitted (crm_frozen_fap_*). Master values are stored as literal
- * codes and names, so later Master Data changes do not alter the snapshot. Every freeze is a new version; the
- * previous one stays and loses is_latest_freeze.
+ * FAP freeze: an immutable copy of the FAP (crm_frozen_fap_*), made when its stage is submitted and again when the
+ * approval of that stage is decided. It holds the form, the checklist with every file it has, and the approval state of
+ * the groups, stages, documents and deeds with the steps behind it. Master values are stored as literal codes and
+ * names, so later Master Data changes do not alter the snapshot. Every freeze is a new version; the previous one stays
+ * and loses is_latest_freeze. The file paths are the ones at the moment of the freeze: a file deleted later moves to bin/.
  */
 @Injectable()
 export class FapFreezeRepository {
-  constructor(private readonly db: CrmDatabase) {}
+  constructor(
+    private readonly db: CrmDatabase,
+    private readonly users: UsersNamesLookup,
+  ) {}
 
   /**
-   * Freezes the application inside the caller's transaction. `stageCode` is the stage being submitted.
-   * Returns the new freeze id and version.
+   * Freezes the application inside the caller's transaction. `stageCode` is the stage being submitted or decided,
+   * `result` says which of the two happened. Returns the new freeze id and version.
    */
-  async freeze(conn: Conn, applicationId: string, stageCode: string, actor: FreezeActor, remarks?: string | null) {
+  async freeze(conn: Conn, applicationId: string, stageCode: string, actor: FreezeActor, remarks?: string | null, result: FreezeResult = 'SUBMITTED') {
     const [[app]] = await conn.query<any[]>(
       `SELECT a.*,fp.latest_freeze_version,br.code AS branch_code,br.name AS branch_name
        FROM ${CRM.applications} a
@@ -86,6 +95,7 @@ export class FapFreezeRepository {
       `SELECT id,remarks FROM ${CRM.fapDocumentOcrComparisons} WHERE application_id=? AND document_file_id<=>? ORDER BY created_at DESC LIMIT 1`,
       [applicationId, fapFile?.id ?? null],
     );
+    const picNames = await this.users.names(app.mkt_pic_id ? [Number(app.mkt_pic_id)] : [], conn);
     const [[bank]] = await conn.query<any[]>(
       `SELECT COALESCE(SUM(monthly_installment),0) AS total FROM ${CRM.fapBankFacilities}
        WHERE application_id=? AND deleted_at IS NULL`,
@@ -108,14 +118,16 @@ export class FapFreezeRepository {
       id: freezeId,
       source_application_id: applicationId,
       source_business_partner_id: app.business_partner_id,
+      application_number: app.application_number,
+      workflow_freeze_id: app.workflow_freeze_id,
       freeze_version: version,
       is_latest_freeze: 1,
       fap_registration_number: p.fap_registration_number,
       application_date: app.application_date,
       customer_category: app.customer_category,
       stage_code_at_freeze: stageCode,
-      // an application has no stored status; the frozen copy only records that the stage was submitted
-      status_code_at_freeze: 'SUBMITTED',
+      // an application has no stored status; the frozen copy records whether the stage was submitted, approved or rejected
+      status_code_at_freeze: result,
       uploaded_fap_file_id: fapFile?.id,
       uploaded_fap_file_name: fapFile?.file_name,
       uploaded_fap_file_path: fapFile?.path,
@@ -131,6 +143,8 @@ export class FapFreezeRepository {
       establishment_date: p.establishment_date,
       branch_code: app.branch_code,
       branch_name: app.branch_name,
+      mkt_pic_user_id: app.mkt_pic_id,
+      mkt_pic_name: app.mkt_pic_id ? picNames.get(Number(app.mkt_pic_id))?.slice(0, 150) : null,
       premise_status_code: p.ps_code,
       premise_status_name: p.ps_name,
       company_full_address: p.company_full_address,
@@ -381,15 +395,16 @@ export class FapFreezeRepository {
         net_profit_margin_pct: s.net_profit_margin_pct,
       });
 
-    /* Legal: deeds with their review state, remark categories and stakeholders */
+    /* Legal: deeds with their approval state, remark categories and stakeholders */
     const [deeds] = await conn.query<any[]>(
-      `SELECT d.*,CASE d.approval_status WHEN 'NOT_STARTED' THEN NULL WHEN 'IN_APPROVAL' THEN 'PENDING' ELSE d.approval_status END AS review_status,
-              d.approval_remarks AS review_notes,d.decided_by AS approved_by,d.decided_at AS approved_at FROM ${CRM.fapLegalDeeds} d
-       WHERE d.application_id=? AND d.deleted_at IS NULL ORDER BY d.deed_date,d.created_at`,
+      `SELECT * FROM ${CRM.fapLegalDeeds} WHERE application_id=? AND deleted_at IS NULL ORDER BY deed_date,created_at`,
       [applicationId],
     );
+    // live deed id -> frozen deed id and name, for the approval steps below
+    const frozenDeeds = new Map<string, {id: string; name: string}>();
     for (const d of deeds) {
       const frozenDeedId = crypto.randomUUID();
+      frozenDeeds.set(d.id, {id: frozenDeedId, name: `Deed ${d.deed_number ?? ''}`.trim()});
       const [holders] = await conn.query<any[]>(
         `SELECT s.*,rt.code AS rt_code,rt.name AS rt_name,po.code AS po_code,po.name AS po_name,
                 de.code AS de_code,de.name AS de_name,src.deed_number AS source_deed_number,${LOCATION_COLUMNS('s')}
@@ -423,10 +438,11 @@ export class FapFreezeRepository {
         total_share_percentage: Math.round(shares.reduce((a, b) => a + b, 0) * 100) / 100,
         is_selected: d.is_selected ? 1 : 0,
         is_latest_deed: d.is_latest_deed ? 1 : 0,
-        review_status: d.review_status ?? 'DRAFT',
-        review_notes: d.review_notes,
-        approved_by: d.approved_by,
-        approved_at: d.approved_at,
+        approval_status: d.approval_status,
+        approval_remarks: d.approval_remarks,
+        decided_by: d.decided_by,
+        decided_at: d.decided_at,
+        approved_snapshot_text: d.approved_snapshot_text,
       });
       const [categories] = await conn.query<any[]>(
         `SELECT m.code,m.name FROM ${CRM.fapLegalDeedRemarkCategories} c
@@ -489,38 +505,66 @@ export class FapFreezeRepository {
         });
     }
 
-    /* Documents: checklist state with the current file of each row */
+    /* Documents: checklist state and approval of each row, with every file the row has */
     const [checklist] = await conn.query<any[]>(
       // every row of the checklist is frozen, also a document typed by name for this application (it has no master type)
-      `SELECT c.*,COALESCE(t.code,c.document_code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,f.file_name,f.storage_path AS file_path,f.file_size,
-              f.uploaded_by,f.uploaded_at,COALESCE(o.is_mandatory,sd.is_mandatory,0) AS is_mandatory
+      `SELECT c.*,COALESCE(t.code,c.document_code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS code,COALESCE(t.name,o.custom_name) AS name,
+              COALESCE(o.is_mandatory,sd.is_mandatory,0) AS is_mandatory
        FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
        LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id=c.override_id
        LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id=c.workflow_freeze_id AND sd.stage_code=c.stage_code AND sd.document_code=c.document_code
-       LEFT JOIN ${CRM.applicationDocumentFiles} f ON f.id=(
-         SELECT f2.id FROM ${CRM.applicationDocumentFiles} f2
-         WHERE f2.checklist_id=c.id AND f2.deleted_at IS NULL
-         ORDER BY f2.uploaded_at DESC,f2.created_at DESC LIMIT 1
-       )
        WHERE c.application_id=? ORDER BY COALESCE(t.sort_order,100000),c.created_at`,
       [applicationId],
     );
-    for (const c of checklist)
+    // live checklist id -> frozen checklist id and name
+    const frozenRows = new Map<string, {id: string; name: string}>();
+    for (const c of checklist) {
+      const frozenChecklistId = crypto.randomUUID();
+      frozenRows.set(c.id, {id: frozenChecklistId, name: c.name});
       await insert(conn, CRM.frozenFapDocumentChecklists, {
-        id: crypto.randomUUID(),
+        id: frozenChecklistId,
         ...base,
+        stage_code: c.stage_code,
         document_code: c.code,
         document_name: c.name,
+        source_type: c.source_type,
         assigned_role: c.assigned_role,
         is_mandatory: c.is_mandatory ? 1 : 0,
         status: c.status,
-        active_file_name: c.file_name,
-        active_file_path: c.file_path,
-        active_file_size: c.file_size,
-        active_file_uploaded_by: c.uploaded_by,
-        active_file_uploaded_at: c.uploaded_at,
+        approval_status: c.approval_status,
+        approval_remarks: c.approval_remarks,
+        decided_by: c.decided_by,
+        decided_at: c.decided_at,
       });
+    }
+    const [files] = await conn.query<any[]>(
+      `SELECT f.*,TRIM(CONCAT_WS(' ',NULLIF(s.first_name,''),NULLIF(s.middle_name,''),NULLIF(s.last_name,''))) AS stakeholder_name
+       FROM ${CRM.applicationDocumentFiles} f
+       LEFT JOIN ${CRM.fapLegalStakeholders} s ON s.id=f.stakeholder_id
+       WHERE f.application_id=? AND f.deleted_at IS NULL ORDER BY f.uploaded_at,f.created_at,f.id`,
+      [applicationId],
+    );
+    for (const f of files) {
+      const row = frozenRows.get(f.checklist_id);
+      if (!row) continue;
+      await insert(conn, CRM.frozenFapDocumentFiles, {
+        id: crypto.randomUUID(),
+        ...base,
+        frozen_checklist_id: row.id,
+        source_file_id: f.id,
+        file_name: f.file_name,
+        original_file_name: f.original_file_name,
+        file_path: f.storage_path,
+        file_size: f.file_size,
+        mime_type: f.mime_type,
+        stakeholder_name: f.stakeholder_name || null,
+        uploaded_by: f.uploaded_by,
+        uploaded_at: f.uploaded_at,
+      });
+    }
+
+    await this.freezeApprovals(conn, app, base, frozenRows, frozenDeeds);
 
     /* OCR: every difference of the latest comparison (open or noted) */
     if (comparison) {
@@ -545,6 +589,108 @@ export class FapFreezeRepository {
     return {freezeId, version};
   }
 
+  /** The approval state of every group and stage of the application's workflow, and every approval step so far (all rounds). */
+  private async freezeApprovals(
+    conn: Conn,
+    app: any,
+    base: Row,
+    frozenRows: Map<string, {id: string; name: string}>,
+    frozenDeeds: Map<string, {id: string; name: string}>,
+  ) {
+    const [groups] = await conn.query<any[]>(
+      `SELECT g.code,g.name,g.sort_order,p.approval_status,p.approval_remarks,p.decided_by,p.decided_at
+       FROM ${CRM.frozenWorkflowStageGroups} g
+       LEFT JOIN ${CRM.applicationGroupProgress} p ON p.application_id=? AND p.group_code=g.code
+       WHERE g.workflow_freeze_id=? ORDER BY g.sort_order,g.name`,
+      [app.id, app.workflow_freeze_id],
+    );
+    for (const [index, g] of groups.entries())
+      await insert(conn, CRM.frozenFapGroupProgress, {
+        id: crypto.randomUUID(),
+        ...base,
+        group_code: g.code,
+        group_name: g.name,
+        sort_order: index + 1,
+        approval_status: g.approval_status ?? 'NOT_STARTED',
+        approval_remarks: g.approval_remarks,
+        decided_by: g.decided_by,
+        decided_at: g.decided_at,
+      });
+
+    const [stages] = await conn.query<any[]>(
+      `SELECT s.group_code,s.code,s.name,p.approval_status,p.approval_remarks,p.decided_by,p.decided_at,p.submitted_at,p.completed_at
+       FROM ${CRM.frozenWorkflowStages} s
+       JOIN ${CRM.frozenWorkflowStageGroups} g ON g.workflow_freeze_id=s.workflow_freeze_id AND g.code=s.group_code
+       LEFT JOIN ${CRM.applicationStageProgress} p ON p.application_id=? AND p.stage_code=s.code
+       WHERE s.workflow_freeze_id=? ORDER BY g.sort_order,g.name,s.sort_order,s.name`,
+      [app.id, app.workflow_freeze_id],
+    );
+    for (const [index, s] of stages.entries())
+      await insert(conn, CRM.frozenFapStageProgress, {
+        id: crypto.randomUUID(),
+        ...base,
+        group_code: s.group_code,
+        stage_code: s.code,
+        stage_name: s.name,
+        // the order in the whole workflow (stage numbers start again in every group)
+        sort_order: index + 1,
+        approval_status: s.approval_status ?? 'NOT_STARTED',
+        approval_remarks: s.approval_remarks,
+        decided_by: s.decided_by,
+        decided_at: s.decided_at,
+        submitted_at: s.submitted_at,
+        completed_at: s.completed_at,
+      });
+
+    const [steps] = await conn.query<any[]>(
+      `SELECT * FROM ${CRM.applicationApprovalSteps} WHERE application_id=? ORDER BY scope_type,round_no,sort_order,code`,
+      [app.id],
+    );
+    // who decided, and who a PIC Marketing level waits for
+    const names = await this.users.names(steps.flatMap(s => [s.decided_by_user_id, s.approver_user_id]).filter(id => id !== null).map(Number), conn);
+    const nameOf = (id: unknown) => (id === null ? null : (names.get(Number(id)) ?? `User ${id}`).slice(0, 150));
+    for (const s of steps) {
+      const row = s.document_checklist_id ? frozenRows.get(s.document_checklist_id) : undefined;
+      const deed = s.subject_id ? frozenDeeds.get(s.subject_id) : undefined;
+      const subject =
+        s.scope_type === 'GROUP'
+          ? groups.find(g => g.code === s.group_code)?.name
+          : s.scope_type === 'STAGE'
+            ? stages.find(x => x.code === s.stage_code)?.name
+            : (row?.name ?? deed?.name);
+      await insert(conn, CRM.frozenFapApprovalSteps, {
+        id: crypto.randomUUID(),
+        ...base,
+        source_step_id: s.id,
+        scope_type: s.scope_type,
+        group_code: s.group_code,
+        stage_code: s.stage_code,
+        section_code: s.section_code,
+        document_code: s.document_code,
+        frozen_checklist_id: row?.id,
+        frozen_deed_id: deed?.id,
+        subject_name: subject?.slice(0, 200),
+        round_no: s.round_no,
+        step_code: s.code,
+        step_name: s.name,
+        sort_order: s.sort_order,
+        authority_name: s.authority_name,
+        is_pic_marketing: s.is_pic_marketing ? 1 : 0,
+        approver_user_id: s.approver_user_id,
+        approver_name: nameOf(s.approver_user_id),
+        status: s.status,
+        decision: s.decision,
+        decided_by_user_id: s.decided_by_user_id,
+        decided_by_name: nameOf(s.decided_by_user_id),
+        decided_at: s.decided_at,
+        decided_via: s.decided_via,
+        decision_remarks: s.decision_remarks,
+        started_at: s.started_at,
+        completed_at: s.completed_at,
+      });
+    }
+  }
+
   /** Every freeze of an application, newest first, each with its sections. */
   async list(applicationId: string) {
     const [heads] = await this.db.pool.query<any[]>(
@@ -562,7 +708,7 @@ export class FapFreezeRepository {
     const [
       primaryContacts, financingPurposes, projectContracts, bankFacilities, financingProposals,
       equipmentUnits, docRequirements, financialStatements, deeds, remarkCategories, stakeholders, documentChecklists,
-      discrepancies,
+      discrepancies, documentFiles, groupProgress, stageProgress, approvalSteps,
     ] = await Promise.all([
       rows(CRM.frozenFapPrimaryContacts),
       rows(CRM.frozenFapFinancingPurposes),
@@ -577,6 +723,10 @@ export class FapFreezeRepository {
       rows(CRM.frozenFapLegalStakeholders),
       rows(CRM.frozenFapDocumentChecklists),
       rows(CRM.frozenFapOcrDiscrepancies),
+      rows(CRM.frozenFapDocumentFiles, 'uploaded_at,id'),
+      rows(CRM.frozenFapGroupProgress, 'sort_order'),
+      rows(CRM.frozenFapStageProgress, 'sort_order'),
+      rows(CRM.frozenFapApprovalSteps, 'scope_type,round_no,sort_order,step_code'),
     ]);
     return {
       id: head.id,
@@ -614,7 +764,10 @@ export class FapFreezeRepository {
           remarkCategories: remarkCategories.filter((c: any) => c.frozen_deed_id === d.id),
           stakeholders: stakeholders.filter((s: any) => s.frozen_deed_id === d.id),
         })),
-        documentChecklists,
+        documentChecklists: documentChecklists.map((c: any) => ({...c, files: documentFiles.filter((f: any) => f.frozen_checklist_id === c.id)})),
+        groupProgress,
+        stageProgress,
+        approvalSteps,
       },
     };
   }

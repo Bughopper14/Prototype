@@ -411,20 +411,9 @@ export class DocumentsRepository {
     return {id, checklistId: row.id, documentCode: row.code};
   }
 
-  /** Is this stored file named by a snapshot of the application: a frozen FAP (signed form or checklist) or the approved snapshot of a deed? */
-  private async inSnapshot(conn: Conn, applicationId: string, storagePath: string) {
-    const [rows] = await conn.execute<any[]>(
-      `SELECT EXISTS(SELECT 1 FROM ${CRM.frozenFapApplications} p WHERE p.source_application_id=? AND p.uploaded_fap_file_path=?)
-           OR EXISTS(SELECT 1 FROM ${CRM.frozenFapDocumentChecklists} z JOIN ${CRM.frozenFapApplications} p ON p.id=z.fap_freeze_id
-                     WHERE p.source_application_id=? AND z.active_file_path=?)
-           OR EXISTS(SELECT 1 FROM ${CRM.fapLegalDeeds} d WHERE d.application_id=? AND LOCATE(?,d.approved_snapshot_text)>0) AS held`,
-      [applicationId, storagePath, applicationId, storagePath, applicationId, storagePath],
-    );
-    return Number(rows[0].held) === 1;
-  }
-
   /**
-   * Soft-deletes a file (sets deleted_at); it moves to bin/ unless a snapshot refers to it. The checklist status follows the remaining files.
+   * Soft-deletes a file (sets deleted_at) and moves it to bin/, also when a frozen copy names it: bin/ is for IT only, so to the CRM the file is
+   * gone. The checklist status follows the remaining files.
    */
   async deleteFile(
     conn: Conn,
@@ -446,9 +435,7 @@ export class DocumentsRepository {
       [checklistId],
     );
     ensure(!running.length && state[0]?.approval_status !== 'APPROVED', 'The file of a document that is being verified, or is verified, cannot be deleted', 409);
-    // a file a snapshot refers to stays where the snapshot says it is: frozen data is never rewritten
-    const kept = await this.inSnapshot(conn, applicationId, rows[0].storage_path);
-    const binPath = moveToBin && !kept ? await moveToBin(rows[0].storage_path) : rows[0].storage_path;
+    const binPath = moveToBin ? await moveToBin(rows[0].storage_path) : rows[0].storage_path;
     await conn.execute(
       `UPDATE ${CRM.applicationDocumentFiles} SET deleted_at=CURRENT_TIMESTAMP(3),storage_path=?,updated_by=? WHERE id=?`,
       [binPath, by, fileId],

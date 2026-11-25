@@ -651,11 +651,7 @@ export class ApplicationsService {
       // (inside this transaction, before the freeze copies the differences: a refused submit leaves the review as it was).
       if (shows(stage)) await this.closeFapReview(conn, id, remarks, actor);
       await this.apps.saveStageProgress(conn, id, stage.code, {isLocked: true, submitted: true, clearCompleted: true}, actor);
-      if (shows(stage)) {
-        await this.apps.updateFap(conn, id, {is_fap_form_locked: 1}, by(actor));
-        // The submitted FAP is frozen in the same transaction: a submitted stage always has its snapshot.
-        await this.freezes.freeze(conn, id, stage.code, actor, remarks);
-      }
+      if (shows(stage)) await this.apps.updateFap(conn, id, {is_fap_form_locked: 1}, by(actor));
       const scopes: ScopeRef[] = [{type: 'STAGE', stageCode: stage.code}];
       const siblings = cfg.stages.filter(st => st.groupCode === stage.groupCode);
       const nowProgress = await this.apps.stageProgress(id, conn);
@@ -675,6 +671,8 @@ export class ApplicationsService {
           await this.settleGroupWithoutApproval(conn, id, app.workflow_freeze_id, cfg, stage.groupCode, actor);
         }
       }
+      // The submitted FAP is frozen in the same transaction: a submitted stage always has its snapshot. After the loop, so it holds the approval that just started.
+      if (shows(stage)) await this.freezes.freeze(conn, id, stage.code, actor, remarks);
       await this.assertReadyIfFinished(conn, id, app);
     });
     const label = await this.label(id);
@@ -950,6 +948,11 @@ export class ApplicationsService {
       ensure(chosen.length > 0 && chosen.every(code => inGroup.includes(code)), 'Choose at least one stage of this group to open again.', 422);
       return [...new Set(chosen)];
     };
+    // When the approval of a stage that shows the FAP form is decided (by its own steps or by its group), the outcome is frozen too: one new version per decision.
+    const freezeDecision = async (conn: any, stageCodes: string[], outcome: 'APPROVED' | 'REJECTED') => {
+      const stageCode = stageCodes.find(code => screenOfForm(cfg.stages.find(s => s.code === code)?.formCode ?? null) === 'FAP');
+      if (stageCode) await this.freezes.freeze(conn, id, stageCode, actor, null, outcome);
+    };
     const result = await this.approvals.decide(id, stepId, actor, input, {
       onRejected: async (conn, step) => {
         if (step.scope === 'SECTION' && step.sectionCode === DEED_SECTION && step.subjectId)
@@ -973,6 +976,7 @@ export class ApplicationsService {
           for (const row of under.rows)
             if (row.sectionCode === DEED_SECTION) await this.syncDeedReview(conn, id, row.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
         }
+        await freezeDecision(conn, stageCodes, 'REJECTED');
       },
       onScopeApproved: async (conn, scope) => {
         if (scope.type === 'SECTION' && scope.sectionCode === DEED_SECTION && scope.subjectId) await this.syncDeedReview(conn, id, scope.subjectId, 'APPROVED', actor);
@@ -988,6 +992,7 @@ export class ApplicationsService {
           const groupCode = cfg.stageByCode.get(scope.stageCode)?.groupCode;
           if (groupCode) await this.settleGroupWithoutApproval(conn, id, app.workflow_freeze_id, cfg, groupCode, actor);
         }
+        await freezeDecision(conn, stageCodes, 'APPROVED');
       },
       // the group / stage rules are checked BEFORE the approval marks stages as completed (otherwise a group approval completes its stages first and then finds nothing open)
       beforeApproved: async (conn, step) => {

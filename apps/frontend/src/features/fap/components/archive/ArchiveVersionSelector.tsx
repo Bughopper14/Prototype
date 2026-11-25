@@ -23,7 +23,7 @@ export function ArchiveVersionSelector({
             border: '1px solid #e2e8f0',
           }}
         >
-          <span style={{fontSize: 12, fontWeight: 600, color: '#475569'}}>Select Submission Snapshot:</span>
+          <span style={{fontSize: 12, fontWeight: 600, color: '#475569'}}>Select Snapshot:</span>
           <select
             value={selectedIndex}
             onChange={e => onSelectIndex(Number(e.target.value))}
@@ -32,6 +32,7 @@ export function ArchiveVersionSelector({
             {archives.map((arc, idx) => (
               <option key={arc.id || idx} value={idx}>
                 Snapshot #{archives.length - idx} —{' '}
+                {arc.statusCode === 'APPROVED' ? 'Approved' : arc.statusCode === 'REJECTED' ? 'Rejected' : 'Submitted'}{' '}
                 {new Date(arc.frozenAt).toLocaleString('en-GB')} by{' '}
                 {arc.frozenByName}
               </option>

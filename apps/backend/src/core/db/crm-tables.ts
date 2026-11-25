@@ -116,4 +116,8 @@ export const CRM = {
   frozenFapLegalStakeholders: crmTable('frozen_fap_legal_stakeholders'),
   frozenFapDocumentChecklists: crmTable('frozen_fap_document_checklists'),
   frozenFapOcrDiscrepancies: crmTable('frozen_fap_ocr_discrepancies'),
+  frozenFapDocumentFiles: crmTable('frozen_fap_document_files'),
+  frozenFapStageProgress: crmTable('frozen_fap_stage_progress'),
+  frozenFapGroupProgress: crmTable('frozen_fap_group_progress'),
+  frozenFapApprovalSteps: crmTable('frozen_fap_approval_steps'),
 } as const;
