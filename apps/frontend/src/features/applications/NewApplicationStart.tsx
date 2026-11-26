@@ -276,7 +276,7 @@ export function NewApplicationStart({
             };
       const application = await api('/applications', 'POST', body);
       notify('Application saved.');
-      onCreated(application.id);
+      onCreated(application.applicationNumber || application.id);
     } catch (e: any) {
       const message = e.message || 'Could not save the application.';
       setError(message);

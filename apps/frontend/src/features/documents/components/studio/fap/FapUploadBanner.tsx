@@ -14,7 +14,8 @@ export function FapUploadBanner() {
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const isApproved =
-    activeItem.chk?.approval_status === 'APPROVED' || activeItem.chk?.status === 'VERIFIED';
+    activeItem.chk?.approvalStatus === 'APPROVED' ||
+    activeItem.chk?.approval?.state === 'APPROVED';
 
   const onFileChange = (f: File) => {
     if (isApproved) {
