@@ -2340,7 +2340,6 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
             </tr>
           </thead>
           <tbody>
-<<<<<<< HEAD
             {visible.map(r => {
               const isSelected = selectedIds.has(r.id);
               const isQuickViewActive = currentQuickViewApp?.id === r.id;
