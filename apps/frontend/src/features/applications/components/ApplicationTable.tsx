@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
-  CircleDot,
   Clock,
   Download,
   ExternalLink,
@@ -80,6 +79,35 @@ export const STATUS_OPTIONS: {
   { key: 'NEEDS_CHANGES', label: 'Needs changes' },
   { key: 'APPROVED', label: 'Approved' },
 ];
+
+function HalfCircleIcon({
+  size = 11,
+  color,
+  strokeWidth = 2,
+  style,
+  className = '',
+}: {
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
+  const iconColor = color || (style?.color as string) || 'currentColor';
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      style={{flexShrink: 0, display: 'inline-block', verticalAlign: 'middle', ...style}}
+    >
+      <circle cx="12" cy="12" r="10" stroke={iconColor} strokeWidth={strokeWidth} />
+      <path d="M12 2 A 10 10 0 0 0 12 22 Z" fill={iconColor} stroke="none" />
+    </svg>
+  );
+}
 
 export const QUICK_RANGES = [
   { key: 'TODAY', label: 'Today' },
@@ -566,7 +594,7 @@ function StagePill({
         {status === 'APPROVED' && <Check size={11} strokeWidth={3} />}
         {status === 'WAITING_APPROVAL' && <Clock size={11} strokeWidth={2.5} />}
         {status === 'NEEDS_CHANGES' && <AlertCircle size={11} strokeWidth={2.5} />}
-        {status === 'IN_PROGRESS' && <CircleDot size={11} strokeWidth={2.5} />}
+        {status === 'IN_PROGRESS' && <HalfCircleIcon size={11} strokeWidth={2} />}
         {status === 'NOT_STARTED' && <Circle size={11} strokeWidth={1.8} strokeDasharray="2 2" />}
         <span>{stage.name}</span>
       </span>
@@ -747,7 +775,7 @@ function QuickViewPanel({
             let statusText = 'Not started';
             let statusColor = '#94a3b8';
             let subtitle = 'Can be started anytime';
-            let StatusIcon = Circle;
+            let StatusIcon: any = Circle;
             let statusIconProps: any = { size: 14, strokeWidth: 1.8, strokeDasharray: '2 2', style: { color: '#94a3b8' } };
 
             if (status === 'APPROVED') {
@@ -776,8 +804,8 @@ function QuickViewPanel({
               statusText = 'In progress';
               statusColor = '#2563eb';
               subtitle = 'Form is being filled — not submitted yet';
-              StatusIcon = CircleDot;
-              statusIconProps = { size: 11, strokeWidth: 2.5, style: { color: '#ffffff' } };
+              StatusIcon = HalfCircleIcon;
+              statusIconProps = { size: 11, strokeWidth: 2, style: { color: '#ffffff' } };
             }
 
             // Documents info
@@ -1987,7 +2015,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                               <Circle size={13} strokeWidth={1.8} strokeDasharray="2 2" color="#94a3b8" />
                             )}
                             {st.key === 'IN_PROGRESS' && (
-                              <CircleDot size={13} strokeWidth={2.5} color="#2563eb" />
+                              <HalfCircleIcon size={13} strokeWidth={2} color="#2563eb" />
                             )}
                             {st.key === 'WAITING_APPROVAL' && (
                               <Clock size={13} strokeWidth={2.5} color="#d97706" />
@@ -2685,7 +2713,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
             <span>Needs changes</span>
           </span>
           <span className="app-table-legend-item">
-            <CircleDot size={13} strokeWidth={2.5} style={{color: '#2563eb'}} />
+            <HalfCircleIcon size={13} strokeWidth={2} style={{color: '#2563eb'}} />
             <span>In progress</span>
           </span>
           <span className="app-table-legend-item">
