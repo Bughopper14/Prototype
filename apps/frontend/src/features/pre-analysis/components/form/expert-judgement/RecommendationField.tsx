@@ -17,7 +17,7 @@ export function RecommendationField() {
       <label
         style={{
           fontSize: '0.75rem',
-          fontWeight: 600,
+          fontWeight: 700,
           color: '#475569',
           display: 'flex',
           justifyContent: 'space-between',

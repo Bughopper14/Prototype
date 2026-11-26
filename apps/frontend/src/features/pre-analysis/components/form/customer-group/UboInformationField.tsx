@@ -38,7 +38,7 @@ export function UboInformationField() {
                 background: '#e2e8f0',
                 padding: '2px 8px',
                 borderRadius: '10px',
-                fontWeight: 600,
+                fontWeight: 700,
               }}
             >
               Optional Section
@@ -47,7 +47,7 @@ export function UboInformationField() {
 
           {/* Toggle YES / NO */}
           <div style={{display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
-            <span style={{fontSize: '0.72rem', fontWeight: 600, color: '#475569'}}>
+            <span style={{fontSize: '0.72rem', fontWeight: 700, color: '#475569'}}>
               Include UBO Information?
             </span>
             <div

@@ -101,7 +101,7 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
                 maxWidth: 420,
               }}
             >
-              <p style={{fontSize: '14px', fontWeight: 600, color: '#f1f5f9'}}>
+              <p style={{fontSize: '14px', fontWeight: 700, color: '#f1f5f9'}}>
                 Unable to display preview directly in modal
               </p>
               <p style={{fontSize: '12px', color: '#94a3b8', margin: 0}}>

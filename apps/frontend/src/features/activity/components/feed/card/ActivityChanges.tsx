@@ -41,7 +41,7 @@ export function ActivityChanges({item}: {item: SystemActivity}) {
                 Rincian Perubahan Kolom ({item.changes.length})
               </span>
             </div>
-            <span style={{fontSize: 11, color: '#64748b', fontWeight: 600}}>
+            <span style={{fontSize: 11, color: '#64748b', fontWeight: 700}}>
               Bagian: <span style={{color: '#0369a1'}}>{item.changes[0]?.section || item.section}</span>
             </span>
           </div>
@@ -94,7 +94,7 @@ export function ActivityChanges({item}: {item: SystemActivity}) {
                         color: '#334155',
                         padding: '2px 8px',
                         borderRadius: 5,
-                        fontWeight: 600,
+                        fontWeight: 700,
                         fontSize: 11,
                       }}
                     >
@@ -117,7 +117,7 @@ export function ActivityChanges({item}: {item: SystemActivity}) {
                       paddingLeft: 4,
                     }}
                   >
-                    <span style={{color: '#64748b', fontWeight: 600, fontSize: 11}}>Perubahan:</span>
+                    <span style={{color: '#64748b', fontWeight: 700, fontSize: 11}}>Perubahan:</span>
                     {ch.oldValue ? (
                       <>
                         <span style={{fontSize: 11, color: '#64748b'}}>dari</span>

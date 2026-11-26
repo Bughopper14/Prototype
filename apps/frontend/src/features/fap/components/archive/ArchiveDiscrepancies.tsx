@@ -57,18 +57,18 @@ export function ArchiveDiscrepancies({discrepancies}: {discrepancies: any[]}) {
           <table style={{width: '100%', borderCollapse: 'collapse', fontSize: 12}}>
             <thead>
               <tr style={{background: '#f8fafc', borderBottom: '2px solid #e2e8f0', textAlign: 'left'}}>
-                <th style={{padding: '8px 10px', color: '#475569', fontWeight: 600}}>Field Name</th>
-                <th style={{padding: '8px 10px', color: '#002060', fontWeight: 600}}>System FAP Record</th>
-                <th style={{padding: '8px 10px', color: '#b45309', fontWeight: 600}}>
+                <th style={{padding: '8px 10px', color: '#475569', fontWeight: 700}}>Field Name</th>
+                <th style={{padding: '8px 10px', color: '#002060', fontWeight: 700}}>System FAP Record</th>
+                <th style={{padding: '8px 10px', color: '#b45309', fontWeight: 700}}>
                   Scanned Document (OCR)
                 </th>
-                <th style={{padding: '8px 10px', color: '#475569', fontWeight: 600, width: 100}}>Status</th>
+                <th style={{padding: '8px 10px', color: '#475569', fontWeight: 700, width: 100}}>Status</th>
               </tr>
             </thead>
             <tbody>
               {discrepancies.map((diff: any, i: number) => (
                 <tr key={diff.field || i} style={{borderBottom: '1px solid #e2e8f0'}}>
-                  <td style={{padding: '8px 10px', fontWeight: 600, color: '#334155'}}>
+                  <td style={{padding: '8px 10px', fontWeight: 700, color: '#334155'}}>
                     {diff.label || diff.field}
                   </td>
                   <td style={{padding: '8px 10px', color: '#0f172a', background: '#f8fafc'}}>

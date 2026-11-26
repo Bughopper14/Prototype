@@ -10,7 +10,7 @@ export function DealerVerificationFields() {
         <label
           style={{
             fontSize: '0.75rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             display: 'flex',
             justifyContent: 'space-between',
@@ -19,7 +19,7 @@ export function DealerVerificationFields() {
           <span>
             Dealer Check{reqMark('dealerCheck')}
           </span>
-          <span style={{fontSize: '0.68rem', color: '#1e40af', fontWeight: 600}}>Dealer Verification</span>
+          <span style={{fontSize: '0.68rem', color: '#1e40af', fontWeight: 700}}>Dealer Verification</span>
         </label>
         <input
           type="text"

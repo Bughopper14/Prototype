@@ -21,19 +21,25 @@ export class BusinessPartnersRepository {
   /** The customer directory with the date of each customer's first application. */
   async list() {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT b.id,b.customer_no,b.company_name,b.business_category_id,b.nib,b.nib_date,b.npwp,
+      `SELECT b.id,b.customer_no,b.company_name,b.business_category_id,
+              COALESCE(b.branch_id,MAX(a.branch_id)) AS branch_id,
+              b.nib,b.nib_date,b.npwp,
               b.created_at,b.updated_at,MIN(a.application_date) AS first_application_date
        FROM ${CRM.masterBusinessPartners} b
        LEFT JOIN ${CRM.applications} a ON a.business_partner_id=b.id AND a.deleted_at IS NULL
        WHERE b.deleted_at IS NULL
        GROUP BY b.id ORDER BY b.company_name`,
     );
-    const categories = await this.ids.codes('businessCategory');
+    const [categories, branches] = await Promise.all([
+      this.ids.codes('businessCategory'),
+      this.ids.codes('branch'),
+    ]);
     return rows.map(r => ({
       id: r.id,
       customerNo: r.customer_no ?? null,
       companyName: r.company_name,
       companyType: categories.get(r.business_category_id) ?? null,
+      branchCode: branches.get(r.branch_id) ?? null,
       nib: r.nib,
       nibDate: r.nib_date,
       npwp: r.npwp,

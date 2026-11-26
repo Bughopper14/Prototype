@@ -20,7 +20,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             fontSize: 11,
             color: '#64748b',
             textTransform: 'uppercase',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'block',
           }}
         >
@@ -36,7 +36,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             fontSize: 11,
             color: '#64748b',
             textTransform: 'uppercase',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'block',
           }}
         >
@@ -50,7 +50,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             fontSize: 11,
             color: '#64748b',
             textTransform: 'uppercase',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'block',
           }}
         >
@@ -66,7 +66,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             fontSize: 11,
             color: '#64748b',
             textTransform: 'uppercase',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'block',
           }}
         >

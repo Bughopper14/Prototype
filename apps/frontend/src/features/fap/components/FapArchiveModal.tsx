@@ -73,7 +73,7 @@ export function FapArchiveModal({
               background: '#ecfdf5',
               color: '#047857',
               borderColor: '#a7f3d0',
-              fontWeight: 600,
+              fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,

@@ -10,12 +10,14 @@ export function ApplicationTable({
   open,
   compact = false,
   documentMode = false,
+  highlightId,
   onViewAll,
 }: {
   rows: any[];
   open: (id: string) => void;
   compact?: boolean;
   documentMode?: boolean;
+  highlightId?: string | null;
   onViewAll?: () => void;
 }) {
   const master = useMasterData();
@@ -161,6 +163,7 @@ export function ApplicationTable({
             {visible.map((r, i) => (
               <tr
                 key={r.id}
+                className={highlightId && r.id === highlightId ? 'na-row-created' : undefined}
                 onClick={() => open(r.application_number || r.id)}
                 tabIndex={0}
                 onKeyDown={e => {

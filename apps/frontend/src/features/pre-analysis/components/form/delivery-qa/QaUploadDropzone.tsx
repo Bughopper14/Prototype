@@ -41,7 +41,7 @@ export function QaUploadDropzone() {
       }}
     >
       <Upload size={22} style={{color: '#0284c7', marginBottom: '6px'}} />
-      <span style={{fontSize: '0.78rem', fontWeight: 600, color: '#0f294a', marginBottom: '2px'}}>
+      <span style={{fontSize: '0.78rem', fontWeight: 700, color: '#0f294a', marginBottom: '2px'}}>
         Click or drag QA document here to upload
       </span>
       <span style={{fontSize: '0.68rem', color: '#64748b'}}>

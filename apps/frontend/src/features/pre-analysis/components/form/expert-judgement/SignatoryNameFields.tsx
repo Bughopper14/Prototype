@@ -24,7 +24,7 @@ export function SignatoryNameFields({sig, idx}: {sig: SignatoryItem; idx: number
         <label
           style={{
             fontSize: '0.72rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             display: 'block',
             marginBottom: '3px',
@@ -47,7 +47,7 @@ export function SignatoryNameFields({sig, idx}: {sig: SignatoryItem; idx: number
             fontSize: '0.8rem',
             border: '1px solid #cbd5e1',
             borderRadius: '4px',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#0f172a',
           }}
         />
@@ -56,7 +56,7 @@ export function SignatoryNameFields({sig, idx}: {sig: SignatoryItem; idx: number
         <label
           style={{
             fontSize: '0.72rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             display: 'block',
             marginBottom: '3px',

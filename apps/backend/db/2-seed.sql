@@ -20,7 +20,7 @@ UNLOCK TABLES;
 
 LOCK TABLES `crm_master_branches` WRITE;
 /*!40000 ALTER TABLE `crm_master_branches` DISABLE KEYS */;
-INSERT  IGNORE INTO `crm_master_branches` (`id`, `code`, `name`, `sort_order`, `is_active`, `created_at`, `updated_at`, `created_by`, `updated_by`) VALUES ('1b1d97a7-4032-4a53-bc0c-827732ae12eb','PLB01','PLB01',3,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL),('282fed38-7a1e-43e0-95cd-061ef26e8a23','SBY01','SBY01',5,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL),('5c636d8c-9c24-490f-96c9-81d20593a8bf','PNT01','PNT01',6,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL),('6d9832aa-4957-4c0f-9af0-22f3d2493045','JKT01','JKT01',1,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL),('83eaba0d-59b2-4c99-86bb-c24a907cf579','MDN01','MDN01',4,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL),('9c582584-325a-405c-b59d-e84f79c7e2ef','BPN01','BPN01',2,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL),('c76656ab-7725-417a-bf6f-5976e9eaada5','BTM','BTM',7,1,'2026-11-14 13:09:24.931',NULL,NULL,NULL);
+INSERT  IGNORE INTO `crm_master_branches` (`id`, `code`, `name`, `sort_order`, `is_active`, `created_by`) VALUES ('6d9832aa-4957-4c0f-9af0-22f3d2493045','JKT01','JKT (HQ)',1,1,'migration');
 /*!40000 ALTER TABLE `crm_master_branches` ENABLE KEYS */;
 UNLOCK TABLES;
 

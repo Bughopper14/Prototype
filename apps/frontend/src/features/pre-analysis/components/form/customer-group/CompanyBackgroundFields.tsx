@@ -7,7 +7,7 @@ export function CompanyBackgroundFields() {
   return (
     <>
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+        <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#475569'}}>
           UBO (Ultimate Beneficiary Owner){reqMark('uboInfo')}
         </label>
         <PreAnalysisRichEditor
@@ -22,7 +22,7 @@ export function CompanyBackgroundFields() {
         />
       </div>
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+        <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#475569'}}>
           Company Background (Entity, Group Profile & Key Milestones){reqMark('companyBackground')}
         </label>
         <PreAnalysisRichEditor

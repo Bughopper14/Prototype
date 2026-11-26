@@ -31,7 +31,7 @@ export function DocumentPaneToolbar() {
           {currentAsset.url && (
             <span
               className="subtle-chip"
-              style={{background: '#eff6ff', color: '#1d4ed8', fontSize: '10.5px', fontWeight: 600}}
+              style={{background: '#eff6ff', color: '#1d4ed8', fontSize: '10.5px', fontWeight: 700}}
             >
               ✓ Attached
             </span>

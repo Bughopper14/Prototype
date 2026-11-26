@@ -37,7 +37,7 @@ export function ViewerFooter() {
           color: '#f87171',
           fontSize: '0.75rem',
           cursor: 'pointer',
-          fontWeight: 600,
+          fontWeight: 700,
         }}
       >
         Remove Document

@@ -43,7 +43,7 @@ export function SlikRecordDetails({
             color: '#1e40af',
             border: '1px solid #bfdbfe',
             cursor: 'pointer',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           + Add Lender
@@ -181,7 +181,7 @@ export function SlikRecordDetails({
         <label
           style={{
             fontSize: '0.75rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             marginBottom: '4px',
             display: 'block',
@@ -202,7 +202,7 @@ export function SlikRecordDetails({
         <label
           style={{
             fontSize: '0.75rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             marginBottom: '4px',
             display: 'block',

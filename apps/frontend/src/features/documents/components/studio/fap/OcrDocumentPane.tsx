@@ -48,7 +48,7 @@ export function OcrDocumentPane() {
                     fontSize: '11px',
                     background: '#e2e8f0',
                     borderRadius: '4px',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     height: '24px',
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -152,7 +152,7 @@ export function OcrDocumentPane() {
             }}
           >
             <Loader2 size={38} className="spin" style={{color: '#002060'}} />
-            <div style={{fontWeight: 600, color: '#002060', fontSize: '15px'}}>
+            <div style={{fontWeight: 700, color: '#002060', fontSize: '15px'}}>
               Mengekstrak Dokumen FAP dengan OCR...
             </div>
             <p

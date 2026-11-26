@@ -3,13 +3,19 @@ import {Modal} from '@/shared/ui/Modal';
 import {AlertTriangle, Power, PowerOff} from 'lucide-react';
 import {useCallback, useRef, useState, type ReactNode} from 'react';
 
-type Ask = {title: string; message: string; confirmLabel?: string; tone?: 'default' | 'danger'; icon?: 'power' | 'off' | 'warn'};
+export type ConfirmAsk = {
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  tone?: 'default' | 'danger';
+  icon?: 'power' | 'off' | 'warn';
+};
 
-export function useConfirm(): [(a: Ask) => Promise<boolean>, ReactNode] {
-  const [ask, setAsk] = useState<Ask | null>(null);
+export function useConfirm(): [(a: ConfirmAsk) => Promise<boolean>, ReactNode] {
+  const [ask, setAsk] = useState<ConfirmAsk | null>(null);
   const resolver = useRef<((v: boolean) => void) | null>(null);
   const open = useCallback(
-    (a: Ask) =>
+    (a: ConfirmAsk) =>
       new Promise<boolean>(resolve => {
         resolver.current = resolve;
         setAsk(a);

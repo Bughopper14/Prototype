@@ -41,7 +41,7 @@ export function ActivityCardTopRow({
           background: '#f1f5f9',
           color: '#475569',
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 700,
           padding: '2px 8px',
           borderRadius: 4,
         }}

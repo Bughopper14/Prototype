@@ -176,7 +176,7 @@ export function FapDiffPanel() {
                             style={{
                               background: '#fef3c7',
                               color: '#92400e',
-                              fontWeight: 600,
+                              fontWeight: 700,
                               padding: '3px 8px',
                               borderRadius: '4px',
                               border: '1px solid #fde68a',

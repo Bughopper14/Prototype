@@ -29,11 +29,11 @@ export class MasterTableRepository {
     for (const def of defs) {
       const extras = def.extras || [];
       const [rows] = await this.db.pool.query<any[]>(
-        `SELECT code,name,is_active${extras.map(x => `,${x.column}`).join('')} FROM ${def.table}
+        `SELECT code,name,is_active,sort_order${extras.map(x => `,${x.column}`).join('')} FROM ${def.table}
          ORDER BY sort_order,created_at,id`,
       );
       result[def.key] = rows.map(row => {
-        const item: MasterItem = {value: row.code, name: row.name, active: !!row.is_active};
+        const item: MasterItem = {value: row.code, name: row.name, active: !!row.is_active, sortOrder: row.sort_order};
         for (const x of extras) {
           const value = (x.read || identity)(row[x.column]);
           if (value !== null && value !== undefined) (item as any)[x.field] = value;
@@ -56,7 +56,7 @@ export class MasterTableRepository {
         for (const item of catalog[def.key] || []) {
           const extraValues = extras.map(x => (x.write || identity)((item as any)[x.field] ?? null));
           const [rows] = await c.execute<any[]>(
-            `SELECT name,is_active${extras.map(x => `,${x.column}`).join('')} FROM ${def.table} WHERE code=? FOR UPDATE`,
+            `SELECT name,is_active,sort_order${extras.map(x => `,${x.column}`).join('')} FROM ${def.table} WHERE code=? FOR UPDATE`,
             [item.value],
           );
           if (rows.length) {
@@ -64,18 +64,19 @@ export class MasterTableRepository {
             const changed =
               old.name !== item.name ||
               !!old.is_active !== item.active ||
+              (item.sortOrder !== undefined && old.sort_order !== item.sortOrder) ||
               extras.some((x, i) => String(old[x.column] ?? '') !== String(extraValues[i] ?? ''));
             if (changed)
               await c.execute(
-                `UPDATE ${def.table} SET name=?,is_active=?${extras.map(x => `,${x.column}=?`).join('')},updated_by=?
+                `UPDATE ${def.table} SET name=?,is_active=?,sort_order=COALESCE(?,sort_order)${extras.map(x => `,${x.column}=?`).join('')},updated_by=?
                  WHERE code=?`,
-                [item.name, item.active ? 1 : 0, ...extraValues, by, item.value],
+                [item.name, item.active ? 1 : 0, item.sortOrder ?? null, ...extraValues, by, item.value],
               );
           } else
             await c.execute(
               `INSERT INTO ${def.table} (id,code,name,is_active${extras.map(x => `,${x.column}`).join('')},sort_order,created_by)
-               SELECT ?,?,?,?${extras.map(() => ',?').join('')},COALESCE(MAX(sort_order),0)+1,? FROM ${def.table}`,
-              [crypto.randomUUID(), toCode(item.value), item.name, item.active ? 1 : 0, ...extraValues, by],
+               SELECT ?,?,?,?${extras.map(() => ',?').join('')},COALESCE(?,MAX(sort_order)+1,1),? FROM ${def.table}`,
+              [crypto.randomUUID(), toCode(item.value), item.name, item.active ? 1 : 0, ...extraValues, item.sortOrder ?? null, by],
             );
         }
       }

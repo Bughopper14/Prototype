@@ -116,7 +116,7 @@ export function SignatoryCardHeader({
             border: `1px solid ${roleColor.border}`,
             padding: '2px 8px',
             borderRadius: '4px',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           {sig.role.replace(':', '').trim()}
@@ -137,7 +137,7 @@ export function SignatoryCardHeader({
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             <Trash2 size={12} />

@@ -14,7 +14,7 @@ const LABEL_STYLE = {
   alignItems: 'flex-end',
   lineHeight: 1.25,
   marginBottom: '4px',
-  fontWeight: 600,
+  fontWeight: 700,
   color: '#475569',
 } as const;
 

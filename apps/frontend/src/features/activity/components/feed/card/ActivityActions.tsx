@@ -40,7 +40,7 @@ export function ActivityActions({
             borderRadius: 6,
             padding: '7px 14px',
             fontSize: 12,
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: 'pointer',
             boxShadow: '0 1px 3px rgba(0, 44, 95, 0.2)',
             transition: 'background 0.15s ease',

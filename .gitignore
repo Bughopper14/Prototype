@@ -81,3 +81,26 @@ apps/backend/storage/
 apps/backend/db/FAP_Stage_Database_Design.xlsx
 apps/backend/db/approval-authority-added.xlsx
 ~$*.xlsx
+
+# Rules lost in an earlier merge: dependencies, caches, logs and local test material
+node_modules/
+.data/
+output/
+test-results/
+*.log
+__pycache__/
+eng.traineddata
+*.txt
+!requirements.txt
+notes.md
+PLAN.md
+log.md
+uat-result.md
+file-test/
+storage/documents/
+storage/files/
+storage/mydocuments/
+
+# Local test builds of the backend or frontend
+.dist-*/
+tsup.config.bundled_*.mjs

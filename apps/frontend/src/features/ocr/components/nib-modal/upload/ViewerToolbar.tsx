@@ -22,7 +22,7 @@ export function ViewerToolbar() {
           style={{
             fontSize: '0.8rem',
             color: '#f8fafc',
-            fontWeight: 600,
+            fontWeight: 700,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -55,7 +55,7 @@ export function ViewerToolbar() {
             color: '#94a3b8',
             minWidth: 44,
             textAlign: 'center',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           {Math.round(zoom * 100)}%
@@ -126,7 +126,7 @@ export function ViewerToolbar() {
             borderRadius: 5,
             cursor: 'pointer',
             fontSize: '0.74rem',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'flex',
             alignItems: 'center',
             gap: 4,

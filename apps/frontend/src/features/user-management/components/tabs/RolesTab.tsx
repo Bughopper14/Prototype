@@ -3,6 +3,7 @@ import {RoleForm} from '@/features/user-management/components/forms/RoleForm';
 import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
+import {usePortalConfirm} from '@/features/user-management/components/ui/ConfirmDialog';
 import type {ReactNode} from 'react';
 import type {Overview} from '@/features/user-management/lib/types';
 
@@ -19,6 +20,7 @@ export function RolesTab({
   authoritiesByRole: Map<number, number[]>;
   empty: (cols: number) => ReactNode;
 }) {
+  const [askConfirm, confirmModal] = usePortalConfirm();
   return (
     <>
       <SectionHead
@@ -70,7 +72,7 @@ export function RolesTab({
                     <span className="badge-app">{r.app_name}</span>
                   </td>
                   <td>
-                    <div className="um-muted" style={{fontWeight: 600, marginBottom: 4}}>
+                    <div className="um-muted" style={{fontWeight: 700, marginBottom: 4}}>
                       <i className="fas fa-check-circle" style={{color: '#198754', marginRight: 4}} />
                       {ids.length} active authorities:
                     </div>
@@ -107,9 +109,18 @@ export function RolesTab({
                         type="button"
                         className="um-btn danger"
                         aria-label={`Delete ${r.role_name}`}
-                        onClick={() =>
-                          confirm(`Delete role "${r.role_name}"?`) && act(() => call(`/roles/${r.id}`, 'DELETE'))
-                        }
+                        onClick={async () => {
+                          if (
+                            await askConfirm({
+                              title: 'Delete role?',
+                              message: `Delete role "${r.role_name}"?`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                            })
+                          ) {
+                            await act(() => call(`/roles/${r.id}`, 'DELETE'));
+                          }
+                        }}
                       >
                         <i className="fas fa-trash" />
                       </button>
@@ -121,6 +132,7 @@ export function RolesTab({
           </tbody>
         </table>
       </div>
+      {confirmModal}
     </>
   );
 }

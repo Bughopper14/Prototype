@@ -131,7 +131,7 @@ export function ChecklistTable({
               <tr>
                 <td colSpan={columns} style={{textAlign: 'center', padding: '40px 20px'}}>
                   <AlertCircle size={28} style={{color: '#94a3b8', margin: '0 auto 8px'}} />
-                  <p style={{fontWeight: 600, color: '#475569'}}>
+                  <p style={{fontWeight: 700, color: '#475569'}}>
                     No documents match the current filter or search criteria
                   </p>
                   <small className="muted">Try changing your search keywords or resetting the filters.</small>

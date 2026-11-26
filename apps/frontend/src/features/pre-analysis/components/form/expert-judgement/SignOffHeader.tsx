@@ -31,7 +31,7 @@ export function SignOffHeader() {
             color: '#1e40af',
             padding: '3px 8px',
             borderRadius: '4px',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           {currentSignatories.length} {currentSignatories.length === 1 ? 'Signatory' : 'Signatories'}
@@ -47,7 +47,7 @@ export function SignOffHeader() {
             color: '#ffffff',
             border: 'none',
             cursor: 'pointer',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'inline-flex',
             alignItems: 'center',
             gap: '5px',

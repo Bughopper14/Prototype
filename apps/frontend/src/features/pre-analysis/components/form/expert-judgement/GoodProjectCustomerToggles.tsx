@@ -134,7 +134,7 @@ export function GoodProjectCustomerToggles() {
       </div>
 
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+        <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#475569'}}>
           Brief Note{reqMark('briefNote')}
         </label>
         <PreAnalysisRichEditor

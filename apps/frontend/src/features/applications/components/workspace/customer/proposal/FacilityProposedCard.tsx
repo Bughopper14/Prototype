@@ -157,7 +157,7 @@ export function FacilityProposedCard() {
                     style={{
                       padding: '6px 12px',
                       fontSize: '12px',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: 'pointer',
                       border: 'none',
                       background: isSel ? '#002c5f' : '#ffffff',

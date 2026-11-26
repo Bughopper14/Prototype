@@ -102,7 +102,7 @@ export const ProjectGroupListEditor: React.FC<{
           <span
             style={{
               fontSize: '0.68rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#475569',
               background: '#e2e8f0',
               padding: '2px 8px',
@@ -124,7 +124,7 @@ export const ProjectGroupListEditor: React.FC<{
               borderRadius: '5px',
               padding: '4px 10px',
               fontSize: '0.72rem',
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               marginLeft: '4px',
             }}

@@ -46,7 +46,7 @@ export function ProjectStatusField() {
           <label
             style={{
               fontSize: '0.7rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#64748b',
               display: 'block',
               marginBottom: '3px',

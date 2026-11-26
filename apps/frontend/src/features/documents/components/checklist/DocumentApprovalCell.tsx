@@ -176,7 +176,7 @@ export function DocumentApprovalCell({
                         isThisStepRejected
                           ? {color: '#dc2626', fontWeight: 700}
                           : isStepApproved
-                          ? {color: '#059669', fontWeight: 600}
+                          ? {color: '#059669', fontWeight: 700}
                           : undefined
                       }
                     >

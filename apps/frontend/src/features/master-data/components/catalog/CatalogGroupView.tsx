@@ -1,27 +1,72 @@
 /** One master group (e.g. Legal Entity, Documents): search, table of options, add / edit / delete. */
+import {useCrm} from '@/features/crm/components/CrmProvider';
 import {useCanManageMasterData} from '@/features/master-data/hooks/useCanManageMasterData';
-import {MasterItemDialog, locationGroups, saveCatalog} from '@/shared/master-data';
-import {masterGroups, type MasterItem} from '@liugong/shared';
-import {Pencil, Plus, Search, Trash2} from 'lucide-react';
-import {useState} from 'react';
+import {MasterItemDialog, currentMasterData, locationGroups, saveCatalog, setMasterData} from '@/shared/master-data';
+import {masterGroups, sortableMasterGroups, type MasterItem} from '@liugong/shared';
+import {GripVertical, Pencil, Plus, Search, Trash2} from 'lucide-react';
+import {useRef, useState} from 'react';
+import {api} from '@/shared/lib/api';
 
 export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Record<string, MasterItem[]>}) {
+  const {notify, confirm} = useCrm();
   const canManage = useCanManageMasterData();
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState<MasterItem | null | undefined>(undefined);
   const group = masterGroups.find(g => g.key === groupKey) || masterGroups[0];
   const isLocation = locationGroups.has(groupKey);
-  const visible = (data[groupKey] || []).filter(x =>
-    (x.name + ' ' + x.value).toLowerCase().includes(search.toLowerCase()),
-  );
+  const sortable = sortableMasterGroups.has(groupKey);
+  const visible = (data[groupKey] || [])
+    .filter(x => (x.name + ' ' + x.value).toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => (sortable ? (a.sortOrder ?? 0) - (b.sortOrder ?? 0) : 0));
+
+  const savingOrder = useRef(false);
+  const [dragValue, setDragValue] = useState<string | null>(null);
+  const [overValue, setOverValue] = useState<string | null>(null);
+  const canDrag = sortable && canManage && !search;
+
+  /** Moves the dragged item to the position of the one it is dropped on, then renumbers the list 1..n. */
+  async function reorder(from: string, to: string) {
+    setDragValue(null);
+    setOverValue(null);
+    if (from === to || savingOrder.current) return;
+    savingOrder.current = true;
+    const attempt = async (catalog: Record<string, MasterItem[]>) => {
+      const all = [...(catalog[groupKey] || [])].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+      const i = all.findIndex(x => x.value === from);
+      const j = all.findIndex(x => x.value === to);
+      if (i < 0 || j < 0) return;
+      all.splice(j, 0, ...all.splice(i, 1));
+      await saveCatalog({...catalog, [groupKey]: all.map((x, n) => ({...x, sortOrder: n + 1}))}, groupKey);
+    };
+    try {
+      try {
+        await attempt(data);
+      } catch {
+        // The catalog changed since this page loaded: take the latest one and apply the move again, once.
+        setMasterData(await api('/master-data'));
+        await attempt(currentMasterData());
+      }
+    } catch (e: any) {
+      notify('Failed to reorder: ' + e.message, 'error');
+    } finally {
+      savingOrder.current = false;
+    }
+  }
 
   async function handleDelete(item: MasterItem) {
-    if (!confirm(`Delete "${item.name}" from ${group.name}?`)) return;
+    const ok = await confirm({
+      title: `Delete "${item.name}"?`,
+      message: `Remove "${item.name}" from ${group.name}? Existing options that are already stored cannot be deleted — deactivate them instead.`,
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
     const next = {...data, [groupKey]: (data[groupKey] || []).filter(x => x.value !== item.value)};
     try {
-      await saveCatalog(next);
+      await saveCatalog(next, groupKey);
+      notify(`"${item.name}" deleted`);
     } catch (e: any) {
-      alert('Failed to delete: ' + e.message);
+      notify('Failed to delete: ' + e.message, 'error');
     }
   }
 
@@ -60,6 +105,7 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
           <table className="data-table master-table" style={{width: '100%', borderCollapse: 'collapse'}}>
             <thead>
               <tr style={{background: '#f8fafc', borderBottom: '2px solid #e2e8f0'}}>
+                {sortable && <th style={{width: 110}}>SORT</th>}
                 <th>NAME</th>
                 {!isLocation && <th>CODE / VALUE</th>}
                 {group.parent && <th>PARENT</th>}
@@ -69,8 +115,48 @@ export function CatalogGroupView({groupKey, data}: {groupKey: string; data: Reco
             </thead>
             <tbody>
               {visible.map(x => (
-                <tr key={x.value} style={{borderBottom: '1px solid #f1f5f9'}}>
-                  <td style={{fontWeight: 600, color: '#0f172a'}}>{x.name}</td>
+                <tr
+                  key={x.value}
+                  draggable={canDrag}
+                  onDragStart={() => setDragValue(x.value)}
+                  onDragOver={e => {
+                    if (!canDrag || !dragValue) return;
+                    e.preventDefault();
+                    setOverValue(x.value);
+                  }}
+                  onDrop={e => {
+                    e.preventDefault();
+                    if (dragValue) reorder(dragValue, x.value);
+                  }}
+                  onDragEnd={() => {
+                    setDragValue(null);
+                    setOverValue(null);
+                  }}
+                  style={{
+                    borderBottom: '1px solid #f1f5f9',
+                    opacity: dragValue === x.value ? 0.45 : 1,
+                    boxShadow:
+                      dragValue && overValue === x.value && dragValue !== x.value
+                        ? 'inset 0 2px 0 #2563eb'
+                        : undefined,
+                  }}
+                >
+                  {sortable && (
+                    <td style={{fontWeight: 700, color: '#64748b'}}>
+                      <span style={{display: 'inline-flex', alignItems: 'center', gap: 6}}>
+                        {canDrag && <span />}
+                        <span style={{minWidth: 18}}>{x.sortOrder ?? '-'}</span>
+                        {canDrag && (
+                          <GripVertical
+                            size={16}
+                            aria-label={`Drag to reorder ${x.name}`}
+                            style={{cursor: 'grab', color: '#94a3b8'}}
+                          />
+                        )}
+                      </span>
+                    </td>
+                  )}
+                  <td style={{fontWeight: 700, color: '#0f172a'}}>{x.name}</td>
                   {!isLocation && (
                     <td>
                       <code>{x.value}</code>

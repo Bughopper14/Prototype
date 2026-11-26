@@ -156,7 +156,7 @@ export function ConfirmUploadBubble({
               color: '#ffffff',
               border: 'none',
               borderRadius: '6px',
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
             }}

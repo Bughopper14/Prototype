@@ -234,7 +234,7 @@
 .fap-acc-title {
   margin: 0;
   font-size: 0.875rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
 }
 
@@ -244,7 +244,7 @@
   padding: 2px 7px;
   border-radius: 4px;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   background: #e2e8f0;
   color: #334155;
   white-space: nowrap;
@@ -275,7 +275,7 @@
   gap: 4px;
   padding: 4px 8px;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #2563eb;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
@@ -298,7 +298,7 @@
   border: 1px solid #cbd5e1;
   color: #2563eb;
   font-size: 0.65rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 1.5px 6px;
   border-radius: 4px;
   cursor: pointer;
@@ -369,7 +369,7 @@ label.field-active-sync textarea {
 
 label.field-active-sync .field-label {
   color: #1d4ed8 !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
 }
 
 .fap-acc-chevron {
@@ -475,7 +475,7 @@ label.field-active-sync .field-label {
   border: 1px solid #bfdbfe;
   color: #1d4ed8;
   font-size: 0.68rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 2px 7px;
   border-radius: 4px;
   cursor: pointer;
@@ -494,7 +494,7 @@ label.field-active-sync .field-label {
 .excel-sync-bar-label {
   font-size: 0.68rem;
   color: #93c5fd;
-  font-weight: 600;
+  font-weight: 700;
   margin-right: 4px;
   display: inline-flex;
   align-items: center;
@@ -570,7 +570,7 @@ label.field-active-sync .field-label {
 
 .exact-section-header {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: #002060;
   letter-spacing: 0.5px;
   text-align: center;

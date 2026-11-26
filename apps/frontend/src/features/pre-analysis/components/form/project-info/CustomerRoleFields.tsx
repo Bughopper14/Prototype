@@ -12,7 +12,7 @@ export function CustomerRoleFields() {
         <TextField name="otherContractors" label="Other Contractor work in the same bowheer" />
       </div>
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+        <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#475569'}}>
           Project Owner{reqMark('projectOwner')}
         </label>
         <PreAnalysisRichEditor
@@ -24,7 +24,7 @@ export function CustomerRoleFields() {
         />
       </div>
       <div>
-        <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+        <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#475569'}}>
           Bowheer Information{reqMark('bowheerInfo')}
         </label>
         <PreAnalysisRichEditor

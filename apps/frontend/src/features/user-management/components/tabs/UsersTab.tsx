@@ -7,6 +7,7 @@ import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
 import {SessionExpiry} from '@/features/user-management/components/ui/SessionExpiry';
+import {usePortalConfirm} from '@/features/user-management/components/ui/ConfirmDialog';
 import type {ReactNode} from 'react';
 import type {Overview} from '@/features/user-management/lib/types';
 
@@ -23,6 +24,7 @@ export function UsersTab({
   currentUserId: number;
   empty: (cols: number) => ReactNode;
 }) {
+  const [askConfirm, confirmModal] = usePortalConfirm();
   return (
     <>
       <SectionHead
@@ -102,7 +104,7 @@ export function UsersTab({
                           backgroundColor: '#eff6ff',
                           color: '#1d4ed8',
                           borderColor: '#bfdbfe',
-                          fontWeight: 600,
+                          fontWeight: 700,
                         }}
                       >
                         {u.department_code || u.department_name}
@@ -119,7 +121,7 @@ export function UsersTab({
                           padding: '2px 8px',
                           borderRadius: 4,
                           fontSize: '11px',
-                          fontWeight: 600,
+                          fontWeight: 700,
                         }}
                       >
                         <i className="fas fa-exclamation-circle" /> Unassigned
@@ -144,7 +146,7 @@ export function UsersTab({
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 3,
-                        fontWeight: 600,
+                        fontWeight: 700,
                         transition: 'all 0.15s',
                       }}
                       onClick={() =>
@@ -240,10 +242,18 @@ export function UsersTab({
                       type="button"
                       className="um-btn danger-outline"
                       title="Force Logout User Session"
-                      onClick={() =>
-                        confirm(`Force logout session for ${u.username}?`) &&
-                        act(() => call(`/users/${u.id}/force-logout`, 'POST', {}))
-                      }
+                      onClick={async () => {
+                        if (
+                          await askConfirm({
+                            title: 'Force logout session?',
+                            message: `Force logout session for ${u.username}?`,
+                            confirmLabel: 'Force logout',
+                            danger: true,
+                          })
+                        ) {
+                          await act(() => call(`/users/${u.id}/force-logout`, 'POST', {}));
+                        }
+                      }}
                     >
                       <i className="fas fa-power-off" />
                       Logout
@@ -253,9 +263,18 @@ export function UsersTab({
                         type="button"
                         className="um-btn danger"
                         aria-label={`Delete ${u.username}`}
-                        onClick={() =>
-                          confirm(`Delete user ${u.username}?`) && act(() => call(`/users/${u.id}`, 'DELETE'))
-                        }
+                        onClick={async () => {
+                          if (
+                            await askConfirm({
+                              title: 'Delete user?',
+                              message: `Delete user ${u.username}?`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                            })
+                          ) {
+                            await act(() => call(`/users/${u.id}`, 'DELETE'));
+                          }
+                        }}
                       >
                         <i className="fas fa-trash" />
                       </button>
@@ -267,6 +286,7 @@ export function UsersTab({
           </tbody>
         </table>
       </div>
+      {confirmModal}
     </>
   );
 }

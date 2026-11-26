@@ -98,7 +98,7 @@ export function ProjectGroupCard({
                 borderRadius: '5px',
                 padding: '3px 8px',
                 fontSize: '0.7rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
               }}
               title={`Add Project Item to Head ${letter}`}
@@ -120,7 +120,7 @@ export function ProjectGroupCard({
                   alignItems: 'center',
                   gap: '4px',
                   fontSize: '0.7rem',
-                  fontWeight: 600,
+                  fontWeight: 700,
                 }}
                 title={`Delete Head Project ${letter}`}
               >
@@ -142,7 +142,7 @@ export function ProjectGroupCard({
             width: '100%',
             padding: '7px 10px',
             fontSize: '0.8rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#0f172a',
             borderRadius: '6px',
             border: '1px solid #94a3b8',

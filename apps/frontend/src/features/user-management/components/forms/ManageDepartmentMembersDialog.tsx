@@ -1,3 +1,4 @@
+import {usePortalConfirm} from '@/features/user-management/components/ui/ConfirmDialog';
 import {useState, useMemo} from 'react';
 import {Row} from '@/features/user-management/lib/types';
 
@@ -42,6 +43,7 @@ export function ManageDepartmentMembersDialog({
   const [selectedRemoveIds, setSelectedRemoveIds] = useState<number[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [askConfirm, confirmModal] = usePortalConfirm();
 
   // Filtered current members
   const filteredMembers = useMemo(() => {
@@ -140,13 +142,13 @@ export function ManageDepartmentMembersDialog({
 
   async function handleRemoveSelected() {
     if (selectedRemoveIds.length === 0) return;
-    if (
-      !confirm(
-        `Remove ${selectedRemoveIds.length} selected users from ${targetDepartment.department_name}? They will become Unassigned.`
-      )
-    ) {
-      return;
-    }
+    const ok = await askConfirm({
+      title: 'Remove selected users?',
+      message: `Remove ${selectedRemoveIds.length} selected users from ${targetDepartment.department_name}? They will become Unassigned.`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       setIsSubmitting(true);
       await onRemoveUsers(selectedRemoveIds);
@@ -157,13 +159,13 @@ export function ManageDepartmentMembersDialog({
   }
 
   async function handleRemoveSingle(user: Row) {
-    if (
-      !confirm(
-        `Remove ${user.full_name || user.username} from ${targetDepartment.department_name}? The user will become Unassigned.`
-      )
-    ) {
-      return;
-    }
+    const ok = await askConfirm({
+      title: 'Remove user from department?',
+      message: `Remove ${user.full_name || user.username} from ${targetDepartment.department_name}? The user will become Unassigned.`,
+      confirmLabel: 'Remove',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       setIsSubmitting(true);
       await onRemoveUsers([user.id]);
@@ -245,7 +247,7 @@ export function ManageDepartmentMembersDialog({
                   style={{
                     margin: 0,
                     fontSize: 17,
-                    fontWeight: 800,
+                    fontWeight: 700,
                     color: '#002C5F',
                   }}
                 >
@@ -254,7 +256,7 @@ export function ManageDepartmentMembersDialog({
                 <span
                   style={{
                     fontSize: 11,
-                    fontWeight: 800,
+                    fontWeight: 700,
                     backgroundColor: '#EFF6FF',
                     color: '#1D4ED8',
                     padding: '2px 8px',
@@ -313,7 +315,7 @@ export function ManageDepartmentMembersDialog({
               borderBottom: activeTab === 'MEMBERS' ? '3px solid #002C5F' : '3px solid transparent',
               backgroundColor: 'transparent',
               color: activeTab === 'MEMBERS' ? '#002C5F' : '#64748B',
-              fontWeight: 800,
+              fontWeight: 700,
               fontSize: 13,
               cursor: 'pointer',
               display: 'flex',
@@ -348,7 +350,7 @@ export function ManageDepartmentMembersDialog({
               borderBottom: activeTab === 'ADD' ? '3px solid #002C5F' : '3px solid transparent',
               backgroundColor: 'transparent',
               color: activeTab === 'ADD' ? '#002C5F' : '#64748B',
-              fontWeight: 800,
+              fontWeight: 700,
               fontSize: 13,
               cursor: 'pointer',
               display: 'flex',
@@ -549,7 +551,7 @@ export function ManageDepartmentMembersDialog({
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontWeight: 800,
+                            fontWeight: 700,
                             fontSize: 13,
                             flexShrink: 0,
                           }}
@@ -692,7 +694,7 @@ export function ManageDepartmentMembersDialog({
                   type="button"
                   className="button secondary"
                   onClick={onClose}
-                  style={{padding: '8px 16px', fontSize: 13, fontWeight: 600, borderRadius: 8}}
+                  style={{padding: '8px 16px', fontSize: 13, fontWeight: 700, borderRadius: 8}}
                 >
                   Close
                 </button>
@@ -916,7 +918,7 @@ export function ManageDepartmentMembersDialog({
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontWeight: 800,
+                            fontWeight: 700,
                             fontSize: 13,
                             flexShrink: 0,
                           }}
@@ -970,7 +972,7 @@ export function ManageDepartmentMembersDialog({
                           <span
                             style={{
                               fontSize: 11,
-                              fontWeight: 600,
+                              fontWeight: 700,
                               backgroundColor: '#FEF3C7',
                               color: '#92400E',
                               padding: '3px 8px',
@@ -1046,7 +1048,7 @@ export function ManageDepartmentMembersDialog({
                       color: '#DC2626',
                       cursor: 'pointer',
                       textDecoration: 'underline',
-                      fontWeight: 600,
+                      fontWeight: 700,
                     }}
                   >
                     Reset
@@ -1060,7 +1062,7 @@ export function ManageDepartmentMembersDialog({
                   className="button secondary"
                   onClick={onClose}
                   disabled={isSubmitting}
-                  style={{padding: '8px 16px', fontSize: 13, fontWeight: 600, borderRadius: 8}}
+                  style={{padding: '8px 16px', fontSize: 13, fontWeight: 700, borderRadius: 8}}
                 >
                   Cancel
                 </button>
@@ -1104,6 +1106,7 @@ export function ManageDepartmentMembersDialog({
           </div>
         )}
       </div>
+      {confirmModal}
     </div>
   );
 }

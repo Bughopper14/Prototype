@@ -48,7 +48,7 @@ export function FormActionHeader() {
           Ref:{' '}
           <span
             style={{
-              fontWeight: 600,
+              fontWeight: 700,
               color: data.preAnalysisNo ? '#334155' : '#94a3b8',
               fontStyle: data.preAnalysisNo ? 'normal' : 'italic',
             }}
@@ -65,7 +65,7 @@ export function FormActionHeader() {
           • FAP No:{' '}
           <span
             style={{
-              fontWeight: 600,
+              fontWeight: 700,
               color: data.fapNumber ? '#334155' : '#94a3b8',
               fontStyle: data.fapNumber ? 'normal' : 'italic',
             }}
@@ -86,7 +86,7 @@ export function FormActionHeader() {
             style={{
               fontSize: '0.75rem',
               color: '#16a34a',
-              fontWeight: 600,
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
@@ -110,7 +110,7 @@ export function FormActionHeader() {
             padding: '6px 14px',
             borderRadius: '6px',
             fontSize: '0.8rem',
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: saving || (props.isNew && props.busy) ? 'not-allowed' : 'pointer',
             whiteSpace: 'nowrap',
             flexShrink: 0,

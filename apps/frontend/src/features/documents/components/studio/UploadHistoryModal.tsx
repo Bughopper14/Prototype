@@ -79,7 +79,7 @@ export function UploadHistoryModal() {
                         <div style={{minWidth: 0, flex: 1}}>
                           <div
                             style={{
-                              fontWeight: 600,
+                              fontWeight: 700,
                               fontSize: '13px',
                               color: '#0f172a',
                               wordBreak: 'break-all',
@@ -102,7 +102,7 @@ export function UploadHistoryModal() {
                             {dateStr && <span>• {dateStr}</span>}
                             {f.uploadedBy && <span>• Uploaded by: {f.uploadedBy}</span>}
                             {activeItem.code === 'FAP' && (
-                              <span style={{fontWeight: 600, color: f.isCurrent ? '#059669' : '#94a3b8'}}>
+                              <span style={{fontWeight: 700, color: f.isCurrent ? '#059669' : '#94a3b8'}}>
                                 • {f.isCurrent ? 'Current file' : 'Earlier file'}
                               </span>
                             )}

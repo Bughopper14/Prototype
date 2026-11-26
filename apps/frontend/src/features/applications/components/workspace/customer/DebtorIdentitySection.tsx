@@ -194,7 +194,7 @@ export function DebtorIdentitySection() {
               className="customer-category-label"
               style={{
                 display: 'block',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: '0.82rem',
                 color: '#334155',
                 marginBottom: 6,

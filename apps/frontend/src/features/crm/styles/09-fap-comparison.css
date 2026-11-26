@@ -66,7 +66,7 @@
   border: 1px solid #cbd5e1;
   color: #1e293b;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 7px 14px;
   border-radius: 8px;
   cursor: pointer;
@@ -121,7 +121,7 @@
 .fap-dropzone-full strong {
   font-size: 13.5px;
   color: #0f172a;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .fap-dropzone-full span {
@@ -265,7 +265,7 @@
   border: 1px solid #cbd5e1;
   color: #1e293b;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 4px 10px;
   border-radius: 5px;
   cursor: pointer;
@@ -514,7 +514,7 @@
 
 .fap-diff-table th {
   padding: 10px 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #334155;
   text-align: left;
 }
@@ -539,7 +539,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   padding: 2px 8px;
   border-radius: 4px;
 }

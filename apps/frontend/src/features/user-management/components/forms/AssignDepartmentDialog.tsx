@@ -82,7 +82,7 @@ export function AssignDepartmentDialog({
                 backgroundColor: '#eff6ff',
                 color: '#1d4ed8',
                 borderColor: '#bfdbfe',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: '0.8rem',
               }}
             >
@@ -92,7 +92,7 @@ export function AssignDepartmentDialog({
             <span
               style={{
                 color: '#e11d48',
-                fontWeight: 600,
+                fontWeight: 700,
                 fontSize: '0.8rem',
                 display: 'inline-flex',
                 alignItems: 'center',

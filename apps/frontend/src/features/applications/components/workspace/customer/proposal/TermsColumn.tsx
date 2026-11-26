@@ -142,7 +142,7 @@ export function TermsColumn({config}: {config: TermsGroupConfig}) {
           <span
             style={{
               fontSize: '11px',
-              fontWeight: 600,
+              fontWeight: 700,
               padding: '2px 8px',
               borderRadius: '9999px',
               background: principal > 0 && tenorMonths > 0 ? '#dcfce7' : '#e2e8f0',
@@ -159,7 +159,7 @@ export function TermsColumn({config}: {config: TermsGroupConfig}) {
               <span
                 style={{
                   fontSize: '20px',
-                  fontWeight: 800,
+                  fontWeight: 700,
                   color: '#15803d',
                   fontFamily: 'monospace, sans-serif',
                 }}
@@ -191,17 +191,17 @@ export function TermsColumn({config}: {config: TermsGroupConfig}) {
             >
               <div>
                 <span style={{color: '#64748b'}}>Pokok Pembiayaan:</span>
-                <div style={{fontWeight: 600, color: '#1e293b'}}>{formatVal(principal)}</div>
+                <div style={{fontWeight: 700, color: '#1e293b'}}>{formatVal(principal)}</div>
               </div>
               <div>
                 <span style={{color: '#64748b'}}>Bunga &amp; Tenor:</span>
-                <div style={{fontWeight: 600, color: '#1e293b'}}>
+                <div style={{fontWeight: 700, color: '#1e293b'}}>
                   {interestRate}% p.a. · {tenorMonths} bln
                 </div>
               </div>
               <div>
                 <span style={{color: '#64748b'}}>Total Pembayaran:</span>
-                <div style={{fontWeight: 600, color: '#1e293b'}}>{formatVal(totalPayment)}</div>
+                <div style={{fontWeight: 700, color: '#1e293b'}}>{formatVal(totalPayment)}</div>
               </div>
             </div>
           </div>

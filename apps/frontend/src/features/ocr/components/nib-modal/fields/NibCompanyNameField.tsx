@@ -18,7 +18,7 @@ export function NibCompanyNameField() {
         <label
           style={{
             fontSize: '0.78rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#334155',
             display: 'flex',
             flexDirection: 'row',
@@ -63,7 +63,7 @@ export function NibCompanyNameField() {
           fontSize: '0.84rem',
           borderRadius: 6,
           border: '1px solid #cbd5e1',
-          fontWeight: 600,
+          fontWeight: 700,
           background: formData.companyName ? '#f0f7ff' : '#ffffff',
         }}
       />

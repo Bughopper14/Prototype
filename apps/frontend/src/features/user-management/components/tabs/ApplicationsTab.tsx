@@ -3,6 +3,7 @@ import {ApplicationForm} from '@/features/user-management/components/forms/Appli
 import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
+import {usePortalConfirm} from '@/features/user-management/components/ui/ConfirmDialog';
 import type {ReactNode} from 'react';
 import type {Overview} from '@/features/user-management/lib/types';
 
@@ -17,6 +18,7 @@ export function ApplicationsTab({
   setDialog: (dialog: ReactNode) => void;
   empty: (cols: number) => ReactNode;
 }) {
+  const [askConfirm, confirmModal] = usePortalConfirm();
   return (
     <>
       <SectionHead
@@ -70,10 +72,18 @@ export function ApplicationsTab({
                       type="button"
                       className="um-btn danger"
                       aria-label={`Delete ${a.app_name}`}
-                      onClick={() =>
-                        confirm(`Delete application "${a.app_name}"?`) &&
-                        act(() => call(`/applications/${a.id}`, 'DELETE'))
-                      }
+                      onClick={async () => {
+                        if (
+                          await askConfirm({
+                            title: 'Delete application?',
+                            message: `Delete application "${a.app_name}"?`,
+                            confirmLabel: 'Delete',
+                            danger: true,
+                          })
+                        ) {
+                          await act(() => call(`/applications/${a.id}`, 'DELETE'));
+                        }
+                      }}
                     >
                       <i className="fas fa-trash" />
                     </button>
@@ -84,6 +94,7 @@ export function ApplicationsTab({
           </tbody>
         </table>
       </div>
+      {confirmModal}
     </>
   );
 }

@@ -30,7 +30,7 @@ body { background-color: #f4f6fb; color: #334155; }
 #sidebarOverlayMenu .nav-link.active {
     background-color: #ff9900 !important;
     color: #002c5f !important;
-    font-weight: 600;
+    font-weight: 700;
 }
 #sidebarOverlayMenu .nav-link.active i { color: #002c5f !important; }
 
@@ -55,7 +55,7 @@ body { background-color: #f4f6fb; color: #334155; }
     background-color: #002c5f !important;
     border-color: #002c5f !important;
     color: #fff !important;
-    font-weight: 600;
+    font-weight: 700;
     border-radius: 8px;
     transition: all 0.2s;
 }
@@ -68,7 +68,7 @@ body { background-color: #f4f6fb; color: #334155; }
 .btn-primary {
     background-color: #002c5f;
     border-color: #002c5f;
-    font-weight: 600;
+    font-weight: 700;
     border-radius: 8px;
     transition: all 0.2s;
 }
@@ -82,7 +82,7 @@ body { background-color: #f4f6fb; color: #334155; }
     background-color: #ff9900;
     border-color: #ff9900;
     color: #fff !important;
-    font-weight: 600;
+    font-weight: 700;
     border-radius: 8px;
     transition: all 0.2s;
 }
@@ -91,13 +91,13 @@ body { background-color: #f4f6fb; color: #334155; }
     border-color: #e68a00;
     transform: translateY(-1px);
 }
-.btn-danger { border-radius: 8px; font-weight: 600; transition: all 0.2s; }
+.btn-danger { border-radius: 8px; font-weight: 700; transition: all 0.2s; }
 .btn-danger:hover { transform: translateY(-1px); }
 .btn-outline-primary {
     color: #002c5f !important;
     border-color: #002c5f !important;
     background-color: transparent !important;
-    font-weight: 600;
+    font-weight: 700;
     border-radius: 8px;
     transition: all 0.2s;
 }
@@ -109,7 +109,7 @@ body { background-color: #f4f6fb; color: #334155; }
 }
 .btn-outline-secondary {
     border-radius: 8px;
-    font-weight: 600;
+    font-weight: 700;
     transition: all 0.2s;
 }
 .btn-outline-secondary:hover {
@@ -139,7 +139,7 @@ body { background-color: #f4f6fb; color: #334155; }
 .nav-tabs .nav-item { white-space: nowrap; flex-shrink: 0; }
 .nav-tabs .nav-link {
     color: #475569 !important;
-    font-weight: 600;
+    font-weight: 700;
     border: none;
     border-radius: 8px 8px 0 0;
     background: none;
@@ -192,14 +192,14 @@ table.dataTable tbody tr:hover { background-color: #f8fafc !important; }
     border-radius: 20px;
     font-size: 0.75rem;
     color: #002c5f;
-    font-weight: 600;
+    font-weight: 700;
     display: inline-block;
 }
 .badge-app {
     background: #f0f9ff;
     padding: 4px 10px;
     border-radius: 20px;
-    font-weight: 600;
+    font-weight: 700;
     font-size: 0.75rem;
     color: #004b93;
     display: inline-block;
@@ -272,7 +272,7 @@ table.dataTable tbody tr:hover { background-color: #f8fafc !important; }
 .form-group { margin-bottom: 16px; }
 .form-group label {
     display: block;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 6px;
     font-size: 0.82rem;
     color: #475569;
@@ -425,7 +425,7 @@ table.dataTable tbody tr:hover { background-color: #f8fafc !important; }
     border: 1.5px solid rgba(255, 255, 255, 0.35) !important;
     background-color: rgba(255, 255, 255, 0.08) !important;
     border-radius: 8px !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     padding: 6px 16px !important;
     transition: all 0.2s ease-in-out !important;
     display: inline-flex !important;

@@ -53,7 +53,7 @@
             border-radius: 40px !important;
             padding: 6px 16px 6px 8px !important;
             font-size: 0.88rem;
-            font-weight: 600;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -70,7 +70,7 @@
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
             color: #002c5f;
-            font-weight: 800;
+            font-weight: 700;
             font-size: 0.75rem;
             flex-shrink: 0;
         }
@@ -151,7 +151,7 @@
         #sidebarOverlayMenu .nav-link.active {
             background-color: #ff9900 !important;
             color: #002c5f !important;
-            font-weight: 600;
+            font-weight: 700;
         }
         #sidebarOverlayMenu .nav-link.active i { color: #002c5f !important; }
         .sidebar-footer {
@@ -189,7 +189,7 @@
         }
         .welcome-section h2 {
             font-size: 1.5rem;
-            font-weight: 800;
+            font-weight: 700;
             margin: 0 0 4px;
         }
         .welcome-section p {
@@ -206,7 +206,7 @@
             color: #ffc44d;
             border-radius: 30px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 700;
             padding: 4px 12px;
             margin-bottom: 10px;
         }
@@ -287,7 +287,7 @@
         }
         .app-role-badge {
             font-size: 0.72rem;
-            font-weight: 600;
+            font-weight: 700;
             background: #f0f4ff;
             color: #4f6fb0;
             border-radius: 20px;

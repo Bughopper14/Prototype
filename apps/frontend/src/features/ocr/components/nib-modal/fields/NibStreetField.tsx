@@ -7,7 +7,7 @@ export function NibStreetField() {
   return (
     <div>
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4}}>
-        <label style={{fontSize: '0.78rem', fontWeight: 600, color: '#334155', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5}}>
+        <label style={{fontSize: '0.78rem', fontWeight: 700, color: '#334155', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 5}}>
           <Route size={13} color="#2563eb" /> Street Address
         </label>
         {formData.streetAddress && (

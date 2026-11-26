@@ -68,7 +68,7 @@ export function ActivityEmptyState({
                   gap: 6,
                   padding: '7px 16px',
                   fontSize: 13,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: '#002c5f',
                   background: '#ffffff',
                   border: '1px solid #cbd5e1',

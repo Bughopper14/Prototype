@@ -72,7 +72,7 @@ export function QaDocumentCard() {
             style={{
               fontSize: '0.68rem',
               color: '#16a34a',
-              fontWeight: 600,
+              fontWeight: 700,
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
@@ -88,7 +88,7 @@ export function QaDocumentCard() {
         <label
           style={{
             fontSize: '0.72rem',
-            fontWeight: 600,
+            fontWeight: 700,
             padding: '5px 12px',
             borderRadius: '4px',
             background: '#eff6ff',
@@ -140,7 +140,7 @@ export function QaDocumentCard() {
           }}
           style={{
             fontSize: '0.72rem',
-            fontWeight: 600,
+            fontWeight: 700,
             padding: '5px 10px',
             borderRadius: '4px',
             background: '#fef2f2',

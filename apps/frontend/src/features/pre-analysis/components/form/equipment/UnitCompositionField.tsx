@@ -16,7 +16,7 @@ export function UnitCompositionField() {
             marginBottom: '6px',
           }}
         >
-          <label style={{fontSize: '0.75rem', fontWeight: 600, color: '#475569'}}>
+          <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#475569'}}>
             Current Unit Composition (Total: {totalUnits} units){reqMark('unitComposition')}
           </label>
           <button

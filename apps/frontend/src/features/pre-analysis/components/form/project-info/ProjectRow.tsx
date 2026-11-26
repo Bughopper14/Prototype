@@ -65,7 +65,7 @@ export function ProjectRow({
           <label
             style={{
               fontSize: '0.68rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#64748b',
               display: 'block',
               marginBottom: '2px',
@@ -92,7 +92,7 @@ export function ProjectRow({
           <label
             style={{
               fontSize: '0.68rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#64748b',
               display: 'block',
               marginBottom: '2px',
@@ -121,7 +121,7 @@ export function ProjectRow({
         <label
           style={{
             fontSize: '0.68rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#64748b',
             display: 'block',
             marginBottom: '2px',

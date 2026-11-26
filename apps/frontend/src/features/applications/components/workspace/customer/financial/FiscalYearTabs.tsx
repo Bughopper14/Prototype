@@ -25,7 +25,7 @@ export function FiscalYearTabs({
           >
             <ChevronLeft size={15} /> Previous
           </button>
-          <span style={{fontWeight: 600, color: '#1e293b'}}>
+          <span style={{fontWeight: 700, color: '#1e293b'}}>
             {currentIndex + 1} of {rows.length} {r.fiscalYear ? `· Fiscal Year ${r.fiscalYear}` : ''}
           </span>
           <button

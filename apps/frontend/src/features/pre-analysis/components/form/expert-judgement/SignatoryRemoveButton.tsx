@@ -23,7 +23,7 @@ export function SignatoryRemoveButton({idx}: {idx: number}) {
         cursor: 'pointer',
       }}
     >
-      <span style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 600}}>
+      <span style={{fontSize: '0.75rem', color: '#64748b', fontWeight: 700}}>
         ( Wet / Digital Signature & Stamp Space )
       </span>
       <span style={{fontSize: '0.68rem', color: '#94a3b8'}}>Signature area column #{idx + 1}</span>

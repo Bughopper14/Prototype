@@ -57,7 +57,7 @@ export function FapDiffActions() {
                   alignItems: 'center',
                   gap: '6px',
                   color: '#059669',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: '13px',
                   background: '#ffffff',
                   padding: '6px 14px',

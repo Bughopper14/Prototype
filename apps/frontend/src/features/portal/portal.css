@@ -118,7 +118,7 @@ body {
   border-radius: 40px;
   padding: 6px 16px 6px 8px;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 700;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -144,7 +144,7 @@ body {
   align-items: center;
   justify-content: center;
   color: #002c5f;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 0.75rem;
   flex-shrink: 0;
 }
@@ -168,7 +168,7 @@ body {
   letter-spacing: 1px;
   color: #94a3b8;
   padding: 6px 12px 4px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
 }
 .pt-menu-item {
@@ -316,7 +316,7 @@ body {
 .pt-nav a.active {
   background: #ff9900;
   color: #002c5f;
-  font-weight: 600;
+  font-weight: 700;
 }
 .pt-nav a i {
   width: 20px;
@@ -415,7 +415,7 @@ body {
 }
 .pt-welcome h2 {
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 4px;
   position: relative;
   z-index: 1;
@@ -436,7 +436,7 @@ body {
   color: #ffc44d;
   border-radius: 30px;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 700;
   padding: 4px 12px;
   margin-bottom: 10px;
   position: relative;
@@ -533,7 +533,7 @@ body {
 }
 .pt-role-badge {
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   background: #f0f4ff;
   color: #4f6fb0;
   border-radius: 20px;
@@ -648,7 +648,7 @@ body {
 }
 .pt-form-label {
   display: block;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.875rem;
   color: #6c757d;
   margin-bottom: 6px;
@@ -757,7 +757,7 @@ body {
 }
 .pt-tabs button {
   color: #475569 !important;
-  font-weight: 600;
+  font-weight: 700;
   border: none;
   border-radius: 8px 8px 0 0;
   background: none;
@@ -846,7 +846,7 @@ body {
   padding: 5px 12px;
   margin-left: 6px;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -870,7 +870,7 @@ body {
   background-color: #002c5f !important;
   border: 1px solid #002c5f !important;
   color: #ffffff !important;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 8px;
   padding: 8px 18px;
   font-size: 0.85rem;
@@ -990,7 +990,7 @@ body {
   padding: 0;
   color: #002c5f;
   font-size: 0.74rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: underline;
   transition: color 0.15s;
@@ -1039,7 +1039,7 @@ body {
 .pt-auth-item-title {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
   word-break: break-all;
 }

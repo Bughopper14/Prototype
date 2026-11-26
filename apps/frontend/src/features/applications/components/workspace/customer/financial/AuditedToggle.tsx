@@ -33,7 +33,7 @@ export function AuditedToggle({
           gap: 8,
           fontSize: '0.85rem',
           cursor: canFinance ? 'pointer' : 'default',
-          fontWeight: 600,
+          fontWeight: 700,
           color: '#1e293b',
         }}
       >

@@ -26,6 +26,8 @@ export type MasterItem = {
   visible?: boolean;
   /** Workflow: stage order (workflowStage) and whether a status is final (workflowStatus). */
   sequence?: number;
+  /** Display order of the plain master tables (sort_order): the lowest number comes first in lists and dropdowns. */
+  sortOrder?: number;
   terminal?: boolean;
 };
 export type MasterCatalog = Record<string, MasterItem[]>;
@@ -76,6 +78,13 @@ export const masterKey = (key: string) => (key === 'cityRegency' ? 'city' : key)
 export function emptyMasterCatalog(): MasterCatalog {
   return Object.fromEntries(masterGroups.map(g => [g.key, [] as MasterItem[]]));
 }
+
+/** Groups stored in a plain master table with a sort_order column, so users can choose their display order. */
+export const sortableMasterGroups = new Set([
+  'branchCode', 'companyType', 'industrySegment', 'businessRole', 'position', 'locationStatus',
+  'projectRole', 'applicationSource', 'facilityPurpose', 'financingMethod', 'currency',
+  'representativeType', 'designation', 'positions', 'preanInvestmentPlanOptions',
+]);
 
 export function validateMasterGroupItems(
   groupKey: string,
@@ -159,6 +168,9 @@ export function validateMasterGroupItems(
       value,
       name,
       active: row.active,
+      ...(sortableMasterGroups.has(groupKey) && Number.isInteger(row.sortOrder) && row.sortOrder > 0 && row.sortOrder < 100000
+        ? {sortOrder: row.sortOrder}
+        : {}),
       ...(row.areaCode ? {areaCode: row.areaCode.trim()} : {}),
       ...(row.region ? {region: row.region.trim()} : {}),
       ...(row.zipCode ? {zipCode: row.zipCode.trim()} : {}),
