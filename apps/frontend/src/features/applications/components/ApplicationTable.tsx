@@ -8,6 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
+  CircleAlert,
+  CircleCheck,
   Clock,
   Download,
   ExternalLink,
@@ -591,9 +593,9 @@ function StagePill({
         }}
         style={{cursor: 'pointer'}}
       >
-        {status === 'APPROVED' && <Check size={11} strokeWidth={3} />}
+        {status === 'APPROVED' && <CircleCheck size={11} fill="#16a34a" color="#ffffff" strokeWidth={2.5} />}
         {status === 'WAITING_APPROVAL' && <Clock size={11} strokeWidth={2.5} />}
-        {status === 'NEEDS_CHANGES' && <AlertCircle size={11} strokeWidth={2.5} />}
+        {status === 'NEEDS_CHANGES' && <CircleAlert size={11} fill="#dc2626" color="#ffffff" strokeWidth={2.5} />}
         {status === 'IN_PROGRESS' && <HalfCircleIcon size={11} strokeWidth={2} />}
         {status === 'NOT_STARTED' && <Circle size={11} strokeWidth={1.8} strokeDasharray="2 2" />}
         <span>{stage.name}</span>
@@ -783,29 +785,29 @@ function QuickViewPanel({
               statusText = 'Approved';
               statusColor = '#16a34a';
               subtitle = st.approvalSummary || 'All approval levels completed';
-              StatusIcon = Check;
-              statusIconProps = { size: 11, strokeWidth: 3, style: { color: '#ffffff' } };
+              StatusIcon = CircleCheck;
+              statusIconProps = { size: 14, fill: '#16a34a', color: '#ffffff', strokeWidth: 2.5 };
             } else if (status === 'WAITING_APPROVAL') {
               cardClass = 'is-waiting';
               statusText = 'Waiting for approval';
               statusColor = '#d97706';
               subtitle = `Waiting on ${st.firstApprover || 'Credit Analyst (CA)'} · level 1 of 2`;
               StatusIcon = Clock;
-              statusIconProps = { size: 11, strokeWidth: 2.5, style: { color: '#ffffff' } };
+              statusIconProps = { size: 14, strokeWidth: 2.5, style: { color: '#d97706' } };
             } else if (status === 'NEEDS_CHANGES') {
               cardClass = 'is-needs-changes';
               statusText = 'Needs changes';
               statusColor = '#dc2626';
               subtitle = st.returnedBy ? `Changes requested by ${st.returnedBy}` : 'Revise the form, then resubmit for approval.';
-              StatusIcon = AlertCircle;
-              statusIconProps = { size: 11, strokeWidth: 2.5, style: { color: '#ffffff' } };
+              StatusIcon = CircleAlert;
+              statusIconProps = { size: 14, fill: '#dc2626', color: '#ffffff', strokeWidth: 2.5 };
             } else if (status === 'IN_PROGRESS') {
               cardClass = 'is-in-progress';
               statusText = 'In progress';
               statusColor = '#2563eb';
               subtitle = 'Form is being filled — not submitted yet';
               StatusIcon = HalfCircleIcon;
-              statusIconProps = { size: 11, strokeWidth: 2, style: { color: '#ffffff' } };
+              statusIconProps = { size: 14, strokeWidth: 2, color: '#2563eb' };
             }
 
             // Documents info
@@ -2021,10 +2023,10 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                               <Clock size={13} strokeWidth={2.5} color="#d97706" />
                             )}
                             {st.key === 'NEEDS_CHANGES' && (
-                              <AlertCircle size={13} strokeWidth={2.5} color="#dc2626" />
+                              <CircleAlert size={13} fill="#dc2626" color="#ffffff" strokeWidth={2.5} />
                             )}
                             {st.key === 'APPROVED' && (
-                              <Check size={13} strokeWidth={2.5} color="#16a34a" />
+                              <CircleCheck size={13} fill="#16a34a" color="#ffffff" strokeWidth={2.5} />
                             )}
                           </span>
                           <span>{st.label}</span>
@@ -2701,7 +2703,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
         {/* Legend */}
         <div className="app-table-legend">
           <span className="app-table-legend-item">
-            <Check size={13} strokeWidth={3} style={{color: '#16a34a'}} />
+            <CircleCheck size={13} fill="#16a34a" color="#ffffff" strokeWidth={2.5} />
             <span>Approved</span>
           </span>
           <span className="app-table-legend-item">
@@ -2709,7 +2711,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
             <span>Waiting for approval</span>
           </span>
           <span className="app-table-legend-item">
-            <AlertCircle size={13} strokeWidth={2.5} style={{color: '#dc2626'}} />
+            <CircleAlert size={13} fill="#dc2626" color="#ffffff" strokeWidth={2.5} />
             <span>Needs changes</span>
           </span>
           <span className="app-table-legend-item">
