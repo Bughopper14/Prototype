@@ -7,7 +7,7 @@ import {holdersOf, idsOf} from './users/recipients';
 export type NewNotification = {
   applicationId: string;
   deedId?: string | null;
-  /** DEED_REVIEW (a deed waits for approval / was reviewed) or WORKFLOW_ACTION (an application waits for an action). */
+  /** DEED_APPROVAL (a deed waits for approval / was decided) or WORKFLOW_ACTION (an application waits for an action). */
   type: string;
   title: string;
   message: string;

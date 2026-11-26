@@ -80,7 +80,7 @@ function scopeSummary(c: Scope): {tone: string; text: string} {
   if (st.some(s => s.status === 'PENDING')) return {tone: 'pending', text: 'Needs approval'};
   return {tone: 'waiting', text: 'Waiting'};
 }
-
+  
 /** Everything that has to be approved, in workflow order. Each thing has a button to the screen it is about; with onDecide the steps the person may decide show Approve and Reject. */
 export function ScopeList({
   scopes,

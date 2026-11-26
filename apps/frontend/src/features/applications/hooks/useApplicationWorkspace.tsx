@@ -2,7 +2,7 @@
 import {getReadActivityIds} from '@/features/activity/lib/activity-store';
 import {type SystemActivity} from '@/features/activity/lib/types';
 import {useApplicationActivity} from '@/features/applications/hooks/useApplicationActivity';
-import {useDeedReview} from '@/features/applications/hooks/useDeedReview';
+import {useDeedApproval} from '@/features/applications/hooks/useDeedApproval';
 import {useFapArchive} from '@/features/applications/hooks/useFapArchive';
 import {useFapPreviewSync} from '@/features/applications/hooks/useFapPreviewSync';
 import {useLiveFapData} from '@/features/applications/hooks/useLiveFapData';
@@ -86,7 +86,7 @@ export function useApplicationWorkspace({
   const isPreAnalysis = isPreAnalysisApplication(a);
   const resolvedInitialTab = initialTab === 0 && isPreAnalysis ? 8 : (initialTab ?? 0);
   const [activeStage, setActiveStage] = useState<string>(() => initialScreen(a));
-  const [reviewDeedId, setReviewDeedId] = useState<string | null>(null);
+  const [approvalDeedId, setApprovalDeedId] = useState<string | null>(null);
   // "Edit" asked from the review dialog: the Legal editor opens that deed (or its stakeholder list)
   const [editRequest, setEditRequest] = useState<{id: string; what: 'deed' | 'stakeholders'} | null>(null);
   // The review dialog stays mounted (comments typed, scroll) but hidden while the editor is on screen
@@ -305,8 +305,8 @@ export function useApplicationWorkspace({
   const p = draft.proposal || {...blank(proposalFields), units: []};
   const {principal, r, monthly} = calculateInstallment(p, master);
 
-  const {beginDeedReview} = useDeedReview({
-    setReviewDeedId,
+  const {openDeedApproval} = useDeedApproval({
+    setApprovalDeedId,
     tab,
     draft,
     setDraft,
@@ -357,8 +357,8 @@ export function useApplicationWorkspace({
     resolvedInitialTab,
     activeStage,
     setActiveStage,
-    reviewDeedId,
-    setReviewDeedId,
+    approvalDeedId,
+    setApprovalDeedId,
     editRequest,
     setEditRequest,
     reviewHidden,
@@ -428,6 +428,6 @@ export function useApplicationWorkspace({
     principal,
     r,
     monthly,
-    beginDeedReview,
+    openDeedApproval,
   };
 }

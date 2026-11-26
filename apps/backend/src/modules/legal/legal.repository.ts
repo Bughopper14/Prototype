@@ -157,7 +157,7 @@ export class LegalRepository {
         infoAdded: deedStakeholders.length > 0,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
-        ...(await this.reviewOf(row)),
+        ...this.approvalOf(row),
       });
     }
     const [hidden] = await this.db.pool.execute<any[]>(
@@ -172,41 +172,40 @@ export class LegalRepository {
   }
 
   /**
-   * Approval state of a deed for the editor (it lives on the deed row: approval_status, approval_remarks, decided_by, decided_at). The editor still
-   * speaks DRAFT / PENDING / APPROVED / REJECTED. The revision used for "deed changed meanwhile" checks is the time of the last change of the row.
+   * Approval of a deed as the editor reads it, from the deed row (approval_status, approval_remarks, decided_by, decided_at).
+   * The revision used for "deed changed meanwhile" checks is the time of the last change of the row.
    * The submitter is the user that last moved the deed to IN_APPROVAL (updated_by).
    */
-  private async reviewOf(row: any) {
-    const status = (({NOT_STARTED: 'DRAFT', IN_APPROVAL: 'PENDING'}) as Record<string, string>)[row.approval_status] ?? row.approval_status;
+  private approvalOf(row: any) {
     const changed = row.updated_at || row.created_at;
     let approvedSnapshot = null;
     try {
       approvedSnapshot = row.approved_snapshot_text ? JSON.parse(row.approved_snapshot_text) : null;
     } catch {}
     return {
-      review: {
-        status,
+      approval: {
+        status: row.approval_status,
         revision: changed ? new Date(changed).getTime() : 1,
-        notes: row.approval_remarks,
-        submittedBy: status === 'PENDING' ? row.updated_by || row.created_by : null,
-        approvedBy: row.decided_by,
-        approvedAt: row.decided_at,
+        remarks: row.approval_remarks,
+        submittedBy: row.approval_status === 'IN_APPROVAL' ? row.updated_by || row.created_by : null,
+        decidedBy: row.decided_by,
+        decidedAt: row.decided_at,
       },
       ...(approvedSnapshot ? {approvedSnapshot, approvedAt: row.decided_at} : {}),
     };
   }
 
-  /** Deeds waiting for approval and deeds sent back, per application (application list and overview). */
-  async reviewCounts(): Promise<Map<string, {pending: number; sentBack: number}>> {
+  /** Deeds in approval and rejected deeds, per application (application list and overview). */
+  async approvalCounts(): Promise<Map<string, {inApproval: number; rejected: number}>> {
     const [rows] = await this.db.pool.query<any[]>(
       `SELECT application_id,approval_status,COUNT(*) AS n FROM ${CRM.fapLegalDeeds}
        WHERE deleted_at IS NULL AND approval_status IN ('IN_APPROVAL','REJECTED') GROUP BY application_id,approval_status`,
     );
-    const out = new Map<string, {pending: number; sentBack: number}>();
+    const out = new Map<string, {inApproval: number; rejected: number}>();
     for (const r of rows) {
-      const counts = out.get(r.application_id) || {pending: 0, sentBack: 0};
-      if (r.approval_status === 'IN_APPROVAL') counts.pending += Number(r.n);
-      if (r.approval_status === 'REJECTED') counts.sentBack += Number(r.n);
+      const counts = out.get(r.application_id) || {inApproval: 0, rejected: 0};
+      if (r.approval_status === 'IN_APPROVAL') counts.inApproval += Number(r.n);
+      if (r.approval_status === 'REJECTED') counts.rejected += Number(r.n);
       out.set(r.application_id, counts);
     }
     return out;
@@ -436,20 +435,24 @@ export class LegalRepository {
       );
   }
 
-  /** Stores the approval state produced by deedTransition (DRAFT / PENDING / APPROVED / REJECTED) on the deed row. */
-  async saveReview(conn: Conn, applicationId: string, deed: any, by: string | null) {
-    const review = deed.review || {};
-    const status = (({DRAFT: 'NOT_STARTED', PENDING: 'IN_APPROVAL'}) as Record<string, string>)[review.status] ?? review.status;
-    await this.setApproval(conn, applicationId, deed.id, status as any, {
-      remarks: review.notes ?? null,
-      snapshot: review.status === 'APPROVED' ? JSON.stringify(deed.approvedSnapshot ?? deedData(deed)) : null,
-      decidedBy: review.status === 'APPROVED' ? review.approvedBy ?? by : null,
-      decidedAt: review.status === 'APPROVED' ? new Date(review.approvedAt || Date.now()) : null,
+  /** Stores the approval produced by deedTransition on the deed row. */
+  async saveApproval(conn: Conn, applicationId: string, deed: any, by: string | null) {
+    const approval = deed.approval || {};
+    const approved = approval.status === 'APPROVED',
+      rejected = approval.status === 'REJECTED';
+    await this.setApproval(conn, applicationId, deed.id, approval.status, {
+      remarks: approval.remarks ?? null,
+      snapshot: approved ? JSON.stringify(deed.approvedSnapshot ?? deedData(deed)) : null,
+      decidedBy: approved ? approval.decidedBy ?? by : rejected ? by : null,
+      decidedAt: approved ? new Date(approval.decidedAt || Date.now()) : rejected ? new Date() : null,
       by,
     });
   }
 
-  /** The ONE place that writes the approval state of a deed. A snapshot, decider and time are kept once given (they describe the last approval). */
+  /**
+   * The ONE place that writes the approval state of a deed. The decider and time belong to a final result (APPROVED / REJECTED) and are cleared
+   * otherwise; the snapshot is kept once given (it describes the last approval).
+   */
   async setApproval(
     conn: Conn,
     applicationId: string,
@@ -460,7 +463,7 @@ export class LegalRepository {
     await conn.execute(
       `UPDATE ${CRM.fapLegalDeeds}
        SET approval_status=?,approval_remarks=?,approved_snapshot_text=COALESCE(?,approved_snapshot_text),
-           decided_by=COALESCE(?,decided_by),decided_at=COALESCE(?,decided_at),updated_by=?
+           decided_by=?,decided_at=?,updated_by=?
        WHERE id=? AND application_id=?`,
       [status, v.remarks ?? null, v.snapshot ?? null, v.decidedBy ?? null, v.decidedAt ?? null, v.by, deedId, applicationId],
     );

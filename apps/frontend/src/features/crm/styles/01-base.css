@@ -5250,7 +5250,7 @@ nav button {
 .topbar-right {
   margin-left: 18px;
 }
-.deed-review-status {
+.deed-approval-status {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -5262,7 +5262,7 @@ nav button {
   background: #f1f5f9;
   margin: 12px 0;
 }
-.deed-review-status.compact {
+.deed-approval-status.compact {
   display: inline-flex;
   font-size: 9px;
   padding: 5px 7px;
@@ -5271,91 +5271,91 @@ nav button {
   max-width: 100%;
   white-space: normal;
 }
-.deed-review-status.pending_check,
-.deed-review-status.pending_approval {
+.deed-approval-status.pending_check,
+.deed-approval-status.pending_approval {
   color: #977029;
   background: #fff5dc;
 }
-.deed-review-status.approved {
+.deed-approval-status.approved {
   color: #047857;
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
 }
-.deed-review-status.rejected {
+.deed-approval-status.rejected {
   color: #b91c1c;
   background: #fef2f2;
   border: 1px solid #fecaca;
 }
-.deed-review-status.needs_correction {
+.deed-approval-status.needs_correction {
   color: #8a5a00;
   background: #fff4d6;
 }
-.deed-review-action {
+.deed-approval-action {
   grid-column: 1/-1;
   background: #eff6ff;
   color: #1d4ed8;
   border-color: #bfdbfe;
 }
-.deed-review-scrim {
+.deed-approval-scrim {
   z-index: 110;
 }
 /* While the deed/stakeholder editor is open from the review dialog, only the review box is hidden: its dark
    backdrop stays up the whole time, so switching between the two never flashes the bare page. The editor sits
    above it and borrows that backdrop instead of adding a second one. */
-.deed-review-scrim.is-hidden {
+.deed-approval-scrim.is-hidden {
   pointer-events: none;
 }
-.deed-review-scrim.is-hidden .deed-review-modal {
+.deed-approval-scrim.is-hidden .deed-approval-modal {
   visibility: hidden;
 }
-body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
+body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   z-index: 120 !important;
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-.deed-review-modal {
+.deed-approval-modal {
   width: min(920px, 100%);
 }
-.deed-review-modal .modal-head p {
+.deed-approval-modal .modal-head p {
   font-size: 11px;
   color: #64748b;
   margin-top: 7px;
 }
-.deed-review-summary {
+.deed-approval-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 13px;
   margin: 18px 0 23px;
 }
-.deed-review-summary dt {
+.deed-approval-summary dt {
   font-size: 10px;
   color: #64748b;
   margin-bottom: 6px;
 }
-.deed-review-summary dd {
+.deed-approval-summary dd {
   margin: 0;
   font-size: 12px;
   font-weight: 650;
   overflow-wrap: anywhere;
 }
-.deed-review-modal h3 {
+.deed-approval-modal h3 {
   font-size: 13px;
   margin-bottom: 12px;
 }
-.deed-review-document-picker {
+.deed-approval-document-picker {
   display: flex;
   gap: 12px;
   align-items: flex-end;
 }
-.deed-review-document-picker > label:first-child {
+.deed-approval-document-picker > label:first-child {
   display: grid;
   gap: 7px;
   flex: 1;
   font-size: 11px;
   color: #64748b;
 }
-.deed-review-document-picker .upload-label.button {
+.deed-approval-document-picker .upload-label.button {
   flex-direction: row;
   flex-shrink: 0;
   height: 38px;
@@ -5363,7 +5363,7 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   padding: 0 16px;
   gap: 7px;
 }
-.deed-review-document-picker select {
+.deed-approval-document-picker select {
   height: 38px;
   width: 100%;
   min-width: 0;
@@ -5374,7 +5374,7 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   color: #0f172a;
   font: inherit;
 }
-.deed-review-file-name {
+.deed-approval-file-name {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -5383,12 +5383,12 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   color: #334155;
   overflow-wrap: anywhere;
 }
-.deed-review-file-name > a {
+.deed-approval-file-name > a {
   margin-left: auto;
   flex-shrink: 0;
   font-size: 10px;
 }
-.deed-review-preview {
+.deed-approval-preview {
   height: 360px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -5398,31 +5398,31 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   align-items: center;
   justify-content: center;
 }
-.deed-review-preview iframe {
+.deed-approval-preview iframe {
   width: 100%;
   height: 100%;
   border: 0;
 }
-.deed-review-preview img {
+.deed-approval-preview img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
 }
-.deed-review-shareholders {
+.deed-approval-shareholders {
   margin: 20px 0;
 }
-.deed-review-shareholders-head {
+.deed-approval-shareholders-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-.deed-review-holder {
+.deed-approval-holder {
   border-bottom: 1px solid #e2e8f0;
   font-size: 11px;
   color: #334155;
 }
-.deed-review-holder-row {
+.deed-approval-holder-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -5436,16 +5436,16 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   cursor: pointer;
   text-align: left;
 }
-.deed-review-holder-row span {
+.deed-approval-holder-row span {
   flex: 1;
 }
-.deed-review-holder-row svg {
+.deed-approval-holder-row svg {
   transition: transform 0.15s ease;
 }
-.deed-review-holder.open .deed-review-holder-row svg {
+.deed-approval-holder.open .deed-approval-holder-row svg {
   transform: rotate(180deg);
 }
-.deed-review-holder-detail {
+.deed-approval-holder-detail {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px 16px;
@@ -5454,23 +5454,23 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   border-radius: 8px;
   background: #f8fafc;
 }
-.deed-review-holder-detail dt {
+.deed-approval-holder-detail dt {
   color: #64748b;
   font-size: 10px;
 }
-.deed-review-holder-detail dd {
+.deed-approval-holder-detail dd {
   margin: 2px 0 0;
   font-weight: 600;
   color: #0f172a;
   overflow-wrap: anywhere;
 }
-.deed-review-comments {
+.deed-approval-comments {
   display: grid;
   gap: 8px;
   font-size: 11px;
   color: #64748b;
 }
-.deed-review-comments textarea {
+.deed-approval-comments textarea {
   border: 1px solid #e2e8f0;
   border-radius: 7px;
   padding: 10px;
@@ -5478,28 +5478,28 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   resize: vertical;
   width: 100%;
 }
-.deed-review-history {
+.deed-approval-history {
   margin-top: 17px;
   font-size: 11px;
   color: #64748b;
 }
-.deed-review-history summary {
+.deed-approval-history summary {
   cursor: pointer;
   font-weight: 650;
 }
-.deed-review-history > div {
+.deed-approval-history > div {
   margin: 12px 0;
   padding: 10px;
   background: #f1f5f9;
   border-radius: 7px;
   overflow-wrap: anywhere;
 }
-.deed-review-history small {
+.deed-approval-history small {
   display: block;
   font-size: 9px;
   margin-top: 5px;
 }
-.deed-review-history p {
+.deed-approval-history p {
   margin-top: 7px;
   line-height: 1.6;
 }
@@ -5546,17 +5546,17 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   font-size: 10px;
 }
 @media (max-width: 650px) {
-  .deed-review-summary {
+  .deed-approval-summary {
     grid-template-columns: 1fr 1fr;
   }
-  .deed-review-document-picker {
+  .deed-approval-document-picker {
     align-items: stretch;
     flex-direction: column;
   }
-  .deed-review-preview {
+  .deed-approval-preview {
     height: 260px;
   }
-  .deed-review-modal .modal-actions {
+  .deed-approval-modal .modal-actions {
     flex-wrap: wrap;
   }
   .notifications-list {
@@ -5602,7 +5602,7 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   align-items: center;
   flex-wrap: nowrap;
 }
-.legal-deed-table .legal-row-buttons > .deed-review-action {
+.legal-deed-table .legal-row-buttons > .deed-approval-action {
   width: auto;
   min-height: 30px;
   padding: 6px 9px;
@@ -5624,7 +5624,7 @@ body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
   padding: 2px 5px;
   font-size: 9px;
 }
-.legal-deed-table .deed-review-status.compact {
+.legal-deed-table .deed-approval-status.compact {
   display: inline-flex;
   padding: 2px 5px;
   margin: 3px 0 0;

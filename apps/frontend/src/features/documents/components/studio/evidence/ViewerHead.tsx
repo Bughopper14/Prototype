@@ -30,7 +30,7 @@ export function ViewerHead() {
         </div>
       </div>
       <div className="document-viewer-head-status">
-        <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+        <Badge status={activeItem.chk.approvalStatus && activeItem.chk.approvalStatus !== 'NOT_STARTED' ? activeItem.chk.approvalStatus : activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
       </div>
     </div>
   );

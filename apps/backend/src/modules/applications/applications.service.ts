@@ -130,7 +130,7 @@ export class ApplicationsService {
   }
 
   async list(actor?: Actor) {
-    const [rows, branches, categories, premises, segments, roles, financing, deedReviews, docCounts] = await Promise.all([
+    const [rows, branches, categories, premises, segments, roles, financing, deedApprovals, docCounts] = await Promise.all([
       this.apps.list(),
       this.ids.codes('branch'),
       this.ids.codes('businessCategory'),
@@ -138,7 +138,7 @@ export class ApplicationsService {
       this.ids.codes('industrySegment'),
       this.ids.codes('businessRole'),
       this.fap.financingSummary(),
-      this.legalData.reviewCounts(),
+      this.legalData.approvalCounts(),
       this.documents.counts(),
     ]);
     const progress = rows.length
@@ -228,10 +228,10 @@ export class ApplicationsService {
         financing_value: financing.get(r.id)?.financingValue ?? null,
         tenor_months: financing.get(r.id)?.tenorMonths ?? null,
         financing_method: financing.get(r.id)?.financingMethod ?? null,
-        // Deeds waiting for legal approval and deeds sent back for revision
-        deeds_pending: deedReviews.get(r.id)?.pending ?? 0,
-        deeds_sent_back: deedReviews.get(r.id)?.sentBack ?? 0,
-        verified_docs: docCounts.get(r.id)?.verified ?? 0,
+        // Deeds in approval and rejected deeds
+        deeds_in_approval: deedApprovals.get(r.id)?.inApproval ?? 0,
+        deeds_rejected: deedApprovals.get(r.id)?.rejected ?? 0,
+        approved_docs: docCounts.get(r.id)?.approved ?? 0,
         total_docs: docCounts.get(r.id)?.total ?? 0,
       };
     });
@@ -268,10 +268,11 @@ export class ApplicationsService {
       const wanted = raw.templates.filter(t => t.scope === 'DOCUMENT' && !!d.documentCode && t.stageCode === d.stageCode && t.documentCode === d.documentCode);
       if (!wanted.length) return {...d, approval: null};
       const round = approval.current.find(c => c.scope === 'DOCUMENT' && c.checklistId === d.id);
-      const shownStatus = (x?: {status: string; reopened: boolean}) => (!x ? 'NOT_REQUESTED' : x.reopened ? 'REOPENED' : x.status);
-      // The checklist document is one bundle: a file added after its approval makes it UPLOADED again, and the finished round no longer counts (it needs approval again).
-      const again = !!round && d.status !== 'VERIFIED' && round.steps.every(x => x.status === 'APPROVED');
-      const state = !round || again ? 'NOT_REQUESTED' : round.steps.some(x => x.status === 'REJECTED' && !x.reopened) ? 'REJECTED' : round.steps.some(x => x.reopened) ? 'REOPENED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
+      const shownStatus = (x?: {status: string; reopened: boolean}) => (!x ? 'NOT_STARTED' : x.status);
+      // The checklist document is one bundle: a file added after its approval resets approvalStatus to NOT_STARTED, so the finished round no longer counts.
+      const again = !!round && d.approvalStatus !== 'APPROVED' && round.steps.every(x => x.status === 'APPROVED');
+      const reopened = !again && !!round && round.steps.some(x => x.reopened) && !round.steps.some(x => x.status === 'REJECTED' && !x.reopened);
+      const state = !round || again ? 'NOT_STARTED' : round.steps.some(x => x.status === 'REJECTED') ? 'REJECTED' : round.steps.every(x => x.status === 'APPROVED') ? 'APPROVED' : 'IN_APPROVAL';
       const steps = wanted.map(t => {
         const matched = again ? undefined : round?.steps.find(x => x.code === t.code);
         return {
@@ -282,10 +283,11 @@ export class ApplicationsService {
           authorityName: t.authorityName,
           order: t.sortOrder,
           status: shownStatus(matched),
+          reopened: !!matched?.reopened,
           decisions: matched?.decisions || [],
         };
       });
-      return {...d, approval: {steps, state, again, canRequest: (d.files || []).length > 0 && (state === 'NOT_REQUESTED' || state === 'REJECTED' || state === 'REOPENED')}};
+      return {...d, approval: {steps, state, reopened, again, canRequest: (d.files || []).length > 0 && (state === 'NOT_STARTED' || state === 'REJECTED')}};
     });
     const view = this.viewStage(cfg, progress);
     const customer: Record<string, any> = {...(saved?.customer || {}), id: app.business_partner_id};
@@ -296,9 +298,9 @@ export class ApplicationsService {
       customerCategory: app.customer_category,
     };
     const legal = await this.legalData.read(id);
-    // Review history of each deed comes from the activity log (DEED_* rows).
+    // Approval history of each deed comes from the activity log (DEED_* rows).
     const history = await deedHistory(id);
-    for (const d of legal.deeds as any[]) d.reviewHistory = history.get(d.id) || [];
+    for (const d of legal.deeds as any[]) d.approvalHistory = history.get(d.id) || [];
     const firstStage = cfg.stages[0];
     const firstLocked = progress.some((p: any) => p.stage_code === firstStage?.code && p.is_locked);
     const ocrComparison = await this.fapOcr.read(id);
@@ -340,10 +342,10 @@ export class ApplicationsService {
         documentsWithApproval.some(
           d =>
             d.documentCode === 'FAP' &&
-            (d.approval?.state === 'PENDING' ||
+            (d.approval?.state === 'IN_APPROVAL' ||
               d.approval?.state === 'APPROVED' ||
-              d.approval_status === 'IN_APPROVAL' ||
-              d.approval_status === 'APPROVED'),
+              d.approvalStatus === 'IN_APPROVAL' ||
+              d.approvalStatus === 'APPROVED'),
         ),
       mktPic: app.mkt_pic_id ? {id: Number(app.mkt_pic_id), ...((await this.mktPics.names([app.mkt_pic_id])).get(Number(app.mkt_pic_id)) ?? {name: '', username: ''})} : null,
       createdBy: app.created_by ?? null,
@@ -963,7 +965,7 @@ export class ApplicationsService {
    * (crm_fap_legal_deeds.approval_status ...) follows that round: IN_APPROVAL when it is asked, APPROVED when every level approved it (with the
    * snapshot of the deed), REJECTED when a level rejected it.
    */
-  private async syncDeedReview(conn: any, applicationId: string, deedId: string, status: 'IN_APPROVAL' | 'APPROVED' | 'REJECTED', actor: Actor, notes?: string | null) {
+  private async syncDeedApproval(conn: any, applicationId: string, deedId: string, status: 'IN_APPROVAL' | 'APPROVED' | 'REJECTED', actor: Actor, notes?: string | null) {
     let snapshot: string | null = null;
     if (status === 'APPROVED') {
       const detail: any = await this.detailOr404(applicationId);
@@ -1003,7 +1005,7 @@ export class ApplicationsService {
     let pending: AppStep[] = [];
     await this.db.transaction(async conn => {
       pending = (await this.approvals.startScope(conn, {id, workflowFreezeId: app.workflow_freeze_id}, {type: 'SECTION', stageCode: places[0].stage_code, sectionCode, subjectId}, actor)).pending;
-      if (pending.length && sectionCode === DEED_SECTION) await this.syncDeedReview(conn, id, subjectId, 'IN_APPROVAL', actor);
+      if (pending.length && sectionCode === DEED_SECTION) await this.syncDeedApproval(conn, id, subjectId, 'IN_APPROVAL', actor);
     });
     ensure(pending.length, 'This section has no approval level in the workflow.', 422);
     const label = await this.label(id);
@@ -1052,7 +1054,7 @@ export class ApplicationsService {
     const result = await this.approvals.decide(id, stepId, actor, input, {
       onRejected: async (conn, step) => {
         if (step.scope === 'SECTION' && step.sectionCode === DEED_SECTION && step.subjectId)
-          await this.syncDeedReview(conn, id, step.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
+          await this.syncDeedApproval(conn, id, step.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
         const why = String(input.remarks ?? '').trim() || null;
         if (step.scope === 'DOCUMENT' && step.checklistId) {
           await this.documents.setApproval(conn, step.checklistId, 'REJECTED', by(actor), why);
@@ -1071,17 +1073,17 @@ export class ApplicationsService {
         const chosen = input.reopenItems;
         const stageOnly = step.scope === 'STAGE' && !!chosen && (chosen.documents.length > 0 || chosen.deeds.length > 0);
         if (step.scope === 'GROUP' || stageOnly) {
-          // a group: the stages come back with their documents and deeds, all asked for approval again from the first step (the deeds' state follows their approval: see legal/deed-review.ts)
+          // a group: the stages come back with their documents and deeds, all asked for approval again from the first step (the deeds' state follows their approval)
           // a stage: only the documents and deeds the approver chose open again with it (the problem may be the stage alone)
           const under = await this.approvals.reopenUnder(conn, id, stageCodes, actor, step.scope === 'GROUP' ? input.keepApproved : undefined, stageOnly ? chosen : undefined);
           for (const checklistId of under.documents) await this.documents.setApproval(conn, checklistId, 'REJECTED', by(actor), why);
           for (const row of under.rows)
-            if (row.sectionCode === DEED_SECTION) await this.syncDeedReview(conn, id, row.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
+            if (row.sectionCode === DEED_SECTION) await this.syncDeedApproval(conn, id, row.subjectId, 'REJECTED', actor, String(input.remarks ?? '').trim() || null);
         }
         await freezeDecision(conn, stageCodes, 'REJECTED');
       },
       onScopeApproved: async (conn, scope) => {
-        if (scope.type === 'SECTION' && scope.sectionCode === DEED_SECTION && scope.subjectId) await this.syncDeedReview(conn, id, scope.subjectId, 'APPROVED', actor);
+        if (scope.type === 'SECTION' && scope.sectionCode === DEED_SECTION && scope.subjectId) await this.syncDeedApproval(conn, id, scope.subjectId, 'APPROVED', actor);
         const note = String(input.remarks ?? '').trim() || null;
         if (scope.type === 'DOCUMENT' && scope.checklistId) {
           await this.documents.setApproval(conn, scope.checklistId, 'APPROVED', by(actor), note);

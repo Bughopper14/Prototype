@@ -14,40 +14,40 @@ select.is-placeholder option {
 .is-hidden {
   pointer-events: none;
 }
-.deed-review-scrim.is-hidden .deed-review-modal {
+.deed-approval-scrim.is-hidden .deed-approval-modal {
   visibility: hidden;
 }
-body.deed-edit-over-review .modal-scrim:not(.deed-review-scrim) {
+body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   z-index: 120 !important;
   background: transparent !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-.deed-review-shareholders-head {
+.deed-approval-shareholders-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
-.deed-review-holder {
+.deed-approval-holder {
   border-bottom: 1px solid #e2e8f0;
   font-size: 11px;
   color: #334155;
 }
-.deed-review-holder-row {
+.deed-approval-holder-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 0;
 }
-.deed-review-holder-row button {
+.deed-approval-holder-row button {
   background: none;
   border: none;
   color: #2563eb;
   cursor: pointer;
   padding: 0 4px;
 }
-.deed-review-holder-detail {
+.deed-approval-holder-detail {
   padding: 8px 12px;
   background: #f8fafc;
   border-radius: 6px;

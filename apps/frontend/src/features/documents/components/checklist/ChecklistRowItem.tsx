@@ -36,7 +36,7 @@ export function ChecklistRowItem({
 }) {
   const approval = row.check?.approval;
   const isRejected =
-    row.status === 'REJECTED' ||
+    row.check?.approvalStatus === 'REJECTED' ||
     approval?.state === 'REJECTED' ||
     (approval?.steps || []).some((s: any) => s.status === 'REJECTED');
 

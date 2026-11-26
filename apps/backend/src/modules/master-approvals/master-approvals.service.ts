@@ -278,7 +278,7 @@ export class MasterApprovalsService {
       const changes = before ? diffApprovals(before, content) : null;
       before = content;
       const mine = uses.filter(u => u.approval_freeze_id === r.id);
-      const seen = new Map<string, {id: string; companyName: string | null; createdAt: string}>();
+      const seen = new Map<string, {id: string; applicationNumber: string | null; companyName: string | null; createdAt: string}>();
       let total = 0;
       for (const u of mine) {
         const e = apps.get(u.workflow_freeze_id);

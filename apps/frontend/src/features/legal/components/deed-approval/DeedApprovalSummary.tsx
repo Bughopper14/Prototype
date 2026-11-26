@@ -1,9 +1,9 @@
-/** Key facts of the deed under review. */
+/** Key facts of the deed in approval. */
 import type {useMasterData} from '@/shared/master-data';
 
-export function ReviewSummary({deed, master}: {deed: any; master: ReturnType<typeof useMasterData>}) {
+export function DeedApprovalSummary({deed, master}: {deed: any; master: ReturnType<typeof useMasterData>}) {
   return (
-    <dl className="deed-review-summary">
+    <dl className="deed-approval-summary">
       <div>
         <dt>Deed type</dt>
         <dd>{deed.type === 'amendment' ? 'Amendment deed' : 'Establishment deed'}</dd>

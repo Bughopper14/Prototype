@@ -1,7 +1,7 @@
-/** Title bar of the deed review dialog with the close button. */
+/** Title bar of the deed approval dialog with the close button. */
 import {X} from 'lucide-react';
 
-export function ReviewHeader({
+export function DeedApprovalHeader({
   application,
   deed,
   busy,

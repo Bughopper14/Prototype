@@ -135,9 +135,9 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   }, [user]);
 
   const notifications = useMemo<SystemNotificationItem[]>(() => {
-    // DEED_REVIEW opens the Legal tab; WORKFLOW_ACTION opens the application.
+    // DEED_APPROVAL opens the Legal tab; WORKFLOW_ACTION opens the application.
     const list: SystemNotificationItem[] = serverNotifications.map((n: any) => {
-      const deed = n.type === 'DEED_REVIEW';
+      const deed = n.type === 'DEED_APPROVAL';
       return {
         id: n.id,
         applicationId: n.applicationId,

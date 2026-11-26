@@ -1,13 +1,13 @@
-/** Review status and the reason a deed was rejected (the remarks of the rejection in its approval). */
+/** Approval status and the reason a deed was rejected (the remarks of the rejection in its approval). */
 import {Check, Clock, X} from 'lucide-react';
-import {deedStatusLabel} from '@liugong/shared';
+import {deedApprovalLabel} from '@liugong/shared';
 
-export function ReviewNotices({deed, status}: {deed: any; status: string}) {
+export function DeedApprovalNotices({deed, status}: {deed: any; status: string}) {
   const isApproved = status === 'APPROVED';
   const isRejected = status === 'REJECTED';
   return (
     <>
-      <div className={'deed-review-status ' + status.toLowerCase()}>
+      <div className={'deed-approval-status ' + status.toLowerCase()}>
         {isApproved ? (
           <Check size={15} style={{strokeWidth: 2.5}} />
         ) : isRejected ? (
@@ -15,12 +15,12 @@ export function ReviewNotices({deed, status}: {deed: any; status: string}) {
         ) : (
           <Clock size={15} />
         )}
-        {deedStatusLabel(deed)}
+        {deedApprovalLabel(deed)}
       </div>
-      {status === 'REJECTED' && deed.review?.notes && (
+      {status === 'REJECTED' && deed.approval?.remarks && (
         <div className="error">
           <b>Rejected: </b>
-          {deed.review.notes}
+          {deed.approval.remarks}
         </div>
       )}
     </>

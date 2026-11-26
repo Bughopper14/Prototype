@@ -35,10 +35,6 @@ const fileModel = (f: any, isCurrent = true) => ({
  */
 const MANDATORY = 'COALESCE(o.is_mandatory,sd.is_mandatory,0)';
 
-/** The status the screens read: the file state (PENDING / UPLOADED) until a decision, then VERIFIED (approved) or REJECTED. */
-export const legacyStatus = (status: string, approvalStatus: string) => (approvalStatus === 'APPROVED' ? 'VERIFIED' : approvalStatus === 'REJECTED' ? 'REJECTED' : status);
-const LEGACY_STATUS = "CASE c.approval_status WHEN 'APPROVED' THEN 'VERIFIED' WHEN 'REJECTED' THEN 'REJECTED' ELSE c.status END";
-
 @Injectable()
 export class DocumentsRepository {
   constructor(private readonly db: CrmDatabase) {}
@@ -324,8 +320,8 @@ export class DocumentsRepository {
         overrideId: d.override_id,
         assignedRole: d.assigned_role,
         isMandatory: !!d.is_mandatory,
-        /** What the screens read: PENDING / UPLOADED while no decision, then VERIFIED (approved) or REJECTED. */
-        status: legacyStatus(d.status, d.approval_status),
+        /** File state only (PENDING / UPLOADED); approval state lives in approvalStatus. */
+        status: d.status,
         approvalStatus: d.approval_status,
         approvalRemarks: d.approval_remarks ?? null,
         decidedBy: d.decided_by ?? null,
@@ -503,7 +499,7 @@ export class DocumentsRepository {
     const [rows] = await this.db.pool.query<any[]>(
       `SELECT c.id AS checklist_id,c.application_id,a.application_number,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
               COALESCE(t.name,o.custom_name) AS document_name,c.assigned_role,
-              ${MANDATORY} AS is_mandatory,${LEGACY_STATUS} AS status,c.status AS file_status,c.approval_status,p.company_name,
+              ${MANDATORY} AS is_mandatory,c.status,c.approval_status AS approvalStatus,p.company_name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS file_count
        FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
@@ -517,12 +513,12 @@ export class DocumentsRepository {
     return rows;
   }
 
-  /** Verified and total checklist rows per application (application list). */
-  async counts(): Promise<Map<string, {verified: number; total: number}>> {
+  /** Approved and total checklist rows per application (application list). */
+  async counts(): Promise<Map<string, {approved: number; total: number}>> {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT application_id,SUM(approval_status='APPROVED') AS verified,COUNT(*) AS total
+      `SELECT application_id,SUM(approval_status='APPROVED') AS approved,COUNT(*) AS total
        FROM ${CRM.applicationDocumentChecklists} GROUP BY application_id`,
     );
-    return new Map(rows.map(r => [r.application_id, {verified: Number(r.verified), total: Number(r.total)}]));
+    return new Map(rows.map(r => [r.application_id, {approved: Number(r.approved), total: Number(r.total)}]));
   }
 }

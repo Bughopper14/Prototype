@@ -9,7 +9,7 @@ export interface ApplicationsPage {
   total: number;
   page: number;
   size: number;
-  items: {id: string; companyName: string | null; createdAt: string}[];
+  items: {id: string; applicationNumber: string | null; companyName: string | null; createdAt: string}[];
 }
 
 export function ApplicationsDialog({
@@ -69,9 +69,12 @@ export function ApplicationsDialog({
               <ul className="adlg-list">
                 {data.items.map(a => (
                   <li key={a.id}>
-                    <Link to={applicationHref(a.id)} onClick={onClose}>
-                      {a.companyName || 'Application'}
-                    </Link>
+                    <div>
+                      <Link to={applicationHref(a.id)} onClick={onClose}>
+                        {a.companyName || 'Application'}
+                      </Link>
+                      {a.applicationNumber && <span> · {a.applicationNumber}</span>}
+                    </div>
                     <time>{new Date(a.createdAt).toLocaleDateString('en-GB', {dateStyle: 'medium'})}</time>
                   </li>
                 ))}

@@ -1,6 +1,6 @@
-/** Comment box for the reviewer and the error message. */
+/** Comment box for the approver and the error message. */
 
-export function ReviewComments({
+export function DeedApprovalComments({
   canApprove,
   error,
   comments,
@@ -8,7 +8,7 @@ export function ReviewComments({
   withRemarks = true,
 }: {
   canApprove: boolean;
-  /** The old review has a third button, Remarks. When the workflow's approval decides the deed there are only Approve and Reject. */
+  /** The old flow has a third button, Remarks. When the workflow's approval decides the deed there are only Approve and Reject. */
   withRemarks?: boolean;
   error: string;
   comments: string;
@@ -17,7 +17,7 @@ export function ReviewComments({
   return (
     <>
       {canApprove && (
-        <label className="deed-review-comments">
+        <label className="deed-approval-comments">
           {withRemarks ? 'Remarks (optional when approving, required for Remarks or Reject)' : 'Notes (optional when approving, required for Reject)'}
           <textarea
             aria-label="Remarks"
@@ -34,7 +34,7 @@ export function ReviewComments({
         </label>
       )}
       {canApprove && !comments.trim() && (
-        <ul className="muted deed-review-hint">
+        <ul className="muted deed-approval-hint">
           <li>
             <b>Approve</b>: the deed is correct. A note is optional.
           </li>

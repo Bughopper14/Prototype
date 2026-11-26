@@ -17,7 +17,7 @@ import {LegalRepository} from './legal.repository';
 
 const by = (actor: Actor) => actor.username || null;
 
-/** Legal tab: deeds with their stakeholders, and the deed review (submit → approve, or sent back for revision). */
+/** Legal tab: deeds with their stakeholders, and the deed approval (submit → approve, or reject). */
 @Injectable()
 export class LegalService {
   constructor(
@@ -27,7 +27,7 @@ export class LegalService {
   ) {}
 
   /**
-   * Validates the incoming deeds against the stored ones (shared mergeLegal: a pending deed cannot change, dates in
+   * Validates the incoming deeds against the stored ones (shared mergeLegal: a deed in approval cannot change, dates in
    * order) and stores them. An approved deed is locked: it only changes after its stage or group is rejected.
    */
   private async store(id: string, previous: any, incoming: any, actor: Actor) {
@@ -58,7 +58,7 @@ export class LegalService {
     return this.applications.detailOr404(id, actor);
   }
 
-  /** One deed from the review dialog; deeds can be changed in every stage except the last. */
+  /** One deed from the approval dialog; deeds can be changed in every stage except the last. */
   async saveDeed(id: string, deedId: string, deed: any, actor: Actor) {
     const a = await this.applications.detailOr404(id, actor);
     const legal = a.legal || {deeds: []};
@@ -82,11 +82,11 @@ export class LegalService {
   }
 
   /** SUBMIT / APPROVE / REJECT / REMARKS on one deed. Stored on the deed row (approval_status ...). */
-  async review(id: string, deedId: string, body: {action: string; revision: number; comments: string}, actor: Actor) {
+  async deedApproval(id: string, deedId: string, body: {action: string; revision: number; comments: string}, actor: Actor) {
     const a = await this.applications.detailOr404(id, actor);
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
     ensure(deed, 'Simpan akta terlebih dahulu sebelum mengajukan.', 404);
-    // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old review.
+    // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old flow.
     ensure(
       !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION),
       'Akta ini disetujui lewat approval section akta pada workflow, bukan lewat review ini.',
@@ -96,8 +96,8 @@ export class LegalService {
     ensure(isAdmin || !a.workflowFlags?.lastStage, 'Approval akta terkunci pada tahap aplikasi ini.', 409);
     if (body.action === 'SUBMIT') ensure(canEditLegal(actor, a), 'Pengajuan akta tidak tersedia pada tahap ini.', 403);
     const updated = deedTransition(deed, body.action, actor, {revision: body.revision, comments: body.comments});
-    await this.db.transaction(conn => this.legal.saveReview(conn, id, updated, by(actor)));
-    const status = updated.review?.status;
+    await this.db.transaction(conn => this.legal.saveApproval(conn, id, updated, by(actor)));
+    const status = updated.approval?.status;
     await recordActivity(
       {
         applicationId: id,
@@ -109,18 +109,18 @@ export class LegalService {
         details: body.comments || '',
         previousStatus: a.status,
         newStatus: a.status,
-        // Read back as the deed's review history.
+        // Read back as the deed's approval history.
         changes: {deedId, deedNumber: deed.deedNumber, action: body.action, status, comments: body.comments || ''},
       },
       actor,
     );
     const where = [a.companyName, `Akta ${deed.deedNumber}`].filter(Boolean).join(' · ');
-    // The deed was reviewed: the user who submitted it acts next.
-    if (body.action !== 'SUBMIT' && deed.review?.submittedBy)
-      await notifyUsers([deed.review.submittedBy], actor, {
+    // The deed was decided: the user who submitted it acts next.
+    if (body.action !== 'SUBMIT' && deed.approval?.submittedBy)
+      await notifyUsers([deed.approval.submittedBy], actor, {
         applicationId: id,
         deedId,
-        type: 'DEED_REVIEW',
+        type: 'DEED_APPROVAL',
         title: status === 'APPROVED' ? 'Akta disetujui' : 'Akta dikembalikan untuk revisi',
         message: `${where} ${status === 'APPROVED' ? 'disetujui' : 'dikembalikan'} oleh ${actor.name}.${body.comments ? ' ' + body.comments : ''}`,
       });

@@ -698,7 +698,7 @@ svg.up { transform: rotate(180deg); }
 /* Action cell of a deed that has an approval: View Review, the status line (pill + row menu) and Review & decide share one width and height */
 .legal-deed-table .legal-row-action:has(.ap-slot) { display: grid; gap: 8px; align-content: start; }
 .legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons { display: grid; }
-.legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons > .deed-review-action { width: 100%; min-height: 34px; font-size: 12px; justify-content: center; }
+.legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons > .deed-approval-action { width: 100%; min-height: 34px; font-size: 12px; justify-content: center; }
 .legal-deed-table .ap-slot { margin-top: 0 !important; gap: 8px !important; }
 .ap-slot-head .ap-pill { min-height: 34px; box-sizing: border-box; }
 .ap-slot-head .legal-kebab { width: 34px; height: 34px; min-width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
@@ -1428,7 +1428,7 @@ svg.up { transform: rotate(180deg); }
 /* Action cell of a deed that has an approval: View Review, the status line (pill + row menu) and Review & decide share one width and height */
 .legal-deed-table .legal-row-action:has(.ap-slot) { display: grid; gap: 8px; align-content: start; }
 .legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons { display: grid; }
-.legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons > .deed-review-action { width: 100%; min-height: 34px; font-size: 12px; justify-content: center; }
+.legal-deed-table .legal-row-action:has(.ap-slot) .legal-row-buttons > .deed-approval-action { width: 100%; min-height: 34px; font-size: 12px; justify-content: center; }
 .legal-deed-table .ap-slot { margin-top: 0 !important; gap: 8px !important; }
 .ap-slot-head .ap-pill { min-height: 34px; box-sizing: border-box; }
 .ap-slot-head .legal-kebab { width: 34px; height: 34px; min-width: 34px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }

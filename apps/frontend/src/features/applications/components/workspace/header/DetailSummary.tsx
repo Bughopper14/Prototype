@@ -29,7 +29,7 @@ export function DetailSummary() {
         <span>Documents Verified</span>
         <b>
           {a.documentChecks
-            ? `${a.documentChecks.filter((d: any) => d.status === 'VERIFIED').length} / ${a.documentChecks.length}`
+            ? `${a.documentChecks.filter((d: any) => d.approvalStatus === 'APPROVED').length} / ${a.documentChecks.length}`
             : '0 / 0'}
         </b>
       </div>

@@ -26,7 +26,7 @@ export function StageSidebar() {
             <h3 className="evidence-stage-title">{activeItem.title}</h3>
             <p className="evidence-stage-desc">{activeItem.desc}</p>
           </div>
-          <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+          <Badge status={activeItem.chk.approvalStatus && activeItem.chk.approvalStatus !== 'NOT_STARTED' ? activeItem.chk.approvalStatus : activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
         </div>
 
         {/* Upload Dropzone */}

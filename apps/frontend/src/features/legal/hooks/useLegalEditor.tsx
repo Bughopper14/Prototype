@@ -9,7 +9,7 @@ import {stakeholderSaveError} from '@/features/legal/lib/stakeholder-validation'
 import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {isFieldMandatory, useMandatoryRules, useMasterData} from '@/shared/master-data';
-import {deedPending, legalDeedFields, reviewStatus, DEED_EDIT_AUTHORITY, FORM_SECTION} from '@liugong/shared';
+import {deedInApproval, legalDeedFields, deedApprovalStatus, DEED_EDIT_AUTHORITY, FORM_SECTION} from '@liugong/shared';
 import {useEffect, useRef, useState} from 'react';
 
 export type LegalEditorProps = {
@@ -21,7 +21,7 @@ export type LegalEditorProps = {
   onDocumentUploaded?: (updatedApp: any) => void;
   disabled: boolean;
   user: any;
-  onReview: (id: string) => void;
+  onOpenApproval: (id: string) => void;
   /** Open this deed's editor (or stakeholder list) as soon as it is set, e.g. from the review dialog. */
   editRequest?: {id: string; what: 'deed' | 'stakeholders'} | null;
   onEditRequestHandled?: () => void;
@@ -38,7 +38,7 @@ export function useLegalEditor({
   onStakeholdersChange,
   disabled,
   user,
-  onReview,
+  onOpenApproval,
   editRequest,
   onEditRequestHandled,
   onEditFinished,
@@ -80,8 +80,8 @@ export function useLegalEditor({
   // (the server refuses it too); they open again only when the stage or group is rejected.
   const locked = (d: any) =>
     disabled ||
-    deedPending(d) ||
-    reviewStatus(d) === 'APPROVED' ||
+    deedInApproval(d) ||
+    deedApprovalStatus(d) === 'APPROVED' ||
     (!checkIsAdmin(user) && (!hasAuthority(user, DEED_EDIT_AUTHORITY) || application.workflowFlags?.lastStage));
   const [returnToReview, setReturnToReview] = useState<string | null>(null);
   useEffect(() => {
@@ -366,7 +366,7 @@ export function useLegalEditor({
     onStakeholdersChange,
     disabled,
     user,
-    onReview,
+    onOpenApproval,
     formError,
     setFormError,
     actionMenu,

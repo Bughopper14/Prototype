@@ -74,19 +74,19 @@ export function useDocumentChecklist({
     const app = r.check?.approval;
     if (!app) return false;
     return (
-      app.state === 'NOT_REQUESTED' ||
+      app.state === 'NOT_STARTED' ||
       app.state === 'REJECTED' ||
-      app.state === 'REOPENED' ||
+      !!app.reopened ||
       !!app.canAct
     );
   };
 
   // In review = an approval round is running; a document without approval is never in review
-  const isDocInReview = (r: ChecklistRow) => !isDocMissing(r) && r.check?.approval?.state === 'PENDING';
+  const isDocInReview = (r: ChecklistRow) => !isDocMissing(r) && r.check?.approval?.state === 'IN_APPROVAL';
 
   const isDocApproved = (r: ChecklistRow) => {
     if (isDocMissing(r)) return false;
-    return r.status === 'VERIFIED' || r.check?.approval?.state === 'APPROVED';
+    return r.check?.approvalStatus === 'APPROVED' || r.check?.approval?.state === 'APPROVED';
   };
 
   const pillCounts = useMemo(() => {

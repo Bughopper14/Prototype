@@ -1,11 +1,11 @@
-/** Start a deed review and poll the application while the Stakeholders tab is open. */
+/** Open the approval of a deed and poll the application while the Stakeholders tab is open. */
 import {legalDeedList} from '@/features/legal/components/DeedViews';
 import {api} from '@/shared/lib/api';
-import {deedData, reviewStatus} from '@liugong/shared';
+import {deedData, deedApprovalStatus} from '@liugong/shared';
 import {useEffect} from 'react';
 
-export function useDeedReview({
-  setReviewDeedId,
+export function useDeedApproval({
+  setApprovalDeedId,
   tab,
   draft,
   setDraft,
@@ -15,7 +15,7 @@ export function useDeedReview({
   a,
   onChange,
 }: {
-  setReviewDeedId: React.Dispatch<React.SetStateAction<string | null>>;
+  setApprovalDeedId: React.Dispatch<React.SetStateAction<string | null>>;
   tab: number;
   draft: any;
   setDraft: React.Dispatch<any>;
@@ -25,15 +25,15 @@ export function useDeedReview({
   a: any;
   onChange: (a: any) => void;
 }) {
-  async function beginDeedReview(id: string) {
+  async function openDeedApproval(id: string) {
     setError('');
     setBusy(true);
     try {
       if (canLegal) {
         const target = legalDeedList(draft.legal || {}, a).find(d => d.id === id);
         if (!target) throw Error('Deed not found.');
-        // The draft is only saved before a submission; reviewers (check/approve) have no edit rights and nothing to save
-        if (['DRAFT', 'REJECTED'].includes(reviewStatus(target))) {
+        // The draft is only saved before a submission; approvers have no edit rights and nothing to save
+        if (['NOT_STARTED', 'REJECTED'].includes(deedApprovalStatus(target))) {
           const deed = deedData({
             ...target,
             stakeholders: Array.isArray(target.stakeholders) ? target.stakeholders : draft.stakeholders || [],
@@ -43,7 +43,7 @@ export function useDeedReview({
           setDraft(structuredClone(v));
         }
       }
-      setReviewDeedId(id);
+      setApprovalDeedId(id);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -62,5 +62,5 @@ export function useDeedReview({
     return () => clearInterval(timer);
   }, [tab, a.id]);
 
-  return {beginDeedReview};
+  return {openDeedApproval};
 }
