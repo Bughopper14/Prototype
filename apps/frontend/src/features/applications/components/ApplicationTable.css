@@ -9,6 +9,8 @@
 }
 
 .app-table-toolbar {
+  position: relative;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -171,12 +173,12 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 250px;
+  width: 260px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
-  padding: 12px;
+  padding: 14px 14px 12px;
   z-index: 50;
   box-sizing: border-box;
 }
@@ -277,15 +279,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
-  margin-top: 6px;
+  padding-top: 12px;
+  margin-top: 8px;
   border-top: 1px solid #f1f5f9;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .app-branch-count {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -301,7 +303,7 @@
   color: #475569;
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -319,7 +321,7 @@
   border: 1px solid #0f2942;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 16px;
+  padding: 6px 16px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -335,12 +337,12 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 285px;
+  width: 300px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
-  padding: 12px;
+  padding: 14px 14px 12px;
   z-index: 50;
   box-sizing: border-box;
 }
@@ -454,15 +456,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
-  margin-top: 6px;
+  padding-top: 12px;
+  margin-top: 8px;
   border-top: 1px solid #f1f5f9;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .app-stage-count {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -478,7 +480,7 @@
   color: #475569;
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -496,7 +498,7 @@
   border: 1px solid #0f2942;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 16px;
+  padding: 6px 16px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -512,12 +514,12 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 320px;
+  width: 330px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.08);
-  padding: 12px;
+  padding: 14px 14px 12px;
   z-index: 50;
   box-sizing: border-box;
   display: flex;
@@ -764,15 +766,15 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 10px;
-  margin-top: 6px;
+  padding-top: 12px;
+  margin-top: 8px;
   border-top: 1px solid #f1f5f9;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .app-user-count {
   color: #64748b;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 }
 
@@ -788,7 +790,7 @@
   color: #475569;
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 12px;
+  padding: 6px 14px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -806,7 +808,7 @@
   border: 1px solid #0f2942;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 16px;
+  padding: 6px 16px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.12s ease;
@@ -815,10 +817,6 @@
 .app-user-apply-btn:hover {
   background: #1e3a5f;
   border-color: #1e3a5f;
-}
-
-.app-branch-apply-btn:hover {
-  background: #1e293b;
 }
 
 .app-table-clear-all {
