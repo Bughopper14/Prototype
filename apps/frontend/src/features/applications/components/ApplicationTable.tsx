@@ -1009,16 +1009,19 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       const next = new Set(prev);
       if (next.has(code)) next.delete(code);
       else next.add(code);
+      setSelectedBranches(Array.from(next));
       return next;
     });
   };
 
   const handleSelectAllBranches = () => {
     setTempBranches(new Set(branchList));
+    setSelectedBranches(branchList);
   };
 
   const handleClearBranches = () => {
     setTempBranches(new Set());
+    setSelectedBranches([]);
   };
 
   const handleApplyBranches = () => {
@@ -1039,25 +1042,56 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     setStagePopoverOpen(prev => !prev);
   };
 
+  const handleSelectStage = (stageKey: string) => {
+    setTempStage(stageKey);
+    if (tempStatuses.size > 0) {
+      setSelectedStage(stageKey);
+      setSelectedStatuses(Array.from(tempStatuses));
+    }
+  };
+
   const toggleTempStatus = (key: string) => {
     setTempStatuses(prev => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
+
+      const stage = tempStage || selectedStage || 'Pre-analysis';
+      if (next.size === 0) {
+        setSelectedStage(null);
+        setSelectedStatuses([]);
+      } else {
+        setSelectedStage(stage);
+        setSelectedStatuses(Array.from(next));
+      }
+
       return next;
     });
   };
 
   const handleSelectAllStatuses = () => {
+    let next: Set<string>;
     if (tempStatuses.size === STATUS_OPTIONS.length) {
-      setTempStatuses(new Set());
+      next = new Set();
     } else {
-      setTempStatuses(new Set(STATUS_OPTIONS.map(s => s.key)));
+      next = new Set(STATUS_OPTIONS.map(s => s.key));
+    }
+    setTempStatuses(next);
+
+    const stage = tempStage || selectedStage || 'Pre-analysis';
+    if (next.size === 0) {
+      setSelectedStage(null);
+      setSelectedStatuses([]);
+    } else {
+      setSelectedStage(stage);
+      setSelectedStatuses(Array.from(next));
     }
   };
 
   const handleClearStageFilter = () => {
     setTempStatuses(new Set());
+    setSelectedStage(null);
+    setSelectedStatuses([]);
   };
 
   const handleApplyStageFilter = () => {
@@ -1344,6 +1378,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       } else {
         for (const id of teamIds) next.add(id);
       }
+      setSelectedUserIds(Array.from(next));
       return next;
     });
   };
@@ -1360,6 +1395,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       } else {
         for (const id of subIds) next.add(id);
       }
+      setSelectedUserIds(Array.from(next));
       return next;
     });
   };
@@ -1369,12 +1405,14 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       const next = new Set(prev);
       if (next.has(userId)) next.delete(userId);
       else next.add(userId);
+      setSelectedUserIds(Array.from(next));
       return next;
     });
   };
 
   const handleClearUserFilter = () => {
     setTempUserIds(new Set());
+    setSelectedUserIds([]);
   };
 
   const handleApplyUserFilter = () => {
@@ -1449,6 +1487,9 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     if (to) {
       setCalendarViewDate(new Date(to.getFullYear(), to.getMonth(), 1));
     }
+    setDateFrom(from);
+    setDateTo(to);
+    setDateQuickRange(rangeKey);
   };
 
   const handleDayClick = (clickedDate: Date) => {
@@ -1955,7 +1996,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                         key={st.key}
                         type="button"
                         className={`app-stage-segment-btn ${tempStage === st.key ? 'active' : ''}`}
-                        onClick={() => setTempStage(st.key)}
+                        onClick={() => handleSelectStage(st.key)}
                       >
                         {st.label}
                       </button>
