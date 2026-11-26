@@ -1082,8 +1082,32 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     }
   }, [userPopoverOpen]);
 
+  // Types for User & Team Filter
+  type UserFilterItem = {
+    id: number;
+    name: string;
+    username: string;
+    initials: string;
+    roleTag: string;
+  };
+
+  type SubTeamGroup = {
+    code: string;
+    name: string;
+    badgeClass: string;
+    users: UserFilterItem[];
+  };
+
+  type TeamGroup = {
+    code: string;
+    name: string;
+    badgeClass: string;
+    users: UserFilterItem[];
+    subTeams?: SubTeamGroup[];
+  };
+
   // Build teams list with users
-  const teamsList = useMemo(() => {
+  const teamsList = useMemo<TeamGroup[]>(() => {
     const rawUsers = [...usersData.users];
     // Include any users from rows if not present
     for (const r of rows) {
@@ -1132,8 +1156,8 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       },
     ];
 
-    const result = predefined.map(team => {
-      const usersInTeam = rawUsers
+    const result: TeamGroup[] = predefined.map(team => {
+      const usersInTeam: UserFilterItem[] = rawUsers
         .filter(u => team.matcher((u.departmentCode || '').toUpperCase()))
         .map(u => {
           const displayName = u.id === 3 ? 'User #3' : (u.fullName || u.username || `User #${u.id}`);
@@ -1153,7 +1177,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       };
     });
 
-    const otherUsers = rawUsers
+    const otherUsers: (UserFilterItem & { deptCode: string; deptName: string })[] = rawUsers
       .filter(u => !predefined.some(t => t.matcher((u.departmentCode || '').toUpperCase())))
       .map(u => {
         const displayName = u.id === 3 ? 'User #3' : (u.fullName || u.username || `User #${u.id}`);
@@ -1163,27 +1187,88 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
           username: u.username,
           initials: getInitials(displayName, u.id),
           roleTag: u.departmentName || 'Staff',
+          deptCode: (u.departmentCode || '').toUpperCase(),
+          deptName: u.departmentName || 'Other',
         };
       });
 
     if (otherUsers.length > 0) {
+      // Group other users into sub-departments
+      const subTeamsMap = new Map<string, SubTeamGroup>();
+
+      for (const d of usersData.departments || []) {
+        const code = (d.code || '').toUpperCase();
+        if (predefined.some(t => t.matcher(code))) continue;
+        subTeamsMap.set(code, {
+          code: d.code,
+          name: d.name,
+          badgeClass: 'other',
+          users: [],
+        });
+      }
+
+      for (const u of otherUsers) {
+        const code = (u.deptCode || 'OTHER').toUpperCase();
+        let group = subTeamsMap.get(code);
+        if (!group) {
+          group = {
+            code: u.deptCode || 'OTHER',
+            name: u.deptName || 'Other',
+            badgeClass: 'other',
+            users: [],
+          };
+          subTeamsMap.set(code, group);
+        }
+        group.users.push(u);
+      }
+
+      const subTeams = Array.from(subTeamsMap.values()).filter(g => g.users.length > 0);
+
       result.push({
         code: 'OTHER',
         name: 'Other Departments',
         badgeClass: 'other',
         users: otherUsers,
+        subTeams,
       });
     }
 
     return result;
-  }, [usersData.users, rows]);
+  }, [usersData.users, usersData.departments, rows]);
 
-  const displayedTeams = useMemo(() => {
+  const displayedTeams = useMemo<TeamGroup[]>(() => {
     const q = userSearch.trim().toLowerCase();
     if (!q) return teamsList;
     return teamsList
       .map(team => {
         const teamMatches = team.name.toLowerCase().includes(q) || team.code.toLowerCase().includes(q);
+
+        if (team.subTeams && team.subTeams.length > 0) {
+          if (teamMatches) return team;
+          const filteredSubTeams = team.subTeams
+            .map(sub => {
+              const subMatches = sub.name.toLowerCase().includes(q) || sub.code.toLowerCase().includes(q);
+              const filteredUsers = sub.users.filter(
+                u => u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)
+              );
+              if (subMatches) return sub;
+              if (filteredUsers.length > 0) {
+                return { ...sub, users: filteredUsers };
+              }
+              return null;
+            })
+            .filter((s): s is SubTeamGroup => Boolean(s));
+
+          if (filteredSubTeams.length > 0) {
+            return {
+              ...team,
+              subTeams: filteredSubTeams,
+              users: filteredSubTeams.flatMap(s => s.users),
+            };
+          }
+          return null;
+        }
+
         const filteredUsers = team.users.filter(
           u => u.name.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)
         );
@@ -1193,12 +1278,21 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
         }
         return null;
       })
-      .filter(Boolean) as typeof teamsList;
+      .filter((t): t is TeamGroup => Boolean(t));
   }, [teamsList, userSearch]);
 
   useEffect(() => {
     if (userSearch.trim()) {
-      setExpandedTeams(new Set(displayedTeams.map(t => t.code)));
+      const keysToExpand = new Set<string>();
+      for (const t of displayedTeams) {
+        keysToExpand.add(t.code);
+        if (t.subTeams) {
+          for (const s of t.subTeams) {
+            keysToExpand.add(`${t.code}:${s.code}`);
+          }
+        }
+      }
+      setExpandedTeams(keysToExpand);
     }
   }, [userSearch, displayedTeams]);
 
@@ -1231,6 +1325,22 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
         for (const id of teamIds) next.delete(id);
       } else {
         for (const id of teamIds) next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSubTeamUsers = (users: { id: number }[]) => {
+    if (!users.length) return;
+    const subIds = users.map(u => u.id);
+    const allChecked = subIds.every(id => tempUserIds.has(id));
+
+    setTempUserIds(prev => {
+      const next = new Set(prev);
+      if (allChecked) {
+        for (const id of subIds) next.delete(id);
+      } else {
+        for (const id of subIds) next.add(id);
       }
       return next;
     });
@@ -1961,6 +2071,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                     const checkedCount = teamUserIds.filter(id => tempUserIds.has(id)).length;
                     const isAllChecked = teamUserIds.length > 0 && checkedCount === teamUserIds.length;
                     const isSomeChecked = checkedCount > 0 && checkedCount < teamUserIds.length;
+                    const hasSubTeams = Boolean(team.subTeams && team.subTeams.length > 0);
 
                     return (
                       <div key={team.code} className="app-team-group">
@@ -1994,38 +2105,119 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                           <span className="app-team-name">{team.name}</span>
                         </div>
 
-                        {/* Indented users */}
+                        {/* Indented children */}
                         {isExpanded && (
-                          <div className="app-user-children">
-                            {team.users.map(u => {
-                              const isChecked = tempUserIds.has(u.id);
-                              return (
-                                <div
-                                  key={u.id}
-                                  className={`app-user-item ${isChecked ? 'checked' : ''}`}
-                                  onClick={() => toggleTempUser(u.id)}
-                                >
-                                  <div className="app-user-left">
-                                    <input
-                                      type="checkbox"
-                                      className="app-table-checkbox"
-                                      checked={isChecked}
-                                      onChange={() => {}}
-                                      style={{margin: 0}}
-                                    />
-                                    <span className="app-user-avatar">{u.initials}</span>
-                                    <span className="app-user-name">{u.name}</span>
+                          hasSubTeams ? (
+                            <div className="app-subteams-list">
+                              {team.subTeams!.map(subTeam => {
+                                const subKey = `${team.code}:${subTeam.code}`;
+                                const isSubExpanded = expandedTeams.has(subKey);
+                                const subUserIds = subTeam.users.map(u => u.id);
+                                const subCheckedCount = subUserIds.filter(id => tempUserIds.has(id)).length;
+                                const isAllSubChecked = subUserIds.length > 0 && subCheckedCount === subUserIds.length;
+                                const isSomeSubChecked = subCheckedCount > 0 && subCheckedCount < subUserIds.length;
+
+                                return (
+                                  <div key={subTeam.code} className="app-subteam-group">
+                                    <div
+                                      className="app-subteam-row"
+                                      onClick={() => toggleExpandTeam(subKey)}
+                                    >
+                                      <span
+                                        className="app-team-chevron"
+                                        onClick={e => {
+                                          e.stopPropagation();
+                                          toggleExpandTeam(subKey);
+                                        }}
+                                      >
+                                        {isSubExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                                      </span>
+                                      <input
+                                        type="checkbox"
+                                        className="app-table-checkbox"
+                                        checked={isAllSubChecked}
+                                        ref={el => {
+                                          if (el) el.indeterminate = isSomeSubChecked;
+                                        }}
+                                        onChange={() => toggleSubTeamUsers(subTeam.users)}
+                                        onClick={e => e.stopPropagation()}
+                                        style={{margin: 0}}
+                                      />
+                                      <span className="app-team-badge app-team-badge--other">
+                                        {subTeam.code}
+                                      </span>
+                                      <span className="app-subteam-name">{subTeam.name}</span>
+                                    </div>
+
+                                    {/* Indented users of child department */}
+                                    {isSubExpanded && (
+                                      <div className="app-user-children app-subuser-children">
+                                        {subTeam.users.map(u => {
+                                          const isChecked = tempUserIds.has(u.id);
+                                          return (
+                                            <div
+                                              key={u.id}
+                                              className={`app-user-item app-subuser-item ${isChecked ? 'checked' : ''}`}
+                                              onClick={() => toggleTempUser(u.id)}
+                                            >
+                                              <div className="app-user-left">
+                                                <input
+                                                  type="checkbox"
+                                                  className="app-table-checkbox"
+                                                  checked={isChecked}
+                                                  onChange={() => {}}
+                                                  style={{margin: 0}}
+                                                />
+                                                <span className="app-user-avatar">{u.initials}</span>
+                                                <span className="app-user-name">{u.name}</span>
+                                              </div>
+                                              <span className="app-user-tag">{u.roleTag}</span>
+                                            </div>
+                                          );
+                                        })}
+                                        {!subTeam.users.length && (
+                                          <div style={{fontSize: '11px', color: '#94a3b8', padding: '4px 44px'}}>
+                                            No users in this department
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
-                                  <span className="app-user-tag">{u.roleTag}</span>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="app-user-children">
+                              {team.users.map(u => {
+                                const isChecked = tempUserIds.has(u.id);
+                                return (
+                                  <div
+                                    key={u.id}
+                                    className={`app-user-item ${isChecked ? 'checked' : ''}`}
+                                    onClick={() => toggleTempUser(u.id)}
+                                  >
+                                    <div className="app-user-left">
+                                      <input
+                                        type="checkbox"
+                                        className="app-table-checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {}}
+                                        style={{margin: 0}}
+                                      />
+                                      <span className="app-user-avatar">{u.initials}</span>
+                                      <span className="app-user-name">{u.name}</span>
+                                    </div>
+                                    <span className="app-user-tag">{u.roleTag}</span>
+                                  </div>
+                                );
+                              })}
+                              {!team.users.length && (
+                                <div style={{fontSize: '11px', color: '#94a3b8', padding: '4px 32px'}}>
+                                  No users in this team
                                 </div>
-                              );
-                            })}
-                            {!team.users.length && (
-                              <div style={{fontSize: '11px', color: '#94a3b8', padding: '4px 32px'}}>
-                                No users in this team
-                              </div>
-                            )}
-                          </div>
+                              )}
+                            </div>
+                          )
                         )}
                       </div>
                     );
