@@ -17,7 +17,8 @@ function formatStakeholders(v: any): string {
     return v
       .map((s: any) => {
         const name = [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ') || s.name || '';
-        const pct = s.sharePercentage != null && s.sharePercentage !== '' ? ` (${s.sharePercentage}%)` : '';
+        const cleanPct = s.sharePercentage != null && s.sharePercentage !== '' ? String(s.sharePercentage).replace(/%+$/, '').trim() : '';
+        const pct = cleanPct ? ` (${cleanPct}%)` : '';
         return `${name}${pct}`.trim();
       })
       .filter(Boolean)
@@ -38,7 +39,7 @@ const toIsoDate = (val: string) => {
 function differs(key: string, system: string, document: string, isNumber: boolean) {
   if (!system && !document) return false;
   if (isNumber) {
-    if (key === 'experienceMonths' && ((system === '0' && !document) || (document === '0' && !system))) return false;
+    if ((key === 'experienceMonths' || key === 'experienceYears') && ((system === '0' && !document) || (document === '0' && !system))) return false;
     if (!system || !document) return true;
     const a = Number(system.replace(/[^\d.-]/g, ''));
     const b = Number(document.replace(/[^\d.-]/g, ''));

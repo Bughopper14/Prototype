@@ -238,7 +238,7 @@ def _read_from_boxes(
     x1, y1, x2, y2 = box["x1"], box["y1"], box["x2"], box["y2"]
     hits = [b for b in page_boxes[box["page"]] if x1 <= b["cx"] <= x2 and y1 <= b["cy"] <= y2]
     if hits:
-        hits.sort(key=lambda b: (round(b["cy"] / 0.008), b["cx"]))
+        hits.sort(key=lambda b: (round(b["cy"] / 0.004), b["cx"]))
         return re.sub(r"\s+", " ", " ".join(b["text"] for b in hits)).strip()
 
     # Fallback for tiny values (e.g. "36", "Riau") missed by full-page detector:
