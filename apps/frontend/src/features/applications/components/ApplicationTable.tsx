@@ -1137,138 +1137,119 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
 
   type TeamGroup = {
     code: string;
+    badgeCode?: string;
     name: string;
     badgeClass: string;
     users: UserFilterItem[];
     subTeams?: SubTeamGroup[];
   };
 
-  // Build teams list with users
+  // Build teams list containing only users who have created applications
   const teamsList = useMemo<TeamGroup[]>(() => {
-    const rawUsers = [...usersData.users];
-    // Include any users from rows if not present
+    // 1. Gather all marketing PIC users who have created at least one application
+    const activePicMap = new Map<number, {
+      id: number;
+      name: string;
+      username: string;
+      initials: string;
+      roleTag: string;
+      deptId: number | null;
+      departmentCode: string;
+      departmentName: string;
+    }>();
+
     for (const r of rows) {
-      if (r.mkt_pic_id && !rawUsers.some(u => u.id === Number(r.mkt_pic_id))) {
-        rawUsers.push({
-          id: Number(r.mkt_pic_id),
-          username: r.mkt_pic_username || `user${r.mkt_pic_id}`,
-          fullName: r.mkt_pic_name || `User #${r.mkt_pic_id}`,
-          deptId: r.mkt_pic_dept_id ?? null,
-          departmentCode: r.mkt_pic_dept_code ?? 'MKT',
-          departmentName: r.mkt_pic_dept_name ?? 'Marketing',
-        });
-      }
+      const picId = Number(r.mkt_pic_id || r.mktPicId);
+      if (!picId || isNaN(picId) || activePicMap.has(picId)) continue;
+
+      const u = usersData.users.find(user => user.id === picId);
+      const displayName = u?.fullName || r.mkt_pic_name || u?.username || r.mkt_pic_username || `User #${picId}`;
+      const username = u?.username || r.mkt_pic_username || `user${picId}`;
+      const deptCode = (u?.departmentCode || r.mkt_pic_dept_code || 'OTHER').toUpperCase();
+      const deptName = u?.departmentName || r.mkt_pic_dept_name || deptCode;
+      const roleTag = (u as any)?.roleName || (deptCode === 'MARKETING' || deptCode === 'MKT' ? 'PIC marketing' : deptName);
+
+      activePicMap.set(picId, {
+        id: picId,
+        name: displayName,
+        username,
+        initials: getInitials(displayName, picId),
+        roleTag,
+        deptId: u?.deptId ?? (r.mkt_pic_dept_id ? Number(r.mkt_pic_dept_id) : null),
+        departmentCode: deptCode,
+        departmentName: deptName,
+      });
     }
 
-    const predefined = [
-      {
-        code: 'MKT',
-        name: 'Marketing',
-        badgeClass: 'mkt',
-        matcher: (c: string) => c === 'MKT' || c === 'MARKETING',
-      },
-      {
-        code: 'BS',
-        name: 'Business Support',
-        badgeClass: 'bs',
-        matcher: (c: string) => c === 'BS' || c === 'BP' || c.includes('SUPPORT') || c.includes('PARTNER'),
-      },
-      {
-        code: 'CA',
-        name: 'Credit Analyst',
-        badgeClass: 'ca',
-        matcher: (c: string) => c === 'CA' || c.includes('ANALYST') || c === 'FIN_ANALYST',
-      },
-      {
-        code: 'LEGAL',
-        name: 'Legal',
-        badgeClass: 'legal',
-        matcher: (c: string) => c.startsWith('LEGAL'),
-      },
-      {
-        code: 'MGT',
-        name: 'Management',
-        badgeClass: 'mgt',
-        matcher: (c: string) => c === 'MGT' || c === 'RISK_MGT' || c.includes('MANAGEMENT') || c.includes('DIR'),
-      },
-    ];
+    // 2. Group the active PICs by their department
+    const deptMap = new Map<string, {
+      code: string;
+      badgeCode: string;
+      name: string;
+      badgeClass: string;
+      users: UserFilterItem[];
+    }>();
 
-    const result: TeamGroup[] = predefined.map(team => {
-      const usersInTeam: UserFilterItem[] = rawUsers
-        .filter(u => team.matcher((u.departmentCode || '').toUpperCase()))
-        .map(u => {
-          const displayName = u.fullName || u.username || `User #${u.id}`;
-          return {
-            id: u.id,
-            name: displayName,
-            username: u.username,
-            initials: getInitials(displayName, u.id),
-            roleTag: (u as any).roleName || (team.code === 'MKT' ? 'PIC marketing' : (u.departmentName || team.name)),
-          };
-        });
-      return {
-        code: team.code,
-        name: team.name,
-        badgeClass: team.badgeClass,
-        users: usersInTeam,
-      };
-    });
+    for (const user of activePicMap.values()) {
+      const code = user.departmentCode || 'OTHER';
+      const officialDept = usersData.departments?.find(
+        d => (d.code || '').toUpperCase() === code || (user.deptId && d.id === user.deptId)
+      );
+      const name = officialDept?.name || user.departmentName || code;
 
-    const otherUsers: (UserFilterItem & { deptCode: string; deptName: string })[] = rawUsers
-      .filter(u => !predefined.some(t => t.matcher((u.departmentCode || '').toUpperCase())))
-      .map(u => {
-        const displayName = u.fullName || u.username || `User #${u.id}`;
-        return {
-          id: u.id,
-          name: displayName,
-          username: u.username,
-          initials: getInitials(displayName, u.id),
-          roleTag: (u as any).roleName || u.departmentName || 'Staff',
-          deptCode: (u.departmentCode || '').toUpperCase(),
-          deptName: u.departmentName || 'Other',
-        };
-      });
+      let badgeClass = 'other';
+      const c = code.toUpperCase();
+      if (c === 'MKT' || c === 'MARKETING') badgeClass = 'mkt';
+      else if (c === 'BS' || c === 'BP' || c.includes('SUPPORT') || c.includes('PARTNER')) badgeClass = 'bs';
+      else if (c === 'CA' || c.includes('ANALYST')) badgeClass = 'ca';
+      else if (c.startsWith('LEGAL')) badgeClass = 'legal';
+      else if (c === 'MGT' || c === 'RISK_MGT' || c.includes('MANAGEMENT') || c.includes('DIR')) badgeClass = 'mgt';
 
-    if (otherUsers.length > 0) {
-      // Group other users into sub-departments
-      const subTeamsMap = new Map<string, SubTeamGroup>();
+      const badgeCode = (c === 'MARKETING' || c === 'MKT') ? 'MKT' : (officialDept?.code || code);
 
-      for (const d of usersData.departments || []) {
-        const code = (d.code || '').toUpperCase();
-        if (predefined.some(t => t.matcher(code))) continue;
-        subTeamsMap.set(code, {
-          code: d.code,
-          name: d.name,
-          badgeClass: 'other',
+      if (!deptMap.has(code)) {
+        deptMap.set(code, {
+          code: officialDept?.code || user.departmentCode,
+          badgeCode,
+          name,
+          badgeClass,
           users: [],
         });
       }
 
-      for (const u of otherUsers) {
-        const code = (u.deptCode || 'OTHER').toUpperCase();
-        let group = subTeamsMap.get(code);
-        if (!group) {
-          group = {
-            code: u.deptCode || 'OTHER',
-            name: u.deptName || 'Other',
-            badgeClass: 'other',
-            users: [],
-          };
-          subTeamsMap.set(code, group);
-        }
-        group.users.push(u);
-      }
-
-      const subTeams = Array.from(subTeamsMap.values()).filter(g => g.users.length > 0);
-
-      result.push({
-        code: 'OTHER',
-        name: 'Other Departments',
-        badgeClass: 'other',
-        users: otherUsers,
-        subTeams,
+      deptMap.get(code)!.users.push({
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        initials: user.initials,
+        roleTag: user.roleTag,
       });
     }
+
+    // 3. Sort departments: MARKETING first, then BP/BS, CA, DS, etc., or alphabetically
+    const deptOrder: Record<string, number> = {
+      MARKETING: 1,
+      MKT: 1,
+      BP: 2,
+      BS: 2,
+      CA: 3,
+      DS: 4,
+    };
+
+    const result: TeamGroup[] = Array.from(deptMap.values())
+      .sort((a, b) => {
+        const orderA = deptOrder[a.code.toUpperCase()] ?? 99;
+        const orderB = deptOrder[b.code.toUpperCase()] ?? 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      })
+      .map(dept => ({
+        code: dept.code,
+        badgeCode: dept.badgeCode,
+        name: dept.name,
+        badgeClass: dept.badgeClass,
+        users: dept.users.sort((u1, u2) => u1.name.localeCompare(u2.name)),
+      }));
 
     return result;
   }, [usersData.users, usersData.departments, rows]);
@@ -2137,7 +2118,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                             style={{margin: 0}}
                           />
                           <span className={`app-team-badge app-team-badge--${team.badgeClass}`}>
-                            {team.code}
+                            {team.badgeCode || team.code}
                           </span>
                           <span className="app-team-name">{team.name}</span>
                         </div>
