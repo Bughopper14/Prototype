@@ -2163,7 +2163,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                         <div className="app-date-cal-days">
                           {leftMonthDays.map((cell, idx) => {
                             if (!cell) {
-                              return <div key={`empty-left-${idx}`} className="app-calendar-day-cell empty" />;
+                              return <div key={`empty-left-${idx}`} className="app-calendar-day-cell is-empty" />;
                             }
                             const isStart = isSameDay(cell.date, tempDateFrom);
                             const isEnd = isSameDay(cell.date, tempDateTo);
@@ -2221,7 +2221,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                         <div className="app-date-cal-days">
                           {rightMonthDays.map((cell, idx) => {
                             if (!cell) {
-                              return <div key={`empty-right-${idx}`} className="app-calendar-day-cell empty" />;
+                              return <div key={`empty-right-${idx}`} className="app-calendar-day-cell is-empty" />;
                             }
                             const isStart = isSameDay(cell.date, tempDateFrom);
                             const isEnd = isSameDay(cell.date, tempDateTo);
