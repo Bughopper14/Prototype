@@ -35,7 +35,7 @@ export function DocumentSourceCell({
         <div
           style={{
             fontSize: '11.5px',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#2563eb',
             marginBottom: '6px',
             display: 'flex',

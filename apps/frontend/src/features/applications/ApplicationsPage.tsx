@@ -5,7 +5,7 @@ import {PageHeading} from '@/features/crm/components/PageHeading';
 import {ApplicationTable, type ApplicationTableHandle} from './components/ApplicationTable';
 
 export default function ApplicationsPage() {
-  const {rows, openApplication} = useCrm();
+  const {rows, openApplication, recentlyCreatedAppId} = useCrm();
   const tableRef = useRef<ApplicationTableHandle>(null);
 
   return (
@@ -17,7 +17,7 @@ export default function ApplicationsPage() {
         onExport={() => tableRef.current?.exportCsv()}
       />
       <AccessGate authority="CRM_APPLICATION_VIEW" page="Applications">
-        <ApplicationTable ref={tableRef} rows={rows} open={openApplication} />
+        <ApplicationTable ref={tableRef} rows={rows} open={openApplication} highlightId={recentlyCreatedAppId} />
       </AccessGate>
     </>
   );

@@ -23,7 +23,7 @@ export function SignatoryCards() {
             color: '#1d4ed8',
             border: '1.5px dashed #3b82f6',
             cursor: 'pointer',
-            fontWeight: 600,
+            fontWeight: 700,
             display: 'inline-flex',
             alignItems: 'center',
             gap: '6px',

@@ -234,7 +234,7 @@ export function ApprovalDecisionDialog() {
           </fieldset>
         )}
         <div style={{marginTop: 12, marginBottom: 8}}>
-          <label style={{display: 'block', fontWeight: 600, color: '#334155', marginBottom: 6}}>
+          <label style={{display: 'block', fontWeight: 700, color: '#334155', marginBottom: 6}}>
             {reject ? 'Reason (required)' : 'Notes (optional)'}
           </label>
           <CrmRichTextEditor
@@ -255,7 +255,7 @@ export function ApprovalDecisionDialog() {
               <small>Add it to the checklist of this application. It shows there for whoever uploads the files.</small>
               {requested.length > 0 && (
                 <div className="ap-requested" aria-label="Documents requested for this application" style={{display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8}}>
-                  <small style={{width: '100%', fontWeight: 600}}>Requested ({requested.length}):</small>
+                  <small style={{width: '100%', fontWeight: 700}}>Requested ({requested.length}):</small>
                   {requested.map((d: any) => (
                     <span key={d.id} className="wf-badge active" title={d.stageCode}>
                       {d.documentName}
@@ -348,7 +348,7 @@ export function SubmitStageDialog() {
           The stage is locked and sent for approval. If something is rejected it opens again so you can fix it and submit once more.
         </p>
         <div style={{marginTop: 12, marginBottom: 8}}>
-          <label style={{display: 'block', fontWeight: 600, color: '#334155', marginBottom: 6}}>
+          <label style={{display: 'block', fontWeight: 700, color: '#334155', marginBottom: 6}}>
             Notes (optional)
           </label>
           <CrmRichTextEditor

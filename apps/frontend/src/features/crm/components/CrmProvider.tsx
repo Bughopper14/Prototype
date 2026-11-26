@@ -7,15 +7,20 @@ import {
   saveReadNotificationIds,
 } from '@/features/activity/lib/activity-store';
 import {type SystemActivity, type SystemNotificationItem} from '@/features/activity/lib/types';
+import {type CreatedApplicationInfo} from '@/features/applications/NewApplicationStart';
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
-import {applicationHref, newApplicationHref, pageHref} from '@/shared/lib/routes';
+import {applicationHref, CRM_PAGES, pageHref} from '@/shared/lib/routes';
 import {setMasterData} from '@/shared/master-data';
-import {createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode} from 'react';
-import {useNavigate} from 'react-router';
+import {useConfirm, type ConfirmAsk} from '@/features/workflow/ConfirmDialog';
+import {createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode} from 'react';
+import {useLocation, useNavigate} from 'react-router';
 
 const NOTIFICATION_POLL_MS = 15_000;
 const TOAST_MS = 4_500;
+const CREATED_APP_MS = 8_000;
+
+export type ToastState = {message: string; tone: 'info' | 'error'};
 
 type CrmContextValue = {
   user: any;
@@ -25,10 +30,18 @@ type CrmContextValue = {
   loading: boolean;
   error: string;
   reload: () => Promise<void>;
-  notify: (message: string) => void;
-  toast: string;
+  notify: (message: string, tone?: 'info' | 'error') => void;
+  dismissToast: () => void;
+  toast: ToastState | null;
+  confirm: (ask: ConfirmAsk) => Promise<boolean>;
   openApplication: (id: string, tab?: number) => void;
   startNewApplication: (customerId?: string) => void;
+  newAppModal: {open: boolean; customerId?: string};
+  closeNewApplication: () => void;
+  completeNewApplication: (created: CreatedApplicationInfo) => Promise<void>;
+  createdAppBanner: CreatedApplicationInfo | null;
+  dismissCreatedAppBanner: () => void;
+  recentlyCreatedAppId: string | null;
   goTo: (pageName: string) => void;
   notifications: SystemNotificationItem[];
   readNotificationIds: Set<string>;
@@ -53,6 +66,7 @@ export function useCrm() {
 /** Loads the data every CRM page needs (applications, customers, master data, notifications) once per session. */
 export function CrmProvider({user, children}: {user: any; children: ReactNode}) {
   const navigate = useNavigate();
+  const {pathname} = useLocation();
   const [rows, setRows] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
   const [serverNotifications, setServerNotifications] = useState<any[]>([]);
@@ -61,11 +75,27 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   const [readNotificationIds, setReadNotificationIds] = useState(() => getReadNotificationIds());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [toast, setToast] = useState('');
+  const [toast, setToast] = useState<ToastState | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const [confirm, confirmDialog] = useConfirm();
+  const [newAppModal, setNewAppModal] = useState<{open: boolean; customerId?: string}>({open: false});
+  const [createdAppBanner, setCreatedAppBanner] = useState<CreatedApplicationInfo | null>(null);
+  const [recentlyCreatedAppId, setRecentlyCreatedAppId] = useState<string | null>(null);
 
-  const notify = useCallback((message: string) => {
-    setToast(message);
-    setTimeout(() => setToast(''), TOAST_MS);
+  const dismissToast = useCallback(() => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = null;
+    setToast(null);
+  }, []);
+
+  const notify = useCallback((message: string, tone?: 'info' | 'error') => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    const resolvedTone = tone ?? (/^(failed|could not|error|cannot|gagal)/i.test(message.trim()) ? 'error' : 'info');
+    setToast({message, tone: resolvedTone});
+    toastTimer.current = window.setTimeout(() => {
+      toastTimer.current = null;
+      setToast(null);
+    }, resolvedTone === 'error' ? 6_000 : TOAST_MS);
   }, []);
 
   const reload = useCallback(async () => {
@@ -186,13 +216,42 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
     saveReadActivityIds(all);
   };
 
-  const startNewApplication = (customerId?: string) => {
-    if (!hasAuthority(user, 'CRM_APPLICATION_CREATE')) {
-      notify('Your role is not allowed to create applications.');
-      return;
-    }
-    navigate(newApplicationHref(customerId));
-  };
+  const startNewApplication = useCallback(
+    (customerId?: string) => {
+      if (!hasAuthority(user, 'CRM_APPLICATION_CREATE')) {
+        notify('Your role is not allowed to create applications.');
+        return;
+      }
+      setNewAppModal({open: true, customerId});
+    },
+    [user, notify],
+  );
+
+  const closeNewApplication = useCallback(() => {
+    setNewAppModal({open: false});
+  }, []);
+
+  const completeNewApplication = useCallback(
+    async (created: CreatedApplicationInfo) => {
+      setNewAppModal({open: false});
+      await reload();
+      setRecentlyCreatedAppId(created.id);
+      setCreatedAppBanner(created);
+      // Ensure the user sees the updated applications table if created from Customers or /new
+      if (pathname !== CRM_PAGES[1].href && pathname !== CRM_PAGES[0].href) {
+        navigate(CRM_PAGES[1].href);
+      }
+      setTimeout(() => {
+        setCreatedAppBanner(prev => (prev?.id === created.id ? null : prev));
+        setRecentlyCreatedAppId(prev => (prev === created.id ? null : prev));
+      }, CREATED_APP_MS);
+    },
+    [reload, pathname, navigate],
+  );
+
+  const dismissCreatedAppBanner = useCallback(() => {
+    setCreatedAppBanner(null);
+  }, []);
 
   const value: CrmContextValue = {
     user,
@@ -203,9 +262,20 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
     error,
     reload,
     notify,
+    dismissToast,
     toast,
-    openApplication: (id, tab) => navigate(applicationHref(id, tab)),
+    confirm,
+    openApplication: (id, tab) => {
+      setCreatedAppBanner(null);
+      navigate(applicationHref(id, tab));
+    },
     startNewApplication,
+    newAppModal,
+    closeNewApplication,
+    completeNewApplication,
+    createdAppBanner,
+    dismissCreatedAppBanner,
+    recentlyCreatedAppId,
     goTo: name => navigate(pageHref(name)),
     notifications,
     readNotificationIds,
@@ -219,5 +289,10 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
     markAllActivitiesRead,
   };
 
-  return <CrmContext.Provider value={value}>{children}</CrmContext.Provider>;
+  return (
+    <CrmContext.Provider value={value}>
+      {children}
+      {confirmDialog}
+    </CrmContext.Provider>
+  );
 }

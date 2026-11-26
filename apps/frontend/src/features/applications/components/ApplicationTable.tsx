@@ -33,6 +33,7 @@ export interface ApplicationTableProps {
   open: (id: string, tab?: number) => void;
   compact?: boolean;
   documentMode?: boolean;
+  highlightId?: string | null;
   onViewAll?: () => void;
 }
 
@@ -823,6 +824,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       open,
       compact = false,
       documentMode = false,
+      highlightId,
       onViewAll,
     },
     ref
@@ -2338,6 +2340,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
             </tr>
           </thead>
           <tbody>
+<<<<<<< HEAD
             {visible.map(r => {
               const isSelected = selectedIds.has(r.id);
               const isQuickViewActive = currentQuickViewApp?.id === r.id;
@@ -2369,7 +2372,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
               return (
                 <tr
                   key={r.id}
-                  className={`app-table-row ${isQuickViewActive ? 'is-active-row' : ''}`}
+                  className={`app-table-row ${isQuickViewActive ? 'is-active-row' : ''} ${highlightId && r.id === highlightId ? 'na-row-created' : ''}`}
                   onClick={() => setQuickViewApp(r)}
                   style={isSelected ? {backgroundColor: '#f1f5f9'} : undefined}
                 >

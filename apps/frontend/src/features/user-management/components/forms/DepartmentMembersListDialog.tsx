@@ -99,7 +99,7 @@ export function DepartmentMembersListDialog({
                   style={{
                     margin: 0,
                     fontSize: 17,
-                    fontWeight: 800,
+                    fontWeight: 700,
                     color: '#002C5F',
                   }}
                 >
@@ -108,7 +108,7 @@ export function DepartmentMembersListDialog({
                 <span
                   style={{
                     fontSize: 11,
-                    fontWeight: 800,
+                    fontWeight: 700,
                     backgroundColor: '#EFF6FF',
                     color: '#1D4ED8',
                     padding: '2px 8px',
@@ -303,7 +303,7 @@ export function DepartmentMembersListDialog({
               }}
             >
               <i className="fas fa-search" style={{fontSize: 20, color: '#94A3B8', marginBottom: 8}} />
-              <div style={{fontSize: 14, fontWeight: 600}}>No matching users found</div>
+              <div style={{fontSize: 14, fontWeight: 700}}>No matching users found</div>
               <div style={{fontSize: 12, marginTop: 4}}>Try another name or keyword</div>
             </div>
           ) : (
@@ -390,7 +390,7 @@ export function DepartmentMembersListDialog({
                           }}
                         >
                           {u.position && (
-                            <span style={{color: '#475569', fontWeight: 600}}>
+                            <span style={{color: '#475569', fontWeight: 700}}>
                               <i
                                 className="fas fa-briefcase"
                                 style={{fontSize: 10, marginRight: 4, color: '#94A3B8'}}
@@ -418,7 +418,7 @@ export function DepartmentMembersListDialog({
                           className="badge-app"
                           style={{
                             fontSize: 11,
-                            fontWeight: 600,
+                            fontWeight: 700,
                             padding: '2px 8px',
                           }}
                         >
@@ -464,7 +464,7 @@ export function DepartmentMembersListDialog({
               type="button"
               className="button secondary"
               onClick={onClose}
-              style={{padding: '7px 16px', fontSize: 13, fontWeight: 600, borderRadius: 8}}
+              style={{padding: '7px 16px', fontSize: 13, fontWeight: 700, borderRadius: 8}}
             >
               Close
             </button>

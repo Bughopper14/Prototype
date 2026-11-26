@@ -3,6 +3,7 @@ import {AuthorityForm} from '@/features/user-management/components/forms/Authori
 import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
+import {usePortalConfirm} from '@/features/user-management/components/ui/ConfirmDialog';
 import type {ReactNode} from 'react';
 import type {Overview} from '@/features/user-management/lib/types';
 
@@ -17,6 +18,7 @@ export function AuthoritiesTab({
   setDialog: (dialog: ReactNode) => void;
   empty: (cols: number) => ReactNode;
 }) {
+  const [askConfirm, confirmModal] = usePortalConfirm();
   return (
     <>
       <SectionHead
@@ -92,10 +94,18 @@ export function AuthoritiesTab({
                       type="button"
                       className="um-btn danger"
                       aria-label={`Delete ${a.authority_name}`}
-                      onClick={() =>
-                        confirm(`Delete authority "${a.authority_name}"?`) &&
-                        act(() => call(`/authorities/${a.id}`, 'DELETE'))
-                      }
+                      onClick={async () => {
+                        if (
+                          await askConfirm({
+                            title: 'Delete authority?',
+                            message: `Delete authority "${a.authority_name}"?`,
+                            confirmLabel: 'Delete',
+                            danger: true,
+                          })
+                        ) {
+                          await act(() => call(`/authorities/${a.id}`, 'DELETE'));
+                        }
+                      }}
                     >
                       <i className="fas fa-trash" />
                     </button>
@@ -106,6 +116,7 @@ export function AuthoritiesTab({
           </tbody>
         </table>
       </div>
+      {confirmModal}
     </>
   );
 }

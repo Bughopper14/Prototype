@@ -170,13 +170,13 @@ h3 {
 }
 h1 {
   font-size: 29px;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -1.1px;
   color: #0f172a;
 }
 h2 {
   font-size: 16px;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -0.3px;
 }
 h3 {
@@ -252,7 +252,7 @@ a {
   font-size: 30px;
   letter-spacing: -8px;
   transform: skew(-8deg);
-  font-weight: 900;
+  font-weight: 700;
   background: #0284c7;
   color: #ffffff;
   width: 38px;
@@ -266,7 +266,7 @@ a {
 .brand strong {
   display: block;
   font-family: 'Outfit', sans-serif !important;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 2px;
   font-size: 18px;
   line-height: 1.1;
@@ -312,7 +312,7 @@ a {
 }
 .nav-label {
   font-size: 9.5px;
-  font-weight: 650;
+  font-weight: 700;
   letter-spacing: 1.5px;
   color: #64748b;
   padding: 0 10px;
@@ -355,7 +355,7 @@ nav button em {
   background: #ffffff15;
   color: #e2e8f0;
   padding: 2px 7px;
-  font-weight: 600;
+  font-weight: 700;
 }
 nav button.active em {
   background: #38bdf8;
@@ -375,7 +375,7 @@ nav button.active em {
 }
 .security-note b {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   display: block;
   color: #cbd5e1;
 }
@@ -403,7 +403,7 @@ nav button.active em {
 .user-block b {
   display: block;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #f8fafc;
 }
 .user-block small {
@@ -517,7 +517,7 @@ main {
   padding: 11px 15px;
   background: #fff;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   min-height: 37px;
   text-decoration: none;
@@ -568,7 +568,7 @@ main {
   border: 0;
   font-size: 10px;
   color: #2563eb;
-  font-weight: 600;
+  font-weight: 700;
   padding: 0;
   text-decoration: none;
 }
@@ -604,7 +604,7 @@ main {
 .stat-card > strong {
   display: block;
   font-family: 'Outfit', sans-serif !important;
-  font-weight: 750;
+  font-weight: 700;
   font-size: 29px;
   letter-spacing: -1px;
   color: #0f172a;
@@ -805,7 +805,7 @@ main {
 }
 .attention-item b {
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 700;
   display: block;
   color: #0f172a;
 }
@@ -936,7 +936,7 @@ main {
   display: block;
   font-size: 10px;
   color: #0f172a;
-  font-weight: 600;
+  font-weight: 700;
 }
 .company-cell small {
   display: block;
@@ -1291,16 +1291,41 @@ footer i {
   position: fixed;
   right: 28px;
   bottom: 25px;
-  padding: 16px 23px;
+  max-width: 480px;
+  padding: 13px 16px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border-radius: 9px;
+  border-radius: 10px;
   background: #1e40af;
   color: #fff;
-  box-shadow: 0 5px 25px rgba(30, 64, 175, 0.25);
-  z-index: 150;
-  font-size: 12px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.25);
+  z-index: 9999;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+.toast.toast-error {
+  background: #b91c1c;
+  box-shadow: 0 10px 28px rgba(185, 28, 28, 0.28);
+}
+.toast-close {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+.toast-close:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
 }
 .back-link {
   margin-bottom: 23px;
@@ -1351,7 +1376,7 @@ footer i {
 .detail-summary > div > b {
   font-size: 13px;
   color: #1e40af;
-  font-weight: 600;
+  font-weight: 700;
 }
 .workflow-buttons {
   margin-left: auto;
@@ -1424,7 +1449,7 @@ footer i {
   margin-bottom: 23px;
 }
 .customer-reference b {
-  font-weight: 600;
+  font-weight: 700;
 }
 .section-title {
   display: flex;
@@ -1460,7 +1485,7 @@ footer i {
 }
 .ownership strong {
   font-size: 25px;
-  font-weight: 600;
+  font-weight: 700;
   display: block;
   color: #1e40af;
 }
@@ -1573,10 +1598,10 @@ footer i {
 }
 .total-row {
   background: #f8fafc;
-  font-weight: 600;
+  font-weight: 700;
 }
 .balance-row {
-  font-weight: 600;
+  font-weight: 700;
 }
 .text-brand,
 .text-green {
@@ -1930,7 +1955,7 @@ footer i {
   letter-spacing: -1.5px;
   color: #ffffff;
   margin-top: 20px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .login-story .eyebrow {
   color: #94a3b8;
@@ -2004,7 +2029,7 @@ footer i {
 }
 .demo-note strong {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e40af;
 }
 .demo-note p {
@@ -2509,7 +2534,7 @@ footer i {
   border-radius: 8px !important;
   color: #e2e8f0 !important;
   font-size: 12.5px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   text-decoration: none !important;
   transition: all 0.18s ease-in-out !important;
   box-sizing: border-box !important;
@@ -2550,7 +2575,7 @@ footer i {
   border-radius: 8px !important;
   color: #cbd5e1 !important;
   font-size: 12px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   text-decoration: none !important;
   transition: all 0.18s ease-in-out !important;
   box-sizing: border-box !important;
@@ -2636,7 +2661,7 @@ nav button {
 }
 .badge,
 .status-badge {
-  font-weight: 650;
+  font-weight: 700;
 }
 .panel-head {
   min-height: 64px;
@@ -2904,7 +2929,7 @@ nav button {
   display: inline !important;
   color: #ad3d31 !important;
   font-size: 13px !important;
-  font-weight: 800;
+  font-weight: 700;
   margin-left: 4px;
 }
 .repeat .formgrid {
@@ -3036,7 +3061,7 @@ nav button {
   background: #eff6ff;
   color: #1d4ed8;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
 }
 .legal-table-wrap {
   border: 1px solid #e2e8f0;
@@ -3092,11 +3117,11 @@ nav button {
   background: #f1f5f9;
   color: #0f172a;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 700;
 }
 .legal-current {
   font-size: 9px;
-  font-weight: 750;
+  font-weight: 700;
   color: #2563eb;
 }
 .legal-deed-number {
@@ -3417,7 +3442,7 @@ nav button {
   max-width: 150px;
   margin-top: 8px;
   font-size: 22px;
-  font-weight: 750;
+  font-weight: 700;
   color: #002060;
 }
 .shareholder-count-modal .error {
@@ -3433,7 +3458,7 @@ nav button {
   color: #765022;
   font-size: 11px;
   line-height: 1.5;
-  font-weight: 650;
+  font-weight: 700;
 }
 .stakeholder-deed-heading {
   margin-bottom: 14px;
@@ -3493,7 +3518,7 @@ nav button {
   gap: 6px;
   color: #64748b;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 700;
 }
 .remarks-category-item input,
 .remarks-category-item textarea {
@@ -3539,7 +3564,7 @@ nav button {
   padding: 4px 9px;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 700;
   white-space: nowrap;
 }
 .deed-validity.active {
@@ -3723,7 +3748,7 @@ nav button {
 .repeater-carousel-controls span {
   color: #64748b;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 700;
   min-width: 52px;
   text-align: center;
 }
@@ -3816,7 +3841,7 @@ nav button {
 }
 .carousel-counter {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   white-space: nowrap;
 }
@@ -3889,7 +3914,7 @@ nav button {
   padding: 3px 10px;
   border-radius: 9999px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.3;
   background: #f1f5f9;
   color: #001f42;
@@ -3950,7 +3975,7 @@ nav button {
   padding: 6px 14px;
   border-radius: 9999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   background: #f1f5f9;
   color: #475569;
   border: 1px solid transparent;
@@ -3994,7 +4019,7 @@ nav button {
 .legal-popup-cat-status {
   font-size: 11px;
   color: #0284c7;
-  font-weight: 600;
+  font-weight: 700;
 }
 .legal-popup-card-body {
   font-size: 13px;
@@ -4048,7 +4073,7 @@ nav button {
 }
 .legal-remarks-category-group .field-label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: #334155;
   display: flex;
   align-items: center;
@@ -4215,7 +4240,7 @@ nav button {
   gap: 6px;
   color: #334155;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 700;
 }
 .legal-deed-category-control select {
   width: 100%;
@@ -4261,7 +4286,7 @@ nav button {
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
   box-shadow: 0 1px 3px rgba(0, 32, 96, 0.15);
@@ -4412,7 +4437,7 @@ nav button {
 }
 .master-burger-badge {
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   background: #f1f5f9;
   padding: 2px 7px;
@@ -4682,7 +4707,7 @@ nav button {
 .stakeholder-deed-meta dd {
   margin: 0;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 .stakeholder-share-heading {
@@ -5255,7 +5280,7 @@ nav button {
   align-items: center;
   gap: 7px;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 700;
   color: #64748b;
   padding: 9px 12px;
   border-radius: 7px;
@@ -5336,7 +5361,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
 .deed-approval-summary dd {
   margin: 0;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 700;
   overflow-wrap: anywhere;
 }
 .deed-approval-modal h3 {
@@ -5460,7 +5485,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
 }
 .deed-approval-holder-detail dd {
   margin: 2px 0 0;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
   overflow-wrap: anywhere;
 }
@@ -5485,7 +5510,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
 }
 .deed-approval-history summary {
   cursor: pointer;
-  font-weight: 650;
+  font-weight: 700;
 }
 .deed-approval-history > div {
   margin: 12px 0;
@@ -5662,13 +5687,13 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   background: #eff6ff !important;
   color: #002c5f !important;
   border: 1px solid #bfdbfe !important;
-  font-weight: 600;
+  font-weight: 700;
 }
 .legal-ownership-summary.exceeded {
   background: #fef2f2 !important;
   color: #991b1b !important;
   border: 1px solid #fca5a5 !important;
-  font-weight: 600;
+  font-weight: 700;
 }
 .legal-menu-layer {
   position: fixed;
@@ -5811,7 +5836,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   color: #64748b;
 }
 .deed-compare-table tbody th {
-  font-weight: 600;
+  font-weight: 700;
 }
 .deed-compare-table tr.changed {
   background: #fff6dc;
@@ -5836,7 +5861,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
 .deed-person-comparison summary {
   cursor: pointer;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .deed-person-comparison table {
   margin-top: 8px;
@@ -5876,7 +5901,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   outline: none;
   font-family: inherit;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   user-select: none;
   transition: all 0.2s ease;
@@ -5985,7 +6010,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   gap: 8px;
   padding: 9px 18px;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 6px;
 }
 
@@ -6038,7 +6063,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
 .detail-tabs button.active {
   border-bottom-color: #001f42 !important;
   color: #001f42 !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   background: rgba(0, 31, 66, 0.05) !important;
 }
 
@@ -6052,7 +6077,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
   background: #f1f5f9 !important;
   color: #64748b !important;
   font-size: 11px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   transition: all 0.15s ease-in-out !important;
 }
 
@@ -6063,7 +6088,7 @@ body.deed-edit-over-approval .modal-scrim:not(.deed-approval-scrim) {
 
 .detail-tabs em {
   font-size: 11px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   font-style: normal !important;
   background: #f1f5f9 !important;
   color: #64748b !important;

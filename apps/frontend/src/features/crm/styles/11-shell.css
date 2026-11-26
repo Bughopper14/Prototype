@@ -2,30 +2,6 @@
 /* ==========================================================================
    USER MANAGEMENT THEME & OFFCANVAS DRAWER (Outfitted for CRM Dashboard)
    ========================================================================== */
-*,
-*::before,
-*::after,
-body,
-button,
-input,
-select,
-textarea,
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-.shell {
-  font-family:
-    'Outfit',
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    sans-serif !important;
-}
-
 .shell {
   display: flex !important;
   flex-direction: column !important;
@@ -105,7 +81,7 @@ main {
   letter-spacing: 1px !important;
   text-transform: uppercase !important;
   color: rgba(255, 255, 255, 0.75) !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   line-height: 1 !important;
   margin-top: 3px !important;
 }
@@ -123,7 +99,7 @@ main {
   border-radius: 8px !important;
   padding: 6px 14px !important;
   font-size: 13px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 8px !important;
@@ -188,13 +164,16 @@ aside.crm-sidebar-drawer {
   justify-content: space-between !important;
   padding: 0 !important;
   z-index: 9999 !important;
-  box-shadow: 10px 0 35px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: none !important;
+  visibility: hidden !important;
   transform: translateX(-100%) !important;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
   border-right: none !important;
 }
 
 aside.crm-sidebar-drawer.drawer-open {
+  visibility: visible !important;
+  box-shadow: 10px 0 35px rgba(0, 0, 0, 0.4) !important;
   transform: translateX(0) !important;
 }
 
@@ -261,7 +240,6 @@ aside.crm-sidebar-drawer.drawer-open {
   text-align: left !important;
   color: rgba(255, 255, 255, 0.5) !important;
   border-radius: 8px !important;
-  font-family: 'Outfit', sans-serif !important;
   font-size: 1rem !important;
   font-weight: 500 !important;
   line-height: 1.5 !important;
@@ -279,7 +257,7 @@ aside.crm-sidebar-drawer.drawer-open {
 .drawer-nav-item.active {
   background-color: #ff9900 !important;
   color: #002c5f !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
 }
 
 .drawer-nav-item.active svg {
@@ -287,7 +265,6 @@ aside.crm-sidebar-drawer.drawer-open {
 }
 
 .drawer-nav-item em {
-  font-family: 'Outfit', sans-serif !important;
   font-size: 11.5px !important;
   font-style: normal !important;
   margin-left: auto !important;
@@ -295,7 +272,7 @@ aside.crm-sidebar-drawer.drawer-open {
   background: rgba(255, 255, 255, 0.18) !important;
   color: #ffffff !important;
   padding: 2px 8px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
 }
 
 .drawer-nav-item.active em {
@@ -339,7 +316,7 @@ aside.crm-sidebar-drawer.drawer-open {
 
 .drawer-user-name {
   color: #ffffff !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   font-size: 13.5px !important;
   white-space: nowrap !important;
   overflow: hidden !important;
@@ -371,7 +348,7 @@ aside.crm-sidebar-drawer.drawer-open {
   color: #ffffff !important;
   border-radius: 8px !important;
   font-size: 12.5px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -393,7 +370,7 @@ aside.crm-sidebar-drawer.drawer-open {
   color: #ffffff !important;
   border-radius: 8px !important;
   font-size: 12.5px !important;
-  font-weight: 600 !important;
+  font-weight: 700 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;

@@ -4,20 +4,20 @@ import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnaly
 import type {EntitySlikReview} from '@/features/pre-analysis/lib/types';
 
 export function SlikNoRecordRemarks({idx, review}: {idx: number; review: EntitySlikReview}) {
-  const {updateEntityReview, scrollToPreviewElement} = usePreAnalysisContext();
+  const {updateEntityReview, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     /* NO: Show Remarks column with TinyMCE */
     <div>
       <label
         style={{
           fontSize: '0.75rem',
-          fontWeight: 600,
+          fontWeight: 700,
           color: '#475569',
           marginBottom: '4px',
           display: 'block',
         }}
       >
-        Remarks / Reason for No SLIK Records
+        Remarks / Reason for No SLIK Records{reqMark('applicantPefindoCheck')}
       </label>
       <PreAnalysisRichEditor
         value={review.noRecordRemarks || ''}

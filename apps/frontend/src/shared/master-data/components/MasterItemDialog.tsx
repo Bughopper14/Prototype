@@ -1,6 +1,6 @@
 /** Dialog to add or edit one master-data item (used by MasterSelect quick-add and the Master Data page). */
 import {api} from '@/shared/lib/api';
-import {masterGroups, safeUUID, type MasterItem} from '@liugong/shared';
+import {masterGroups, safeUUID, sortableMasterGroups, type MasterItem} from '@liugong/shared';
 import {Save, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -190,6 +190,22 @@ export function MasterItemDialog({
                 </select>
               </label>
             )}
+            {sortableMasterGroups.has(groupKey) && (
+              <label>
+                Sort order
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  placeholder="Auto (placed last)"
+                  value={draft.sortOrder ?? ''}
+                  onChange={e =>
+                    setDraft({...draft, sortOrder: e.target.value === '' ? undefined : Math.max(1, Math.floor(Number(e.target.value)))})
+                  }
+                />
+                <small className="muted">Lowest number is listed first in dropdowns.</small>
+              </label>
+)}
             {groupKey !== 'documents' && (
               <label>
                 Status

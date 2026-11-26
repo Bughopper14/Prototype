@@ -1,4 +1,5 @@
 /** State and actions of the Document Checklist: filters, upload, delete and preview. */
+import {useCrm} from '@/features/crm/components/CrmProvider';
 import {useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {api} from '@/shared/lib/api';
 import {markInView, restoreInView} from '@/features/documents/lib/keep-in-view';
@@ -26,6 +27,7 @@ export function useDocumentChecklist({
   onChange: (updatedApp: any) => void;
   notify: (msg: string) => void;
 }) {
+  const {confirm} = useCrm();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<StatusFilter>('ALL');
@@ -204,9 +206,13 @@ export function useDocumentChecklist({
 
   // Handler Delete File (Only manual files)
   const handleDeleteManualFile = async (fileId: string, docCode: string) => {
-    if (!window.confirm(`Delete this file from Document Checklist? This action cannot be undone.`)) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Delete document file?',
+      message: 'Delete this file from Document Checklist? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
 
     setDeletingFileId(fileId);
     try {

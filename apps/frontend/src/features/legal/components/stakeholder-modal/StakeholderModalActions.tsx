@@ -9,7 +9,7 @@ export function StakeholderModalActions() {
     <div className="modal-actions">
       {/* the reason a save was refused is shown here, beside the button, because the form above is long and scrolls */}
       {formError && (
-        <span role="alert" style={{marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#b91c1c', fontSize: 13, fontWeight: 600, minWidth: 0}}>
+        <span role="alert" style={{marginRight: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6, color: '#b91c1c', fontSize: 13, fontWeight: 700, minWidth: 0}}>
           <AlertTriangle size={15} style={{flexShrink: 0}} />
           {formError}
         </span>

@@ -32,7 +32,7 @@ export function NibRegionFields() {
           <label
             style={{
               fontSize: '0.76rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#334155',
               display: 'block',
               marginBottom: 4,
@@ -60,7 +60,7 @@ export function NibRegionFields() {
           <label
             style={{
               fontSize: '0.76rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#334155',
               display: 'block',
               marginBottom: 4,
@@ -88,7 +88,7 @@ export function NibRegionFields() {
           <label
             style={{
               fontSize: '0.76rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#334155',
               display: 'block',
               marginBottom: 4,
@@ -116,7 +116,7 @@ export function NibRegionFields() {
           <label
             style={{
               fontSize: '0.76rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#334155',
               display: 'block',
               marginBottom: 4,
@@ -144,7 +144,7 @@ export function NibRegionFields() {
           <label
             style={{
               fontSize: '0.76rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#334155',
               display: 'block',
               marginBottom: 4,
@@ -174,7 +174,7 @@ export function NibRegionFields() {
           <label
             style={{
               fontSize: '0.76rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#334155',
               display: 'block',
               marginBottom: 4,

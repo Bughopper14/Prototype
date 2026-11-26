@@ -74,7 +74,7 @@
 }
 .doc-checklist-bento-card .bento-lbl {
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -114,11 +114,11 @@
 }
 .doc-checklist-bento-card .bento-sub.text-green {
   color: #16a34a !important;
-  font-weight: 600;
+  font-weight: 700;
 }
 .doc-checklist-bento-card .bento-sub.text-amber {
   color: #d97706 !important;
-  font-weight: 600;
+  font-weight: 700;
 }
 .bento-footer-row {
   display: flex;
@@ -133,7 +133,7 @@
   align-items: center;
   gap: 2px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #2563eb;
   flex-shrink: 0;
 }
@@ -182,7 +182,7 @@
 }
 .bento-missing-dialog-item .doc-name {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #1e293b;
 }
 
@@ -197,7 +197,7 @@
 }
 .doc-checklist-panel .doc-checklist-head h2 {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
 }
 .doc-checklist-panel .doc-checklist-head p {
@@ -221,7 +221,7 @@
   min-height: 38px;
   padding: 0 16px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 8px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -241,7 +241,7 @@
   min-height: 38px;
   padding: 0 16px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 8px;
 }
 .doc-zip-btn:disabled {
@@ -255,7 +255,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.22);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: center;
 }
 
@@ -273,7 +273,7 @@
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   background: #f1f5f9;
   border: 1px solid transparent;
@@ -403,7 +403,7 @@
   border-radius: 6px;
   background: transparent;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   cursor: pointer;
   white-space: nowrap;
@@ -580,7 +580,7 @@
 .doc-primary-name {
   display: block;
   font-size: 13.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: #0f172a;
   line-height: 1.35;
 }
@@ -623,7 +623,7 @@
   padding: 3px 9px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 /* Stage badge: small outlined pill, one color per stage */
@@ -637,7 +637,7 @@
   background: #f8fafc;
   color: #475569;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 18px;
   white-space: nowrap;
 }
@@ -720,7 +720,7 @@
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
   letter-spacing: 0.01em;
 }
@@ -757,7 +757,7 @@
   padding: 3px 10px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .chip-system {
   background: #f5f3ff;
@@ -815,7 +815,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #1e293b;
-  font-weight: 600;
+  font-weight: 700;
 }
 .file-pill-name:hover {
   color: #2563eb;
@@ -862,7 +862,7 @@
   gap: 5px;
   padding: 0 12px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   height: 32px;
   border-radius: 7px;
   white-space: nowrap;
@@ -1191,7 +1191,7 @@
 .ratio-indicator {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
 }
 
@@ -1270,7 +1270,7 @@
 }
 .step-lbl {
   font-size: 8.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: #64748b;
   white-space: nowrap;
   text-align: center;
@@ -1287,7 +1287,7 @@
   justify-content: center;
   gap: 5px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: #2563eb;
   background: #ffffff;
   border: 1px solid #bfdbfe;
@@ -1314,7 +1314,7 @@
   background: #2563eb;
   color: #ffffff;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   border: 0;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -1331,7 +1331,7 @@
   height: 32px;
   padding: 0 12px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 6px;
   border: 1px solid #cbd5e1;
   background: #ffffff;
@@ -1563,7 +1563,7 @@
   border: 0;
   border-radius: 6px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
   margin-top: 4px;
@@ -1717,14 +1717,14 @@
   flex: 1;
   height: 38px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 8px;
 }
 .doc-confirm-btn-submit {
   flex: 1.3;
   height: 38px;
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 700;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;

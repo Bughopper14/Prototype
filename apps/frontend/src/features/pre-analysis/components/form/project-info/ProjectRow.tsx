@@ -1,10 +1,12 @@
 /** One project (name, location, scope) under a head project. */
 import {Trash2} from 'lucide-react';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 import type {PreAnalysisProjectItem} from '@/features/pre-analysis/lib/types';
 
 export function ProjectRow({
   item,
   pIdx,
+  dataField,
   projects,
   handleRemoveProject,
   handleUpdateProject,
@@ -13,12 +15,14 @@ export function ProjectRow({
 }: {
   item: PreAnalysisProjectItem;
   pIdx: number;
+  dataField?: string;
   projects: PreAnalysisProjectItem[];
   handleRemoveProject: (gIdx: number, pIdx: number) => void;
   handleUpdateProject: (gIdx: number, pIdx: number, key: keyof PreAnalysisProjectItem, val: string) => void;
   onFocus: (() => void) | undefined;
   gIdx: number;
 }) {
+  const {reqMark} = usePreAnalysisContext();
   return (
     <div
       style={{
@@ -61,13 +65,13 @@ export function ProjectRow({
           <label
             style={{
               fontSize: '0.68rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#64748b',
               display: 'block',
               marginBottom: '2px',
             }}
           >
-            Project Name
+            Project Name{dataField ? reqMark(dataField) : null}
           </label>
           <input
             type="text"
@@ -88,7 +92,7 @@ export function ProjectRow({
           <label
             style={{
               fontSize: '0.68rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#64748b',
               display: 'block',
               marginBottom: '2px',
@@ -117,7 +121,7 @@ export function ProjectRow({
         <label
           style={{
             fontSize: '0.68rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#64748b',
             display: 'block',
             marginBottom: '2px',

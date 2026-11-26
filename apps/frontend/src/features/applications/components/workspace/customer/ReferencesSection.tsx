@@ -98,7 +98,7 @@ export function ReferencesSection() {
                 onClick={() => handleTriggerFieldSync('totalMonthlyInstallment', 'banks')}
                 title="Click to highlight Total Monthly Installment on FAP form"
               >
-                <span style={{fontWeight: 600, color: '#334155', fontSize: '13px'}}>
+                <span style={{fontWeight: 700, color: '#334155', fontSize: '13px'}}>
                   TOTAL MONTHLY INSTALLMENT
                 </span>
                 <span style={{fontWeight: 700, color: '#1e293b', fontSize: '15px'}}>
@@ -114,7 +114,7 @@ export function ReferencesSection() {
               style={{
                 display: 'block',
                 fontSize: '12px',
-                fontWeight: 600,
+                fontWeight: 700,
                 color: '#475569',
                 marginBottom: 6,
               }}

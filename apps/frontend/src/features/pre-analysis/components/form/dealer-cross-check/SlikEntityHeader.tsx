@@ -40,7 +40,7 @@ export function SlikEntityHeader({
           <span
             style={{
               fontSize: '0.68rem',
-              fontWeight: 600,
+              fontWeight: 700,
               color: '#475569',
               background: '#e2e8f0',
               padding: '2px 8px',
@@ -53,7 +53,7 @@ export function SlikEntityHeader({
 
         {/* Toggle Yes/No Buttons */}
         <div style={{display: 'inline-flex', alignItems: 'center', gap: '8px'}}>
-          <span style={{fontSize: '0.72rem', fontWeight: 600, color: '#475569'}}>Use Table Row Labels?</span>
+          <span style={{fontSize: '0.72rem', fontWeight: 700, color: '#475569'}}>Use Table Row Labels?</span>
           <div
             style={{
               display: 'inline-flex',

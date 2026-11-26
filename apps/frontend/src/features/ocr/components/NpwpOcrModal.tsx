@@ -353,7 +353,7 @@ export function NpwpOcrModal({
             {ocrLoading ? (
               <>
                 <Loader2 size={16} className="text-primary spin" />
-                <span style={{color: '#1d4ed8', fontWeight: 600}}>
+                <span style={{color: '#1d4ed8', fontWeight: 700}}>
                   Sedang memproses OCR dokumen NPWP...
                 </span>
               </>
@@ -365,7 +365,7 @@ export function NpwpOcrModal({
             ) : ocrSuccess ? (
               <>
                 <CheckCircle2 size={16} style={{color: '#16a34a'}} />
-                <span style={{color: '#15803d', fontWeight: 600}}>
+                <span style={{color: '#15803d', fontWeight: 700}}>
                   ✓ Berhasil mengekstrak {filledCount} data dari dokumen {fileName}
                 </span>
               </>
@@ -379,7 +379,7 @@ export function NpwpOcrModal({
             <span
               style={{
                 fontSize: '0.75rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 color: '#15803d',
                 background: '#dcfce7',
                 padding: '2px 8px',
@@ -443,7 +443,7 @@ export function NpwpOcrModal({
                     style={{
                       color: '#cbd5e1',
                       fontSize: '0.8rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       overflow: 'hidden',
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
@@ -644,7 +644,7 @@ export function NpwpOcrModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: filledCount > 0 ? '#1d4ed8' : '#94a3b8',
                   background: filledCount > 0 ? '#eff6ff' : '#f1f5f9',
                   padding: '3px 8px',
@@ -683,7 +683,7 @@ export function NpwpOcrModal({
                         cursor: 'pointer',
                         color: copiedKey === 'npwp' ? '#16a34a' : '#2563eb',
                         fontSize: '0.74rem',
-                        fontWeight: 600,
+                        fontWeight: 700,
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 3,
@@ -716,7 +716,7 @@ export function NpwpOcrModal({
               {/* NAMA WAJIB PAJAK */}
               <div>
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4}}>
-                  <label htmlFor="ocr-npwp-nama" style={{fontSize: '0.8rem', fontWeight: 600, color: '#475569'}}>
+                  <label htmlFor="ocr-npwp-nama" style={{fontSize: '0.8rem', fontWeight: 700, color: '#475569'}}>
                     Nama Wajib Pajak / Badan Usaha
                   </label>
                   {formData.nama && (
@@ -751,7 +751,7 @@ export function NpwpOcrModal({
               {/* ALAMAT */}
               <div>
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4}}>
-                  <label htmlFor="ocr-npwp-alamat" style={{fontSize: '0.8rem', fontWeight: 600, color: '#475569'}}>
+                  <label htmlFor="ocr-npwp-alamat" style={{fontSize: '0.8rem', fontWeight: 700, color: '#475569'}}>
                     Alamat Terdaftar
                   </label>
                   {formData.alamat && (
@@ -786,7 +786,7 @@ export function NpwpOcrModal({
               {/* KPP & TANGGAL */}
               <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12}}>
                 <div>
-                  <label htmlFor="ocr-npwp-kpp" style={{fontSize: '0.8rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4}}>
+                  <label htmlFor="ocr-npwp-kpp" style={{fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4}}>
                     KPP Terdaftar
                   </label>
                   <input
@@ -799,7 +799,7 @@ export function NpwpOcrModal({
                   />
                 </div>
                 <div>
-                  <label htmlFor="ocr-npwp-tgl" style={{fontSize: '0.8rem', fontWeight: 600, color: '#475569', display: 'block', marginBottom: 4}}>
+                  <label htmlFor="ocr-npwp-tgl" style={{fontSize: '0.8rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4}}>
                     Tanggal Terdaftar
                   </label>
                   <input

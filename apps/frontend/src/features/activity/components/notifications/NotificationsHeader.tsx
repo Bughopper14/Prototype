@@ -58,7 +58,7 @@ export function NotificationsHeader({
             gap: 6,
             padding: '7px 14px',
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#0284c7',
             background: '#f0f9ff',
             border: '1px solid #bae6fd',

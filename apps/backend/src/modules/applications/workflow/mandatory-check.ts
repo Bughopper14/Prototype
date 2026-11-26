@@ -1,4 +1,4 @@
-import {customerFields, DEED_SECTION, FORM_SECTION, picFields, profileFields, screenOfForm} from '@liugong/shared';
+import {customerFields, DEED_SECTION, FORM_SECTION, picFields, profileFields, resolveFinancingMethodGroup, screenOfForm} from '@liugong/shared';
 
 /**
  * Mandatory-field check for every section of the FAP form, driven by the workflow's rules
@@ -97,9 +97,13 @@ const PROPOSAL: Section = {
   read: (d, key) => {
     const path = proposalPath(key)!;
     const fp = d.financingProposal || {};
-    // A terms column only exists for a financing method the customer asked for: no column, nothing to check.
+    // Only check the terms column of the financing method chosen on the form (unselected methods are hidden on screen).
     const column = path.split('.')[0];
-    if (path.startsWith('terms') && !fp[column]) return [];
+    if (path.startsWith('terms')) {
+      const activeMethod = fp.facilityProposed?.financingMethod || d.proposal?.financingMethod || '';
+      const activeGroup = resolveFinancingMethodGroup(activeMethod);
+      if (!activeGroup || column !== activeGroup) return [];
+    }
     return [{item: null, value: isDocRequirement(key) ? !!get(fp, path) : get(fp, path)}];
   },
   isBoolean: isDocRequirement,

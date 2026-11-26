@@ -18,7 +18,7 @@ export function NibFullAddressField() {
         <label
           style={{
             fontSize: '0.78rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#334155',
             display: 'flex',
             alignItems: 'center',

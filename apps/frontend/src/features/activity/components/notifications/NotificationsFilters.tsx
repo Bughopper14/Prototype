@@ -34,7 +34,7 @@ export function NotificationsFilters({
           style={{
             padding: '6px 14px',
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 700,
             borderRadius: 20,
             border: '1px solid',
             borderColor: filter === 'all' ? '#002c5f' : '#cbd5e1',
@@ -67,7 +67,7 @@ export function NotificationsFilters({
           style={{
             padding: '6px 14px',
             fontSize: 13,
-            fontWeight: 600,
+            fontWeight: 700,
             borderRadius: 20,
             border: '1px solid',
             borderColor: filter === 'unread' ? '#002c5f' : '#cbd5e1',

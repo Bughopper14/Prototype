@@ -172,7 +172,7 @@ export function DocumentApprovalModal({
                               padding: '2px 8px',
                               borderRadius: 4,
                               border: '1px solid #dbeafe',
-                              fontWeight: 600,
+                              fontWeight: 700,
                             }}
                           >
                             {st.authority || st.authorityName || st.code || 'APPROVE'}
@@ -191,7 +191,7 @@ export function DocumentApprovalModal({
 
                       <div className="doc-v-user-meta" style={{display: 'flex', alignItems: 'center', gap: 14, fontSize: '12px', color: '#475569', marginTop: 4, flexWrap: 'wrap'}}>
                         {hasActed && approverName && (
-                          <span style={{fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4}}>
+                          <span style={{fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4}}>
                             👤 {approverName}
                           </span>
                         )}
@@ -252,7 +252,7 @@ export function DocumentApprovalModal({
                   height: '34px',
                   padding: '0 14px',
                   fontSize: '12px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                 }}
                 disabled={!mayRequest || !approval?.canRequest || approvalBusy === row.chkId}
                 title={!approval?.canRequest ? 'Upload document file before submitting' : 'Submit for Approval'}

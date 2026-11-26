@@ -16,14 +16,14 @@ export function ActivityFooter({item}: {item: SystemActivity}) {
       }}
     >
       <span style={{display: 'inline-flex', alignItems: 'center', gap: 5}}>
-        <span style={{fontWeight: 600, color: '#334155'}}>{item.actionBy}</span>
+        <span style={{fontWeight: 700, color: '#334155'}}>{item.actionBy}</span>
         <span
           style={{
             background: '#f1f5f9',
             padding: '1px 6px',
             borderRadius: 3,
             fontSize: 11,
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#64748b',
           }}
         >

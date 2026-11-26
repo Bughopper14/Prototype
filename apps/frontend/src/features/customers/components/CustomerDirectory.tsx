@@ -146,7 +146,7 @@ export function CustomerDirectory({
               gap: '8px',
               fontSize: '11px',
               color: '#64748b',
-              fontWeight: 600,
+              fontWeight: 700,
               margin: 0,
             }}
           >

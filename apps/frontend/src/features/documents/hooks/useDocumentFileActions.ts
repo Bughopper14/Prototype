@@ -1,4 +1,5 @@
 /** Preview, upload and delete stage files; save FAP remarks; approve, dismiss or re-run the FAP comparison. */
+import {useCrm} from '@/features/crm/components/CrmProvider';
 import {api} from '@/shared/lib/api';
 
 /** Document type of the signed FAP form (crm_master_document_types.code); its upload starts the OCR comparison. */
@@ -37,6 +38,8 @@ export function useDocumentFileActions({
   onChange: (a: any) => void;
   notify: (s: string) => void;
 }) {
+  const {confirm} = useCrm();
+
   async function previewFile(f: any) {
     try {
       const v = await api(`/files/${f.id}/url`);
@@ -124,7 +127,13 @@ export function useDocumentFileActions({
   }
 
   async function handleDeleteFile(item: any, fileId: string) {
-    if (!confirm('Delete this evidence file?')) return;
+    const ok = await confirm({
+      title: 'Delete evidence file?',
+      message: 'Delete this evidence file? This action cannot be undone.',
+      confirmLabel: 'Delete',
+      tone: 'danger',
+    });
+    if (!ok) return;
     setBusy(true);
     setError('');
     try {

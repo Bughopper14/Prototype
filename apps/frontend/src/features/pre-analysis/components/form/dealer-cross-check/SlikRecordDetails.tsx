@@ -14,7 +14,7 @@ export function SlikRecordDetails({
   review: EntitySlikReview;
   totalPlafonFormatted: string;
 }) {
-  const {data, updateEntityReview, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateEntityReview, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     /* YES: Show Table with dynamic Grand Total, Pefindo Analysis Notes, and Commercial Terms */
     <div>
@@ -43,7 +43,7 @@ export function SlikRecordDetails({
             color: '#1e40af',
             border: '1px solid #bfdbfe',
             cursor: 'pointer',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           + Add Lender
@@ -181,13 +181,13 @@ export function SlikRecordDetails({
         <label
           style={{
             fontSize: '0.75rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             marginBottom: '4px',
             display: 'block',
           }}
         >
-          Pefindo Analysis Notes
+          Pefindo Analysis Notes{reqMark('applicantPefindoCheck')}
         </label>
         <PreAnalysisRichEditor
           value={review.pefindoNotes || ''}
@@ -202,7 +202,7 @@ export function SlikRecordDetails({
         <label
           style={{
             fontSize: '0.75rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#475569',
             marginBottom: '4px',
             display: 'block',

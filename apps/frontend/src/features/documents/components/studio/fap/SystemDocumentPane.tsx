@@ -51,7 +51,7 @@ export function SystemDocumentPane() {
         </div>
         <div className="fap-pane-head-bottom">
           <div style={{display: 'flex', alignItems: 'center', gap: '6px', marginLeft: 'auto'}}>
-            <span style={{fontSize: '11.5px', color: '#334155', fontWeight: 600}}>Zoom:</span>
+            <span style={{fontSize: '11.5px', color: '#334155', fontWeight: 700}}>Zoom:</span>
             <div className="excel-zoom-controls compact">
               <button
                 type="button"

@@ -1,11 +1,13 @@
 /** One head project: its title bar with add / delete, and the list of its projects. */
 import {ProjectRow} from '@/features/pre-analysis/components/form/project-info/ProjectRow';
+import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnalysisContext';
 import {Plus, Trash2} from 'lucide-react';
 import type {PreAnalysisProjectGroup, PreAnalysisProjectItem} from '@/features/pre-analysis/lib/types';
 
 export function ProjectGroupCard({
   group,
   gIdx,
+  dataField,
   handleAddProject,
   currentGroups,
   handleRemoveGroup,
@@ -16,6 +18,7 @@ export function ProjectGroupCard({
 }: {
   group: PreAnalysisProjectGroup;
   gIdx: number;
+  dataField?: string;
   handleAddProject: (gIdx: number) => void;
   currentGroups: PreAnalysisProjectGroup[];
   handleRemoveGroup: (gIdx: number) => void;
@@ -24,6 +27,7 @@ export function ProjectGroupCard({
   handleRemoveProject: (gIdx: number, pIdx: number) => void;
   handleUpdateProject: (gIdx: number, pIdx: number, key: keyof PreAnalysisProjectItem, val: string) => void;
 }) {
+  const {reqMark} = usePreAnalysisContext();
   const letter = String.fromCharCode(65 + gIdx);
 
   const projects =
@@ -76,6 +80,7 @@ export function ProjectGroupCard({
             </span>
             <label style={{fontSize: '0.75rem', fontWeight: 700, color: '#0f172a', margin: 0}}>
               Head Project {letter}
+              {dataField ? reqMark(dataField) : null}
             </label>
           </div>
 
@@ -93,7 +98,7 @@ export function ProjectGroupCard({
                 borderRadius: '5px',
                 padding: '3px 8px',
                 fontSize: '0.7rem',
-                fontWeight: 600,
+                fontWeight: 700,
                 cursor: 'pointer',
               }}
               title={`Add Project Item to Head ${letter}`}
@@ -115,7 +120,7 @@ export function ProjectGroupCard({
                   alignItems: 'center',
                   gap: '4px',
                   fontSize: '0.7rem',
-                  fontWeight: 600,
+                  fontWeight: 700,
                 }}
                 title={`Delete Head Project ${letter}`}
               >
@@ -137,7 +142,7 @@ export function ProjectGroupCard({
             width: '100%',
             padding: '7px 10px',
             fontSize: '0.8rem',
-            fontWeight: 600,
+            fontWeight: 700,
             color: '#0f172a',
             borderRadius: '6px',
             border: '1px solid #94a3b8',
@@ -164,6 +169,7 @@ export function ProjectGroupCard({
             key={item.id || pIdx}
             item={item}
             pIdx={pIdx}
+            dataField={dataField}
             projects={projects}
             handleRemoveProject={handleRemoveProject}
             handleUpdateProject={handleUpdateProject}

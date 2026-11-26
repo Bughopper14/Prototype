@@ -21,7 +21,7 @@ export function FormHeaderBar() {
             background: '#eff6ff',
             color: '#1d4ed8',
             border: '1px solid #bfdbfe',
-            fontWeight: 600,
+            fontWeight: 700,
             fontSize: '11px',
           }}
         >

@@ -23,7 +23,7 @@ export function ArchiveVersionSelector({
             border: '1px solid #e2e8f0',
           }}
         >
-          <span style={{fontSize: 12, fontWeight: 600, color: '#475569'}}>Select Snapshot:</span>
+          <span style={{fontSize: 12, fontWeight: 700, color: '#475569'}}>Select Snapshot:</span>
           <select
             value={selectedIndex}
             onChange={e => onSelectIndex(Number(e.target.value))}

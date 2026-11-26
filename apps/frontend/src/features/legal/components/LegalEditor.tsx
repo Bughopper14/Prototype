@@ -185,7 +185,7 @@ export function LegalEditor(props: LegalEditorProps) {
                               padding: '4px 10px',
                               borderRadius: '16px',
                               fontSize: '11.5px',
-                              fontWeight: 600,
+                              fontWeight: 700,
                             }}
                           >
                             ✓ {name}

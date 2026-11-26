@@ -13,7 +13,7 @@ export function ArchiveSnapshotViewer({
   return (
     <div style={{background: '#f8fafc', padding: 14, borderRadius: 8, border: '1px solid #e2e8f0'}}>
       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-        <span style={{fontWeight: 600, fontSize: 13, color: '#334155'}}>
+        <span style={{fontWeight: 700, fontSize: 13, color: '#334155'}}>
           Arsip Lengkap Snapshot FAP System Data (JSON Payload)
         </span>
         <button

@@ -64,7 +64,7 @@ export function NotificationCard({
                 background: '#f1f5f9',
                 color: '#475569',
                 fontSize: 11,
-                fontWeight: 600,
+                fontWeight: 700,
                 padding: '2px 8px',
                 borderRadius: 4,
               }}
@@ -142,7 +142,7 @@ export function NotificationCard({
           {item.applicationId && (
             <>
               <span>•</span>
-              <span style={{fontWeight: 600, color: '#334155'}}>{item.applicationNumber || item.applicationId}</span>
+              <span style={{fontWeight: 700, color: '#334155'}}>{item.applicationNumber || item.applicationId}</span>
             </>
           )}
         </div>
@@ -175,7 +175,7 @@ export function NotificationCard({
               borderRadius: 6,
               padding: '7px 14px',
               fontSize: 12,
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 1px 3px rgba(0, 44, 95, 0.2)',
             }}

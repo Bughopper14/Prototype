@@ -5,6 +5,7 @@ import {ManageDepartmentMembersDialog} from '@/features/user-management/componen
 import {call} from '@/features/user-management/lib/um-api';
 import {SectionHead} from '@/features/user-management/components/ui/SectionHead';
 import {AddButton} from '@/features/user-management/components/ui/AddButton';
+import {usePortalConfirm} from '@/features/user-management/components/ui/ConfirmDialog';
 import type {ReactNode} from 'react';
 import type {Overview, Row} from '@/features/user-management/lib/types';
 
@@ -19,6 +20,7 @@ export function DepartmentsTab({
   setDialog: (dialog: ReactNode) => void;
   empty: (cols: number) => ReactNode;
 }) {
+  const [askConfirm, confirmModal] = usePortalConfirm();
   const departments = data.departments || [];
   const unassignedUsers = (data.users || []).filter(u => !u.dept_id);
 
@@ -267,11 +269,18 @@ export function DepartmentsTab({
                         className="um-btn danger"
                         title="Delete Department"
                         style={{padding: '5px 9px', fontSize: '0.82rem'}}
-                        onClick={() =>
-                          confirm(
-                            `Delete department "${d.department_name}"? Users assigned to this department will become unassigned.`,
-                          ) && act(() => call(`/departments/${d.dept_id}`, 'DELETE'))
-                        }
+                        onClick={async () => {
+                          if (
+                            await askConfirm({
+                              title: 'Delete department?',
+                              message: `Delete department "${d.department_name}"? Users assigned to this department will become unassigned.`,
+                              confirmLabel: 'Delete',
+                              danger: true,
+                            })
+                          ) {
+                            await act(() => call(`/departments/${d.dept_id}`, 'DELETE'));
+                          }
+                        }}
                       >
                         <i className="fas fa-trash" />
                       </button>
@@ -283,6 +292,7 @@ export function DepartmentsTab({
           </tbody>
         </table>
       </div>
+      {confirmModal}
     </>
   );
 }

@@ -1,10 +1,13 @@
+import {NewApplicationModal} from '@/features/applications/NewApplicationStart';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {CRM_PAGES, type CrmPageName} from '@/shared/lib/routes';
 import {label} from '@liugong/shared';
 import {
   Activity,
+  AlertCircle,
   ArrowLeft,
   Bell,
+  Check,
   CheckCheck,
   Files,
   FolderCheck,
@@ -48,7 +51,14 @@ export function CrmShell({children}: {children: ReactNode}) {
     error,
     reload,
     toast,
+    dismissToast,
     notify,
+    openApplication,
+    newAppModal,
+    closeNewApplication,
+    completeNewApplication,
+    createdAppBanner,
+    dismissCreatedAppBanner,
     unreadNotifications,
     unreadActivities,
   } = useCrm();
@@ -203,10 +213,59 @@ export function CrmShell({children}: {children: ReactNode}) {
 
       {passwordOpen && <ChangePasswordModal onClose={() => setPasswordOpen(false)} onSuccess={notify} />}
 
+      {newAppModal.open && (
+        <NewApplicationModal
+          customers={customers}
+          preselectedCustomerId={newAppModal.customerId}
+          onClose={closeNewApplication}
+          onCreated={completeNewApplication}
+        />
+      )}
+
+      {createdAppBanner && (
+        <div className="na-created-toast" role="status">
+          <span className="na-created-toast-icon">
+            <Check size={16} strokeWidth={2.5} />
+          </span>
+          <span className="na-created-toast-body">
+            <b>Application created</b>
+            <small>
+              {createdAppBanner.applicationNumber} · {createdAppBanner.companyName}
+            </small>
+          </span>
+          <button
+            type="button"
+            className="na-created-toast-open"
+            onClick={() => openApplication(createdAppBanner.applicationNumber || createdAppBanner.id, 0)}
+          >
+            Open
+          </button>
+          <button
+            type="button"
+            className="na-created-toast-close"
+            aria-label="Dismiss notification"
+            onClick={dismissCreatedAppBanner}
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {toast && (
-        <div className="toast">
-          <CheckCheck size={18} />
-          {toast}
+        <div
+          className={`toast ${toast.tone === 'error' ? 'toast-error' : ''}`}
+          role={toast.tone === 'error' ? 'alert' : 'status'}
+        >
+          {toast.tone === 'error' ? <AlertCircle size={18} style={{flexShrink: 0}} /> : <CheckCheck size={18} style={{flexShrink: 0}} />}
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            className="toast-close"
+            aria-label="Dismiss notification"
+            onClick={dismissToast}
+          >
+            <X size={15} />
+          </button>
         </div>
       )}
     </div>

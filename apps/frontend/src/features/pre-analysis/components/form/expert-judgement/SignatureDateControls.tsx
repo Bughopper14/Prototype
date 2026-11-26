@@ -53,7 +53,7 @@ export function SignatureDateControls() {
             border: '1px solid #bbf7d0',
             padding: '2px 8px',
             borderRadius: '4px',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           ✓ Auto-updates to today's date on open
@@ -73,7 +73,7 @@ export function SignatureDateControls() {
             color: '#1d4ed8',
             border: '1px solid #bfdbfe',
             cursor: 'pointer',
-            fontWeight: 600,
+            fontWeight: 700,
           }}
         >
           Reset to Today ({todayDateStr})
