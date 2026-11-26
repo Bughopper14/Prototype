@@ -25,3 +25,25 @@ export function parseAuthorityName(name: string): {appCode: string; area: string
   return {appCode: parts[0], area: parts.slice(1, -1), action: parts[parts.length - 1]};
 }
 
+/**
+ * RFC4122 v4 compliant UUID generator that works reliably across all browser contexts
+ * (including non-secure HTTP / LAN IPs) and Node environments without throwing.
+ */
+export function safeUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    let r = 0;
+    if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+      const buf = new Uint8Array(1);
+      crypto.getRandomValues(buf);
+      r = buf[0] & 15;
+    } else {
+      r = (Math.random() * 16) | 0;
+    }
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+

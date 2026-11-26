@@ -20,6 +20,12 @@ export class ApplicationsController {
     return this.applications.marketingPics();
   }
 
+  @Get('users-and-departments')
+  async usersAndDepartments(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
+    return this.applications.usersAndDepartments();
+  }
+
   @Post('applications')
   async create(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_APPLICATION_CREATE');

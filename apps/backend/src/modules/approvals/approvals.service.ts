@@ -119,7 +119,7 @@ export function lowerOpen(steps: AppStep[], scope: {scope?: string; type?: strin
 export class ApprovalsService {
   constructor(
     private readonly db: CrmDatabase,
-    private readonly repo: ApprovalsRepository,
+    readonly repo: ApprovalsRepository,
     private readonly users: UsersNamesLookup,
   ) {}
 

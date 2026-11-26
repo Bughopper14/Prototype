@@ -1,7 +1,7 @@
 /** Stakeholders on a deed: list, add, view, delete. */
 import {stakeholderEditorValues} from '@/features/legal/lib/stakeholder-values';
 import {Modal} from '@/shared/ui/Modal';
-import {blank, label, stakeholderFields} from '@liugong/shared';
+import {blank, label, safeUUID, stakeholderFields} from '@liugong/shared';
 import {Eye, Pencil, Plus, Trash2} from 'lucide-react';
 
 import {useLegalEditorContext} from '@/features/legal/components/legal-editor/LegalEditorContext';
@@ -121,7 +121,7 @@ export function DeedStakeholdersModal() {
                     index: -1,
                     value: {
                       ...blank(stakeholderFields),
-                      id: crypto.randomUUID(),
+                      id: safeUUID(),
                       representativeType: 'SHAREHOLDER',
                       positions: '',
                       idType: '',
@@ -131,7 +131,7 @@ export function DeedStakeholdersModal() {
                 }}
               >
                 <Plus size={15} />
-                Add shareholder
+                Add stakeholder
               </button>
             )}
           </div>

@@ -47,9 +47,9 @@ export class DocumentsRepository {
   async seedChecklist(conn: Conn, applicationId: string, workflowFreezeId: string, by: string | null) {
     await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
-         (id,application_id,workflow_freeze_id,stage_code,document_type_id,document_code,source_type,override_id,assigned_role,
+         (id,application_id,workflow_freeze_id,stage_code,workflow_stage_document_id,document_type_id,document_code,source_type,override_id,assigned_role,
           created_by)
-       SELECT UUID(),?,sd.workflow_freeze_id,sd.stage_code,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),o.id,
+       SELECT UUID(),?,sd.workflow_freeze_id,sd.stage_code,sd.id,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),o.id,
               COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.frozenWorkflowStageDocuments} sd
        JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=sd.workflow_freeze_id AND st.code=sd.stage_code
@@ -57,8 +57,12 @@ export class DocumentsRepository {
        LEFT JOIN ${CRM.applicationDocumentOverrides} o
               ON o.application_id=? AND o.stage_code=sd.stage_code AND o.document_code=sd.document_code AND o.document_type_id IS NULL AND o.custom_name IS NULL AND o.is_active=1
        WHERE sd.workflow_freeze_id=?
-         AND ((sd.is_default=1 AND (o.id IS NULL OR o.action<>'REMOVE')) OR (sd.is_default=0 AND o.action='ADD'))`,
-      [applicationId, by, applicationId, workflowFreezeId],
+         AND ((sd.is_default=1 AND (o.id IS NULL OR o.action<>'REMOVE')) OR (sd.is_default=0 AND o.action='ADD'))
+         AND NOT EXISTS (
+           SELECT 1 FROM ${CRM.applicationDocumentChecklists} ex
+           WHERE ex.application_id=? AND ex.stage_code=sd.stage_code AND ex.document_type_id=sd.document_type_id
+         )`,
+      [applicationId, by, applicationId, workflowFreezeId, applicationId],
     );
     await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
@@ -67,8 +71,12 @@ export class DocumentsRepository {
               COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.applicationDocumentOverrides} o
        JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=o.workflow_freeze_id AND st.code=o.stage_code
-       WHERE o.application_id=? AND o.action='ADD' AND o.is_active=1 AND (o.document_type_id IS NOT NULL OR o.custom_name IS NOT NULL)`,
-      [by, applicationId],
+       WHERE o.application_id=? AND o.action='ADD' AND o.is_active=1 AND (o.document_type_id IS NOT NULL OR o.custom_name IS NOT NULL)
+         AND NOT EXISTS (
+           SELECT 1 FROM ${CRM.applicationDocumentChecklists} ex
+           WHERE ex.application_id=? AND ex.override_id=o.id
+         )`,
+      [by, applicationId, applicationId],
     );
   }
 
