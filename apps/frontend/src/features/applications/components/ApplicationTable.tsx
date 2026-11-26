@@ -221,10 +221,6 @@ function StageHoverCard({
   const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
   const spaceAbove = anchorRect.top - 16;
 
-  // If space below is not enough for full card (~380px) and there's more space above, flip to top
-  const isAbove = (spaceBelow < 380 && spaceAbove > spaceBelow) || spaceBelow < 300;
-  const caretLeft = Math.max(16, Math.min(cardWidth - 16, anchorRect.left + anchorRect.width / 2 - left));
-
   const status = stage.status || 'NOT_STARTED';
   const statusLabels: Record<StageItem['status'], string> = {
     NOT_STARTED: 'Not started',
@@ -297,6 +293,17 @@ function StageHoverCard({
     }));
   }
 
+  // Estimated full card height with documents
+  const estimatedCardHeight = docs.length > 2 ? 420 : (docs.length > 0 ? 360 : 280);
+
+  // If space below cannot comfortably fit full card and there's room above, or if above has more room, flip to top
+  const isAbove =
+    (spaceBelow < estimatedCardHeight && spaceAbove >= 180) ||
+    (spaceBelow < 320 && spaceAbove > spaceBelow) ||
+    spaceBelow < 240;
+
+  const caretLeft = Math.max(16, Math.min(cardWidth - 16, anchorRect.left + anchorRect.width / 2 - left));
+
   const mandatoryOnly = docs.filter(d => d.isMandatory !== false && d.status !== 'Optional');
   const requiredCount = stage.requiredCount ?? (mandatoryOnly.length || docs.length);
   const uploadedCount = isApproved ? requiredCount : (stage.uploadedCount ?? mandatoryOnly.filter(d => d.status === 'Uploaded' || d.isUploaded).length);
@@ -325,14 +332,14 @@ function StageHoverCard({
         ['--caret-left' as any]: `${caretLeft}px`,
         ...(isAbove
           ? {
-              bottom: `${window.innerHeight - anchorRect.top + 6}px`,
+              bottom: `${Math.max(10, window.innerHeight - anchorRect.top + 8)}px`,
               top: 'auto',
-              maxHeight: `${Math.max(260, spaceAbove - 10)}px`,
+              maxHeight: `${Math.max(260, spaceAbove - 12)}px`,
             }
           : {
-              top: `${anchorRect.bottom + 6}px`,
+              top: `${anchorRect.bottom + 8}px`,
               bottom: 'auto',
-              maxHeight: `${Math.max(260, spaceBelow - 10)}px`,
+              maxHeight: `${Math.max(260, spaceBelow - 12)}px`,
             }),
       }}
       onMouseEnter={onCardMouseEnter}
