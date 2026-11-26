@@ -60,7 +60,7 @@ export function FieldCell({
 }) {
   const master = useMasterData();
   const mandatoryRules = useMandatoryRules();
-  const isRequired = disableMandatoryRules
+  const isRequired = disableMandatoryRules || f.required === false
     ? false
     : isFieldMandatory(mandatoryRules, ruleSection, f.key);
   const rawVal = value?.[f.key];

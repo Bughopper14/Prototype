@@ -143,6 +143,7 @@ export const ProjectGroupListEditor: React.FC<{
             key={group.id || gIdx}
             group={group}
             gIdx={gIdx}
+            dataField={dataField}
             handleAddProject={handleAddProject}
             currentGroups={currentGroups}
             handleRemoveGroup={handleRemoveGroup}

@@ -14,7 +14,7 @@ export function SlikRecordDetails({
   review: EntitySlikReview;
   totalPlafonFormatted: string;
 }) {
-  const {data, updateEntityReview, scrollToPreviewElement} = usePreAnalysisContext();
+  const {data, updateEntityReview, scrollToPreviewElement, reqMark} = usePreAnalysisContext();
   return (
     /* YES: Show Table with dynamic Grand Total, Pefindo Analysis Notes, and Commercial Terms */
     <div>
@@ -187,7 +187,7 @@ export function SlikRecordDetails({
             display: 'block',
           }}
         >
-          Pefindo Analysis Notes
+          Pefindo Analysis Notes{reqMark('applicantPefindoCheck')}
         </label>
         <PreAnalysisRichEditor
           value={review.pefindoNotes || ''}
