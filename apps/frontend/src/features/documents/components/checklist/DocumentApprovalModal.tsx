@@ -77,9 +77,9 @@ export function DocumentApprovalModal({
 
   const approval = row.check?.approval;
   const steps: any[] = approval?.steps || [];
-  const isNotRequested = approval?.state === 'NOT_REQUESTED';
-  const isRejected = approval?.state === 'REJECTED';
-  const isReopened = approval?.state === 'REOPENED';
+  const isNotRequested = approval?.state === 'NOT_STARTED';
+  const isReopened = !!approval?.reopened;
+  const isRejected = !isReopened && approval?.state === 'REJECTED';
   const canSubmit = isNotRequested || isRejected || isReopened;
 
   return createPortal(
@@ -109,7 +109,7 @@ export function DocumentApprovalModal({
               steps.map((st: any, idx: number) => {
                 const isApproved = st.status === 'APPROVED';
                 const isPending = st.status === 'PENDING';
-                const isStepRejected = st.status === 'REJECTED';
+                const isStepRejected = st.status === 'REJECTED' && !st.reopened;
                 const decisions: any[] = st.decisions || [];
                 const lastDecision = decisions[decisions.length - 1];
                 const levelNum = st.order ?? st.sortOrder ?? (idx + 1);

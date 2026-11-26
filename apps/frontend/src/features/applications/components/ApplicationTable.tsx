@@ -200,10 +200,10 @@ export function ApplicationTable({
                 <td>
                   <div className="doc-progress">
                     <span>
-                      <i style={{width: (r.verified_docs / Math.max(1, r.total_docs)) * 100 + '%'}} />
+                      <i style={{width: (r.approved_docs / Math.max(1, r.total_docs)) * 100 + '%'}} />
                     </span>
                     <small>
-                      {r.verified_docs}/{r.total_docs}
+                      {r.approved_docs}/{r.total_docs}
                     </small>
                   </div>
                 </td>

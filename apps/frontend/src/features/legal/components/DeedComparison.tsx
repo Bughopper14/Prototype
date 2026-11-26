@@ -15,8 +15,8 @@ const equal = (a: any, b: any) =>
     Number(a) === Number(b));
 export function DeedComparison({legal, deed}: {legal: any; deed: any}) {
   const master = useMasterData(),
-    before = Object.prototype.hasOwnProperty.call(deed.review || {}, 'comparisonBefore')
-      ? deed.review.comparisonBefore
+    before = Object.prototype.hasOwnProperty.call(deed.approval || {}, 'comparisonBefore')
+      ? deed.approval.comparisonBefore
       : deedBaseline(legal, deed),
     oldRows = before?.stakeholders || [],
     newRows = deed.stakeholders || [],

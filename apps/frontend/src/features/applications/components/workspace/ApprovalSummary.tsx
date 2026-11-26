@@ -48,7 +48,7 @@ function Facts({rows}: {rows: [string, any][]}) {
   );
 }
 
-const DOC_STATUS: Record<string, string> = {PENDING: 'Not uploaded', UPLOADED: 'Uploaded', VERIFIED: 'Approved', REJECTED: 'Rejected'};
+const DOC_STATUS: Record<string, string> = {PENDING: 'Not uploaded', UPLOADED: 'Uploaded', IN_APPROVAL: 'In review', APPROVED: 'Approved', REJECTED: 'Rejected'};
 
 /** Opens the screen a scope is about (the same way the stage stepper does) and says what it opens, for a button label. */
 export function useOpenView() {
@@ -120,7 +120,10 @@ export function ApprovalSummary({
                 {d.isMandatory && <span className="ap-req">Required</span>}
               </span>
               <em className="ap-doc-status">
-                {DOC_STATUS[d.status] ?? d.status}
+                {(() => {
+                  const docState = d.approvalStatus && d.approvalStatus !== 'NOT_STARTED' ? d.approvalStatus : d.status;
+                  return DOC_STATUS[docState] ?? docState;
+                })()}
                 {hasFiles ? ` · ${d.files.length} file${d.files.length === 1 ? '' : 's'}` : ''}
               </em>
               {previewState && (
@@ -171,7 +174,7 @@ export function ApprovalSummary({
     const stage = stages.find(s => s.code === scope.stageCode);
     const mine = docs.filter(d => d.stageCode === scope.stageCode);
     // a required document is done when it is approved (it has an approval in the workflow) or uploaded (it has none)
-    const notDone = mine.filter(d => d.isMandatory && (d.approval ? d.status !== 'VERIFIED' : !(d.files || []).length));
+    const notDone = mine.filter(d => d.isMandatory && (d.approval ? d.approvalStatus !== 'APPROVED' : !(d.files || []).length));
     content = (
       <div className="ap-summary">
         <b>{stage?.name ?? 'The stage'}</b>

@@ -2,7 +2,7 @@
 import {ExternalLink, FileText, Upload} from 'lucide-react';
 import {api} from '@/shared/lib/api';
 
-export function ReviewDocument({
+export function DeedApprovalDocument({
   application,
   canSubmit,
   busy,
@@ -31,7 +31,7 @@ export function ReviewDocument({
     <>
       <h3>Deed document (optional)</h3>
       {canSubmit && (
-        <div className="deed-review-document-picker">
+        <div className="deed-approval-document-picker">
           <label>
             Select document to submit
             <select
@@ -83,7 +83,7 @@ export function ReviewDocument({
       )}
       {documentId ? (
         <>
-          <div className="deed-review-file-name">
+          <div className="deed-approval-file-name">
             <FileText size={16} />
             {files.find((f: any) => f.id === documentId)?.fileName || 'Deed document'}
             {url && (
@@ -94,7 +94,7 @@ export function ReviewDocument({
             )}
           </div>
           {url && (
-            <div className="deed-review-preview">
+            <div className="deed-approval-preview">
               {files.find((f: any) => f.id === documentId)?.mimeType === 'application/pdf' ? (
                 <iframe title="Deed document preview" src={url} />
               ) : (

@@ -24,7 +24,7 @@ type Props = {
   /** Something drawn at the end of the status line (the row menu of a deed). */
   trailing?: ReactNode;
   /** When given, the person who may decide gets ONE "Review & decide" button that opens this (the deed review dialog, which holds Approve and Reject). */
-  onOpenReview?: () => void;
+  onOpenApproval?: () => void;
 };
 
 const stateOf = (steps: Step[]) =>
@@ -36,7 +36,7 @@ const stateOf = (steps: Step[]) =>
         ? 'APPROVED'
         : 'OPEN';
 
-export function ApprovalSlot({scope, code, subjectId, trailing, onOpenReview}: Props) {
+export function ApprovalSlot({scope, code, subjectId, trailing, onOpenApproval}: Props) {
   const {a: application, user, onChange, notify, setDecision, setComments, setError} = useWorkspace();
   const [busy, setBusy] = useState(false);
 
@@ -112,8 +112,8 @@ export function ApprovalSlot({scope, code, subjectId, trailing, onOpenReview}: P
         </button>
       )}
       {canSubmit && unsaved && <small className="muted">The deed is being stored. Try again in a moment.</small>}
-      {onOpenReview && actable.length > 0 ? (
-        <button type="button" className="button primary small" disabled={busy} onClick={onOpenReview}>
+      {onOpenApproval && actable.length > 0 ? (
+        <button type="button" className="button primary small" disabled={busy} onClick={onOpenApproval}>
           <ShieldCheck size={14} /> Review &amp; decide
         </button>
       ) : (

@@ -2,7 +2,7 @@ import {ActivityPage, NibOcrModal, NpwpOcrModal} from '@/features/crm/components
 import {Documents} from '@/features/documents/components/Documents';
 import {DocumentChecklistTab} from '@/features/documents/components/checklist/DocumentChecklistTab';
 import {FapArchiveModal} from '@/features/fap/components/FapArchiveModal';
-import {DeedReviewDialog} from '@/features/legal/components/DeedReviewDialog';
+import {DeedApprovalDialog} from '@/features/legal/components/DeedApprovalDialog';
 import {ArrowLeft, ShieldCheck} from 'lucide-react';
 
 import {FormBottomActions} from '@/features/applications/components/workspace/FormBottomActions';
@@ -41,8 +41,8 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
     setNpwpOcrOpen,
     handleApplyNpwpOcr,
     activeStage,
-    reviewDeedId,
-    setReviewDeedId,
+    approvalDeedId,
+    setApprovalDeedId,
     setEditRequest,
     reviewHidden,
     setReviewHidden,
@@ -150,15 +150,15 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             />
           </div>
         )}
-        {reviewDeedId && (
-          <DeedReviewDialog
+        {approvalDeedId && (
+          <DeedApprovalDialog
             application={a}
             user={user}
-            deedId={reviewDeedId}
+            deedId={approvalDeedId}
             hidden={reviewHidden}
-            onClose={() => setReviewDeedId(null)}
+            onClose={() => setApprovalDeedId(null)}
             onEdit={what => {
-              setEditRequest({id: reviewDeedId, what});
+              setEditRequest({id: approvalDeedId, what});
               setReviewHidden(true);
             }}
             onUpdated={onChange}

@@ -1,5 +1,5 @@
 import {date, deedValidity} from '@/shared/lib/format';
-import {deedPending, publishedDeeds} from '@liugong/shared';
+import {deedInApproval, publishedDeeds} from '@liugong/shared';
 import {Users} from 'lucide-react';
 
 export const deedNames: Record<string, string> = {
@@ -61,7 +61,7 @@ export function legalDeedList(legal: any, application: any) {
 }
 
 export function StakeholderDeedView({legal}: {legal: any}) {
-  const pending = (legal?.deeds || []).filter((d: any) => deedPending(d)).length;
+  const pending = (legal?.deeds || []).filter((d: any) => deedInApproval(d)).length;
   const deeds = [...publishedDeeds(legal)].sort((a, b) => {
     const ad = Date.parse(String(a.deedDate || a.createdAt || '')) || 0,
       bd = Date.parse(String(b.deedDate || b.createdAt || '')) || 0;

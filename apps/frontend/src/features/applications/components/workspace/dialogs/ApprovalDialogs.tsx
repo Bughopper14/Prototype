@@ -128,7 +128,7 @@ export function ApprovalDecisionDialog() {
           remarks,
           ...(pickStages ? {reopenStages: reopen, keepApproved: {documents: kept.filter((i: any) => i.kind === 'document').map((i: any) => i.id), deeds: kept.filter((i: any) => i.kind === 'deed').map((i: any) => i.id)}} : {}),
           ...(reject && stageItems.length > 0 && also.length > 0
-            ? {reopenItems: {documents: stageItems.filter((i: any) => i.kind === 'document' && also.includes(i.id)).map((i: any) => i.id), deeds: stageItems.filter((i: any) => i.kind === 'deed').map((i: any) => i.id)}}
+            ? {reopenItems: {documents: stageItems.filter((i: any) => i.kind === 'document' && also.includes(i.id)).map((i: any) => i.id), deeds: stageItems.filter((i: any) => i.kind === 'deed' && also.includes(i.id)).map((i: any) => i.id)}}
             : {}),
         }),
       );

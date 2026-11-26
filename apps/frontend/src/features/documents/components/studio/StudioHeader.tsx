@@ -24,7 +24,7 @@ export function StudioHeader() {
         {items.map(item => {
           const isSelected = item.code === selectedCode;
           const count = item.chk.files?.length || 0;
-          const isDone = item.chk.status === 'VERIFIED' || count > 0;
+          const isDone = item.chk.approvalStatus === 'APPROVED' || count > 0;
           return (
             <button
               key={item.code}

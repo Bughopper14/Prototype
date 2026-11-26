@@ -108,11 +108,11 @@ export class WorkflowFreezeRepository {
   }
 
   /** The applications running on each of the given workflow freezes: the total and the newest ones (to link from a history). */
-  async applicationsOn(freezeIds: string[], limit = 3): Promise<Map<string, {total: number; items: {id: string; companyName: string | null; createdAt: string}[]}>> {
-    const out = new Map<string, {total: number; items: {id: string; companyName: string | null; createdAt: string}[]}>();
+  async applicationsOn(freezeIds: string[], limit = 3): Promise<Map<string, {total: number; items: {id: string; applicationNumber: string | null; companyName: string | null; createdAt: string}[]}>> {
+    const out = new Map<string, {total: number; items: {id: string; applicationNumber: string | null; companyName: string | null; createdAt: string}[]}>();
     if (!freezeIds.length) return out;
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT a.workflow_freeze_id,a.id,a.created_at,p.company_name
+      `SELECT a.workflow_freeze_id,a.id,a.application_number,a.created_at,p.company_name
        FROM ${CRM.applications} a LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id=a.id
        WHERE a.deleted_at IS NULL AND a.workflow_freeze_id IN (${freezeIds.map(() => '?').join(',')}) ORDER BY a.created_at DESC`,
       freezeIds,
@@ -120,7 +120,7 @@ export class WorkflowFreezeRepository {
     for (const r of rows) {
       const e = out.get(r.workflow_freeze_id) ?? {total: 0, items: []};
       e.total += 1;
-      if (e.items.length < limit) e.items.push({id: r.id, companyName: r.company_name ?? null, createdAt: r.created_at});
+      if (e.items.length < limit) e.items.push({id: r.id, applicationNumber: r.application_number ?? null, companyName: r.company_name ?? null, createdAt: r.created_at});
       out.set(r.workflow_freeze_id, e);
     }
     return out;
@@ -128,7 +128,7 @@ export class WorkflowFreezeRepository {
 
   /** One page of the applications on the given workflow freezes (for the "view all" dialog), with an optional search on the company name. */
   async applicationsPage(freezeIds: string[], search: string, page: number, size = 15) {
-    if (!freezeIds.length) return {total: 0, page: 1, size, items: [] as {id: string; companyName: string | null; createdAt: string}[]};
+    if (!freezeIds.length) return {total: 0, page: 1, size, items: [] as {id: string; applicationNumber: string | null; companyName: string | null; createdAt: string}[]};
     const marks = freezeIds.map(() => '?').join(',');
     const like = `%${search.replace(/[\\%_]/g, m => '\\' + m)}%`;
     const where = `a.deleted_at IS NULL AND a.workflow_freeze_id IN (${marks})${search ? ' AND p.company_name LIKE ?' : ''}`;
@@ -138,7 +138,7 @@ export class WorkflowFreezeRepository {
     const total = Number(count.n);
     const pages = Math.max(1, Math.ceil(total / size));
     const at = Math.min(Math.max(1, page), pages);
-    const [rows] = await this.db.pool.query<any[]>(`SELECT a.id,a.created_at,p.company_name ${from} ORDER BY a.created_at DESC,a.id LIMIT ? OFFSET ?`, [...params, size, (at - 1) * size]);
-    return {total, page: at, size, items: rows.map(r => ({id: r.id as string, companyName: (r.company_name ?? null) as string | null, createdAt: r.created_at as string}))};
+    const [rows] = await this.db.pool.query<any[]>(`SELECT a.id,a.application_number,a.created_at,p.company_name ${from} ORDER BY a.created_at DESC,a.id LIMIT ? OFFSET ?`, [...params, size, (at - 1) * size]);
+    return {total, page: at, size, items: rows.map(r => ({id: r.id as string, applicationNumber: (r.application_number ?? null) as string | null, companyName: (r.company_name ?? null) as string | null, createdAt: r.created_at as string}))};
   }
 }

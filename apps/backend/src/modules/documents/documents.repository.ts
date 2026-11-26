@@ -35,10 +35,6 @@ const fileModel = (f: any, isCurrent = true) => ({
  */
 const MANDATORY = 'COALESCE(o.is_mandatory,sd.is_mandatory,0)';
 
-/** The status the screens read: the file state (PENDING / UPLOADED) until a decision, then VERIFIED (approved) or REJECTED. */
-export const legacyStatus = (status: string, approvalStatus: string) => (approvalStatus === 'APPROVED' ? 'VERIFIED' : approvalStatus === 'REJECTED' ? 'REJECTED' : status);
-const LEGACY_STATUS = "CASE c.approval_status WHEN 'APPROVED' THEN 'VERIFIED' WHEN 'REJECTED' THEN 'REJECTED' ELSE c.status END";
-
 @Injectable()
 export class DocumentsRepository {
   constructor(private readonly db: CrmDatabase) {}
@@ -324,8 +320,8 @@ export class DocumentsRepository {
         overrideId: d.override_id,
         assignedRole: d.assigned_role,
         isMandatory: !!d.is_mandatory,
-        /** What the screens read: PENDING / UPLOADED while no decision, then VERIFIED (approved) or REJECTED. */
-        status: legacyStatus(d.status, d.approval_status),
+        /** File state only (PENDING / UPLOADED); approval state lives in approvalStatus. */
+        status: d.status,
         approvalStatus: d.approval_status,
         approvalRemarks: d.approval_remarks ?? null,
         decidedBy: d.decided_by ?? null,
@@ -412,20 +408,9 @@ export class DocumentsRepository {
     return {id, checklistId: row.id, documentCode: row.code};
   }
 
-  /** Is this stored file named by a snapshot of the application: a frozen FAP (signed form or checklist) or the approved snapshot of a deed? */
-  private async inSnapshot(conn: Conn, applicationId: string, storagePath: string) {
-    const [rows] = await conn.execute<any[]>(
-      `SELECT EXISTS(SELECT 1 FROM ${CRM.frozenFapApplications} p WHERE p.source_application_id=? AND p.uploaded_fap_file_path=?)
-           OR EXISTS(SELECT 1 FROM ${CRM.frozenFapDocumentChecklists} z JOIN ${CRM.frozenFapApplications} p ON p.id=z.fap_freeze_id
-                     WHERE p.source_application_id=? AND z.active_file_path=?)
-           OR EXISTS(SELECT 1 FROM ${CRM.fapLegalDeeds} d WHERE d.application_id=? AND LOCATE(?,d.approved_snapshot_text)>0) AS held`,
-      [applicationId, storagePath, applicationId, storagePath, applicationId, storagePath],
-    );
-    return Number(rows[0].held) === 1;
-  }
-
   /**
-   * Soft-deletes a file (sets deleted_at); it moves to bin/ unless a snapshot refers to it. The checklist status follows the remaining files.
+   * Soft-deletes a file (sets deleted_at) and moves it to bin/, also when a frozen copy names it: bin/ is for IT only, so to the CRM the file is
+   * gone. The checklist status follows the remaining files.
    */
   async deleteFile(
     conn: Conn,
@@ -447,9 +432,7 @@ export class DocumentsRepository {
       [checklistId],
     );
     ensure(!running.length && state[0]?.approval_status !== 'APPROVED', 'The file of a document that is being verified, or is verified, cannot be deleted', 409);
-    // a file a snapshot refers to stays where the snapshot says it is: frozen data is never rewritten
-    const kept = await this.inSnapshot(conn, applicationId, rows[0].storage_path);
-    const binPath = moveToBin && !kept ? await moveToBin(rows[0].storage_path) : rows[0].storage_path;
+    const binPath = moveToBin ? await moveToBin(rows[0].storage_path) : rows[0].storage_path;
     await conn.execute(
       `UPDATE ${CRM.applicationDocumentFiles} SET deleted_at=CURRENT_TIMESTAMP(3),storage_path=?,updated_by=? WHERE id=?`,
       [binPath, by, fileId],
@@ -517,7 +500,7 @@ export class DocumentsRepository {
     const [rows] = await this.db.pool.query<any[]>(
       `SELECT c.id AS checklist_id,c.application_id,a.application_number,COALESCE(t.code,CONCAT('CUSTOM_',LEFT(c.id,8))) AS document_code,
               COALESCE(t.name,o.custom_name) AS document_name,c.assigned_role,
-              ${MANDATORY} AS is_mandatory,${LEGACY_STATUS} AS status,c.status AS file_status,c.approval_status,p.company_name,
+              ${MANDATORY} AS is_mandatory,c.status,c.approval_status AS approvalStatus,p.company_name,
               (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id=c.id AND f.deleted_at IS NULL) AS file_count
        FROM ${CRM.applicationDocumentChecklists} c
        LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id=c.document_type_id
@@ -531,12 +514,12 @@ export class DocumentsRepository {
     return rows;
   }
 
-  /** Verified and total checklist rows per application (application list). */
-  async counts(): Promise<Map<string, {verified: number; total: number}>> {
+  /** Approved and total checklist rows per application (application list). */
+  async counts(): Promise<Map<string, {approved: number; total: number}>> {
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT application_id,SUM(approval_status='APPROVED') AS verified,COUNT(*) AS total
+      `SELECT application_id,SUM(approval_status='APPROVED') AS approved,COUNT(*) AS total
        FROM ${CRM.applicationDocumentChecklists} GROUP BY application_id`,
     );
-    return new Map(rows.map(r => [r.application_id, {verified: Number(r.verified), total: Number(r.total)}]));
+    return new Map(rows.map(r => [r.application_id, {approved: Number(r.approved), total: Number(r.total)}]));
   }
 }

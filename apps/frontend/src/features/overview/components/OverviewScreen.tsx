@@ -28,7 +28,7 @@ export function OverviewScreen({
 }) {
   // Which applications need this user: derived from the authorities of the user's DB role (administrators have none)
   const has = (authority: string) => !checkIsAdmin(user) && (user.authorities || []).includes(authority);
-  const hasRejectedDeed = (r: any) => Number(r.deeds_sent_back) > 0;
+  const hasRejectedDeed = (r: any) => Number(r.deeds_rejected) > 0;
   const master = useMasterData();
   // Rejected: a step was rejected and the application waits for the fix and a new submit.
   const isReturned = (r: any) => r.status === 'REJECTED';

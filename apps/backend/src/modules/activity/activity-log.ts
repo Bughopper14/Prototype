@@ -21,12 +21,12 @@ export type ActivityEntry = {
   details?: string | null;
   previousStatus?: string | null;
   newStatus?: string | null;
-  /** Field changes (array) for the feed, or the deed review record ({deedId, ...}) for DEED_* rows. */
+  /** Field changes (array) for the feed, or the deed approval record ({deedId, ...}) for DEED_* rows. */
   changes?: unknown;
 };
 
-/** Action types of deed review rows; their changes_json holds {deedId, deedNumber, action, status, comments}. */
-export const DEED_REVIEW_ACTIONS = ['DEED_SUBMIT', 'DEED_APPROVE', 'DEED_REJECT', 'DEED_REMARKS'];
+/** Action types of deed approval rows; their changes_json holds {deedId, deedNumber, action, status, comments}. */
+export const DEED_APPROVAL_ACTIONS = ['DEED_SUBMIT', 'DEED_APPROVE', 'DEED_REJECT', 'DEED_REMARKS'];
 
 const cut = (v: unknown, n: number) => (v === undefined || v === null ? null : String(v).slice(0, n));
 
@@ -111,13 +111,13 @@ export async function activityFeed(options: {applicationId?: string; limit?: num
   });
 }
 
-/** Review history of each deed of an application, oldest first (deed id → entries). */
+/** Approval history of each deed of an application, oldest first (deed id → entries). */
 export async function deedHistory(applicationId: string) {
   const [rows] = await pool.query<any[]>(
     `SELECT action_type,changes_json,actor_name,action_timestamp FROM ${CRM.applicationActivityLogs}
-     WHERE application_id=? AND action_type IN (${DEED_REVIEW_ACTIONS.map(() => '?').join(',')})
+     WHERE application_id=? AND action_type IN (${DEED_APPROVAL_ACTIONS.map(() => '?').join(',')})
      ORDER BY action_timestamp,id`,
-    [applicationId, ...DEED_REVIEW_ACTIONS],
+    [applicationId, ...DEED_APPROVAL_ACTIONS],
   );
   const history = new Map<string, any[]>();
   for (const r of rows) {

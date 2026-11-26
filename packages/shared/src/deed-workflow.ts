@@ -1,12 +1,12 @@
 import {validateInput} from './input-validation';
 /**
- * Deed review states of crm_fap_legal_deed_reviews.review_status. DRAFT means the deed has no review row yet (never
- * submitted). REJECTED covers a deed rejected by a level or returned with remarks, and a deed opened again by the rejection of its
+ * Deed approval states, the values of crm_fap_legal_deeds.approval_status. NOT_STARTED means the deed was never
+ * submitted. REJECTED covers a deed rejected by a level or returned with remarks, and a deed opened again by the rejection of its
  * group: it is changed and submitted again. An APPROVED deed is locked.
  */
-export const deedReviewLabels: Record<string, string> = {
-  DRAFT: 'Draft',
-  PENDING: 'Pending Legal Approval',
+export const deedApprovalLabels: Record<string, string> = {
+  NOT_STARTED: 'Draft',
+  IN_APPROVAL: 'Pending Legal Approval',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
 };
@@ -68,15 +68,15 @@ export function deedData(deed: any) {
     fields.filter(key => deed[key] !== undefined).map(key => [key, structuredClone(deed[key])]),
   );
 }
-export function reviewStatus(deed: any) {
-  return deed?.review?.status || 'DRAFT';
+export function deedApprovalStatus(deed: any) {
+  return deed?.approval?.status || 'NOT_STARTED';
 }
-export function deedStatusLabel(deed: any) {
-  const status = reviewStatus(deed);
-  return deedReviewLabels[status] || status;
+export function deedApprovalLabel(deed: any) {
+  const status = deedApprovalStatus(deed);
+  return deedApprovalLabels[status] || status;
 }
-/** A deed given back to the submitter (rejected, remarks, or changed after approval): change it and submit again. */
-export const deedPending = (deed: any) => reviewStatus(deed) === 'PENDING';
+/** A deed that waits for its approval: it cannot be changed or deleted. */
+export const deedInApproval = (deed: any) => deedApprovalStatus(deed) === 'IN_APPROVAL';
 export function publishedDeeds(legal: any) {
   return (legal?.deeds || [])
     .filter((d: any) => d.approvedSnapshot)
@@ -111,10 +111,10 @@ export function mergeLegal(previous: any, incoming: any) {
     ids.add(input.id);
     const old = prior.find((d: any) => d.id === input.id),
       data = deedData(input);
-    if (!old) return {...data, review: {status: 'DRAFT', revision: 1}};
+    if (!old) return {...data, approval: {status: 'NOT_STARTED', revision: 1}};
 
-    const isOldApproved = reviewStatus(old) === 'APPROVED';
-    const isOldPending = deedPending(old);
+    const isOldApproved = deedApprovalStatus(old) === 'APPROVED';
+    const isOldInApproval = deedInApproval(old);
 
     const coreChanged =
       normStr(old.deedNumber) !== normStr(input.deedNumber) ||
@@ -125,7 +125,7 @@ export function mergeLegal(previous: any, incoming: any) {
       normDate(old.ministerialDecreeDate) !== normDate(input.ministerialDecreeDate);
 
     assert(
-      !coreChanged || !isOldPending,
+      !coreChanged || !isOldInApproval,
       'Akta sedang diperiksa. Tunggu hasil pemeriksaan sebelum mengubah data.',
       409,
     );
@@ -135,21 +135,21 @@ export function mergeLegal(previous: any, incoming: any) {
     if (isOldApproved && !coreChanged) {
       return {
         ...old,
-        review: old.review || {status: 'APPROVED', revision: 1},
+        approval: old.approval || {status: 'APPROVED', revision: 1},
         ...(old.approvedSnapshot ? {approvedSnapshot: old.approvedSnapshot, approvedAt: old.approvedAt} : {}),
       };
     }
 
-    const review = old.review || {status: 'DRAFT', revision: 1};
+    const approval = old.approval || {status: 'NOT_STARTED', revision: 1};
     return {
       ...data,
-      review,
+      approval,
       ...(old.approvedSnapshot ? {approvedSnapshot: old.approvedSnapshot, approvedAt: old.approvedAt} : {}),
     };
   });
   for (const old of prior)
     assert(
-      ids.has(old.id) || (!deedPending(old) && !old.approvedSnapshot),
+      ids.has(old.id) || (!deedInApproval(old) && !old.approvedSnapshot),
       'Akta dalam proses approval atau sudah disetujui tidak boleh dihapus. Buat perubahan dan ajukan ulang.',
       409,
     );
@@ -181,9 +181,9 @@ export function mergeLegal(previous: any, incoming: any) {
   return {...incoming, deeds};
 }
 /**
- * One review action on a deed: SUBMIT (draft or rejected → PENDING), APPROVE (PENDING → APPROVED, by someone
- * other than the submitter), REJECT or REMARKS (PENDING → REJECTED, with the reason). Returns the deed with its
- * new review; the caller stores it.
+ * One approval action on a deed: SUBMIT (NOT_STARTED or REJECTED → IN_APPROVAL), APPROVE (IN_APPROVAL → APPROVED, by
+ * someone other than the submitter), REJECT or REMARKS (IN_APPROVAL → REJECTED, with the reason). Returns the deed with
+ * its new approval; the caller stores it.
  */
 export function deedTransition(
   deed: any,
@@ -194,18 +194,18 @@ export function deedTransition(
 ) {
   assert(deed, 'Akta tidak ditemukan.', 404);
   assert(
-    options.revision === (deed.review?.revision || 1),
+    options.revision === (deed.approval?.revision || 1),
     'Akta telah berubah. Buka ulang sebelum melanjutkan.',
     409,
   );
-  const status = reviewStatus(deed),
+  const status = deedApprovalStatus(deed),
     comments = String(options.comments || '').trim(),
     date = now.toISOString();
   assert(comments.length <= 10000, 'Catatan maksimal 10.000 karakter.');
-  const review: any = {...deed.review};
+  const approval: any = {...deed.approval};
   if (action === 'SUBMIT') {
     assert(actorCan(actor, DEED_EDIT_AUTHORITY), 'Akun ini tidak memiliki hak untuk mengajukan akta.', 403);
-    assert(['DRAFT', 'REJECTED'].includes(status), 'Akta sudah diajukan atau disetujui.', 409);
+    assert(['NOT_STARTED', 'REJECTED'].includes(status), 'Akta sudah diajukan atau disetujui.', 409);
     for (const key of ['deedNumber', 'deedDate', 'ministerialDecreeNumber', 'ministerialDecreeDate'])
       assert(String(deed[key] || '').trim(), `${key} wajib diisi sebelum mengajukan akta.`);
     assert(['establishment', 'amendment'].includes(deed.type), 'Pilih jenis akta.');
@@ -232,7 +232,7 @@ export function deedTransition(
       if (err instanceof DeedWorkflowError) throw err;
       throw new DeedWorkflowError(err?.message || 'Data akta tidak valid.', 422);
     }
-    Object.assign(review, {status: 'PENDING', notes: null, submittedBy: actor.username || actor.name, submittedAt: date});
+    Object.assign(approval, {status: 'IN_APPROVAL', remarks: null, submittedBy: actor.username || actor.name, submittedAt: date});
   } else if (action === 'APPROVE') {
     assert(
       isAdminActor(actor) ||
@@ -243,10 +243,10 @@ export function deedTransition(
       'Akun ini tidak memiliki hak untuk menyetujui akta.',
       403,
     );
-    assert(status === 'PENDING', 'Akta belum diajukan untuk approval.', 409);
+    assert(status === 'IN_APPROVAL', 'Akta belum diajukan untuk approval.', 409);
     if (!isAdminActor(actor))
-      assert(review.submittedBy !== (actor.username || actor.name), 'Pengaju dan approver harus berbeda.', 403);
-    Object.assign(review, {status: 'APPROVED', notes: comments || null, approvedBy: actor.name || actor.username, approvedAt: date});
+      assert(approval.submittedBy !== (actor.username || actor.name), 'Pengaju dan approver harus berbeda.', 403);
+    Object.assign(approval, {status: 'APPROVED', remarks: comments || null, decidedBy: actor.name || actor.username, decidedAt: date});
   } else if (action === 'REJECT' || action === 'REMARKS') {
     assert(
       (isAdminActor(actor) ||
@@ -254,16 +254,16 @@ export function deedTransition(
         actorCan(actor, 'CRM_LEGAL_EDIT') ||
         actorCan(actor, 'CRM_DEED-REVIEW_BP_APPROVE') ||
         actorCan(actor, 'CRM_DEED-REVIEW_BS_APPROVE')) &&
-        status === 'PENDING',
+        status === 'IN_APPROVAL',
       'Pengembalian akta tidak tersedia untuk akun/status ini.',
       403,
     );
     assert(comments, action === 'REJECT' ? 'Alasan penolakan wajib diisi.' : 'Remarks wajib diisi.');
-    Object.assign(review, {status: 'REJECTED', notes: comments});
+    Object.assign(approval, {status: 'REJECTED', remarks: comments});
   } else throw new DeedWorkflowError('Aksi approval tidak valid.');
   return {
     ...deed,
-    review,
+    approval,
     ...(action === 'APPROVE' ? {approvedSnapshot: deedData(deed), approvedAt: date} : {}),
   };
 }

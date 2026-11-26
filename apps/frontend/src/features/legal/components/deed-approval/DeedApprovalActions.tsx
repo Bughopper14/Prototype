@@ -1,13 +1,13 @@
 /** Close, edit, submit, check, approve and reject buttons. */
 import {AlertCircle, Check, FileText, Pencil, Send} from 'lucide-react';
 
-export function ReviewActions({
+export function DeedApprovalActions({
   status,
   canSubmit,
   canApprove,
   canDecide = false,
   onDecide,
-  legacyReview = true,
+  legacyApproval = true,
   busy,
   comments,
   documentId,
@@ -23,7 +23,7 @@ export function ReviewActions({
   canDecide?: boolean;
   onDecide?: (decision: 'APPROVED' | 'REJECTED') => void;
   /** False when the approval of the deed section in the workflow decides: the old submit / approve / reject / remarks are not drawn. */
-  legacyReview?: boolean;
+  legacyApproval?: boolean;
   busy: boolean;
   comments: string;
   documentId: string;
@@ -38,7 +38,7 @@ export function ReviewActions({
         <button className="button" disabled={busy} onClick={onClose}>
           Close
         </button>
-        {legacyReview && canApprove && (
+        {legacyApproval && canApprove && (
           <button
             className="button"
             disabled={busy || !comments.trim()}
@@ -49,7 +49,7 @@ export function ReviewActions({
             Remarks
           </button>
         )}
-        {legacyReview && canApprove && (
+        {legacyApproval && canApprove && (
           <button
             className="button danger"
             disabled={busy || !comments.trim()}
@@ -89,13 +89,13 @@ export function ReviewActions({
             </button>
           </>
         )}
-        {legacyReview && canSubmit && (
+        {legacyApproval && canSubmit && (
           <button className="button primary" disabled={busy} onClick={() => action('SUBMIT')}>
             <Send size={14} />
             {status === 'REJECTED' ? 'Resubmit for Legal Approval' : 'Submit for Legal Approval'}
           </button>
         )}
-        {legacyReview && canApprove && (
+        {legacyApproval && canApprove && (
           <button
             className="button primary"
             disabled={busy || Boolean(documentId && !url)}

@@ -1,4 +1,5 @@
 import {Injectable} from '@nestjs/common';
+import type {PoolConnection} from 'mysql2/promise';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {USER_TABLES} from '../../core/db/user-tables';
 
@@ -13,11 +14,11 @@ import {USER_TABLES} from '../../core/db/user-tables';
 export class UsersNamesLookup {
   constructor(private readonly db: CrmDatabase) {}
 
-  /** user id → full name (or username). */
-  async names(ids: number[]): Promise<Map<number, string>> {
+  /** user id → full name (or username). Inside a transaction pass its `conn`: asking the pool for a second connection there can hang every request. */
+  async names(ids: number[], conn: Pick<PoolConnection, 'query'> = this.db.pool): Promise<Map<number, string>> {
     const unique = [...new Set(ids.filter(id => Number.isInteger(id)))];
     if (!unique.length) return new Map();
-    const [rows] = await this.db.pool.query<any[]>(
+    const [rows] = await conn.query<any[]>(
       `SELECT id, username, full_name FROM ${USER_TABLES.users} WHERE id IN (${unique.map(() => '?').join(',')})`,
       unique,
     );

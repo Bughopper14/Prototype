@@ -69,7 +69,7 @@ function rankOf(c: Scope, stages: any[], groups: any[]): [number, number, number
 }
 
 const KIND: Record<string, string> = {GROUP: 'Group', STAGE: 'Stage', SECTION: 'Deed', DOCUMENT: 'Document'};
-
+  
 /** One line for the whole scope: where it stands, from its steps. */
 function scopeSummary(c: Scope): {tone: string; text: string} {
   const st = c.steps;
@@ -80,7 +80,7 @@ function scopeSummary(c: Scope): {tone: string; text: string} {
   if (st.some(s => s.status === 'PENDING')) return {tone: 'pending', text: 'Needs approval'};
   return {tone: 'waiting', text: 'Waiting'};
 }
-
+  
 /** Everything that has to be approved, in workflow order. Each thing has a button to the screen it is about; with onDecide the steps the person may decide show Approve and Reject. */
 export function ScopeList({
   scopes,

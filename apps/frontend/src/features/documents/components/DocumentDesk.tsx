@@ -21,15 +21,18 @@ export function DocumentDesk({
       .then(setItems)
       .catch(e => setError(e.message));
   }, [rows]);
+  const isApproved = (d: any) => d.approvalStatus === 'APPROVED';
+  const badgeStatus = (d: any) =>
+    d.approvalStatus && d.approvalStatus !== 'NOT_STARTED' ? d.approvalStatus : d.status;
   const visible = items.filter(
     d =>
-      (status === 'ALL' || (status === 'OPEN' ? d.status !== 'VERIFIED' : d.status === 'VERIFIED')) &&
+      (status === 'ALL' || (status === 'OPEN' ? !isApproved(d) : isApproved(d))) &&
       (department === 'ALL' || d.assigned_role === department) &&
       (d.company_name + ' ' + (d.application_number || d.application_id) + ' ' + d.document_name)
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
-  const openCount = items.filter(d => d.status !== 'VERIFIED').length;
+  const openCount = items.filter(d => !isApproved(d)).length;
   return (
     <>
       <div className="stats-grid">
@@ -73,7 +76,7 @@ export function DocumentDesk({
               onChange={e => setStatus(e.target.value)}
             >
               <option value="OPEN">Needs action</option>
-              <option value="VERIFIED">Verified</option>
+              <option value="APPROVED">Verified</option>
               <option value="ALL">All documents</option>
             </select>
             <select
@@ -132,7 +135,7 @@ export function DocumentDesk({
                   <td>{d.is_mandatory ? 'Yes' : 'No'}</td>
                   <td>{d.file_count || 0}</td>
                   <td>
-                    <Badge status={d.status} />
+                    <Badge status={badgeStatus(d)} />
                   </td>
                   <td>
                     <ChevronRight size={16} />

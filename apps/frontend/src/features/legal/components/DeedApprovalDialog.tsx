@@ -1,25 +1,25 @@
 import {api} from '@/shared/lib/api';
-import {ReviewActions} from '@/features/legal/components/deed-review/ReviewActions';
-import {ReviewHistory} from '@/features/legal/components/deed-review/ReviewHistory';
-import {ReviewComments} from '@/features/legal/components/deed-review/ReviewComments';
-import {ReviewShareholders} from '@/features/legal/components/deed-review/ReviewShareholders';
-import {ReviewDocument} from '@/features/legal/components/deed-review/ReviewDocument';
-import {ReviewSummary} from '@/features/legal/components/deed-review/ReviewSummary';
-import {ReviewNotices} from '@/features/legal/components/deed-review/ReviewNotices';
-import {ReviewHeader} from '@/features/legal/components/deed-review/ReviewHeader';
+import {DeedApprovalActions} from '@/features/legal/components/deed-approval/DeedApprovalActions';
+import {DeedApprovalHistory} from '@/features/legal/components/deed-approval/DeedApprovalHistory';
+import {DeedApprovalComments} from '@/features/legal/components/deed-approval/DeedApprovalComments';
+import {DeedApprovalShareholders} from '@/features/legal/components/deed-approval/DeedApprovalShareholders';
+import {DeedApprovalDocument} from '@/features/legal/components/deed-approval/DeedApprovalDocument';
+import {DeedApprovalSummary} from '@/features/legal/components/deed-approval/DeedApprovalSummary';
+import {DeedApprovalNotices} from '@/features/legal/components/deed-approval/DeedApprovalNotices';
+import {DeedApprovalHeader} from '@/features/legal/components/deed-approval/DeedApprovalHeader';
 import {useMasterData} from '@/shared/master-data';
 import {
   DEED_EDIT_AUTHORITY,
   DEED_SECTION,
   label,
-  reviewStatus,
+  deedApprovalStatus,
   stakeholderFields,
 } from '@liugong/shared';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {DeedComparison} from './DeedComparison';
-export function DeedReviewDialog({
+export function DeedApprovalDialog({
   application,
   user,
   deedId,
@@ -40,10 +40,10 @@ export function DeedReviewDialog({
 }) {
   const master = useMasterData();
   const deed = application.legal?.deeds?.find((d: any) => d.id === deedId),
-    status = reviewStatus(deed),
+    status = deedApprovalStatus(deed),
     checklist = application.documentChecks.find((d: any) => d.documentCode === 'DEED'),
     files = checklist?.files || [];
-  const [documentId, setDocumentId] = useState(deed?.review?.documentId || ''),
+  const [documentId, setDocumentId] = useState(deed?.approval?.documentId || ''),
     [url, setUrl] = useState(''),
     [error, setError] = useState(''),
     [comments, setComments] = useState(''),
@@ -63,16 +63,16 @@ export function DeedReviewDialog({
       .filter(Boolean) as (readonly [string, string])[];
   // One deed, one approval: when the workflow has an approval for the deed section, the approval of that section decides (the ApprovalSlot on the Legal tab), so this old Submit / Approve / Reject / Remarks is not offered.
   const masterApproves = ((application.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
-  // Legal deeds review saved directly in crm_fap_legal_deed_reviews
+  // Who gets the buttons of the old flow (a workflow without an approval on the deed section)
   const canSubmit =
-      (checkIsAdmin(user) || hasAuthority(user, DEED_EDIT_AUTHORITY)) && ['DRAFT', 'REJECTED', 'NEEDS_REVISION'].includes(status),
+      (checkIsAdmin(user) || hasAuthority(user, DEED_EDIT_AUTHORITY)) && ['NOT_STARTED', 'REJECTED'].includes(status),
     canApprove =
       (checkIsAdmin(user) ||
         hasAuthority(user, 'CRM_DEED-REVIEW_LEGAL_APPROVE') ||
         hasAuthority(user, 'CRM_LEGAL_EDIT') ||
         hasAuthority(user, 'CRM_DEED-REVIEW_BP_APPROVE') ||
         hasAuthority(user, 'CRM_DEED-REVIEW_BS_APPROVE')) &&
-      status === 'PENDING';
+      status === 'IN_APPROVAL';
   // The approval of this deed in the workflow is decided right here: the steps of its round that this person may decide (the same ones the Legal tab offered a "Review & decide" button for)
   const round = ((application.approval?.current || []) as any[]).find(c => c.scope === 'SECTION' && c.sectionCode === DEED_SECTION && c.subjectId === deedId);
   const actable: any[] = masterApproves ? (round?.steps || []).filter((s: any) => s.canAct) : [];
@@ -103,9 +103,9 @@ export function DeedReviewDialog({
     setBusy(true);
     setError('');
     try {
-      const a = await api(`/applications/${application.id}/deeds/${deedId}/review`, 'POST', {
+      const a = await api(`/applications/${application.id}/deeds/${deedId}/approval`, 'POST', {
         action,
-        revision: deed?.review?.revision || 1,
+        revision: deed?.approval?.revision || 1,
         ...(action === 'SUBMIT' ? {documentId} : {}),
         comments,
       });
@@ -131,22 +131,22 @@ export function DeedReviewDialog({
       setBusy(false);
     }
   }
-  // The editor opened from here borrows this dialog's backdrop (see .deed-edit-over-review in the CSS)
+  // The editor opened from here borrows this dialog's backdrop (see .deed-edit-over-approval in the CSS)
   useEffect(() => {
     if (!hidden) return;
-    document.body.classList.add('deed-edit-over-review');
-    return () => document.body.classList.remove('deed-edit-over-review');
+    document.body.classList.add('deed-edit-over-approval');
+    return () => document.body.classList.remove('deed-edit-over-approval');
   }, [hidden]);
   if (!deed) return null;
   return createPortal(
-    <div className={'modal-scrim deed-review-scrim' + (hidden ? ' is-hidden' : '')}>
-      <section className="modal deed-review-modal" role="dialog" aria-modal="true" aria-label="Deed review">
-        <ReviewHeader application={application} deed={deed} busy={busy} onClose={onClose} />
+    <div className={'modal-scrim deed-approval-scrim' + (hidden ? ' is-hidden' : '')}>
+      <section className="modal deed-approval-modal" role="dialog" aria-modal="true" aria-label="Deed review">
+        <DeedApprovalHeader application={application} deed={deed} busy={busy} onClose={onClose} />
         <div className="modal-body">
-          <ReviewNotices deed={deed} status={status} />
-          <ReviewSummary deed={deed} master={master} />
+          <DeedApprovalNotices deed={deed} status={status} />
+          <DeedApprovalSummary deed={deed} master={master} />
           {deed.type === 'amendment' && <DeedComparison legal={application.legal} deed={deed} />}
-          <ReviewDocument
+          <DeedApprovalDocument
             application={application}
             canSubmit={canSubmit}
             busy={busy}
@@ -159,28 +159,28 @@ export function DeedReviewDialog({
             checklist={checklist}
             onUpdated={onUpdated}
           />
-          <ReviewShareholders
+          <DeedApprovalShareholders
             closedRows={closedRows}
             setClosedRows={setClosedRows}
             detailRows={detailRows}
             holders={holders}
           />
-          <ReviewComments
+          <DeedApprovalComments
             canApprove={canApprove || canDecide}
             withRemarks={!masterApproves}
             error={error}
             comments={comments}
             setComments={setComments}
           />
-          <ReviewHistory deed={deed} />
+          <DeedApprovalHistory deed={deed} />
         </div>
-        <ReviewActions
+        <DeedApprovalActions
           status={status}
           canSubmit={canSubmit}
           canApprove={canApprove}
           canDecide={canDecide}
           onDecide={decide}
-          legacyReview={!masterApproves}
+          legacyApproval={!masterApproves}
           busy={busy}
           comments={comments}
           documentId={documentId}

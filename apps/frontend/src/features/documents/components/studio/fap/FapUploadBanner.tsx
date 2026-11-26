@@ -49,7 +49,7 @@ export function FapUploadBanner() {
             <Files size={15} color="#002060" />
             <span>Upload History ({activeFiles.length})</span>
           </button>
-          <Badge status={activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
+          <Badge status={activeItem.chk.approvalStatus && activeItem.chk.approvalStatus !== 'NOT_STARTED' ? activeItem.chk.approvalStatus : activeItem.chk.status || (activeFiles.length ? 'UPLOADED' : 'PENDING')} />
         </div>
       </div>
 

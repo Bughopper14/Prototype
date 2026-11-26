@@ -2,7 +2,7 @@
 import {ChevronDown} from 'lucide-react';
 import type {Dispatch, SetStateAction} from 'react';
 
-export function ReviewShareholders({
+export function DeedApprovalShareholders({
   closedRows,
   setClosedRows,
   detailRows,
@@ -14,13 +14,13 @@ export function ReviewShareholders({
   holders: any[];
 }) {
   return (
-    <div className="deed-review-shareholders">
+    <div className="deed-approval-shareholders">
       <h3>Submitted stakeholders / shareholders</h3>
       {holders.map((r: any, i: number) => (
-        <div key={r.id || i} className={'deed-review-holder' + (closedRows[i] ? '' : ' open')}>
+        <div key={r.id || i} className={'deed-approval-holder' + (closedRows[i] ? '' : ' open')}>
           <button
             type="button"
-            className="deed-review-holder-row"
+            className="deed-approval-holder-row"
             aria-expanded={!closedRows[i]}
             onClick={() => setClosedRows({...closedRows, [i]: !closedRows[i]})}
           >
@@ -31,7 +31,7 @@ export function ReviewShareholders({
             <ChevronDown size={15} />
           </button>
           {!closedRows[i] && (
-            <dl className="deed-review-holder-detail">
+            <dl className="deed-approval-holder-detail">
               {detailRows(r).map(([name, value]) => (
                 <div key={name}>
                   <dt>{name}</dt>

@@ -59,14 +59,14 @@ export function useWorkspaceAccess({
   // Any document in checklist in approval or approved locks editing:
   const isChecklistInApproval = (a?.documentChecks || []).some(
     (d: any) =>
-      (d.approval_status === 'IN_APPROVAL' || d.approval?.state === 'PENDING') &&
+      (d.approvalStatus === 'IN_APPROVAL' || d.approval?.state === 'IN_APPROVAL') &&
       d.approval?.state !== 'REJECTED',
   );
   const fapCheck = (a?.documentChecks || []).find((d: any) => d.documentCode === 'FAP');
   const isFapDocInApproval =
-    fapCheck?.approval_status === 'IN_APPROVAL' ||
-    fapCheck?.approval?.state === 'PENDING' ||
-    fapCheck?.approval_status === 'APPROVED' ||
+    fapCheck?.approvalStatus === 'IN_APPROVAL' ||
+    fapCheck?.approval?.state === 'IN_APPROVAL' ||
+    fapCheck?.approvalStatus === 'APPROVED' ||
     fapCheck?.approval?.state === 'APPROVED';
 
   // Submitting the stage that shows the FAP form or submitting document checklist locks the form (profile, contact person, legal deeds/stakeholders, and sections 05-08); a rejection of the stage/document opens it again.

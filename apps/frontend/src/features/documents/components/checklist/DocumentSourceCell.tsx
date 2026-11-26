@@ -18,9 +18,9 @@ export function DocumentSourceCell({
   const hasFiles = row.files && row.files.length > 0;
   const approval = row.check?.approval;
   const isPendingApproval =
-    approval?.state === 'PENDING' || row.check?.approval_status === 'IN_APPROVAL';
+    approval?.state === 'IN_APPROVAL' || row.check?.approvalStatus === 'IN_APPROVAL';
   const isApproved =
-    approval?.state === 'APPROVED' || row.check?.approval_status === 'APPROVED' || row.status === 'VERIFIED';
+    approval?.state === 'APPROVED' || row.check?.approvalStatus === 'APPROVED';
   const isLockedForDelete = isPendingApproval || isApproved;
 
   return (

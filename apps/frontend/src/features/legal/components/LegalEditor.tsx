@@ -1,4 +1,4 @@
-/** Legal tab: deeds, stakeholders, KTP OCR and deed review. */
+/** Legal tab: deeds, stakeholders, KTP OCR and deed approval. */
 import {deedNames} from '@/features/legal/components/DeedViews';
 import {StakeholderDetailDialog} from '@/features/legal/components/StakeholderDetailDialog';
 import {StakeholderModalDialog} from '@/features/legal/components/StakeholderModalDialog';

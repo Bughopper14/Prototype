@@ -4,7 +4,7 @@ import {ApprovalSlot} from '@/features/applications/components/workspace/Approva
 import {useLegalEditorContext} from '@/features/legal/components/legal-editor/LegalEditorContext';
 import {checkIsAdmin, hasAuthority} from '@/shared/lib/auth';
 import {date, deedValidity} from '@/shared/lib/format';
-import {deedStatusLabel, DEED_EDIT_AUTHORITY, DEED_SECTION, reviewStatus} from '@liugong/shared';
+import {deedApprovalLabel, DEED_EDIT_AUTHORITY, DEED_SECTION, deedApprovalStatus} from '@liugong/shared';
 import {Check, MoreHorizontal} from 'lucide-react';
 
 export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
@@ -13,7 +13,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
     application,
     value,
     onChange,
-    onReview,
+    onOpenApproval,
     selectedId,
     locked,
     rowsFor,
@@ -47,11 +47,11 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
         : '0.00% · No data yet';
   const masterApproves = ((application?.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
   const reviewLabel =
-    hasAuthority(user, DEED_EDIT_AUTHORITY) && ['DRAFT', 'REJECTED'].includes(reviewStatus(x))
-      ? reviewStatus(x) === 'REJECTED'
+    hasAuthority(user, DEED_EDIT_AUTHORITY) && ['NOT_STARTED', 'REJECTED'].includes(deedApprovalStatus(x))
+      ? deedApprovalStatus(x) === 'REJECTED'
         ? 'Resubmit Deed'
         : 'Submit Deed'
-      : checkIsAdmin(user) && reviewStatus(x) === 'PENDING'
+      : checkIsAdmin(user) && deedApprovalStatus(x) === 'IN_APPROVAL'
         ? 'Review Deed'
         : 'View Review';
   // when the approval of this deed waits for this person, the slot below draws the single "Review & decide" button that opens the review dialog, so "View Review" is not drawn as well
@@ -98,12 +98,12 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
           ) : null}
         </div>
         <b className="legal-deed-number">{x.deedNumber || 'Number not filled'}</b>
-        <span className={'deed-review-status compact ' + reviewStatus(x).toLowerCase()}>
-          {reviewStatus(x) === 'APPROVED' && <Check size={10} style={{strokeWidth: 2.5, marginRight: 3}} />}
-          {deedStatusLabel(x)}
+        <span className={'deed-approval-status compact ' + deedApprovalStatus(x).toLowerCase()}>
+          {deedApprovalStatus(x) === 'APPROVED' && <Check size={10} style={{strokeWidth: 2.5, marginRight: 3}} />}
+          {deedApprovalLabel(x)}
         </span>
-        {reviewStatus(x) === 'REJECTED' && x.review?.notes && (
-          <small className="text-red">{x.review.notes}</small>
+        {deedApprovalStatus(x) === 'REJECTED' && x.approval?.remarks && (
+          <small className="text-red">{x.approval.remarks}</small>
         )}
         <small>{x.source === 'Sistem' ? 'Initial system data' : 'Legal Input'}</small>
       </td>
@@ -181,10 +181,10 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
           {/* One deed, one approval: when the workflow has an approval for the deed section, the slot below is the approval, so the old Submit / Review buttons are not drawn (only the read-only review stays). */}
           {(!masterApproves || reviewLabel === 'View Review') && !decidesHere && (
             <button
-              className="button primary small deed-review-action"
+              className="button primary small deed-approval-action"
               onClick={e => {
                 e.stopPropagation();
-                onReview(x.id);
+                onOpenApproval(x.id);
               }}
             >
               {reviewLabel}
@@ -193,7 +193,7 @@ export function DeedRow({deed: x, isHistory}: {deed: any; isHistory: boolean}) {
           {!rowLocked && !masterApproves && menuButton}
         </div>
         {/* The approval of this deed in the workflow, on its own line (nothing is drawn when the workflow has none for the deed section). */}
-        <ApprovalSlot scope="SECTION" code={DEED_SECTION} subjectId={x.id} trailing={!rowLocked && masterApproves ? menuButton : undefined} onOpenReview={() => onReview(x.id)} />
+        <ApprovalSlot scope="SECTION" code={DEED_SECTION} subjectId={x.id} trailing={!rowLocked && masterApproves ? menuButton : undefined} onOpenApproval={() => onOpenApproval(x.id)} />
       </td>
     </tr>
   );

@@ -1,6 +1,7 @@
 /** Who submitted the archive, when, and the key facts of the submission. */
 
 export function ArchiveMetadataBanner({current}: {current: any}) {
+  const happened = current.statusCode === 'APPROVED' ? 'Approved' : current.statusCode === 'REJECTED' ? 'Rejected' : 'Submitted';
   return (
     <div
       style={{
@@ -23,7 +24,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             display: 'block',
           }}
         >
-          Submitted At
+          {happened} At
         </span>
         <strong style={{fontSize: 13, color: '#0f172a'}}>
           {new Date(current.frozenAt).toLocaleString('en-GB')}
@@ -39,7 +40,7 @@ export function ArchiveMetadataBanner({current}: {current: any}) {
             display: 'block',
           }}
         >
-          Submitted By
+          {happened} By
         </span>
         <strong style={{fontSize: 13, color: '#0f172a'}}>{current.frozenByName}</strong>
       </div>

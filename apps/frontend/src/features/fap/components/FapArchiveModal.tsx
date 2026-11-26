@@ -64,7 +64,7 @@ export function FapArchiveModal({
               {application.fapNumber || 'FAP Intake'}
             </div>
             <div style={{fontSize: 12, color: '#64748b', marginTop: 2}}>
-              Permanent snapshot saved when FAP Stage was submitted to Pre-analysis.
+              Permanent snapshots saved when the FAP stage is submitted, and again when its approval is decided.
             </div>
           </div>
           <span

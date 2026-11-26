@@ -137,7 +137,7 @@ export class ApprovalsService {
     if (last > 0) {
       const round = await this.repo.roundOf(conn, app.id, scope, last);
       ensure(!round.some(s => OPEN.includes(s.status)), 'The approval of this part is already running.', 409);
-      // A document whose last round was approved but that is no longer VERIFIED got a new file after its approval: it needs a new round.
+      // A document whose last round was approved but whose approvalStatus is no longer APPROVED got a new file after its approval: it needs a new round.
       let changedAfterApproval = false;
       if (scope.type === 'DOCUMENT' && scope.checklistId) {
         const [[doc]] = await conn.query<any[]>(`SELECT approval_status FROM ${CRM.applicationDocumentChecklists} WHERE id=?`, [scope.checklistId]);

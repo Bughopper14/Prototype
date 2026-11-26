@@ -66,7 +66,7 @@ apps/
                                     customer/proposal/ (financing proposal: one card per sub-section, terms are data-driven) and
                                     customer/purpose-assets/; hooks/ (useApplicationWorkspace composes stage sync, access,
                                     NIB OCR, new application, FAP approval, customer-detail submit, print, save, activity, live
-                                    FAP data, preview sync, deed review); lib/workspace/ (stage, tabs, workflow actions, loan calc)
+                                    FAP data, preview sync, deed approval); lib/workspace/ (stage, tabs, workflow actions, loan calc)
         pre-analysis/               components/PreAnalysisForm (layout only) + form/ (AccordionSection and the 7 sections, each
                                     a folder of field blocks: general-info/, project-info/, customer-group/, equipment/,
                                     delivery-qa/, dealer-cross-check/, expert-judgement/) + preview/ (toolbar, canvas,
@@ -105,7 +105,7 @@ apps/
         portal/                     Apps Hub gallery, page access
         users/                      /um/* user management (ManageSystemGuard)
         customers/  applications/   customer directory; application intake, page saves, workflow, checklist
-        pre-analysis/  legal/       Pre-Analysis form; legal draft and deed review
+        pre-analysis/  legal/       Pre-Analysis form; legal draft and deed approval
         documents/                  uploads, signed file links, document desk, /documents/* files
         identity-documents/         KTP / NPWP / passport / KITAS scan and storage
         ocr/                        Python OCR worker client, warm-up

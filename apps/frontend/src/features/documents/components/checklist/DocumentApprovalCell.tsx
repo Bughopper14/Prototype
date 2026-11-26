@@ -59,11 +59,11 @@ export function DocumentApprovalCell({
   const totalSteps = steps.length;
   const approvedSteps = steps.filter((s: any) => s.status === 'APPROVED').length;
   const activeStepIndex = steps.findIndex((s: any) => s.status === 'PENDING');
-  const isStepRejected = steps.some((s: any) => s.status === 'REJECTED');
-  const isRejected = approval.state === 'REJECTED' || isStepRejected;
-  const isAllApproved = !isRejected && (approval.state === 'APPROVED' || (totalSteps > 0 && approvedSteps === totalSteps));
-  const isReopened = approval.state === 'REOPENED';
-  const isNotRequested = approval.state === 'NOT_REQUESTED';
+  const isStepRejected = steps.some((s: any) => s.status === 'REJECTED' && !s.reopened);
+  const isReopened = !!approval.reopened;
+  const isRejected = !isReopened && (approval.state === 'REJECTED' || isStepRejected);
+  const isAllApproved = !isRejected && !isReopened && (approval.state === 'APPROVED' || (totalSteps > 0 && approvedSteps === totalSteps));
+  const isNotRequested = approval.state === 'NOT_STARTED';
   const needsSubmission = isNotRequested || isRejected || isReopened;
   // the user may ask (onRequestApproval is only given then) and the server accepts it (the document has a file and no round is running)
   const canSubmit = !!onRequestApproval && !!approval.canRequest;
@@ -348,7 +348,7 @@ export function DocumentApprovalCell({
             {steps.map((st: any, idx: number) => {
               const isDone = st.status === 'APPROVED';
               const isActive = st.status === 'PENDING' || idx === activeStepIndex;
-              const isStepRejected = st.status === 'REJECTED';
+              const isStepRejected = st.status === 'REJECTED' && !st.reopened;
               const levelNum = st.order ?? st.sortOrder ?? (idx + 1);
 
               let cls = 'step-dot-wrap';

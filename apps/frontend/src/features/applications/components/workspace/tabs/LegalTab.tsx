@@ -13,7 +13,7 @@ export function LegalTab() {
     draft,
     setDraft,
     canLegal,
-    beginDeedReview,
+    openDeedApproval,
     editRequest,
     setEditRequest,
     setReviewHidden,
@@ -28,7 +28,7 @@ export function LegalTab() {
           stakeholders={draft.stakeholders}
           disabled={!canLegal}
           user={user}
-          onReview={beginDeedReview}
+          onOpenApproval={openDeedApproval}
           notify={notify}
           onDocumentUploaded={onChange}
           editRequest={editRequest}
@@ -36,7 +36,7 @@ export function LegalTab() {
           onEditFinished={async id => {
             // Back to the review dialog at once (no empty moment); it refreshes in place with what was just saved
             setReviewHidden(false);
-            await beginDeedReview(id);
+            await openDeedApproval(id);
           }}
           onChange={legal => {
             const sync = deriveDeedSync(legal, a);

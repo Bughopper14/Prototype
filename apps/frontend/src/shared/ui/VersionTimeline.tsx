@@ -20,7 +20,7 @@ export interface TimelineVersion {
   changes: VersionChange[] | null;
   summary: {added: number; removed: number; changed: number} | null;
   applications: number;
-  applicationList: {id: string; companyName: string | null; createdAt: string}[];
+  applicationList: {id: string; applicationNumber: string | null; companyName: string | null; createdAt: string}[];
 }
 
 const when = (v: string) => new Date(v).toLocaleString('en-GB', {dateStyle: 'medium', timeStyle: 'short'});
@@ -125,6 +125,7 @@ function Applications<T extends TimelineVersion>({v, onViewAll}: {v: T; onViewAl
           {shown.map(a => (
             <li key={a.id}>
               <Link to={applicationHref(a.id)}>{a.companyName || 'Application'}</Link>
+              {a.applicationNumber && <span className="vt-muted"> · {a.applicationNumber}</span>}
               <span className="vt-muted"> · {new Date(a.createdAt).toLocaleDateString('en-GB', {dateStyle: 'medium'})}</span>
             </li>
           ))}
