@@ -1575,28 +1575,9 @@
   flex-shrink: 0;
 }
 
+/* Caret pointer removed per request so it does not overlap footer text */
 .app-stage-hover-card::before {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: #ffffff;
-  transform: rotate(45deg);
-  left: var(--caret-left, 24px);
-  margin-left: -5px;
-  z-index: 1;
-}
-
-.app-stage-hover-card.placement-bottom::before {
-  top: -6px;
-  border-left: 1px solid #e2e8f0;
-  border-top: 1px solid #e2e8f0;
-}
-
-.app-stage-hover-card.placement-top::before {
-  bottom: -6px;
-  border-right: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
+  display: none;
 }
 
 @keyframes appStageHoverFadeIn {
@@ -1922,6 +1903,7 @@
 .app-stage-hover-footer {
   display: flex;
   align-items: center;
+  margin-top: 4px;
 }
 
 .app-stage-hover-action-btn {
