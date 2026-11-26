@@ -6,7 +6,7 @@ export const TABS: Record<number, string> = {
   1: 'Stakeholders',
   4: 'Financial statements',
   5: 'Legal',
-  6: 'Documents',
+  6: 'Document Comparison',
   7: 'Activity',
   8: 'Pre Analysis form',
   9: 'Document Checklist',

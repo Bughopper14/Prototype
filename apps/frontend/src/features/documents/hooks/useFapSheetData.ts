@@ -10,6 +10,13 @@ import {useMemo} from 'react';
 
 const street = (text: any, hints: any): string => (text ? extractStreetAddress(String(text), hints) || String(text) : '');
 
+const stripEmptySentinel = (v: any): any => {
+  if (typeof v !== 'string') return v;
+  const s = v.trim();
+  if (s === '—' || s === '-' || /^—\s*\(kosong di dokumen\)$/i.test(s)) return '';
+  return v;
+};
+
 export function useFapSheetData({
   fapComparison,
   master,
@@ -115,6 +122,9 @@ export function useFapSheetData({
   }, [a, master]);
 
   const ocrFapData: FapSheetData = useMemo(() => {
+    const cleanDocValues = Object.fromEntries(
+      Object.entries(fapComparison?.documentValues || {}).map(([k, v]) => [k, stripEmptySentinel(v)]),
+    );
     const ext: any = fapComparison
       ? {
           ...liveFapData,
@@ -125,7 +135,7 @@ export function useFapSheetData({
           shareholders: [],
           selectedDeedNo: '',
           selectedDeedDate: '',
-          ...(fapComparison.documentValues || {}),
+          ...cleanDocValues,
         }
       : {};
     return {

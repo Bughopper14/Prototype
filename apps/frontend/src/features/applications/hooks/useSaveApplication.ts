@@ -191,7 +191,7 @@ export function useSaveApplication({
           1: 'Stakeholders',
           4: 'Financial statements',
           5: 'Legal',
-          6: 'Documents',
+          6: 'Document Comparison',
           8: 'Pre Analysis form',
         };
         const activeSectionName = tabNamesList[tab] || 'Application details';

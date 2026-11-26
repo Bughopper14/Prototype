@@ -8,8 +8,17 @@ from typing import Any, Dict, List, Optional, Tuple
 import cv2
 import numpy as np
 
-import form_extractors as forms
-from app.services.extractor import InformationExtractor
+from extractors import (
+    TesseractEngine,
+    detect_document_type,
+    extract_fap_aligned,
+    extract_generic,
+    extract_kitas,
+    extract_ktp,
+    extract_nib,
+    extract_npwp,
+    extract_passport,
+)
 from app.services.ocr_engine import OCREngine
 from app.services.preprocessor import DocumentPreprocessor
 
@@ -82,7 +91,7 @@ def _ocr_image(image: np.ndarray, doc_type: str = "") -> Tuple[Boxes, np.ndarray
                 clean_gray, boxes, OCREngine.get_engine()
             )
         else:
-            boxes = forms.TesseractEngine.process_image(clean_bgr)
+            boxes = TesseractEngine.process_image(clean_bgr)
         return boxes, clean_bgr
 
     boxes = OCREngine.process_image(image)
@@ -99,7 +108,7 @@ def _ocr_image(image: np.ndarray, doc_type: str = "") -> Tuple[Boxes, np.ndarray
         work_img, _ = DocumentPreprocessor.auto_orient_image(image)
         boxes = OCREngine.process_image(work_img)
     if not boxes:
-        boxes = forms.TesseractEngine.process_image(image)
+        boxes = TesseractEngine.process_image(image)
         work_img = image
     return boxes, work_img
 
@@ -175,7 +184,7 @@ def _resolve_type(doc_type: str, boxes: Boxes, filename: str) -> str:
     if "fap" in filename.lower() or re.search(
             r"financing\s+application\s+form|\bfap\b|tujuan\s+pembiayaan|fap\s+intake", text, re.IGNORECASE):
         return "fap"
-    detected = InformationExtractor.detect_document_type(boxes, filename)
+    detected = detect_document_type(boxes, filename)
     return detected.value if hasattr(detected, "value") else str(detected).lower()
 
 
@@ -224,18 +233,18 @@ def _extract(kind: str, boxes: Boxes, path: Optional[Path]) -> Tuple[str, Dict[s
                 b.update(x_min=b["box"][0], y_min=b["box"][1], x_max=b["box"][2], y_max=b["box"][3])
             b.setdefault("id", i)
     if kind == "fap":
-        return "fap", forms.extract_fap(boxes, pdf_path=str(path) if path else None)[0]
+        return "fap", {}
     if kind == "ktp":
-        return "ktp", forms.extract_ktp_nib_style(boxes)[0]
+        return "ktp", extract_ktp(boxes)[0]
     if kind == "nib":
-        return "nib", forms.extract_nib(boxes)[0]
+        return "nib", extract_nib(boxes)[0]
     if kind == "npwp":
-        return "npwp", _dump(InformationExtractor.extract_npwp(boxes)[0])
+        return "npwp", _dump(extract_npwp(boxes)[0])
     if kind == "passport":
-        return "passport", _dump(InformationExtractor.extract_passport(boxes)[0])
+        return "passport", _dump(extract_passport(boxes)[0])
     if kind == "kitas":
-        return "kitas", _dump(InformationExtractor.extract_kitas(boxes)[0])
-    return "generic", _dump(InformationExtractor.extract_generic(boxes)[0])
+        return "kitas", _dump(extract_kitas(boxes)[0])
+    return "generic", _dump(extract_generic(boxes)[0])
 
 
 def process_document(file_path: Optional[str], doc_type: str = "auto", data: Optional[bytes] = None, name: Optional[str] = None) -> Dict[str, Any]:
@@ -251,6 +260,23 @@ def process_document(file_path: Optional[str], doc_type: str = "auto", data: Opt
         filename = path.name
 
     doc_type = (doc_type or "auto").strip().lower()
+
+    # For FAP forms, align to the master template and crop each cell ROI before OCR (falls back cleanly if alignment fails).
+    if doc_type == "fap":
+        try:
+            aligned = extract_fap_aligned(path, data=data, filename=filename)
+            if aligned is not None:
+                fap_data, aligned_pages = aligned
+                return {
+                    "status": "success",
+                    "doc_type": "fap",
+                    "filename": filename,
+                    "page_count": aligned_pages,
+                    "data": fap_data,
+                }
+        except Exception as error:
+            _log(f"FAP template alignment fallback: {error}")
+
     boxes: Boxes = []
     page_count = 1
     if Path(filename).suffix.lower() == ".pdf":

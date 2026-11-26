@@ -22,7 +22,7 @@ const GAP_PLACE: Record<string, {stage?: string; tab: number; name: string}> = {
   FAP_FORM: {stage: SCREEN.FAP, tab: 0, name: 'FAP Form'},
   PRE_ANALYSIS: {stage: SCREEN.PRE_ANALYSIS, tab: 8, name: 'Pre-analysis form'},
   LEGAL: {stage: SCREEN.FAP, tab: 5, name: 'Legal'},
-  DOCUMENTS: {tab: 6, name: 'Documents'},
+  DOCUMENTS: {tab: 6, name: 'Document Comparison'},
 };
 
 /** What is still missing for the final approval, with a button to the place that fixes each kind. */

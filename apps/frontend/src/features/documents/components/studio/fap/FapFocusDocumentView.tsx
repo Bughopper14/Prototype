@@ -1,6 +1,6 @@
 /** Screen 4 of Redesign 2: Focused 3-column document view with zoomed spotlight + value callout on both panes. */
 import {useEffect, useRef, useState} from 'react';
-import {ArrowLeft, ChevronLeft, ChevronRight, Minus, Plus} from 'lucide-react';
+import {ArrowLeft, ChevronLeft, ChevronRight, Eye, FileSpreadsheet, Minus, Plus} from 'lucide-react';
 import {FapSheetPreview} from '@/features/crm/components/lazy';
 import {resolveFieldCellIds} from '@/features/fap/lib/field-cells';
 import {printFapDocument} from '@/features/fap/lib/print';
@@ -124,9 +124,16 @@ export function FapFocusDocumentView({
   onSelectField: (field: string) => void;
   onBack: () => void;
 }) {
-  const {a, activeFile, activeFiles, fapComparison, liveFapData, ocrFapData} = useDocumentsStudioContext();
+  const {a, activeFile, activeFiles, activeFileUrl, fapComparison, liveFapData, ocrFapData} =
+    useDocumentsStudioContext();
   const [focusPct, setFocusPct] = useState<number>(150);
+  const [rightPaneMode, setRightPaneMode] = useState<'ocr' | 'original'>('ocr');
+  const [origFitWidth, setOrigFitWidth] = useState<boolean>(true);
   const gridRef = useRef<HTMLDivElement>(null);
+  const isImage = !!(activeFile?.fileName && /\.(png|jpe?g|webp|gif|bmp)$/i.test(activeFile.fileName));
+  const origPdfSrc = activeFileUrl
+    ? `${activeFileUrl.split('#')[0]}#${origFitWidth ? 'view=FitH' : `zoom=${focusPct}`}`
+    : '';
 
   const currentIdx = Math.max(
     0,
@@ -164,7 +171,7 @@ export function FapFocusDocumentView({
       window.clearTimeout(t2);
       window.clearTimeout(t3);
     };
-  }, [current?.field, current?.systemValue, current?.ocrValue, effectiveZoom]);
+  }, [current?.field, current?.systemValue, current?.ocrValue, effectiveZoom, rightPaneMode]);
 
   if (!current) return null;
 
@@ -175,8 +182,14 @@ export function FapFocusDocumentView({
     sectionsWithRows.length > 1 ? sectionsWithRows[(curSecIdx + 1) % sectionsWithRows.length] : null;
   const nextSectionRows = nextSection ? rows.filter(r => r.sectionId === nextSection.id) : [];
 
-  const zoomOut = () => setFocusPct(p => Math.max(75, p - 25));
-  const zoomIn = () => setFocusPct(p => Math.min(250, p + 25));
+  const zoomOut = () => {
+    setOrigFitWidth(false);
+    setFocusPct(p => Math.max(50, p - 25));
+  };
+  const zoomIn = () => {
+    setOrigFitWidth(false);
+    setFocusPct(p => Math.min(250, p + 25));
+  };
 
   const activeDiffs = activeFiles.length > 0 && fapComparison ? fapComparison.diffs || [] : [];
 
@@ -298,33 +311,87 @@ export function FapFocusDocumentView({
           </div>
         </section>
 
-        {/* Signed form OCR pane */}
+        {/* Signed form OCR / Original file pane */}
         <section className="fap-r2-doc-pane fap-pane-card">
-          <div className="fap-r2-doc-head">
+          <div className={`fap-r2-doc-head ${rightPaneMode === 'original' ? 'mode-original' : 'mode-ocr'}`}>
             <div>
-              <h4>Signed form (OCR)</h4>
+              <h4>{rightPaneMode === 'original' ? 'Original file' : 'Signed form (OCR)'}</h4>
               <p title={activeFile?.fileName || ''}>{activeFile?.fileName || 'Signed FAP'}</p>
             </div>
-            <div className="fap-r2-zoom-group">
-              <button type="button" onClick={zoomOut} aria-label="Zoom out">
-                <Minus size={13} />
-              </button>
-              <span>{focusPct}%</span>
-              <button type="button" onClick={zoomIn} aria-label="Zoom in">
-                <Plus size={13} />
-              </button>
+            <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+              {activeFileUrl && (
+                <div className="fap-r2-seg compact" role="tablist" aria-label="Right pane view">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={rightPaneMode === 'ocr'}
+                    className={rightPaneMode === 'ocr' ? 'on mode-ocr' : ''}
+                    onClick={() => setRightPaneMode('ocr')}
+                  >
+                    <FileSpreadsheet size={12} /> OCR
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={rightPaneMode === 'original'}
+                    className={rightPaneMode === 'original' ? 'on mode-original' : ''}
+                    onClick={() => setRightPaneMode('original')}
+                  >
+                    <Eye size={12} /> Original
+                  </button>
+                </div>
+              )}
+              <div className="fap-r2-zoom-group">
+                <button type="button" onClick={zoomOut} aria-label="Zoom out">
+                  <Minus size={13} />
+                </button>
+                {rightPaneMode === 'original' ? (
+                  <button type="button" className="fit-btn" onClick={() => setOrigFitWidth(true)}>
+                    {origFitWidth ? 'Fit width' : `${focusPct}%`}
+                  </button>
+                ) : (
+                  <span>{focusPct}%</span>
+                )}
+                <button type="button" onClick={zoomIn} aria-label="Zoom in">
+                  <Plus size={13} />
+                </button>
+              </div>
             </div>
           </div>
           <div className="fap-r2-doc-body">
-            <FapSheetPreview
-              data={ocrFapData}
-              isComparison={true}
-              hideToolbar={true}
-              diffSide="ocr"
-              diffs={activeDiffs}
-              externalZoom={effectiveZoom}
-              onPrint={() => printFapDocument(a.fapNumber, 'ocr')}
-            />
+            {rightPaneMode === 'original' && activeFileUrl ? (
+              isImage ? (
+                <div style={{height: '100%', overflow: 'auto', padding: 12, textAlign: 'center', background: '#f8fafc'}}>
+                  <img
+                    src={activeFileUrl}
+                    alt={activeFile?.fileName || 'Original FAP'}
+                    style={{
+                      width: origFitWidth ? '100%' : `${focusPct}%`,
+                      maxWidth: origFitWidth ? '100%' : 'none',
+                      height: 'auto',
+                      boxShadow: '0 2px 10px rgba(15,23,42,0.08)',
+                    }}
+                  />
+                </div>
+              ) : (
+                <iframe
+                  key={origPdfSrc}
+                  src={origPdfSrc}
+                  title={activeFile?.fileName || 'Original FAP'}
+                  style={{width: '100%', height: '100%', border: 0, display: 'block', background: '#fff'}}
+                />
+              )
+            ) : (
+              <FapSheetPreview
+                data={ocrFapData}
+                isComparison={true}
+                hideToolbar={true}
+                diffSide="ocr"
+                diffs={activeDiffs}
+                externalZoom={effectiveZoom}
+                onPrint={() => printFapDocument(a.fapNumber, 'ocr')}
+              />
+            )}
           </div>
         </section>
       </div>

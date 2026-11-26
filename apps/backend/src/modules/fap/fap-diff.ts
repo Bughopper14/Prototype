@@ -208,8 +208,8 @@ export function computeFapDiffs(app: any, extracted: any, rule: RuleLookup): Fap
         withRule(f, rule, {
           field: f.key,
           label: f.label,
-          oldValue: system || '—',
-          newValue: document || '— (Kosong di dokumen)',
+          oldValue: system || '',
+          newValue: document || '',
         }),
       );
   }
@@ -228,7 +228,7 @@ export function recheckFapDiffs(app: any, stored: FapDiff[]): FapDiff[] {
     if (!f) continue;
     const system = f.key === 'stakeholders' ? formatStakeholders(f.system(app)) : text(f.system(app));
     const docVal = d.newValue === '— (Kosong di dokumen)' ? '' : text(d.newValue);
-    if (differs(f.key, system, docVal, !!f.number)) out.push({...d, oldValue: system || '—'});
+    if (differs(f.key, system, docVal, !!f.number)) out.push({...d, oldValue: system || '', newValue: docVal});
   }
   return out;
 }
