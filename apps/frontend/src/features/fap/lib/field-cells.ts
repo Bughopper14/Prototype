@@ -1,4 +1,16 @@
 /** Form field key → FAP sheet cell id, used to highlight the cell being edited. */
+import {resolveFinancingMethodGroup} from '@liugong/shared';
+
+function getTermsPrefix(extraData?: any): 'fl' | 'slb' | 'if' {
+  const method =
+    extraData?.financingMethod ||
+    extraData?.facilityProposed?.financingMethod ||
+    extraData?.proposal?.financingMethod;
+  const grp = resolveFinancingMethodGroup(method);
+  if (grp === 'termsFinancialLease') return 'fl';
+  if (grp === 'termsSaleAndLeaseBack') return 'slb';
+  return 'if';
+}
 
 /** Checkbox cell of each master code, per field. A code without a cell (e.g. business category MAKRO) ticks nothing. */
 export const CHECKBOX_CELLS: Record<string, Record<string, string>> = {
@@ -55,8 +67,15 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
 
   // Financing Proposal
   financingMethod: 'fap-cell-prop-method',
+  financingValue: 'fap-cell-prop-val',
   financingValueProp: 'fap-cell-prop-val',
+  currency: 'fap-cell-tc-if-curr',
   currencyChoice: 'fap-cell-prop-curr-choice',
+  interestRate: 'fap-cell-tc-if-rate',
+  tenorMonths: 'fap-cell-tc-if-tenor',
+  downPaymentValue: 'fap-cell-tc-if-dp',
+  paymentMethod: 'fap-cell-tc-if-payment',
+  facilityPurpose: 'fap-cell-tc-if-purpose',
   applicationSource: 'fap-cell-prop-app-source',
   flInvestment: 'fap-cell-tc-fl-purpose',
   flCurrency: 'fap-cell-tc-fl-curr',
@@ -215,22 +234,28 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
 
   if (fieldKey === 'referenceComments' || fieldKey === 'comments') return 'fap-cell-ref-comments';
   if (fieldKey === 'totalMonthlyInstallment') return 'fap-cell-ref-total-installment';
-  if (
-    section?.startsWith('banks') ||
-    section?.startsWith('references') ||
+
+  const secLower = section?.toLowerCase() || '';
+  const isBankSection =
+    secLower.includes('bank') ||
+    secLower.includes('reference') ||
+    secLower.startsWith('ref');
+
+  const isBankField =
     [
       'bankOrFinInstitution',
-      'currency',
       'creditFacility',
       'monthlyInstallment',
       'yearStarted',
-      'interestRate',
       'paymentRecord',
       'facilityStatus',
-    ].includes(fieldKey)
-  ) {
+    ].includes(fieldKey) ||
+    ((fieldKey === 'currency' || fieldKey === 'interestRate') &&
+      (isBankSection || extraData?.targetBankRow !== undefined));
+
+  if (isBankSection || isBankField) {
     let rowIndex = extraData?.targetBankRow ?? extraData?.rowIndex ?? 0;
-    const m = section?.match(/(?:banks|references|ref)-(\d+)/);
+    const m = section?.match(/(?:banks|references|ref)-(\d+)/i);
     if (m) rowIndex = parseInt(m[1], 10) || 0;
     if (rowIndex > 4) rowIndex = 4;
     if (fieldKey === 'bankOrFinInstitution') return `fap-cell-ref-${rowIndex}-bank`;
@@ -242,6 +267,42 @@ export function resolveFieldToCellId(fieldKey: string, section?: string | null, 
     if (fieldKey === 'paymentRecord') return `fap-cell-ref-${rowIndex}-record`;
     if (fieldKey === 'facilityStatus') return `fap-cell-ref-${rowIndex}-status`;
     return `fap-cell-ref-${rowIndex}-bank`;
+  }
+
+  // Financing Proposal
+  const isProposalSection = secLower.includes('proposal') || section === 'fap-preview-sec-proposal';
+  const isProposalField =
+    [
+      'financingValue',
+      'financingValueProp',
+      'downPaymentValue',
+      'tenorMonths',
+      'interestRate',
+      'facilityPurpose',
+      'financingMethod',
+      'paymentMethod',
+      'currency',
+      'currencyChoice',
+      'applicationSource',
+      'proposalNotes',
+    ].includes(fieldKey) ||
+    fieldKey.startsWith('fl') ||
+    fieldKey.startsWith('slb') ||
+    fieldKey.startsWith('if');
+
+  if (isProposalSection || isProposalField) {
+    if (fieldKey === 'financingValue' || fieldKey === 'financingValueProp') return 'fap-cell-prop-val';
+    if (fieldKey === 'financingMethod') return 'fap-cell-prop-method';
+    if (fieldKey === 'applicationSource') return 'fap-cell-prop-app-source';
+    if (fieldKey === 'proposalNotes') return 'fap-cell-prop-notes';
+
+    const pfx = getTermsPrefix(extraData);
+    if (fieldKey === 'currency' || fieldKey === 'currencyChoice') return `fap-cell-tc-${pfx}-curr`;
+    if (fieldKey === 'interestRate') return `fap-cell-tc-${pfx}-rate`;
+    if (fieldKey === 'tenorMonths') return `fap-cell-tc-${pfx}-tenor`;
+    if (fieldKey === 'downPaymentValue') return pfx === 'if' ? 'fap-cell-tc-if-dp' : `fap-cell-tc-${pfx}-deposit`;
+    if (fieldKey === 'paymentMethod') return `fap-cell-tc-${pfx}-payment`;
+    if (fieldKey === 'facilityPurpose') return `fap-cell-tc-${pfx}-purpose`;
   }
 
   if (section === 'pic' || section === 'fap-preview-sec-pic') {

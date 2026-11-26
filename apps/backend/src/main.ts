@@ -18,7 +18,17 @@ async function bootstrap() {
   app.disable('x-powered-by');
 
   // The API only serves JSON and stored files; the browser UI is served by the frontend (Vite / static host).
-  app.use(helmet({crossOriginResourcePolicy: {policy: 'same-origin'}}));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: {policy: 'same-origin'},
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'object-src': ["'self'", 'blob:', 'data:'],
+        },
+      },
+    }),
+  );
   app.use(compression());
 
   // Same-origin by default (the frontend proxies /api). Other origins must be listed in CORS_ORIGINS.

@@ -1,12 +1,30 @@
 /** FAP view: upload banner / dropzone (or locked notice) with upload-history button. */
+import {useState} from 'react';
 import {Badge} from '@/shared/ui/Badge';
-import {Files, Loader2, Lock, UploadCloud} from 'lucide-react';
+import {Files, Loader2, UploadCloud} from 'lucide-react';
+import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
 
 export function FapUploadBanner() {
-  const {isFapLocked, busy, setShowHistoryModal, activeItem, activeFiles, canUpload, handleFileUpload} =
+  const {busy, setShowHistoryModal, activeItem, activeFiles, canUpload, handleFileUpload} =
     useDocumentsStudioContext();
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const isApproved =
+    activeItem.chk?.approval_status === 'APPROVED' || activeItem.chk?.status === 'VERIFIED';
+
+  const onFileChange = (f: File) => {
+    if (isApproved) {
+      setPendingFile(f);
+      setConfirmOpen(true);
+    } else {
+      handleFileUpload(activeItem, f);
+    }
+  };
+
   return (
     <div className="fap-evidence-full-top">
       <div className="fap-evidence-top-header">
@@ -35,51 +53,50 @@ export function FapUploadBanner() {
         </div>
       </div>
 
-      {/* Full-width Dropzone or Locked Banner */}
-      {isFapLocked ? (
-        <div
-          className="stage-readonly-banner"
-          style={{
-            margin: '0 0 16px 0',
-            background: '#ecfdf5',
-            borderColor: '#a7f3d0',
-            color: '#065f46',
-            borderRadius: '8px',
-          }}
-        >
-          <Lock size={18} />
-          <span>
-            <strong>FAP Document Locked:</strong> the FAP Stage has been submitted. The physical FAP document
-            was reviewed and its file is locked (cannot be re-uploaded or deleted).
+      {/* Full-width Dropzone */}
+      {canUpload && (
+        <label className="fap-dropzone-full" onClick={e => e.stopPropagation()}>
+          <div className="fap-dropzone-full-icon">
+            {busy ? <Loader2 size={22} className="spin" /> : <UploadCloud size={22} />}
+          </div>
+          <strong>
+            {busy
+              ? 'Uploading and processing OCR...'
+              : 'Drag & drop FAP PDF/Image file here, or click to select a file'}
+          </strong>
+          <span className="fap-dropzone-full-hint">
+            Supported formats: PDF, PNG, JPEG · Max 20 MB · Automatic system data vs OCR comparison
           </span>
-        </div>
-      ) : (
-        canUpload && (
-          <label className="fap-dropzone-full" onClick={e => e.stopPropagation()}>
-            <div className="fap-dropzone-full-icon">
-              {busy ? <Loader2 size={22} className="spin" /> : <UploadCloud size={22} />}
-            </div>
-            <strong>
-              {busy
-                ? 'Uploading and processing OCR...'
-                : 'Drag & drop FAP PDF/Image file here, or click to select a file'}
-            </strong>
-            <span className="fap-dropzone-full-hint">
-              Supported formats: PDF, PNG, JPEG · Max 20 MB · Automatic system data vs OCR comparison
-            </span>
-            <input
-              type="file"
-              accept="application/pdf,image/png,image/jpeg"
-              disabled={busy}
-              onChange={e => {
-                const f = e.target.files?.[0];
-                if (f) handleFileUpload(activeItem, f);
-                e.target.value = '';
-              }}
-            />
-          </label>
-        )
+          <input
+            type="file"
+            accept="application/pdf,image/png,image/jpeg"
+            disabled={busy}
+            onChange={e => {
+              const f = e.target.files?.[0];
+              if (f) onFileChange(f);
+              e.target.value = '';
+            }}
+          />
+        </label>
       )}
+
+      <ConfirmUploadBubble
+        open={confirmOpen}
+        title="Are you sure?"
+        message="This FAP document has already been approved. Uploading a new file will restart the approval process for this document."
+        onCancel={() => {
+          setPendingFile(null);
+          setConfirmOpen(false);
+        }}
+        onConfirm={() => {
+          if (pendingFile) {
+            handleFileUpload(activeItem, pendingFile);
+            setPendingFile(null);
+          }
+          setConfirmOpen(false);
+        }}
+        placement="center"
+      />
     </div>
   );
 }

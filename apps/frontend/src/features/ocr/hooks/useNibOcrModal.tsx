@@ -35,6 +35,7 @@ export interface NibOcrModalProps {
   existingDocumentUrl?: string;
   existingFileName?: string;
   onDocumentUploaded?: (updatedApp: any) => void;
+  isApproved?: boolean;
 }
 
 export function useNibOcrModal({
@@ -46,6 +47,7 @@ export function useNibOcrModal({
   existingDocumentUrl,
   existingFileName,
   onDocumentUploaded,
+  isApproved,
 }: NibOcrModalProps) {
   const master = useMasterData();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -166,10 +168,35 @@ export function useNibOcrModal({
     }
   };
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const triggerProcessFile = (f: File) => {
+    if (isApproved) {
+      setPendingFile(f);
+      setConfirmOpen(true);
+    } else {
+      processFile(f);
+    }
+  };
+
+  const confirmPendingFile = () => {
+    if (pendingFile) {
+      processFile(pendingFile);
+      setPendingFile(null);
+    }
+    setConfirmOpen(false);
+  };
+
+  const cancelPendingFile = () => {
+    setPendingFile(null);
+    setConfirmOpen(false);
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (f) {
-      processFile(f);
+      triggerProcessFile(f);
       e.target.value = '';
     }
   };
@@ -180,7 +207,7 @@ export function useNibOcrModal({
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files?.[0];
     if (droppedFile) {
-      processFile(droppedFile);
+      triggerProcessFile(droppedFile);
     }
   };
 
@@ -262,6 +289,9 @@ export function useNibOcrModal({
     handleFileUpload,
     handleDrop,
     filledCount,
+    confirmOpen,
+    confirmPendingFile,
+    cancelPendingFile,
     handleApply,
     hasData,
     emailError,

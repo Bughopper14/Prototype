@@ -3,9 +3,9 @@
  * application as layers. Submitting is done by somebody else, in the panel above the tabs (ApprovalPanel).
  */
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {ApprovalSummary, createPreviewState} from '@/features/applications/components/workspace/ApprovalSummary';
+import {ApprovalSummary} from '@/features/applications/components/workspace/ApprovalSummary';
 import {HistoryList, ScopeList, type Approval, type Step} from '@/features/applications/components/workspace/approval-shared';
-import {Check, ChevronDown, Eye, ShieldCheck, X} from 'lucide-react';
+import {Check, ChevronDown, ShieldCheck, X} from 'lucide-react';
 import {useState} from 'react';
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
 import type {PreviewState} from '@/features/documents/lib/checklist/types';
@@ -56,20 +56,6 @@ export function ApproverView() {
                   </div>
                   {canDecide ? (
                     <div className="ap-actions">
-                      {isDoc && doc && doc.files && doc.files.length > 0 && (
-                        <button
-                          type="button"
-                          className="button small ap-btn-view-doc"
-                          onClick={() => {
-                            const ps = createPreviewState(doc);
-                            if (ps) setPreviewModal(ps);
-                          }}
-                          title={`View ${doc.documentName || 'Document'}`}
-                        >
-                          <Eye size={13} />
-                          <span>View Document</span>
-                        </button>
-                      )}
                       <button type="button" className="button primary small" onClick={() => decide(m.step, 'APPROVED')}>
                         <Check size={14} /> Approve
                       </button>

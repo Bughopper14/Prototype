@@ -8,18 +8,35 @@ export function highlightDiffCells({doc, props}: {doc: Document; props: FapSheet
     c.classList.remove('fap-diff-warning-cell');
     (c as HTMLElement).style.backgroundColor = '';
     (c as HTMLElement).style.outline = '';
+    (c as HTMLElement).style.boxShadow = '';
   });
 
   if (props.diffs && props.diffs.length > 0) {
+    const methodFromDiff = props.diffs.find((d: any) => d.field === 'financingMethod');
+    const detectedMethod =
+      props.data?.financingMethod ||
+      props.data?.facilityProposed?.financingMethod ||
+      methodFromDiff?.newValue ||
+      methodFromDiff?.oldValue;
+
+    const extraData = {
+      ...props.data,
+      financingMethod: detectedMethod || props.data?.financingMethod,
+    };
+
     props.diffs.forEach((item: any) => {
-      const cid = resolveFieldToCellId(item.field, undefined, props.data) || FIELD_TO_CELL_ID_MAP[item.field];
+      const cid = resolveFieldToCellId(item.field, item.section, extraData) || FIELD_TO_CELL_ID_MAP[item.field];
       if (cid) {
         const el = doc.getElementById(cid);
         if (el) {
           el.classList.add('fap-diff-warning-cell');
-          (el as HTMLElement).style.backgroundColor = props.diffSide === 'ocr' ? '#fff7ed' : '#fef2f2';
-          (el as HTMLElement).style.outline =
-            props.diffSide === 'ocr' ? '2px solid #f97316' : '2px solid #ef4444';
+          const isOcr = props.diffSide === 'ocr';
+          const bg = isOcr ? '#fff7ed' : '#fef2f2';
+          const border = isOcr ? '#f97316' : '#ef4444';
+          (el as HTMLElement).style.backgroundColor = bg;
+          (el as HTMLElement).style.outline = `2px solid ${border}`;
+          (el as HTMLElement).style.outlineOffset = '-2px';
+          (el as HTMLElement).style.boxShadow = `inset 0 0 0 2px ${border}`;
         }
       }
     });

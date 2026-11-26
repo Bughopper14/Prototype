@@ -67,7 +67,7 @@ export function ChecklistTable({
       onRequestApproval={onRequestApproval}
       approvalBusy={approvalBusy}
       onOpenApprovalModal={setSelectedApprovalRow}
-      onConfirmSubmit={setConfirmingSubmitRow}
+      onConfirmSubmit={handleConfirmSubmit}
     />
   );
   let counter = 0;
@@ -237,7 +237,7 @@ export function ChecklistTable({
         row={selectedApprovalRow}
         isOpen={!!selectedApprovalRow}
         onClose={() => setSelectedApprovalRow(null)}
-        onConfirmSubmit={setConfirmingSubmitRow}
+        onConfirmSubmit={handleConfirmSubmit}
         approvalBusy={approvalBusy}
         mayRequest={!!onRequestApproval}
       />

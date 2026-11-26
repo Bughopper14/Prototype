@@ -80,9 +80,10 @@ export class DocumentsController {
     const current = await this.unlocked(id, req.actor);
     const subType = String(req.body.subType || req.body.sub_type || '').trim().toUpperCase();
     const row = await this.documents.checklistRow(this.db.pool, id, String(req.body.checklistId || req.body.documentCode || ''));
-    if (row && (row.approval_status === 'IN_APPROVAL' || row.approval_status === 'APPROVED')) {
-      throw new Problem(409, 'Dokumen sedang dalam proses persetujuan atau telah disetujui, tidak dapat mengunggah berkas baru.');
+    if (row && row.approval_status === 'IN_APPROVAL') {
+      throw new Problem(409, 'Dokumen sedang dalam proses persetujuan, tidak dapat mengunggah berkas baru.');
     }
+    const wasApproved = row && (row.approval_status === 'APPROVED' || row.status === 'VERIFIED');
     const checklistCode = (row?.code || String(req.body.documentCode || req.body.checklistId || '')).toUpperCase();
 
     let jenisDoc = subType;
@@ -133,6 +134,9 @@ export class DocumentsController {
       },
       req.actor,
     );
+
+    // Note: Do not auto-submit document approval here.
+    // The user must manually click "Submit for Approval" on the document card to start the approval flow.
 
     let fapComparison: unknown = null;
     if (saved.documentCode === FAP_DOCUMENT_CODE) {
@@ -274,6 +278,7 @@ export class DocumentsController {
     ensure(token.fileId === req.params.id && token.userId === req.actor.id, 'Invalid document link', 403);
     const file = await this.documents.readFile(req.params.id);
     ensure(file, 'File not found', 404);
+    res.removeHeader('Content-Security-Policy');
     res
       .setHeader('Content-Type', file.mimeType)
       .setHeader(

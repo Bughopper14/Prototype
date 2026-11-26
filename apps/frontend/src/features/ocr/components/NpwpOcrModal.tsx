@@ -1,4 +1,5 @@
 import React, {useRef, useState, useEffect} from 'react';
+import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 import {
   ScanLine,
   X,
@@ -32,6 +33,7 @@ export interface NpwpOcrModalProps {
   notify?: (msg: string) => void;
   applicationId?: string;
   onDocumentUploaded?: (updatedApp: any) => void;
+  isApproved?: boolean;
 }
 
 export function NpwpOcrModal({
@@ -41,8 +43,11 @@ export function NpwpOcrModal({
   notify,
   applicationId,
   onDocumentUploaded,
+  isApproved,
 }: NpwpOcrModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   // The scan in the server's temp folder: filed under the application (documents + checklist) when the data is applied.
@@ -186,6 +191,28 @@ export function NpwpOcrModal({
     } else if (!errorMessage) {
       setErrorMessage('Nomor NPWP tidak terdeteksi. Silakan periksa file atau isi manual pada form.');
     }
+  };
+
+  const triggerProcessFile = (f: File) => {
+    if (isApproved) {
+      setPendingFile(f);
+      setConfirmOpen(true);
+    } else {
+      processFile(f);
+    }
+  };
+
+  const confirmPendingFile = () => {
+    if (pendingFile) {
+      processFile(pendingFile);
+      setPendingFile(null);
+    }
+    setConfirmOpen(false);
+  };
+
+  const cancelPendingFile = () => {
+    setPendingFile(null);
+    setConfirmOpen(false);
   };
 
   const handleApply = async () => {
@@ -525,7 +552,7 @@ export function NpwpOcrModal({
                 onDrop={e => {
                   e.preventDefault();
                   setIsDragging(false);
-                  if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
+                  if (e.dataTransfer.files?.[0]) triggerProcessFile(e.dataTransfer.files[0]);
                 }}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
@@ -577,7 +604,7 @@ export function NpwpOcrModal({
               accept=".pdf,.png,.jpg,.jpeg,.webp"
               style={{display: 'none'}}
               onChange={e => {
-                if (e.target.files?.[0]) processFile(e.target.files[0]);
+                if (e.target.files?.[0]) triggerProcessFile(e.target.files[0]);
               }}
             />
           </div>
@@ -849,6 +876,15 @@ export function NpwpOcrModal({
             Terapkan NPWP ke Form / Apply ({hasData ? '1 Field' : '0 Field'})
           </button>
         </div>
+
+        <ConfirmUploadBubble
+          open={confirmOpen}
+          title="Are you sure?"
+          message="This NPWP document has already been approved. Proceeding with this scan will upload a new file and restart its approval process."
+          onCancel={cancelPendingFile}
+          onConfirm={confirmPendingFile}
+          placement="center"
+        />
       </div>
     </div>
   );

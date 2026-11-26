@@ -391,18 +391,19 @@ export class DocumentsRepository {
     conn: Conn,
     applicationId: string,
     checklistIdOrCode: string,
-    file: {fileName: string; originalFileName: string | null; storagePath: string; size: number; mimeType: string; stakeholderId?: string | null},
+    file: {fileName: string; originalFileName: string | null; storagePath: string; storageKey?: string; size: number; mimeType: string; stakeholderId?: string | null},
     by: string,
   ) {
     const row = await this.checklistRow(conn, applicationId, checklistIdOrCode);
     ensure(row, 'Checklist item not found', 404);
     const id = crypto.randomUUID();
+    const storageKey = file.storageKey || crypto.randomUUID();
     await conn.execute(
       `INSERT INTO ${CRM.applicationDocumentFiles}
-         (id,checklist_id,application_id,stakeholder_id,file_name,original_file_name,storage_path,file_size,mime_type,
+         (id,checklist_id,application_id,stakeholder_id,file_name,original_file_name,storage_key,storage_path,file_size,mime_type,
           uploaded_by,created_by)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
-      [id, row.id, applicationId, file.stakeholderId ?? null, file.fileName, file.originalFileName, file.storagePath, file.size, file.mimeType, by, by],
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [id, row.id, applicationId, file.stakeholderId ?? null, file.fileName, file.originalFileName, storageKey, file.storagePath, file.size, file.mimeType, by, by],
     );
     // A new file makes the document UPLOADED again, also when it was verified: the checklist document is one bundle, so it needs its approval again
     // (the approval of a document that changed after it was approved can be asked for once more: see ApprovalsService.startScope).

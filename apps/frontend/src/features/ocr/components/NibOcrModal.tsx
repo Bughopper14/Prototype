@@ -1,3 +1,4 @@
+import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 import {NibExtractedFields} from '@/features/ocr/components/nib-modal/NibExtractedFields';
 import {NibFieldsHeader} from '@/features/ocr/components/nib-modal/NibFieldsHeader';
 import {NibModalFooter} from '@/features/ocr/components/nib-modal/NibModalFooter';
@@ -96,6 +97,16 @@ export function NibOcrModal(props: NibOcrModalProps) {
 
           {/* MODAL FOOTER */}
           <NibModalFooter />
+
+          {/* CONFIRMATION BUBBLE */}
+          <ConfirmUploadBubble
+            open={state.confirmOpen}
+            title="Are you sure?"
+            message="This NIB document has already been approved. Proceeding with this scan will upload a new file and restart its approval process."
+            onCancel={state.cancelPendingFile}
+            onConfirm={state.confirmPendingFile}
+            placement="center"
+          />
         </div>
       </div>
     </NibOcrModalContext.Provider>

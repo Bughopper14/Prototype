@@ -130,11 +130,11 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
               </div>
             </div>
           ) : preview.isPdf ? (
-            <iframe
+            <object
               key={`pdf-${reloadKey}`}
-              src={pdfUrl}
+              data={pdfUrl}
+              type="application/pdf"
               className="doc-preview-iframe"
-              title="PDF Document Preview"
               onLoad={() => setLoading(false)}
               onError={() => {
                 setLoading(false);
@@ -149,7 +149,25 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
                 opacity: loading ? 0.01 : 1,
                 transition: 'opacity 0.2s ease',
               }}
-            />
+            >
+              <iframe
+                src={pdfUrl}
+                className="doc-preview-iframe"
+                title="PDF Document Preview"
+                onLoad={() => setLoading(false)}
+                onError={() => {
+                  setLoading(false);
+                  setLoadError(true);
+                }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  border: 'none',
+                  borderRadius: 8,
+                  background: '#fff',
+                }}
+              />
+            </object>
           ) : (
             <img
               key={`img-${reloadKey}`}

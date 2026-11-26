@@ -1,6 +1,8 @@
 /** Evidence view: stage card, upload dropzone and the stage file deck. */
+import {useState} from 'react';
 import {Badge} from '@/shared/ui/Badge';
 import {Eye, FileText, Trash2, Upload} from 'lucide-react';
+import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
 
@@ -15,6 +17,21 @@ export function StageSidebar() {
     handleFileUpload,
     handleDeleteFile,
   } = useDocumentsStudioContext();
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+
+  const isApproved =
+    activeItem.chk?.approval_status === 'APPROVED' || activeItem.chk?.status === 'VERIFIED';
+
+  const onFileChange = (f: File) => {
+    if (isApproved) {
+      setPendingFile(f);
+      setConfirmOpen(true);
+    } else {
+      handleFileUpload(activeItem, f);
+    }
+  };
   return (
     <div className="evidence-studio-sidebar">
       <div className="evidence-stage-card">
@@ -46,12 +63,30 @@ export function StageSidebar() {
               disabled={busy}
               onChange={e => {
                 const f = e.target.files?.[0];
-                if (f) handleFileUpload(activeItem, f);
+                if (f) onFileChange(f);
                 e.target.value = '';
               }}
             />
           </label>
         )}
+
+        <ConfirmUploadBubble
+          open={confirmOpen}
+          title="Are you sure?"
+          message={`This document (${activeItem.name}) has already been approved. Uploading a new file will restart the approval process for this document.`}
+          onCancel={() => {
+            setPendingFile(null);
+            setConfirmOpen(false);
+          }}
+          onConfirm={() => {
+            if (pendingFile) {
+              handleFileUpload(activeItem, pendingFile);
+              setPendingFile(null);
+            }
+            setConfirmOpen(false);
+          }}
+          placement="center"
+        />
 
         {/* Stage Files Deck */}
         <div className="evidence-files-section">

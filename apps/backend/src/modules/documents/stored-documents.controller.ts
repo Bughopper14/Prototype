@@ -35,8 +35,14 @@ export class StoredDocumentsController {
     if (!file) return res.status(404).send('Not found');
     try {
       const body = await fs.readFile(file);
+      const ext = path.extname(file).toLowerCase();
+      const contentType = CONTENT_TYPES[ext] || 'application/octet-stream';
+      const baseName = path.basename(file);
+
+      res.removeHeader('Content-Security-Policy');
       res
-        .setHeader('Content-Type', CONTENT_TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream')
+        .setHeader('Content-Type', contentType)
+        .setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(baseName)}"`)
         .setHeader('Cache-Control', 'private, max-age=300')
         .send(body);
     } catch {

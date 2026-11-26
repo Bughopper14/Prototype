@@ -174,6 +174,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           notify={notify}
           applicationId={a?.isNew ? undefined : a?.id}
           onDocumentUploaded={refreshDocuments}
+          isApproved={a?.documentChecks?.some((d: any) => d.documentCode === 'NIB' && (d.approval_status === 'APPROVED' || d.status === 'VERIFIED'))}
         />
         <NpwpOcrModal
           open={npwpOcrOpen}
@@ -182,6 +183,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
           notify={notify}
           applicationId={a?.isNew ? undefined : a?.id}
           onDocumentUploaded={refreshDocuments}
+          isApproved={a?.documentChecks?.some((d: any) => d.documentCode === 'NPWP' && (d.approval_status === 'APPROVED' || d.status === 'VERIFIED'))}
         />
         {archiveModalOpen && (
           <FapArchiveModal

@@ -1,6 +1,8 @@
 /** View, upload / replace and delete buttons of a document row matching the mockup. */
+import {useState} from 'react';
 import {Upload, Eye, Loader2} from 'lucide-react';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
+import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 
 export function DocumentRowActions({
   row,
@@ -15,6 +17,7 @@ export function DocumentRowActions({
   onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
 }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const hasFile = (row.files || []).length > 0;
   const canPreview = row.isAvailable && (hasFile || !!row.previewUrl);
   // The FAP has one current signed file (a new one replaces it); every other document keeps all its files.
@@ -25,27 +28,48 @@ export function DocumentRowActions({
     approval?.state === 'PENDING' || row.check?.approval_status === 'IN_APPROVAL';
   const isApproved =
     approval?.state === 'APPROVED' || row.check?.approval_status === 'APPROVED' || row.status === 'VERIFIED';
-  const isLockedForUpload = isPendingApproval || isApproved;
+  // Allow upload when approved (restarts approval), block only when actively pending in an ongoing round
+  const isLockedForUpload = isPendingApproval;
+
+  const handleUploadClick = () => {
+    if (isApproved) {
+      setConfirmOpen(true);
+    } else {
+      onUpload(row.code, row.chkId);
+    }
+  };
 
   if (!hasFile) {
     return (
-      <div style={{display: 'flex', justifyContent: 'center'}}>
+      <div style={{display: 'flex', justifyContent: 'center', position: 'relative'}}>
         <button
           type="button"
           className="btn-action-primary"
-          title={isPendingApproval ? 'Dokumen sedang dalam persetujuan' : isApproved ? 'Dokumen telah disetujui' : 'Upload file now'}
+          title={isPendingApproval ? 'Document is currently in approval' : isApproved ? 'Document is approved (click to replace)' : 'Upload file now'}
           disabled={isUploading || isLockedForUpload}
-          onClick={() => onUpload(row.code, row.chkId)}
+          onClick={handleUploadClick}
         >
           {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
           <span>Upload</span>
         </button>
+
+        <ConfirmUploadBubble
+          open={confirmOpen}
+          title="Restart Document Approval?"
+          message={`This document (${row.name}) has already been approved. Uploading a new file will restart the approval process specifically for this document. Are you sure you want to proceed?`}
+          onCancel={() => setConfirmOpen(false)}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            onUpload(row.code, row.chkId);
+          }}
+          placement="center"
+        />
       </div>
     );
   }
 
   return (
-    <div style={{display: 'flex', gap: '6px', justifyContent: 'center'}}>
+    <div style={{display: 'flex', gap: '6px', justifyContent: 'center', position: 'relative'}}>
       {canPreview && (
         <button
           type="button"
@@ -70,19 +94,31 @@ export function DocumentRowActions({
         }}
         title={
           isPendingApproval
-            ? 'Dokumen sedang dalam proses persetujuan'
+            ? 'Document is currently in approval process'
             : isApproved
-            ? 'Dokumen telah disetujui'
+            ? 'Document has been approved. Click to upload a new version and restart approval.'
             : replaces
             ? 'Upload a new signed file (the current one is replaced)'
             : 'Upload an additional file'
         }
         disabled={isUploading || isLockedForUpload}
-        onClick={() => onUpload(row.code, row.chkId)}
+        onClick={handleUploadClick}
       >
         {isUploading ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
         <span>{replaces ? 'Replace' : 'Add file'}</span>
       </button>
+
+      <ConfirmUploadBubble
+        open={confirmOpen}
+        title="Restart Document Approval?"
+        message={`This document (${row.name}) has already been approved. Uploading a new file will restart the approval process specifically for this document. Are you sure you want to proceed?`}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          onUpload(row.code, row.chkId);
+        }}
+        placement="center"
+      />
     </div>
   );
 }

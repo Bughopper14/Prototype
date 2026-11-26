@@ -1,5 +1,5 @@
 /** FAP section ↔ field maps, filtered diffs and scrolling both panes to a section or field. */
-import {FIELD_TO_CELL_ID_MAP} from '@/features/fap/lib/field-cells';
+import {FIELD_TO_CELL_ID_MAP, resolveFieldToCellId} from '@/features/fap/lib/field-cells';
 import {SECTION_TO_CELL_IDS_MAP, SECTION_TO_SCROLL_TARGET_MAP} from '@/features/fap/lib/section-cells';
 import {useEffect, useMemo} from 'react';
 
@@ -101,6 +101,31 @@ export function useFapSectionNav({
       'contractNumber',
       'projects',
     ],
+    'fap-preview-sec-banks': [
+      'bankOrFinInstitution',
+      'creditFacility',
+      'monthlyInstallment',
+      'yearStarted',
+      'paymentRecord',
+      'facilityStatus',
+      'referenceComments',
+      'comments',
+      'totalMonthlyInstallment',
+    ],
+    'fap-preview-sec-proposal': [
+      'financingValue',
+      'financingValueProp',
+      'downPaymentValue',
+      'tenorMonths',
+      'interestRate',
+      'facilityPurpose',
+      'financingMethod',
+      'paymentMethod',
+      'currency',
+      'currencyChoice',
+      'applicationSource',
+      'proposalNotes',
+    ],
   };
 
   const fapSectionTitles: Record<string, string> = {
@@ -119,13 +144,22 @@ export function useFapSectionNav({
     if (!fapComparison?.diffs) return [];
     if (fapNavFilter === 'all') return fapComparison.diffs;
     const allowed = sectionFieldMap[fapNavFilter] || [];
-    // Shareholder rows (stakeholder_*, shareholder_*) are listed with the projects block they sit next to
-    return fapComparison.diffs.filter(
-      (d: any) =>
+    return fapComparison.diffs.filter((d: any) => {
+      const sec = (d.section || '').toLowerCase();
+      if (fapNavFilter === 'fap-preview-sec-banks') {
+        if (sec.includes('proposal')) return false;
+        return allowed.includes(d.field) || sec.includes('bank') || sec.includes('reference');
+      }
+      if (fapNavFilter === 'fap-preview-sec-proposal') {
+        if (sec.includes('bank') || sec.includes('reference')) return false;
+        return allowed.includes(d.field) || sec.includes('proposal');
+      }
+      return (
         allowed.includes(d.field) ||
         (fapNavFilter === 'fap-preview-sec-projects' &&
-          (d.field.startsWith('stakeholder_') || d.field.startsWith('shareholder_'))),
-    );
+          (d.field.startsWith('stakeholder_') || d.field.startsWith('shareholder_')))
+      );
+    });
   }, [fapComparison, fapNavFilter]);
 
   // Reset state when switching application to prevent cross-application data leakage
@@ -152,7 +186,7 @@ export function useFapSectionNav({
       }, 2500);
     }
 
-    const cellId = FIELD_TO_CELL_ID_MAP[fieldKey];
+    const cellId = resolveFieldToCellId(fieldKey) || FIELD_TO_CELL_ID_MAP[fieldKey];
     if (cellId) {
       const iframes = document.querySelectorAll<HTMLIFrameElement>('.fap-pane-card iframe');
       iframes.forEach(iframe => {

@@ -123,7 +123,7 @@ function experience(app: any) {
  * a number. Province and city are compared by name. The label and section come from the master rule named by `rule`
  * (`anchor` picks the section when a key repeats); `label` is only used for a field the master has no rule for.
  */
-const FIELDS: {key: string; label: string; rule?: string; anchor?: string; system: (app: any) => any; number?: boolean}[] = [
+const FIELDS: {key: string; label: string; rule?: string; anchor?: string; section?: string; system: (app: any) => any; number?: boolean}[] = [
   {key: 'applicationDate', label: 'Tanggal / Application Date', system: a => a.applicationDate},
   {key: 'branchCode', rule: 'branchCode', anchor: 'companyAddress', label: 'Cabang / Branch Code', system: a => a.branchCode},
   {key: 'customerStatus', rule: 'customerCategory', label: 'Status Debitur (New / Existing)', system: a => a.customerStatus || a.customerCategory},
@@ -167,15 +167,15 @@ const FIELDS: {key: string; label: string; rule?: string; anchor?: string; syste
   {key: 'picCity', rule: 'city', anchor: 'picName', label: 'Kota PIC', system: a => a.pic?.city},
   {key: 'picProvince', rule: 'province', anchor: 'picName', label: 'Provinsi PIC', system: a => a.pic?.province},
   {key: 'picPostalCode', rule: 'postalCode', anchor: 'picName', label: 'Kode Pos PIC', system: a => a.pic?.postalCode},
-  {key: 'financingValue', rule: 'financingValueProp', label: 'Nilai Pembiayaan', system: a => a.proposal?.financingValue, number: true},
-  {key: 'downPaymentValue', label: 'Uang Muka (DP)', system: a => a.proposal?.downPaymentValue, number: true},
-  {key: 'tenorMonths', label: 'Tenor (Bulan)', system: a => a.proposal?.tenorMonths, number: true},
-  {key: 'interestRate', label: 'Suku Bunga (%)', system: a => a.proposal?.interestRate, number: true},
-  {key: 'facilityPurpose', label: 'Tujuan Pembiayaan', system: a => a.proposal?.facilityPurpose || a.facilityPurpose},
-  {key: 'financingMethod', rule: 'financingMethod', label: 'Metode Pembayaran', system: a => a.proposal?.financingMethod},
-  {key: 'paymentMethod', label: 'Cara Pembayaran', system: a => a.proposal?.paymentMethod},
-  {key: 'currency', label: 'Mata Uang', system: a => a.proposal?.currency},
-  {key: 'applicationSource', label: 'Application Source', system: a => a.proposal?.applicationSource || a.applicationSource},
+  {key: 'financingValue', rule: 'financingValueProp', section: 'Financing Proposal', label: 'Nilai Pembiayaan', system: a => a.proposal?.financingValue, number: true},
+  {key: 'downPaymentValue', section: 'Financing Proposal', label: 'Uang Muka (DP)', system: a => a.proposal?.downPaymentValue, number: true},
+  {key: 'tenorMonths', section: 'Financing Proposal', label: 'Tenor (Bulan)', system: a => a.proposal?.tenorMonths, number: true},
+  {key: 'interestRate', section: 'Financing Proposal', label: 'Suku Bunga (%)', system: a => a.proposal?.interestRate, number: true},
+  {key: 'facilityPurpose', section: 'Financing Proposal', label: 'Tujuan Pembiayaan', system: a => a.proposal?.facilityPurpose || a.facilityPurpose},
+  {key: 'financingMethod', rule: 'financingMethod', section: 'Financing Proposal', label: 'Metode Pembayaran', system: a => a.proposal?.financingMethod},
+  {key: 'paymentMethod', section: 'Financing Proposal', label: 'Cara Pembayaran', system: a => a.proposal?.paymentMethod},
+  {key: 'currency', section: 'Financing Proposal', label: 'Mata Uang', system: a => a.proposal?.currency},
+  {key: 'applicationSource', section: 'Financing Proposal', label: 'Application Source', system: a => a.proposal?.applicationSource || a.applicationSource},
   {
     key: 'stakeholders',
     label: 'Struktur Pemegang Saham',
@@ -192,7 +192,9 @@ const FIELDS: {key: string; label: string; rule?: string; anchor?: string; syste
  */
 const withRule = (f: (typeof FIELDS)[number], rule: RuleLookup, diff: FapDiff): FapDiff => {
   const found = f.rule ? rule(f.rule, f.anchor) : undefined;
-  return found ? {...diff, label: found.label, section: found.section} : diff;
+  const label = found?.label || f.label;
+  const section = found?.section || f.section;
+  return {...diff, label, section: section || diff.section};
 };
 
 export function computeFapDiffs(app: any, extracted: any, rule: RuleLookup): FapDiff[] {

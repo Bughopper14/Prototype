@@ -1,13 +1,28 @@
 /** Document pane toolbar: upload, replace, scan, zoom. */
+import {useState} from 'react';
 import {Trash2, Upload} from 'lucide-react';
+import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 
 import {useStakeholderModalContext} from '@/features/legal/components/stakeholder-modal/StakeholderModalContext';
 
 export function DocumentPaneToolbar() {
   const {editorLocked, docType, currentAsset, handleUploadDoc, handleRemoveDoc, docTitles} =
     useStakeholderModalContext();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingEvent, setPendingEvent] = useState<any>(null);
+
+  const onFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.persist();
+    if (currentAsset.url) {
+      setPendingEvent(e);
+      setConfirmOpen(true);
+    } else {
+      handleUploadDoc(e, docType);
+    }
+  };
+
   return (
-    <div className="ktp-pane-topbar">
+    <div className="ktp-pane-topbar" style={{position: 'relative'}}>
       <div>
         <div style={{display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 8px'}}>
           <h4 style={{margin: 0, fontSize: '14.5px', color: '#002060', fontWeight: 700}}>
@@ -44,7 +59,7 @@ export function DocumentPaneToolbar() {
               type="file"
               accept="image/*,application/pdf"
               style={{display: 'none'}}
-              onChange={e => handleUploadDoc(e, docType)}
+              onChange={onFileInputChange}
             />
           </label>
           <button
@@ -57,6 +72,24 @@ export function DocumentPaneToolbar() {
           </button>
         </div>
       )}
+
+      <ConfirmUploadBubble
+        open={confirmOpen}
+        title="Are you sure?"
+        message={`This ${docTitles[docType] || 'stakeholder'} document has already been attached. Uploading a new file will replace the current file and restart its approval process.`}
+        onCancel={() => {
+          setPendingEvent(null);
+          setConfirmOpen(false);
+        }}
+        onConfirm={() => {
+          if (pendingEvent) {
+            handleUploadDoc(pendingEvent, docType);
+            setPendingEvent(null);
+          }
+          setConfirmOpen(false);
+        }}
+        placement="bottom"
+      />
     </div>
   );
 }

@@ -285,7 +285,7 @@ export function DocumentApprovalCell({
           }}
         >
           <Send size={12} />
-          <span>{approval.again || isReopened ? 'Resubmit for Approval' : 'Submit for Approval'}</span>
+          <span>Submit for Approval</span>
         </button>
 
         <button
