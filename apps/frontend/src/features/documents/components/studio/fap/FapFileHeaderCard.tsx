@@ -1,6 +1,6 @@
 /** Compact top file card shown after a signed FAP form has been uploaded (Redesign 2, Screens 2-5). */
 import {useRef, useState} from 'react';
-import {CheckSquare, ExternalLink, FileText, Loader2, ScanLine, Upload} from 'lucide-react';
+import {CheckSquare, FileText, Loader2, ScanLine, Upload} from 'lucide-react';
 import {ConfirmUploadBubble} from '@/shared/ui/ConfirmUploadBubble';
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
 
@@ -19,7 +19,6 @@ export function FapFileHeaderCard() {
     activeItem,
     activeFiles,
     activeFile,
-    activeFileUrl,
     canUpload,
     isFapOcrScanning,
     fapComparison,
@@ -73,20 +72,6 @@ export function FapFileHeaderCard() {
       </div>
 
       <div className="fap-r2-file-actions">
-        {activeFileUrl && (
-          <a
-            href={activeFileUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="fap-r2-btn-outline"
-            style={{textDecoration: 'none'}}
-            title="Open original uploaded file in a new tab"
-          >
-            <ExternalLink size={14} />
-            <span>Original file</span>
-          </a>
-        )}
-
         <button type="button" className="fap-r2-btn-outline" onClick={() => setShowHistoryModal(true)}>
           <CheckSquare size={14} />
           <span>Upload history ({activeFiles.length})</span>

@@ -235,7 +235,7 @@ export const FAP_PAGE_05 = `<tr height="6" style="mso-height-source:userset;heig
 <td class="xl71" height="122" style="height:91.5pt"> </td>
 <td class="xl101" colspan="2" style="width:229pt" width="305">Status tempat usaha/<font class="font18">Business Location Status</font></td>
 <td class="xl96">:</td>
-<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-locationStatus" style="border-right:.5pt solid black"><span style="mso-spacerun:yes">  </span>Milik Sendiri<span style="mso-spacerun:yes">  </span>/ Sewa<span style="mso-spacerun:yes"> </span></td>
+<td class="xl105 fap-autofill-val" colspan="4" id="fap-cell-locationStatus" style="border-right:.5pt solid black"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>
 <td class="xl97"></td>

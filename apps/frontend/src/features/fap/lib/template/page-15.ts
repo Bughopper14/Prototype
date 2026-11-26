@@ -13,7 +13,7 @@ export const FAP_PAGE_15 = `<table cellpadding="0" cellspacing="0">
 </tr>
 </table>
 </span><?endif?><!--[if !mso & vml]><span style='width:76.8pt;height:399.0pt'></span><![endif]--></td>
-<td class="xl99" id="fap-cell-tc-fl-purpose">Investment<span style="mso-spacerun:yes"> </span></td>
+<td class="xl99" id="fap-cell-tc-fl-purpose"></td>
 <td class="xl132" colspan="2" style="width:171pt;padding-left:10px !important;" width="228"></td>
 <td class="xl118" id="fap-cell-tc-slb-purpose"> </td>
 <td class="xl203" colspan="2" style="border-left:none;width:216pt;padding-left:10px !important;" width="288">working

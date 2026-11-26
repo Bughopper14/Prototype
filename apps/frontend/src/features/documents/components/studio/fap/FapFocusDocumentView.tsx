@@ -128,7 +128,7 @@ export function FapFocusDocumentView({
     useDocumentsStudioContext();
   const [focusPct, setFocusPct] = useState<number>(150);
   const [rightPaneMode, setRightPaneMode] = useState<'ocr' | 'original'>('ocr');
-  const [origFitWidth, setOrigFitWidth] = useState<boolean>(true);
+  const [origFitWidth, setOrigFitWidth] = useState<boolean>(false);
   const gridRef = useRef<HTMLDivElement>(null);
   const isImage = !!(activeFile?.fileName && /\.(png|jpe?g|webp|gif|bmp)$/i.test(activeFile.fileName));
   const origPdfSrc = activeFileUrl
