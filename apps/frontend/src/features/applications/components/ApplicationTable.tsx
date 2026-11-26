@@ -209,7 +209,6 @@ function StageHoverCard({
   onOpen?: (row: any, stage: StageItem) => void;
 }) {
   const cardWidth = 330;
-  let top = anchorRect.bottom + 6;
   let left = anchorRect.left;
 
   if (left + cardWidth > window.innerWidth - 16) {
@@ -219,12 +218,11 @@ function StageHoverCard({
     left = 16;
   }
 
-  const estimatedHeight = 310;
-  if (top + estimatedHeight > window.innerHeight && anchorRect.top - estimatedHeight > 10) {
-    top = anchorRect.top - estimatedHeight - 6;
-  }
+  const spaceBelow = window.innerHeight - anchorRect.bottom - 16;
+  const spaceAbove = anchorRect.top - 16;
 
-  const isAbove = top < anchorRect.top;
+  // If space below is not enough for full card (~380px) and there's more space above, flip to top
+  const isAbove = (spaceBelow < 380 && spaceAbove > spaceBelow) || spaceBelow < 300;
   const caretLeft = Math.max(16, Math.min(cardWidth - 16, anchorRect.left + anchorRect.width / 2 - left));
 
   const status = stage.status || 'NOT_STARTED';
@@ -321,11 +319,21 @@ function StageHoverCard({
       className={`app-stage-hover-card ${isAbove ? 'placement-top' : 'placement-bottom'}`}
       style={{
         position: 'fixed',
-        top: `${top}px`,
         left: `${left}px`,
         width: `${cardWidth}px`,
         zIndex: 99999,
         ['--caret-left' as any]: `${caretLeft}px`,
+        ...(isAbove
+          ? {
+              bottom: `${window.innerHeight - anchorRect.top + 6}px`,
+              top: 'auto',
+              maxHeight: `${Math.max(260, spaceAbove - 10)}px`,
+            }
+          : {
+              top: `${anchorRect.bottom + 6}px`,
+              bottom: 'auto',
+              maxHeight: `${Math.max(260, spaceBelow - 10)}px`,
+            }),
       }}
       onMouseEnter={onCardMouseEnter}
       onMouseLeave={onCardMouseLeave}

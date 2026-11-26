@@ -1510,6 +1510,9 @@
   pointer-events: auto;
   animation: appStageHoverFadeIn 0.15s ease-out;
   position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .app-stage-hover-card::before {
@@ -1701,6 +1704,26 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.app-stage-hover-docs-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.app-stage-hover-docs-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-stage-hover-docs-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.app-stage-hover-docs-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .app-stage-hover-doc-item {
