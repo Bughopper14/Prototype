@@ -854,7 +854,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   const [userPopoverOpen, setUserPopoverOpen] = useState(false);
   const [tempUserIds, setTempUserIds] = useState<Set<number>>(new Set());
   const [userSearch, setUserSearch] = useState('');
-  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set(['MKT']));
+  const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set());
   const userPopoverRef = useRef<HTMLDivElement>(null);
 
   // Date Range Filter
@@ -1196,14 +1196,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   const openUserPopover = () => {
     setTempUserIds(new Set(selectedUserIds));
     setUserSearch('');
-    const toExpand = new Set<string>();
-    for (const team of teamsList) {
-      if (team.users.some(u => selectedUserIds.includes(u.id))) {
-        toExpand.add(team.code);
-      }
-    }
-    if (!toExpand.size) toExpand.add('MKT');
-    setExpandedTeams(toExpand);
+    setExpandedTeams(new Set());
     setUserPopoverOpen(prev => !prev);
   };
 
