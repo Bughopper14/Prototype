@@ -1013,14 +1013,16 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
 
   const handleClearStageFilter = () => {
     setTempStatuses(new Set());
-    setSelectedStage(null);
-    setSelectedStatuses([]);
-    setStagePopoverOpen(false);
   };
 
   const handleApplyStageFilter = () => {
-    setSelectedStage(tempStage || 'Pre-analysis');
-    setSelectedStatuses(Array.from(tempStatuses));
+    if (tempStatuses.size === 0) {
+      setSelectedStage(null);
+      setSelectedStatuses([]);
+    } else {
+      setSelectedStage(tempStage || 'Pre-analysis');
+      setSelectedStatuses(Array.from(tempStatuses));
+    }
     setStagePopoverOpen(false);
   };
 
@@ -1237,8 +1239,6 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
 
   const handleClearUserFilter = () => {
     setTempUserIds(new Set());
-    setSelectedUserIds([]);
-    setUserPopoverOpen(false);
   };
 
   const handleApplyUserFilter = () => {
@@ -1768,7 +1768,9 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
 
                 {/* Footer */}
                 <div className="app-branch-popover-footer">
-                  <span className="app-branch-count">{tempBranches.size} selected</span>
+                  <span className="app-branch-count">
+                    {tempBranches.size === 1 ? '1 branch selected' : `${tempBranches.size} selected`}
+                  </span>
                   <div className="app-branch-actions">
                     <button
                       type="button"
@@ -1884,9 +1886,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                   <span className="app-stage-count">
                     {tempStatuses.size === 1
                       ? '1 status selected'
-                      : tempStatuses.size === STATUS_OPTIONS.length
-                      ? 'All statuses selected'
-                      : `${tempStatuses.size} statuses selected`}
+                      : `${tempStatuses.size} selected`}
                   </span>
                   <div className="app-stage-actions">
                     <button
@@ -2034,7 +2034,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                   <span className="app-user-count">
                     {tempUserIds.size === 1
                       ? '1 user selected'
-                      : `${tempUserIds.size} users selected`}
+                      : `${tempUserIds.size} selected`}
                   </span>
                   <div className="app-user-actions">
                     <button

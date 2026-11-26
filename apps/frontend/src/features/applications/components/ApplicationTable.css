@@ -169,7 +169,7 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 220px;
+  width: 250px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -275,51 +275,57 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
+  padding-top: 10px;
+  margin-top: 6px;
   border-top: 1px solid #f1f5f9;
   font-size: 11px;
 }
 
 .app-branch-count {
   color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .app-branch-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .app-branch-clear-btn {
-  background: none;
-  border: none;
-  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
   font-size: 12px;
   font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.12s ease;
 }
 
 .app-branch-clear-btn:hover {
+  background: #f8fafc;
   color: #0f172a;
-  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .app-branch-apply-btn {
-  background: #0f172a;
+  background: #0f2942;
   color: #ffffff;
-  border: none;
+  border: 1px solid #0f2942;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 14px;
+  padding: 5px 16px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .app-branch-apply-btn:hover {
-  background: #1e293b;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
 }
 
 /* Stage Dropdown Popover */
@@ -327,7 +333,7 @@
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 275px;
+  width: 285px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -446,7 +452,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
+  padding-top: 10px;
+  margin-top: 6px;
   border-top: 1px solid #f1f5f9;
   font-size: 11px;
 }
@@ -454,44 +461,48 @@
 .app-stage-count {
   color: #64748b;
   font-size: 11px;
+  font-weight: 500;
 }
 
 .app-stage-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .app-stage-clear-btn {
-  background: none;
-  border: none;
-  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
   font-size: 12px;
   font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.12s ease;
 }
 
 .app-stage-clear-btn:hover {
+  background: #f8fafc;
   color: #0f172a;
-  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .app-stage-apply-btn {
-  background: #0f172a;
+  background: #0f2942;
   color: #ffffff;
-  border: none;
+  border: 1px solid #0f2942;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 14px;
+  padding: 5px 16px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .app-stage-apply-btn:hover {
-  background: #1e293b;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
 }
 
 /* User Dropdown Popover */
@@ -705,7 +716,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-top: 8px;
+  padding-top: 10px;
+  margin-top: 6px;
   border-top: 1px solid #f1f5f9;
   font-size: 11px;
 }
@@ -713,44 +725,48 @@
 .app-user-count {
   color: #64748b;
   font-size: 11px;
+  font-weight: 500;
 }
 
 .app-user-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
 }
 
 .app-user-clear-btn {
-  background: none;
-  border: none;
-  color: #64748b;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
   font-size: 12px;
   font-weight: 500;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 5px 12px;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.12s ease;
 }
 
 .app-user-clear-btn:hover {
+  background: #f8fafc;
   color: #0f172a;
-  background: #f1f5f9;
+  border-color: #cbd5e1;
 }
 
 .app-user-apply-btn {
-  background: #0f172a;
+  background: #0f2942;
   color: #ffffff;
-  border: none;
+  border: 1px solid #0f2942;
   font-size: 12px;
   font-weight: 600;
-  padding: 5px 14px;
+  padding: 5px 16px;
   border-radius: 6px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.12s ease;
 }
 
 .app-user-apply-btn:hover {
-  background: #1e293b;
+  background: #1e3a5f;
+  border-color: #1e3a5f;
 }
 
 .app-branch-apply-btn:hover {
