@@ -892,7 +892,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
 
   // User & Team Filter
   const [usersData, setUsersData] = useState<{
-    users: { id: number; username: string; fullName: string | null; deptId: number | null; departmentName: string | null; departmentCode: string | null }[];
+    users: { id: number; username: string; fullName: string | null; deptId: number | null; departmentName: string | null; departmentCode: string | null; roleName?: string | null }[];
     departments: { id: number; code: string; name: string }[];
   }>({ users: [], departments: [] });
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
@@ -1152,7 +1152,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
         rawUsers.push({
           id: Number(r.mkt_pic_id),
           username: r.mkt_pic_username || `user${r.mkt_pic_id}`,
-          fullName: r.mkt_pic_name || (Number(r.mkt_pic_id) === 3 ? 'User #3' : `User #${r.mkt_pic_id}`),
+          fullName: r.mkt_pic_name || `User #${r.mkt_pic_id}`,
           deptId: r.mkt_pic_dept_id ?? null,
           departmentCode: r.mkt_pic_dept_code ?? 'MKT',
           departmentName: r.mkt_pic_dept_name ?? 'Marketing',
@@ -1197,13 +1197,13 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       const usersInTeam: UserFilterItem[] = rawUsers
         .filter(u => team.matcher((u.departmentCode || '').toUpperCase()))
         .map(u => {
-          const displayName = u.id === 3 ? 'User #3' : (u.fullName || u.username || `User #${u.id}`);
+          const displayName = u.fullName || u.username || `User #${u.id}`;
           return {
             id: u.id,
             name: displayName,
             username: u.username,
             initials: getInitials(displayName, u.id),
-            roleTag: 'PIC marketing',
+            roleTag: (u as any).roleName || (team.code === 'MKT' ? 'PIC marketing' : (u.departmentName || team.name)),
           };
         });
       return {
@@ -1217,13 +1217,13 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     const otherUsers: (UserFilterItem & { deptCode: string; deptName: string })[] = rawUsers
       .filter(u => !predefined.some(t => t.matcher((u.departmentCode || '').toUpperCase())))
       .map(u => {
-        const displayName = u.id === 3 ? 'User #3' : (u.fullName || u.username || `User #${u.id}`);
+        const displayName = u.fullName || u.username || `User #${u.id}`;
         return {
           id: u.id,
           name: displayName,
           username: u.username,
           initials: getInitials(displayName, u.id),
-          roleTag: u.departmentName || 'Staff',
+          roleTag: (u as any).roleName || u.departmentName || 'Staff',
           deptCode: (u.departmentCode || '').toUpperCase(),
           deptName: u.departmentName || 'Other',
         };

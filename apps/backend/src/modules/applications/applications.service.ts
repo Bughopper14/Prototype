@@ -613,7 +613,8 @@ export class ApplicationsService {
 
   async usersAndDepartments() {
     const [users] = await this.apps.pool.query<any[]>(
-      `SELECT u.id, u.username, u.full_name, u.dept_id, d.department_name, d.department_code
+      `SELECT u.id, u.username, u.full_name, u.dept_id, d.department_name, d.department_code,
+              (SELECT r.role_name FROM ${USER_TABLES.user_app_roles} ur JOIN ${USER_TABLES.roles} r ON r.id = ur.role_id WHERE ur.user_id = u.id LIMIT 1) AS role_name
        FROM ${USER_TABLES.users} u
        LEFT JOIN ${USER_TABLES.departments} d ON d.dept_id = u.dept_id
        WHERE u.is_active = 1
@@ -633,6 +634,7 @@ export class ApplicationsService {
         deptId: u.dept_id ? Number(u.dept_id) : null,
         departmentName: u.department_name || null,
         departmentCode: u.department_code || null,
+        roleName: u.role_name || null,
       })),
       departments: departments.map((d: any) => ({
         id: Number(d.dept_id),
