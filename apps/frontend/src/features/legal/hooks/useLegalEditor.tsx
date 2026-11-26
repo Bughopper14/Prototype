@@ -225,6 +225,10 @@ export function useLegalEditor({
         return;
       }
     }
+    if (deedRequired('remarkCategoryIds') && getDeedCategoryIds(editing).length === 0) {
+      setFormError('Remarks Categories is mandatory — choose at least one category.');
+      return;
+    }
     if (
       deedRequired('remarks') &&
       !String(editing.remarks || '')

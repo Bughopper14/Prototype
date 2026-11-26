@@ -1,6 +1,7 @@
 import {AccessGate} from '@/features/crm/components/AccessGate';
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {hasAuthority} from '@/shared/lib/auth';
+import {refreshMandatoryRules} from '@/shared/master-data';
 import {PageHeading} from '@/features/crm/components/PageHeading';
 import {Modal} from '@/shared/ui/Modal';
 import {toCode} from '@liugong/shared';
@@ -231,6 +232,7 @@ function WorkflowList({
   async function run(fn: () => Promise<unknown>, done: string) {
     try {
       await fn();
+      void refreshMandatoryRules();
       notify(done);
       onChanged();
     } catch (e: any) {

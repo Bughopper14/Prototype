@@ -36,6 +36,7 @@ export function InvestmentPlanField() {
               const cur = data.investmentPlanSelected || [];
               const next = isChecked ? cur.filter(x => x !== item.value) : [...cur, item.value];
               updateField('investmentPlanSelected', next);
+              updateField('investmentPlan', next.join(', '));
             };
 
             const handleRemarkChange = (val: string) => {

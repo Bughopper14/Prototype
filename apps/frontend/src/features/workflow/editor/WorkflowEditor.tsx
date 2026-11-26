@@ -22,6 +22,7 @@ import {
 import {Fragment, useCallback, useEffect, useState} from 'react';
 import {useCrm} from '@/features/crm/components/CrmProvider';
 import {hasAuthority} from '@/shared/lib/auth';
+import {refreshMandatoryRules} from '@/shared/master-data';
 import {Modal} from '@/shared/ui/Modal';
 import {WorkflowHistory} from '../WorkflowHistory';
 import {workflowApi, type Catalog, type Definition, type Group, type Issue, type Stage, type WorkflowHeader} from '../api';
@@ -81,6 +82,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
       setWorkflow(r.workflow);
       setDefState(r.definition);
       setDirty(false);
+      void refreshMandatoryRules();
       notify('Saved');
       return true;
     } catch (e: any) {
@@ -114,6 +116,7 @@ export function WorkflowEditor({id, catalog, onBack, notify}: {id: string; catal
       if (!check.ok) return notify('Fix the problems shown first');
       if (!(await confirmAsk({title: 'Set workflow active', message: `New applications will start in "${workflow.name}". Applications that are already running keep the version they started with, and the current active workflow is switched off.`, confirmLabel: 'Set active', icon: 'power'}))) return;
       await workflowApi.activate(id);
+      void refreshMandatoryRules();
       notify(`${workflow.name} is now active`);
       await load();
     } catch (e: any) {

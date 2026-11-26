@@ -10,7 +10,13 @@ export function FinancialStatementsTab() {
         <FinancialEditor
           rows={draft.financialStatements}
           disabled={!canFinance}
-          onChange={financialStatements => setDraft({...draft, financialStatements})}
+          onChange={financialStatements =>
+            setDraft({
+              ...draft,
+              financialStatements,
+              financialAudited: financialStatements.some((r: any) => Boolean(r.isAudited)) || Boolean(draft.financialAudited),
+            })
+          }
         />
       )}
     </>

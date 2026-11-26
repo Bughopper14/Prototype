@@ -141,13 +141,35 @@ SECTIONS['PURPOSE-OF-FINANCING-FIXED-ASSETS'].read = (d, key) => [
 
 /** A list or group the user never typed into (the form always shows one empty row) holds only empty text: it counts as empty. */
 const blankDeep = (v: unknown): boolean =>
-  Array.isArray(v) ? v.every(blankDeep) : v && typeof v === 'object' ? Object.values(v as object).every(blankDeep) : typeof v === 'string' ? v.replace(/<[^>]*>/g, '').trim() === '' : typeof v === 'number' ? v === 0 : v === undefined || v === null;
+  Array.isArray(v)
+    ? v.every(blankDeep)
+    : v && typeof v === 'object'
+      ? Object.entries(v as Record<string, unknown>)
+          .filter(([k]) => k !== 'id')
+          .every(([, val]) => blankDeep(val))
+      : typeof v === 'string'
+        ? v.replace(/<[^>]*>/g, '').trim() === ''
+        : typeof v === 'number'
+          ? v === 0
+          : v === undefined || v === null;
 
 /** The Pre-Analysis form is one JSON document of the application (detail.preAnalysis); its fields are read by their key. "Auto (generated on save)" is not a value. */
 const PRE_ANALYSIS: Section = {
   target: 'PRE_ANALYSIS',
   read: (d, key) => {
-    const v = d.preAnalysis?.[key];
+    const pa = d.preAnalysis || {};
+    let v = pa[key];
+    if (key === 'investmentPlan') {
+      v = Array.isArray(pa.investmentPlanSelected) && pa.investmentPlanSelected.length ? pa.investmentPlanSelected : pa.investmentPlan;
+    } else if (key === 'applicantPefindoCheck') {
+      const reviews = pa.entitySlikReviews && typeof pa.entitySlikReviews === 'object' ? Object.values(pa.entitySlikReviews) : [];
+      const hasSlikData = reviews.some(
+        (r: any) =>
+          (r?.hasRecord && (!blankDeep(r.lenderExposures) || !blankDeep(r.pefindoNotes) || !blankDeep(r.pefindoTerms))) ||
+          (!r?.hasRecord && !blankDeep(r?.noRecordRemarks)),
+      );
+      v = pa.applicantPefindoCheck || (hasSlikData ? 'filled' : pa.pefindoNotes || pa.lenderExposures);
+    }
     return [{item: null, value: typeof v === 'string' && v.includes('Auto') ? '' : blankDeep(v) ? '' : v}];
   },
 };

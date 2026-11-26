@@ -37,6 +37,7 @@ export function FinancialEditor({
               {rows.map((r, i) => (
                 <th key={i}>
                   <div className="year-input">
+                    <RequiredStar field="fiscalYear" section={FORM_SECTION.FINANCIAL} />
                     <input
                       aria-label="Fiscal year"
                       type="number"
@@ -62,6 +63,7 @@ export function FinancialEditor({
                       onChange={e => change(i, 'isAudited', e.target.checked)}
                     />
                     Audited
+                    <RequiredStar field="financialAudited" section={FORM_SECTION.FINANCIAL} />
                   </label>
                 </th>
               ))}

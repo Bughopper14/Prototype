@@ -3,7 +3,15 @@ import {usePreAnalysisContext} from '@/features/pre-analysis/components/PreAnaly
 import type {SignatoryItem} from '@/features/pre-analysis/lib/types';
 
 export function SignatoryNameFields({sig, idx}: {sig: SignatoryItem; idx: number}) {
-  const {handleUpdateSignatory, triggerSignatorySync} = usePreAnalysisContext();
+  const {handleUpdateSignatory, triggerSignatorySync, reqMark} = usePreAnalysisContext();
+  const roleKey =
+    idx === 0 || /propose/i.test(sig.role)
+      ? 'proposedBy'
+      : idx === 1 || /review/i.test(sig.role)
+        ? 'reviewedBy'
+        : idx === 2 || /approve/i.test(sig.role)
+          ? 'approvedBy'
+          : null;
   return (
     <div
       style={{
@@ -22,7 +30,7 @@ export function SignatoryNameFields({sig, idx}: {sig: SignatoryItem; idx: number
             marginBottom: '3px',
           }}
         >
-          Full Name :
+          Full Name :{roleKey ? reqMark(roleKey) : null}
         </label>
         <input
           type="text"

@@ -4,6 +4,7 @@ import {normalizeRemarksToHtml} from '@/features/legal/lib/remarks-html';
 import {date} from '@/shared/lib/format';
 import {Fields} from '@/shared/ui/Fields';
 import {Modal} from '@/shared/ui/Modal';
+import {RequiredStar} from '@/shared/ui/RequiredStar';
 import {legalDeedFields, FORM_SECTION} from '@liugong/shared';
 import {Save} from 'lucide-react';
 
@@ -146,7 +147,10 @@ export function DeedEditorModal() {
                 />
                 <>
                   <div className="legal-remarks-category-group">
-                    <span className="field-label">Remarks Categories</span>
+                    <span className="field-label">
+                      Remarks Categories
+                      <RequiredStar field="remarkCategoryIds" section={FORM_SECTION.DEEDS} />
+                    </span>
                     <div className="legal-remarks-chips" role="group" aria-label="Remarks Categories">
                       {availableChips.map(cat => {
                         const isSelected = currentSelectedCategoryIds.includes(cat.id);

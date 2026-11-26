@@ -24,6 +24,13 @@ export function selectMandatoryWorkflow(workflowId?: string) {
   void fetchMandatoryRules();
 }
 
+/** Re-fetches the active workflow's mandatory rules immediately after a workflow is saved or switched active. */
+export function refreshMandatoryRules(): Promise<MandatoryRule[]> {
+  if (rulesWorkflowId !== undefined) return Promise.resolve(rulesCache);
+  inFlight = null;
+  return fetchMandatoryRules();
+}
+
 export function fetchMandatoryRules(): Promise<MandatoryRule[]> {
   if (inFlight) return inFlight;
   const wanted = rulesWorkflowId;
