@@ -122,6 +122,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             notify={notify}
             filterStage={activeStage}
             onSubmitStage={() => state.setSubmitStageCode(a.workflow?.stages?.[0]?.code ?? null)}
+            onOpenChecklist={() => state.setTab(9)}
             isFapLocked={isFapLocked}
           />
         )}

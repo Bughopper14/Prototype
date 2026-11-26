@@ -159,9 +159,12 @@ export function useFapSheetData({
       experienceMonths: ext.experienceMonths != null ? ext.experienceMonths : '',
       picName: ext.picName || '',
       position: ext.picPosition || '',
+      picPosition: ext.picPosition || '',
       phone: ext.picPhone || '',
+      picPhone: ext.picPhone || '',
       picEmail: ext.picEmail || '',
       currentAddress: ext.picAddress || ext.picCurrentAddress || '',
+      picAddress: ext.picAddress || ext.picCurrentAddress || '',
       picCity: ext.picCity || '',
       picProvince: ext.picProvince || '',
       picPostalCode: ext.picPostalCode || '',
@@ -184,7 +187,15 @@ export function useFapSheetData({
             const parsed = JSON.parse(docSh);
             if (Array.isArray(parsed)) return parsed;
           } catch {
-            return [];
+            // Backend stores formatted comma-separated names like "Name A (60%), Name B (40%)"
+            return docSh
+              .split(',')
+              .map(part => part.trim())
+              .filter(Boolean)
+              .map(part => {
+                const m = part.match(/^(.+?)\s*\((\d+(?:[.,]\d+)?)%?\)$/);
+                return m ? {name: m[1].trim(), sharePercentage: m[2]} : {name: part};
+              });
           }
         }
         return [];

@@ -10,7 +10,7 @@ import responsive from '../styles/08-responsive.css?raw';
 import fapComparison from '../styles/09-fap-comparison.css?raw';
 import approvedExcel from '../styles/10-approved-excel.css?raw';
 import shell from '../styles/11-shell.css?raw';
-import keithSync from '../styles/12-keith-sync.css?raw';
+import formsAndEditor from '../styles/12-forms-and-editor.css?raw';
 import workflow from '../styles/13-workflow.css?raw';
 import newApplication from '../styles/14-new-application.css?raw';
 import approval from '../styles/15-approval.css?raw';
@@ -28,7 +28,7 @@ const CRM_CSS = [
   fapComparison,
   approvedExcel,
   shell,
-  keithSync,
+  formsAndEditor,
   workflow,
   newApplication,
   approval,

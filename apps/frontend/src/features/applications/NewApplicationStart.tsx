@@ -58,22 +58,12 @@ function normalizeCoreName(name: string): string {
     .trim();
 }
 
-function maskNpwp(v: unknown): string {
-  const d = String(v ?? '').replace(/\D/g, '');
-  return d.length >= 3
-    ? `\u2022\u2022.\u2022\u2022\u2022.\u2022\u2022\u2022.\u2022-\u2022\u2022\u2022.${d.slice(-3)}`
-    : '';
-}
-
-function maskNib(v: unknown): string {
-  const d = String(v ?? '').replace(/\D/g, '');
-  return d.length >= 4 ? `${'\u2022'.repeat(9)}${d.slice(-4)}` : '';
-}
-
 function customerSubtitle(c: any): string {
+  const npwp = String(c.npwp ?? '').trim();
+  const nib = String(c.nib ?? '').trim();
   return [
-    maskNpwp(c.npwp) && `NPWP ${maskNpwp(c.npwp)}`,
-    maskNib(c.nib) && `NIB ${maskNib(c.nib)}`,
+    npwp && `NPWP ${npwp}`,
+    nib && `NIB ${nib}`,
     c.companyType && label(c.companyType),
   ]
     .filter(Boolean)

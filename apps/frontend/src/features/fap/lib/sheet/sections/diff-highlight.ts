@@ -1,6 +1,6 @@
 /** Marks the cells that differ in a comparison. */
 import type {FapSheetPreviewProps} from '@/features/fap/lib/types';
-import {FIELD_TO_CELL_ID_MAP, resolveFieldToCellId} from '@/features/fap/lib/field-cells';
+import {resolveFieldCellIds} from '@/features/fap/lib/field-cells';
 
 export function highlightDiffCells({doc, props}: {doc: Document; props: FapSheetPreviewProps}) {
   // Highlight cells that have differences
@@ -25,8 +25,8 @@ export function highlightDiffCells({doc, props}: {doc: Document; props: FapSheet
     };
 
     props.diffs.forEach((item: any) => {
-      const cid = resolveFieldToCellId(item.field, item.section, extraData) || FIELD_TO_CELL_ID_MAP[item.field];
-      if (cid) {
+      const cids = resolveFieldCellIds(item.field, item.section, extraData);
+      for (const cid of cids) {
         const el = doc.getElementById(cid);
         if (el) {
           el.classList.add('fap-diff-warning-cell');

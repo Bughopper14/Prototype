@@ -1,5 +1,4 @@
-/* Styles from the LiugongApps (Keith) sync of 9 Nov 2026: FAP sections 05-09, Document Checklist,
-   shared rich-text editor, Pre-Analysis additions. Rules we had changed ourselves are not included. */
+/* FAP sections 05-09, Document Checklist base rules, shared rich-text editor, and Pre-Analysis styles. */
 
 @media (max-width: 760px) {
   .page-heading {

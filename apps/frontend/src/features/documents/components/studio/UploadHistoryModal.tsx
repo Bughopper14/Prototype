@@ -1,6 +1,7 @@
 /** Pop-up with the upload history of the selected stage. */
 import {Modal} from '@/shared/ui/Modal';
-import {Download, Eye, FileText, Trash2} from 'lucide-react';
+import {api} from '@/shared/lib/api';
+import {Download, ExternalLink, Eye, FileText, Trash2} from 'lucide-react';
 
 import {useDocumentsStudioContext} from '@/features/documents/components/studio/DocumentsContext';
 import {downloadFile} from '@/features/documents/lib/download-file';
@@ -10,6 +11,7 @@ export function UploadHistoryModal() {
     a,
     isFapLocked,
     activeFile,
+    activeFileUrl,
     showHistoryModal,
     setShowHistoryModal,
     activeItem,
@@ -19,14 +21,24 @@ export function UploadHistoryModal() {
     handleDeleteFile,
     setError,
   } = useDocumentsStudioContext();
+
+  async function openOriginalFile(f: any) {
+    try {
+      const url = activeFile?.id === f.id && activeFileUrl ? activeFileUrl : (await api(`/files/${f.id}/url`)).url;
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      setError(e.message || 'Failed to open file.');
+    }
+  }
+
   return (
     <>
       {showHistoryModal && (
-        <Modal title={`Upload History · ${activeItem.title}`} onClose={() => setShowHistoryModal(false)}>
+        <Modal title={`Upload History — ${activeItem.title}`} onClose={() => setShowHistoryModal(false)}>
           <div className="modal-body" style={{maxHeight: '70vh', overflowY: 'auto'}}>
             <p className="muted" style={{marginBottom: '14px'}}>
-              Debtor: <strong>{a.customer?.companyName || 'Debtor'}</strong> · FAP No:{' '}
-              <strong>{a.fapNumber || '-'}</strong> · Total <strong>{activeFiles.length} files</strong>
+              Debtor: <strong>{a.customer?.companyName || 'Debtor'}</strong> | FAP No:{' '}
+              <strong>{a.fapNumber || '-'}</strong> | Total <strong>{activeFiles.length} files</strong>
             </p>
             {activeFiles.length === 0 ? (
               <div style={{textAlign: 'center', padding: '32px 16px', color: '#94a3b8'}}>
@@ -114,12 +126,17 @@ export function UploadHistoryModal() {
                           type="button"
                           className={`button small ${isPreviewed ? 'primary' : ''}`}
                           onClick={() => {
-                            if (!isPreviewed) previewFile(f);
-                            setShowHistoryModal(false);
+                            if (isPreviewed) {
+                              openOriginalFile(f);
+                            } else {
+                              previewFile(f);
+                              setShowHistoryModal(false);
+                            }
                           }}
-                          title={isPreviewed ? 'This file is already shown on the screen' : 'Show this file on the screen'}
+                          title={isPreviewed ? 'Open the currently shown file in a new tab' : 'Switch to this file for comparison'}
                         >
-                          <Eye size={13} /> {isPreviewed ? 'Shown now' : 'Show'}
+                          {isPreviewed ? <ExternalLink size={13} /> : <Eye size={13} />}{' '}
+                          {isPreviewed ? 'Shown now' : 'Show'}
                         </button>
                         <button
                           type="button"

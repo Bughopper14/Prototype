@@ -12,6 +12,8 @@ export type DocumentsProps = {
   filterStage?: string;
   /** Opens the Submit dialog of the stage that shows the FAP form (the same dialog as the Submit tab). */
   onSubmitStage?: () => void;
+  /** Opens the Document Checklist tab from the Documents empty state callout. */
+  onOpenChecklist?: () => void;
   isFapLocked?: boolean;
 };
 

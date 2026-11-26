@@ -127,10 +127,13 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
   picName: 'fap-cell-picName',
   name: 'fap-cell-picName',
   phone: 'fap-cell-phone',
+  picPhone: 'fap-cell-phone',
   mobilePhone: 'fap-cell-phone',
   position: 'fap-cell-position',
+  picPosition: 'fap-cell-position',
   picEmail: 'fap-cell-picEmail',
   currentAddress: 'fap-cell-currentAddress',
+  picAddress: 'fap-cell-currentAddress',
   picCity: 'fap-cell-picCity',
   picProvince: 'fap-cell-picProvince',
   picPostalCode: 'fap-cell-picPostalCode',
@@ -145,10 +148,32 @@ export const FIELD_TO_CELL_ID_MAP: Record<string, string> = {
 
   // Shareholders
   shareholders: 'fap-cell-sh-0-name',
+  stakeholders: 'fap-cell-sh-0-name',
   sharePercentage: 'fap-cell-sh-0-pct',
   primaryCapital: 'fap-cell-sh-0-shares',
   depositedCapital: 'fap-cell-sh-0-shares',
 };
+
+/** Returns every sheet cell id belonging to a field (e.g. both New and Existing boxes for customerStatus). */
+export function resolveFieldCellIds(fieldKey: string, section?: string | null, extraData?: any): string[] {
+  if (fieldKey === 'customerStatus' || fieldKey === 'customerCategory') {
+    return Object.values(CHECKBOX_CELLS.customerCategory);
+  }
+  if (fieldKey === 'companyType') {
+    return Object.values(CHECKBOX_CELLS.companyType);
+  }
+  if (fieldKey === 'industrySegment') {
+    return Object.values(CHECKBOX_CELLS.industrySegment);
+  }
+  if (fieldKey === 'businessRole') {
+    return Object.values(CHECKBOX_CELLS.businessRole);
+  }
+  if (fieldKey === 'stakeholders' || fieldKey === 'shareholders') {
+    return ['fap-cell-sh-0-name', 'fap-cell-sh-0-pos', 'fap-cell-sh-0-shares', 'fap-cell-sh-0-pct'];
+  }
+  const single = resolveFieldToCellId(fieldKey, section, extraData) || FIELD_TO_CELL_ID_MAP[fieldKey];
+  return single ? [single] : [];
+}
 
 export function resolveFieldToCellId(fieldKey: string, section?: string | null, extraData?: any): string {
   // Master-driven checklists (document requirements, financing purposes) pass the sheet cell (param_key) itself.
