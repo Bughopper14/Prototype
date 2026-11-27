@@ -6,6 +6,7 @@ import {CRM} from '../../core/db/crm-tables';
 import {USER_TABLES} from '../../core/db/user-tables';
 import {Problem, ensure} from '../../core/domain';
 import {activityFeed, deedHistory, logActivity, recordActivity} from '../activity/activity-log';
+import {newNotification} from '../activity/notifications';
 import type {Actor as SessionActor} from '../auth/session';
 import {BusinessPartnersRepository} from '../customers/business-partners.repository';
 import {DocumentsRepository} from '../documents/documents.repository';
@@ -641,6 +642,114 @@ export class ApplicationsService {
         code: d.department_code,
         name: d.department_name,
       })),
+    };
+  }
+
+  /** Bulk-update Marketing PIC for selected applications, log activity, and notify the new PIC. */
+  async bulkChangePic(applicationIds: string[], mktPicId: number, actor: Actor) {
+    const ids = [...new Set(applicationIds)];
+    const pic = (await this.mktPics.names([mktPicId])).get(mktPicId);
+    ensure(pic, 'Selected Marketing PIC was not found');
+
+    const placeholders = ids.map(() => '?').join(',');
+    const [existing] = await this.apps.pool.query<any[]>(
+      `SELECT a.id, a.application_number, a.mkt_pic_id, p.company_name
+       FROM ${CRM.applications} a
+       LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id = a.id
+       WHERE a.id IN (${placeholders}) AND a.deleted_at IS NULL`,
+      ids,
+    );
+    ensure(existing.length > 0, 'No matching applications found');
+
+    const oldIds = existing.map((r: any) => r.mkt_pic_id).filter(Boolean);
+    const oldNames = oldIds.length ? await this.mktPics.names(oldIds) : new Map();
+
+    await this.apps.pool.execute(
+      `UPDATE ${CRM.applications}
+       SET mkt_pic_id = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+      [mktPicId, by(actor), ...ids],
+    );
+
+    const newPicLabel = pic.name || pic.username;
+    for (const app of existing) {
+      if (Number(app.mkt_pic_id) === mktPicId) continue;
+      const prevPic = app.mkt_pic_id ? oldNames.get(Number(app.mkt_pic_id)) : null;
+      const prevLabel = prevPic ? prevPic.name || prevPic.username : 'Unassigned';
+      const companyLabel = app.company_name ? ` (${app.company_name})` : '';
+      await recordActivity(
+        {
+          applicationId: app.id,
+          section: 'Customer & PIC',
+          tabIndex: 0,
+          actionType: 'UPDATE',
+          title: `Changed Marketing PIC to ${newPicLabel}`,
+          details: `Marketing PIC updated from ${prevLabel} to ${newPicLabel} for ${app.application_number}${companyLabel}.`,
+          changes: [{label: 'Marketing PIC', oldValue: prevLabel, newValue: newPicLabel}],
+        },
+        actor,
+      );
+      if (mktPicId !== Number(actor.portalUserId)) {
+        try {
+          await newNotification([mktPicId], {
+            applicationId: app.id,
+            type: 'WORKFLOW_ACTION',
+            title: `Assigned as Marketing PIC (${app.application_number})`,
+            message: `You have been assigned as Marketing PIC for ${app.application_number}${companyLabel}.`,
+          });
+        } catch (e) {
+          console.error('Notification failed:', (e as Error).message);
+        }
+      }
+    }
+
+    return {
+      updatedCount: existing.length,
+      mktPicId,
+      mktPicName: newPicLabel,
+    };
+  }
+
+  /** Send a document upload & approval reminder notification to the Marketing PIC of each selected application. */
+  async bulkDocumentReminder(applicationIds: string[], actor: Actor, note?: string) {
+    const ids = [...new Set(applicationIds)];
+    const placeholders = ids.map(() => '?').join(',');
+    const [apps] = await this.apps.pool.query<any[]>(
+      `SELECT a.id, a.application_number, a.mkt_pic_id, p.company_name
+       FROM ${CRM.applications} a
+       LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id = a.id
+       WHERE a.id IN (${placeholders}) AND a.deleted_at IS NULL`,
+      ids,
+    );
+    ensure(apps.length > 0, 'No matching applications found');
+
+    let sentCount = 0;
+    let skippedCount = 0;
+    const recipientIds = new Set<number>();
+    const senderLabel = actor.username || 'Team';
+
+    for (const app of apps) {
+      const picId = app.mkt_pic_id ? Number(app.mkt_pic_id) : null;
+      if (!picId) {
+        skippedCount += 1;
+        continue;
+      }
+      const companyLabel = app.company_name ? ` (${app.company_name})` : '';
+      const extraNote = note?.trim() ? ` Note: ${note.trim()}` : '';
+      await newNotification([picId], {
+        applicationId: app.id,
+        type: 'DOCUMENT_REMINDER',
+        title: `Document Reminder: ${app.application_number}`,
+        message: `Reminder from ${senderLabel}: Please don't forget to upload the required documents and send application ${app.application_number}${companyLabel} for approval.${extraNote}`,
+      });
+      sentCount += 1;
+      recipientIds.add(picId);
+    }
+
+    return {
+      sentCount,
+      skippedCount,
+      recipientCount: recipientIds.size,
     };
   }
 

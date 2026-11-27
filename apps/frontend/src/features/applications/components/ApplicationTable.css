@@ -105,6 +105,351 @@
   opacity: 0.85;
 }
 
+/* Bulk Action Toolbar */
+.app-bulk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #f0f6ff;
+  border-bottom: 1px solid #dbeafe;
+  flex-wrap: wrap;
+}
+
+.app-bulk-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-bulk-check-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: none;
+  background: #0f2d56;
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.app-bulk-check-btn:hover {
+  background: #1e3a8a;
+}
+
+.app-bulk-count {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f2d56;
+}
+
+.app-bulk-divider {
+  width: 1px;
+  height: 16px;
+  background: #cbd5e1;
+}
+
+.app-bulk-select-all-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+}
+
+.app-bulk-select-all-link:hover {
+  text-decoration: underline;
+}
+
+.app-bulk-all-selected-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+}
+
+.app-bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.app-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #1e293b;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.app-bulk-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.app-bulk-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.app-bulk-btn--clear {
+  color: #475569;
+  font-weight: 500;
+}
+
+.app-bulk-btn--primary {
+  background: #0f2d56;
+  border-color: #0f2d56;
+  color: #ffffff;
+}
+
+.app-bulk-btn--primary:hover:not(:disabled) {
+  background: #1e3a8a;
+  border-color: #1e3a8a;
+}
+
+.app-bulk-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.app-bulk-feedback--success {
+  background: #ecfdf5;
+  color: #065f46;
+  border-bottom-color: #a7f3d0;
+}
+
+.app-bulk-feedback--error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-bottom-color: #fecaca;
+}
+
+.app-bulk-feedback-close {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.app-bulk-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 12.5px;
+}
+
+/* Bulk Action Modals */
+.app-bulk-modal {
+  max-width: 460px;
+  width: 92vw;
+}
+
+.app-bulk-modal-body {
+  padding: 16px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.app-bulk-modal-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+.app-bulk-pic-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.app-bulk-pic-search-icon {
+  position: absolute;
+  left: 10px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.app-bulk-pic-search input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.app-bulk-pic-search input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.app-bulk-pic-list {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.app-bulk-pic-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.app-bulk-pic-option:hover {
+  background: #f1f5f9;
+}
+
+.app-bulk-pic-option.is-selected {
+  background: #eff6ff;
+}
+
+.app-bulk-pic-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-bulk-pic-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.app-bulk-pic-username {
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.app-bulk-pic-check {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.app-bulk-pic-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.app-bulk-reminder-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.app-bulk-reminder-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-size: 12.5px;
+}
+
+.app-bulk-reminder-num {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.app-bulk-reminder-company {
+  color: #475569;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-bulk-reminder-pic {
+  color: #2563eb;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.app-bulk-reminder-more {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.app-bulk-note-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.app-bulk-note-label textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+
+.app-bulk-note-label textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.app-bulk-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+}
+
 .app-table-search input:focus {
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);

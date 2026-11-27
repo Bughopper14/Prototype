@@ -2,6 +2,7 @@ import {
   AlertCircle,
   ArrowRight,
   ArrowUpDown,
+  Bell,
   Calendar,
   Check,
   ChevronDown,
@@ -16,13 +17,18 @@ import {
   FileCheck,
   FileText,
   HelpCircle,
+  Minus,
   Search,
+  Users,
   X,
 } from 'lucide-react';
 import {forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
+import * as XLSX from 'xlsx';
+import {useCrm} from '@/features/crm/components/CrmProvider';
 import {api} from '@/shared/lib/api';
 import {useMasterData} from '@/shared/master-data';
+import {Modal} from '@/shared/ui/Modal';
 import './ApplicationTable.css';
 
 export interface ApplicationTableHandle {
@@ -875,6 +881,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     ref
   ) {
   const master = useMasterData();
+  const {reload} = useCrm();
   const [search, setSearch] = useState('');
   const [selectedBranches, setSelectedBranches] = useState<string[]>([]);
   const [branchPopoverOpen, setBranchPopoverOpen] = useState(false);
@@ -918,6 +925,15 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   const [pageSize, setPageSize] = useState(compact ? 5 : 8);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [quickViewApp, setQuickViewApp] = useState<any | null>(null);
+  const [changePicOpen, setChangePicOpen] = useState(false);
+  const [mktPicOptions, setMktPicOptions] = useState<{id: number; name: string; username: string}[]>([]);
+  const [mktPicLoading, setMktPicLoading] = useState(false);
+  const [selectedNewPicId, setSelectedNewPicId] = useState<number | ''>('');
+  const [picSearch, setPicSearch] = useState('');
+  const [reminderOpen, setReminderOpen] = useState(false);
+  const [reminderNote, setReminderNote] = useState('');
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkFeedback, setBulkFeedback] = useState<{type: 'success' | 'error'; message: string} | null>(null);
   const [sortField, setSortField] = useState<'company' | 'applied' | 'updated' | null>(null);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -1781,14 +1797,166 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   }, [sorted, currentPage, pageSize]);
 
   // Checkbox select all
-  const allSelected = visible.length > 0 && visible.every(r => selectedIds.has(r.id));
+  const allVisibleSelected = visible.length > 0 && visible.every(r => selectedIds.has(r.id));
+  const someSelected = selectedIds.size > 0 && !allVisibleSelected;
   const toggleSelectAll = () => {
-    if (allSelected) {
+    if (allVisibleSelected) {
       setSelectedIds(new Set());
     } else {
       setSelectedIds(new Set(visible.map(r => r.id)));
     }
   };
+
+  const selectAllFiltered = () => {
+    setSelectedIds(new Set(sorted.map(r => r.id)));
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+  };
+
+  const selectedRows = useMemo(() => {
+    const inSorted = sorted.filter(r => selectedIds.has(r.id));
+    if (inSorted.length === selectedIds.size) return inSorted;
+    const seen = new Set(inSorted.map(r => r.id));
+    const extra = rows.filter(r => selectedIds.has(r.id) && !seen.has(r.id));
+    return [...inSorted, ...extra];
+  }, [sorted, rows, selectedIds]);
+
+  const STAGE_STATUS_EXPORT_LABEL: Record<string, string> = {
+    APPROVED: 'Approved',
+    WAITING_APPROVAL: 'Waiting for approval',
+    NEEDS_CHANGES: 'Needs changes',
+    IN_PROGRESS: 'In progress',
+    NOT_STARTED: 'Not started',
+  };
+
+  function exportSelectedExcel() {
+    if (!selectedRows.length) return;
+    const data = selectedRows.map(r => {
+      const stages: StageItem[] = Array.isArray(r.stages) ? r.stages : [];
+      const stageLabel = (code: string, fallbackName: string) => {
+        const found = stages.find(
+          s => s.code === code || s.name.toLowerCase() === fallbackName.toLowerCase(),
+        );
+        return found ? STAGE_STATUS_EXPORT_LABEL[found.status] || found.status : 'Not started';
+      };
+      return {
+        Application: r.application_number || r.fap_number || '',
+        Company: r.company_name || '',
+        Branch: r.branch_code || '',
+        'PIC Marketing': r.mkt_pic_name || (r.mkt_pic_id ? `User #${r.mkt_pic_id}` : ''),
+        'Amount (IDR)': Number(r.financing_value || 0),
+        FAP: stageLabel('FAP-STAGE', 'FAP'),
+        'Pre-analysis': stageLabel('PRE-ANALYSIS', 'Pre-analysis'),
+        ICLF: stageLabel('ICLF', 'ICLF'),
+        Applied: formatDisplayDate(r.created_at || r.application_date),
+        Updated: formatDisplayDate(r.updated_at || r.created_at || r.application_date),
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    worksheet['!cols'] = [
+      {wch: 18},
+      {wch: 36},
+      {wch: 10},
+      {wch: 22},
+      {wch: 18},
+      {wch: 20},
+      {wch: 20},
+      {wch: 20},
+      {wch: 14},
+      {wch: 14},
+    ];
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Applications');
+    XLSX.writeFile(workbook, 'applications-selected.xlsx');
+  }
+
+  async function openChangePicModal() {
+    setBulkFeedback(null);
+    setPicSearch('');
+    setSelectedNewPicId('');
+    setChangePicOpen(true);
+    setMktPicLoading(true);
+    try {
+      const list = await api('/applications/mkt-pics');
+      if (Array.isArray(list)) {
+        setMktPicOptions(list);
+      }
+    } catch {
+      // Fallback to usersData.users if mkt-pics endpoint is restricted
+      if (usersData.users.length) {
+        setMktPicOptions(
+          usersData.users.map(u => ({
+            id: u.id,
+            name: u.fullName || u.username,
+            username: u.username,
+          })),
+        );
+      }
+    } finally {
+      setMktPicLoading(false);
+    }
+  }
+
+  async function handleConfirmChangePic() {
+    if (!selectedNewPicId || !selectedIds.size) return;
+    setBulkBusy(true);
+    setBulkFeedback(null);
+    try {
+      const res = await api('/applications/bulk/change-pic', 'POST', {
+        applicationIds: Array.from(selectedIds),
+        mktPicId: Number(selectedNewPicId),
+      });
+      await reload();
+      setChangePicOpen(false);
+      setSelectedIds(new Set());
+      setBulkFeedback({
+        type: 'success',
+        message: `Marketing PIC updated to ${res?.mktPicName || 'selected user'} for ${res?.updatedCount ?? selectedIds.size} application(s).`,
+      });
+    } catch (err: any) {
+      setBulkFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to update Marketing PIC.',
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  function openReminderModal() {
+    setBulkFeedback(null);
+    setReminderNote('');
+    setReminderOpen(true);
+  }
+
+  async function handleConfirmReminder() {
+    if (!selectedIds.size) return;
+    setBulkBusy(true);
+    setBulkFeedback(null);
+    try {
+      const res = await api('/applications/bulk/document-reminder', 'POST', {
+        applicationIds: Array.from(selectedIds),
+        note: reminderNote.trim() || undefined,
+      });
+      setReminderOpen(false);
+      setSelectedIds(new Set());
+      const skippedText = res?.skippedCount ? ` (${res.skippedCount} skipped without Marketing PIC)` : '';
+      setBulkFeedback({
+        type: 'success',
+        message: `Document reminder sent to ${res?.recipientCount ?? 0} user(s) for ${res?.sentCount ?? 0} application(s)${skippedText}.`,
+      });
+    } catch (err: any) {
+      setBulkFeedback({
+        type: 'error',
+        message: err?.message || 'Failed to send document reminder.',
+      });
+    } finally {
+      setBulkBusy(false);
+    }
+  }
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -1848,8 +2016,94 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   }));
 
   return (
+    <>
     <section className="app-table-panel">
-      {/* Table Toolbar */}
+      {bulkFeedback && (
+        <div className={`app-bulk-feedback app-bulk-feedback--${bulkFeedback.type}`}>
+          <span>{bulkFeedback.message}</span>
+          <button
+            type="button"
+            className="app-bulk-feedback-close"
+            onClick={() => setBulkFeedback(null)}
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {selectedIds.size > 0 ? (
+        <div className="app-bulk-toolbar">
+          <div className="app-bulk-left">
+            <button
+              type="button"
+              className="app-bulk-check-btn"
+              onClick={clearSelection}
+              title="Clear selection"
+              aria-label="Clear selection"
+            >
+              {allVisibleSelected && selectedIds.size >= sorted.length ? (
+                <Check size={12} strokeWidth={3} />
+              ) : (
+                <Minus size={12} strokeWidth={3} />
+              )}
+            </button>
+            <span className="app-bulk-count">{selectedIds.size} selected</span>
+            <span className="app-bulk-divider" />
+            {selectedIds.size < sorted.length ? (
+              <button
+                type="button"
+                className="app-bulk-select-all-link"
+                onClick={selectAllFiltered}
+              >
+                Select all {sorted.length} applications
+              </button>
+            ) : (
+              <span className="app-bulk-all-selected-label">
+                All {sorted.length} applications selected
+              </span>
+            )}
+          </div>
+
+          <div className="app-bulk-actions">
+            <button
+              type="button"
+              className="app-bulk-btn"
+              onClick={exportSelectedExcel}
+            >
+              <Download size={14} />
+              <span>Export selected</span>
+            </button>
+            <button
+              type="button"
+              className="app-bulk-btn"
+              onClick={openChangePicModal}
+              disabled={bulkBusy}
+            >
+              <Users size={14} />
+              <span>Change PIC</span>
+            </button>
+            <button
+              type="button"
+              className="app-bulk-btn"
+              onClick={openReminderModal}
+              disabled={bulkBusy}
+            >
+              <Bell size={14} />
+              <span>Send document reminder</span>
+            </button>
+            <span className="app-bulk-divider" />
+            <button
+              type="button"
+              className="app-bulk-btn app-bulk-btn--clear"
+              onClick={clearSelection}
+            >
+              Clear selection
+            </button>
+          </div>
+        </div>
+      ) : (
+      /* Table Toolbar */
       <div className="app-table-toolbar">
         {/* Search Name Input (First on the left, matching Image 2) */}
         <div className="app-table-search">
@@ -2554,6 +2808,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
           </button>
         )}
       </div>
+      )}
 
       {/* Table Content */}
       <div className="app-table-container">
@@ -2564,7 +2819,10 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                 <input
                   type="checkbox"
                   className="app-table-checkbox"
-                  checked={allSelected}
+                  checked={allVisibleSelected}
+                  ref={el => {
+                    if (el) el.indeterminate = someSelected;
+                  }}
                   onChange={toggleSelectAll}
                   aria-label="Select all rows"
                 />
@@ -2820,5 +3078,154 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
         />
       )}
     </section>
+
+    {selectedIds.size > 0 && (
+      <div className="app-bulk-notice">
+        <HelpCircle size={14} />
+        <span>Approve / reject is not available as a bulk action — credit decisions are reviewed one application at a time.</span>
+      </div>
+    )}
+
+    {changePicOpen && (
+      <Modal
+        title={`Change Marketing PIC (${selectedIds.size} selected)`}
+        onClose={() => !bulkBusy && setChangePicOpen(false)}
+        className="app-bulk-modal"
+      >
+        <div className="app-bulk-modal-body">
+          <p className="app-bulk-modal-desc">
+            Select a new Marketing PIC for the {selectedIds.size} selected application{selectedIds.size > 1 ? 's' : ''}.
+          </p>
+
+          <div className="app-bulk-pic-search">
+            <Search size={14} className="app-bulk-pic-search-icon" />
+            <input
+              type="text"
+              placeholder="Search Marketing PIC..."
+              value={picSearch}
+              onChange={e => setPicSearch(e.target.value)}
+              autoFocus
+            />
+          </div>
+
+          <div className="app-bulk-pic-list">
+            {mktPicLoading ? (
+              <div className="app-bulk-pic-empty">Loading users...</div>
+            ) : (
+              mktPicOptions
+                .filter(u => {
+                  const q = picSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return (
+                    u.name.toLowerCase().includes(q) ||
+                    u.username.toLowerCase().includes(q)
+                  );
+                })
+                .map(u => {
+                  const active = selectedNewPicId === u.id;
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      className={`app-bulk-pic-option ${active ? 'is-selected' : ''}`}
+                      onClick={() => setSelectedNewPicId(u.id)}
+                    >
+                      <span className="app-user-avatar">{getInitials(u.name, u.id)}</span>
+                      <span className="app-bulk-pic-info">
+                        <span className="app-bulk-pic-name">{u.name}</span>
+                        <span className="app-bulk-pic-username">@{u.username}</span>
+                      </span>
+                      {active && <Check size={15} className="app-bulk-pic-check" />}
+                    </button>
+                  );
+                })
+            )}
+            {!mktPicLoading && mktPicOptions.length === 0 && (
+              <div className="app-bulk-pic-empty">No active users found.</div>
+            )}
+          </div>
+
+          <div className="app-bulk-modal-footer">
+            <button
+              type="button"
+              className="app-bulk-btn"
+              onClick={() => setChangePicOpen(false)}
+              disabled={bulkBusy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="app-bulk-btn app-bulk-btn--primary"
+              onClick={handleConfirmChangePic}
+              disabled={!selectedNewPicId || bulkBusy}
+            >
+              {bulkBusy ? 'Updating...' : 'Update PIC'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+
+    {reminderOpen && (
+      <Modal
+        title={`Send Document Reminder (${selectedIds.size} selected)`}
+        onClose={() => !bulkBusy && setReminderOpen(false)}
+        className="app-bulk-modal"
+      >
+        <div className="app-bulk-modal-body">
+          <p className="app-bulk-modal-desc">
+            This will send a notification to the Marketing PIC of each selected application reminding them to upload the required documents and send it for approval.
+          </p>
+
+          <div className="app-bulk-reminder-summary">
+            {selectedRows.slice(0, 5).map(r => (
+              <div key={r.id} className="app-bulk-reminder-row">
+                <span className="app-bulk-reminder-num">{r.application_number || r.fap_number}</span>
+                <span className="app-bulk-reminder-company">{r.company_name || '—'}</span>
+                <span className="app-bulk-reminder-pic">
+                  {r.mkt_pic_name || (r.mkt_pic_id ? `User #${r.mkt_pic_id}` : 'No PIC')}
+                </span>
+              </div>
+            ))}
+            {selectedRows.length > 5 && (
+              <div className="app-bulk-reminder-more">
+                +{selectedRows.length - 5} more application(s)
+              </div>
+            )}
+          </div>
+
+          <label className="app-bulk-note-label">
+            <span>Additional note (optional)</span>
+            <textarea
+              rows={2}
+              placeholder="e.g. Please complete mandatory documents before Friday..."
+              value={reminderNote}
+              onChange={e => setReminderNote(e.target.value)}
+            />
+          </label>
+
+          <div className="app-bulk-modal-footer">
+            <button
+              type="button"
+              className="app-bulk-btn"
+              onClick={() => setReminderOpen(false)}
+              disabled={bulkBusy}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="app-bulk-btn app-bulk-btn--primary"
+              onClick={handleConfirmReminder}
+              disabled={bulkBusy}
+            >
+              {bulkBusy ? 'Sending...' : 'Send Reminder'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+    </>
   );
 });
