@@ -264,6 +264,7 @@ export class DocumentsController {
       req.actor,
       'CRM_DOCUMENT_VIEW',
       'CRM_DOCUMENT-DESK_VIEW',
+      'CRM_APPLICATION_VIEW',
       'CRM_LEGAL_EDIT',
     );
     const file = await this.documents.readFile(req.params.id);

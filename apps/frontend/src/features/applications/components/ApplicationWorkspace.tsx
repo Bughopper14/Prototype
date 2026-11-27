@@ -144,6 +144,7 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             user={user}
             onChange={onChange}
             notify={notify}
+            activeScreen={activeStage}
           />
         )}
         {tab === 7 && (

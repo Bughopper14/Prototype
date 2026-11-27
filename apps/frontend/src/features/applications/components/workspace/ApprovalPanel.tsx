@@ -1,19 +1,19 @@
 /**
- * The SUBMITTER's view of the approval of one application (Redesign 1):
- * 2-column layout with stage readiness checklist on the left, and "After you submit" + "Other stages" cards on the right.
+ * Submit tab: shows what is still missing for the active stage before it can be submitted for approval,
+ * the approval levels that run after submission, and quick links to other stages.
  */
-import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
-import {layersOf, reopenedStep, whoOf, type Approval} from '@/features/applications/components/workspace/approval-shared';
-import {screenOf} from '@/features/applications/lib/workspace/stage';
+import {useEffect, useMemo, useState} from 'react';
+import {AlertTriangle, ArrowRight, Check, CheckCircle2, Circle, Clock} from 'lucide-react';
 import {api} from '@/shared/lib/api';
+import {hasAuthority} from '@/shared/lib/auth';
 import {date} from '@/shared/lib/format';
 import {SCREEN} from '@/shared/master-data';
-import {AlertTriangle, ArrowRight, Check, CheckCircle2, Circle, CircleDot, Clock} from 'lucide-react';
-import {useEffect, useMemo, useState} from 'react';
+import {screenOf} from '@/features/applications/lib/workspace/stage';
+import {GAP_PLACE, type Gap} from './dialogs/ApprovalDialogs';
+import {useWorkspace} from './WorkspaceContext';
+import './ApprovalPanel.css';
 
-type Gap = {target: string; label: string; detail?: string};
-
-type StageProgress = {
+type StageProgressItem = {
   stage: string;
   name: string;
   group: string;
@@ -24,513 +24,431 @@ type StageProgress = {
   blockedReason: string | null;
 };
 
-const GAP_GROUPS: {target: string; eyebrow: string; linkLabel: string; stage?: string; tab: number}[] = [
-  {target: 'FAP_FORM', eyebrow: 'FAP FORM', linkLabel: 'Open FAP Form', stage: SCREEN.FAP, tab: 0},
-  {target: 'PRE_ANALYSIS', eyebrow: 'PRE-ANALYSIS', linkLabel: 'Open Pre-analysis', stage: SCREEN.PRE_ANALYSIS, tab: 8},
-  {target: 'DOCUMENTS', eyebrow: 'DOCUMENTS', linkLabel: 'Open Document Checklist', tab: 9},
-  {target: 'LEGAL', eyebrow: 'LEGAL', linkLabel: 'Open Legal', stage: SCREEN.FAP, tab: 5},
-  {target: 'STAKEHOLDERS', eyebrow: 'STAKEHOLDERS', linkLabel: 'Open Stakeholders', stage: SCREEN.FAP, tab: 1},
-];
+type ApprovalPlace = {
+  scope: string;
+  stageCode?: string | null;
+  groupCode?: string | null;
+  approvalName?: string | null;
+  levels?: {levelNo: number; authorityName: string; isPicMarketing?: boolean}[];
+};
 
-function formatStageTitle(name: string): string {
-  const clean = (name || 'Stage').trim();
-  return /\bstage\b/i.test(clean) ? clean : `${clean} Stage`;
-}
+const TARGET_LABEL: Record<string, string> = {
+  FAP_FORM: 'FAP FORM',
+  PRE_ANALYSIS: 'PRE ANALYSIS FORM',
+  FINANCIAL_STATEMENTS: 'FINANCIAL STATEMENTS',
+  LEGAL: 'LEGAL DEEDS',
+  DOCUMENTS: 'DOCUMENTS',
+};
+
+const FIELD_LIMIT = 8;
 
 export function ApprovalPanel() {
-  const {a, draft, user, isAdminUser, activeStage, setActiveStage, setTab, setError, setSubmitStageCode} = useWorkspace();
+  const {a, user, isAdminUser, setSubmitStageCode, activeStage, setActiveStage, setTab} = useWorkspace();
+  const canSubmitRole = isAdminUser || hasAuthority(user, 'CREATE_EDIT_APPLICATION');
+  const stages: StageProgressItem[] = a.stageProgress || [];
+  const workflowStages: any[] = a.workflow?.stages || [];
 
-  const stages: StageProgress[] = useMemo(() => (a.stageProgress || []) as StageProgress[], [a.stageProgress]);
-  const wfStages: any[] = useMemo(() => a.workflow?.stages || [], [a.workflow?.stages]);
-
-  // Match the currently selected workspace stage to a workflow stageProgress entry
-  const matchedStageCode = useMemo(() => {
-    const byScreen = stages.find(st => {
-      const wf = wfStages.find((w: any) => w.code === st.stage);
+  const defaultStageCode = useMemo(() => {
+    const matching = stages.filter(st => {
+      const wf = workflowStages.find(w => w.code === st.stage);
       return wf && screenOf(wf) === activeStage;
     });
-    return byScreen?.stage || stages[0]?.stage || '';
-  }, [stages, wfStages, activeStage]);
+    const pick =
+      matching.find(st => st.canSubmit && !st.submitted) ||
+      matching[0] ||
+      stages.find(st => st.canSubmit && !st.submitted) ||
+      stages[0];
+    return pick?.stage || '';
+  }, [stages, workflowStages, activeStage]);
 
-  const [selectedStageCode, setSelectedStageCode] = useState<string>(matchedStageCode);
+  const [selectedStageCode, setSelectedStageCode] = useState<string>(defaultStageCode);
   useEffect(() => {
-    if (matchedStageCode) setSelectedStageCode(matchedStageCode);
-  }, [matchedStageCode]);
+    setSelectedStageCode(defaultStageCode);
+  }, [defaultStageCode]);
 
-  const [gapsByStage, setGapsByStage] = useState<Record<string, Gap[]>>({});
-  const [loadingCheck, setLoadingCheck] = useState(false);
+  const [missingByStage, setMissingByStage] = useState<Record<string, Gap[]>>({});
+  const [expandedTargets, setExpandedTargets] = useState<Record<string, boolean>>({});
+  const [checking, setChecking] = useState(false);
 
-  const openStages = useMemo(
-    () => stages.filter(st => st.canSubmit && !st.submitted && !st.completed).map(st => st.stage),
-    [stages],
-  );
-  const openKey = openStages.join(',');
+  const openStagesKey = stages
+    .filter(st => st.canSubmit && !st.submitted)
+    .map(st => st.stage)
+    .join(',');
 
   useEffect(() => {
-    if (draft.isNew || !a.id || !openStages.length) {
-      setGapsByStage({});
+    const toCheck = stages.filter(st => st.canSubmit && !st.submitted).map(st => st.stage);
+    if (!toCheck.length) {
+      setMissingByStage({});
       return;
     }
     let alive = true;
-    setLoadingCheck(true);
-    void Promise.all(
-      openStages.map(code =>
+    setChecking(true);
+    Promise.all(
+      toCheck.map(code =>
         api(`/applications/${a.id}/stages/${encodeURIComponent(code)}/check`)
           .then((r: any) => [code, Array.isArray(r?.missing) ? (r.missing as Gap[]) : []] as const)
           .catch(() => [code, [] as Gap[]] as const),
       ),
-    ).then(rows => {
-      if (!alive) return;
-      setGapsByStage(Object.fromEntries(rows));
-      setLoadingCheck(false);
-    });
+    )
+      .then(entries => {
+        if (!alive) return;
+        const next: Record<string, Gap[]> = {};
+        for (const [code, gaps] of entries) next[code] = gaps;
+        setMissingByStage(next);
+      })
+      .finally(() => {
+        if (alive) setChecking(false);
+      });
     return () => {
       alive = false;
     };
-  }, [a.id, openKey, draft.isNew]);
+  }, [a.id, a.updatedAt, openStagesKey]);
 
-  if (draft.isNew || !a.approval) return null;
+  const selectedStage = stages.find(st => st.stage === selectedStageCode) || stages[0];
+  const selectedWfStage = workflowStages.find(w => w.code === selectedStage?.stage);
+  const selectedScreen = selectedWfStage ? screenOf(selectedWfStage) : activeStage;
 
-  const ap = a.approval as Approval;
-  const canSubmitRole = isAdminUser || (user?.authorities || []).includes('CRM_WORKFLOW_SUBMIT');
-  const currentStage = stages.find(s => s.stage === selectedStageCode) || stages[0];
-  if (!currentStage) return null;
+  const gaps = selectedStage ? missingByStage[selectedStage.stage] || [] : [];
+  const missingCount = gaps.length;
 
-  const stageTitle = formatStageTitle(currentStage.name);
-  const currentGaps: Gap[] = gapsByStage[currentStage.stage] || [];
-  const missingCount = currentGaps.length;
+  const groupedGaps = useMemo(() => {
+    const groups = new Map<string, Gap[]>();
+    for (const g of gaps) {
+      const key = g.target || 'OTHER';
+      const arr = groups.get(key) || [];
+      arr.push(g);
+      groups.set(key, arr);
+    }
+    return [...groups.entries()];
+  }, [gaps]);
 
-  // Group gaps into known buckets + OTHER fallback
-  const groupedGaps = GAP_GROUPS.map(g => ({
-    ...g,
-    items: currentGaps.filter(item => item.target === g.target),
-  })).filter(g => g.items.length > 0);
+  const approvalPlaces: ApprovalPlace[] = a.approvalPlaces || [];
+  const stagePlace = approvalPlaces.find(p => p.scope === 'STAGE' && p.stageCode === selectedStage?.stage);
+  const groupPlace = approvalPlaces.find(p => p.scope === 'GROUP' && p.groupCode && p.groupCode === selectedStage?.groupCode);
 
-  const knownTargets = new Set(GAP_GROUPS.map(g => g.target));
-  const otherGaps = currentGaps.filter(item => !knownTargets.has(item.target));
+  const groupedLevels = useMemo(() => {
+    const map = new Map<number, string[]>();
+    for (const lv of stagePlace?.levels || []) {
+      const list = map.get(lv.levelNo) || [];
+      if (lv.authorityName && !list.includes(lv.authorityName)) list.push(lv.authorityName);
+      map.set(lv.levelNo, list);
+    }
+    return [...map.entries()].sort((x, y) => x[0] - y[0]);
+  }, [stagePlace]);
 
-  // Rejected & reopened info (preserved from existing ApprovalPanel)
-  const rejected = ap.current.flatMap(c =>
-    c.steps
-      .filter(s => s.status === 'REJECTED' && !s.reopened)
-      .map(s => ({scope: c.scopeName, kind: c.scope, step: s, decision: s.decisions.find(d => d.decision === 'REJECTED')})),
-  );
-  const reopened = ap.current.filter(c => c.steps.some(reopenedStep));
-  const stageNameOf = (code: string) => stages.find(s => s.stage === code)?.name ?? code;
-  const itemNameOf = (c: {scope: string; scopeName: string}) =>
-    c.scope === 'DOCUMENT' ? c.scopeName.replace(/^Document\s+/, '') : c.scopeName.replace(/^.*·\s*/, '');
-  const reopenedByStage = [...new Set(reopened.map(c => c.stageCode || ''))].filter(Boolean).map(code => ({
-    code,
-    name: stageNameOf(code),
-    stageItself: reopened.some(c => c.scope === 'STAGE' && c.stageCode === code),
-    documents: [...new Set(reopened.filter(c => c.scope === 'DOCUMENT' && c.stageCode === code).map(itemNameOf))],
-    deeds: [...new Set(reopened.filter(c => c.scope === 'SECTION' && c.stageCode === code).map(itemNameOf))],
-  }));
+  const approval = a.approval || {current: []};
+  const rejected = (approval.current || []).filter((c: any) => c.state === 'REJECTED');
+  const reopenedByStage = new Map<string, {forms: string[]; documents: string[]; deeds: string[]}>();
+  for (const r of approval.current || []) {
+    if (r.scope !== 'STAGE' || !r.reopened) continue;
+    reopenedByStage.set(r.stageCode, r.reopened);
+  }
 
-  // Group approval rows for the "AFTER YOU SUBMIT" card
-  const groupRows = ((a.approvalPlaces || []) as any[])
-    .filter(p => p.scope === 'GROUP')
-    .map(p => {
-      const group = (a.workflow?.groups || []).find((g: any) => g.code === p.groupCode);
-      const round = ap.current.find(c => c.scope === 'GROUP' && c.groupCode === p.groupCode);
-      const steps = round?.steps || [];
-      const state = !round
-        ? 'NONE'
-        : steps.some(x => x.status === 'REJECTED' && !x.reopened)
-          ? 'REJECTED'
-          : steps.some(x => x.reopened)
-            ? 'REOPENED'
-            : steps.every(x => x.status === 'APPROVED')
-              ? 'APPROVED'
-              : 'OPEN';
-      const waiting = [...new Set(steps.filter(x => x.status === 'PENDING').map(whoOf))];
-      return {
-        code: p.groupCode as string,
-        name: (group?.name || p.groupCode) as string,
-        stageCodes: (group?.stageCodes || []) as string[],
-        approval: (p.approvalName || p.approvalCode || '') as string,
-        state,
-        waiting,
-      };
-    });
-
-  // Approval levels for the active stage ("AFTER YOU SUBMIT")
-  const activeStageRound = ap.current.find(c => c.scope === 'STAGE' && c.stageCode === currentStage.stage);
-  const activeStagePlace = ((a.approvalPlaces || []) as any[]).find(p => p.scope === 'STAGE' && p.stageCode === currentStage.stage);
-  const stageLayers = activeStageRound?.steps?.length ? layersOf(activeStageRound.steps) : [];
-  const activeGroup = groupRows.find(
-    g => g.stageCodes.includes(currentStage.stage) || (currentStage.groupCode && g.code === currentStage.groupCode),
-  );
-  const otherStagesInGroup = activeGroup
-    ? activeGroup.stageCodes
-        .filter(code => code !== currentStage.stage)
-        .map(code => stageNameOf(code))
-    : [];
-
-  // Progress bar calculation
-  const isReady = !currentStage.completed && !currentStage.submitted && currentStage.canSubmit && missingCount === 0 && !loadingCheck;
-  const progressPct = currentStage.completed || currentStage.submitted || isReady ? 100 : Math.max(12, Math.min(82, Math.round((10 / (10 + missingCount * 2)) * 100)));
-  const progressColor = currentStage.completed || isReady ? '#16a34a' : currentStage.submitted ? '#2563eb' : '#d97706';
-
-  // Checklist summary sections when 0 items are missing
-  const wfCurrent = wfStages.find((w: any) => w.code === currentStage.stage);
-  const currentScreen = wfCurrent ? screenOf(wfCurrent) : activeStage;
-  const completedSections =
-    currentScreen === SCREEN.PRE_ANALYSIS
-      ? [
-          {label: 'Pre-analysis Form', tab: 8},
-          {label: 'Documents', tab: 9},
-        ]
-      : currentScreen === SCREEN.FAP
-        ? [
-            {label: 'FAP Form', tab: 0},
-            {label: 'Documents', tab: 9},
-            {label: 'Legal', tab: 5},
-            {label: 'Stakeholders', tab: 1},
-          ]
-        : [
-            {label: `${currentStage.name} Requirements`, tab: 6},
-            {label: 'Documents', tab: 9},
-          ];
-
-  const openSection = (stageScreen: string | undefined, tabIdx: number) => {
-    setError('');
-    if (stageScreen) setActiveStage(stageScreen);
-    setTab(tabIdx);
+  const openPlace = (target: string) => {
+    const place = GAP_PLACE[target];
+    if (!place) return;
+    if (place.stage) setActiveStage(place.stage);
+    setTab(place.tab);
     window.scrollTo({top: 0, behavior: 'smooth'});
   };
 
-  const openOtherStage = (st: StageProgress) => {
+  const switchToStage = (st: StageProgressItem) => {
     setSelectedStageCode(st.stage);
-    const wf = wfStages.find((w: any) => w.code === st.stage);
+    const wf = workflowStages.find(w => w.code === st.stage);
     if (wf) setActiveStage(screenOf(wf));
   };
 
-  const handleSubmitClick = () => {
-    setError('');
-    setSubmitStageCode(currentStage.stage);
-  };
+  const stageLabel = selectedStage?.name || 'Stage';
+  const isDone = !!selectedStage?.completed;
+  const isSubmitted = !!selectedStage?.submitted && !isDone;
+  const isBlocked = !!selectedStage && !selectedStage.canSubmit && !isSubmitted && !isDone;
+  const isReady = !!selectedStage && selectedStage.canSubmit && !isSubmitted && !isDone && missingCount === 0 && !checking;
 
-  const otherStages = stages.filter(s => s.stage !== currentStage.stage);
+  const progressPct = isDone || isSubmitted || isReady ? 100 : Math.max(12, Math.min(88, 100 - missingCount * 5));
+  const progressTone = isDone || isReady ? 'green' : isSubmitted ? 'blue' : 'amber';
+
+  const formSummaryLabel =
+    selectedScreen === SCREEN.PRE_ANALYSIS
+      ? 'Pre Analysis form'
+      : selectedScreen === SCREEN.FAP
+        ? 'FAP form'
+        : `${stageLabel} form`;
+
+  const otherStages = stages.filter(st => st.stage !== selectedStage?.stage);
 
   return (
-    <section className="r1-wrap" aria-label="Submit for approval">
-      {rejected.map(r => (
-        <div
-          key={r.step.id}
-          role="alert"
-          style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: 12,
-            padding: '14px 18px',
-            borderRadius: 12,
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#991b1b',
-          }}
-        >
-          <AlertTriangle size={18} style={{flexShrink: 0, marginTop: 2, color: '#dc2626'}} />
-          <div style={{flex: 1, minWidth: 0}}>
-            <div style={{fontWeight: 700, fontSize: 13.5, color: '#991b1b'}}>
-              {r.scope}: “{r.step.name}” was returned
-            </div>
-            {r.decision?.remarks ? (
-              <div
-                style={{margin: '4px 0 6px', fontSize: 13, color: '#1e293b'}}
-                dangerouslySetInnerHTML={{__html: r.decision.remarks}}
-              />
-            ) : (
-              <p style={{margin: '4px 0 6px', fontSize: 13, color: '#475569'}}>No reason was written.</p>
-            )}
-            {r.kind === 'GROUP' &&
-              reopenedByStage.map(st => (
-                <div key={st.code} style={{margin: '6px 0 8px', fontSize: 12.5, color: '#334155'}}>
-                  <b>Stage opened again: {st.name}</b>
-                  {(st.documents.length > 0 || st.deeds.length > 0) && (
-                    <ul style={{margin: '4px 0 0 18px', padding: 0}}>
-                      {st.documents.map(name => (
-                        <li key={'d-' + name}>Document · {name}</li>
-                      ))}
-                      {st.deeds.map(name => (
-                        <li key={'e-' + name}>Legal deed · {name}</li>
-                      ))}
-                    </ul>
-                  )}
+    <section className="panel" style={{background: 'transparent', border: 'none', padding: 0, boxShadow: 'none'}}>
+      {rejected.map((r: any) => (
+        <div key={r.id} className="ap-rejected" style={{marginBottom: 16}}>
+          <AlertTriangle size={18} />
+          <div>
+            <b>{r.name} was rejected</b> — fix it and submit again.
+            {r.decision?.remarks && <p>{r.decision.remarks}</p>}
+            {(() => {
+              const items = reopenedByStage.get(r.stageCode);
+              if (!items) return null;
+              if (!items.forms.length && !items.documents.length && !items.deeds.length) return null;
+              return (
+                <div className="ap-reopened">
+                  <small>Opened again for revision:</small>
+                  <ul>
+                    {items.forms.map(name => (
+                      <li key={'f-' + name}>{name}</li>
+                    ))}
+                    {items.documents.map(name => (
+                      <li key={'d-' + name}>Document · {name}</li>
+                    ))}
+                    {items.deeds.map(name => (
+                      <li key={'e-' + name}>Legal deed · {name}</li>
+                    ))}
+                  </ul>
                 </div>
-              ))}
-            <div style={{fontSize: 11.5, color: '#64748b'}}>
-              {r.decision?.by}
-              {r.decision?.decidedAt ? ` · ${date(r.decision.decidedAt)}` : ''}
+              );
+            })()}
+            <small>
+              {r.decision?.by} · {r.decision?.decidedAt ? date(r.decision.decidedAt) : ''}
               {r.decision?.via === 'LARK' ? ' · from Lark' : ''}
-            </div>
+            </small>
           </div>
         </div>
       ))}
 
-      <div className="r1-submit-grid">
-        {/* LEFT MAIN CARD */}
-        <div className="r1-card">
-          <div className="r1-card-pad">
-            <div className="r1-submit-head">
+      <div className="sub-layout">
+        {/* Left Main Card */}
+        <div className="sub-card">
+          <div className="sub-card-head">
+            <div className="sub-card-title-row">
               <div>
-                <h2>Submit {stageTitle}</h2>
-                <p>
-                  {currentStage.completed
-                    ? `All approvals for the ${currentStage.name} stage are complete.`
-                    : currentStage.submitted
-                      ? `The ${currentStage.name} stage has been submitted and is locked while being reviewed.`
-                      : !currentStage.canSubmit
-                        ? currentStage.blockedReason || `This stage cannot be submitted yet.`
+                <h2 className="sub-card-title">Submit {stageLabel}</h2>
+                <p className="sub-card-subtitle">
+                  {isDone
+                    ? `${stageLabel} has been approved.`
+                    : isSubmitted
+                      ? `${stageLabel} is locked and currently waiting for approval.`
+                      : isBlocked
+                        ? selectedStage?.blockedReason || `Complete the prerequisite stage before submitting ${stageLabel}.`
                         : missingCount > 0
-                          ? `Finish these items, then send the ${currentStage.name} stage for approval. The stage is locked while it is being reviewed.`
-                          : `Everything needed is complete. Send the ${currentStage.name} stage for approval.`}
+                          ? `Finish these items, then send ${stageLabel} for approval. The stage is locked while it is being reviewed.`
+                          : `Everything needed is complete. Send ${stageLabel} for approval.`}
                 </p>
               </div>
-              {currentStage.completed ? (
-                <span className="r1-pill green">Approved</span>
-              ) : currentStage.submitted ? (
-                <span className="r1-pill blue">In approval</span>
-              ) : !currentStage.canSubmit ? (
-                <span className="r1-pill gray">Locked</span>
+              {isDone ? (
+                <span className="sub-pill green">Approved</span>
+              ) : isSubmitted ? (
+                <span className="sub-pill blue">In review</span>
+              ) : isBlocked ? (
+                <span className="sub-pill muted">Locked</span>
               ) : missingCount > 0 ? (
-                <span className="r1-pill amber">
-                  {missingCount} {missingCount === 1 ? 'item' : 'items'} left
-                </span>
+                <span className="sub-pill amber">{missingCount} items left</span>
               ) : (
-                <span className="r1-pill green">Ready to submit</span>
+                <span className="sub-pill green">Ready</span>
               )}
             </div>
-
-            <div className="r1-progress-track" aria-hidden>
-              <div className="r1-progress-fill" style={{width: `${progressPct}%`, background: progressColor}} />
+            <div className="sub-progress-track">
+              <div className={`sub-progress-fill ${progressTone}`} style={{width: `${progressPct}%`}} />
             </div>
+          </div>
 
-            {/* Missing items grouped by section */}
-            {!currentStage.completed && !currentStage.submitted && currentStage.canSubmit && missingCount > 0 ? (
-              <div>
-                {groupedGaps.map(group => (
-                  <div key={group.target} className="r1-submit-group">
-                    <div className="r1-submit-group-head">
-                      <span className="r1-eyebrow">
-                        {group.eyebrow} · {group.items.length}
+          <div className="sub-card-body">
+            {isBlocked ? (
+              <div className="sub-item-row">
+                <span className="sub-item-left">
+                  <Clock size={16} color="#64748b" />
+                  <span className="sub-item-title">{selectedStage?.blockedReason || 'Waiting for prerequisite stage'}</span>
+                </span>
+              </div>
+            ) : missingCount > 0 ? (
+              groupedGaps.map(([target, items]) => {
+                const place = GAP_PLACE[target];
+                const isDoc = target === 'DOCUMENTS';
+                const expanded = !!expandedTargets[target];
+                const visibleItems = isDoc || expanded ? items : items.slice(0, FIELD_LIMIT);
+                const hiddenCount = items.length - visibleItems.length;
+
+                return (
+                  <div key={target} className="sub-group">
+                    <div className="sub-group-head">
+                      <span className="sub-group-label">
+                        {TARGET_LABEL[target] || target.replace(/_/g, ' ')} · {items.length}
                       </span>
-                      <button
-                        type="button"
-                        className="r1-link-btn"
-                        onClick={() => openSection(group.stage, group.tab)}
-                      >
-                        {group.linkLabel} <ArrowRight size={13} />
-                      </button>
+                      {place && (
+                        <button type="button" className="sub-link-btn" onClick={() => openPlace(target)}>
+                          Open {place.name} <ArrowRight size={13} />
+                        </button>
+                      )}
                     </div>
-                    <div className="r1-submit-rows">
-                      {group.items.map((gap, idx) => (
-                        <div key={`${group.target}-${idx}`} className="r1-submit-row">
-                          <span className="r1-submit-row-left">
-                            <Circle size={18} strokeWidth={1.6} color="#cbd5e1" style={{flexShrink: 0}} />
-                            <span>{gap.label}</span>
-                          </span>
-                          <span className="r1-submit-row-right">
-                            {gap.detail === 'Belum disetujui' ? "Haven't approved yet" : gap.detail || 'Required'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
 
-                {otherGaps.length > 0 && (
-                  <div className="r1-submit-group">
-                    <div className="r1-submit-group-head">
-                      <span className="r1-eyebrow">OTHER · {otherGaps.length}</span>
-                    </div>
-                    <div className="r1-submit-rows">
-                      {otherGaps.map((gap, idx) => (
-                        <div key={`other-${idx}`} className="r1-submit-row">
-                          <span className="r1-submit-row-left">
-                            <Circle size={18} strokeWidth={1.6} color="#cbd5e1" style={{flexShrink: 0}} />
-                            <span>{gap.label}</span>
-                          </span>
-                          <span className="r1-submit-row-right">{gap.detail || 'Required'}</span>
+                    {isDoc ? (
+                      <div className="sub-ready-list">
+                        {items.map((g, idx) => (
+                          <div key={`${target}-${idx}`} className="sub-item-row">
+                            <span className="sub-item-left">
+                              <Circle size={15} color="#cbd5e1" />
+                              <span className="sub-item-title">{g.label}</span>
+                            </span>
+                            <span className="sub-item-detail">{g.detail || 'Not uploaded'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="sub-fields-box">
+                        <div className="sub-fields-grid">
+                          {visibleItems.map((g, idx) => (
+                            <div key={`${target}-${idx}`} className="sub-item-row">
+                              <span className="sub-item-left">
+                                <Circle size={15} color="#cbd5e1" />
+                                <span className="sub-item-title" title={g.detail || g.label}>
+                                  {g.label}
+                                </span>
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                        {items.length > FIELD_LIMIT && (
+                          <div className="sub-fields-more">
+                            <span>
+                              {expanded ? `Showing all ${items.length} fields` : `+ ${hiddenCount} more fields`}
+                            </span>
+                            <button
+                              type="button"
+                              className="sub-link-btn"
+                              onClick={() => setExpandedTargets(prev => ({...prev, [target]: !expanded}))}
+                            >
+                              {expanded ? 'Show less' : 'Show all'}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <div className="sub-ready-list">
+                <div className="sub-ready-row">
+                  <span className="sub-check-circle">
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                  <span>{formSummaryLabel}</span>
+                </div>
+                {(selectedScreen === SCREEN.PRE_ANALYSIS || selectedScreen === SCREEN.FAP) && (
+                  <div className="sub-ready-row">
+                    <span className="sub-check-circle">
+                      <Check size={12} strokeWidth={3} />
+                    </span>
+                    <span>Financial statements</span>
                   </div>
                 )}
-              </div>
-            ) : (
-              /* Ready / Submitted / Approved state: green checked section cards */
-              <div className="r1-submit-rows" style={{marginTop: 18}}>
-                {completedSections.map(sec => (
-                  <div
-                    key={sec.label}
-                    className="r1-submit-row"
-                    style={{cursor: 'pointer'}}
-                    onClick={() => openSection(currentScreen, sec.tab)}
-                  >
-                    <span className="r1-submit-row-left">
-                      <span className="r1-status-icon approved" style={{width: 20, height: 20, marginTop: 0}}>
-                        <Check size={12} strokeWidth={3} />
-                      </span>
-                      <span>{sec.label}</span>
-                    </span>
-                    <span className="r1-submit-row-right" style={{color: '#15803d', fontWeight: 600}}>
-                      Complete
-                    </span>
-                  </div>
-                ))}
+                <div className="sub-ready-row">
+                  <span className="sub-check-circle">
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                  <span>Documents</span>
+                </div>
               </div>
             )}
           </div>
 
-          <div className="r1-submit-footer">
-            {currentStage.completed ? (
-              <>
-                <span className="r1-submit-footer-note" style={{color: '#15803d', display: 'inline-flex', alignItems: 'center', gap: 6}}>
-                  <CheckCircle2 size={15} /> {stageTitle} approved
-                </span>
-                <button type="button" className="r1-btn-outline" onClick={() => setTab(10)}>
-                  View Approvals <ArrowRight size={14} />
-                </button>
-              </>
-            ) : currentStage.submitted ? (
-              <>
-                <span className="r1-submit-footer-note" style={{color: '#1d4ed8', display: 'inline-flex', alignItems: 'center', gap: 6}}>
-                  <Clock size={15} /> Waiting for approvers
-                </span>
-                <button type="button" className="r1-btn-navy" onClick={() => setTab(10)}>
-                  View Approvals <ArrowRight size={14} />
-                </button>
-              </>
+          <div className="sub-card-footer">
+            {isDone ? (
+              <span className="sub-footer-hint">Stage approved</span>
+            ) : isSubmitted ? (
+              <span className="sub-footer-hint">Waiting for approval review</span>
+            ) : isBlocked ? (
+              <span className="sub-footer-hint">{selectedStage?.blockedReason || 'Not ready to submit yet'}</span>
             ) : (
               <>
-                {missingCount > 0 && currentStage.canSubmit && (
-                  <span className="r1-submit-footer-note">
-                    Complete {missingCount} {missingCount === 1 ? 'item' : 'items'} to submit
-                  </span>
-                )}
-                {!currentStage.canSubmit && (
-                  <span className="r1-submit-footer-note">{currentStage.blockedReason || 'Not ready to submit yet'}</span>
+                {missingCount > 0 && (
+                  <span className="sub-footer-hint">Complete {missingCount} items to submit</span>
                 )}
                 <button
                   type="button"
-                  className="r1-btn-navy"
-                  disabled={!currentStage.canSubmit || !canSubmitRole || loadingCheck || missingCount > 0}
-                  onClick={handleSubmitClick}
+                  className="sub-submit-btn"
+                  disabled={!canSubmitRole || checking || missingCount > 0 || !selectedStage}
+                  onClick={() => selectedStage && setSubmitStageCode(selectedStage.stage)}
                 >
-                  Submit {stageTitle}
+                  Submit {stageLabel}
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR */}
-        <aside className="r1-side-stack">
-          {/* Card 1: AFTER YOU SUBMIT */}
-          <div className="r1-card r1-card-pad">
-            <div className="r1-eyebrow">AFTER YOU SUBMIT</div>
-            <div className="r1-v-timeline">
-              {stageLayers.length > 0 ? (
-                stageLayers.map((layer, idx) => {
-                  const allDone = layer.every(s => s.status === 'APPROVED');
-                  const isNow = layer.some(s => s.status === 'PENDING');
-                  const isRej = layer.some(s => s.status === 'REJECTED' && !s.reopened);
-                  const names = layer.map(whoOf).join(' & ');
-                  return (
-                    <div key={idx} className={`r1-v-step${allDone ? ' done' : ''}`}>
-                      <span className={`r1-v-num${allDone ? ' done' : isRej ? ' rejected' : isNow ? ' active-blue' : ''}`}>
-                        {allDone ? <Check size={13} strokeWidth={3} /> : idx + 1}
+        {/* Right Sidebar */}
+        <aside className="sub-sidebar">
+          <div className="sub-side-card">
+            <h3 className="sub-side-title">After you submit</h3>
+            {groupedLevels.length > 0 || groupPlace ? (
+              <div className="sub-stepper">
+                {groupedLevels.map(([levelNo, roles]) => (
+                  <div key={levelNo} className="sub-step">
+                    <span className="sub-step-badge">{levelNo}</span>
+                    <div className="sub-step-body">
+                      <span className="sub-step-level">Level {levelNo}</span>
+                      <span className="sub-step-role">{roles.join(' & ') || 'Approver'}</span>
+                      <span className="sub-step-meta">
+                        {roles.length <= 1 ? '1 approver' : `${roles.length} approvers · all must approve`}
                       </span>
-                      <div className="r1-v-body">
-                        <span className="r1-v-lvl">Level {idx + 1}</span>
-                        <span className="r1-v-title">{names}</span>
-                        <span className={`r1-v-sub${allDone ? ' green' : isRej ? ' red' : isNow ? ' blue' : ''}`}>
-                          {layer.length === 1 ? '1 approver' : `${layer.length} approvers · all must approve`}
-                        </span>
-                      </div>
                     </div>
-                  );
-                })
-              ) : (
-                <div className="r1-v-step">
-                  <span className="r1-v-num">1</span>
-                  <div className="r1-v-body">
-                    <span className="r1-v-lvl">Stage approval</span>
-                    <span className="r1-v-title">{activeStagePlace?.approvalName || `${currentStage.name} approval`}</span>
-                    <span className="r1-v-sub">Starts automatically after you submit</span>
                   </div>
-                </div>
-              )}
-
-              {activeGroup && (
-                <div className={`r1-v-step${activeGroup.state === 'APPROVED' ? ' done' : ''}`}>
-                  <span className={`r1-v-num${activeGroup.state === 'APPROVED' ? ' done' : activeGroup.state === 'OPEN' ? ' active-blue' : ''}`}>
-                    {activeGroup.state === 'APPROVED' ? <Check size={13} strokeWidth={3} /> : <ArrowRight size={13} />}
-                  </span>
-                  <div className="r1-v-body">
-                    <span className="r1-v-lvl">Then</span>
-                    <span className="r1-v-title">Group {activeGroup.name} approval</span>
-                    <span className={`r1-v-sub${activeGroup.state === 'APPROVED' ? ' green' : activeGroup.state === 'OPEN' ? ' blue' : ''}`}>
-                      {activeGroup.state === 'APPROVED'
-                        ? 'Approved'
-                        : activeGroup.state === 'OPEN'
-                          ? `Waiting${activeGroup.waiting.length ? ` on ${activeGroup.waiting.join(', ')}` : ''}`
-                          : otherStagesInGroup.length > 0
-                            ? `Starts when ${otherStagesInGroup.join(' & ')} ${otherStagesInGroup.length === 1 ? 'is' : 'are'} also approved`
-                            : 'Starts when all stages in this group are approved'}
-                    </span>
+                ))}
+                {groupPlace && (
+                  <div className="sub-step">
+                    <span className="sub-step-badge">→</span>
+                    <div className="sub-step-body">
+                      <span className="sub-step-level">Then</span>
+                      <span className="sub-step-role">
+                        {groupPlace.approvalName || `${selectedStage?.group || 'Group'} approval`}
+                      </span>
+                      <span className="sub-step-meta">Starts when all stages in group are approved</span>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-            <p style={{margin: '14px 0 0', fontSize: 12, color: '#64748b'}}>
-              If something is rejected, the stage opens again for revision.
-            </p>
+                )}
+              </div>
+            ) : (
+              <p className="sub-card-subtitle" style={{margin: 0}}>
+                No stage approval levels configured.
+              </p>
+            )}
+            <p className="sub-side-note">If something is rejected, the stage opens again for revision.</p>
           </div>
 
-          {/* Card 2: OTHER STAGES */}
           {otherStages.length > 0 && (
-            <div className="r1-card r1-card-pad">
-              <div className="r1-eyebrow">OTHER STAGES</div>
-              <div className="r1-other-stages">
+            <div className="sub-side-card">
+              <h3 className="sub-side-title">Other stages</h3>
+              <div className="sub-other-list">
                 {otherStages.map(st => {
-                  const stMissing = gapsByStage[st.stage]?.length ?? 0;
-                  const canOpen = st.canSubmit || st.submitted || st.completed;
+                  const stMissing = missingByStage[st.stage]?.length ?? 0;
                   return (
-                    <div key={st.stage} className="r1-other-stage-row">
-                      <div style={{display: 'flex', alignItems: 'flex-start', gap: 9, minWidth: 0}}>
+                    <div key={st.stage} className="sub-other-row">
+                      <div className="sub-other-left">
                         {st.completed ? (
-                          <CheckCircle2 size={16} color="#16a34a" style={{flexShrink: 0, marginTop: 2}} />
-                        ) : st.submitted || st.canSubmit ? (
-                          <CircleDot size={16} color="#00285a" style={{flexShrink: 0, marginTop: 2}} />
+                          <CheckCircle2 size={15} color="#16a34a" style={{marginTop: 2, flexShrink: 0}} />
+                        ) : st.submitted ? (
+                          <Clock size={15} color="#2563eb" style={{marginTop: 2, flexShrink: 0}} />
+                        ) : st.canSubmit ? (
+                          <Circle size={15} color="#0f2942" style={{marginTop: 2, flexShrink: 0}} />
                         ) : (
-                          <Circle size={16} strokeDasharray="3 2" color="#94a3b8" style={{flexShrink: 0, marginTop: 2}} />
+                          <Circle size={15} color="#cbd5e1" style={{marginTop: 2, flexShrink: 0}} />
                         )}
-                        <div style={{minWidth: 0}}>
-                          <div style={{fontSize: 13.5, fontWeight: 700, color: '#0f172a'}}>{st.name}</div>
-                          {st.completed ? (
-                            <div style={{fontSize: 12, color: '#15803d', fontWeight: 600}}>Approved</div>
-                          ) : st.submitted ? (
-                            <div style={{fontSize: 12, color: '#1d4ed8', fontWeight: 600}}>In approval</div>
-                          ) : st.canSubmit ? (
-                            <div style={{fontSize: 12, color: stMissing > 0 ? '#b45309' : '#15803d', fontWeight: 600}}>
-                              {stMissing > 0 ? `${stMissing} ${stMissing === 1 ? 'item' : 'items'} left` : 'Ready to submit'}
-                            </div>
-                          ) : (
-                            <div style={{fontSize: 12, color: '#64748b'}}>{st.group}</div>
-                          )}
+                        <div>
+                          <div className="sub-other-name">{st.name}</div>
+                          <div className={`sub-other-sub ${st.canSubmit && !st.submitted && !st.completed && stMissing > 0 ? 'warn' : ''}`}>
+                            {st.completed
+                              ? 'Approved'
+                              : st.submitted
+                                ? 'In review'
+                                : st.canSubmit
+                                  ? stMissing > 0
+                                    ? `${stMissing} items left`
+                                    : 'Ready to submit'
+                                  : st.blockedReason || 'Waiting for previous stage'}
+                          </div>
                         </div>
                       </div>
-                      {canOpen ? (
-                        <button type="button" className="r1-link-btn" onClick={() => openOtherStage(st)}>
-                          Open <ArrowRight size={13} />
-                        </button>
-                      ) : (
-                        <span style={{fontSize: 12, color: '#64748b', textAlign: 'right'}}>
-                          {st.blockedReason || 'Locked'}
-                        </span>
-                      )}
+                      <button type="button" className="sub-link-btn" onClick={() => switchToStage(st)}>
+                        Open <ArrowRight size={12} />
+                      </button>
                     </div>
                   );
                 })}

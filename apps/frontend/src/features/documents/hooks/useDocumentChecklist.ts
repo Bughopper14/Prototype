@@ -278,6 +278,7 @@ export function useDocumentChecklist({
     setPreviewModal,
     fileInputRef,
     stats,
+    checklistRows,
     filteredRows,
     handleTriggerUpload,
     handleFileSelected,

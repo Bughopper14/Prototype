@@ -57,28 +57,6 @@ export function buildChecklistRows(
     });
   }
 
-  // Fallback for unsaved applications before checklist is seeded
-  return definitions.map(def => {
-    const files: any[] = [];
-    const row: RowState = {
-      isAvailable: false,
-      sourceType: 'NONE',
-      sourceLabel: def.defaultSection,
-      sourceDetails: '',
-      canDelete: false,
-      isMandatory: def.isMandatory,
-      previewUrl: '',
-    };
-
-    RESOLVERS[def.code]?.({a, draft, files, allStakeholders, row});
-    // a document can have several files (one KTP per stakeholder, several deeds): say how many instead of naming the first one
-    if (files.length > 1 && row.sourceType === 'MANUAL') row.sourceDetails = `${files.length} berkas diunggah`;
-
-    return {
-      ...def,
-      ...row,
-      status: row.isAvailable ? 'UPLOADED' : 'PENDING',
-      files,
-    };
-  });
+  // Only show documents that belong to the application's workflow checklist (never dump unrelated master documents)
+  return [];
 }

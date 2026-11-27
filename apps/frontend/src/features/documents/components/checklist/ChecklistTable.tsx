@@ -3,24 +3,28 @@ import {AlertCircle, ChevronDown, ChevronLeft, ChevronRight} from 'lucide-react'
 import {useState} from 'react';
 import {ChecklistRowItem} from '@/features/documents/components/checklist/ChecklistRowItem';
 import {DocumentApprovalModal} from '@/features/documents/components/checklist/DocumentApprovalModal';
+import {DocumentInspectModal} from '@/features/documents/components/checklist/DocumentInspectModal';
 import {SubmitApprovalConfirmModal} from '@/features/documents/components/checklist/SubmitApprovalConfirmModal';
 import {groupRowsByStage} from '@/features/documents/lib/checklist/group-rows';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 
 export function ChecklistTable({
   rows,
+  application,
   uploadingCode,
   deletingFileId,
   onPreview,
   onUpload,
   onDelete,
   onRequestApproval,
+  onDownloadAll,
   approvalBusy,
   grouped,
   collapsedStages,
   onToggleStage,
 }: {
   rows: ChecklistRow[];
+  application?: any;
   grouped: boolean;
   collapsedStages: Set<string>;
   onToggleStage: (code: string) => void;
@@ -30,21 +34,34 @@ export function ChecklistTable({
   onUpload: (code: string, chkId?: string) => void;
   onDelete: (fileId: string, code: string) => void;
   onRequestApproval?: (row: ChecklistRow) => void;
+  onDownloadAll?: () => void;
   approvalBusy?: string | null;
 }) {
-  const columns = 5;
+  const columns = 4;
   const groups = grouped ? groupRowsByStage(rows) : [];
   const [selectedApprovalRow, setSelectedApprovalRow] = useState<ChecklistRow | null>(null);
   const [confirmingSubmitRow, setConfirmingSubmitRow] = useState<ChecklistRow | null>(null);
+  const [inspectingRowKey, setInspectingRowKey] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState<number | 'ALL'>(10);
+  const [pageSize, setPageSize] = useState<number | 'ALL'>('ALL');
 
-  const totalItems = rows.length;
-  const effectivePageSize = pageSize === 'ALL' ? totalItems : pageSize;
+  const sortedRows = grouped
+    ? rows
+    : [
+        ...rows.filter(r => r.isMandatory),
+        ...rows.filter(r => !r.isMandatory),
+      ];
+
+  const totalItems = sortedRows.length;
+  const effectivePageSize = pageSize === 'ALL' ? Math.max(1, totalItems) : pageSize;
   const totalPages = Math.max(1, Math.ceil(totalItems / effectivePageSize));
   const page = Math.min(currentPage, totalPages);
   const startIndex = (page - 1) * effectivePageSize;
-  const displayedRows = pageSize === 'ALL' ? rows : rows.slice(startIndex, startIndex + effectivePageSize);
+  const displayedRows = pageSize === 'ALL' ? sortedRows : sortedRows.slice(startIndex, startIndex + effectivePageSize);
+
+  const inspectingRow = inspectingRowKey
+    ? rows.find(r => (r.chkId || `${r.stage}_${r.code}`) === inspectingRowKey) || null
+    : null;
 
   const handleConfirmSubmit = async (row: ChecklistRow) => {
     if (onRequestApproval) {
@@ -62,6 +79,7 @@ export function ChecklistTable({
       isUploading={uploadingCode === (row.chkId || row.code)}
       deletingFileId={deletingFileId}
       onPreview={onPreview}
+      onInspect={r => setInspectingRowKey(r.chkId || `${r.stage}_${r.code}`)}
       onUpload={onUpload}
       onDelete={onDelete}
       onRequestApproval={onRequestApproval}
@@ -75,24 +93,13 @@ export function ChecklistTable({
   return (
     <>
       <div className="table-scroll doc-table-wrapper">
-        <table className="data-table doc-checklist-table doc-table">
+        <table className="doc-chk-table">
           <thead>
             <tr>
-              <th className="col-no" style={{width: '40px', minWidth: '40px', textAlign: 'center'}}>
-                NO
-              </th>
-              <th className="col-doc" style={{width: '26%', minWidth: '200px'}}>
-                REQUIRED DOCUMENT
-              </th>
-              <th className="col-status" style={{width: '24%', minWidth: '200px'}}>
-                STATUS &amp; APPROVAL
-              </th>
-              <th className="col-source" style={{width: '34%', minWidth: '220px'}}>
-                FILE &amp; SOURCE
-              </th>
-              <th className="col-actions" style={{width: '160px', minWidth: '160px', textAlign: 'center'}}>
-                ACTIONS
-              </th>
+              <th style={{width: '38%'}}>DOCUMENT</th>
+              <th style={{width: '28%'}}>APPROVAL</th>
+              <th style={{width: '18%'}}>STATUS</th>
+              <th style={{width: '16%', textAlign: 'right'}}></th>
             </tr>
           </thead>
           <tbody>
@@ -125,16 +132,30 @@ export function ChecklistTable({
                     ...(open ? g.rows.map((row, i) => renderRow(row, start + i)) : []),
                   ];
                 })
-              : displayedRows.map((row, idx) => renderRow(row, startIndex + idx))}
+              : (() => {
+                  const mandatory = displayedRows.filter(r => r.isMandatory);
+                  const optional = displayedRows.filter(r => !r.isMandatory);
+                  return [
+                    ...mandatory.map((row, idx) => renderRow(row, startIndex + idx)),
+                    ...(optional.length > 0
+                      ? [
+                          <tr key="optional-divider" className="doc-chk-optional-divider">
+                            <td colSpan={columns}>OPTIONAL</td>
+                          </tr>,
+                          ...optional.map((row, idx) => renderRow(row, startIndex + mandatory.length + idx)),
+                        ]
+                      : []),
+                  ];
+                })()}
 
             {!rows.length && (
               <tr>
                 <td colSpan={columns} style={{textAlign: 'center', padding: '40px 20px'}}>
                   <AlertCircle size={28} style={{color: '#94a3b8', margin: '0 auto 8px'}} />
                   <p style={{fontWeight: 700, color: '#475569'}}>
-                    No documents match the current filter or search criteria
+                    No documents in this stage yet
                   </p>
-                  <small className="muted">Try changing your search keywords or resetting the filters.</small>
+                  <small className="muted">Only documents configured in the workflow for this stage appear here.</small>
                 </td>
               </tr>
             )}
@@ -231,6 +252,18 @@ export function ChecklistTable({
           )}
         </div>
       </div>
+
+      {inspectingRow && (
+        <DocumentInspectModal
+          row={inspectingRow}
+          application={application}
+          onClose={() => setInspectingRowKey(null)}
+          onUpload={onUpload}
+          onRequestApproval={onRequestApproval}
+          onDownloadAll={onDownloadAll}
+          approvalBusy={approvalBusy}
+        />
+      )}
 
       {/* Approval Audit Stepper Modal */}
       <DocumentApprovalModal

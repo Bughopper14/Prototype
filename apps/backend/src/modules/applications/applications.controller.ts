@@ -188,6 +188,13 @@ export class ApplicationsController {
     return this.applications.inbox(req.actor);
   }
 
+  /** Aggregated Inbox across all applications (Document checklist, Submit, Approvals) using existing tables. */
+  @Get('inbox')
+  inboxOverview(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
+    return this.applications.inboxOverview(req.actor);
+  }
+
   /** Bulk-change the Marketing PIC for one or more applications. */
   @Post('applications/bulk/change-pic')
   async bulkChangePic(@ApiReq() req: ApiRequest) {

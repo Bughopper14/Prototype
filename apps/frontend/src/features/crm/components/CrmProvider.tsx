@@ -43,6 +43,8 @@ type CrmContextValue = {
   dismissCreatedAppBanner: () => void;
   recentlyCreatedAppId: string | null;
   goTo: (pageName: string) => void;
+  inboxCount: number;
+  refreshInboxCount: () => Promise<void>;
   notifications: SystemNotificationItem[];
   readNotificationIds: Set<string>;
   unreadNotifications: number;
@@ -81,6 +83,17 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
   const [newAppModal, setNewAppModal] = useState<{open: boolean; customerId?: string}>({open: false});
   const [createdAppBanner, setCreatedAppBanner] = useState<CreatedApplicationInfo | null>(null);
   const [recentlyCreatedAppId, setRecentlyCreatedAppId] = useState<string | null>(null);
+  const [inboxCount, setInboxCount] = useState<number>(0);
+
+  const refreshInboxCount = useCallback(async () => {
+    if (!hasAuthority(user, 'CRM_APPLICATION_VIEW')) return;
+    try {
+      const res = await api('/inbox');
+      setInboxCount(Number(res?.counts?.total || 0));
+    } catch {
+      // ignore background badge refresh errors
+    }
+  }, [user]);
 
   const dismissToast = useCallback(() => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
@@ -114,6 +127,11 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
       setRows(applications);
       setCustomers(customerList);
       if (can('CRM_ACTIVITY_VIEW')) fetchActivities().then(setActivities).catch(() => {});
+      if (can('CRM_APPLICATION_VIEW')) {
+        api('/inbox')
+          .then(res => setInboxCount(Number(res?.counts?.total || 0)))
+          .catch(() => {});
+      }
       setError('');
     } catch (e: any) {
       if (!e?.message?.toLowerCase().includes('session') && !e?.message?.toLowerCase().includes('sesi')) {
@@ -277,6 +295,8 @@ export function CrmProvider({user, children}: {user: any; children: ReactNode}) 
     dismissCreatedAppBanner,
     recentlyCreatedAppId,
     goTo: name => navigate(pageHref(name)),
+    inboxCount,
+    refreshInboxCount,
     notifications,
     readNotificationIds,
     unreadNotifications: notifications.filter(n => !n.readAt && !readNotificationIds.has(n.id)).length,

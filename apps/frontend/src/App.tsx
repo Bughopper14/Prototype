@@ -17,6 +17,7 @@ const MasterDataPage = lazy(() => import('@/features/master-data/MasterDataPage'
 const WorkflowPage = lazy(() => import('@/features/workflow/WorkflowPage'));
 const NotificationsPage = lazy(() => import('@/features/activity/NotificationsPage'));
 const ActivityPage = lazy(() => import('@/features/activity/ActivityPage'));
+const InboxPage = lazy(() => import('@/features/inbox/InboxPage'));
 
 export function App() {
   return (
@@ -59,6 +60,7 @@ export function App() {
           <Route path="workflow-pipeline" element={<Navigate to="/crm-dashboard/workflows" replace />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="activity" element={<ActivityPage />} />
+          <Route path="inbox" element={<InboxPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/gallery" replace />} />
       </Routes>
