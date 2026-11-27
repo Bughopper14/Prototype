@@ -64,26 +64,32 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
   const workflowGroups: any[] = application?.workflow?.groups || [];
 
   const stageTabs = useMemo(() => {
-    const groupOrderMap = new Map<string, number>();
+    const groupMap = new Map<string, {name: string; order: number}>();
     workflowGroups.forEach((g: any, idx: number) => {
-      groupOrderMap.set(g.code, g.order ?? idx + 1);
+      groupMap.set(g.code, {name: g.name || g.code, order: g.order ?? idx + 1});
     });
 
     const baseStages =
       appStages.length > 0
-        ? appStages.map((s: any, idx: number) => ({
-            code: s.code,
-            name: s.name || s.code,
-            status: s.status || 'NOT_STARTED',
-            groupCode: s.groupCode || '',
-            groupOrder: groupOrderMap.get(s.groupCode) ?? idx + 1,
-            order: s.order ?? idx + 1,
-          }))
+        ? appStages.map((s: any, idx: number) => {
+            const sp = stageProgressList.find((p: any) => p.stage === s.code);
+            const gInfo = s.groupCode ? groupMap.get(s.groupCode) : undefined;
+            return {
+              code: s.code,
+              name: s.name || s.code,
+              status: s.status || 'NOT_STARTED',
+              groupCode: s.groupCode || '',
+              groupName: gInfo?.name || sp?.group || '',
+              groupOrder: gInfo?.order ?? idx + 1,
+              order: s.order ?? idx + 1,
+            };
+          })
         : c.stages.map((s, idx) => ({
             code: s.code,
             name: s.name,
             status: 'NOT_STARTED',
             groupCode: '',
+            groupName: '',
             groupOrder: idx + 1,
             order: idx + 1,
           }));
@@ -107,6 +113,8 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
       return {
         code: st.code,
         name: st.name,
+        groupCode: st.groupCode,
+        groupName: st.groupName,
         total: rows.length,
         uploaded: uploadedCount,
         status: st.status,
@@ -220,10 +228,23 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
         {activeStageTab?.isLocked ? (
           (() => {
             const prereqTabs = stageTabs.filter(t => activeStageTab.prereqCodes.includes(t.code));
+            const prereqByGroup = new Map<string, {groupName: string; stageNames: string[]}>();
+            for (const pr of prereqTabs) {
+              const key = String(pr.groupCode || '__ungrouped__');
+              const entry: {groupName: string; stageNames: string[]} = prereqByGroup.get(key) ?? {
+                groupName: String(pr.groupName || ''),
+                stageNames: [],
+              };
+              entry.stageNames.push(String(pr.name || pr.code));
+              prereqByGroup.set(key, entry);
+            }
+            const groupEntries = Array.from(prereqByGroup.values());
             const prereqNames =
-              prereqTabs.length > 1
-                ? `${prereqTabs.slice(0, -1).map(p => p.name).join(', ')} and ${prereqTabs[prereqTabs.length - 1].name}`
-                : prereqTabs[0]?.name || 'previous stage';
+              groupEntries.length > 0
+                ? groupEntries
+                    .map(g => (g.groupName ? `${g.groupName} (${g.stageNames.join(' & ')})` : g.stageNames.join(' & ')))
+                    .join(' & ')
+                : 'previous stage';
             const docNames = stageRows.map(r => r.name).join(', ');
             return (
               <div className="doc-locked-state">
@@ -231,7 +252,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
                   <Lock size={20} />
                 </div>
                 <h3 className="doc-locked-title">
-                  {activeStageTab.name} opens after {prereqNames} {prereqTabs.length > 1 ? 'are' : 'is'} approved
+                  {activeStageTab.name} opens after {prereqNames} {groupEntries.length > 1 ? 'are' : 'is'} approved
                 </h3>
                 <p className="doc-locked-subtitle">
                   {activeStageTab.blockedReason

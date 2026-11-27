@@ -25,6 +25,9 @@ export const GAP_PLACE: Record<string, {stage?: string; tab: number; name: strin
   DOCUMENTS: {tab: 9, name: 'Document Checklist'},
 };
 
+/** Targets hidden from pre-submit checklists on UI; backend still enforces them and returns an error on Submit. */
+export const HIDDEN_PRE_SUBMIT_TARGETS = new Set(['FAP_FORM', 'LEGAL']);
+
 /** What is still missing for the final approval, with a button to the place that fixes each kind. */
 function GapList({gaps, onOpen}: {gaps: Gap[]; onOpen: (gap: Gap) => void}) {
   return (
@@ -294,10 +297,17 @@ export function SubmitStageDialog() {
   useEffect(() => {
     if (!submitStageCode) return;
     setComments('');
+    setError('');
+    setGaps([]);
     let alive = true;
     setChecking(true);
     api(`/applications/${a.id}/stages/${encodeURIComponent(submitStageCode)}/check`)
-      .then((r: any) => alive && setGaps(Array.isArray(r?.missing) ? r.missing : []))
+      .then((r: any) => {
+        if (!alive) return;
+        const list: Gap[] = Array.isArray(r?.missing) ? r.missing : [];
+        // Keep hidden mandatory targets out of the pre-check until user clicks Submit so backend reports them on submit.
+        setGaps(list.filter(g => !HIDDEN_PRE_SUBMIT_TARGETS.has(g.target)));
+      })
       .catch(() => alive && setGaps([]))
       .finally(() => alive && setChecking(false));
     return () => {

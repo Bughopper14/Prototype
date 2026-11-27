@@ -9,7 +9,7 @@ import {hasAuthority} from '@/shared/lib/auth';
 import {date} from '@/shared/lib/format';
 import {SCREEN} from '@/shared/master-data';
 import {screenOf} from '@/features/applications/lib/workspace/stage';
-import {GAP_PLACE, type Gap} from './dialogs/ApprovalDialogs';
+import {GAP_PLACE, HIDDEN_PRE_SUBMIT_TARGETS, type Gap} from './dialogs/ApprovalDialogs';
 import {useWorkspace} from './WorkspaceContext';
 import './ApprovalPanel.css';
 
@@ -108,7 +108,9 @@ export function ApprovalPanel() {
   const selectedWfStage = workflowStages.find(w => w.code === selectedStage?.stage);
   const selectedScreen = selectedWfStage ? screenOf(selectedWfStage) : activeStage;
 
-  const gaps = selectedStage ? missingByStage[selectedStage.stage] || [] : [];
+  const allGaps = selectedStage ? missingByStage[selectedStage.stage] || [] : [];
+  // Mandatory FAP Form and Legal Deeds rules stay enforced on Submit by backend, but are hidden from the pre-submit checklist card.
+  const gaps = useMemo(() => allGaps.filter(g => !HIDDEN_PRE_SUBMIT_TARGETS.has(g.target)), [allGaps]);
   const missingCount = gaps.length;
 
   const groupedGaps = useMemo(() => {
@@ -418,7 +420,9 @@ export function ApprovalPanel() {
               <h3 className="sub-side-title">Other stages</h3>
               <div className="sub-other-list">
                 {otherStages.map(st => {
-                  const stMissing = missingByStage[st.stage]?.length ?? 0;
+                  const stMissing = (missingByStage[st.stage] || []).filter(
+                    g => !HIDDEN_PRE_SUBMIT_TARGETS.has(g.target),
+                  ).length;
                   return (
                     <div key={st.stage} className="sub-other-row">
                       <div className="sub-other-left">
