@@ -47,9 +47,9 @@ export class DocumentsRepository {
   async seedChecklist(conn: Conn, applicationId: string, workflowFreezeId: string, by: string | null) {
     await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
-         (id,application_id,workflow_freeze_id,stage_code,workflow_stage_document_id,document_type_id,document_code,source_type,override_id,assigned_role,
+         (id,application_id,workflow_freeze_id,stage_code,document_type_id,document_code,source_type,override_id,assigned_role,
           created_by)
-       SELECT UUID(),?,sd.workflow_freeze_id,sd.stage_code,sd.id,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),o.id,
+       SELECT UUID(),?,sd.workflow_freeze_id,sd.stage_code,sd.document_type_id,t.code,IF(sd.is_default=1,'DEFAULT','ADDED'),o.id,
               COALESCE(o.department_code,st.department_code),?
        FROM ${CRM.frozenWorkflowStageDocuments} sd
        JOIN ${CRM.frozenWorkflowStages} st ON st.workflow_freeze_id=sd.workflow_freeze_id AND st.code=sd.stage_code
