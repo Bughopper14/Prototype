@@ -86,7 +86,7 @@ export class LegalService {
     const a = await this.applications.detailOr404(id, actor);
     const deed = (a.legal?.deeds || []).find((d: any) => d.id === deedId);
     ensure(deed, 'Simpan akta terlebih dahulu sebelum mengajukan.', 404);
-    // One deed, one approval: when the workflow has an approval for the deed section, only that approval decides (submit-approval and its decisions), never this old flow.
+    // One deed, one approval: when the workflow configures a deed-section approval, only that approval decides.
     ensure(
       !((a.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION),
       'Akta ini disetujui lewat approval section akta pada workflow, bukan lewat review ini.',

@@ -23,7 +23,7 @@ export function ensureProjectGroups(list: any): PreAnalysisProjectGroup[] {
     }));
   }
 
-  // Legacy flat array of PreAnalysisProjectItem -> wrap into Head Group A
+  // Flat array of PreAnalysisProjectItem -> wrap into Head Group A
   return [
     {
       headName: '',

@@ -74,18 +74,18 @@ export function useSlikReviews(
       };
     }
 
-    // A new entity starts empty. The first one takes over the single-entity fields of an older form.
-    const legacy =
+    // A new entity starts empty; the first entity inherits top-level single-entity fields if present.
+    const initialFields =
       idx === 0
         ? {lenderExposures: data.lenderExposures || [], pefindoNotes: data.pefindoNotes || '', pefindoTerms: data.pefindoTerms || ''}
         : {lenderExposures: [] as LenderExposureItem[], pefindoNotes: '', pefindoTerms: ''};
-    const hasRecord = legacy.lenderExposures.length > 0;
+    const hasRecord = initialFields.lenderExposures.length > 0;
     return {
       id: `sub-${idx}`,
       entityName: entityName || `Entity #${idx + 1}`,
       hasRecord,
       noRecordRemarks: !hasRecord && idx === slikEntities.length - 1 ? data.applicantPefindoCheck || '' : '',
-      ...legacy,
+      ...initialFields,
     };
   };
 

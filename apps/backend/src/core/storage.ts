@@ -241,7 +241,7 @@ export class StorageService {
     if (hidden) return null;
     if (existsSync(file)) return file;
 
-    // Fallback: legacy flat files stored directly in rootDir
+    // Fallback: flat files stored directly in rootDir
     const fileName = path.basename(file);
     const flatFile = path.join(this.rootDir, fileName);
     if (existsSync(flatFile)) return flatFile;

@@ -61,9 +61,9 @@ export function DeedApprovalDialog({
         return [f.label, money ? Number(raw).toLocaleString('id-ID') : shown] as const;
       })
       .filter(Boolean) as (readonly [string, string])[];
-  // One deed, one approval: when the workflow has an approval for the deed section, the approval of that section decides (the ApprovalSlot on the Legal tab), so this old Submit / Approve / Reject / Remarks is not offered.
+  // One deed, one approval: when the workflow configures a deed-section approval, that section approval decides via ApprovalSlot.
   const masterApproves = ((application.approvalPlaces || []) as any[]).some(p => p.scope === 'SECTION' && p.sectionCode === DEED_SECTION);
-  // Who gets the buttons of the old flow (a workflow without an approval on the deed section)
+  // Direct deed review permissions when no section-level workflow approval is configured.
   const canSubmit =
       (checkIsAdmin(user) || hasAuthority(user, DEED_EDIT_AUTHORITY)) && ['NOT_STARTED', 'REJECTED'].includes(status),
     canApprove =

@@ -11,7 +11,7 @@ export interface TermsFieldConfig {
   label: string;
   /** Key under the group that is written. */
   key: string;
-  /** Extra keys written with the same value (the first field of Financial Lease keeps a legacy key). */
+  /** Extra keys written with the same value to keep alias fields synchronized. */
   alsoWrite?: string[];
   /** Keys tried in order when reading. Defaults to [key]. */
   readKeys?: string[];
@@ -19,7 +19,7 @@ export interface TermsFieldConfig {
   options?: ReadonlyArray<{value: string; label: string}>;
   /** The master-data list this field is chosen from ('paymentMethod', 'currency'): the saved value is the master code, so it can only be picked, never typed. */
   master?: 'paymentMethod' | 'currency';
-  /** Normalizes stored values (e.g. legacy uppercase/underscore values) to match `options`. */
+  /** Normalizes stored values (e.g. uppercase/underscore values) to match `options`. */
   normalizeValue?: (raw: string) => string;
 }
 

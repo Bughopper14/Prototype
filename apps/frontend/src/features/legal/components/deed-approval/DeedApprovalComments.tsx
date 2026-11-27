@@ -8,7 +8,7 @@ export function DeedApprovalComments({
   withRemarks = true,
 }: {
   canApprove: boolean;
-  /** The old flow has a third button, Remarks. When the workflow's approval decides the deed there are only Approve and Reject. */
+  /** Includes a third Remarks action when the workflow does not configure section-level deed approval. */
   withRemarks?: boolean;
   error: string;
   comments: string;

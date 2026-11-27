@@ -113,7 +113,7 @@ export function TermsField({group, field}: {group: TermsGroupKey; field: TermsFi
               {opt.label}
             </option>
           ))}
-          {/* Fallback if legacy value is not present in options */}
+          {/* Fallback if stored value is not present in options */}
           {value && !field.options.some(o => o.value === normalizedValue) && (
             <option value={value}>{value}</option>
           )}

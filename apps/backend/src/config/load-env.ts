@@ -3,7 +3,7 @@ import path from 'node:path';
 
 /**
  * Loads apps/backend/.env into process.env (variables already set by the environment win).
- * Checks multiple candidates for compatibility across monorepo and legacy running directories.
+ * Checks multiple candidate paths across monorepo running directories.
  */
 const candidates = [
   path.resolve('.env'),
