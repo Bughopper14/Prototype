@@ -55,6 +55,7 @@ export function App() {
           <Route path="applications/:id" element={<ApplicationPage />} />
           <Route path="document-desk" element={<DocumentDeskPage />} />
           <Route path="customers" element={<CustomersPage />} />
+          <Route path="customers/:customerKey" element={<CustomersPage />} />
           <Route path="master-data" element={<MasterDataPage />} />
           <Route path="workflows" element={<WorkflowPage />} />
           <Route path="workflow-pipeline" element={<Navigate to="/crm-dashboard/workflows" replace />} />

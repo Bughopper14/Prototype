@@ -59,6 +59,7 @@ export function DocumentInspectModal({
   const [previewError, setPreviewError] = useState(false);
   const [zoom, setZoom] = useState(100);
   const [pageNum, setPageNum] = useState(1);
+  const [jumpSeq, setJumpSeq] = useState(0);
   const [numPages, setNumPages] = useState(0);
   const [rotation, setRotation] = useState(0);
 
@@ -76,6 +77,7 @@ export function DocumentInspectModal({
 
   useEffect(() => {
     setPageNum(1);
+    setJumpSeq(0);
     setNumPages(0);
     setRotation(0);
     setZoom(100);
@@ -249,31 +251,6 @@ export function DocumentInspectModal({
           <div className="doc-inspect-preview-pane">
             <div className="doc-inspect-preview-toolbar">
               <div style={{display: 'flex', alignItems: 'center', gap: 10, minWidth: 0}}>
-                {isPdf && numPages > 0 && (
-                  <div className="doc-inspect-pager">
-                    <button
-                      type="button"
-                      className="doc-inspect-pager-btn"
-                      disabled={pageNum <= 1}
-                      onClick={() => setPageNum(p => Math.max(1, p - 1))}
-                      title="Previous page"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <span className="doc-inspect-pager-text">
-                      Page {pageNum} of {numPages}
-                    </span>
-                    <button
-                      type="button"
-                      className="doc-inspect-pager-btn"
-                      disabled={pageNum >= numPages}
-                      onClick={() => setPageNum(p => Math.min(numPages, p + 1))}
-                      title="Next page"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-                )}
                 <span style={{fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
                   {activeFile?.fileName || 'No file'}
                 </span>
@@ -333,9 +310,11 @@ export function DocumentInspectModal({
                   <PdfPageCanvas
                     url={previewUrl}
                     pageNum={pageNum}
+                    jumpSeq={jumpSeq}
                     zoom={zoom}
                     rotation={rotation}
                     onNumPages={setNumPages}
+                    onVisiblePageChange={setPageNum}
                     onError={() => setPreviewError(true)}
                   />
                 ) : (

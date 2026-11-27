@@ -85,7 +85,9 @@ export default function InboxPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [banner, setBanner] = useState<{type: 'success' | 'error'; message: string} | null>(null);
-  const [stageChecks, setStageChecks] = useState<Record<string, {canSubmit: boolean; missing: string[]; loading: boolean}>>({});
+  const [stageChecks, setStageChecks] = useState<
+    Record<string, {canSubmit: boolean; missing: (string | {target?: string; label?: string; detail?: string})[]; loading: boolean}>
+  >({});
   const [remarksByKey, setRemarksByKey] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pendingChecklistRef = useRef<{appId: string; checklistId: string; documentCode: string} | null>(null);
@@ -163,11 +165,12 @@ export default function InboxPage() {
       setStageChecks(prev => ({...prev, [key]: {canSubmit: false, missing: [], loading: true}}));
       api(`/applications/${selectedApp.id}/stages/${encodeURIComponent(st.code)}/check`)
         .then(res => {
+          const missingList = Array.isArray(res?.missing) ? res.missing : [];
           setStageChecks(prev => ({
             ...prev,
             [key]: {
-              canSubmit: !!res?.canSubmit,
-              missing: Array.isArray(res?.missing) ? res.missing : [],
+              canSubmit: res?.canSubmit !== undefined ? !!res.canSubmit : missingList.length === 0,
+              missing: missingList,
               loading: false,
             },
           }));
@@ -879,9 +882,15 @@ export default function InboxPage() {
                               <div className="inbox-missing-box">
                                 <strong>Complete these items before submitting:</strong>
                                 <ul>
-                                  {check.missing.map((m, idx) => (
-                                    <li key={idx}>{m}</li>
-                                  ))}
+                                  {check.missing.map((m, idx) => {
+                                    const text =
+                                      typeof m === 'string'
+                                        ? m
+                                        : m?.detail
+                                          ? `${m.label || m.target || 'Item'} — ${m.detail}`
+                                          : m?.label || m?.target || '';
+                                    return <li key={idx}>{text}</li>;
+                                  })}
                                 </ul>
                               </div>
                             )}
