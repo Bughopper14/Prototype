@@ -106,6 +106,12 @@ export class DocumentsController {
       appNumber = appRows[0]?.application_number || id;
     }
 
+    // For FAP uploads, verify it is an actual FAP form before saving to storage/DB (also reuses the OCR result so it is scanned only once).
+    let preExtractedFap: Record<string, any> | null = null;
+    if (checklistCode === FAP_DOCUMENT_CODE || jenisDoc === FAP_DOCUMENT_CODE) {
+      preExtractedFap = await this.comparisons.validateFapUpload(file.originalname, file.buffer);
+    }
+
     // ONE copy, under the folder of the application, named <JENIS>_<application number>_<NNN>; the name the user uploaded is kept in the database only, never shown.
     const stored = await this.storage.saveDocument(appNumber, jenisDoc, documentExtension(file.originalname, file.mimetype), file.buffer);
     const fileName = stored.fileName;
@@ -140,9 +146,9 @@ export class DocumentsController {
 
     let fapComparison: unknown = null;
     if (saved.documentCode === FAP_DOCUMENT_CODE) {
-      // Give the OCR comparison a few seconds, otherwise let it finish in the background.
+      // Give the OCR comparison a few seconds (reuses preExtractedFap when already validated above).
       fapComparison = await Promise.race([
-        this.comparisons.run(id, req.actor),
+        this.comparisons.run(id, req.actor, undefined, preExtractedFap),
         new Promise(resolve => setTimeout(() => resolve({isFap: true, status: 'processing', diffs: []}), 6000)),
       ]).catch(() => ({isFap: true, status: 'processing', diffs: []}));
     }

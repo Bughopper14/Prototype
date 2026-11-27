@@ -59,8 +59,24 @@ export class FapComparisonService {
     return {file, current};
   }
 
+  /**
+   * Validates an uploaded FAP file in memory before storing it.
+   * Rejects with HTTP 422 if the document does not match the standard FAP form template;
+   * otherwise returns the extracted OCR data so the caller can reuse it without scanning twice.
+   */
+  async validateFapUpload(filename: string, buffer: Buffer): Promise<Record<string, any> | null> {
+    const result = await this.worker.runBuffer(filename, buffer, 'fap', 60_000);
+    if (result?.status === 'wrong_document') {
+      throw new Problem(
+        422,
+        result.error || 'Dokumen yang diunggah bukan formulir FAP (Financing Application Form). Silakan unggah dokumen FAP yang benar.',
+      );
+    }
+    return result?.data || {};
+  }
+
   /** Runs the OCR of a FAP file (the current one unless `fileId` is given; once per file at a time) and stores the differences. */
-  async run(id: string, actor?: Actor, fileId?: string) {
+  async run(id: string, actor?: Actor, fileId?: string, preExtracted?: Record<string, any> | null) {
     const {file, current: currentFile} = await this.fapFile(id, fileId);
     if (!file) return null;
     const isCurrent = file.id === currentFile?.id;
@@ -69,19 +85,30 @@ export class FapComparisonService {
     if (busy) return busy;
     const task = (async () => {
       try {
-        const result = await this.worker.run(
-          this.storage.absolutePath(file.storagePath),
-          'fap',
-          120000,
-        );
+        let extractedData = preExtracted;
+        if (!extractedData) {
+          const result = await this.worker.run(
+            this.storage.absolutePath(file.storagePath),
+            'fap',
+            120000,
+          );
+          if (result?.status === 'wrong_document') {
+            throw new Problem(
+              422,
+              result.error || 'Dokumen ini bukan formulir FAP (Financing Application Form).',
+            );
+          }
+          extractedData = result.data || {};
+        }
         // The review of this file was closed while the OCR ran (approved / dismissed): the decision stands.
         const current = await this.ocr.read(id, file.id);
         if (current && FINAL_COMPARISON.includes(current.status)) return {...current, isCurrent};
         const application = await this.withPrintedNames(await this.applications.detail(id, actor));
-        const diffs = computeFapDiffs(application, result.data || {}, await this.ruleLookup()).map(d => ({...d, section: d.section || 'FAP'}));
+        const diffs = computeFapDiffs(application, extractedData, await this.ruleLookup()).map(d => ({...d, section: d.section || 'FAP'}));
         await this.ocr.saveResult(id, file.id, diffs, actor?.username || null);
         return {...(await this.ocr.read(id, file.id)), isCurrent};
       } catch (err) {
+        if (err instanceof Problem) throw err;
         console.warn('FAP OCR comparison error:', err);
         return null;
       }

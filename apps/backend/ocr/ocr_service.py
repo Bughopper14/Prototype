@@ -261,7 +261,8 @@ def process_document(file_path: Optional[str], doc_type: str = "auto", data: Opt
 
     doc_type = (doc_type or "auto").strip().lower()
 
-    # For FAP forms, align to the master template and crop each cell ROI before OCR (falls back cleanly if alignment fails).
+    # For FAP forms, align to the master template and read each ROI cell.
+    # If alignment fails, reject cleanly as wrong_document (not a standard FAP form).
     if doc_type == "fap":
         try:
             aligned = extract_fap_aligned(path, data=data, filename=filename)
@@ -275,7 +276,16 @@ def process_document(file_path: Optional[str], doc_type: str = "auto", data: Opt
                     "data": fap_data,
                 }
         except Exception as error:
-            _log(f"FAP template alignment fallback: {error}")
+            _log(f"FAP template alignment error: {error}")
+        return {
+            "status": "wrong_document",
+            "doc_type": "fap",
+            "type_mismatch": "not_fap",
+            "filename": filename,
+            "page_count": 0,
+            "error": "Dokumen yang diunggah bukan formulir FAP (Financing Application Form). Silakan unggah dokumen FAP yang benar.",
+            "data": {},
+        }
 
     boxes: Boxes = []
     page_count = 1
