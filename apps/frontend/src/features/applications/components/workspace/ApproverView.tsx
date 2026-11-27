@@ -133,21 +133,23 @@ export function ApproverView() {
   const stageName = activeTab?.name || 'FAP';
   const roundNo = heroRound?.roundNo || 1;
 
+  const stageLabelUp = /\bstage\b/i.test(stageName) ? stageName.toUpperCase() : `${stageName.toUpperCase()} STAGE`;
+  const stageLabelTitle = /\bstage\b/i.test(stageName) ? stageName : `${stageName} stage`;
   const heroEyebrow = heroRound
-    ? `${stageName.toUpperCase()} STAGE APPROVAL · ROUND ${roundNo}`
-    : `${stageName.toUpperCase()} STAGE APPROVAL`;
+    ? `${stageLabelUp} APPROVAL · ROUND ${roundNo}`
+    : `${stageLabelUp} APPROVAL`;
 
   const heroTitle = !heroRound
-    ? `${stageName} stage — not submitted yet`
+    ? `${stageLabelTitle} — not submitted yet`
     : myHeroStep
       ? `Waiting on you — ${whoOf(myHeroStep)}`
       : heroAllApproved
-        ? `${stageName} stage approved`
+        ? `${stageLabelTitle} approved`
         : heroHasRejected
-          ? `${stageName} stage returned`
+          ? `${stageLabelTitle} returned`
           : heroPendingWho.length > 0
             ? `In review — waiting on ${heroPendingWho.join(' & ')}`
-            : `${stageName} stage in review`;
+            : `${stageLabelTitle} in review`;
 
   const heroSubtitle = !heroRound
     ? activeTab?.st?.blockedReason || 'Approval starts automatically once this stage is submitted.'
@@ -239,6 +241,26 @@ export function ApproverView() {
               <div className={`r1-eyebrow${heroAllApproved ? ' green' : heroRound ? ' blue' : ''}`}>{heroEyebrow}</div>
               <h2>{heroTitle}</h2>
               <p>{heroSubtitle}</p>
+              {heroRound?.locked && !myHeroStep && !heroAllApproved && (
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    marginTop: 8,
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    fontSize: 12,
+                    color: '#92400e',
+                    fontWeight: 600,
+                  }}
+                >
+                  <Lock size={13} />
+                  <span>{heroRound.lockedBy || 1} item(s) below must be approved first before this stage can be decided.</span>
+                </div>
+              )}
             </div>
             {hasEarlierRounds && (
               <button type="button" className="r1-link-btn" onClick={jumpToHistory}>
@@ -384,7 +406,7 @@ export function ApproverView() {
 
                   <div className="r1-before-row">
                     <span className="r1-before-left">
-                      {pendingDeeds.length === 0 ? (
+                      {pendingDeeds.length === 0 && (deedScopes.length > 0 || deeds.length === 0 || deeds.some(d => d.approvalStatus === 'APPROVED')) ? (
                         <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
                           <Check size={11} strokeWidth={3} />
                         </span>
@@ -396,11 +418,13 @@ export function ApproverView() {
                       <span>Legal deeds</span>
                     </span>
                     <span className="r1-before-right">
-                      {pendingDeeds.length === 0
-                        ? deedScopes.length > 0
+                      {pendingDeeds.length > 0
+                        ? `${pendingDeeds.length} still in review`
+                        : deedScopes.length > 0
                           ? 'All approved'
-                          : 'None required'
-                        : `${pendingDeeds.length} still in review`}
+                          : deeds.length > 0 && !deeds.some(d => d.approvalStatus === 'APPROVED')
+                            ? 'Not submitted yet'
+                            : 'None required'}
                     </span>
                   </div>
 
@@ -520,19 +544,22 @@ export function ApproverView() {
 
               const layers = layersOf(sc.steps);
               const allApproved = sc.steps.length > 0 && sc.steps.every(s => s.status === 'APPROVED');
+              const hasReopened = sc.steps.some(s => s.reopened);
               const hasRejected = sc.steps.some(s => shownStatus(s) === 'REJECTED');
               const pendingWho = [...new Set(sc.steps.filter(s => s.status === 'PENDING').map(whoOf))];
               const myItemStep = sc.steps.find(s => s.canAct);
 
-              const statusTone = allApproved ? 'green' : hasRejected ? 'red' : pendingWho.length > 0 ? 'amber' : 'gray';
-              const statusTitle = allApproved ? 'Approved' : hasRejected ? 'Returned' : myItemStep ? 'Waiting on you' : 'In review';
+              const statusTone = allApproved ? 'green' : hasRejected ? 'red' : hasReopened || pendingWho.length > 0 ? 'amber' : 'gray';
+              const statusTitle = allApproved ? 'Approved' : hasRejected ? 'Returned' : hasReopened ? 'Opened again' : myItemStep ? 'Waiting on you' : 'In review';
               const statusSub = allApproved
                 ? 'All approvals complete'
                 : hasRejected
                   ? 'Returned for revision'
-                  : pendingWho.length > 0
-                    ? `Waiting on ${pendingWho.join(' & ')}`
-                    : 'Pending previous step';
+                  : hasReopened
+                    ? 'Submit document for approval again'
+                    : pendingWho.length > 0
+                      ? `Waiting on ${pendingWho.join(' & ')}`
+                      : 'Pending previous step';
 
               return (
                 <div

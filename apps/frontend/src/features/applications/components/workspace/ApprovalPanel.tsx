@@ -38,7 +38,8 @@ function formatStageTitle(name: string): string {
 }
 
 export function ApprovalPanel() {
-  const {a, draft, user, isAdminUser, activeStage, setActiveStage, setTab, setError, setSubmitStageCode} = useWorkspace();
+  const {a, draft, user, isAdminUser, activeStage, setActiveStage, setTab, tabOrder, setError, setSubmitStageCode} = useWorkspace();
+  const canViewApprovals = tabOrder.includes(10);
 
   const stages: StageProgress[] = useMemo(() => (a.stageProgress || []) as StageProgress[], [a.stageProgress]);
   const wfStages: any[] = useMemo(() => a.workflow?.stages || [], [a.workflow?.stages]);
@@ -277,14 +278,14 @@ export function ApprovalPanel() {
                 <h2>Submit {stageTitle}</h2>
                 <p>
                   {currentStage.completed
-                    ? `All approvals for the ${currentStage.name} stage are complete.`
+                    ? `All approvals for the ${stageTitle} are complete.`
                     : currentStage.submitted
-                      ? `The ${currentStage.name} stage has been submitted and is locked while being reviewed.`
+                      ? `The ${stageTitle} has been submitted and is locked while being reviewed.`
                       : !currentStage.canSubmit
                         ? currentStage.blockedReason || `This stage cannot be submitted yet.`
                         : missingCount > 0
-                          ? `Finish these items, then send the ${currentStage.name} stage for approval. The stage is locked while it is being reviewed.`
-                          : `Everything needed is complete. Send the ${currentStage.name} stage for approval.`}
+                          ? `Finish these items, then send the ${stageTitle} for approval. The stage is locked while it is being reviewed.`
+                          : `Everything needed is complete. Send the ${stageTitle} for approval.`}
                 </p>
               </div>
               {currentStage.completed ? (
@@ -293,6 +294,8 @@ export function ApprovalPanel() {
                 <span className="r1-pill blue">In approval</span>
               ) : !currentStage.canSubmit ? (
                 <span className="r1-pill gray">Locked</span>
+              ) : loadingCheck ? (
+                <span className="r1-pill gray">Checking…</span>
               ) : missingCount > 0 ? (
                 <span className="r1-pill amber">
                   {missingCount} {missingCount === 1 ? 'item' : 'items'} left
@@ -389,18 +392,22 @@ export function ApprovalPanel() {
                 <span className="r1-submit-footer-note" style={{color: '#15803d', display: 'inline-flex', alignItems: 'center', gap: 6}}>
                   <CheckCircle2 size={15} /> {stageTitle} approved
                 </span>
-                <button type="button" className="r1-btn-outline" onClick={() => setTab(10)}>
-                  View Approvals <ArrowRight size={14} />
-                </button>
+                {canViewApprovals && (
+                  <button type="button" className="r1-btn-outline" onClick={() => setTab(10)}>
+                    View Approvals <ArrowRight size={14} />
+                  </button>
+                )}
               </>
             ) : currentStage.submitted ? (
               <>
                 <span className="r1-submit-footer-note" style={{color: '#1d4ed8', display: 'inline-flex', alignItems: 'center', gap: 6}}>
                   <Clock size={15} /> Waiting for approvers
                 </span>
-                <button type="button" className="r1-btn-navy" onClick={() => setTab(10)}>
-                  View Approvals <ArrowRight size={14} />
-                </button>
+                {canViewApprovals && (
+                  <button type="button" className="r1-btn-navy" onClick={() => setTab(10)}>
+                    View Approvals <ArrowRight size={14} />
+                  </button>
+                )}
               </>
             ) : (
               <>

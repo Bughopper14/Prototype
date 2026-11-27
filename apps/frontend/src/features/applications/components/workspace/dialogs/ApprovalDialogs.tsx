@@ -203,12 +203,13 @@ export function ApprovalDecisionDialog() {
 
   const roundNo = activeRound?.roundNo || 1;
   const picLabel = a.picName || a.createdByName || 'Marketing';
+  const stageLabelClean = /\bstage\b/i.test(scopeLabel) ? scopeLabel : `${scopeLabel} stage`;
   const modalTitle = reject
     ? activeRound?.scope === 'STAGE'
-      ? `Reject the ${scopeLabel} stage?`
+      ? `Reject the ${stageLabelClean}?`
       : `Reject ${scopeLabel}?`
     : activeRound?.scope === 'STAGE'
-      ? `Approve the ${scopeLabel} stage?`
+      ? `Approve the ${stageLabelClean}?`
       : `Approve ${scopeLabel}?`;
 
   const modalSubtitle = reject
