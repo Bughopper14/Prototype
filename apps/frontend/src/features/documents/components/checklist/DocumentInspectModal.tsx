@@ -1,5 +1,6 @@
 import {PdfPageCanvas} from '@/features/documents/components/checklist/PdfPageCanvas';
 import {getShortRoleLabel} from '@/features/documents/components/checklist/DocumentApprovalCell';
+import {isHistoricalDocumentCode, isOcrOnlyDocumentCode} from '@/features/documents/lib/checklist/definitions';
 import {formatBytes} from '@/features/documents/lib/checklist/format-bytes';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 import {api} from '@/shared/lib/api';
@@ -11,12 +12,14 @@ import {
   Clock,
   Download,
   FileText,
+  History,
   Minus,
   Plus,
   RefreshCw,
   RotateCcw,
   RotateCw,
   Send,
+  Trash2,
   X,
 } from 'lucide-react';
 import {useCallback, useEffect, useMemo, useState} from 'react';
@@ -37,6 +40,8 @@ export function DocumentInspectModal({
   application,
   onClose,
   onUpload,
+  onDelete,
+  deletingFileId,
   onRequestApproval,
   onDownloadAll,
   approvalBusy,
@@ -45,15 +50,19 @@ export function DocumentInspectModal({
   application?: any;
   onClose: () => void;
   onUpload: (code: string, chkId?: string) => void;
+  onDelete?: (fileId: string, code: string) => Promise<void> | void;
+  deletingFileId?: string | null;
   onRequestApproval?: (row: ChecklistRow) => Promise<void> | void;
   onDownloadAll?: () => void;
   approvalBusy?: string | null;
 }) {
   const files: any[] = row.files || [];
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(() => {
-    const cur = files.find(f => f.isCurrent) || files[files.length - 1];
-    return cur?.id || null;
-  });
+  const currentFile = useMemo(
+    () => files.find(f => f.isCurrent) || files[files.length - 1] || null,
+    [files],
+  );
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(() => currentFile?.id || null);
+  const [showHistory, setShowHistory] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState(false);
@@ -142,8 +151,14 @@ export function DocumentInspectModal({
   const isRejected = !approval?.reopened && (approval?.state === 'REJECTED' || steps.some((s: any) => s.status === 'REJECTED' && !s.reopened));
   const isApproved = !isRejected && !approval?.reopened && (approval?.state === 'APPROVED' || (totalSteps > 0 && approvedSteps === totalSteps));
   const isInReview = !isApproved && !isRejected && approval?.state === 'IN_APPROVAL';
+  const isOcrOnly = isOcrOnlyDocumentCode(row.code);
+  const isHistoricalDoc = isHistoricalDocumentCode(row.code);
+  const visibleFiles = useMemo(() => {
+    if (isHistoricalDoc && !showHistory && currentFile) return [currentFile];
+    return files;
+  }, [isHistoricalDoc, showHistory, currentFile, files]);
   const canSubmit = !!onRequestApproval && !!approval?.canRequest && !isInReview;
-  const canReplace = !isInReview;
+  const canReplace = !isInReview && !isOcrOnly;
   const isSubmitting = approvalBusy === row.chkId;
 
   const statusText = isApproved
@@ -214,8 +229,21 @@ export function DocumentInspectModal({
         <div className="doc-inspect-body">
           {/* Left: Files */}
           <div className="doc-inspect-files-pane">
-            <div className="doc-inspect-section-label">FILES ({files.length})</div>
-            {files.map((f: any) => {
+            <div className="doc-inspect-files-head">
+              <div className="doc-inspect-section-label">FILES ({visibleFiles.length})</div>
+              {isHistoricalDoc && files.length > 0 && (
+                <button
+                  type="button"
+                  className={`doc-inspect-history-btn ${showHistory ? 'is-active' : ''}`}
+                  onClick={() => setShowHistory(h => !h)}
+                  title={showHistory ? 'Show latest file only' : `Show all ${files.length} historical files`}
+                >
+                  <History size={12} />
+                  <span>{showHistory ? 'Latest' : `History (${files.length})`}</span>
+                </button>
+              )}
+            </div>
+            {visibleFiles.map((f: any) => {
               const fPdf = f.mimeType === 'application/pdf' || String(f.fileName || '').toLowerCase().endsWith('.pdf');
               const active = activeFile?.id === f.id;
               return (
@@ -235,7 +263,7 @@ export function DocumentInspectModal({
                 </button>
               );
             })}
-            {canReplace && (
+            {canReplace ? (
               <button
                 type="button"
                 className="doc-inspect-add-btn"
@@ -244,7 +272,11 @@ export function DocumentInspectModal({
                 <Plus size={14} />
                 <span>Add file</span>
               </button>
-            )}
+            ) : isOcrOnly ? (
+              <div className="doc-inspect-ocr-note">
+                Upload &amp; replace via OCR section
+              </div>
+            ) : null}
           </div>
 
           {/* Center: Preview */}
@@ -361,13 +393,26 @@ export function DocumentInspectModal({
                       {activeFile.createdAt ? ` · ${formatShortDate(activeFile.createdAt)}` : ''}
                     </div>
                   )}
-                  <button
-                    type="button"
-                    className="doc-inspect-dl-link"
-                    onClick={() => handleDownloadFile(activeFile.id)}
-                  >
-                    Download this file
-                  </button>
+                  <div className="doc-inspect-file-actions">
+                    <button
+                      type="button"
+                      className="doc-inspect-dl-link"
+                      onClick={() => handleDownloadFile(activeFile.id)}
+                    >
+                      Download this file
+                    </button>
+                    {onDelete && !isInReview && (
+                      <button
+                        type="button"
+                        className="doc-inspect-remove-link"
+                        disabled={deletingFileId === activeFile.id}
+                        onClick={() => onDelete(activeFile.id, row.code)}
+                      >
+                        <Trash2 size={12} />
+                        <span>{deletingFileId === activeFile.id ? 'Removing...' : 'Remove'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

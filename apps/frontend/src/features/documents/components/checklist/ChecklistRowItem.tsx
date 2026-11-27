@@ -1,5 +1,6 @@
 /** One row of the checklist table matching the clean stage-tabbed mockup. */
 import {getShortRoleLabel} from '@/features/documents/components/checklist/DocumentApprovalCell';
+import {isOcrOnlyDocumentCode} from '@/features/documents/lib/checklist/definitions';
 import {formatBytes} from '@/features/documents/lib/checklist/format-bytes';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
 import {Check, ChevronRight, Clock, Eye, MoreHorizontal, Paperclip, Upload, X} from 'lucide-react';
@@ -58,6 +59,7 @@ export function ChecklistRowItem({
       approval?.state === 'APPROVED' ||
       (totalSteps > 0 && approvedSteps === totalSteps));
   const isInReview = !isApproved && !isRejected && approval?.state === 'IN_APPROVAL';
+  const isOcrOnly = isOcrOnlyDocumentCode(row.code);
   const canSubmit = hasFile && !!onRequestApproval && !!approval?.canRequest && !isInReview;
   const isLocked = isInReview;
 
@@ -107,7 +109,9 @@ export function ChecklistRowItem({
           : '#2563eb';
 
   const statusSub = !hasFile
-    ? 'Upload a file to start'
+    ? isOcrOnly
+      ? 'Upload via OCR section'
+      : 'Upload a file to start'
     : isApproved
       ? `All ${Math.max(1, totalSteps)} approved`
       : isInReview
@@ -216,15 +220,31 @@ export function ChecklistRowItem({
       <td>
         <div className="doc-chk-actions-cell">
           {!hasFile ? (
-            <button
-              type="button"
-              className="doc-inspect-btn"
-              disabled={isUploading || isLocked}
-              onClick={() => onUpload(row.code, row.chkId)}
-            >
-              <Upload size={13} />
-              <span>{isUploading ? 'Uploading...' : 'Upload'}</span>
-            </button>
+            isOcrOnly ? (
+              <span
+                className="doc-inspect-btn"
+                style={{
+                  opacity: 0.65,
+                  cursor: 'not-allowed',
+                  background: '#f8fafc',
+                  color: '#64748b',
+                  borderColor: '#e2e8f0',
+                }}
+                title="Upload melalui section OCR (FAP / Stakeholder)"
+              >
+                <span>OCR only</span>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="doc-inspect-btn"
+                disabled={isUploading || isLocked}
+                onClick={() => onUpload(row.code, row.chkId)}
+              >
+                <Upload size={13} />
+                <span>{isUploading ? 'Uploading...' : 'Upload'}</span>
+              </button>
+            )
           ) : canSubmit ? (
             <button
               type="button"
@@ -268,7 +288,7 @@ export function ChecklistRowItem({
                   Inspect &amp; preview
                 </button>
               )}
-              {!isLocked && (
+              {!isLocked && !isOcrOnly && (
                 <button
                   type="button"
                   className="doc-chk-menu-item"

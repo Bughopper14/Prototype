@@ -1,6 +1,7 @@
 import {api} from '@/shared/lib/api';
 import {hasAuthority} from '@/shared/lib/auth';
 import {date} from '@/shared/lib/format';
+import {label} from '@liugong/shared';
 import {
   AlertCircle,
   Building2,
@@ -60,7 +61,7 @@ export interface CustomerDetailViewProps {
   customer: any;
   user: any;
   onBack: () => void;
-  onOpenApplication: (id: string) => void;
+  onOpenApplication: (id: string, tab?: number) => void;
   onStartNewApplication?: (customerId?: string) => void;
 }
 
@@ -75,6 +76,7 @@ export function CustomerDetailView({
   const [popover, setPopover] = useState<'approved' | 'progress' | 'pic' | null>(null);
   const [detailsByAppId, setDetailsByAppId] = useState<Record<string, any>>({});
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [companyAppId, setCompanyAppId] = useState<string>('');
   const kpiRef = useRef<HTMLDivElement>(null);
 
   const apps: any[] = customer.custApps || [];
@@ -85,6 +87,7 @@ export function CustomerDetailView({
     setSubTab('overview');
     setPopover(null);
     setDetailsByAppId({});
+    setCompanyAppId(latestApp?.id || '');
     if (!apps.length) return;
     let alive = true;
     setLoadingDocs(true);
@@ -171,12 +174,92 @@ export function CustomerDetailView({
     () => apps.reduce((sum, a) => sum + ((detailsByAppId[a.id]?.documentChecks || []).length), 0),
     [apps, detailsByAppId],
   );
-  const address = custProfile.companyAddress || custProfile.address || '—';
-  const phone = custProfile.companyPhone || custProfile.phone || '—';
-  const website = custProfile.website || '—';
-  const mainBusiness = custProfile.mainBusiness || custProfile.industrySegment || '—';
+  const companyFieldsFor = (appId: string) => {
+    const d = detailsByAppId[appId];
+    const src = d ? [d, d.customer] : [customer];
+    const pick = (...getters: ((s: any) => any)[]) => {
+      for (const s of src) {
+        if (!s) continue;
+        for (const g of getters) {
+          const v = g(s);
+          if (v !== null && v !== undefined && String(v).trim() !== '') return String(v).trim();
+        }
+      }
+      return '';
+    };
+    return {
+      legalName: pick(s => s.companyName) || customer.companyName || '—',
+      business:
+        pick(
+          s => (s.industrySegment ? label(s.industrySegment) : ''),
+          s => (s.businessRole ? label(s.businessRole) : ''),
+          s => s.mainBusiness,
+        ) || '—',
+      customerType: pick(s => (s.companyType ? label(s.companyType) : '')) || customer.typeLabel || '—',
+      address: pick(s => s.companyFullAddress, s => s.companyAddress, s => s.address) || '—',
+      phone: pick(s => s.phoneFax, s => s.companyPhone, s => s.phone) || '—',
+      website: pick(s => s.website) || '—',
+    };
+  };
+
+  const activeCompanyAppId = companyAppId || latestApp?.id || '';
+  const selectedCompanyFields = companyFieldsFor(activeCompanyAppId);
+  const changedFieldKeys = useMemo(() => {
+    if (apps.length < 2) return new Set<string>();
+    const keys = ['legalName', 'business', 'customerType', 'address', 'phone', 'website'] as const;
+    const changed = new Set<string>();
+    const all = apps.filter(a => detailsByAppId[a.id]).map(a => companyFieldsFor(a.id));
+    if (all.length < 2) return changed;
+    for (const k of keys) {
+      const vals = new Set(all.map(item => item[k]));
+      if (vals.size > 1) changed.add(k);
+    }
+    return changed;
+  }, [apps, detailsByAppId]);
+
+  const address = selectedCompanyFields.address;
+  const phone = selectedCompanyFields.phone;
+  const website = selectedCompanyFields.website;
+  const mainBusiness = selectedCompanyFields.business;
   const docChecks: any[] = detailApp?.documentChecks || [];
-  const stakeholders: any[] = detailApp?.stakeholders || [];
+  const keyContacts = useMemo(() => {
+    const list: {id: string; name: string; role: string; contact: string; appNo?: string}[] = [];
+    const seen = new Set<string>();
+
+    for (const a of apps) {
+      const pic = detailsByAppId[a.id]?.pic;
+      const picName = String(pic?.picName || '').trim();
+      if (!picName) continue;
+      const contactStr = pic?.phone || pic?.email || '—';
+      const dedupeKey = `${picName.toLowerCase()}|${contactStr}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      list.push({
+        id: pic.id || `pic-${a.id}`,
+        name: picName,
+        role: pic.position ? label(pic.position) : 'Primary Contact (PIC)',
+        contact: contactStr,
+        appNo: a.fapNumber || a.application_number || a.applicationNumber || a.id,
+      });
+    }
+
+    for (const s of detailApp?.stakeholders || []) {
+      const fullName = [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ') || s.name || '';
+      if (!fullName) continue;
+      const contactStr = s.phone || s.email || '—';
+      const dedupeKey = `${fullName.toLowerCase()}|${contactStr}`;
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      list.push({
+        id: s.id || `sh-${list.length}`,
+        name: fullName,
+        role: s.position || s.role || 'Stakeholder',
+        contact: contactStr,
+      });
+    }
+
+    return list;
+  }, [apps, detailsByAppId, detailApp]);
   const approvalLogs: any[] = detailApp?.approvalLogs || [];
 
   const segLower = (customer.typeLabel || '').toLowerCase();
@@ -393,7 +476,7 @@ export function CustomerDetailView({
             ['overview', 'Overview'],
             ['applications', `Applications (${apps.length})`],
             ['documents', `Documents (${totalDocsCount || docChecks.length})`],
-            ['contacts', `Contacts (${stakeholders.length})`],
+            ['contacts', `Contacts (${keyContacts.length})`],
             ['activity', 'Activity'],
           ] as const
         ).map(([key, lbl]) => (
@@ -414,22 +497,31 @@ export function CustomerDetailView({
           <div className="cdv-col">
             <div className="cdv-card">
               <div className="cdv-card-head">
-                <h3 className="cdv-card-title">Applications</h3>
+                <h3 className="cdv-card-title">Applications · {apps.length}</h3>
                 <button type="button" className="cdv-link-btn" onClick={() => setSubTab('applications')}>
-                  See all {apps.length} <ChevronRight size={13} />
+                  Open Applications tab <ChevronRight size={13} />
                 </button>
               </div>
-              <div className="cdv-app-list">
-                {apps.slice(0, 3).map(a => {
+              <div className="cdv-app-rows">
+                {apps.map(a => {
                   const st = statusMeta(a);
                   const appNo = a.fapNumber || a.application_number || a.applicationNumber || a.id;
                   const amt = getAppAmount(a);
                   const created = a.application_date || a.created_at || a.createdAt;
+                  const d = detailsByAppId[a.id];
+                  const stageProgress: any[] = d?.stageProgress || [];
                   const stageLabel = a.stageName || a.stage || 'FAP';
+                  const docsCount = (d?.documentChecks || []).length;
+                  const uploadedDocs = (d?.documentChecks || []).filter((x: any) => (x.files || []).length > 0).length;
+
                   return (
-                    <div key={a.id} className="cdv-app-item">
-                      <div>
-                        <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
+                    <div
+                      key={a.id}
+                      className="cdv-app-row-item"
+                      onClick={() => onOpenApplication(a.application_number || a.id)}
+                    >
+                      <div style={{minWidth: 0}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap'}}>
                           <strong style={{fontSize: 13.5, color: '#0f172a'}}>{appNo}</strong>
                           <span className={`cust-status-pill ${st.tone}`}>
                             <span className="cust-status-dot" />
@@ -441,15 +533,29 @@ export function CustomerDetailView({
                           {created ? ` · Created ${date(created)}` : ''}
                         </div>
                       </div>
-                      <div className="cdv-app-right">
-                        <span className="cdv-stage-dots">{stageLabel}</span>
-                        <button
-                          type="button"
-                          className="cdv-link-btn"
-                          onClick={() => onOpenApplication(a.application_number || a.id)}
-                        >
-                          Open application <ChevronRight size={13} />
-                        </button>
+
+                      <div style={{display: 'flex', alignItems: 'center', gap: 12}}>
+                        <div className="cdv-app-right">
+                          {stageProgress.length > 0 ? (
+                            <div className="cdv-stage-dots">
+                              {stageProgress.map((sp: any) => (
+                                <span
+                                  key={sp.stage}
+                                  className={`cdv-stage-chip ${sp.completed ? 'is-done' : sp.submitted ? 'is-wait' : sp.canSubmit ? 'is-active' : ''}`}
+                                >
+                                  <span className="cdv-stage-chip-dot" />
+                                  {sp.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="cdv-stage-dots">{stageLabel}</span>
+                          )}
+                          <span className="cdv-popover-sub">
+                            {docsCount > 0 ? `${stageLabel} · ${uploadedDocs} of ${docsCount} documents` : stageLabel}
+                          </span>
+                        </div>
+                        <ChevronRight size={15} color="#94a3b8" />
                       </div>
                     </div>
                   );
@@ -457,94 +563,75 @@ export function CustomerDetailView({
                 {apps.length === 0 && <div className="cdv-popover-sub">No applications yet.</div>}
               </div>
             </div>
-
-            <div className="cdv-card">
-              <div className="cdv-card-head">
-                <div>
-                  <h3 className="cdv-card-title">Documents on file</h3>
-                  {latestAppNo && (
-                    <div style={{fontSize: 11.5, color: '#64748b', marginTop: 2}}>
-                      From latest application: {latestAppNo}
-                    </div>
-                  )}
-                </div>
-                <button type="button" className="cdv-link-btn" onClick={() => setSubTab('documents')}>
-                  Open Documents <ChevronRight size={13} />
-                </button>
-              </div>
-              <div className="cdv-doc-list">
-                {docChecks.slice(0, 5).map((d: any) => {
-                  const hasFile = (d.files || []).length > 0;
-                  return (
-                    <div key={d.id} className="cdv-doc-row">
-                      <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
-                        {hasFile ? (
-                          <CheckCircle2 size={15} color="#16a34a" />
-                        ) : (
-                          <AlertCircle size={15} color="#d97706" />
-                        )}
-                        <span style={{fontWeight: 500, color: '#0f172a'}}>{d.documentName || d.documentCode}</span>
-                      </div>
-                      <span style={{color: hasFile ? '#64748b' : '#b45309', fontSize: 12}}>
-                        {hasFile ? `${d.files.length} file(s)` : 'Missing file'}
-                      </span>
-                    </div>
-                  );
-                })}
-                {docChecks.length === 0 && <div className="cdv-popover-sub">No documents loaded yet.</div>}
-              </div>
-            </div>
           </div>
 
           <div className="cdv-col">
             <div className="cdv-card">
-              <div className="cdv-card-head">
+              <div className="cdv-card-head" style={{marginBottom: 12}}>
                 <h3 className="cdv-card-title">Company details</h3>
               </div>
-              <dl className="cdv-dl">
-                <dt>Legal name</dt>
-                <dd>{customer.companyName}</dd>
-                <dt>Business</dt>
-                <dd>{mainBusiness}</dd>
-                <dt>Customer type</dt>
-                <dd>{customer.typeLabel || '—'}</dd>
-                <dt>Address</dt>
-                <dd>{address}</dd>
-                <dt>Phone</dt>
-                <dd>{phone}</dd>
-                <dt>Website</dt>
-                <dd>{website}</dd>
-              </dl>
-            </div>
 
-            <div className="cdv-card">
-              <div className="cdv-card-head">
-                <h3 className="cdv-card-title">Key contacts</h3>
-                <button type="button" className="cdv-link-btn" onClick={() => setSubTab('contacts')}>
-                  All {stakeholders.length} <ChevronRight size={13} />
-                </button>
-              </div>
-              <div className="cdv-contact-list">
-                {stakeholders.slice(0, 4).map((s: any, i: number) => {
-                  const fullName = [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ') || s.name || 'Contact';
-                  const initial = fullName.charAt(0).toUpperCase();
-                  return (
-                    <div key={s.id || i} className="cdv-contact-row">
-                      <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
-                        <span className="cdv-avatar">{initial}</span>
-                        <div>
-                          <div style={{fontWeight: 600, color: '#0f172a'}}>{fullName}</div>
-                          <div style={{fontSize: 11.5, color: '#64748b'}}>{s.position || s.role || 'Stakeholder'}</div>
-                        </div>
-                      </div>
-                      <span className="cust-mono" style={{fontSize: 12, color: '#64748b'}}>
-                        {s.phone || s.email || '—'}
-                      </span>
-                    </div>
-                  );
-                })}
-                {stakeholders.length === 0 && <div className="cdv-popover-sub">No contacts recorded yet.</div>}
-              </div>
+              {apps.length > 0 && (
+                <div className="cdv-as-written">
+                  <span className="cdv-as-written-lbl">As written in</span>
+                  <select
+                    className="cdv-as-written-select"
+                    value={activeCompanyAppId}
+                    onChange={e => setCompanyAppId(e.target.value)}
+                    aria-label="As written in application"
+                  >
+                    {apps.map((a, idx) => {
+                      const appNo = a.fapNumber || a.application_number || a.applicationNumber || a.id;
+                      const dt = a.application_date || a.created_at || a.createdAt;
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {appNo} {idx === 0 ? 'Latest · ' : '· '}
+                          {dt ? date(dt) : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
+              <dl className="cdv-dl cdv-dl-compact">
+                <dt>Legal name</dt>
+                <dd className="cdv-dd-row">
+                  <span>{selectedCompanyFields.legalName}</span>
+                  {changedFieldKeys.has('legalName') && <span className="cdv-changed-pill">Changed</span>}
+                </dd>
+                <dt>Business</dt>
+                <dd className="cdv-dd-row">
+                  <span>{mainBusiness}</span>
+                  {changedFieldKeys.has('business') && <span className="cdv-changed-pill">Changed</span>}
+                </dd>
+                <dt>Customer type</dt>
+                <dd className="cdv-dd-row">
+                  <span>{selectedCompanyFields.customerType}</span>
+                  {changedFieldKeys.has('customerType') && <span className="cdv-changed-pill">Changed</span>}
+                </dd>
+                <dt>Address</dt>
+                <dd className="cdv-dd-row">
+                  <span>{address}</span>
+                  {changedFieldKeys.has('address') && <span className="cdv-changed-pill">Changed</span>}
+                </dd>
+                <dt>Phone</dt>
+                <dd className="cdv-dd-row">
+                  <span>{phone}</span>
+                  {changedFieldKeys.has('phone') && <span className="cdv-changed-pill">Changed</span>}
+                </dd>
+                <dt>Website</dt>
+                <dd className="cdv-dd-row">
+                  <span>{website}</span>
+                  {changedFieldKeys.has('website') && <span className="cdv-changed-pill">Changed</span>}
+                </dd>
+              </dl>
+
+              {changedFieldKeys.size > 0 && (
+                <div className="cdv-diff-note">
+                  {changedFieldKeys.size} field{changedFieldKeys.size !== 1 ? 's' : ''} differ between applications
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -637,9 +724,9 @@ export function CustomerDetailView({
                     <button
                       type="button"
                       className="cdv-link-btn"
-                      onClick={() => onOpenApplication(a.application_number || a.id)}
+                      onClick={() => onOpenApplication(a.application_number || a.id, 9)}
                     >
-                      Open application <ChevronRight size={13} />
+                      Open documents <ChevronRight size={13} />
                     </button>
                   </div>
 
@@ -696,27 +783,27 @@ export function CustomerDetailView({
       {subTab === 'contacts' && (
         <div className="cdv-card">
           <div className="cdv-card-head">
-            <h3 className="cdv-card-title">Contacts & Stakeholders ({stakeholders.length})</h3>
+            <h3 className="cdv-card-title">Contacts & PIC ({keyContacts.length})</h3>
           </div>
           <div className="cdv-contact-list">
-            {stakeholders.map((s: any, i: number) => {
-              const fullName = [s.firstName, s.middleName, s.lastName].filter(Boolean).join(' ') || s.name || 'Contact';
-              return (
-                <div key={s.id || i} className="cdv-contact-row" style={{padding: '8px 0', borderBottom: '1px solid #f1f5f9'}}>
-                  <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
-                    <span className="cdv-avatar">{fullName.charAt(0).toUpperCase()}</span>
-                    <div>
-                      <div style={{fontWeight: 600, color: '#0f172a'}}>{fullName}</div>
-                      <div style={{fontSize: 11.5, color: '#64748b'}}>{s.position || s.role || 'Stakeholder'}</div>
+            {keyContacts.map(c => (
+              <div key={c.id} className="cdv-contact-row" style={{padding: '8px 0', borderBottom: '1px solid #f1f5f9'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: 10}}>
+                  <span className="cdv-avatar">{c.name.charAt(0).toUpperCase()}</span>
+                  <div>
+                    <div style={{fontWeight: 600, color: '#0f172a'}}>{c.name}</div>
+                    <div style={{fontSize: 11.5, color: '#64748b'}}>
+                      {c.role}
+                      {c.appNo ? ` · ${c.appNo}` : ''}
                     </div>
                   </div>
-                  <span className="cust-mono" style={{fontSize: 12.5, color: '#475569'}}>
-                    {s.phone || s.email || '—'}
-                  </span>
                 </div>
-              );
-            })}
-            {stakeholders.length === 0 && <div className="cdv-popover-sub">No contacts recorded yet.</div>}
+                <span className="cust-mono" style={{fontSize: 12.5, color: '#475569'}}>
+                  {c.contact}
+                </span>
+              </div>
+            ))}
+            {keyContacts.length === 0 && <div className="cdv-popover-sub">No contacts recorded yet.</div>}
           </div>
         </div>
       )}

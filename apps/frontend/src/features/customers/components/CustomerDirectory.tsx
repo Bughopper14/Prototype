@@ -45,7 +45,7 @@ export function CustomerDirectory({
   customers: any[];
   rows: any[];
   user: any;
-  open: (id: string) => void;
+  open: (id: string, tab?: number) => void;
   startNewApplication?: (customerId?: string) => void;
   notify: (msg: string) => void;
 }) {

@@ -259,6 +259,8 @@ export function ChecklistTable({
           application={application}
           onClose={() => setInspectingRowKey(null)}
           onUpload={onUpload}
+          onDelete={onDelete}
+          deletingFileId={deletingFileId}
           onRequestApproval={onRequestApproval}
           onDownloadAll={onDownloadAll}
           approvalBusy={approvalBusy}

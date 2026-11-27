@@ -1,23 +1,54 @@
-/** Pop-up that previews a document (PDF or image) with caching and download support. */
-import {useState} from 'react';
-import {Download, ExternalLink, Loader2, RotateCcw, X} from 'lucide-react';
+/** Pop-up that previews a document (PDF or image) using the same light PdfPageCanvas viewer as Document Checklist. */
+import {useCallback, useEffect, useState} from 'react';
+import {Download, ExternalLink, FileText, Loader2, Minus, Plus, RotateCcw, RotateCw, X} from 'lucide-react';
+import {PdfPageCanvas} from '@/features/documents/components/checklist/PdfPageCanvas';
 import {formatBytes} from '@/features/documents/lib/checklist/format-bytes';
 import type {PreviewState} from '@/features/documents/lib/checklist/types';
+import './DocumentInspectModal.css';
 
 export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState; onClose: () => void}) {
+  const [blobUrl, setBlobUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  const [zoom, setZoom] = useState(100);
+  const [pageNum, setPageNum] = useState(1);
+  const [jumpSeq, setJumpSeq] = useState(0);
+  const [rotation, setRotation] = useState(0);
 
-  const handleReload = () => {
+  const loadPreview = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
-    setReloadKey(k => k + 1);
-  };
+    try {
+      const res = await fetch(preview.url, {credentials: 'same-origin'});
+      if (!res.ok) throw new Error('Failed to load preview');
+      const blob = await res.blob();
+      const objUrl = URL.createObjectURL(blob);
+      setBlobUrl(prev => {
+        if (prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+        return objUrl;
+      });
+    } catch {
+      setBlobUrl(preview.url);
+    } finally {
+      setLoading(false);
+    }
+  }, [preview.url]);
 
-  const pdfUrl = preview.isPdf
-    ? (preview.url.includes('#') ? preview.url : `${preview.url}#navpanes=0&view=FitH`)
-    : preview.url;
+  useEffect(() => {
+    setPageNum(1);
+    setJumpSeq(0);
+    setRotation(0);
+    setZoom(100);
+    loadPreview();
+    return () => {
+      setBlobUrl(prev => {
+        if (prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+        return '';
+      });
+    };
+  }, [loadPreview]);
+
+  const effectiveUrl = blobUrl || preview.url;
 
   return (
     <div className="modal-scrim" onClick={() => onClose()}>
@@ -36,78 +67,91 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
               {preview.fileSize ? ` · ${formatBytes(preview.fileSize)}` : ''}
             </p>
           </div>
+          <button
+            type="button"
+            className="button small"
+            onClick={() => onClose()}
+            style={{padding: '6px 10px'}}
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        {/* Light Toolbar matching Document Checklist */}
+        <div className="doc-inspect-preview-toolbar">
+          <div style={{display: 'flex', alignItems: 'center', gap: 10, minWidth: 0}}>
+            <span style={{fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+              {preview.fileName || 'Document'}
+            </span>
+          </div>
           <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
+            <div className="doc-inspect-zoom-group">
+              <button
+                type="button"
+                className="doc-inspect-pager-btn"
+                onClick={() => setZoom(z => Math.max(50, z - 25))}
+                title="Zoom out"
+              >
+                <Minus size={12} />
+              </button>
+              <span style={{fontSize: 12, fontWeight: 600, minWidth: 42, textAlign: 'center', color: '#0f172a'}}>
+                {zoom}%
+              </span>
+              <button
+                type="button"
+                className="doc-inspect-pager-btn"
+                onClick={() => setZoom(z => Math.min(200, z + 25))}
+                title="Zoom in"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
             <button
               type="button"
-              className="button small"
-              title="Reload preview"
-              onClick={handleReload}
-              style={{padding: '6px 10px'}}
+              className="doc-inspect-btn"
+              style={{padding: '5px 8px'}}
+              onClick={() => setRotation(r => (r + 90) % 360)}
+              title="Rotate 90°"
             >
-              <RotateCcw size={13} />
+              <RotateCw size={13} />
             </button>
             <button
               type="button"
-              className="button small"
-              onClick={() => onClose()}
-              style={{padding: '6px 10px'}}
+              className="doc-inspect-btn"
+              style={{padding: '5px 8px'}}
+              onClick={loadPreview}
+              title="Reload preview"
             >
-              <X size={15} />
+              <RotateCcw size={13} />
             </button>
           </div>
         </div>
 
+        {/* Light Scrollable Canvas matching Document Checklist */}
         <div
-          className="modal-body"
+          className="doc-inspect-preview-canvas"
           style={{
             flex: 1,
-            padding: 16,
-            overflowY: 'auto',
-            background: '#0b1329',
             minHeight: '520px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            background: '#f1f5f9',
             position: 'relative',
           }}
         >
-          {loading && !loadError && (
-            <div
-              style={{
-                position: 'absolute',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 10,
-                color: '#94a3b8',
-                zIndex: 2,
-              }}
-            >
-              <Loader2 size={32} className="spin" style={{color: '#3b82f6'}} />
-              <span style={{fontSize: '12px', fontWeight: 500}}>Loading document preview...</span>
+          {loading ? (
+            <div style={{display: 'flex', alignItems: 'center', gap: 8, color: '#64748b', fontSize: 13}}>
+              <Loader2 size={18} className="spin" style={{color: '#2563eb'}} />
+              <span>Loading preview...</span>
             </div>
-          )}
-
-          {loadError ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 12,
-                color: '#cbd5e1',
-                padding: '40px 20px',
-                textAlign: 'center',
-                maxWidth: 420,
-              }}
-            >
-              <p style={{fontSize: '14px', fontWeight: 700, color: '#f1f5f9'}}>
+          ) : loadError ? (
+            <div style={{textAlign: 'center', color: '#64748b', fontSize: 13, maxWidth: 420}}>
+              <FileText size={28} style={{margin: '0 auto 8px', color: '#94a3b8'}} />
+              <div style={{fontWeight: 600, color: '#0f172a', marginBottom: 4}}>
                 Unable to display preview directly in modal
-              </p>
-              <p style={{fontSize: '12px', color: '#94a3b8', margin: 0}}>
+              </div>
+              <div style={{fontSize: 12, marginBottom: 12}}>
                 The browser or document format could not be embedded inline. You can open or download the file directly below.
-              </p>
-              <div style={{display: 'flex', gap: 10, marginTop: 8}}>
+              </div>
+              <div style={{display: 'flex', justifyContent: 'center', gap: 8}}>
                 <a
                   href={preview.url}
                   target="_blank"
@@ -130,62 +174,25 @@ export function DocumentPreviewModal({preview, onClose}: {preview: PreviewState;
               </div>
             </div>
           ) : preview.isPdf ? (
-            <object
-              key={`pdf-${reloadKey}`}
-              data={pdfUrl}
-              type="application/pdf"
-              className="doc-preview-iframe"
-              onLoad={() => setLoading(false)}
-              onError={() => {
-                setLoading(false);
-                setLoadError(true);
-              }}
-              style={{
-                width: '100%',
-                height: '100%',
-                border: 'none',
-                borderRadius: 8,
-                background: '#fff',
-                opacity: loading ? 0.01 : 1,
-                transition: 'opacity 0.2s ease',
-              }}
-            >
-              <iframe
-                src={pdfUrl}
-                className="doc-preview-iframe"
-                title="PDF Document Preview"
-                onLoad={() => setLoading(false)}
-                onError={() => {
-                  setLoading(false);
-                  setLoadError(true);
-                }}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  border: 'none',
-                  borderRadius: 8,
-                  background: '#fff',
-                }}
-              />
-            </object>
+            <PdfPageCanvas
+              url={effectiveUrl}
+              pageNum={pageNum}
+              jumpSeq={jumpSeq}
+              zoom={zoom}
+              rotation={rotation}
+              onNumPages={() => {}}
+              onVisiblePageChange={setPageNum}
+              onError={() => setLoadError(true)}
+            />
           ) : (
             <img
-              key={`img-${reloadKey}`}
-              src={preview.url}
+              src={effectiveUrl}
               alt={preview.title}
-              onLoad={() => setLoading(false)}
-              onError={() => {
-                setLoading(false);
-                setLoadError(true);
-              }}
+              className="doc-inspect-preview-img"
+              onError={() => setLoadError(true)}
               style={{
-                maxWidth: '100%',
-                maxHeight: '600px',
-                objectFit: 'contain',
-                borderRadius: 8,
-                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-                opacity: loading ? 0.01 : 1,
-                transition: 'opacity 0.2s ease',
+                width: `${zoom}%`,
+                transform: rotation ? `rotate(${rotation}deg)` : undefined,
               }}
             />
           )}

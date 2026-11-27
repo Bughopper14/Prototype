@@ -367,6 +367,8 @@ export class ApplicationsService {
           code: st.code,
           name: displayName || rawName,
           fullName: rawName,
+          groupCode: st.groupCode || st.code,
+          groupOrder: st.groupOrder ?? idx + 1,
           status,
           owner,
           approval,
@@ -382,9 +384,27 @@ export class ApplicationsService {
           uploadedCount,
         };
       });
+
+      // Only expose the stages of the current active workflow step/group:
+      // first group whose stages are not all APPROVED (or whose group approval is still pending),
+      // falling back to the final group when all steps are approved.
+      const orderedGroupCodes: string[] = [];
+      for (const s of [...stages].sort((a, b) => a.groupOrder - b.groupOrder)) {
+        if (!orderedGroupCodes.includes(s.groupCode)) orderedGroupCodes.push(s.groupCode);
+      }
+      const activeGroupCode =
+        orderedGroupCodes.find(gcode => {
+          const groupStages = stages.filter(s => s.groupCode === gcode);
+          const allStagesApproved = groupStages.every(s => s.status === 'APPROVED');
+          const groupSteps = appSteps.filter((st: any) => st.scope === 'GROUP' && st.groupCode === gcode);
+          const groupApprovalDone = groupSteps.length === 0 || groupSteps.every((st: any) => st.status === 'APPROVED');
+          return !allStagesApproved || !groupApprovalDone;
+        }) ?? orderedGroupCodes[orderedGroupCodes.length - 1];
+      const visibleStages = activeGroupCode ? stages.filter(s => s.groupCode === activeGroupCode) : stages;
+
       return {
         id: r.id,
-        stages,
+        stages: visibleStages,
         application_number: r.application_number ?? null,
         applicationNumber: r.application_number ?? null,
         business_partner_id: r.business_partner_id,

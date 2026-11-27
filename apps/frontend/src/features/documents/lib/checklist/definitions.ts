@@ -33,3 +33,27 @@ export function documentDefinitions(master: MasterCatalog): MasterDocDef[] {
       stageName: stageName(x.stage, master),
     }));
 }
+
+/** Document codes that must be uploaded via dedicated OCR sections (FAP / Stakeholders), not manually in Document Checklist. */
+const OCR_ONLY_CODES = new Set([
+  'NIB',
+  'NPWP',
+  'KTP-PASSPORT',
+  'NPWP-EKITAS',
+  'KTP',
+  'KITAS',
+  'PASSPORT',
+  'NPWP_STAKEHOLDER',
+  'NPWP_PERUSAHAAN',
+]);
+
+/** Document codes that show only the latest file by default with a History toggle in View Document. */
+const HISTORICAL_CODES = new Set(['NIB', 'NPWP', 'NPWP_PERUSAHAAN']);
+
+export function isOcrOnlyDocumentCode(code?: string | null): boolean {
+  return !!code && OCR_ONLY_CODES.has(code.toUpperCase());
+}
+
+export function isHistoricalDocumentCode(code?: string | null): boolean {
+  return !!code && HISTORICAL_CODES.has(code.toUpperCase());
+}

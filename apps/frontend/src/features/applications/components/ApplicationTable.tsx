@@ -370,12 +370,12 @@ function StageHoverCard({
           ? {
               bottom: `${Math.max(10, window.innerHeight - anchorRect.top + 8)}px`,
               top: 'auto',
-              maxHeight: `${Math.max(260, spaceAbove - 12)}px`,
+              maxHeight: `${Math.max(360, spaceAbove - 12)}px`,
             }
           : {
               top: `${anchorRect.bottom + 8}px`,
               bottom: 'auto',
-              maxHeight: `${Math.max(260, spaceBelow - 12)}px`,
+              maxHeight: `${Math.max(360, spaceBelow - 12)}px`,
             }),
       }}
       onMouseEnter={onCardMouseEnter}
@@ -922,7 +922,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   const [calendarViewDate, setCalendarViewDate] = useState<Date>(() => new Date());
   const datePopoverRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(compact ? 5 : 8);
+  const [pageSize, setPageSize] = useState(compact ? 5 : 10);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [quickViewApp, setQuickViewApp] = useState<any | null>(null);
   const [changePicOpen, setChangePicOpen] = useState(false);
@@ -978,22 +978,14 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
       });
   }, []);
 
-  // Collect distinct branches from database master branch catalog + any branches from rows
+  // Collect distinct branches only from existing application rows
   const branchList = useMemo(() => {
     const set = new Set<string>();
-    // 1. From database master branch catalog (crm_master_branches)
-    if (Array.isArray(master.branchCode)) {
-      for (const b of master.branchCode) {
-        if (b.value) set.add(b.value);
-        else if (b.name) set.add(b.name);
-      }
-    }
-    // 2. Combine with rows if any
     for (const r of rows) {
       if (r.branch_code) set.add(r.branch_code);
     }
     return Array.from(set).sort();
-  }, [master.branchCode, rows]);
+  }, [rows]);
 
   // Click outside to close branch popover
   useEffect(() => {
@@ -1831,9 +1823,9 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     NOT_STARTED: 'Not started',
   };
 
-  function exportSelectedExcel() {
-    if (!selectedRows.length) return;
-    const data = selectedRows.map(r => {
+  function exportApplicationsToExcel(targetRows: any[], filename: string) {
+    if (!targetRows.length) return;
+    const data = targetRows.map(r => {
       const stages: StageItem[] = Array.isArray(r.stages) ? r.stages : [];
       const stageLabel = (code: string, fallbackName: string) => {
         const found = stages.find(
@@ -1870,7 +1862,11 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
     ];
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Applications');
-    XLSX.writeFile(workbook, 'applications-selected.xlsx');
+    XLSX.writeFile(workbook, filename);
+  }
+
+  function exportSelectedExcel() {
+    exportApplicationsToExcel(selectedRows, 'applications-selected.xlsx');
   }
 
   async function openChangePicModal() {
@@ -1977,38 +1973,7 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
   };
 
   function exportCsv() {
-    const lines = [
-      ['Application', 'Company', 'Branch', 'PIC Marketing', 'Amount (IDR)', 'Applied Date', 'Updated Date'],
-      ...filtered.map(r => [
-        r.application_number || r.fap_number || '',
-        r.company_name || '',
-        r.branch_code || '',
-        r.mkt_pic_name || (r.mkt_pic_id ? `User #${r.mkt_pic_id}` : ''),
-        r.financing_value || 0,
-        formatDisplayDate(r.created_at || r.application_date),
-        formatDisplayDate(r.updated_at || r.created_at || r.application_date),
-      ]),
-    ];
-    const csv = lines
-      .map(r =>
-        r
-          .map(
-            v =>
-              '"' +
-              String(v)
-                .replace(/^[=+@-]/, "' $&")
-                .replaceAll('"', '""') +
-              '"'
-          )
-          .join(',')
-      )
-      .join('\r\n');
-    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], {type: 'text/csv;charset=utf-8'}));
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'applications-export.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+    exportApplicationsToExcel(rows, 'applications-export.xlsx');
   }
 
   useImperativeHandle(ref, () => ({
@@ -2082,15 +2047,6 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
             >
               <Users size={14} />
               <span>Change PIC</span>
-            </button>
-            <button
-              type="button"
-              className="app-bulk-btn"
-              onClick={openReminderModal}
-              disabled={bulkBusy}
-            >
-              <Bell size={14} />
-              <span>Send document reminder</span>
             </button>
             <span className="app-bulk-divider" />
             <button
@@ -3016,9 +2972,11 @@ export const ApplicationTable = forwardRef<ApplicationTableHandle, ApplicationTa
                 setPage(0);
               }}
             >
-              <option value={8}>8</option>
-              <option value={16}>16</option>
-              <option value={24}>24</option>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={15}>15</option>
+              <option value={20}>20</option>
+              <option value={25}>25</option>
               <option value={50}>50</option>
             </select>
           </div>
