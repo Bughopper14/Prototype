@@ -1,3 +1,4 @@
+import {PdfPageCanvas} from '@/features/documents/components/checklist/PdfPageCanvas';
 import {getShortRoleLabel} from '@/features/documents/components/checklist/DocumentApprovalCell';
 import {formatBytes} from '@/features/documents/lib/checklist/format-bytes';
 import type {ChecklistRow} from '@/features/documents/lib/checklist/types';
@@ -5,6 +6,8 @@ import {api} from '@/shared/lib/api';
 import {
   Check,
   CheckSquare,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Download,
   FileText,
@@ -12,6 +15,7 @@ import {
   Plus,
   RefreshCw,
   RotateCcw,
+  RotateCw,
   Send,
   X,
 } from 'lucide-react';
@@ -54,6 +58,9 @@ export function DocumentInspectModal({
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [previewError, setPreviewError] = useState(false);
   const [zoom, setZoom] = useState(100);
+  const [pageNum, setPageNum] = useState(1);
+  const [numPages, setNumPages] = useState(0);
+  const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
     if (files.length && (!selectedFileId || !files.some(f => f.id === selectedFileId))) {
@@ -66,6 +73,13 @@ export function DocumentInspectModal({
     () => files.find(f => f.id === selectedFileId) || files[files.length - 1] || null,
     [files, selectedFileId],
   );
+
+  useEffect(() => {
+    setPageNum(1);
+    setNumPages(0);
+    setRotation(0);
+    setZoom(100);
+  }, [activeFile?.id]);
 
   const loadPreview = useCallback(async (fileId: string) => {
     setLoadingPreview(true);
@@ -234,38 +248,78 @@ export function DocumentInspectModal({
           {/* Center: Preview */}
           <div className="doc-inspect-preview-pane">
             <div className="doc-inspect-preview-toolbar">
-              <span style={{fontWeight: 600, color: '#0f172a'}}>{activeFile?.fileName || 'No file'}</span>
+              <div style={{display: 'flex', alignItems: 'center', gap: 10, minWidth: 0}}>
+                {isPdf && numPages > 0 && (
+                  <div className="doc-inspect-pager">
+                    <button
+                      type="button"
+                      className="doc-inspect-pager-btn"
+                      disabled={pageNum <= 1}
+                      onClick={() => setPageNum(p => Math.max(1, p - 1))}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span className="doc-inspect-pager-text">
+                      Page {pageNum} of {numPages}
+                    </span>
+                    <button
+                      type="button"
+                      className="doc-inspect-pager-btn"
+                      disabled={pageNum >= numPages}
+                      onClick={() => setPageNum(p => Math.min(numPages, p + 1))}
+                      title="Next page"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
+                <span style={{fontWeight: 600, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                  {activeFile?.fileName || 'No file'}
+                </span>
+              </div>
               <div style={{display: 'flex', alignItems: 'center', gap: 6}}>
-                {!isPdf && (
-                  <>
-                    <button
-                      type="button"
-                      className="doc-inspect-btn"
-                      style={{padding: '4px 8px'}}
-                      onClick={() => setZoom(z => Math.max(50, z - 25))}
-                    >
-                      <Minus size={12} />
-                    </button>
-                    <span style={{fontSize: 12, fontWeight: 600, minWidth: 40, textAlign: 'center'}}>{zoom}%</span>
-                    <button
-                      type="button"
-                      className="doc-inspect-btn"
-                      style={{padding: '4px 8px'}}
-                      onClick={() => setZoom(z => Math.min(200, z + 25))}
-                    >
-                      <Plus size={12} />
-                    </button>
-                  </>
+                <div className="doc-inspect-zoom-group">
+                  <button
+                    type="button"
+                    className="doc-inspect-pager-btn"
+                    onClick={() => setZoom(z => Math.max(50, z - 25))}
+                    title="Zoom out"
+                  >
+                    <Minus size={12} />
+                  </button>
+                  <span style={{fontSize: 12, fontWeight: 600, minWidth: 42, textAlign: 'center', color: '#0f172a'}}>
+                    {zoom}%
+                  </span>
+                  <button
+                    type="button"
+                    className="doc-inspect-pager-btn"
+                    onClick={() => setZoom(z => Math.min(200, z + 25))}
+                    title="Zoom in"
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+                {activeFile && (
+                  <button
+                    type="button"
+                    className="doc-inspect-btn"
+                    style={{padding: '5px 8px'}}
+                    onClick={() => setRotation(r => (r + 90) % 360)}
+                    title="Rotate 90°"
+                  >
+                    <RotateCw size={13} />
+                  </button>
                 )}
                 {activeFile && (
                   <button
                     type="button"
                     className="doc-inspect-btn"
-                    style={{padding: '4px 8px'}}
+                    style={{padding: '5px 8px'}}
                     onClick={() => loadPreview(activeFile.id)}
                     title="Reload preview"
                   >
-                    <RotateCcw size={12} />
+                    <RotateCcw size={13} />
                   </button>
                 )}
               </div>
@@ -276,17 +330,20 @@ export function DocumentInspectModal({
                 <div style={{color: '#64748b', fontSize: 13}}>Loading preview...</div>
               ) : previewUrl && !previewError ? (
                 isPdf ? (
-                  <iframe
-                    src={previewUrl}
-                    title={activeFile?.fileName || 'Document preview'}
-                    className="doc-inspect-preview-iframe"
+                  <PdfPageCanvas
+                    url={previewUrl}
+                    pageNum={pageNum}
+                    zoom={zoom}
+                    rotation={rotation}
+                    onNumPages={setNumPages}
+                    onError={() => setPreviewError(true)}
                   />
                 ) : (
                   <img
                     src={previewUrl}
                     alt={activeFile?.fileName || 'Document preview'}
                     className="doc-inspect-preview-img"
-                    style={{width: `${zoom}%`}}
+                    style={{width: `${zoom}%`, transform: rotation ? `rotate(${rotation}deg)` : undefined}}
                   />
                 )
               ) : (
