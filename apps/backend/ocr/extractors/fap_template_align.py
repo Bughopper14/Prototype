@@ -128,9 +128,15 @@ def _align_at_scale(
 
 
 def _align_to_master(scan_bgr: np.ndarray, page_num: int) -> Optional[Tuple[np.ndarray, np.ndarray]]:
-    # Fast half-res pass first (~0.10s); retry at full-res with light denoise for noisy/perspective scans
+    # Fast half-res pass first (~0.10s); refine at full-res if rotated > ~60 deg (e.g. 90/180 deg) for sub-pixel accuracy,
+    # or retry at full-res with light denoise for noisy/perspective scans.
     res = _align_at_scale(scan_bgr, page_num, ALIGN_SCALE, denoise=False)
     if res is not None:
+        _, H = res
+        if H[0, 0] < 0.5:
+            fine = _align_at_scale(scan_bgr, page_num, 1.0, denoise=False)
+            if fine is not None:
+                return fine
         return res
     res = _align_at_scale(scan_bgr, page_num, 1.0, denoise=True)
     if res is None:
@@ -175,14 +181,27 @@ def _pick_checkbox(warped_pages: Dict[int, np.ndarray], cells: Dict[str, Any], o
     return best_code
 
 
+def _flatten_illumination(bgr: np.ndarray) -> np.ndarray:
+    """Removes shadows/uneven lighting from phone photos by dividing by a smooth local background estimate (~8ms)."""
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    small = cv2.resize(gray, None, fx=0.25, fy=0.25, interpolation=cv2.INTER_AREA)
+    bg_small = cv2.morphologyEx(small, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15)))
+    bg_small = cv2.GaussianBlur(bg_small, (0, 0), 5.0)
+    bg = cv2.resize(bg_small, (gray.shape[1], gray.shape[0]), interpolation=cv2.INTER_LINEAR)
+    bg = np.maximum(bg, 40).astype(np.float32)
+    norm = np.clip((gray.astype(np.float32) / bg) * 255.0, 0, 255).astype(np.uint8)
+    return cv2.cvtColor(norm, cv2.COLOR_GRAY2BGR)
+
+
 def _mask_and_crop_value_rois(
-    img: np.ndarray, cells: Dict[str, Any], page_num: int, inset: int = 1, pad: int = 16
+    img: np.ndarray, cells: Dict[str, Any], page_num: int, inset: int = 0, pad: int = 16
 ) -> Tuple[np.ndarray, int, int, int, int]:
     """
-    Blanks out static template labels/borders outside value ROI cells AND tightly crops the canvas
-    to the bounding box of that page's ROIs (e.g. Page 2 is only top 16% of page -> ~7x fewer pixels for DBNet).
+    Flattens uneven shadows, blanks out static template labels/borders outside value ROI cells, AND tightly crops
+    the canvas to the bounding box of that page's ROIs (e.g. Page 2 is only top 16% of page -> ~7x fewer pixels for DBNet).
     Returns `(cropped_canvas, ox, oy, full_w, full_h)`.
     """
+    img = _flatten_illumination(img)
     h, w = img.shape[:2]
     page_boxes = [box for key, box in cells.items() if key not in CHECKBOX_KEYS and box.get("page") == page_num]
     if not page_boxes:
@@ -246,7 +265,10 @@ def _read_from_boxes(
 
     # Fallback for tiny values (e.g. "36", "Riau") missed by full-page detector:
     # only runs if the cell actually contains dark ink (>0.4% dark pixels) and uses rec-only (~15ms).
-    crop = _crop_roi(warped_pages[box["page"]], box, inset=2)
+    raw_crop = _crop_roi(warped_pages[box["page"]], box, inset=1)
+    if raw_crop.size == 0:
+        return ""
+    crop = _flatten_illumination(raw_crop)
     if _checkbox_ink_score(crop) <= 0.004:
         return ""
     # Tightly trim white margins around the ink and pad cleanly with white so CRNN never clips edges
