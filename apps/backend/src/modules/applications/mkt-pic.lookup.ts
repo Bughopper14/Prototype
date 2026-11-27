@@ -19,13 +19,27 @@ export class MktPicLookup {
   }
 
   /** The name (full name, else username) of each user id; ids that do not exist are left out. */
-  async names(ids: Iterable<number | null | undefined>): Promise<Map<number, {name: string; username: string}>> {
+  async names(ids: Iterable<number | null | undefined>): Promise<Map<number, {name: string; username: string; deptId?: number; deptCode?: string; deptName?: string}>> {
     const wanted = [...new Set([...ids].map(Number).filter(n => Number.isInteger(n) && n > 0))];
     if (!wanted.length) return new Map();
     const [rows] = await this.db.pool.query<any[]>(
-      `SELECT id, username, full_name FROM ${USER_TABLES.users} WHERE id IN (${wanted.map(() => '?').join(',')})`,
+      `SELECT u.id, u.username, u.full_name, u.dept_id, d.department_code, d.department_name
+       FROM ${USER_TABLES.users} u
+       LEFT JOIN ${USER_TABLES.departments} d ON d.dept_id = u.dept_id
+       WHERE u.id IN (${wanted.map(() => '?').join(',')})`,
       wanted,
     );
-    return new Map(rows.map(r => [Number(r.id), {name: String(r.full_name || r.username || ''), username: String(r.username || '')}]));
+    return new Map(
+      rows.map(r => [
+        Number(r.id),
+        {
+          name: String(r.full_name || r.username || ''),
+          username: String(r.username || ''),
+          deptId: r.dept_id ? Number(r.dept_id) : undefined,
+          deptCode: r.department_code || undefined,
+          deptName: r.department_name || undefined,
+        },
+      ]),
+    );
   }
 }

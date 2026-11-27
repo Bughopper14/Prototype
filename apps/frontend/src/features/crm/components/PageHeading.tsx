@@ -1,5 +1,5 @@
 import {hasAuthority} from '@/shared/lib/auth';
-import {Plus} from 'lucide-react';
+import {Download, Plus} from 'lucide-react';
 import {useCrm} from './CrmProvider';
 
 const TITLES: Record<string, string> = {Overview: 'Portfolio overview', Notifications: 'Notifikasi'};
@@ -15,13 +15,17 @@ const DESCRIPTIONS: Record<string, (firstName: string) => string> = {
   Activity: () => 'A transparent record of application decisions and updates.',
 };
 
-/** Title block shown at the top of each CRM page, with an optional "New application" button. */
+/** Title block shown at the top of each CRM page, with an optional "New application" and "Export" button. */
 export function PageHeading({
   page,
   newApplicationButton = false,
+  exportButton = false,
+  onExport,
 }: {
   page: string;
   newApplicationButton?: boolean;
+  exportButton?: boolean;
+  onExport?: () => void;
 }) {
   const {user, startNewApplication} = useCrm();
   const firstName = String(user.name || '').split(' ')[0];
@@ -35,12 +39,20 @@ export function PageHeading({
         <h1>{TITLES[page] || page}</h1>
         <p>{DESCRIPTIONS[page]?.(firstName)}</p>
       </div>
-      {newApplicationButton && hasAuthority(user, 'CRM_APPLICATION_CREATE') && (
-        <button className="button primary" onClick={() => startNewApplication()}>
-          <Plus size={17} />
-          New application
-        </button>
-      )}
+      <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+        {exportButton && (
+          <button className="button secondary" onClick={onExport} type="button" style={{height: '38px', padding: '0 14px', gap: '6px'}}>
+            <Download size={15} />
+            Export
+          </button>
+        )}
+        {newApplicationButton && hasAuthority(user, 'CRM_APPLICATION_CREATE') && (
+          <button className="button primary" onClick={() => startNewApplication()} type="button">
+            <Plus size={17} />
+            New application
+          </button>
+        )}
+      </div>
     </div>
   );
 }

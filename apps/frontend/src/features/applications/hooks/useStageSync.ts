@@ -31,7 +31,7 @@ export function useStageSync({
     if (initialTab !== undefined) {
       setTab(initialTab);
       if (initialTab === 8) setActiveStage(SCREEN.PRE_ANALYSIS);
-      else if ([0, 5, 1].includes(initialTab) && !isPreAnalysisReached(a, draft)) setActiveStage(SCREEN.FAP);
+      else if ([0, 5, 1].includes(initialTab)) setActiveStage(SCREEN.FAP);
     }
   }, [initialTab, a.id]);
 }

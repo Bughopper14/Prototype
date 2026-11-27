@@ -1,6 +1,6 @@
 /** Dialog to add or edit one master-data item (used by MasterSelect quick-add and the Master Data page). */
 import {api} from '@/shared/lib/api';
-import {masterGroups, sortableMasterGroups, type MasterItem} from '@liugong/shared';
+import {masterGroups, safeUUID, sortableMasterGroups, type MasterItem} from '@liugong/shared';
 import {Save, X} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import {createPortal} from 'react-dom';
@@ -58,7 +58,7 @@ export function MasterItemDialog({
       )
         throw new Error('Please select ' + masterGroups.find(x => x.key === group.parent)?.name + ' first.');
       const value = locationGroups.has(groupKey)
-          ? item?.value || crypto.randomUUID()
+          ? item?.value || safeUUID()
           : draft.value.trim() || draft.name.trim(),
         row = {...draft, value, name: draft.name.trim()};
       const next = {

@@ -24,7 +24,7 @@ export function StakeholderModalActions() {
           onClick={onSave}
           style={{display: 'inline-flex', alignItems: 'center', gap: '6px'}}
         >
-          <Save size={15} /> Save Shareholder
+          <Save size={15} /> Save Stakeholder
         </button>
       )}
     </div>

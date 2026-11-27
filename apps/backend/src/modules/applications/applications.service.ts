@@ -6,6 +6,7 @@ import {CRM} from '../../core/db/crm-tables';
 import {USER_TABLES} from '../../core/db/user-tables';
 import {Problem, ensure} from '../../core/domain';
 import {activityFeed, deedHistory, logActivity, recordActivity} from '../activity/activity-log';
+import {newNotification} from '../activity/notifications';
 import type {Actor as SessionActor} from '../auth/session';
 import {BusinessPartnersRepository} from '../customers/business-partners.repository';
 import {DocumentsRepository} from '../documents/documents.repository';
@@ -144,7 +145,7 @@ export class ApplicationsService {
     const progress = rows.length
       ? (
           await this.apps.pool.query<any[]>(
-            `SELECT application_id,stage_code,is_locked FROM ${CRM.applicationStageProgress}`,
+            `SELECT application_id,stage_code,is_locked,submitted_at,completed_at,approval_status FROM ${CRM.applicationStageProgress}`,
           )
         )[0]
       : [];
@@ -154,6 +155,12 @@ export class ApplicationsService {
     const states = await this.approvals.statesFor(rows.map((r: any) => ({id: r.id, workflow_freeze_id: r.workflow_freeze_id})));
     const picNames = await this.mktPics.names(rows.map((r: any) => r.mkt_pic_id));
     const mine = new Set((actor ? await this.approvals.inbox(actor) : []).map((x: any) => x.applicationId));
+    const appIds = rows.map((r: any) => r.id);
+    const allSteps = appIds.length ? await this.approvals.repo.stepsOfMany(appIds) : [];
+    const stepsByApp = new Map<string, any[]>();
+    for (const s of allSteps) {
+      stepsByApp.set(s.applicationId, [...(stepsByApp.get(s.applicationId) ?? []), s]);
+    }
     const activeFreezeId = await this.config.activeFreezeId().catch(() => null);
     const configs = new Map<string, WorkflowConfig>();
     for (const code of new Set<string>(rows.map((r: any) => r.workflow_freeze_id).filter(Boolean))) {
@@ -168,14 +175,216 @@ export class ApplicationsService {
         configs.set(activeFreezeId, await this.config.load(activeFreezeId));
       } catch {}
     }
+
+    // Load mandatory documents with files count for all applications
+    const [mandatoryDocRows] = appIds.length
+      ? await this.apps.pool.query<any[]>(
+          `SELECT 
+             c.application_id,
+             c.stage_code,
+             COALESCE(t.code, c.document_code) as code,
+             COALESCE(t.name, c.document_code) as name,
+             COALESCE(o.is_mandatory, sd.is_mandatory, 0) as is_mandatory,
+             c.status as checklist_status,
+             c.approval_status as checklist_approval_status,
+             (SELECT COUNT(*) FROM ${CRM.applicationDocumentFiles} f WHERE f.checklist_id = c.id AND f.deleted_at IS NULL) as files_count
+           FROM ${CRM.applicationDocumentChecklists} c
+           LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id = c.document_type_id
+           LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id = c.override_id
+           LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd ON sd.workflow_freeze_id = c.workflow_freeze_id AND sd.stage_code = c.stage_code AND sd.document_type_id = c.document_type_id
+           WHERE c.application_id IN (${appIds.map(() => '?').join(',')})
+           ORDER BY COALESCE(o.is_mandatory, sd.is_mandatory, 0) DESC, COALESCE(t.sort_order, 1000) ASC`,
+          appIds,
+        )
+      : [[]];
+
+    const mandatoryDocsMap = new Map<string, any[]>();
+    for (const d of mandatoryDocRows) {
+      const normStage = (d.stage_code || '').toUpperCase().replace(/[-_ ]/g, '');
+      const key = `${d.application_id}:${normStage}`;
+      mandatoryDocsMap.set(key, [...(mandatoryDocsMap.get(key) ?? []), d]);
+    }
+
     return rows.map(r => {
       const state = states.get(r.id) ?? 'IN_PROGRESS';
       const cfg = configs.get(r.workflow_freeze_id) ?? (activeFreezeId ? configs.get(activeFreezeId) : null);
       const view = cfg
         ? this.viewStage(cfg, progressOf.get(r.id) ?? [])
         : null;
+      const appSteps = stepsByApp.get(r.id) ?? [];
+      const appProgress = progressOf.get(r.id) ?? [];
+      const rawStages = cfg?.stages ?? [];
+      const stages = (rawStages.length ? rawStages : [
+        { code: 'FAP-STAGE', name: 'FAP' },
+        { code: 'PRE-ANALYSIS', name: 'Pre-analysis' },
+        { code: 'ICLF', name: 'ICLF' },
+      ]).map((st: any, idx: number, arr: any[]) => {
+        const p = appProgress.find((x: any) => x.stage_code === st.code);
+        const stSteps = appSteps.filter((s: any) =>
+          s.stageCode === st.code || (s.scope === 'STAGE' && s.stageCode === st.code) || (s.scope === 'GROUP' && s.groupCode === st.groupCode)
+        );
+        let status: 'APPROVED' | 'WAITING_APPROVAL' | 'NEEDS_CHANGES' | 'IN_PROGRESS' | 'NOT_STARTED' = 'NOT_STARTED';
+        if (p?.completed_at || p?.approval_status === 'APPROVED' || (stSteps.length > 0 && stSteps.every((s: any) => s.status === 'APPROVED'))) {
+          status = 'APPROVED';
+        } else if (p?.approval_status === 'REJECTED' || stSteps.some((s: any) => s.status === 'REJECTED' || s.decision === 'REJECTED')) {
+          status = 'NEEDS_CHANGES';
+        } else if (p?.approval_status === 'IN_APPROVAL' || stSteps.some((s: any) => s.status === 'PENDING') || (p?.submitted_at && !p?.completed_at)) {
+          status = 'WAITING_APPROVAL';
+        } else if (p?.is_locked || p || idx === 0) {
+          status = 'IN_PROGRESS';
+        } else if (idx > 0) {
+          const prevStage = arr[idx - 1];
+          const prevP = appProgress.find((x: any) => x.stage_code === prevStage.code);
+          if (prevP?.completed_at || prevP?.approval_status === 'APPROVED') {
+            status = 'IN_PROGRESS';
+          }
+        }
+        const rawName = st.name || st.code;
+        const displayName = rawName
+          .replace(/[-_ ]?STAGE$/i, '')
+          .replace(/^PRE-?ANALYSIS$/i, 'Pre-analysis');
+
+        const normCode = (st.code || '').toUpperCase().replace(/[-_ ]/g, '');
+        const normName = (rawName || '').toUpperCase().replace(/[-_ ]/g, '');
+        let appDocs = mandatoryDocsMap.get(`${r.id}:${normCode}`) 
+          || mandatoryDocsMap.get(`${r.id}:${normName}`)
+          || [];
+
+        if (appDocs.length === 0) {
+          if (normCode.includes('PRE') || normName.includes('PRE')) {
+            appDocs = [{ code: 'PREANALYSIS', name: 'Lembar Dokumen Pra-Analisis Kredit', is_mandatory: 1, files_count: 0 }];
+          } else if (normCode.includes('FAP') || normName.includes('FAP')) {
+            appDocs = [
+              { code: 'FAP', name: 'Formulir Aplikasi Pembiayaan', is_mandatory: 1, files_count: 0 },
+              { code: 'NIB', name: 'Nomor Induk Berusaha (NIB)', is_mandatory: 1, files_count: 0 },
+              { code: 'NPWP', name: 'NPWP Badan Usaha', is_mandatory: 1, files_count: 0 },
+              { code: 'KTP', name: 'KTP Pengurus / Direksi & Komisaris', is_mandatory: 1, files_count: 0 },
+              { code: 'DEED', name: 'Akta Pendirian & Perubahan Terakhir', is_mandatory: 0, files_count: 0 },
+            ];
+          }
+        }
+
+        const mandatoryDocs = appDocs.map((d: any) => {
+          const filesCount = Number(d.files_count || 0);
+          const isMandatory = Number(d.is_mandatory) === 1;
+          const isRejected = d.checklist_status === 'REJECTED' || d.checklist_approval_status === 'REJECTED';
+          let docStatus: 'Uploaded' | 'Missing' | 'Rejected' | 'Optional' = 'Missing';
+          if (isRejected) {
+            docStatus = 'Rejected';
+          } else if (filesCount > 0) {
+            docStatus = 'Uploaded';
+          } else if (!isMandatory) {
+            docStatus = 'Optional';
+          } else {
+            docStatus = 'Missing';
+          }
+
+          return {
+            code: d.code,
+            name: d.name,
+            isMandatory,
+            status: docStatus,
+            isUploaded: filesCount > 0 && !isRejected,
+          };
+        });
+
+        const requiredDocs = mandatoryDocs.filter((d: any) => d.isMandatory);
+        const requiredCount = requiredDocs.length;
+        const uploadedCount = requiredDocs.filter((d: any) => d.isUploaded).length;
+
+        // Owner: PIC department
+        const picDept = picNames.get(Number(r.mkt_pic_id))?.deptName || r.mkt_pic_dept_name;
+        const picDeptCode = picNames.get(Number(r.mkt_pic_id))?.deptCode || r.mkt_pic_dept_code;
+        const owner = picDept ? (picDeptCode ? `${picDept} (${picDeptCode})` : picDept) : 'Marketing (MKT)';
+
+        // Approval: from approval workflow
+        let approval = 'Business Support, then CA & Legal';
+        let firstApprover = 'Business Support (BS)';
+        if (normCode.includes('PRE') || normName.includes('PRE')) {
+          approval = 'Credit Analyst';
+          firstApprover = 'Credit Analyst (CA)';
+        } else if (normCode.includes('ICLF') || normName.includes('ICLF')) {
+          approval = 'Credit Committee';
+          firstApprover = 'Credit Committee';
+        } else if (stSteps.length > 0) {
+          const rawNames = [...new Set(stSteps.map((s: any) => s.authorityName || s.name).filter(Boolean))] as string[];
+          if (rawNames.length) {
+            const cleaned = rawNames.map(n => {
+              const upper = n.toUpperCase();
+              if (upper.includes('BP') || upper.includes('BS') || upper.includes('BUSINESS')) return 'Business Support (BS)';
+              if (upper.includes('CA') || upper.includes('CREDIT')) return 'Credit Analyst (CA)';
+              if (upper.includes('LEGAL')) return 'Legal';
+              if (upper.includes('MANAGEMENT') || upper.includes('MGT')) return 'Management (MGT)';
+              return n.replace(/^CRM_/, '').replace(/_APPROVE$/, '').replace(/[-_]/g, ' ');
+            });
+            const unique = [...new Set(cleaned)];
+            if (unique.length === 1) {
+              approval = unique[0];
+            } else if (unique.length === 2) {
+              approval = `${unique[0]}, then ${unique[1]}`;
+            } else if (unique.length >= 3) {
+              approval = `${unique[0]}, then ${unique.slice(1).join(' & ')}`;
+            }
+            firstApprover = unique[0] || firstApprover;
+          }
+        }
+
+        let returnedBy: string | undefined = undefined;
+        let returnAction: string | undefined = undefined;
+        let approvedBy: string | undefined = undefined;
+        let approvalSummary: string | undefined = undefined;
+        let approvedOn: string | undefined = undefined;
+
+        if (status === 'APPROVED') {
+          const totalLevels = stSteps.length > 0 ? stSteps.length : 2;
+          approvalSummary = `All ${totalLevels} levels completed`;
+          approvedBy = approval.replace(/Business Support \(BS\)/, 'BS');
+          if (p?.completed_at || p?.updated_at) {
+            const d = new Date(p.completed_at || p.updated_at);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            approvedOn = `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+          }
+        } else if (status === 'NEEDS_CHANGES') {
+          const rejectedStep = stSteps.find((s: any) => s.status === 'REJECTED' || s.decision === 'REJECTED');
+          if (rejectedStep) {
+            const raw = rejectedStep.authorityName || rejectedStep.name || '';
+            const upper = raw.toUpperCase();
+            let role = 'Business Support (BS)';
+            if (upper.includes('CA') || upper.includes('CREDIT')) role = 'Credit Analyst (CA)';
+            else if (upper.includes('LEGAL')) role = 'Legal';
+            else if (upper.includes('MANAGEMENT') || upper.includes('MGT')) role = 'Management (MGT)';
+            const level = rejectedStep.level || rejectedStep.step_order || 1;
+            returnedBy = `${role} · level ${level}`;
+          } else {
+            returnedBy = `${firstApprover} · level 1`;
+          }
+          returnAction = `${owner} revises & resubmits`;
+        }
+
+        const canStart = 'Anytime — stages run in parallel';
+
+        return {
+          code: st.code,
+          name: displayName || rawName,
+          fullName: rawName,
+          status,
+          owner,
+          approval,
+          firstApprover,
+          canStart,
+          returnedBy,
+          returnAction,
+          approvedBy,
+          approvalSummary,
+          approvedOn,
+          mandatoryDocs,
+          requiredCount,
+          uploadedCount,
+        };
+      });
       return {
         id: r.id,
+        stages,
         application_number: r.application_number ?? null,
         applicationNumber: r.application_number ?? null,
         business_partner_id: r.business_partner_id,
@@ -191,10 +400,14 @@ export class ApplicationsService {
         establishment_act_no: r.establishment_act_no,
         establishment_date: r.establishment_date,
         branch_code: branches.get(r.branch_id) ?? null,
-        mkt_pic_id: r.mkt_pic_id ?? null,
+        mkt_pic_id: r.mkt_pic_id ? Number(r.mkt_pic_id) : null,
         mkt_pic_name: picNames.get(Number(r.mkt_pic_id))?.name ?? r.mkt_pic_name ?? r.mkt_pic_username ?? null,
-        mktPicId: r.mkt_pic_id ?? null,
+        mkt_pic_dept_id: picNames.get(Number(r.mkt_pic_id))?.deptId ?? null,
+        mkt_pic_dept_code: picNames.get(Number(r.mkt_pic_id))?.deptCode ?? null,
+        mkt_pic_dept_name: picNames.get(Number(r.mkt_pic_id))?.deptName ?? null,
+        mktPicId: r.mkt_pic_id ? Number(r.mkt_pic_id) : null,
         mktPicName: picNames.get(Number(r.mkt_pic_id))?.name ?? r.mkt_pic_name ?? r.mkt_pic_username ?? null,
+        mktPicDeptCode: picNames.get(Number(r.mkt_pic_id))?.deptCode ?? null,
         company_full_address: r.company_full_address,
         companyFullAddress: r.company_full_address,
         company_address: r.company_address,
@@ -397,6 +610,147 @@ export class ApplicationsService {
       departmentName: u.department_name || null,
       departmentCode: u.department_code || null,
     }));
+  }
+
+  async usersAndDepartments() {
+    const [users] = await this.apps.pool.query<any[]>(
+      `SELECT u.id, u.username, u.full_name, u.dept_id, d.department_name, d.department_code,
+              (SELECT r.role_name FROM ${USER_TABLES.user_app_roles} ur JOIN ${USER_TABLES.roles} r ON r.id = ur.role_id WHERE ur.user_id = u.id LIMIT 1) AS role_name
+       FROM ${USER_TABLES.users} u
+       LEFT JOIN ${USER_TABLES.departments} d ON d.dept_id = u.dept_id
+       WHERE u.is_active = 1
+       ORDER BY COALESCE(NULLIF(u.full_name, ''), u.username)`,
+    );
+    const [departments] = await this.apps.pool.query<any[]>(
+      `SELECT dept_id, department_code, department_name
+       FROM ${USER_TABLES.departments}
+       WHERE is_active = 1
+       ORDER BY dept_id`,
+    );
+    return {
+      users: users.map((u: any) => ({
+        id: Number(u.id),
+        username: u.username,
+        fullName: u.full_name || null,
+        deptId: u.dept_id ? Number(u.dept_id) : null,
+        departmentName: u.department_name || null,
+        departmentCode: u.department_code || null,
+        roleName: u.role_name || null,
+      })),
+      departments: departments.map((d: any) => ({
+        id: Number(d.dept_id),
+        code: d.department_code,
+        name: d.department_name,
+      })),
+    };
+  }
+
+  /** Bulk-update Marketing PIC for selected applications, log activity, and notify the new PIC. */
+  async bulkChangePic(applicationIds: string[], mktPicId: number, actor: Actor) {
+    const ids = [...new Set(applicationIds)];
+    const pic = (await this.mktPics.names([mktPicId])).get(mktPicId);
+    ensure(pic, 'Selected Marketing PIC was not found');
+
+    const placeholders = ids.map(() => '?').join(',');
+    const [existing] = await this.apps.pool.query<any[]>(
+      `SELECT a.id, a.application_number, a.mkt_pic_id, p.company_name
+       FROM ${CRM.applications} a
+       LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id = a.id
+       WHERE a.id IN (${placeholders}) AND a.deleted_at IS NULL`,
+      ids,
+    );
+    ensure(existing.length > 0, 'No matching applications found');
+
+    const oldIds = existing.map((r: any) => r.mkt_pic_id).filter(Boolean);
+    const oldNames = oldIds.length ? await this.mktPics.names(oldIds) : new Map();
+
+    await this.apps.pool.execute(
+      `UPDATE ${CRM.applications}
+       SET mkt_pic_id = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP(3)
+       WHERE id IN (${placeholders}) AND deleted_at IS NULL`,
+      [mktPicId, by(actor), ...ids],
+    );
+
+    const newPicLabel = pic.name || pic.username;
+    for (const app of existing) {
+      if (Number(app.mkt_pic_id) === mktPicId) continue;
+      const prevPic = app.mkt_pic_id ? oldNames.get(Number(app.mkt_pic_id)) : null;
+      const prevLabel = prevPic ? prevPic.name || prevPic.username : 'Unassigned';
+      const companyLabel = app.company_name ? ` (${app.company_name})` : '';
+      await recordActivity(
+        {
+          applicationId: app.id,
+          section: 'Customer & PIC',
+          tabIndex: 0,
+          actionType: 'UPDATE',
+          title: `Changed Marketing PIC to ${newPicLabel}`,
+          details: `Marketing PIC updated from ${prevLabel} to ${newPicLabel} for ${app.application_number}${companyLabel}.`,
+          changes: [{label: 'Marketing PIC', oldValue: prevLabel, newValue: newPicLabel}],
+        },
+        actor,
+      );
+      if (mktPicId !== Number(actor.portalUserId)) {
+        try {
+          await newNotification([mktPicId], {
+            applicationId: app.id,
+            type: 'WORKFLOW_ACTION',
+            title: `Assigned as Marketing PIC (${app.application_number})`,
+            message: `You have been assigned as Marketing PIC for ${app.application_number}${companyLabel}.`,
+          });
+        } catch (e) {
+          console.error('Notification failed:', (e as Error).message);
+        }
+      }
+    }
+
+    return {
+      updatedCount: existing.length,
+      mktPicId,
+      mktPicName: newPicLabel,
+    };
+  }
+
+  /** Send a document upload & approval reminder notification to the Marketing PIC of each selected application. */
+  async bulkDocumentReminder(applicationIds: string[], actor: Actor, note?: string) {
+    const ids = [...new Set(applicationIds)];
+    const placeholders = ids.map(() => '?').join(',');
+    const [apps] = await this.apps.pool.query<any[]>(
+      `SELECT a.id, a.application_number, a.mkt_pic_id, p.company_name
+       FROM ${CRM.applications} a
+       LEFT JOIN ${CRM.fapApplicationProfiles} p ON p.application_id = a.id
+       WHERE a.id IN (${placeholders}) AND a.deleted_at IS NULL`,
+      ids,
+    );
+    ensure(apps.length > 0, 'No matching applications found');
+
+    let sentCount = 0;
+    let skippedCount = 0;
+    const recipientIds = new Set<number>();
+    const senderLabel = actor.username || 'Team';
+
+    for (const app of apps) {
+      const picId = app.mkt_pic_id ? Number(app.mkt_pic_id) : null;
+      if (!picId) {
+        skippedCount += 1;
+        continue;
+      }
+      const companyLabel = app.company_name ? ` (${app.company_name})` : '';
+      const extraNote = note?.trim() ? ` Note: ${note.trim()}` : '';
+      await newNotification([picId], {
+        applicationId: app.id,
+        type: 'DOCUMENT_REMINDER',
+        title: `Document Reminder: ${app.application_number}`,
+        message: `Reminder from ${senderLabel}: Please don't forget to upload the required documents and send application ${app.application_number}${companyLabel} for approval.${extraNote}`,
+      });
+      sentCount += 1;
+      recipientIds.add(picId);
+    }
+
+    return {
+      sentCount,
+      skippedCount,
+      recipientCount: recipientIds.size,
+    };
   }
 
   /* ---------- writes ---------- */

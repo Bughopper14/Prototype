@@ -20,6 +20,12 @@ export class ApplicationsController {
     return this.applications.marketingPics();
   }
 
+  @Get('users-and-departments')
+  async usersAndDepartments(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'CRM_DASHBOARD_ACCESS');
+    return this.applications.usersAndDepartments();
+  }
+
   @Post('applications')
   async create(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_APPLICATION_CREATE');
@@ -32,7 +38,7 @@ export class ApplicationsController {
   /** Active users: the choices for the PIC Marketing of a new application. */
   @Get('applications/mkt-pics')
   mktPics(@ApiReq() req: ApiRequest) {
-    requireAuthority(req.actor, 'CRM_APPLICATION_CREATE');
+    requireAuthority(req.actor, 'CRM_APPLICATION_CREATE', 'CRM_APPLICATION_EDIT');
     return this.applications.mktPicCandidates();
   }
 
@@ -180,5 +186,31 @@ export class ApplicationsController {
   inbox(@ApiReq() req: ApiRequest, @Res() res: ApiResponse) {
     requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
     return this.applications.inbox(req.actor);
+  }
+
+  /** Bulk-change the Marketing PIC for one or more applications. */
+  @Post('applications/bulk/change-pic')
+  async bulkChangePic(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'CRM_APPLICATION_EDIT', 'CRM_APPLICATION_CREATE');
+    const body = z
+      .object({
+        applicationIds: z.array(z.string().uuid()).min(1).max(500),
+        mktPicId: z.number().int().positive(),
+      })
+      .parse(req.body || {});
+    return this.applications.bulkChangePic(body.applicationIds, body.mktPicId, req.actor);
+  }
+
+  /** Send a document upload & approval submission reminder notification to each selected application's Marketing PIC. */
+  @Post('applications/bulk/document-reminder')
+  async bulkDocumentReminder(@ApiReq() req: ApiRequest) {
+    requireAuthority(req.actor, 'CRM_APPLICATION_VIEW');
+    const body = z
+      .object({
+        applicationIds: z.array(z.string().uuid()).min(1).max(500),
+        note: z.string().trim().max(2000).optional(),
+      })
+      .parse(req.body || {});
+    return this.applications.bulkDocumentReminder(body.applicationIds, req.actor, body.note);
   }
 }

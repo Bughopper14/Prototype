@@ -9,7 +9,7 @@ import {stakeholderSaveError} from '@/features/legal/lib/stakeholder-validation'
 import {saveStakeholderScans} from '@/features/legal/lib/stakeholder-scans';
 import {stakeholderForSave} from '@/features/legal/lib/stakeholder-values';
 import {isFieldMandatory, useMandatoryRules, useMasterData} from '@/shared/master-data';
-import {deedInApproval, legalDeedFields, deedApprovalStatus, DEED_EDIT_AUTHORITY, FORM_SECTION} from '@liugong/shared';
+import {deedInApproval, legalDeedFields, deedApprovalStatus, DEED_EDIT_AUTHORITY, FORM_SECTION, safeUUID} from '@liugong/shared';
 import {useEffect, useRef, useState} from 'react';
 
 export type LegalEditorProps = {
@@ -176,13 +176,10 @@ export function useLegalEditor({
         console.error('Save legal stakeholders error:', e);
         setFormError(e.message || 'Failed to save stakeholders to database.');
         notify?.(e.message || 'Failed to save the stakeholders. They are not stored yet.');
+        throw e;
       }
     }
   };
-  const safeUUID = () =>
-    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-      ? crypto.randomUUID()
-      : 'deed-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9);
   const openAdd = () => {
     if (disabled) return;
     setEditing({
@@ -297,7 +294,7 @@ export function useLegalEditor({
   };
   const {handleKtpUpload, applyOcrToForm} = useKtpOcr({stakeholderModal, setStakeholderModal, setOcrLoading});
 
-  const saveStakeholder = () => {
+  const saveStakeholder = async () => {
     if (!stakeholderModal || editorLocked) return;
     setFormError('');
     const x = deeds.find(d => d.id === stakeholderModal.deedId);
@@ -325,10 +322,15 @@ export function useLegalEditor({
       stakeholderModal.index < 0
         ? [...rows, valToSave]
         : rows.map((r, i) => (i === stakeholderModal.index ? valToSave : r));
-    updateRows(x.id, next);
-    setStakeholderModal(null);
-    // Back to this deed's stakeholder list
-    setStakeholderList(x.id);
+    try {
+      await updateRows(x.id, next);
+      setStakeholderModal(null);
+      // Back to this deed's stakeholder list
+      setStakeholderList(x.id);
+    } catch (e: any) {
+      console.error('Failed to save stakeholder:', e);
+      setFormError(e.message || 'Failed to save stakeholder to database.');
+    }
   };
   const editingCategoryIds = editing ? getDeedCategoryIds(editing) : [];
   const cleanEditingDeedNumber = String(editing?.deedNumber || '')
