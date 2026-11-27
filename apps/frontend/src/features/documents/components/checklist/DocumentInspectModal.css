@@ -587,25 +587,33 @@
 .doc-chk-tier {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 4px;
-  min-width: 48px;
+  width: 78px;
+  padding-right: 10px;
+  box-sizing: border-box;
   position: relative;
+}
+
+.doc-chk-tier:last-child {
+  width: auto;
+  min-width: 56px;
+  padding-right: 0;
 }
 
 .doc-chk-tier-top {
   display: flex;
   align-items: center;
   width: 100%;
-  justify-content: center;
+  justify-content: flex-start;
   position: relative;
 }
 
 .doc-chk-tier:not(:last-child) .doc-chk-tier-top::after {
   content: '';
   position: absolute;
-  left: calc(50% + 12px);
-  right: calc(-50% + 12px);
+  left: 26px;
+  right: -6px;
   top: 50%;
   height: 1.5px;
   background: #cbd5e1;
@@ -623,6 +631,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .doc-chk-tier-circle.is-approved {
@@ -647,7 +656,9 @@
   font-size: 11px;
   font-weight: 500;
   color: #64748b;
-  white-space: nowrap;
+  line-height: 1.3;
+  text-align: left;
+  word-break: break-word;
 }
 
 .doc-chk-status-title {

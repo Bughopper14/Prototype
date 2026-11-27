@@ -70,7 +70,7 @@ function GapList({gaps, onOpen}: {gaps: Gap[]; onOpen: (gap: Gap) => void}) {
                   {gap.detail && (
                     <span style={{color: '#64748b'}}>
                       {' '}
-                      · {gap.detail === 'Belum disetujui' ? "Haven't approved yet" : gap.detail}
+                      - {gap.detail === 'Belum disetujui' ? "Haven't approved yet" : gap.detail}
                     </span>
                   )}
                 </li>
@@ -213,8 +213,8 @@ export function ApprovalDecisionDialog() {
       : `Approve ${scopeLabel}?`;
 
   const modalSubtitle = reject
-    ? `${a.customer?.companyName || 'Application'} · Round ${roundNo} · goes back to Marketing (${picLabel})`
-    : `${a.customer?.companyName || 'Application'} · ${a.applicationNumber || a.id} · Round ${roundNo}`;
+    ? `${a.customer?.companyName || 'Application'} (Round ${roundNo}), goes back to Marketing (${picLabel})`
+    : `${a.customer?.companyName || 'Application'} (${a.applicationNumber || a.id}), Round ${roundNo}`;
 
   const canConfirm = !busy && (!reject || (comments || '').trim().length > 0) && (!pickStages || reopen.length > 0);
 
@@ -299,7 +299,7 @@ export function ApprovalDecisionDialog() {
                                       onChange={e => setKeep(k => (e.target.checked ? k.filter(x => x !== i.id) : [...k, i.id]))}
                                     />
                                     <span style={{flex: 1}}>
-                                      {i.kind === 'document' ? 'Document' : 'Legal deed'} · {i.name}
+                                      {i.kind === 'document' ? 'Document' : 'Legal deed'}: {i.name}
                                     </span>
                                   </label>
                                 );
@@ -337,7 +337,7 @@ export function ApprovalDecisionDialog() {
                             onChange={e => setAlso(x => (e.target.checked ? [...x, i.id] : x.filter(y => y !== i.id)))}
                           />
                           <span style={{flex: 1}}>
-                            {i.kind === 'deed' ? `${i.name} · Legal Deeds & Amendments` : i.name}
+                            {i.kind === 'deed' ? `${i.name} - Legal Deeds & Amendments` : i.name}
                           </span>
                         </label>
                       );
@@ -483,7 +483,7 @@ export function SubmitStageDialog() {
   const stageRound = (a.approval?.current || []).find((c: any) => c.scope === 'STAGE' && c.stageCode === submitStageCode);
   const stageLayers = stageRound?.steps?.length ? layersOf(stageRound.steps) : [];
   const levelsSummary = stageLayers.length
-    ? stageLayers.map((layer, idx) => `Level ${idx + 1}: ${layer.map(whoOf).join(' & ')}`).join(' · ') + '.'
+    ? stageLayers.map((layer, idx) => `Level ${idx + 1}: ${layer.map(whoOf).join(' & ')}`).join('; ') + '.'
     : 'Approvers are notified according to the configured stage workflow.';
 
   const close = () => {
@@ -527,7 +527,7 @@ export function SubmitStageDialog() {
           <div>
             <h3>Submit {stageTitle} for approval?</h3>
             <p>
-              {a.customer?.companyName || 'Application'} · {a.applicationNumber || a.id}
+              {a.customer?.companyName || 'Application'} ({a.applicationNumber || a.id})
             </p>
           </div>
           <button type="button" className="r1-icon-btn" onClick={close} aria-label="Close">
@@ -539,7 +539,7 @@ export function SubmitStageDialog() {
           <div className="r1-info-box">
             <div className="r1-eyebrow">WHAT HAPPENS NEXT</div>
             <ul style={{margin: '2px 0 0', paddingLeft: 18, fontSize: 13, color: '#1e293b', display: 'flex', flexDirection: 'column', gap: 5}}>
-              <li>{stageTitle} is locked — no more edits while it is reviewed.</li>
+              <li>{stageTitle} is locked, no more edits while it is reviewed.</li>
               <li>{levelsSummary}</li>
               <li>You will be notified when it is approved or returned.</li>
             </ul>

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {Injectable} from '@nestjs/common';
 import {CrmDatabase} from '../../core/db/crm-database';
 import {CRM} from '../../core/db/crm-tables';
+import {USER_TABLES} from '../../core/db/user-tables';
 import type {FapDiff} from './fap-diff';
 
 /** Statuses of crm_fap_document_ocr_comparisons that end the review (the FAP stage was submitted): differences are no longer recomputed. */
@@ -38,6 +39,16 @@ export class FapOcrRepository {
       oldValue: d.system_value ?? '',
       newValue: d.ocr_value ?? '',
     });
+    let reviewedByName: string | null = c.reviewed_by ?? null;
+    if (c.reviewed_by) {
+      const [uRows] = await this.db.pool.execute<any[]>(
+        `SELECT full_name FROM ${USER_TABLES.users} WHERE username = ? LIMIT 1`,
+        [c.reviewed_by],
+      );
+      if (uRows[0]?.full_name) {
+        reviewedByName = String(uRows[0].full_name);
+      }
+    }
     return {
       id: c.id,
       fileId: c.document_file_id,
@@ -49,7 +60,7 @@ export class FapOcrRepository {
       /** What the signed document says for every field that differed (open and noted), for the document side. */
       documentValues: Object.fromEntries(diffs.map(d => [d.field_key, d.ocr_value ?? ''])),
       remarks: c.remarks ?? '',
-      reviewedBy: c.reviewed_by,
+      reviewedBy: reviewedByName,
       reviewedAt: c.reviewed_at,
       comparedAt: c.updated_at || c.created_at,
     };

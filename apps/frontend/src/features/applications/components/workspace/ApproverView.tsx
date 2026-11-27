@@ -8,10 +8,11 @@ import {createPreviewState} from '@/features/applications/components/workspace/A
 import {useWorkspace} from '@/features/applications/components/workspace/WorkspaceContext';
 import {layersOf, shownStatus, whoOf, type Approval, type Scope, type Step} from '@/features/applications/components/workspace/approval-shared';
 import {screenOf} from '@/features/applications/lib/workspace/stage';
+import {SCREEN} from '@/shared/master-data';
 import {DocumentPreviewModal} from '@/features/documents/components/checklist/DocumentPreviewModal';
 import type {PreviewState} from '@/features/documents/lib/checklist/types';
 import {AlertCircle, Check, ChevronRight, Clock, Lock, Paperclip, X} from 'lucide-react';
-import {Fragment, useEffect, useMemo, useRef, useState} from 'react';
+import {useMemo, useRef, useState} from 'react';
 
 function fmtShortDate(v?: string | null): string {
   if (!v) return '';
@@ -61,18 +62,13 @@ export function ApproverView() {
   const stages: any[] = useMemo(() => a.stageProgress || [], [a.stageProgress]);
   const wfStages: any[] = useMemo(() => a.workflow?.stages || [], [a.workflow?.stages]);
 
-  const defaultStageCode = useMemo(() => {
+  const selectedStageCode = useMemo(() => {
     const byScreen = stages.find(st => {
       const wf = wfStages.find(w => w.code === st.stage);
       return wf && screenOf(wf) === activeStage;
     });
     return byScreen?.stage || stages[0]?.stage || '';
   }, [stages, wfStages, activeStage]);
-
-  const [selectedStageCode, setSelectedStageCode] = useState<string>(defaultStageCode);
-  useEffect(() => {
-    if (defaultStageCode) setSelectedStageCode(defaultStageCode);
-  }, [defaultStageCode]);
 
   if (draft.isNew || !a.approval) {
     return (
@@ -135,27 +131,35 @@ export function ApproverView() {
 
   const stageLabelUp = /\bstage\b/i.test(stageName) ? stageName.toUpperCase() : `${stageName.toUpperCase()} STAGE`;
   const stageLabelTitle = /\bstage\b/i.test(stageName) ? stageName : `${stageName} stage`;
+  const isLastStage = stages.length > 0 && stages[stages.length - 1]?.stage === activeTab?.stage;
+  const activeWfStage = wfStages.find(w => w.code === activeTab?.stage);
+  const activeScreenOfTab = activeWfStage ? screenOf(activeWfStage) : activeStage;
+
   const heroEyebrow = heroRound
-    ? `${stageLabelUp} APPROVAL · ROUND ${roundNo}`
+    ? `${stageLabelUp} APPROVAL (ROUND ${roundNo})`
     : `${stageLabelUp} APPROVAL`;
 
   const heroTitle = !heroRound
-    ? `${stageLabelTitle} — not submitted yet`
+    ? `${stageLabelTitle}: Not submitted yet`
     : myHeroStep
-      ? `Waiting on you — ${whoOf(myHeroStep)}`
+      ? `Waiting on you (${whoOf(myHeroStep)})`
       : heroAllApproved
-        ? `${stageLabelTitle} approved`
+        ? isLastStage
+          ? `${stageLabelTitle} approved (Application approved)`
+          : `${stageLabelTitle} approved`
         : heroHasRejected
           ? `${stageLabelTitle} returned`
           : heroPendingWho.length > 0
-            ? `In review — waiting on ${heroPendingWho.join(' & ')}`
+            ? `In review, waiting on ${heroPendingWho.join(' & ')}`
             : `${stageLabelTitle} in review`;
 
   const heroSubtitle = !heroRound
     ? activeTab?.st?.blockedReason || 'Approval starts automatically once this stage is submitted.'
     : heroAllApproved
-      ? `All approvals complete${lastApprovedDec?.decidedAt ? ` on ${fmtShortDate(lastApprovedDec.decidedAt)}` : ''} · nothing is waiting on you`
-      : `Submitted by ${a.picName || a.createdByName || 'Marketing'}${lastApprovedDec ? ` · ${lastApprovedDec.by} approved ${fmtShortDate(lastApprovedDec.decidedAt)}` : ''}`;
+      ? isLastStage
+        ? `Approved${lastApprovedDec?.decidedAt ? ` on ${fmtShortDate(lastApprovedDec.decidedAt)}` : ''}, ready for contract & disbursement`
+        : `All approvals complete${lastApprovedDec?.decidedAt ? ` on ${fmtShortDate(lastApprovedDec.decidedAt)}` : ''}, nothing is waiting on you`
+      : `Submitted by ${a.picName || a.createdByName || 'Marketing'}${lastApprovedDec ? `, ${lastApprovedDec.by} approved ${fmtShortDate(lastApprovedDec.decidedAt)}` : ''}`;
 
   // "Before you decide" summary metrics
   const stageItemScopes = ap.current.filter(
@@ -207,7 +211,11 @@ export function ApproverView() {
   }
   historyEvents.sort((x, y) => y.sortTime - x.sortTime);
 
-  const hasEarlierRounds = ap.history.length > 0 || roundNo > 1;
+  const stageHistory = ap.history.filter(
+    h => !activeTab?.stage || !h.stageCode || h.stageCode === activeTab.stage,
+  );
+  const hasEarlierRounds = stageHistory.some(h => h.scope === 'STAGE') || roundNo > 1;
+  const hasDeedsInStage = deedScopes.length > 0 || activeScreenOfTab === SCREEN.FAP;
   const jumpToHistory = () => {
     setHistoryOpen(true);
     setTimeout(() => historyRef.current?.scrollIntoView({behavior: 'smooth', block: 'start'}), 40);
@@ -215,26 +223,8 @@ export function ApproverView() {
 
   return (
     <section className="r1-wrap" aria-label="Approvals">
-      {/* HERO CARD: Stage sub-tabs + Level chain + Before you decide */}
+      {/* HERO CARD: Level chain + Before you decide */}
       <div className="r1-card">
-        {stageTabInfo.length > 0 && (
-          <div className="r1-stage-tabs" role="tablist" aria-label="Approval stages">
-            {stageTabInfo.map(t => (
-              <button
-                key={t.stage}
-                type="button"
-                role="tab"
-                aria-selected={t.stage === activeTab?.stage}
-                className={`r1-stage-tab${t.stage === activeTab?.stage ? ' active' : ''}`}
-                onClick={() => setSelectedStageCode(t.stage)}
-              >
-                <span>{t.name}</span>
-                <span className={`r1-stage-pill${t.pillTone ? ` ${t.pillTone}` : ''}`}>{t.pillText}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
         <div className="r1-card-pad">
           <div className="r1-appr-hero-top">
             <div>
@@ -264,7 +254,7 @@ export function ApproverView() {
             </div>
             {hasEarlierRounds && (
               <button type="button" className="r1-link-btn" onClick={jumpToHistory}>
-                Round {Math.max(1, roundNo - 1)} was returned · see history
+                Round {Math.max(1, roundNo - 1)} was returned (see history)
               </button>
             )}
           </div>
@@ -311,14 +301,14 @@ export function ApproverView() {
                           const subClass = sDone ? 'done' : sRej ? 'rejected' : sYours ? 'yours' : sPeer ? 'peer' : '';
 
                           const subText = sDone && lastDec
-                            ? `Approved by ${lastDec.by}${lastDec.decidedAt ? ` · ${fmtShortDate(lastDec.decidedAt)}` : ''}`
+                            ? `Approved by ${lastDec.by}${lastDec.decidedAt ? ` on ${fmtShortDate(lastDec.decidedAt)}` : ''}`
                             : sRej && lastDec
-                              ? `Returned by ${lastDec.by}${lastDec.decidedAt ? ` · ${fmtShortDate(lastDec.decidedAt)}` : ''}`
+                              ? `Returned by ${lastDec.by}${lastDec.decidedAt ? ` on ${fmtShortDate(lastDec.decidedAt)}` : ''}`
                               : sYours
                                 ? 'Waiting for your decision'
                                 : sPeer
                                   ? myHeroStep && layer.some(x => x.canAct)
-                                    ? 'Waiting · parallel with you'
+                                    ? 'Waiting (parallel with you)'
                                     : step.startedAt
                                       ? `Waiting since ${fmtShortDate(step.startedAt)}`
                                       : 'Waiting for decision'
@@ -354,79 +344,145 @@ export function ApproverView() {
                 })}
               </div>
 
-              {/* Right: BEFORE YOU DECIDE box (when user can act on stage) */}
+              {/* Right: BEFORE YOU DECIDE box (dynamically tailored per stage formCode/screen) */}
               {myHeroStep && (
                 <div className="r1-before-box">
                   <div className="r1-eyebrow">BEFORE YOU DECIDE</div>
-                  <div className="r1-before-row">
-                    <span className="r1-before-left">
-                      <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
-                        <Check size={11} strokeWidth={3} />
-                      </span>
-                      <span>{stageName} Form</span>
-                    </span>
-                    <span className="r1-before-right">All sections complete</span>
-                  </div>
+                  {activeScreenOfTab === SCREEN.FAP ? (
+                    <>
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                            <Check size={11} strokeWidth={3} />
+                          </span>
+                          <span>{stageName} Form</span>
+                        </span>
+                        <span className="r1-before-right">All sections complete</span>
+                      </div>
 
-                  <div className="r1-before-row">
-                    <span className="r1-before-left">
-                      {docScopes.length > 0 && approvedDocsCount === docScopes.length ? (
-                        <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
-                          <Check size={11} strokeWidth={3} />
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          {docScopes.length > 0 && approvedDocsCount === docScopes.length ? (
+                            <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                              <Check size={11} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
+                              <AlertCircle size={12} />
+                            </span>
+                          )}
+                          <span>Documents</span>
                         </span>
-                      ) : (
-                        <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
-                          <AlertCircle size={12} />
+                        <span className="r1-before-right">
+                          {docScopes.length > 0 ? `${approvedDocsCount} of ${docScopes.length} approved` : 'No document approvals'}
                         </span>
-                      )}
-                      <span>Documents</span>
-                    </span>
-                    <span className="r1-before-right">
-                      {docScopes.length > 0 ? `${approvedDocsCount} of ${docScopes.length} approved` : 'No document approvals'}
-                    </span>
-                  </div>
+                      </div>
 
-                  <div className="r1-before-row">
-                    <span className="r1-before-left">
-                      {ocrDiffCount === 0 ? (
-                        <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
-                          <Check size={11} strokeWidth={3} />
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          {ocrDiffCount === 0 ? (
+                            <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                              <Check size={11} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
+                              <AlertCircle size={12} />
+                            </span>
+                          )}
+                          <span>OCR comparison</span>
                         </span>
-                      ) : (
-                        <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
-                          <AlertCircle size={12} />
+                        <span className="r1-before-right">
+                          {ocrDiffCount} {ocrDiffCount === 1 ? 'difference' : 'differences'}
                         </span>
-                      )}
-                      <span>OCR comparison</span>
-                    </span>
-                    <span className="r1-before-right">
-                      {ocrDiffCount} {ocrDiffCount === 1 ? 'difference' : 'differences'}
-                    </span>
-                  </div>
+                      </div>
 
-                  <div className="r1-before-row">
-                    <span className="r1-before-left">
-                      {pendingDeeds.length === 0 && (deedScopes.length > 0 || deeds.length === 0 || deeds.some(d => d.approvalStatus === 'APPROVED')) ? (
-                        <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
-                          <Check size={11} strokeWidth={3} />
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          {pendingDeeds.length === 0 && (deedScopes.length > 0 || deeds.length === 0 || deeds.some(d => d.approvalStatus === 'APPROVED')) ? (
+                            <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                              <Check size={11} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
+                              <AlertCircle size={12} />
+                            </span>
+                          )}
+                          <span>Legal deeds</span>
                         </span>
-                      ) : (
-                        <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
-                          <AlertCircle size={12} />
+                        <span className="r1-before-right">
+                          {pendingDeeds.length > 0
+                            ? `${pendingDeeds.length} still in review`
+                            : deedScopes.length > 0
+                              ? 'All approved'
+                              : deeds.length > 0 && !deeds.some(d => d.approvalStatus === 'APPROVED')
+                                ? 'Not submitted yet'
+                                : 'None required'}
                         </span>
-                      )}
-                      <span>Legal deeds</span>
-                    </span>
-                    <span className="r1-before-right">
-                      {pendingDeeds.length > 0
-                        ? `${pendingDeeds.length} still in review`
-                        : deedScopes.length > 0
-                          ? 'All approved'
-                          : deeds.length > 0 && !deeds.some(d => d.approvalStatus === 'APPROVED')
-                            ? 'Not submitted yet'
-                            : 'None required'}
-                    </span>
-                  </div>
+                      </div>
+                    </>
+                  ) : activeScreenOfTab === SCREEN.PRE_ANALYSIS ? (
+                    <>
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                            <Check size={11} strokeWidth={3} />
+                          </span>
+                          <span>Pre-analysis Form</span>
+                        </span>
+                        <span className="r1-before-right">All sections complete</span>
+                      </div>
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          {docScopes.length === 0 || approvedDocsCount === docScopes.length ? (
+                            <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                              <Check size={11} strokeWidth={3} />
+                            </span>
+                          ) : (
+                            <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
+                              <AlertCircle size={12} />
+                            </span>
+                          )}
+                          <span>Documents</span>
+                        </span>
+                        <span className="r1-before-right">
+                          {docScopes.length > 0 ? `${approvedDocsCount} of ${docScopes.length} approved` : 'Uploaded'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {stages
+                        .filter(st => st.stage !== activeTab?.stage)
+                        .map(st => (
+                          <div key={st.stage} className="r1-before-row">
+                            <span className="r1-before-left">
+                              {st.completed ? (
+                                <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                                  <Check size={11} strokeWidth={3} />
+                                </span>
+                              ) : (
+                                <span className="r1-status-icon in-review" style={{width: 18, height: 18, marginTop: 0}}>
+                                  <AlertCircle size={12} />
+                                </span>
+                              )}
+                              <span>{st.name}</span>
+                            </span>
+                            <span className="r1-before-right">{st.completed ? 'Approved' : st.submitted ? 'In review' : 'Pending'}</span>
+                          </div>
+                        ))}
+                      <div className="r1-before-row">
+                        <span className="r1-before-left">
+                          <span className="r1-status-icon approved" style={{width: 18, height: 18, marginTop: 0}}>
+                            <Check size={11} strokeWidth={3} />
+                          </span>
+                          <span>{stageName} documents</span>
+                        </span>
+                        <span className="r1-before-right">
+                          {docs.filter(d => d.stageCode === activeTab?.stage).reduce((acc, d) => acc + (d.files?.length || 0), 0)} file(s)
+                        </span>
+                      </div>
+                    </>
+                  )}
 
                   {heroRound.locked && (
                     <div
@@ -478,9 +534,9 @@ export function ApproverView() {
               }}
             >
               <div>
-                <div className="r1-eyebrow blue">GROUP APPROVAL · ROUND {groupRound.roundNo}</div>
+                <div className="r1-eyebrow blue">GROUP APPROVAL (ROUND {groupRound.roundNo})</div>
                 <div style={{fontSize: 15, fontWeight: 700, color: '#0f172a', marginTop: 2}}>
-                  {groupRound.scopeName} — Waiting on you ({whoOf(myGroupStep)})
+                  {groupRound.scopeName}: Waiting on you ({whoOf(myGroupStep)})
                 </div>
               </div>
               <div style={{display: 'flex', alignItems: 'center', gap: 8}}>
@@ -496,11 +552,12 @@ export function ApproverView() {
         </div>
       </div>
 
-      {/* MIDDLE CARD: Document & deed approvals */}
+      {/* MIDDLE CARD: Document (& deed) approvals */}
       <div className="r1-card">
         <div className="r1-list-head">
           <h3>
-            Document &amp; deed approvals <span style={{color: '#64748b', fontWeight: 500}}>· {stageItemScopes.length}</span>
+            {hasDeedsInStage ? 'Document & deed approvals' : 'Document approvals'}{' '}
+            <span style={{color: '#64748b', fontWeight: 500}}>({stageItemScopes.length})</span>
           </h3>
           <div className="r1-seg-filter" role="tablist" aria-label="Filter items">
             <button type="button" className={filterMode === 'all' ? 'active' : ''} onClick={() => setFilterMode('all')}>
@@ -517,7 +574,7 @@ export function ApproverView() {
 
         {displayedItems.length === 0 ? (
           <div style={{padding: '24px', textAlign: 'center', color: '#64748b', fontSize: 13}}>
-            No document or deed approvals in this view.
+            {hasDeedsInStage ? 'No document or deed approvals in this view.' : 'No document approvals in this view.'}
           </div>
         ) : (
           <div>
@@ -539,7 +596,7 @@ export function ApproverView() {
 
               const rawTitle = sc.scopeName.replace(/^(Document|Section)\s+/i, '').trim();
               const title = isDeed && deed?.deedNumber && !rawTitle.includes(deed.deedNumber)
-                ? `Deed ${deed.deedNumber} · ${rawTitle}`
+                ? `Deed ${deed.deedNumber} - ${rawTitle}`
                 : rawTitle;
 
               const layers = layersOf(sc.steps);
@@ -589,7 +646,7 @@ export function ApproverView() {
                             </button>
                             <span style={{fontSize: 11.5, color: '#64748b'}}>
                               {isPdf ? 'PDF' : 'FILE'}
-                              {firstFile?.fileSize ? ` · ${fmtSize(firstFile.fileSize)}` : ''}
+                              {firstFile?.fileSize ? `, ${fmtSize(firstFile.fileSize)}` : ''}
                             </span>
                           </>
                         ) : (
@@ -600,24 +657,24 @@ export function ApproverView() {
                   </div>
 
                   {/* Col 2: Horizontal step-dots chain */}
-                  <div style={{display: 'flex', justifyContent: 'center'}}>
+                  <div style={{display: 'flex', justifyContent: 'flex-start'}}>
                     <div className="r1-chain">
                       {layers.map((layer, li) => {
                         const lDone = layer.every(s => s.status === 'APPROVED');
                         const lRej = layer.some(s => shownStatus(s) === 'REJECTED');
                         const lNow = !lDone && !lRej && layer.some(s => s.status === 'PENDING');
                         const dotCls = lDone ? 'done' : lRej ? 'rejected' : lNow ? 'now' : '';
+                        const lineCls = lDone ? ' line-done' : lRej ? ' line-rejected' : '';
                         const roleLbl = layer.map(s => shortRole(whoOf(s))).join(' + ');
                         return (
-                          <Fragment key={li}>
-                            {li > 0 && <span className={`r1-chain-line${layers[li - 1].every(s => s.status === 'APPROVED') ? ' done' : ''}`} />}
-                            <span className="r1-chain-node">
+                          <span key={li} className={`r1-chain-node${lineCls}`}>
+                            <span className="r1-chain-top">
                               <span className={`r1-chain-dot ${dotCls}`}>
                                 {lDone ? <Check size={11} strokeWidth={3} /> : lRej ? <X size={11} strokeWidth={3} /> : null}
                               </span>
-                              <span className={`r1-chain-lbl ${dotCls}`}>{roleLbl}</span>
                             </span>
-                          </Fragment>
+                            <span className={`r1-chain-lbl ${dotCls}`}>{roleLbl}</span>
+                          </span>
                         );
                       })}
                     </div>

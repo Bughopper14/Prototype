@@ -123,18 +123,18 @@ const SECTIONS: Record<string, Section> = {
   [FORM_SECTION.BANKS]: {...list(d => d.bankReferences || [], (_, i) => `bank ${i + 1}`), appKeys: new Set(['referenceComments'])},
   'FINANCING-PROPOSAL': PROPOSAL,
   [FORM_SECTION.FINANCIAL]: {
-    ...list(d => d.financialStatements || [], (it, i) => `laporan ${it.fiscalYear ?? i + 1}`),
+    ...list(d => d.financialStatements || [], (it, i) => `statement ${it.fiscalYear ?? i + 1}`),
     appKeys: new Set(['financialAudited']),
     booleanKeys: new Set(['financialAudited']),
   },
   [DEED_SECTION]: list(
     d => d.legal?.deeds || [],
-    (it, i) => `akta ${it.deedNumber || i + 1}`,
+    (it, i) => `deed ${it.deedNumber || i + 1}`,
     undefined,
     'LEGAL',
   ),
   'SHAREHOLDERS-MANAGEMENT': {
-    ...list(stakeholdersOf, (it, i) => `${it.firstName || it.name || `pemegang ${i + 1}`} (akta ${it.__deed || '-'})`, undefined, 'LEGAL'),
+    ...list(stakeholdersOf, (it, i) => `${it.firstName || it.name || `stakeholder ${i + 1}`} (deed ${it.__deed || '-'})`, undefined, 'LEGAL'),
     // "Minimum items" of this section is per deed: every deed needs that many stakeholders.
   },
 };
@@ -201,7 +201,7 @@ export function mandatoryGaps(detail: any, rules: FieldRule[], stageName: (code:
     if (!appLevel && section.noRows?.(detail)) {
       if (!noRows.has(r.sectionCode)) {
         noRows.add(r.sectionCode);
-        gaps.push({target: section.target, label: `Minimal satu data di ${r.section}`, detail: stageName(r.stageCode)});
+        gaps.push({target: section.target, label: `At least one entry in ${r.section}`, detail: stageName(r.stageCode)});
       }
       continue;
     }

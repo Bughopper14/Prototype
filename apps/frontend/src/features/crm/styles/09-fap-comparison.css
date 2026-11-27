@@ -639,7 +639,7 @@
 .fap-r2-section {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
 
 .fap-r2-card,

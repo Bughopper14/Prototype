@@ -145,6 +145,10 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             onChange={onChange}
             notify={notify}
             activeScreen={activeStage}
+            onSelectStage={stageCode => {
+              const wf = (a.workflow?.stages || []).find((s: any) => s.code === stageCode);
+              if (wf) state.setActiveStage(screenOf(wf));
+            }}
           />
         )}
         {tab === 7 && (

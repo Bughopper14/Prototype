@@ -489,7 +489,7 @@ export function PreAnalysisDocumentsView({
         </div>
         </div>
       ) : (
-        /* Not uploaded state -> Dropzone + Who Verifies + Bottom Helper */
+        /* Not uploaded state -> Dropzone + Bottom Helper */
         <>
           <div className="prea-docs-main-card">
             <div
@@ -526,47 +526,6 @@ export function PreAnalysisDocumentsView({
                 >
                   {uploading ? 'Uploading...' : 'Browse file'}
                 </button>
-              )}
-            </div>
-
-            {/* Who Verifies After Upload */}
-            <div className="prea-docs-verify-section">
-              <div className="prea-docs-verify-title">WHO VERIFIES AFTER UPLOAD</div>
-              {steps.length > 0 ? (
-                steps.map((st: any, idx: number) => {
-                  const role = st.authorityName?.match(/_([A-Za-z0-9]+)_(?:APPROVE|REVIEW|VERIFY)$/i)?.[1] || st.name || 'CA';
-                  const stepApproved = st.status === 'APPROVED';
-                  const stepPending = st.status === 'PENDING';
-                  return (
-                    <div key={st.id || idx} className="prea-docs-verify-row">
-                      <span className="prea-docs-level-label">L{st.order ?? idx + 1}</span>
-                      <span
-                        className={`prea-docs-role-pill ${
-                          stepApproved ? 'is-approved' : stepPending ? 'is-pending' : ''
-                        }`}
-                      >
-                        {stepApproved ? (
-                          <CheckCircle2 size={12} />
-                        ) : stepPending ? (
-                          <Clock size={12} />
-                        ) : (
-                          <Circle size={11} />
-                        )}
-                        <span>{role}</span>
-                      </span>
-                      <span>{st.name || 'Credit Analyst checks the worksheet and scoring'}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="prea-docs-verify-row">
-                  <span className="prea-docs-level-label">L1</span>
-                  <span className="prea-docs-role-pill">
-                    <Circle size={11} />
-                    <span>CA</span>
-                  </span>
-                  <span>Credit Analyst checks the worksheet and scoring</span>
-                </div>
               )}
             </div>
           </div>

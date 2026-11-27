@@ -7,6 +7,8 @@ import {useState} from 'react';
 
 /** The tab each screen opens on. */
 const SCREEN_TAB: Record<string, number> = {[SCREEN.FAP]: 0, [SCREEN.PRE_ANALYSIS]: 8, [SCREEN.DOCUMENTS]: 6};
+/** Shared tabs that stay open when switching stages in the top stepper. */
+const CROSS_STAGE_TABS = new Set([6, 7, 9, 10, 11]);
 
 export function ChevronStepper() {
   const {a, notify, activeStage, setActiveStage, tab, setTab, draft} = useWorkspace();
@@ -41,7 +43,7 @@ export function ChevronStepper() {
               }
               setPicked(stage.value);
               setActiveStage(screen);
-              if (tab !== 7 && SCREEN_TAB[screen] !== undefined) setTab(SCREEN_TAB[screen]);
+              if (!CROSS_STAGE_TABS.has(tab) && SCREEN_TAB[screen] !== undefined) setTab(SCREEN_TAB[screen]);
             }}
           >
             {stage.name}

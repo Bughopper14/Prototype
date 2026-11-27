@@ -69,7 +69,7 @@ export function ApprovalItemDrawer({
     .replace(/^(Document|Section|Stage|Group)\s+/i, '')
     .trim();
   const displayTitle = isDeed && deed?.deedNumber && !rawTitle.includes(deed.deedNumber)
-    ? `Deed ${deed.deedNumber} · ${rawTitle}`
+    ? `Deed ${deed.deedNumber} - ${rawTitle}`
     : rawTitle;
 
   const layers = layersOf(scope.steps);
@@ -96,24 +96,24 @@ export function ApprovalItemDrawer({
     : isRejected
       ? 'Returned for revision'
       : pendingNames.length > 0
-        ? `In review · waiting on ${pendingNames.join(' & ')}`
+        ? `In review, waiting on ${pendingNames.join(' & ')}`
         : 'Waiting for approval';
 
   const bannerSubline = isAllApproved
     ? `${approvedSteps} of ${totalSteps} approvers approved`
     : doneLayers.length > 0 && activeLayerIdx >= 0
-      ? `Level ${doneLayers.length} done by ${doneLayers[doneLayers.length - 1].map(whoOf).join(' & ')} · Level ${activeLayerIdx + 1} in progress`
-      : `Round ${scope.roundNo || 1} · ${layers.length} approval level${layers.length === 1 ? '' : 's'}`;
+      ? `Level ${doneLayers.length} done by ${doneLayers[doneLayers.length - 1].map(whoOf).join(' & ')}, Level ${activeLayerIdx + 1} in progress`
+      : `Round ${scope.roundNo || 1}, ${layers.length} approval level${layers.length === 1 ? '' : 's'}`;
 
   const view = openView(scope);
   const firstFile = files[0];
   const uploadedText = firstFile?.createdAt || firstFile?.uploadedAt
-    ? ` · uploaded ${fmtDate(firstFile.createdAt || firstFile.uploadedAt)}`
+    ? `, uploaded ${fmtDate(firstFile.createdAt || firstFile.uploadedAt)}`
     : '';
 
   const customerSummary = [a.customer?.entityType || a.customer?.customerType, a.customer?.customerStatus || (a.customer?.isExisting ? 'Existing' : 'New')]
     .filter(Boolean)
-    .join(' · ') || '-';
+    .join(', ') || '-';
 
   return (
     <div className="r1-drawer-backdrop" role="dialog" aria-modal="true" onClick={e => e.target === e.currentTarget && onClose()}>
@@ -139,7 +139,7 @@ export function ApprovalItemDrawer({
             </span>
             <h3>{displayTitle}</h3>
             <p>
-              {a.customer?.companyName || 'Application'} · {stageName} stage{uploadedText}
+              {a.customer?.companyName || 'Application'}, {stageName} stage{uploadedText}
             </p>
           </div>
           <button type="button" className="r1-icon-btn" onClick={onClose} aria-label="Close drawer">
@@ -238,9 +238,9 @@ export function ApprovalItemDrawer({
                               }}
                             >
                               {isDone && lastDec
-                                ? `Approved by ${lastDec.by}${lastDec.decidedAt ? ` · ${fmtDate(lastDec.decidedAt)}` : ''}`
+                                ? `Approved by ${lastDec.by}${lastDec.decidedAt ? ` on ${fmtDate(lastDec.decidedAt)}` : ''}`
                                 : isRej && lastDec
-                                  ? `Returned by ${lastDec.by}${lastDec.decidedAt ? ` · ${fmtDate(lastDec.decidedAt)}` : ''}`
+                                  ? `Returned by ${lastDec.by}${lastDec.decidedAt ? ` on ${fmtDate(lastDec.decidedAt)}` : ''}`
                                   : isNow
                                     ? step.startedAt
                                       ? `Waiting since ${fmtDate(step.startedAt)}`

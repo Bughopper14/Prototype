@@ -149,9 +149,9 @@ export function ChecklistRowItem({
                   <span className="doc-chk-file-meta">
                     {ext}
                     {files.length === 1 && currentFile?.fileSize
-                      ? ` · ${formatBytes(currentFile.fileSize)}`
+                      ? `, ${formatBytes(currentFile.fileSize)}`
                       : currentFile?.createdAt
-                        ? ` · ${formatShortUpdated(currentFile.createdAt)}`
+                        ? `, ${formatShortUpdated(currentFile.createdAt)}`
                         : ''}
                   </span>
                 </>

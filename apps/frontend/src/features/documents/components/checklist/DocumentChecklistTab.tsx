@@ -15,6 +15,7 @@ export interface DocumentChecklistTabProps {
   onChange: (updatedApp: any) => void;
   notify: (msg: string) => void;
   activeScreen?: string;
+  onSelectStage?: (stageCode: string) => void;
 }
 
 const STAGE_STATUS_META: Record<string, {label: string; color: string}> = {
@@ -25,7 +26,7 @@ const STAGE_STATUS_META: Record<string, {label: string; color: string}> = {
   NOT_STARTED: {label: 'Not started', color: '#64748b'},
 };
 
-export function DocumentChecklistTab({application, draft, user, onChange, notify, activeScreen}: DocumentChecklistTabProps) {
+export function DocumentChecklistTab({application, draft, user, onChange, notify, activeScreen, onSelectStage}: DocumentChecklistTabProps) {
   const c = useDocumentChecklist({application, draft, user, onChange, notify});
   const [customizing, setCustomizing] = useState(false);
   const canCustomize = !draft?.isNew && !!application?.id && hasAuthority(user, 'CRM_DOCUMENT_UPLOAD');
@@ -37,7 +38,7 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
     return appStages.find((s: any) => screenOf(s) === activeScreen) || null;
   }, [activeScreen, appStages]);
 
-  const defaultStageCode = useMemo(() => {
+  const activeStageCode = useMemo(() => {
     if (matchedScreenStage) return matchedScreenStage.code;
     const stageSource = appStages.length > 0 ? appStages : c.stages;
     const inProg = appStages.find((s: any) => s.status === 'IN_PROGRESS' || s.status === 'NEEDS_CHANGES');
@@ -45,20 +46,9 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
     return stageSource[0]?.code || '';
   }, [matchedScreenStage, appStages, c.stages]);
 
-  const [activeStageCode, setActiveStageCode] = useState<string>(defaultStageCode);
-
   useEffect(() => {
-    if (matchedScreenStage?.code) {
-      setActiveStageCode(matchedScreenStage.code);
-    }
-  }, [matchedScreenStage?.code]);
-
-  useEffect(() => {
-    const validCodes = (appStages.length > 0 ? appStages : c.stages).map((s: any) => s.code);
-    if (validCodes.length > 0 && !validCodes.includes(activeStageCode)) {
-      setActiveStageCode(defaultStageCode);
-    }
-  }, [appStages, c.stages, activeStageCode, defaultStageCode]);
+    c.setQuickFilter('ALL');
+  }, [activeStageCode]);
 
   const stageProgressList: any[] = application?.stageProgress || [];
   const workflowGroups: any[] = application?.workflow?.groups || [];
@@ -160,14 +150,11 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
     return stageRows;
   }, [stageRows, c.quickFilter, stageSummary]);
 
-  const otherStageNames = stageTabs
-    .filter(t => t.code !== activeStageCode)
-    .map(t => t.name);
-
-  const otherStagesLabel =
-    otherStageNames.length > 1
-      ? `${otherStageNames.slice(0, -1).join(', ')} and ${otherStageNames[otherStageNames.length - 1]}`
-      : otherStageNames[0] || '';
+  const stageHeading = activeStageTab?.name
+    ? /\bstage\b/i.test(activeStageTab.name)
+      ? activeStageTab.name
+      : `${activeStageTab.name} stage`
+    : 'Stage';
 
   const stageStatusMeta = STAGE_STATUS_META[activeStageTab?.status || 'NOT_STARTED'] || STAGE_STATUS_META.NOT_STARTED;
 
@@ -188,35 +175,6 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
       />
 
       <section className="panel doc-checklist-panel doc-stage-panel">
-        {/* Stage Tabs */}
-        <div className="doc-stage-tabs-bar">
-          <div className="doc-stage-tabs-list">
-            {stageTabs.map(st => {
-              const isActive = st.code === activeStageCode;
-              return (
-                <button
-                  key={st.code}
-                  type="button"
-                  className={`doc-stage-tab-btn ${isActive ? 'is-active' : ''}`}
-                  onClick={() => {
-                    setActiveStageCode(st.code);
-                    c.setQuickFilter('ALL');
-                  }}
-                >
-                  <span>{st.name}</span>
-                  {st.isLocked ? (
-                    <span className="doc-stage-tab-locked">locked</span>
-                  ) : (
-                    <span className="doc-stage-tab-count">
-                      {st.uploaded}/{st.total}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {activeStageTab?.isLocked ? (
           (() => {
             const prereqTabs = stageTabs.filter(t => activeStageTab.prereqCodes.includes(t.code));
@@ -263,16 +221,18 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
                               </div>
                             </div>
                           </div>
-                          <button
-                            type="button"
-                            className="doc-locked-open-btn"
-                            onClick={() => {
-                              setActiveStageCode(pr.code);
-                              c.setQuickFilter('ALL');
-                            }}
-                          >
-                            Open {pr.name} <ChevronRight size={14} />
-                          </button>
+                          {onSelectStage && (
+                            <button
+                              type="button"
+                              className="doc-locked-open-btn"
+                              onClick={() => {
+                                onSelectStage(pr.code);
+                                c.setQuickFilter('ALL');
+                              }}
+                            >
+                              Open {pr.name} <ChevronRight size={14} />
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -304,14 +264,14 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
             <div className="doc-stage-summary-header">
           <div>
             <div className="doc-stage-title-row">
-              <h2 className="doc-stage-title">{activeStageTab?.name || 'Stage'} stage</h2>
+              <h2 className="doc-stage-title">{stageHeading}</h2>
               <span className="doc-stage-status-inline" style={{color: stageStatusMeta.color}}>
                 <span className="doc-stage-status-dot" style={{background: stageStatusMeta.color}} />
                 {stageStatusMeta.label}
               </span>
             </div>
             <p className="doc-stage-subtitle">
-              {stageSummary.total} document{stageSummary.total !== 1 ? 's' : ''} · {stageSummary.required} required
+              {stageSummary.total} document{stageSummary.total !== 1 ? 's' : ''}, {stageSummary.required} required
             </p>
           </div>
 
@@ -402,12 +362,6 @@ export function DocumentChecklistTab({application, draft, user, onChange, notify
           </>
         )}
       </section>
-
-      {otherStagesLabel && (
-        <div className="doc-stage-footer-note">
-          {otherStagesLabel} documents are in their own tabs above · stages run in parallel
-        </div>
-      )}
 
       {customizing && (
         <ChecklistCustomizeDialog application={application} onChange={onChange} notify={notify} onClose={() => setCustomizing(false)} />

@@ -8,7 +8,7 @@ import {screenOf} from '@/features/applications/lib/workspace/stage';
 import {api} from '@/shared/lib/api';
 import {date} from '@/shared/lib/format';
 import {SCREEN} from '@/shared/master-data';
-import {AlertTriangle, ArrowRight, Check, CheckCircle2, Circle, CircleDot, Clock} from 'lucide-react';
+import {AlertCircle, AlertTriangle, ArrowRight, Check, CheckCircle2, Circle, CircleDot, Clock} from 'lucide-react';
 import {useEffect, useMemo, useState} from 'react';
 
 type Gap = {target: string; label: string; detail?: string};
@@ -35,6 +35,107 @@ const GAP_GROUPS: {target: string; eyebrow: string; linkLabel: string; stage?: s
 function formatStageTitle(name: string): string {
   const clean = (name || 'Stage').trim();
   return /\bstage\b/i.test(clean) ? clean : `${clean} Stage`;
+}
+
+function normText(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[*:\u2022\u00b7]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function highlightElement(el: HTMLElement, focusTarget?: HTMLElement | null) {
+  el.scrollIntoView({behavior: 'smooth', block: 'center'});
+  el.classList.remove('r1-jump-highlight');
+  void el.offsetWidth;
+  el.classList.add('r1-jump-highlight');
+  if (focusTarget && typeof focusTarget.focus === 'function' && !(focusTarget as HTMLInputElement).disabled) {
+    setTimeout(() => focusTarget.focus({preventScroll: true}), 220);
+  }
+  setTimeout(() => el.classList.remove('r1-jump-highlight'), 2600);
+}
+
+function focusAndHighlightGap(target: string, rawLabel: string) {
+  const isDocs = target.toUpperCase() === 'DOCUMENTS';
+  const cleanDocLabel = normText(rawLabel.replace(/^(dokumen|document)\s+/i, ''));
+  const cleanLabel = normText(rawLabel);
+  if (!cleanLabel) return;
+
+  let attempts = 0;
+  const maxAttempts = 18;
+
+  const tryFind = () => {
+    attempts += 1;
+
+    if (isDocs) {
+      const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('tr.doc-chk-row'));
+      const exact = rows.find(r => normText(r.querySelector('.doc-chk-name')?.textContent || '') === cleanDocLabel);
+      const partial =
+        exact ||
+        rows.find(r => {
+          const txt = normText(r.querySelector('.doc-chk-name')?.textContent || '');
+          return txt && (txt.includes(cleanDocLabel) || cleanDocLabel.includes(txt));
+        });
+      if (partial) {
+        highlightElement(partial);
+        return;
+      }
+    } else {
+      const labels = Array.from(document.querySelectorAll<HTMLElement>('label, .field-label, .form-label'));
+      const score = (el: HTMLElement): number => {
+        const txt = normText(el.textContent || '');
+        if (!txt) return 0;
+        if (txt === cleanLabel) return 3;
+        if (txt.startsWith(cleanLabel) || cleanLabel.startsWith(txt)) return 2;
+        if (txt.includes(cleanLabel) || cleanLabel.includes(txt)) return 1;
+        return 0;
+      };
+
+      let bestLabel: HTMLElement | null = null;
+      let bestScore = 0;
+      for (const el of labels) {
+        if (el.offsetParent === null) continue;
+        const sc = score(el);
+        if (sc > bestScore) {
+          bestScore = sc;
+          bestLabel = el;
+          if (sc === 3) break;
+        }
+      }
+
+      if (bestLabel) {
+        const htmlFor = bestLabel.getAttribute('for');
+        const byFor = htmlFor ? (document.getElementById(htmlFor) as HTMLElement | null) : null;
+        const inside = bestLabel.querySelector<HTMLElement>('input, select, textarea');
+        const wrapper =
+          bestLabel.closest<HTMLElement>('.field, .form-field, .form-group, .pre-analysis-field') ||
+          bestLabel.parentElement ||
+          bestLabel;
+        const control =
+          byFor ||
+          inside ||
+          wrapper.querySelector<HTMLElement>('input:not([type="hidden"]), select, textarea');
+
+        let p: HTMLElement | null = wrapper;
+        while (p) {
+          if (p.tagName === 'DETAILS' && !(p as HTMLDetailsElement).open) {
+            (p as HTMLDetailsElement).open = true;
+          }
+          p = p.parentElement;
+        }
+
+        highlightElement(wrapper, control);
+        return;
+      }
+    }
+
+    if (attempts < maxAttempts) {
+      setTimeout(tryFind, 60);
+    }
+  };
+
+  setTimeout(tryFind, 80);
 }
 
 export function ApprovalPanel() {
@@ -168,9 +269,41 @@ export function ApprovalPanel() {
         .map(code => stageNameOf(code))
     : [];
 
+  // Dynamic prerequisite stages when currentStage is locked (works for ICLF or any Group 2+ / sequential stage)
+  const isLockedStage = !currentStage.completed && !currentStage.submitted && !currentStage.canSubmit;
+  const workflowGroups: any[] = a.workflow?.groups || [];
+  const groupOrderMap = new Map<string, number>();
+  workflowGroups.forEach((g: any, idx: number) => groupOrderMap.set(g.code, g.order ?? idx + 1));
+  const curWf = wfStages.find((w: any) => w.code === currentStage.stage);
+  const curGroupCode = curWf?.groupCode || currentStage.groupCode || '';
+  const curGroupOrder = groupOrderMap.get(curGroupCode) ?? 99;
+  const curOrder = curWf?.order ?? 99;
+  const prereqStages = isLockedStage
+    ? stages.filter(other => {
+        if (other.stage === currentStage.stage || other.completed) return false;
+        const oWf = wfStages.find((w: any) => w.code === other.stage);
+        const oGroupCode = oWf?.groupCode || other.groupCode || '';
+        const oGroupOrder = groupOrderMap.get(oGroupCode) ?? 0;
+        if (oGroupCode && curGroupCode && oGroupCode === curGroupCode) {
+          return (oWf?.order ?? 0) < curOrder;
+        }
+        return oGroupOrder < curGroupOrder;
+      })
+    : [];
+  const prereqNamesText =
+    prereqStages.length > 1
+      ? `${prereqStages.slice(0, -1).map(p => p.name).join(', ')} & ${prereqStages[prereqStages.length - 1].name}`
+      : prereqStages[0]?.name || 'previous stages';
+  const currentStageDocs = ((a.documentChecks || []) as any[]).filter(d => d.stageCode === currentStage.stage);
+  const isLastStage = stages.length > 0 && stages[stages.length - 1].stage === currentStage.stage;
+
   // Progress bar calculation
   const isReady = !currentStage.completed && !currentStage.submitted && currentStage.canSubmit && missingCount === 0 && !loadingCheck;
-  const progressPct = currentStage.completed || currentStage.submitted || isReady ? 100 : Math.max(12, Math.min(82, Math.round((10 / (10 + missingCount * 2)) * 100)));
+  const progressPct = isLockedStage
+    ? 0
+    : currentStage.completed || currentStage.submitted || isReady
+      ? 100
+      : Math.max(12, Math.min(82, Math.round((10 / (10 + missingCount * 2)) * 100)));
   const progressColor = currentStage.completed || isReady ? '#16a34a' : currentStage.submitted ? '#2563eb' : '#d97706';
 
   // Checklist summary sections when 0 items are missing
@@ -251,10 +384,10 @@ export function ApprovalPanel() {
                   {(st.documents.length > 0 || st.deeds.length > 0) && (
                     <ul style={{margin: '4px 0 0 18px', padding: 0}}>
                       {st.documents.map(name => (
-                        <li key={'d-' + name}>Document · {name}</li>
+                        <li key={'d-' + name}>Document: {name}</li>
                       ))}
                       {st.deeds.map(name => (
-                        <li key={'e-' + name}>Legal deed · {name}</li>
+                        <li key={'e-' + name}>Legal deed: {name}</li>
                       ))}
                     </ul>
                   )}
@@ -262,8 +395,8 @@ export function ApprovalPanel() {
               ))}
             <div style={{fontSize: 11.5, color: '#64748b'}}>
               {r.decision?.by}
-              {r.decision?.decidedAt ? ` · ${date(r.decision.decidedAt)}` : ''}
-              {r.decision?.via === 'LARK' ? ' · from Lark' : ''}
+              {r.decision?.decidedAt ? `, ${date(r.decision.decidedAt)}` : ''}
+              {r.decision?.via === 'LARK' ? ' (from Lark)' : ''}
             </div>
           </div>
         </div>
@@ -281,8 +414,8 @@ export function ApprovalPanel() {
                     ? `All approvals for the ${stageTitle} are complete.`
                     : currentStage.submitted
                       ? `The ${stageTitle} has been submitted and is locked while being reviewed.`
-                      : !currentStage.canSubmit
-                        ? currentStage.blockedReason || `This stage cannot be submitted yet.`
+                      : isLockedStage
+                        ? `${stageTitle} can be sent for approval once ${prereqNamesText} ${prereqStages.length > 1 ? 'are' : 'is'} approved.`
                         : missingCount > 0
                           ? `Finish these items, then send the ${stageTitle} for approval. The stage is locked while it is being reviewed.`
                           : `Everything needed is complete. Send the ${stageTitle} for approval.`}
@@ -309,14 +442,69 @@ export function ApprovalPanel() {
               <div className="r1-progress-fill" style={{width: `${progressPct}%`, background: progressColor}} />
             </div>
 
-            {/* Missing items grouped by section */}
-            {!currentStage.completed && !currentStage.submitted && currentStage.canSubmit && missingCount > 0 ? (
+            {/* Locked stage view (Step 1 SVG): WAITING FOR prerequisites + THEN documents */}
+            {isLockedStage ? (
+              <div>
+                {prereqStages.length > 0 && (
+                  <div className="r1-submit-group">
+                    <div className="r1-submit-group-head">
+                      <span className="r1-eyebrow">WAITING FOR</span>
+                    </div>
+                    <div className="r1-submit-rows">
+                      {prereqStages.map(pr => {
+                        const prMissing = gapsByStage[pr.stage]?.length ?? 0;
+                        const prSub = pr.submitted
+                          ? 'In review (waiting for approvers)'
+                          : prMissing > 0
+                            ? `In progress (${prMissing} ${prMissing === 1 ? 'item' : 'items'} left)`
+                            : 'Not submitted yet';
+                        return (
+                          <div key={pr.stage} className="r1-submit-row">
+                            <span className="r1-submit-row-left" style={{alignItems: 'flex-start'}}>
+                              <span className="r1-status-icon in-review" style={{width: 20, height: 20, marginTop: 1}}>
+                                <AlertCircle size={12} />
+                              </span>
+                              <div>
+                                <div>{pr.name} approved</div>
+                                <div style={{fontSize: 12, fontWeight: 500, color: '#b45309', marginTop: 2}}>{prSub}</div>
+                              </div>
+                            </span>
+                            <button type="button" className="r1-link-btn" onClick={() => openOtherStage(pr)}>
+                              Open {pr.name} <ArrowRight size={13} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {currentStageDocs.length > 0 && (
+                  <div className="r1-submit-group">
+                    <div className="r1-submit-group-head">
+                      <span className="r1-eyebrow">THEN</span>
+                    </div>
+                    <div className="r1-submit-rows">
+                      {currentStageDocs.map((doc: any) => (
+                        <div key={doc.id || doc.documentCode} className="r1-submit-row">
+                          <span className="r1-submit-row-left">
+                            <Circle size={18} strokeWidth={1.6} color="#cbd5e1" style={{flexShrink: 0}} />
+                            <span>{doc.documentName || doc.documentCode}</span>
+                          </span>
+                          <span className="r1-submit-row-right">Upload when {currentStage.name} opens</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : !currentStage.completed && !currentStage.submitted && currentStage.canSubmit && missingCount > 0 ? (
               <div>
                 {groupedGaps.map(group => (
                   <div key={group.target} className="r1-submit-group">
                     <div className="r1-submit-group-head">
                       <span className="r1-eyebrow">
-                        {group.eyebrow} · {group.items.length}
+                        {group.eyebrow} ({group.items.length})
                       </span>
                       <button
                         type="button"
@@ -327,17 +515,39 @@ export function ApprovalPanel() {
                       </button>
                     </div>
                     <div className="r1-submit-rows">
-                      {group.items.map((gap, idx) => (
-                        <div key={`${group.target}-${idx}`} className="r1-submit-row">
-                          <span className="r1-submit-row-left">
-                            <Circle size={18} strokeWidth={1.6} color="#cbd5e1" style={{flexShrink: 0}} />
-                            <span>{gap.label}</span>
-                          </span>
-                          <span className="r1-submit-row-right">
-                            {gap.detail === 'Belum disetujui' ? "Haven't approved yet" : gap.detail || 'Required'}
-                          </span>
-                        </div>
-                      ))}
+                      {group.items.map((gap, idx) => {
+                        const detailText =
+                          gap.detail === 'Belum disetujui'
+                            ? "Haven't approved yet"
+                            : (gap.detail || 'Required').replace(/\s*·\s*/g, ', ');
+                        const handleJump = () => {
+                          openSection(group.stage, group.tab);
+                          focusAndHighlightGap(group.target, gap.label);
+                        };
+                        return (
+                          <div
+                            key={`${group.target}-${idx}`}
+                            className="r1-submit-row is-clickable"
+                            role="button"
+                            tabIndex={0}
+                            onClick={handleJump}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleJump();
+                              }
+                            }}
+                          >
+                            <span className="r1-submit-row-left">
+                              <Circle size={18} strokeWidth={1.6} color="#cbd5e1" style={{flexShrink: 0}} />
+                              <span>{gap.label}</span>
+                            </span>
+                            <span className="r1-submit-row-right">
+                              {detailText}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -345,7 +555,7 @@ export function ApprovalPanel() {
                 {otherGaps.length > 0 && (
                   <div className="r1-submit-group">
                     <div className="r1-submit-group-head">
-                      <span className="r1-eyebrow">OTHER · {otherGaps.length}</span>
+                      <span className="r1-eyebrow">OTHER ({otherGaps.length})</span>
                     </div>
                     <div className="r1-submit-rows">
                       {otherGaps.map((gap, idx) => (
@@ -417,7 +627,11 @@ export function ApprovalPanel() {
                   </span>
                 )}
                 {!currentStage.canSubmit && (
-                  <span className="r1-submit-footer-note">{currentStage.blockedReason || 'Not ready to submit yet'}</span>
+                  <span className="r1-submit-footer-note">
+                    {prereqStages.length > 0
+                      ? `Available after ${prereqNamesText} ${prereqStages.length > 1 ? 'are' : 'is'} approved`
+                      : currentStage.blockedReason || 'Not ready to submit yet'}
+                  </span>
                 )}
                 <button
                   type="button"
@@ -453,7 +667,7 @@ export function ApprovalPanel() {
                         <span className="r1-v-lvl">Level {idx + 1}</span>
                         <span className="r1-v-title">{names}</span>
                         <span className={`r1-v-sub${allDone ? ' green' : isRej ? ' red' : isNow ? ' blue' : ''}`}>
-                          {layer.length === 1 ? '1 approver' : `${layer.length} approvers · all must approve`}
+                          {layer.length === 1 ? '1 approver' : `${layer.length} approvers (all must approve)`}
                         </span>
                       </div>
                     </div>
@@ -470,7 +684,7 @@ export function ApprovalPanel() {
                 </div>
               )}
 
-              {activeGroup && (
+              {activeGroup ? (
                 <div className={`r1-v-step${activeGroup.state === 'APPROVED' ? ' done' : ''}`}>
                   <span className={`r1-v-num${activeGroup.state === 'APPROVED' ? ' done' : activeGroup.state === 'OPEN' ? ' active-blue' : ''}`}>
                     {activeGroup.state === 'APPROVED' ? <Check size={13} strokeWidth={3} /> : <ArrowRight size={13} />}
@@ -489,7 +703,18 @@ export function ApprovalPanel() {
                     </span>
                   </div>
                 </div>
-              )}
+              ) : isLastStage ? (
+                <div className={`r1-v-step${currentStage.completed ? ' done' : ''}`}>
+                  <span className={`r1-v-num${currentStage.completed ? ' done' : ''}`} style={{background: '#f0fdf4', color: '#16a34a'}}>
+                    <Check size={13} strokeWidth={3} />
+                  </span>
+                  <div className="r1-v-body">
+                    <span className="r1-v-lvl">Then</span>
+                    <span className="r1-v-title">Application approved</span>
+                    <span className="r1-v-sub">Ready for contract &amp; disbursement</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
             <p style={{margin: '14px 0 0', fontSize: 12, color: '#64748b'}}>
               If something is rejected, the stage opens again for revision.
