@@ -1,0 +1,1341 @@
+/* ============================================================================
+   Redesign 1 — Unified Design System for Document Checklist, Submit, Approvals
+   Exact tokens from 1440px Figma artboards (Outfit typography, #00285A navy)
+   ============================================================================ */
+
+.r1-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+}
+
+.r1-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.r1-card-pad {
+  padding: 20px 24px;
+}
+
+/* Stage sub-tabs (FAP 2/5 | Pre-analysis 0/1 | ICLF 0/1) */
+.r1-stage-tabs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.r1-stage-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.r1-stage-tab:hover {
+  color: #0f172a;
+}
+
+.r1-stage-tab.active {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.r1-stage-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2.5px;
+  background: #00285a;
+  border-radius: 2px 2px 0 0;
+}
+
+.r1-stage-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.r1-stage-tab.active .r1-stage-pill {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.r1-stage-pill.approved {
+  background: #ecfdf5;
+  color: #15803d;
+}
+
+.r1-stage-pill.waiting {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.r1-stage-pill.rejected {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Shared Buttons */
+.r1-btn-navy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #00285a;
+  border-radius: 8px;
+  background: #00285a;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.r1-btn-navy:hover:not(:disabled) {
+  background: #001f47;
+}
+
+.r1-btn-navy:disabled {
+  background: #cbd5e1;
+  border-color: #cbd5e1;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.r1-btn-navy.sm {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+.r1-btn-outline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.r1-btn-outline:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.r1-btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.r1-btn-outline.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+
+.r1-btn-approve {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 18px;
+  border: 1px solid #16a34a;
+  border-radius: 8px;
+  background: #16a34a;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.r1-btn-approve:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.r1-btn-approve:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.r1-btn-reject {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #dc2626;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.r1-btn-reject:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.r1-btn-reject-solid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+  background: #dc2626;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.r1-btn-reject-solid:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.r1-btn-reject-solid:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.r1-link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: #00285a;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.r1-link-btn:hover {
+  text-decoration: underline;
+}
+
+.r1-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.r1-icon-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Status Pill */
+.r1-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.r1-pill.blue {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.r1-pill.amber {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.r1-pill.green {
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.r1-pill.red {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.r1-pill.gray {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* Eyebrow label */
+.r1-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.r1-eyebrow.blue {
+  color: #1d4ed8;
+}
+
+.r1-eyebrow.green {
+  color: #15803d;
+}
+
+.r1-eyebrow.amber {
+  color: #b45309;
+}
+
+/* Step-Dots Horizontal Approval Chain (Document Checklist & Approvals list) */
+.r1-chain {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.r1-chain:hover {
+  background: #f8fafc;
+}
+
+.r1-chain-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 48px;
+}
+
+.r1-chain-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1.5px solid #cbd5e1;
+  background: #ffffff;
+  color: #64748b;
+}
+
+.r1-chain-dot.done {
+  background: #16a34a;
+  border-color: #16a34a;
+  color: #ffffff;
+}
+
+.r1-chain-dot.now {
+  background: #fffbeb;
+  border-color: #d97706;
+  color: #b45309;
+}
+
+.r1-chain-dot.now::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #d97706;
+}
+
+.r1-chain-dot.rejected {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+.r1-chain-lbl {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.r1-chain-lbl.done {
+  color: #15803d;
+}
+
+.r1-chain-lbl.now {
+  color: #b45309;
+}
+
+.r1-chain-lbl.rejected {
+  color: #dc2626;
+}
+
+.r1-chain-line {
+  width: 36px;
+  height: 2px;
+  margin-top: 10px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.r1-chain-line.done {
+  background: #16a34a;
+}
+
+.r1-chain-line.rejected {
+  background: #ef4444;
+}
+
+/* ============================================================================
+   PILLAR 1 — SUBMIT TAB (Row 3)
+   ============================================================================ */
+.r1-submit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .r1-submit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.r1-submit-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.r1-submit-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+.r1-submit-head p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.r1-progress-track {
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  display: flex;
+}
+
+.r1-progress-fill {
+  height: 100%;
+  transition: width 0.25s ease;
+}
+
+.r1-submit-group {
+  margin-top: 18px;
+}
+
+.r1-submit-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.r1-submit-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.r1-submit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+  font-size: 13.5px;
+}
+
+.r1-submit-row-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-submit-row-right {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.r1-submit-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.r1-submit-footer-note {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.r1-side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.r1-v-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 14px;
+}
+
+.r1-v-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 18px;
+}
+
+.r1-v-step:last-child {
+  padding-bottom: 0;
+}
+
+.r1-v-step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 24px;
+  bottom: 0;
+  width: 1.5px;
+  background: #e2e8f0;
+}
+
+.r1-v-step.done:not(:last-child)::before {
+  background: #16a34a;
+}
+
+.r1-v-num {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.r1-v-num.done {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.r1-v-num.now {
+  background: #fffbeb;
+  border: 2px solid #d97706;
+  color: #b45309;
+}
+
+.r1-v-num.active-blue {
+  background: #eff6ff;
+  border: 2px solid #2563eb;
+  color: #1d4ed8;
+}
+
+.r1-v-num.rejected {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.r1-v-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.r1-v-lvl {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.r1-v-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-v-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.r1-v-sub.green {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.r1-v-sub.amber {
+  color: #b45309;
+  font-weight: 500;
+}
+
+.r1-v-sub.blue {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.r1-v-sub.red {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+.r1-other-stages {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+}
+
+.r1-other-stage-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.r1-other-stage-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+/* ============================================================================
+   PILLAR 2 — APPROVALS TAB (Row 4)
+   ============================================================================ */
+.r1-appr-hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.r1-appr-hero-top h2 {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.015em;
+}
+
+.r1-appr-hero-top p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.r1-appr-hero-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+.r1-appr-hero-body.full {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1080px) {
+  .r1-appr-hero-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Level-by-level vertical + parallel horizontal grid */
+.r1-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.r1-level-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+}
+
+.r1-level-spine {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.r1-level-row:not(:last-child) .r1-level-spine::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 26px;
+  height: 36px;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+.r1-level-row.done:not(:last-child) .r1-level-spine::after {
+  background: #16a34a;
+}
+
+.r1-level-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.r1-level-meta span {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.r1-level-meta strong {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.r1-level-meta strong.done {
+  color: #15803d;
+}
+
+.r1-level-meta strong.now {
+  color: #1d4ed8;
+}
+
+.r1-level-meta strong.rejected {
+  color: #dc2626;
+}
+
+.r1-level-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.r1-appr-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 220px;
+  max-width: 290px;
+  flex: 0 1 auto;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.r1-appr-card.done {
+  border-color: #dcfce7;
+  background: #ffffff;
+}
+
+.r1-appr-card.yours {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.r1-appr-card.peer {
+  border-color: #bfdbfe;
+  background: #f8fbff;
+}
+
+.r1-appr-card.rejected {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.r1-appr-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-appr-card-sub {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.r1-appr-card-sub.done {
+  color: #15803d;
+  font-weight: 500;
+}
+
+.r1-appr-card-sub.yours,
+.r1-appr-card-sub.peer {
+  color: #1d4ed8;
+  font-weight: 500;
+}
+
+.r1-appr-card-sub.rejected {
+  color: #dc2626;
+  font-weight: 500;
+}
+
+/* Before you decide summary box */
+.r1-before-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.r1-before-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.r1-before-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-before-right {
+  color: #64748b;
+  font-weight: 500;
+  text-align: right;
+}
+
+.r1-before-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Document & Deed Approvals list */
+.r1-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.r1-list-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-seg-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
+.r1-seg-filter button {
+  height: 28px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.r1-seg-filter button.active {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.r1-doc-deed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(180px, 1fr) minmax(180px, 0.9fr) 28px;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.r1-doc-deed-row:last-child {
+  border-bottom: none;
+}
+
+.r1-doc-deed-row:hover {
+  background: #f8fafc;
+}
+
+/* Shared status circle, file chip & status text (used in Submit & Approvals) */
+.r1-chk-doc-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.r1-status-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.r1-status-icon.approved {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.r1-status-icon.ready {
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+}
+
+.r1-status-icon.ready::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.r1-status-icon.in-review {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.r1-status-icon.rejected {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.r1-status-icon.missing {
+  border: 1.5px dashed #cbd5e1;
+  background: transparent;
+}
+
+.r1-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.r1-file-chip:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.r1-chk-status-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-chk-status-title.blue {
+  color: #2563eb;
+}
+
+.r1-chk-status-title.amber {
+  color: #d97706;
+}
+
+.r1-chk-status-title.green {
+  color: #16a34a;
+}
+
+.r1-chk-status-title.red {
+  color: #dc2626;
+}
+
+.r1-chk-status-title.gray {
+  color: #475569;
+}
+
+.r1-chk-status-sub {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* ============================================================================
+   SLIDE-OVER RIGHT DRAWER (Approval Item Drawer)
+   ============================================================================ */
+.r1-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(15, 23, 42, 0.38);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.r1-drawer {
+  width: min(560px, 95vw);
+  height: 100vh;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 36px rgba(15, 23, 42, 0.18);
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+.r1-drawer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.r1-drawer-head h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-drawer-head p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.r1-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.r1-drawer-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.r1-info-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.r1-info-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.r1-info-row span {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.r1-info-row strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.r1-file-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.r1-file-badge.pdf {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.r1-file-badge.img {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* Reason quick-chips (Reject Stage) */
+.r1-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.r1-chip {
+  padding: 5px 11px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.r1-chip:hover {
+  border-color: #94a3b8;
+}
+
+.r1-chip.active {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.r1-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 92px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #0f172a;
+  resize: vertical;
+}
+
+.r1-textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.r1-textarea.danger {
+  border-color: #fca5a5;
+}
+
+.r1-textarea.danger:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+/* Clean Confirmation Modal (Submit Stage & Reject Stage) */
+.r1-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1260;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.r1-modal {
+  width: min(580px, 94vw);
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+}
+
+.r1-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 22px 24px 12px;
+}
+
+.r1-modal-head h3 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.r1-modal-head p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #64748b;
+}
+
+.r1-modal-body {
+  padding: 8px 24px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.r1-modal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 24px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.r1-check-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.r1-check-card.checked {
+  background: #fef2f2;
+  border-color: #fecaca;
+}

@@ -41,17 +41,24 @@ export function useDocumentsStudio({
   const master = useMasterData();
   // One entry per stage of the application's workflow, in its order; the evidence document of a stage follows the screen of its form
   // (FAP form -> FAP, Pre-analysis form -> PREANALYSIS, any other -> ICLF). The title and description come from Master Data.
-  const stageEvidence: {code: string; stage: any}[] = (a.workflow?.stages || [])
+  const stageEvidence: {code: string; screen: string; stage: any}[] = (a.workflow?.stages || [])
     .map((s: any) => {
       const screen = screenOfForm(s.formCode);
-      return {code: screen === 'FAP' ? 'FAP' : screen === 'PRE_ANALYSIS' ? 'PREANALYSIS' : 'ICLF', stage: s};
+      return {code: screen === 'FAP' ? 'FAP' : screen === 'PRE_ANALYSIS' ? 'PREANALYSIS' : 'ICLF', screen, stage: s};
     })
     .filter((x: {code: string}, i: number, all: {code: string}[]) => all.findIndex(y => y.code === x.code) === i);
-  const evidenceBase: {code: string; stage: any}[] = stageEvidence.length ? stageEvidence : EVIDENCE_CODES.map(code => ({code, stage: null}));
-  const evidenceDefs = evidenceBase.map(({code, stage}) => {
+  const evidenceBase: {code: string; screen: string; stage: any}[] = stageEvidence.length
+    ? stageEvidence
+    : EVIDENCE_CODES.map(code => ({
+        code,
+        screen: code === 'FAP' ? 'FAP' : code === 'PREANALYSIS' ? 'PRE_ANALYSIS' : 'DOCUMENTS',
+        stage: null,
+      }));
+  const evidenceDefs = evidenceBase.map(({code, screen, stage}) => {
     const doc = (master.documents || []).find(d => d.value === code);
     return {
       code,
+      screen,
       name: doc?.name || code,
       title: doc?.title || doc?.name || code,
       stageCode: stage?.code || doc?.stage || '',
@@ -62,7 +69,8 @@ export function useDocumentsStudio({
     };
   });
 
-  const stageDocument = (stage?: string) => evidenceDefs.find(d => d.stageCode === stage)?.code;
+  const stageDocument = (stage?: string) =>
+    evidenceDefs.find(d => d.screen === stage)?.code || evidenceDefs.find(d => d.stageCode === stage)?.code;
   const defaultCode = stageDocument(filterStage) || evidenceDefs[0].code;
   const [selectedCode, setSelectedCode] = useState<string>(defaultCode);
   useEffect(() => {

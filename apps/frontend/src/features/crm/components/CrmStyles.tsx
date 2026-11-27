@@ -15,6 +15,7 @@ import workflow from '../styles/13-workflow.css?raw';
 import newApplication from '../styles/14-new-application.css?raw';
 import approval from '../styles/15-approval.css?raw';
 import documentChecklist from '../styles/13-document-checklist.css?raw';
+import redesign1 from '../styles/16-redesign1.css?raw';
 
 const CRM_CSS = [
   base,
@@ -33,6 +34,7 @@ const CRM_CSS = [
   newApplication,
   approval,
   documentChecklist,
+  redesign1,
 ].join('');
 
 export function CrmStyles() {

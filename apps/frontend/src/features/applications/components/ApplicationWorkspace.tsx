@@ -24,6 +24,8 @@ import {
   useApplicationWorkspace,
   type ApplicationWorkspaceProps,
 } from '@/features/applications/hooks/useApplicationWorkspace';
+import {screenOf} from '@/features/applications/lib/workspace/stage';
+import {SCREEN} from '@/shared/master-data';
 
 export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
   const state = useApplicationWorkspace(props);
@@ -121,7 +123,14 @@ export function ApplicationWorkspace(props: ApplicationWorkspaceProps) {
             onChange={onChange}
             notify={notify}
             filterStage={activeStage}
-            onSubmitStage={() => state.setSubmitStageCode(a.workflow?.stages?.[0]?.code ?? null)}
+            onSubmitStage={() => {
+              const wfStages: any[] = a.workflow?.stages || [];
+              const matched =
+                wfStages.find(s => screenOf(s) === activeStage) ??
+                wfStages.find(s => screenOf(s) === SCREEN.FAP) ??
+                wfStages[0];
+              state.setSubmitStageCode(matched?.code ?? null);
+            }}
             onOpenChecklist={() => state.setTab(9)}
             isFapLocked={isFapLocked}
           />
