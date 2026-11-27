@@ -44,8 +44,8 @@ export class DocumentsRepository {
    * (is_default=1) minus the ones removed for this application, plus the documents added for it (pool documents,
    * other master documents, free-name documents). Safe to run again: existing rows are kept.
    */
-  async seedChecklist(conn: Conn, applicationId: string, workflowFreezeId: string, by: string | null) {
-    await conn.execute(
+  async seedChecklist(conn: Conn, applicationId: string, workflowFreezeId: string, by: string | null): Promise<number> {
+    const [res1]: any = await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
          (id,application_id,workflow_freeze_id,stage_code,document_type_id,document_code,source_type,override_id,assigned_role,
           created_by)
@@ -57,14 +57,14 @@ export class DocumentsRepository {
        LEFT JOIN ${CRM.applicationDocumentOverrides} o
               ON o.application_id=? AND o.stage_code=sd.stage_code AND o.document_code=sd.document_code AND o.document_type_id IS NULL AND o.custom_name IS NULL AND o.is_active=1
        WHERE sd.workflow_freeze_id=?
-         AND ((sd.is_default=1 AND (o.id IS NULL OR o.action<>'REMOVE')) OR (sd.is_default=0 AND o.action='ADD'))
+         AND (sd.is_default=1 OR o.id IS NULL OR o.action<>'REMOVE')
          AND NOT EXISTS (
            SELECT 1 FROM ${CRM.applicationDocumentChecklists} ex
            WHERE ex.application_id=? AND ex.stage_code=sd.stage_code AND ex.document_type_id=sd.document_type_id
          )`,
       [applicationId, by, applicationId, workflowFreezeId, applicationId],
     );
-    await conn.execute(
+    const [res2]: any = await conn.execute(
       `INSERT IGNORE INTO ${CRM.applicationDocumentChecklists}
          (id,application_id,workflow_freeze_id,stage_code,document_type_id,document_code,source_type,override_id,assigned_role,created_by)
        SELECT UUID(),o.application_id,o.workflow_freeze_id,o.stage_code,o.document_type_id,o.document_code,'ADDED',o.id,
@@ -78,6 +78,7 @@ export class DocumentsRepository {
          )`,
       [by, applicationId, applicationId],
     );
+    return Number(res1?.affectedRows || 0) + Number(res2?.affectedRows || 0);
   }
 
   /**

@@ -454,7 +454,7 @@ export class ApplicationsService {
   async detail(id: string, actor?: Actor): Promise<any> {
     const app = await this.apps.get(id);
     if (!app) return null;
-    const [cfg, saved, pic, progress, documentChecks, raw] = await Promise.all([
+    let [cfg, saved, pic, progress, documentChecks, raw] = await Promise.all([
       this.config.load(app.workflow_freeze_id),
       this.profiles.getProfile(id),
       this.profiles.getContact(id),
@@ -462,6 +462,12 @@ export class ApplicationsService {
       this.documents.read(id),
       this.approvals.raw(id, app.workflow_freeze_id),
     ]);
+    if (app.workflow_freeze_id) {
+      const seeded = await this.documents.seedChecklist(this.db.pool, id, app.workflow_freeze_id, actor ? by(actor) : null);
+      if (seeded > 0 || documentChecks.length === 0) {
+        documentChecks = await this.documents.read(id);
+      }
+    }
     // names of what an approval is about (a group, a stage, a section and its row, a document), for the approval panel
     const [sectionRows] = await this.db.pool.query<any[]>(`SELECT code,name FROM ${CRM.masterFormSections}`);
     const sectionNames = new Map<string, string>(sectionRows.map(r => [r.code, r.name]));
@@ -750,6 +756,296 @@ export class ApplicationsService {
       sentCount,
       skippedCount,
       recipientCount: recipientIds.size,
+    };
+  }
+
+  /** Aggregated Inbox across all applications (Document checklist, Submit, Approvals) backed by existing tables. */
+  async inboxOverview(actor: Actor) {
+    const [appRows, pendingApprovals] = await Promise.all([
+      this.list(actor),
+      this.approvals.inbox(actor),
+    ]);
+
+    const appMap = new Map<string, any>();
+    for (const a of appRows) appMap.set(a.id, a);
+
+    // 1. Document checklist rows & files across all active applications
+    const [checklistRows] = await this.apps.pool.query<any[]>(
+      `SELECT c.id, c.application_id, c.workflow_freeze_id, c.stage_code, c.document_code,
+              COALESCE(t.code, c.document_code, CONCAT('CUSTOM_', LEFT(c.id, 8))) AS code,
+              COALESCE(t.name, o.custom_name, c.document_code) AS name,
+              COALESCE(s.name, c.stage_code) AS stage_name,
+              c.assigned_role,
+              COALESCE(o.is_mandatory, sd.is_mandatory, 0) AS is_mandatory,
+              c.status, c.approval_status, c.approval_remarks, c.decided_by, c.decided_at, c.created_at
+       FROM ${CRM.applicationDocumentChecklists} c
+       JOIN ${CRM.applications} a ON a.id = c.application_id AND a.deleted_at IS NULL
+       LEFT JOIN ${CRM.masterDocumentTypes} t ON t.id = c.document_type_id
+       LEFT JOIN ${CRM.applicationDocumentOverrides} o ON o.id = c.override_id
+       LEFT JOIN ${CRM.frozenWorkflowStageDocuments} sd
+              ON sd.workflow_freeze_id = c.workflow_freeze_id AND sd.stage_code = c.stage_code AND sd.document_code = c.document_code
+       LEFT JOIN ${CRM.frozenWorkflowStages} s
+              ON s.workflow_freeze_id = c.workflow_freeze_id AND s.code = c.stage_code
+       ORDER BY COALESCE(t.sort_order, 100000), c.created_at, c.id`,
+    );
+
+    const [fileRows] = await this.apps.pool.query<any[]>(
+      `SELECT f.id, f.checklist_id, f.application_id, f.file_name, f.original_file_name,
+              f.file_size, f.mime_type, f.uploaded_by, f.uploaded_at, f.created_at
+       FROM ${CRM.applicationDocumentFiles} f
+       JOIN ${CRM.applications} a ON a.id = f.application_id AND a.deleted_at IS NULL
+       WHERE f.deleted_at IS NULL
+       ORDER BY f.uploaded_at ASC, f.created_at ASC, f.id ASC`,
+    );
+
+    const [docApprovalAssignments] = await this.apps.pool.query<any[]>(
+      `SELECT a.workflow_freeze_id, a.scope_type, a.stage_code, a.document_code, COUNT(l.id) AS level_count
+       FROM ${CRM.frozenWorkflowApprovalAssignments} a
+       LEFT JOIN ${CRM.frozenApprovalLevels} l ON l.approval_freeze_id = a.approval_freeze_id
+       WHERE a.scope_type IN ('DOCUMENT', 'STAGE')
+       GROUP BY a.workflow_freeze_id, a.scope_type, a.stage_code, a.document_code`,
+    );
+    const docApprovalSet = new Set<string>();
+    const configuredLevelCount = new Map<string, number>();
+    for (const r of docApprovalAssignments) {
+      if (r.scope_type === 'DOCUMENT') {
+        const k = `${r.workflow_freeze_id}:${r.stage_code}:${r.document_code}`;
+        docApprovalSet.add(k);
+        configuredLevelCount.set(`DOC:${k}`, Number(r.level_count || 0));
+      } else if (r.scope_type === 'STAGE') {
+        const k = `${r.workflow_freeze_id}:${r.stage_code}`;
+        configuredLevelCount.set(`STAGE:${k}`, Number(r.level_count || 0));
+      }
+    }
+
+    // Fetch approval steps across active applications to compute approval progress % per document/stage
+    const [allApprovalSteps] = await this.apps.pool.query<any[]>(
+      `SELECT s.application_id, s.scope_type, s.stage_code, s.document_checklist_id, s.status, s.round_no
+       FROM ${CRM.applicationApprovalSteps} s
+       JOIN ${CRM.applications} a ON a.id = s.application_id AND a.deleted_at IS NULL
+       WHERE s.status <> 'CANCELLED'
+       ORDER BY s.round_no DESC, s.sort_order ASC`,
+    );
+
+    const docStepProgress = new Map<string, {round: number; approved: number; total: number}>();
+    const stageStepProgress = new Map<string, {round: number; approved: number; total: number}>();
+    for (const st of allApprovalSteps) {
+      const round = Number(st.round_no || 1);
+      if (st.scope_type === 'DOCUMENT' && st.document_checklist_id) {
+        const key = `${st.application_id}:${st.document_checklist_id}`;
+        const cur = docStepProgress.get(key);
+        if (!cur || round > cur.round) {
+          docStepProgress.set(key, {round, approved: st.status === 'APPROVED' ? 1 : 0, total: 1});
+        } else if (round === cur.round) {
+          cur.total += 1;
+          if (st.status === 'APPROVED') cur.approved += 1;
+        }
+      } else if (st.scope_type === 'STAGE' && st.stage_code) {
+        const key = `${st.application_id}:${st.stage_code}`;
+        const cur = stageStepProgress.get(key);
+        if (!cur || round > cur.round) {
+          stageStepProgress.set(key, {round, approved: st.status === 'APPROVED' ? 1 : 0, total: 1});
+        } else if (round === cur.round) {
+          cur.total += 1;
+          if (st.status === 'APPROVED') cur.approved += 1;
+        }
+      }
+    }
+
+    const latestFileByChecklist = new Map<string, any>();
+    for (const f of fileRows) {
+      latestFileByChecklist.set(f.checklist_id, {
+        id: f.id,
+        fileName: f.original_file_name || f.file_name,
+        storedFileName: f.file_name,
+        fileSize: Number(f.file_size || 0),
+        mimeType: f.mime_type,
+        uploadedBy: f.uploaded_by,
+        createdAt: f.uploaded_at || f.created_at,
+      });
+    }
+
+    const docsByApp = new Map<string, any[]>();
+    for (const d of checklistRows) {
+      const app = appMap.get(d.application_id);
+      if (!app) continue;
+      const list = docsByApp.get(d.application_id) || [];
+      const currentFile = latestFileByChecklist.get(d.id) || null;
+      const hasOwnApproval = docApprovalSet.has(`${d.workflow_freeze_id}:${d.stage_code}:${d.document_code || d.code}`);
+      const stageObj = (app.stages || []).find((s: any) => s.code === d.stage_code) || null;
+      const stageStatus = stageObj?.status || null;
+      const stageLocked = !!stageObj?.locked;
+
+      const docProg = docStepProgress.get(`${d.application_id}:${d.id}`);
+      const stProg = stageStepProgress.get(`${d.application_id}:${d.stage_code}`);
+      const prog = hasOwnApproval ? docProg : stProg;
+      const fallbackLevels = hasOwnApproval
+        ? configuredLevelCount.get(`DOC:${d.workflow_freeze_id}:${d.stage_code}:${d.document_code || d.code}`) || 0
+        : configuredLevelCount.get(`STAGE:${d.workflow_freeze_id}:${d.stage_code}`) || 0;
+
+      const approvalProgress = prog && prog.total > 0
+        ? {
+            approved: prog.approved,
+            total: prog.total,
+            percent: Math.round((prog.approved / prog.total) * 100),
+          }
+        : d.approval_status === 'APPROVED' || (!hasOwnApproval && stageStatus === 'APPROVED')
+          ? {approved: Math.max(1, fallbackLevels), total: Math.max(1, fallbackLevels), percent: 100}
+          : fallbackLevels > 0
+            ? {approved: 0, total: fallbackLevels, percent: 0}
+            : null;
+
+      list.push({
+        id: d.id,
+        applicationId: d.application_id,
+        documentCode: d.code,
+        documentName: d.name,
+        stageCode: d.stage_code,
+        stageName: d.stage_name || d.stage_code,
+        stageStatus,
+        stageLocked,
+        assignedRole: d.assigned_role || 'PIC Marketing',
+        isMandatory: !!d.is_mandatory,
+        status: d.status,
+        approvalStatus: d.approval_status,
+        approvalRemarks: d.approval_remarks ?? null,
+        decidedBy: d.decided_by ?? null,
+        decidedAt: d.decided_at ?? null,
+        createdAt: d.created_at,
+        currentFile,
+        hasOwnApproval,
+        approvalProgress,
+      });
+      docsByApp.set(d.application_id, list);
+    }
+
+    const documentChecklist: any[] = [];
+    let totalActionDocs = 0;
+
+    for (const [appId, docs] of docsByApp.entries()) {
+      const app = appMap.get(appId);
+      if (!app) continue;
+      const toFixCount = docs.filter(d => d.approvalStatus === 'REJECTED').length;
+      const missingCount = docs.filter(d => d.status !== 'UPLOADED' && d.approvalStatus !== 'REJECTED').length;
+      const readyCount = docs.filter(
+        d => d.status === 'UPLOADED' && d.approvalStatus !== 'APPROVED' && d.approvalStatus !== 'REJECTED',
+      ).length;
+      const uploadedCount = docs.filter(d => d.status === 'UPLOADED').length;
+
+      if (toFixCount === 0 && missingCount === 0 && readyCount === 0) continue;
+
+      const activeStage =
+        (app.stages || []).find((s: any) => s.status === 'NEEDS_CHANGES' || s.status === 'IN_PROGRESS') ||
+        (app.stages || [])[0] ||
+        null;
+
+      const sortedDocs = [...docs].sort((a, b) => {
+        const rank = (x: any) =>
+          x.approvalStatus === 'REJECTED' ? 0 : x.status !== 'UPLOADED' ? 1 : x.approvalStatus !== 'APPROVED' ? 2 : 3;
+        return rank(a) - rank(b);
+      });
+
+      totalActionDocs += toFixCount + missingCount;
+      documentChecklist.push({
+        id: app.id,
+        applicationNumber: app.application_number,
+        companyName: app.company_name || 'Untitled',
+        branchCode: app.branch_code || '',
+        mktPicName: app.mkt_pic_name || (app.mkt_pic_id ? `User #${app.mkt_pic_id}` : '–'),
+        stageCode: activeStage?.code || '',
+        stageName: activeStage?.name || '',
+        createdAt: app.created_at,
+        updatedAt: app.updated_at || app.created_at,
+        uploadedCount,
+        totalCount: docs.length,
+        toFixCount,
+        missingCount,
+        readyCount,
+        docs: sortedDocs,
+      });
+    }
+
+    // 2. Submit tab: applications with unlocked stages in IN_PROGRESS or NEEDS_CHANGES (or ready documents)
+    const submitApps: any[] = [];
+    for (const app of appRows) {
+      const stages = (app.stages || []).filter(
+        (s: any) => !s.locked && (s.status === 'IN_PROGRESS' || s.status === 'NEEDS_CHANGES'),
+      );
+      const docsReadyForApproval = (docsByApp.get(app.id) || []).filter(
+        d => d.hasOwnApproval && d.status === 'UPLOADED' && (d.approvalStatus === 'NOT_STARTED' || d.approvalStatus === 'REJECTED'),
+      );
+      if (stages.length === 0 && docsReadyForApproval.length === 0) continue;
+      submitApps.push({
+        id: app.id,
+        applicationNumber: app.application_number,
+        companyName: app.company_name || 'Untitled',
+        branchCode: app.branch_code || '',
+        mktPicName: app.mkt_pic_name || (app.mkt_pic_id ? `User #${app.mkt_pic_id}` : '–'),
+        createdAt: app.created_at,
+        updatedAt: app.updated_at || app.created_at,
+        stages,
+        docsReadyForApproval,
+      });
+    }
+
+    // 3. Approvals tab: pending approval steps waiting for actor
+    const stepIds = pendingApprovals.map((p: any) => p.stepId).filter(Boolean);
+    const stepMetaMap = new Map<string, any>();
+    if (stepIds.length > 0) {
+      const ph = stepIds.map(() => '?').join(',');
+      const [metaRows] = await this.apps.pool.query<any[]>(
+        `SELECT id, scope_type, stage_code, document_code, started_at, round_no
+         FROM ${CRM.applicationApprovalSteps}
+         WHERE id IN (${ph})`,
+        stepIds,
+      );
+      for (const m of metaRows) stepMetaMap.set(m.id, m);
+    }
+
+    const approvalsByApp = new Map<string, any>();
+    for (const p of pendingApprovals) {
+      const app = appMap.get(p.applicationId);
+      if (!app) continue;
+      const meta = stepMetaMap.get(p.stepId) || {};
+      let entry = approvalsByApp.get(p.applicationId);
+      if (!entry) {
+        entry = {
+          id: app.id,
+          applicationNumber: app.application_number,
+          companyName: app.company_name || 'Untitled',
+          branchCode: app.branch_code || '',
+          mktPicName: app.mkt_pic_name || (app.mkt_pic_id ? `User #${app.mkt_pic_id}` : '–'),
+          createdAt: app.created_at,
+          updatedAt: app.updated_at || app.created_at,
+          steps: [],
+        };
+        approvalsByApp.set(p.applicationId, entry);
+      }
+      entry.steps.push({
+        stepId: p.stepId,
+        name: p.name,
+        authorityName: p.authorityName,
+        scopeType: meta.scope_type || 'STAGE',
+        stageCode: meta.stage_code || null,
+        documentCode: meta.document_code || null,
+        startedAt: meta.started_at || app.updated_at || app.created_at,
+        roundNo: meta.round_no || 1,
+      });
+    }
+
+    const approvalApps = Array.from(approvalsByApp.values());
+    const approvalsCount = pendingApprovals.length;
+
+    return {
+      documentChecklist,
+      submitApps,
+      approvalApps,
+      counts: {
+        documentChecklist: totalActionDocs,
+        submit: submitApps.length,
+        approvals: approvalsCount,
+        total: totalActionDocs + submitApps.length + approvalsCount,
+      },
     };
   }
 

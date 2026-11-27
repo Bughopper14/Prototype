@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LogOut,
+  Mail,
   Menu,
   Settings2,
   ShieldCheck,
@@ -61,6 +62,7 @@ export function CrmShell({children}: {children: ReactNode}) {
     dismissCreatedAppBanner,
     unreadNotifications,
     unreadActivities,
+    inboxCount,
   } = useCrm();
   const {pathname} = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -98,6 +100,17 @@ export function CrmShell({children}: {children: ReactNode}) {
         </div>
 
         <div className="crm-nav-actions">
+          {hasAuthority(user, 'CRM_APPLICATION_VIEW') && (
+            <Link
+              to="/crm-dashboard/inbox"
+              className={`btn-nav-inbox ${pathname.startsWith('/crm-dashboard/inbox') ? 'is-active' : ''}`}
+              title="Open Inbox"
+            >
+              <Mail size={15} />
+              <span>Inbox</span>
+              {inboxCount > 0 && <span className="btn-nav-inbox-badge">{inboxCount}</span>}
+            </Link>
+          )}
           <a href={GALLERY_URL} className="btn-apps-hub" title="Back to Applications Gallery">
             <LayoutGrid size={15} color="#ff9900" />
             <span>Apps Hub</span>

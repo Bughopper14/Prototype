@@ -1,10 +1,23 @@
 import {DocumentsContext} from '@/features/documents/components/studio/DocumentsContext';
 import {EvidenceRedesignView} from '@/features/documents/components/studio/evidence/EvidenceRedesignView';
 import {FapRedesignView} from '@/features/documents/components/studio/fap/FapRedesignView';
+import {PreAnalysisDocumentsView} from '@/features/documents/components/PreAnalysisDocumentsView';
 import {UploadHistoryModal} from '@/features/documents/components/studio/UploadHistoryModal';
 import {useDocumentsStudio, type DocumentsProps} from '@/features/documents/hooks/useDocumentsStudio';
+import {SCREEN} from '@/shared/master-data';
 
-export function Documents(props: DocumentsProps) {
+export function Documents(props: DocumentsProps & {onOpenChecklist?: () => void}) {
+  if (props.filterStage === SCREEN.PRE_ANALYSIS) {
+    return (
+      <PreAnalysisDocumentsView
+        a={props.a}
+        user={props.user}
+        onChange={props.onChange}
+        notify={props.notify}
+        onOpenChecklist={props.onOpenChecklist}
+      />
+    );
+  }
   const state = useDocumentsStudio(props);
   const {selectedCode, error} = state;
   return (
@@ -16,15 +29,12 @@ export function Documents(props: DocumentsProps) {
           </div>
         )}
 
-        {/* FAP Documents tab: Redesign 2 (with OCR Data Comparison, Focus view, Side by side) */}
-        {/* Non-FAP Stages (Pre-analysis, ICLF): Unified Redesign 2 upload & preview without OCR */}
         {selectedCode === 'FAP' ? (
           <FapRedesignView onOpenChecklist={props.onOpenChecklist} />
         ) : (
           <EvidenceRedesignView onOpenChecklist={props.onOpenChecklist} />
         )}
 
-        {/* Pop-up Modal: Upload History */}
         <UploadHistoryModal />
       </div>
     </DocumentsContext.Provider>
